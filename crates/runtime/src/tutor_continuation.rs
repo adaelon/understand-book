@@ -53,7 +53,7 @@ impl TeachingContinuation {
         let mut label = text.clone();
         label["description"] = json!("A concrete request the reader can choose, phrased as the reader's action. Offer a new comparison, changed condition or observation within the parent target, not an explanation or worked example already in move.prompt.");
         let mut purpose = text.clone();
-        purpose["description"] = json!("State the specific NEW insight beyond this turn's completed explanation. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight.");
+        purpose["description"] = json!("State the specific NEW insight beyond this turn's completed explanation and how it serves the accepted workspace goal and constraints when present. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight. Do not continue a stage belonging to an older goal version.");
         let id = json!({"type":"string","minLength":1,"maxLength":CONTINUATION_ID_MAX});
         json!({"type":"object","additionalProperties":false,
             "description":"Optional future help AFTER this answer. Draft the full current explanation first; then prefer one genuinely distinct next step. Omit continuation entirely when no new in-scope insight remains. An alternative is useful only when it offers a different learning choice.",
@@ -70,7 +70,7 @@ impl TeachingContinuation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
-pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer }
+pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
@@ -121,14 +121,13 @@ impl ResolvedInteraction {
     pub fn validates_current_action(&self, intent: &str, kind: &str) -> bool {
         match self.action {
             InteractionAction::Typed => false,
-            InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection | EntryAction::ClarifyAnswer } =>
+            InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection } =>
                 intent == "direct_explanation" && kind == "explain",
+            InteractionAction::UiEntry { entry_action: EntryAction::ClarifyAnswer } =>
+                matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
             InteractionAction::UiEntry { entry_action: EntryAction::ContinueAnswer } => intent == "neutral",
-            InteractionAction::UiChoice { move_kind, .. } => match move_kind {
-                ContinuationMoveKind::Explain => intent == "direct_explanation" && kind == "explain",
-                ContinuationMoveKind::Compare => intent == "neutral" && kind == "compare",
-                ContinuationMoveKind::Observe => intent == "neutral" && kind == "observe",
-            },
+            InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter } => intent == "neutral",
+            InteractionAction::UiChoice { .. } => matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
         }
     }
 }

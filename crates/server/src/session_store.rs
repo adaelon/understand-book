@@ -50,7 +50,7 @@ pub(crate) fn load_chat_storage(
 impl SessionStore {
     pub fn ensure_book(&mut self, history: &mut AgentHistory, book: &str, now: &str) -> Result<(), ToolError> {
         let id = history.active_by_book.get(book).cloned()
-            .or_else(|| history.sessions.iter().find(|s| s.book_id == book).map(|s| s.id.clone()));
+            .or_else(|| history.sessions.iter().find(|s| s.matches_scope(None, book)).map(|s| s.id.clone()));
         let id = match id {
             Some(id) => id,
             None => {
@@ -191,6 +191,7 @@ impl SessionStore {
             None,
             EventBody::SessionCreated(SessionCreated {
                 session_id: session.id.clone(),
+                learning_workspace_id: session.learning_workspace_id.clone(),
                 book_id: session.book_id.clone(),
                 title: session.title.clone(),
                 created_at: session.created_at.clone(),
@@ -214,7 +215,7 @@ impl SessionStore {
         if !history
             .sessions
             .iter()
-            .any(|s| s.id == id && s.book_id == book)
+            .any(|s| s.id == id && s.matches_scope(None, book))
         {
             return Err(agent_history_internal(
                 "selected session does not belong to this book",
@@ -298,9 +299,9 @@ fn repair_selection(history: &mut AgentHistory) {
         history
             .sessions
             .iter()
-            .any(|s| &s.id == id && &s.book_id == book)
+            .any(|s| &s.id == id && s.matches_scope(None, book))
     });
-    let mut ordered = history.sessions.iter().collect::<Vec<_>>();
+    let mut ordered = history.sessions.iter().filter(|s| s.learning_workspace_id.is_none()).collect::<Vec<_>>();
     ordered.sort_by(|a, b| {
         // Startup chats use "server-start". Real timestamps sort after that
         // label, with offset awareness.
@@ -343,7 +344,7 @@ pub(crate) fn route_select(state: &mut AppState, book: &str, id: &str) -> Reply 
         .agent_history
         .sessions
         .iter()
-        .find(|s| s.book_id == book && s.id == id)
+        .find(|s| s.matches_scope(None, book) && s.id == id)
     else {
         return validation(
             "INVALID_RANGE",
@@ -374,7 +375,7 @@ pub(crate) fn route_delete(state: &mut AppState, book: &str, id: &str, now: &str
         .agent_history
         .sessions
         .iter()
-        .any(|s| s.book_id == book && s.id == id)
+        .any(|s| s.matches_scope(None, book) && s.id == id)
     {
         return validation(
             "INVALID_RANGE",
@@ -409,7 +410,7 @@ pub(crate) fn route_delete(state: &mut AppState, book: &str, id: &str, now: &str
                 .agent_history
                 .sessions
                 .iter()
-                .any(|s| s.id == *id && s.book_id == book)
+                .any(|s| s.id == *id && s.matches_scope(None, book))
         })
         .or_else(|| state.user.agent_history.active_by_book.get(book).cloned());
     if let Some(selected) = selected {

@@ -6,4 +6,5 @@ Presentation capability directory:
 - state: save and restore custom page parameters, steps and visible results.
 - continuous_scene: deterministic playback and fractional positioning; includes the state contract.
 - konva: bundled stable graphic objects, coordinated geometry and direct dragging. It does not require a timeline; select state when custom interaction needs saving.
+- three: bundled Three.js for real 3D models, orbit and linked diagrams; select state for saved camera/parameters and continuous_scene when time is part of the explanation. spatial-linked-views@1 provides a reusable starting point.
 - manim: render_animation produces a fixed local movie, with media decoding and paused restoration; includes continuous_scene and state. A movie cannot recompute arbitrary parameter changes; use live browser graphics for those.

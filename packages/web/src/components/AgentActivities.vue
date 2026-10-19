@@ -21,10 +21,10 @@ function durationLabel(duration: number | null): string {
 <template>
   <div v-if="activities.length" class="activity-group" :class="{ diagnostic }">
     <button v-if="!diagnostic && latest" type="button" class="agent-activity activity-summary" :data-step-id="latest.step_id" :data-status="latest.status" :aria-expanded="expanded" :aria-controls="listId" @click="expanded = !expanded">
-      <span class="activity-label">{{ latest.label }}</span>
+      <span class="activity-label">最近步骤：{{ latest.label }}</span>
       <ChevronRight class="activity-chevron" :class="{ expanded }" :size="14" aria-hidden="true" />
       <span class="activity-status">{{ labels[latest.status] }}</span>
-      <small v-if="durationLabel(latest.duration_ms)">{{ durationLabel(latest.duration_ms) }}</small>
+      <small v-if="durationLabel(latest.duration_ms)">本步 {{ durationLabel(latest.duration_ms) }}</small>
     </button>
     <ol v-if="diagnostic || expanded" :id="listId" class="agent-activities" aria-label="运行活动">
       <li v-for="activity in activities" :key="activity.step_id" class="agent-activity" :class="{ nested: activity.parent_step_id !== null }" :data-step-id="activity.step_id" :data-status="activity.status">

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>追踪一次离散更新</title>
+<style>
+:root { color-scheme: light; --canvas:#f7f8fa; --ink:#202c3a; --surface:#fff; --line:#ccd4df; --accent:#235aa6; }
+* { box-sizing:border-box; }
+body { margin:0; padding:16px; background:var(--canvas); color:var(--ink); font:16px/1.6 system-ui,sans-serif; }
+main { max-width:760px; margin:auto; }
+h1 { font-size:1.5rem; line-height:1.3; margin:0 0 8px; }
+p { margin:8px 0; }
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px; margin:12px 0; }
+#scene { display:block; width:100%; height:auto; min-height:170px; }
+.legend { font-size:14px; display:flex; flex-wrap:wrap; gap:4px 16px; }
+.current { color:#235aa6; } .next { color:#18786d; } .moving { color:#ab3c13; }
+.numbers { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:8px; }
+.numbers p { margin:0; } output { font-weight:650; font-variant-numeric:tabular-nums; }
+button,input { font:inherit; min-width:44px; min-height:44px; }
+button { border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--surface); color:var(--ink); cursor:pointer; }
+button:disabled { opacity:.55; cursor:default; }
+button:focus-visible,input:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+#play { background:var(--accent); color:white; }
+.buttons { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+label { display:block; } input[type=range] { width:100%; margin:0; accent-color:var(--accent); }
+small { font-size:14px; } .formula { overflow-wrap:anywhere; }
+@media(max-width:380px) { body { padding:10px; } .panel { padding:10px; } #scene text { font-size:28px; } }
+</style>
+</head>
+<body>
+<main>
+<h1>追踪一次离散更新</h1>
+<p class="formula">在 f(x)=(x−2)² 上，从 x₀=4 出发：<br>xₖ₊₁=xₖ−η·2(xₖ−2)。最小值在 x=2。</p>
+<section class="panel" aria-label="更新图形">
+  <svg id="scene" viewBox="0 0 600 260" role="img" aria-labelledby="graph-title graph-description">
+    <title id="graph-title">当前点、下一点与画面插值</title>
+    <desc id="graph-description">曲线是二次函数；方框是当前迭代，空心圆是下一迭代，橙色实心点只连接两者。</desc>
+    <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="#235aa6"/></marker></defs>
+    <path d="M30 12V216H578" fill="none" stroke="#9ba9ba"/>
+    <path id="curve" fill="none" stroke="#ccd4df" stroke-width="3"/>
+    <line id="minimum" y1="16" y2="216" stroke="#a5b5c7" stroke-dasharray="4 4"/>
+    <text id="minimum-label" y="254" text-anchor="middle" font-size="16" fill="#202c3a">x=2</text>
+    <text id="axis-left" x="30" y="254" font-size="16" fill="#202c3a"/>
+    <text id="axis-right" x="578" y="254" text-anchor="end" font-size="16" fill="#202c3a"/>
+    <path id="trail" fill="none" stroke="#9aafd0" stroke-width="2"/>
+    <g id="history" fill="#9aafd0"/>
+    <g id="update-arrow"><line id="update-line" y1="232" y2="232" stroke="#235aa6" stroke-width="3" marker-end="url(#arrowhead)"/></g>
+    <rect id="current-point" width="14" height="14" fill="white" stroke="#235aa6" stroke-width="3"/>
+    <circle id="next-point" r="9" fill="white" stroke="#18786d" stroke-width="3"/>
+    <circle id="moving-point" r="6" fill="#e65c21"/>
+  </svg>
+  <div class="legend"><span class="current">□ 当前 xₖ</span><span class="next">○ 下一 xₖ₊₁</span><span class="moving">● 画面插值</span></div>
+  <small>下方箭头表示 Δx 的方向和大小；坐标范围按当前 η 的完整 8 步固定。</small>
+</section>
+<section id="readout" class="panel" aria-label="当前计算">
+  <p id="step-label"></p>
+  <div class="numbers">
+    <p>当前 xₖ<br><output id="current-value"></output></p>
+    <p>梯度 2(xₖ−2)<br><output id="gradient-value"></output></p>
+    <p>更新量 Δx<br><output id="delta-value"></output></p>
+    <p>下一 xₖ₊₁<br><output id="next-value"></output></p>
+  </div>
+  <p id="equation" class="formula"></p>
+  <p>画面插值 x̃=<output id="visual-value"></output>，f(x̃)=<output id="loss-value"></output>。</p>
+  <small>插值只连接画面，不算新的一次迭代；上面的计算属于整数步 k。x、f 与 η 均为无量纲教学变量。</small>
+</section>
+<section class="panel" aria-label="观察控件">
+  <div class="buttons"><button id="back">前一步</button><button id="play" aria-pressed="false">播放</button><button id="next">后一步</button><button id="reset">重置</button></div>
+  <label for="position">位置：<output id="position-label"></output></label>
+  <input id="position" type="range" min="0" max="8" step="0.001" value="0">
+  <label for="eta">学习率 η：<output id="eta-value"></output></label>
+  <input id="eta" type="range" min="0" max="1.2" step="0.01" value="0.25">
+  <div class="buttons" aria-label="边界与对照">
+    <button data-eta="0">η=0</button><button data-eta="0.25">η=0.25</button><button data-eta="0.5">η=0.5</button><button data-eta="0.75">η=0.75</button><button data-eta="1">η=1</button><button data-eta="1.2">η=1.2</button>
+  </div>
+  <p id="behavior"></p>
+  <small>改 η 会暂停并回到 x₀=4。重置保留 η，回到第 0 步。前一步回到上一整数步。</small>
+</section>
+<p>独立核对：xₖ−2=2(1−2η)ᵏ。0&lt;η&lt;0.5 同侧接近；η=0.5 一步到达；0.5&lt;η&lt;1 交替接近；η=0 静止；η=1 等幅往返；1&lt;η≤1.2 交替远离。这里展示有限的 8 次更新。</p>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const initial = window.presentation?.initialState ?? {};
+  const state = {eta:initial.eta ?? 0.25, semantic_state:0, transition_progress:0, playing:false};
+  let frame = 0, lastTime = 0;
+  const fmt = value => Number(value.toFixed(6)).toString();
+  const snapshot = () => ({...state});
+  const commit = () => window.presentation?.commitState();
+  function iterates(eta) {
+    const values = [4];
+    for (let k=0; k<8; k++) values.push(values[k] - 2*eta*(values[k]-2));
+    return values;
+  }
+  function renderAt(parameters, semantic_state, transition_progress) {
+    const eta = parameters.eta, k = semantic_state, p = transition_progress;
+    const values = iterates(eta), current = values[k], next = values[Math.min(k+1,8)];
+    const gradient = 2*(current-2), delta = k<8 ? -eta*gradient : 0;
+    const visual = current + (next-current)*p;
+    // The same scale is used at every position for a given parameter.
+    const low = Math.min(0,...values), high = Math.max(4,...values), margin = (high-low)*0.1;
+    const xmin = low-margin, xmax = high+margin;
+    const ymax = Math.max((xmin-2)**2,(xmax-2)**2);
+    const X = x => 30+(x-xmin)/(xmax-xmin)*548;
+    const Y = x => 216-(x-2)**2/ymax*196;
+    $('curve').setAttribute('d',Array.from({length:121},(_,i)=>{const x=xmin+(xmax-xmin)*i/120;return `${i?'L':'M'}${X(x)},${Y(x)}`;}).join(' '));
+    $('minimum').setAttribute('x1',X(2)); $('minimum').setAttribute('x2',X(2));
+    $('minimum-label').setAttribute('x',X(2));
+    $('axis-left').textContent=fmt(xmin); $('axis-right').textContent=fmt(xmax);
+    $('trail').setAttribute('d',values.slice(0,k+1).map((x,i)=>`${i?'L':'M'}${X(x)},${Y(x)}`).join(' ')+` L${X(visual)},${Y(visual)}`);
+    $('history').innerHTML=values.slice(0,k+1).map(x=>`<circle cx="${X(x)}" cy="${Y(x)}" r="3"/>`).join('');
+    $('current-point').setAttribute('x',X(current)-7); $('current-point').setAttribute('y',Y(current)-7);
+    $('next-point').setAttribute('cx',X(next)); $('next-point').setAttribute('cy',Y(next));
+    $('next-point').style.display=k===8?'none':'';
+    $('moving-point').setAttribute('cx',X(visual)); $('moving-point').setAttribute('cy',Y(visual));
+    $('update-arrow').style.display=delta===0?'none':'';
+    $('update-line').setAttribute('x1',X(current)); $('update-line').setAttribute('x2',X(next));
+    $('step-label').textContent=`η=${fmt(eta)} · 已完成第 ${k} 步 / 8 · 过渡 ${fmt(p*100)}%`;
+    $('current-value').textContent=fmt(current); $('gradient-value').textContent=fmt(gradient);
+    $('delta-value').textContent=k===8?'—':fmt(delta); $('next-value').textContent=k===8?'—':fmt(next);
+    $('equation').textContent=k===8?'已完成 8 次更新，停在 x₈。':`第 ${k}→${k+1} 步：${fmt(current)} + (${fmt(delta)}) = ${fmt(next)}`;
+    $('visual-value').textContent=fmt(visual); $('loss-value').textContent=fmt((visual-2)**2);
+    $('position').value=k+p; $('position-label').textContent=`${k} + ${fmt(p)}`;
+    $('eta').value=eta; $('eta-value').textContent=fmt(eta);
+    $('play').textContent=state.playing?'暂停':'播放'; $('play').setAttribute('aria-pressed',state.playing);
+    $('play').disabled=k===8; $('back').disabled=k===0&&p===0; $('next').disabled=k===8;
+    $('behavior').textContent=eta===0?'η=0：更新量为 0，停在 x=4。':eta<0.5?'0<η<0.5：从同一侧接近 x=2。':eta===0.5?'η=0.5：一步到达 x=2，之后保持不动。':eta<1?'0.5<η<1：越过 x=2，交替接近。':eta===1?'η=1：在 x=4 和 x=0 之间等幅往返，不收敛。':'1<η≤1.2：在当前初值下交替远离 x=2。';
+  }
+  function position(q) {
+    q=Math.max(0,Math.min(8,q));
+    state.semantic_state=Math.floor(q); state.transition_progress=q-state.semantic_state;
+  }
+  function pause() { cancelAnimationFrame(frame); state.playing=false; }
+  function seek({semantic_state,transition_progress=0}) {
+    pause(); position(semantic_state+transition_progress);
+    renderAt(state,state.semantic_state,state.transition_progress);
+    return snapshot();
+  }
+  function setEta(eta) { state.eta=eta; seek({semantic_state:0}); }
+  function tick(now) {
+    const q=state.semantic_state+state.transition_progress+(now-lastTime)/1200;
+    lastTime=now; position(q);
+    if(q>=8) state.playing=false;
+    renderAt(state,state.semantic_state,state.transition_progress);
+    if(state.playing) frame=requestAnimationFrame(tick); else commit();
+  }
+  $('play').onclick=()=>{
+    if(state.playing) { pause(); renderAt(state,state.semantic_state,state.transition_progress); commit(); }
+    else { state.playing=true; lastTime=performance.now(); renderAt(state,state.semantic_state,state.transition_progress); frame=requestAnimationFrame(tick); }
+  };
+  $('back').onclick=()=>{seek({semantic_state:Math.max(0,state.semantic_state-1)});commit();};
+  $('next').onclick=()=>{seek({semantic_state:Math.min(8,state.semantic_state+1)});commit();};
+  $('reset').onclick=()=>{seek({semantic_state:0});commit();};
+  $('position').oninput=event=>seek({semantic_state:0,transition_progress:Number(event.target.value)});
+  $('position').onchange=commit;
+  $('eta').oninput=event=>setEta(Number(event.target.value)); $('eta').onchange=commit;
+  document.querySelectorAll('[data-eta]').forEach(button=>button.onclick=()=>{setEta(Number(button.dataset.eta));commit();});
+  window.presentationScene={seek,snapshot};
+  seek({semantic_state:initial.semantic_state??0,transition_progress:initial.transition_progress??0});
+  window.presentation?.registerStateReader(()=>({values:{eta:state.eta,semantic_state:state.semantic_state,transition_progress:state.transition_progress},visible_step:`第 ${state.semantic_state} 步，过渡 ${fmt(state.transition_progress*100)}%`}));
+  window.presentation?.registerStateRestorer(saved=>{
+    const values=saved.values.page;
+    state.eta=values.eta;
+    seek({semantic_state:values.semantic_state,transition_progress:values.transition_progress});
+  });
+})();
+</script>
+</body>
+</html>

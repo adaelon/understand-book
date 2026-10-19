@@ -394,6 +394,7 @@ fn scope_sort_key(scope: &ProfileScope) -> (u8, &str) {
     match scope {
         ProfileScope::Global => (0, ""),
         ProfileScope::Book { book_id } => (1, book_id),
+        ProfileScope::Workspace { learning_workspace_id, .. } => (2, learning_workspace_id),
     }
 }
 

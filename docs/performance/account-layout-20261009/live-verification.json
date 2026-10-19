@@ -1,0 +1,68 @@
+{
+  "verified_at": "2026-10-09T13:46:24.912Z",
+  "base": "https://understandbook.top",
+  "results": [
+    {
+      "view": "register",
+      "viewport": {
+        "width": 390,
+        "height": 600
+      },
+      "clientHeight": 600,
+      "scrollHeight": 830,
+      "scrollTop": 230,
+      "horizontalOverflow": 0
+    },
+    {
+      "view": "register",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "clientHeight": 568,
+      "scrollHeight": 826,
+      "scrollTop": 258,
+      "horizontalOverflow": 0
+    },
+    {
+      "view": "register",
+      "viewport": {
+        "width": 1280,
+        "height": 600
+      },
+      "clientHeight": 600,
+      "scrollHeight": 786,
+      "scrollTop": 186,
+      "horizontalOverflow": 0
+    },
+    {
+      "view": "register",
+      "viewport": {
+        "width": 671,
+        "height": 832
+      },
+      "clientHeight": 832,
+      "scrollHeight": 934,
+      "scrollTop": 102,
+      "horizontalOverflow": 0
+    },
+    {
+      "view": "forgot-password",
+      "viewport": {
+        "width": 390,
+        "height": 320
+      },
+      "returnedToLogin": true
+    },
+    {
+      "view": "reset-password",
+      "viewport": {
+        "width": 390,
+        "height": 320
+      },
+      "returnedToLogin": true
+    }
+  ],
+  "errors": [],
+  "writes": []
+}

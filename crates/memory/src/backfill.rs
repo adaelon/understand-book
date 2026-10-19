@@ -11,6 +11,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HistoricalBackfillRange {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub turn_book_ids: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning_workspace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub goal_revisions: Vec<u32>,
     pub session_id: String,
     pub book_id: String,
     pub from_turn_exclusive: u64,
@@ -29,6 +35,12 @@ pub enum HistoricalBackfillJobStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HistoricalBackfillJob {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub turn_book_ids: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning_workspace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub goal_revisions: Vec<u32>,
     pub job_id: String,
     pub session_id: String,
     pub book_id: String,
@@ -103,6 +115,9 @@ impl MemoryStore {
         }
 
         let job = HistoricalBackfillJob {
+            turn_book_ids: range.turn_book_ids,
+            learning_workspace_id: range.learning_workspace_id,
+            goal_revisions: range.goal_revisions,
             job_id,
             session_id: range.session_id,
             book_id: range.book_id,
@@ -299,23 +314,34 @@ impl MemoryStore {
             )?;
             if matches!(
                 &fact_candidate.fact.scope,
-                ProfileScope::Book { book_id } if book_id != &current.book_id
+                ProfileScope::Book { book_id } | ProfileScope::Workspace { book_id, .. } if book_id != current.turn_book_ids.get(turn_id).unwrap_or(&current.book_id)
             ) {
                 return Err(invalid_backfill(
                     "historical backfill fact book scope does not match the job",
                 ));
             }
             reject_excluded_evidence(&self.document.exclusions, &fact_candidate.fact.evidence)?;
+            let mut fact = fact_candidate.fact.clone();
+            match (&current.learning_workspace_id, &fact.scope) {
+                (Some(learning_workspace_id), ProfileScope::Book { book_id }) => {
+                    fact.scope = ProfileScope::Workspace { learning_workspace_id: learning_workspace_id.clone(), book_id: book_id.clone() };
+                }
+                (owner, ProfileScope::Workspace { learning_workspace_id, .. })
+                    if owner.as_ref() != Some(learning_workspace_id) => {
+                        return Err(invalid_backfill("historical backfill workspace does not match the job"));
+                    }
+                _ => {}
+            }
             if collection_rules_block(
                 self.collection_rules(),
-                &fact_candidate.fact.scope,
-                &fact_candidate.fact.applicability,
-                &fact_candidate.fact.payload,
+                &fact.scope,
+                &fact.applicability,
+                &fact.payload,
             ) {
                 continue;
             }
             built.push(build_profile_fact_with_capture(
-                fact_candidate.fact.clone(),
+                fact,
                 Vec::new(),
                 ProfileFactCapture::HistoricalBackfill,
                 now,
@@ -504,6 +530,9 @@ pub(crate) fn validate_historical_backfill_fact_links(
 impl HistoricalBackfillJob {
     fn validate(&self) -> Result<(), String> {
         let range = HistoricalBackfillRange {
+            turn_book_ids: self.turn_book_ids.clone(),
+            learning_workspace_id: self.learning_workspace_id.clone(),
+            goal_revisions: self.goal_revisions.clone(),
             session_id: self.session_id.clone(),
             book_id: self.book_id.clone(),
             from_turn_exclusive: self.from_turn_exclusive,
@@ -719,6 +748,9 @@ mod tests {
 
     fn range(from: u64, to: u64) -> HistoricalBackfillRange {
         HistoricalBackfillRange {
+            turn_book_ids: BTreeMap::new(),
+            learning_workspace_id: None,
+            goal_revisions: Vec::new(),
             session_id: "session-a".into(),
             book_id: "book-a".into(),
             from_turn_exclusive: from,
@@ -1090,4 +1122,21 @@ mod tests {
             .start_historical_backfill_job(range(2, 4), "after-clear")
             .is_ok());
     }
+    #[test]
+    fn w3_backfill_keeps_workspace_on_reopen_and_scopes_candidates() {
+        let (path, mut store) = store("w3-backfill-workspace");
+        let mut origin = range(0, 1);
+        origin.learning_workspace_id = Some("a".into()); origin.goal_revisions = vec![3];
+        let job = store.start_historical_backfill_job(origin, "1").unwrap();
+        drop(store);
+        let mut store = MemoryStore::open(path).unwrap();
+        let job = store.claim_historical_backfill_job(&job.job_id, "2").unwrap();
+        assert_eq!(job.learning_workspace_id.as_deref(), Some("a"));
+        assert_eq!(job.goal_revisions, [3]);
+        store.commit_historical_backfill_turn(&job.job_id, 1, "turn-1",
+            &[candidate("turn-1", "depth", FactSource::UserStated)], "3").unwrap();
+        assert_eq!(store.profile_facts()[0].scope, ProfileScope::Workspace { learning_workspace_id: "a".into(), book_id: "book-a".into() });
+        assert_eq!(store.profile_facts()[0].status, FactStatus::Pending);
+    }
+
 }

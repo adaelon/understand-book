@@ -1,0 +1,161 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "w₁ = 1.200，误差 −0.800",
+      "eta": 0.3,
+      "step": 1,
+      "quantity": "w",
+      "value": "1.200",
+      "expected": 1.2,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "w₁ = 1.200，误差 −0.800",
+      "eta": 0.3,
+      "step": 1,
+      "quantity": "e",
+      "value": "−0.800",
+      "expected": -0.8,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 0,
+      "quantity": "w",
+      "value": "0.000",
+      "expected": 0,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 1,
+      "quantity": "w",
+      "value": "2.800",
+      "expected": 2.8,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 2,
+      "quantity": "w",
+      "value": "1.680",
+      "expected": 1.6800000000000002,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 3,
+      "quantity": "w",
+      "value": "2.128",
+      "expected": 2.128,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 4,
+      "quantity": "w",
+      "value": "1.949",
+      "expected": 1.9488,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "表：0.000 → 2.800 → 1.680 → 2.128 → 1.949 → 2.020",
+      "eta": 0.7,
+      "step": 5,
+      "quantity": "w",
+      "value": "2.020",
+      "expected": 2.02048,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "3.36e-5",
+      "eta": 0.7,
+      "step": 12,
+      "quantity": "abs_e",
+      "value": "3.36e-5",
+      "expected": 0.00003355443199999991,
+      "tolerance": 5.01e-8,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "第 12 步 w₁₂ = 0.000",
+      "eta": 1,
+      "step": 12,
+      "quantity": "w",
+      "value": "0.000",
+      "expected": 0,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "e₁₂\\| = 2.000",
+      "eta": 1,
+      "step": 12,
+      "quantity": "abs_e",
+      "value": "2.000",
+      "expected": 2,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "第 12 步 w₁₂ = −111.388",
+      "eta": 1.2,
+      "step": 12,
+      "quantity": "w",
+      "value": "−111.388",
+      "expected": -111.38782475059192,
+      "tolerance": 0.0005000001,
+      "pass": true
+    },
+    {
+      "source": "v7-C1-learning-rate/outcome.json",
+      "field": "answer",
+      "quote": "e₁₂\\| = 113.388",
+      "eta": 1.2,
+      "step": 12,
+      "quantity": "abs_e",
+      "value": "113.388",
+      "expected": 113.38782475059192,
+      "tolerance": 0.0005000001,
+      "pass": true
+    }
+  ]
+}

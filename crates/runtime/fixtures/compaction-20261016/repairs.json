@@ -1,0 +1,3893 @@
+[
+  {
+    "run_id": "01a14288-3d20-7df2-ae88-7cf81a6e0a45",
+    "model": "deepseek-v4-flash",
+    "draft": {
+      "active_goal": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.goal.readonlybase",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "Explain the reader-selected passage at LID 7.6.3 (ReadOnlyBase fields) within its original source range, reading the original text before teaching."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            }
+          ],
+          "item_id": "item.goal.crosslang",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608"
+          ],
+          "text": "Answer the reader question: what is the cross-language contract, and what is in base-schema."
+        }
+      ],
+      "critical_examples": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.example.azhB",
+          "source_item_ids": [
+            "source.40.fnv1a64-71818952bd23cecc"
+          ],
+          "text": "Teaching string A中B: 中 is [1, 2) in UTF-16 but [1, 4) in the UTF-8 byte sequence; treating the build-side [1, 2) as a byte range takes only part of the character's encoding, and ordinary Chinese text is enough to trigger this unit error."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.example.span_decl",
+          "source_item_ids": [
+            "source.44.fnv1a64-04906c5b91f6d41a"
+          ],
+          "text": "Rust Span declaration shown with derives Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema and #[ts(export, export_to = \"../../../packages/core/src/generated/\")], with pub start: usize and pub end: usize."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "item.example.lid325",
+          "source_item_ids": [
+            "source.13.fnv1a64-beddd15eb8db2cd2"
+          ],
+          "text": "Example LID 3.2.5: it expresses a hierarchical position, but another material could have the same LID, so a citation must also know the owning material to resolve the position into meaningful text."
+        }
+      ],
+      "critical_facts": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.fact.readonlybase",
+          "source_item_ids": [
+            "source.3.fnv1a64-b615f406d36c10dd",
+            "source.11.fnv1a64-a7826445260acf1b"
+          ],
+          "text": "ReadOnlyBase contains book_id, lid_nodes, graph_nodes, graph_edges; LidNode's span points to a text range, children and numeric paths express hierarchy and order; the reader tool loads the text so a LID can be resolved to characters."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "item.fact.lid_addressing",
+          "source_item_ids": [
+            "source.13.fnv1a64-beddd15eb8db2cd2"
+          ],
+          "text": "LID addresses a position inside one material; another material may contain the same LID, so a citation must also know which material to resolve the position to meaningful text."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            }
+          ],
+          "item_id": "item.fact.datacategories",
+          "source_item_ids": [
+            "source.12.fnv1a64-dcbd14cdcb057062",
+            "source.14.fnv1a64-c1f26eedc4fc4169"
+          ],
+          "text": "Data needed to understand the project falls into three categories: original text and positioning, semantics and structure, and user records."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            }
+          ],
+          "item_id": "item.fact.position_base",
+          "source_item_ids": [
+            "source.15.fnv1a64-e9c52a51534801a7"
+          ],
+          "text": "Original-text position is a system-wide foundation: LID lets build-side clues connect to the original text and gives reading, citation, navigation, and annotation a common positioning basis."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            }
+          ],
+          "item_id": "item.fact.contract",
+          "source_item_ids": [
+            "source.41.fnv1a64-0871fba57f2aa9da",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.47.fnv1a64-56a5a6c60d26e877"
+          ],
+          "text": "The cross-language contract layers: TypeScript uses the build ecosystem, Rust handles reading/runtime with Rust types generating TypeScript definitions; the interface is already-produced material artifacts; its content covers which fields and shapes exist and how those numbers are interpreted; type generation resolves only part of consistency, so field meaning, units, and version boundaries still need checking."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8ef850fdd1d52"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            }
+          ],
+          "item_id": "item.fact.baseschema",
+          "source_item_ids": [
+            "source.39.fnv1a64-40b32c8e7ef31efc",
+            "source.42.fnv1a64-0e6a14d2b48f766d",
+            "source.43.fnv1a64-514320c9bdd7308d",
+            "source.44.fnv1a64-04906c5b91f6d41a",
+            "source.45.fnv1a64-7f65140ee9be621e",
+            "source.49.fnv1a64-964bad03ad89240d"
+          ],
+          "text": "base-schema declares base types in Rust and exports TypeScript definitions via ts-rs (generated LidNode.ts, imported by segment.ts to build position nodes); exported types named here include Span, LidNode, ReadOnlyBase; Span.ts uses number and Rust's Book converts text to Vec<u16> sliced by the same unit; base data (source.txt, base.json) holds the spec text plus book_id, lid_nodes, graph_nodes, graph_edges, with ReadOnlyBase and Book::load as authorities/read entry points."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_0c8e34607de9cf15"
+            }
+          ],
+          "item_id": "item.fact.unit_subtitle",
+          "source_item_ids": [
+            "source.38.fnv1a64-02aa31e2bc87067e"
+          ],
+          "text": "The section states that the cross-language contract also includes units."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.fact.span_units",
+          "source_item_ids": [
+            "source.40.fnv1a64-71818952bd23cecc"
+          ],
+          "text": "Span's start and end are integers whose meaning is a half-open UTF-16 code unit range in the original text; the build side uses JavaScript string indices while Rust stores UTF-8, so indexing both representations with the same pair can yield different results; the error passes no type check."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            }
+          ],
+          "item_id": "item.fact.adr",
+          "source_item_ids": [
+            "source.50.fnv1a64-4c8c5a8241d3ee11"
+          ],
+          "text": "ADR-0021 (2026-06-22) chose TypeScript/Node prebuild with a Rust read-time backend; reasons include build-side parsing, deterministic text handling, and harness ecosystem, with the read side drawing on Codex-style run loop, Provider, and memory; frozen artifacts keep the cross-language seam a material delivery rather than frequent swapping of mutable objects in one sampling run."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.fact.lid_provenance_error",
+          "source_item_ids": [
+            "source.30.fnv1a64-13db373308187719"
+          ],
+          "text": "A later book.text call at LID 7.6.3 returned status error with code LID_PROVENANCE_REQUIRED, indicating LID provenance was required at that point."
+        }
+      ],
+      "decisions": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            }
+          ],
+          "item_id": "item.decision.readonlybase",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638"
+          ],
+          "text": "Selected the tutor.step explain move 'explain-readonlybase-position-layer' targeting 'ReadOnlyBase stores identity and positions, text must be loaded', with source bindings 7.6.2/7.6.3/7.6.4/7.5.9/4.6.2."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "6.8.2",
+              "kind": "lid_range",
+              "start_lid": "6.8.2"
+            },
+            {
+              "end_lid": "6.13.5",
+              "kind": "lid_range",
+              "start_lid": "6.13.4"
+            },
+            {
+              "end_lid": "7.12.2",
+              "kind": "lid_range",
+              "start_lid": "7.12.2"
+            },
+            {
+              "end_lid": "26.5.4.3",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.3"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "item.decision.crosslang",
+          "source_item_ids": [
+            "source.51.fnv1a64-965ed6ca54f30729"
+          ],
+          "text": "Selected the tutor.step explain move 'explain-crosslang-contract-base-schema' targeting the two-layer contract (shape by type generation, meaning/units by semantic convention) and base-schema contents, with source bindings 7.7.1-7.7.9, 7.6.3, 6.8.2, 6.13.4-6.13.5, 7.12.2, 26.5.4.3-26.5.4.5, 31.4.2."
+        }
+      ],
+      "next_steps": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.next.await_learner",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Await the learner's judgment on the LID-keyed cache question and, if pursued, an answer to the optional UTF-8-units follow-up; continue teaching only after that response."
+        }
+      ],
+      "open_obligations": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.obligation.readonlybase_cache",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "Learner is asked to judge a text cache keyed by LID when two different materials both contain LID 3.2.5: when it returns wrong text, and what identity the key must carry; response still pending."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.obligation.crosslang_followup",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Optional follow-up posed to the learner: if both sides re-agreed that the shared unit is UTF-8 bytes, which code must change and which convention stays."
+        }
+      ],
+      "progress": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            },
+            {
+              "end_lid": "7.5.8",
+              "kind": "lid_range",
+              "start_lid": "7.5.8"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            }
+          ],
+          "item_id": "item.progress.readonlybase",
+          "source_item_ids": [
+            "source.2.fnv1a64-54b0829dc4adda8f",
+            "source.4.fnv1a64-f808523fcba8fd59",
+            "source.5.fnv1a64-02723cdc67abaae4",
+            "source.6.fnv1a64-830af68b00cf7145",
+            "source.7.fnv1a64-d3450b1ad437cda3",
+            "source.8.fnv1a64-28010aa6a4c30354",
+            "source.9.fnv1a64-0a9ee69d394b15e3"
+          ],
+          "text": "Read the selected and neighboring passages via book.text / book.structure / book.context / book.text_batch (LIDs 7.6.3, 7.5.8, 7.6.2, 7.6.4, 7.5.9, 4.6.2); tool receipts report ok with accepted evidence for those ranges."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.progress.readonlybase.present",
+          "source_item_ids": [
+            "source.10.fnv1a64-5d723e06cd0726a5"
+          ],
+          "text": "Cited five quoted excerpts via source.present for the 7.6.3 explanation."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.progress.readonlybase.explain",
+          "source_item_ids": [
+            "source.17.fnv1a64-816cc2a84c47146e"
+          ],
+          "text": "Submitted a tutor.step explain move for the 7.6.3/position-layer topic; the move was accepted."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            }
+          ],
+          "item_id": "item.progress.readonlybase.answer",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "Delivered an explanation of ReadOnlyBase as a position/identity layer (no text stored), its four fields, why positions and text are separated, and posed a LID-keyed cache judgment question."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "6.8.2",
+              "kind": "lid_range",
+              "start_lid": "6.8.2"
+            },
+            {
+              "end_lid": "6.13.5",
+              "kind": "lid_range",
+              "start_lid": "6.13.4"
+            },
+            {
+              "end_lid": "7.12.2",
+              "kind": "lid_range",
+              "start_lid": "7.12.2"
+            },
+            {
+              "end_lid": "7.13.8",
+              "kind": "lid_range",
+              "start_lid": "7.13.8"
+            },
+            {
+              "end_lid": "7.13.9",
+              "kind": "lid_range",
+              "start_lid": "7.13.9"
+            },
+            {
+              "end_lid": "26.5.3.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.3.2"
+            },
+            {
+              "end_lid": "26.5.4.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.2"
+            },
+            {
+              "end_lid": "26.5.4.3",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.3"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "item.progress.crosslang.read",
+          "source_item_ids": [
+            "source.20.fnv1a64-0aadfa331121a974",
+            "source.21.fnv1a64-d338ee5d1f8f709b",
+            "source.22.fnv1a64-79a6bc27505ceecd",
+            "source.23.fnv1a64-d7a069eb2d3119b4",
+            "source.24.fnv1a64-bbf7e8ace7ce90b9",
+            "source.25.fnv1a64-41f0916c58321fa9",
+            "source.26.fnv1a64-2dc342159d326cbe",
+            "source.27.fnv1a64-0789bd34a4e70e91",
+            "source.28.fnv1a64-ebeb0204ba6f3b62",
+            "source.29.fnv1a64-e3e9f62ea4f52597",
+            "source.31.fnv1a64-c41c5a5d5844f901",
+            "source.32.fnv1a64-f6a8e6cf861f5dd6",
+            "source.33.fnv1a64-45536ca8bd6e98da",
+            "source.34.fnv1a64-8a6f7321a8ff2abc",
+            "source.35.fnv1a64-5d70dec7f61897db",
+            "source.36.fnv1a64-f9d23fbfbe4d248f"
+          ],
+          "text": "Read the 7.7.1 target and many supporting passages via book.text / book.search_text / book.text_batch / book.context (7.7.1-7.7.9, 6.8.2, 6.13.4-6.13.5, 7.12.2, 7.13.8, 7.13.9, 26.5.3.2, 26.5.4.2-26.5.4.5, 31.4.2, 7.6.3); receipts report ok with the listed accepted evidence."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.progress.crosslang.present",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.48.fnv1a64-67aa656154115427"
+          ],
+          "text": "Cited quoted excerpts via source.present for the cross-language contract / base-schema explanation."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.progress.crosslang.explain",
+          "source_item_ids": [
+            "source.52.fnv1a64-bd68925dd0ee414e"
+          ],
+          "text": "Submitted a tutor.step explain move for the cross-language contract / base-schema topic; the move was accepted."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_0c8e34607de9cf15"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8ef850fdd1d52"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            }
+          ],
+          "item_id": "item.progress.crosslang.answer",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Delivered an explanation of the cross-language contract (language division, material-artifact interface, shape vs meaning/units/version) and of what base-schema declares and exports, with a Span unit example."
+        }
+      ],
+      "source_coverage": [
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.1.fnv1a64-86ed285dc8249c6f",
+          "target_item_ids": [
+            "item.goal.readonlybase",
+            "item.constraint.sourcerange"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.2.fnv1a64-54b0829dc4adda8f",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.3.fnv1a64-b615f406d36c10dd",
+          "target_item_ids": [
+            "item.fact.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.4.fnv1a64-f808523fcba8fd59",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.5.fnv1a64-02723cdc67abaae4",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.6.fnv1a64-830af68b00cf7145",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.7.fnv1a64-d3450b1ad437cda3",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.8.fnv1a64-28010aa6a4c30354",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.9.fnv1a64-0a9ee69d394b15e3",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.10.fnv1a64-5d723e06cd0726a5",
+          "target_item_ids": [
+            "item.progress.readonlybase.present"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.11.fnv1a64-a7826445260acf1b",
+          "target_item_ids": [
+            "item.fact.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.12.fnv1a64-dcbd14cdcb057062",
+          "target_item_ids": [
+            "item.fact.datacategories"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.13.fnv1a64-beddd15eb8db2cd2",
+          "target_item_ids": [
+            "item.fact.lid_addressing",
+            "item.example.lid325"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.14.fnv1a64-c1f26eedc4fc4169",
+          "target_item_ids": [
+            "item.fact.datacategories"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.15.fnv1a64-e9c52a51534801a7",
+          "target_item_ids": [
+            "item.fact.position_base"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.16.fnv1a64-057f9f8abe5b8638",
+          "target_item_ids": [
+            "item.decision.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.17.fnv1a64-816cc2a84c47146e",
+          "target_item_ids": [
+            "item.progress.readonlybase.explain"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.18.fnv1a64-2ada8af27120a711",
+          "target_item_ids": [
+            "item.progress.readonlybase.answer",
+            "item.obligation.readonlybase_cache",
+            "item.amb.graph",
+            "item.amb.userrecords",
+            "item.next.await_learner"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.19.fnv1a64-ad8443540bb0a608",
+          "target_item_ids": [
+            "item.goal.crosslang",
+            "item.constraint.selection"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.20.fnv1a64-0aadfa331121a974",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.21.fnv1a64-d338ee5d1f8f709b",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.22.fnv1a64-79a6bc27505ceecd",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.23.fnv1a64-d7a069eb2d3119b4",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.24.fnv1a64-bbf7e8ace7ce90b9",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.25.fnv1a64-41f0916c58321fa9",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.26.fnv1a64-2dc342159d326cbe",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.27.fnv1a64-0789bd34a4e70e91",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.28.fnv1a64-ebeb0204ba6f3b62",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.29.fnv1a64-e3e9f62ea4f52597",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.30.fnv1a64-13db373308187719",
+          "target_item_ids": [
+            "item.fact.lid_provenance_error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.31.fnv1a64-c41c5a5d5844f901",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.32.fnv1a64-f6a8e6cf861f5dd6",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.33.fnv1a64-45536ca8bd6e98da",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.34.fnv1a64-8a6f7321a8ff2abc",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.35.fnv1a64-5d70dec7f61897db",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.36.fnv1a64-f9d23fbfbe4d248f",
+          "target_item_ids": [
+            "item.progress.crosslang.read"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.37.fnv1a64-5c4d8961b5e03348",
+          "target_item_ids": [
+            "item.progress.crosslang.present"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.38.fnv1a64-02aa31e2bc87067e",
+          "target_item_ids": [
+            "item.fact.unit_subtitle"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.39.fnv1a64-40b32c8e7ef31efc",
+          "target_item_ids": [
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.40.fnv1a64-71818952bd23cecc",
+          "target_item_ids": [
+            "item.fact.span_units",
+            "item.example.azhB"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.41.fnv1a64-0871fba57f2aa9da",
+          "target_item_ids": [
+            "item.fact.contract"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.42.fnv1a64-0e6a14d2b48f766d",
+          "target_item_ids": [
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.43.fnv1a64-514320c9bdd7308d",
+          "target_item_ids": [
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.44.fnv1a64-04906c5b91f6d41a",
+          "target_item_ids": [
+            "item.fact.baseschema",
+            "item.example.span_decl"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.45.fnv1a64-7f65140ee9be621e",
+          "target_item_ids": [
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.46.fnv1a64-cb07b62759836ad7",
+          "target_item_ids": [
+            "item.fact.contract"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.47.fnv1a64-56a5a6c60d26e877",
+          "target_item_ids": [
+            "item.fact.contract"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.48.fnv1a64-67aa656154115427",
+          "target_item_ids": [
+            "item.progress.crosslang.present"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.49.fnv1a64-964bad03ad89240d",
+          "target_item_ids": [
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.50.fnv1a64-4c8c5a8241d3ee11",
+          "target_item_ids": [
+            "item.fact.adr"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.51.fnv1a64-965ed6ca54f30729",
+          "target_item_ids": [
+            "item.decision.crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.52.fnv1a64-bd68925dd0ee414e",
+          "target_item_ids": [
+            "item.progress.crosslang.explain"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.53.fnv1a64-a84a98a39912cec3",
+          "target_item_ids": [
+            "item.progress.crosslang.answer",
+            "item.obligation.crosslang_followup",
+            "item.next.await_learner"
+          ]
+        }
+      ],
+      "unresolved_ambiguities": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.amb.graph",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The read excerpt lists graph_nodes and graph_edges but does not state what relations that node-edge structure carries."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.amb.userrecords",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The 'user records' data category is only named in the excerpt and neighboring passages, not expanded."
+        }
+      ],
+      "user_constraints": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.constraint.sourcerange",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "Execute the accepted reading action within its original source range and read the relevant original text before teaching; any reader supplement is the reader's own request."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            }
+          ],
+          "item_id": "item.constraint.selection",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608"
+          ],
+          "text": "Server-validated selection: resolved_quote and citation_candidate_lids are already in this turn's evidence; local-meaning questions should be answered directly without re-calling tools just to re-verify the selection; raw quote cannot be used as citation, memory citation, or PDF geometry."
+        }
+      ]
+    }
+  },
+  {
+    "run_id": "01a14289-48b5-7bc0-84a5-c0766a46bdf2",
+    "model": "deepseek-v4-flash",
+    "draft": {
+      "active_goal": [
+        {
+          "evidence_refs": [],
+          "item_id": "goal.readonlybase",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "Explain the accepted UI selection at LID 7.6.3 (excerpt: “eadOnlyBase 包含 book_id、lid_nodes、graph_nodes 和 graph_edges”) by reading the original passage before teaching."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "goal.crosslang",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608"
+          ],
+          "text": "Answer the reader question “什么是跨语言契约，base-schema里有什么” for the server-validated selection at LID 7.7.1 (resolved_quote “跨语言契约还包括单位”)."
+        }
+      ],
+      "critical_examples": [
+        {
+          "evidence_refs": [],
+          "item_id": "example.lid-cache",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638"
+          ],
+          "text": "Posed judgment question: with two different materials that both contain LID 3.2.5, a cache keyed only by LID would return the wrong passage text; the key must also carry material identity, and the text-loading step still cannot be removed."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "example.utf8-unit",
+          "source_item_ids": [
+            "source.51.fnv1a64-965ed6ca54f30729"
+          ],
+          "text": "Optional follow-up posed to the reader: if both sides changed the shared unit convention to UTF-8 bytes, which code would have to change and which agreement would remain."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "example.A-zhong-B",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Teaching string A中B shows 中 mapping to [1, 2) under UTF-16 and to [1, 4) in the UTF-8 byte sequence, so ordinary Chinese text is enough to trigger the unit error."
+        }
+      ],
+      "critical_facts": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "fact.readonlybase",
+          "source_item_ids": [
+            "source.10.fnv1a64-5d723e06cd0726a5",
+            "source.11.fnv1a64-a7826445260acf1b"
+          ],
+          "text": "ReadOnlyBase holds book_id, lid_nodes, graph_nodes and graph_edges; LidNode.span points back to an original-text range while children and numeric paths encode hierarchy and order; the text itself is not stored and becomes reachable only after a read tool loads the body."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            }
+          ],
+          "item_id": "fact.three-classes",
+          "source_item_ids": [
+            "source.12.fnv1a64-dcbd14cdcb057062"
+          ],
+          "text": "Understanding the project's data is split into three classes: original text and location, semantics and structure, and user records."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "fact.lid-identity",
+          "source_item_ids": [
+            "source.13.fnv1a64-beddd15eb8db2cd2"
+          ],
+          "text": "A LID addresses a position inside one material; another material can carry the same LID, so a citation must also know which material the position belongs to in order to resolve it into a meaningful passage."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            }
+          ],
+          "item_id": "fact.semantic-structure",
+          "source_item_ids": [
+            "source.14.fnv1a64-c1f26eedc4fc4169"
+          ],
+          "text": "Semantics and structure (concepts, relations, whole-book structure) build on the material and answer how to approach needed information; they support retrieval and reading planning."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            }
+          ],
+          "item_id": "fact.lid-shared-basis",
+          "source_item_ids": [
+            "source.15.fnv1a64-e9c52a51534801a7"
+          ],
+          "text": "Original-text position is a foundation running through the system: LID gives hierarchical, ordered positions so that build-side clues connect to the source and so that reading, citation, navigation and annotation share one addressing basis."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_0c8e34607de9cf15"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            }
+          ],
+          "item_id": "fact.contract-scope",
+          "source_item_ids": [
+            "source.38.fnv1a64-02aa31e2bc87067e",
+            "source.41.fnv1a64-0871fba57f2aa9da",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.47.fnv1a64-56a5a6c60d26e877"
+          ],
+          "text": "The cross-language contract is layered: language division (TypeScript for the build ecosystem, Rust for reading and runtime, Rust types generating TypeScript definitions), an interface made of frozen material artifacts written by the build side and loaded by the read side, and contract content covering both which fields and shapes exist and how the numbers are interpreted; cross-language work adds data-contract and debugging cost, and type generation solves only part of the consistency problem, so field meaning, units and version boundaries still need checking."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8ef850fdd1d52"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            }
+          ],
+          "item_id": "fact.base-schema",
+          "source_item_ids": [
+            "source.39.fnv1a64-40b32c8e7ef31efc",
+            "source.42.fnv1a64-0e6a14d2b48f766d",
+            "source.43.fnv1a64-514320c9bdd7308d"
+          ],
+          "text": "base-schema declares base types in Rust and exports TypeScript definitions through ts-rs (export_to ../../../packages/core/src/generated/), so LidNode.ts shows the corresponding fields and segment.ts imports the type to construct position nodes; the types named in the read passages are Span, LidNode and ReadOnlyBase, where ReadOnlyBase holds book_id, lid_nodes, graph_nodes and graph_edges and text must be loaded separately from the LID."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "fact.span-decl",
+          "source_item_ids": [
+            "source.44.fnv1a64-04906c5b91f6d41a"
+          ],
+          "text": "The Span Rust declaration carries derives [Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema] with #[ts(export, export_to = \"../../../packages/core/src/generated/\")] and fields pub start: usize, pub end: usize."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            }
+          ],
+          "item_id": "fact.span-units",
+          "source_item_ids": [
+            "source.40.fnv1a64-71818952bd23cecc",
+            "source.45.fnv1a64-7f65140ee9be621e"
+          ],
+          "text": "Span's two integers mean a half-open interval of UTF-16 code units in the original text; generated Span.ts uses number on both sides, Rust's Book converts the text into Vec<u16> at load and text slices in the same unit; because build-side indices are JavaScript (UTF-16) while Rust strings are stored as UTF-8, indexing both representations with the same pair of numbers can yield different results."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            }
+          ],
+          "item_id": "fact.data-vs-types",
+          "source_item_ids": [
+            "source.48.fnv1a64-67aa656154115427",
+            "source.49.fnv1a64-964bad03ad89240d"
+          ],
+          "text": "base-schema answers where the types come from, not where the data lives: the base data (source.txt, base.json) holds the normative text plus book_id, lid_nodes, graph_nodes and graph_edges, and its authority and read entry points are ReadOnlyBase and Book::load."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            }
+          ],
+          "item_id": "fact.adr-0021",
+          "source_item_ids": [
+            "source.48.fnv1a64-67aa656154115427",
+            "source.50.fnv1a64-4c8c5a8241d3ee11"
+          ],
+          "text": "ADR-0021 of 2026-06-22 chose TypeScript/Node prebuild plus a Rust read-time backend, citing build-side book parsing, deterministic text processing and harness orchestration on one side and the Codex run loop, provider and memory on the other; frozen artifacts make the cross-language seam mainly material delivery rather than frequent calls between two mutable object sets."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "fact.provenance-error",
+          "source_item_ids": [
+            "source.29.fnv1a64-e3e9f62ea4f52597",
+            "source.30.fnv1a64-13db373308187719"
+          ],
+          "text": "In a later turn book.text for LID 7.6.3 returned error LID_PROVENANCE_REQUIRED, while a text_batch that included 7.6.3 and 31.4.2 returned ok."
+        }
+      ],
+      "decisions": [
+        {
+          "evidence_refs": [],
+          "item_id": "decision.read-first",
+          "source_item_ids": [
+            "source.2.fnv1a64-54b0829dc4adda8f"
+          ],
+          "text": "Assistant chose to read the selected passage in its original context before teaching it."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "decision.answer-directly",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608"
+          ],
+          "text": "Per the validated selection provenance, answer the local meaning question directly from the resolved quote and call only the minimum book tools when the answer needs information outside the selection."
+        }
+      ],
+      "next_steps": [],
+      "open_obligations": [
+        {
+          "evidence_refs": [],
+          "item_id": "obligation.reader-judgment",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638",
+            "source.51.fnv1a64-965ed6ca54f30729"
+          ],
+          "text": "The reader's answers to the LID-keyed cache question and to the optional UTF-8 unit question are still pending."
+        }
+      ],
+      "progress": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.5.8",
+              "kind": "lid_range",
+              "start_lid": "7.5.8"
+            },
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            }
+          ],
+          "item_id": "progress.read-7.6.3",
+          "source_item_ids": [
+            "source.2.fnv1a64-54b0829dc4adda8f",
+            "source.3.fnv1a64-b615f406d36c10dd",
+            "source.4.fnv1a64-f808523fcba8fd59",
+            "source.5.fnv1a64-02723cdc67abaae4",
+            "source.6.fnv1a64-830af68b00cf7145",
+            "source.7.fnv1a64-d3450b1ad437cda3",
+            "source.8.fnv1a64-28010aa6a4c30354",
+            "source.9.fnv1a64-0a9ee69d394b15e3"
+          ],
+          "text": "Read the 7.6.3 passage and neighbors before explaining: book.text 7.6.3 and 7.5.8, book.structure at 7.6.3, book.context at 7.6.3, and text_batch covering 7.6.2, 7.6.4, 7.5.9 and 4.6.2 all returned ok."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "6.8.2",
+              "kind": "lid_range",
+              "start_lid": "6.8.2"
+            },
+            {
+              "end_lid": "6.13.5",
+              "kind": "lid_range",
+              "start_lid": "6.13.4"
+            },
+            {
+              "end_lid": "7.12.2",
+              "kind": "lid_range",
+              "start_lid": "7.12.2"
+            },
+            {
+              "end_lid": "7.13.8",
+              "kind": "lid_range",
+              "start_lid": "7.13.8"
+            },
+            {
+              "end_lid": "26.5.4.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.2"
+            },
+            {
+              "end_lid": "26.5.4.3",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.3"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "7.13.9",
+              "kind": "lid_range",
+              "start_lid": "7.13.9"
+            },
+            {
+              "end_lid": "26.5.3.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.3.2"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "progress.read-crosslang",
+          "source_item_ids": [
+            "source.20.fnv1a64-0aadfa331121a974",
+            "source.21.fnv1a64-d338ee5d1f8f709b",
+            "source.23.fnv1a64-d7a069eb2d3119b4",
+            "source.24.fnv1a64-bbf7e8ace7ce90b9",
+            "source.27.fnv1a64-0789bd34a4e70e91",
+            "source.28.fnv1a64-ebeb0204ba6f3b62",
+            "source.31.fnv1a64-c41c5a5d5844f901",
+            "source.32.fnv1a64-f6a8e6cf861f5dd6",
+            "source.33.fnv1a64-45536ca8bd6e98da",
+            "source.35.fnv1a64-5d70dec7f61897db",
+            "source.36.fnv1a64-f9d23fbfbe4d248f"
+          ],
+          "text": "Read 7.7.1 and related locations for the cross-language question: text 7.7.1, text 7.7.1–7.7.2, text_batch over 7.7.2–7.7.9, 6.8.2, 6.13.4–6.13.5, 7.12.2, 7.13.8, 26.5.4.2, 26.5.4.3, 26.5.4.4, 26.5.4.5, 7.13.9, 26.5.3.2 and 31.4.2, plus book.context at 26.5.4.3; all returned ok."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "progress.presented-crosslang",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348"
+          ],
+          "text": "Presented ten source quotes for the cross-language answer: contract wording, base-schema/ts-rs explanation, the Span unit discussion with the A中B example, the reading-index entry, the Span Rust declaration with its TS export annotation, Span.ts number semantics, the interface rationale, and the why-cross-language note."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "answer.readonlybase",
+          "source_item_ids": [
+            "source.17.fnv1a64-816cc2a84c47146e",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "tutor.step selected the explanation move explain-readonlybase-position-layer and the delivered answer argued: ReadOnlyBase is filed under 原文与定位 yet stores no characters (fields book_id, lid_nodes, graph_nodes, graph_edges) — it keeps identity and positions, with the body reachable only after a read tool loads it from the LID; each LidNode carries span (a pointer back to a source range) plus children and numeric paths for hierarchy and order; position is a shared basis for reading, citation, navigation and annotation; position alone cannot identify text because another material can carry the same LID; the answer also listed the three data classes and posed the LID-keyed cache judgment question."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "answer.crosslang",
+          "source_item_ids": [
+            "source.52.fnv1a64-bd68925dd0ee414e",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "tutor.step selected the explanation move explain-crosslang-contract-base-schema and the delivered answer explained the cross-language contract as layered: language division (TypeScript build ecosystem, Rust for reading/runtime, Rust types generating TypeScript definitions), an interface of frozen material artifacts, and contract content covering both which fields/shapes exist and how the numbers are interpreted; it used Span as the unit example (half-open UTF-16 code-unit indices; A中B gives [1,2) in UTF-16 but [1,4) in UTF-8 bytes) and noted type generation cannot catch this; it described base-schema as declaring Span/LidNode/ReadOnlyBase in Rust and exporting TypeScript through ts-rs, separated base-schema (type origin) from the base data (source.txt/base.json, ReadOnlyBase and Book::load), and posed an optional UTF-8-unit follow-up."
+        }
+      ],
+      "source_coverage": [
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.1.fnv1a64-86ed285dc8249c6f",
+          "target_item_ids": [
+            "goal.readonlybase",
+            "constraint.range",
+            "constraint.supplement"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.2.fnv1a64-54b0829dc4adda8f",
+          "target_item_ids": [
+            "progress.read-7.6.3",
+            "decision.read-first"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.3.fnv1a64-b615f406d36c10dd",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.4.fnv1a64-f808523fcba8fd59",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.5.fnv1a64-02723cdc67abaae4",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.6.fnv1a64-830af68b00cf7145",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.7.fnv1a64-d3450b1ad437cda3",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.8.fnv1a64-28010aa6a4c30354",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.9.fnv1a64-0a9ee69d394b15e3",
+          "target_item_ids": [
+            "progress.read-7.6.3"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.10.fnv1a64-5d723e06cd0726a5",
+          "target_item_ids": [
+            "fact.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.11.fnv1a64-a7826445260acf1b",
+          "target_item_ids": [
+            "fact.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.12.fnv1a64-dcbd14cdcb057062",
+          "target_item_ids": [
+            "fact.three-classes"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.13.fnv1a64-beddd15eb8db2cd2",
+          "target_item_ids": [
+            "fact.lid-identity"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.14.fnv1a64-c1f26eedc4fc4169",
+          "target_item_ids": [
+            "fact.semantic-structure"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.15.fnv1a64-e9c52a51534801a7",
+          "target_item_ids": [
+            "fact.lid-shared-basis"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.16.fnv1a64-057f9f8abe5b8638",
+          "target_item_ids": [
+            "example.lid-cache",
+            "obligation.reader-judgment"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.17.fnv1a64-816cc2a84c47146e",
+          "target_item_ids": [
+            "answer.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.18.fnv1a64-2ada8af27120a711",
+          "target_item_ids": [
+            "answer.readonlybase",
+            "ambiguity.graph-nodes",
+            "ambiguity.user-records"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.19.fnv1a64-ad8443540bb0a608",
+          "target_item_ids": [
+            "goal.crosslang",
+            "decision.answer-directly",
+            "constraint.provenance"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.20.fnv1a64-0aadfa331121a974",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.21.fnv1a64-d338ee5d1f8f709b",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.22.fnv1a64-79a6bc27505ceecd",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.23.fnv1a64-d7a069eb2d3119b4",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.24.fnv1a64-bbf7e8ace7ce90b9",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.25.fnv1a64-41f0916c58321fa9",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.26.fnv1a64-2dc342159d326cbe",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.27.fnv1a64-0789bd34a4e70e91",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.28.fnv1a64-ebeb0204ba6f3b62",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.29.fnv1a64-e3e9f62ea4f52597",
+          "target_item_ids": [
+            "fact.provenance-error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.30.fnv1a64-13db373308187719",
+          "target_item_ids": [
+            "fact.provenance-error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.31.fnv1a64-c41c5a5d5844f901",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.32.fnv1a64-f6a8e6cf861f5dd6",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.33.fnv1a64-45536ca8bd6e98da",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.34.fnv1a64-8a6f7321a8ff2abc",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.35.fnv1a64-5d70dec7f61897db",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.36.fnv1a64-f9d23fbfbe4d248f",
+          "target_item_ids": [
+            "progress.read-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.37.fnv1a64-5c4d8961b5e03348",
+          "target_item_ids": [
+            "progress.presented-crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.38.fnv1a64-02aa31e2bc87067e",
+          "target_item_ids": [
+            "fact.contract-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.39.fnv1a64-40b32c8e7ef31efc",
+          "target_item_ids": [
+            "fact.base-schema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.40.fnv1a64-71818952bd23cecc",
+          "target_item_ids": [
+            "fact.span-units"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.41.fnv1a64-0871fba57f2aa9da",
+          "target_item_ids": [
+            "fact.contract-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.42.fnv1a64-0e6a14d2b48f766d",
+          "target_item_ids": [
+            "fact.base-schema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.43.fnv1a64-514320c9bdd7308d",
+          "target_item_ids": [
+            "fact.base-schema",
+            "ambiguity.base-schema-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.44.fnv1a64-04906c5b91f6d41a",
+          "target_item_ids": [
+            "fact.span-decl"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.45.fnv1a64-7f65140ee9be621e",
+          "target_item_ids": [
+            "fact.span-units"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.46.fnv1a64-cb07b62759836ad7",
+          "target_item_ids": [
+            "fact.contract-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.47.fnv1a64-56a5a6c60d26e877",
+          "target_item_ids": [
+            "fact.contract-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.48.fnv1a64-67aa656154115427",
+          "target_item_ids": [
+            "fact.data-vs-types",
+            "fact.adr-0021"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.49.fnv1a64-964bad03ad89240d",
+          "target_item_ids": [
+            "fact.data-vs-types"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.50.fnv1a64-4c8c5a8241d3ee11",
+          "target_item_ids": [
+            "fact.adr-0021"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.51.fnv1a64-965ed6ca54f30729",
+          "target_item_ids": [
+            "example.utf8-unit",
+            "obligation.reader-judgment"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.52.fnv1a64-bd68925dd0ee414e",
+          "target_item_ids": [
+            "answer.crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.53.fnv1a64-a84a98a39912cec3",
+          "target_item_ids": [
+            "answer.crosslang",
+            "example.A-zhong-B",
+            "ambiguity.base-schema-scope"
+          ]
+        }
+      ],
+      "unresolved_ambiguities": [
+        {
+          "evidence_refs": [],
+          "item_id": "ambiguity.graph-nodes",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The passage names graph_nodes and graph_edges but does not say which relations this point-and-edge structure carries."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "ambiguity.user-records",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The 用户记录 class is only named in the passage and adjacent paragraphs; it is not expanded."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "ambiguity.base-schema-scope",
+          "source_item_ids": [
+            "source.43.fnv1a64-514320c9bdd7308d",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Whether Span, LidNode and ReadOnlyBase are the complete contents of base-schema is not established by the passages read; the delivered answer states the list is not a full crate inventory."
+        }
+      ],
+      "user_constraints": [
+        {
+          "evidence_refs": [],
+          "item_id": "constraint.range",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "Execute the accepted request within its original source range and read the relevant original text before teaching."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "constraint.supplement",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "The user_supplement, when present, is the reader's own request."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "constraint.provenance",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608"
+          ],
+          "text": "selection_provenance rules: resolved_quote and citation_candidate_lids are server-validated evidence; do not call tools merely to re-verify the selection; use the fewest book tools only when out-of-selection information is needed; the raw quote cannot serve as citation, memory citation or PDF geometry."
+        }
+      ]
+    }
+  },
+  {
+    "run_id": "01a1428c-4a2e-71a0-982f-62ab000b2e44",
+    "model": "deepseek-v4-flash",
+    "draft": {
+      "active_goal": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.goal.explain-text-fn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "Answer the reader's request on the LID 7.7.7 selection: explain how the Rust `text` function works, whether `end_lid` may be absent and what the function does then, and clarify the unfamiliar Rust terms."
+        }
+      ],
+      "critical_examples": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.example.span-unit-mismatch",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3",
+            "source.37.fnv1a64-5c4d8961b5e03348"
+          ],
+          "text": "Teaching string A中B: the character 中 maps to [1, 2) in UTF-16 but [1, 4) in the UTF-8 byte sequence, so treating the build-side [1, 2) as a byte range yields only part of that character's encoding; ordinary Chinese text is enough to trigger this unit error."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "item.example.lid-cache",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "Practice question posed to the reader: a cache keyed by LID alone returns the wrong original text when two different materials both contain LID 3.2.5; the key must carry the material identity, and the text-loading step still cannot be removed even after fixing the key."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.example.span-rust-decl",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Concrete declaration quoted from chapter 26: pub struct Span { pub start: usize, pub end: usize } with derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema) and #[ts(export, export_to = \"../../../packages/core/src/generated/\")]."
+        }
+      ],
+      "critical_facts": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.fact.readonlybase-fields",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711",
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "ReadOnlyBase contains book_id, lid_nodes, graph_nodes and graph_edges; it stores identity and positions, not characters, and text is obtained only after the reading tool loads the passage so a LID resolves to the corresponding text."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "item.fact.position-shared-base",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "LID is the shared locating basis for reading, citation, navigation and annotation; because another material can contain the same LID, a citation must also know which material, which is why book_id and lid_nodes sit together in the same base."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            }
+          ],
+          "item_id": "item.fact.three-data-classes",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The relevant chapters group needed data into three classes: 原文与定位 (text and location - answers where the text is), 语义与结构 (semantics and structure - answers how to approach information), and 用户记录 (user records)."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_0c8e34607de9cf15"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            }
+          ],
+          "item_id": "item.fact.crosslang-contract",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3",
+            "source.37.fnv1a64-5c4d8961b5e03348"
+          ],
+          "text": "The cross-language contract covers two layers: field shape and type declarations, which type generation constrains, and field meaning/units/version boundaries, which source-level semantic convention must still constrain; agreeing on field shape alone does not prevent a unit mismatch, and parsing JSON successfully is not enough."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.fact.span-units",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Span holds two integers start and end meaning a half-open range of UTF-16 code-unit indices in the original text; the generated Span.ts uses number, and Rust's Book converts the text to Vec<u16> and slices text by the same unit."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.fact.base-schema-scope",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.49.fnv1a64-964bad03ad89240d"
+          ],
+          "text": "base-schema declares base types in Rust (Span, LidNode, ReadOnlyBase named) and exports TypeScript definitions via ts-rs to packages/core/src/generated; base data (source.txt, base.json) holds the canonical text plus book_id, lid_nodes, graph_nodes and graph_edges, with ReadOnlyBase and Book::load as authority and read entry."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            }
+          ],
+          "item_id": "item.fact.crosslang-rationale",
+          "source_item_ids": [
+            "source.51.fnv1a64-965ed6ca54f30729",
+            "source.50.fnv1a64-4c8c5a8241d3ee11",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "The cross-language split is a deliberate interface choice (ADR-0021, 2026-06-22): TypeScript/Node for build-side parsing, deterministic text processing and harness orchestration, Rust for read-time/runtime; frozen artifacts make the seam mainly material delivery rather than frequent cross-language calls on mutable objects, and the cost is added data-contract and debugging work plus renewed checks of field meaning, units and version boundaries."
+        }
+      ],
+      "decisions": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.decision.workflow",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f",
+            "source.2.fnv1a64-54b0829dc4adda8f"
+          ],
+          "text": "Followed the accepted reading workflow: load the selected passage's original text (and structure/context) first, then present the explanation."
+        }
+      ],
+      "next_steps": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.next.read-text-fn-context",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "Explain the selected 7.7.7 `text` function under the evidence-gate rules, calling only the minimum book tools if information outside the verified selection is genuinely required."
+        }
+      ],
+      "open_obligations": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.obligation.explain-text-fn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "Explain the selected `text` function: what `end_lid: Option<&str>` means, the match that falls back to the same node's span.end when end_lid is absent, and the Rust terms the reader does not understand."
+        }
+      ],
+      "progress": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            },
+            {
+              "end_lid": "7.5.8",
+              "kind": "lid_range",
+              "start_lid": "7.5.8"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.progress.readonlybase-taught",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f",
+            "source.2.fnv1a64-54b0829dc4adda8f",
+            "source.3.fnv1a64-b615f406d36c10dd",
+            "source.5.fnv1a64-02723cdc67abaae4",
+            "source.7.fnv1a64-d3450b1ad437cda3",
+            "source.8.fnv1a64-28010aa6a4c30354",
+            "source.9.fnv1a64-0a9ee69d394b15e3",
+            "source.10.fnv1a64-5d723e06cd0726a5",
+            "source.11.fnv1a64-a7826445260acf1b",
+            "source.12.fnv1a64-dcbd14cdcb057062",
+            "source.13.fnv1a64-beddd15eb8db2cd2",
+            "source.14.fnv1a64-c1f26eedc4fc4169",
+            "source.15.fnv1a64-e9c52a51534801a7",
+            "source.16.fnv1a64-057f9f8abe5b8638",
+            "source.17.fnv1a64-816cc2a84c47146e",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "Delivered the explanation lesson for LID 7.6.3: ReadOnlyBase holds book_id, lid_nodes, graph_nodes and graph_edges - identity and positions rather than text characters; LidNode.span points back to the text range while children and numeric paths express hierarchy and order; the reading tool must load the text before a LID resolves to characters."
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "6.13.5",
+              "kind": "lid_range",
+              "start_lid": "6.13.4"
+            },
+            {
+              "end_lid": "6.8.2",
+              "kind": "lid_range",
+              "start_lid": "6.8.2"
+            },
+            {
+              "end_lid": "7.12.2",
+              "kind": "lid_range",
+              "start_lid": "7.12.2"
+            },
+            {
+              "end_lid": "7.13.8",
+              "kind": "lid_range",
+              "start_lid": "7.13.8"
+            },
+            {
+              "end_lid": "7.13.9",
+              "kind": "lid_range",
+              "start_lid": "7.13.9"
+            },
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "26.5.3.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.3.2"
+            },
+            {
+              "end_lid": "26.5.4.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.2"
+            },
+            {
+              "end_lid": "26.5.4.3",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.3"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "item.progress.crosslang-taught",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608",
+            "source.20.fnv1a64-0aadfa331121a974",
+            "source.21.fnv1a64-d338ee5d1f8f709b",
+            "source.23.fnv1a64-d7a069eb2d3119b4",
+            "source.24.fnv1a64-bbf7e8ace7ce90b9",
+            "source.25.fnv1a64-41f0916c58321fa9",
+            "source.26.fnv1a64-2dc342159d326cbe",
+            "source.27.fnv1a64-0789bd34a4e70e91",
+            "source.28.fnv1a64-ebeb0204ba6f3b62",
+            "source.29.fnv1a64-e3e9f62ea4f52597",
+            "source.32.fnv1a64-f6a8e6cf861f5dd6",
+            "source.33.fnv1a64-45536ca8bd6e98da",
+            "source.35.fnv1a64-5d70dec7f61897db",
+            "source.36.fnv1a64-f9d23fbfbe4d248f",
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.38.fnv1a64-02aa31e2bc87067e",
+            "source.39.fnv1a64-40b32c8e7ef31efc",
+            "source.40.fnv1a64-71818952bd23cecc",
+            "source.41.fnv1a64-0871fba57f2aa9da",
+            "source.42.fnv1a64-0e6a14d2b48f766d",
+            "source.43.fnv1a64-514320c9bdd7308d",
+            "source.44.fnv1a64-04906c5b91f6d41a",
+            "source.45.fnv1a64-7f65140ee9be621e",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.47.fnv1a64-56a5a6c60d26e877",
+            "source.48.fnv1a64-67aa656154115427",
+            "source.49.fnv1a64-964bad03ad89240d",
+            "source.50.fnv1a64-4c8c5a8241d3ee11",
+            "source.51.fnv1a64-965ed6ca54f30729",
+            "source.52.fnv1a64-bd68925dd0ee414e",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Delivered the explanation lesson for the 7.7.x selection on the cross-language contract and base-schema, with cited source presentations."
+        }
+      ],
+      "source_coverage": [
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.1.fnv1a64-86ed285dc8249c6f",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught",
+            "item.decision.workflow",
+            "item.constraint.execute-within-range",
+            "item.fact.readonlybase-fields"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.2.fnv1a64-54b0829dc4adda8f",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught",
+            "item.decision.workflow"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.3.fnv1a64-b615f406d36c10dd",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.4.fnv1a64-f808523fcba8fd59",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.5.fnv1a64-02723cdc67abaae4",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.6.fnv1a64-830af68b00cf7145",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.7.fnv1a64-d3450b1ad437cda3",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.8.fnv1a64-28010aa6a4c30354",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.9.fnv1a64-0a9ee69d394b15e3",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.10.fnv1a64-5d723e06cd0726a5",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.11.fnv1a64-a7826445260acf1b",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.12.fnv1a64-dcbd14cdcb057062",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.13.fnv1a64-beddd15eb8db2cd2",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.14.fnv1a64-c1f26eedc4fc4169",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.15.fnv1a64-e9c52a51534801a7",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.16.fnv1a64-057f9f8abe5b8638",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught",
+            "item.example.lid-cache"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.17.fnv1a64-816cc2a84c47146e",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.18.fnv1a64-2ada8af27120a711",
+          "target_item_ids": [
+            "item.progress.readonlybase-taught",
+            "item.fact.readonlybase-fields",
+            "item.fact.position-shared-base",
+            "item.fact.three-data-classes",
+            "item.ambiguity.graph-nodes",
+            "item.ambiguity.user-records",
+            "item.example.lid-cache"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.19.fnv1a64-ad8443540bb0a608",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.constraint.evidence-gate"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.20.fnv1a64-0aadfa331121a974",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.21.fnv1a64-d338ee5d1f8f709b",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.22.fnv1a64-79a6bc27505ceecd",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.23.fnv1a64-d7a069eb2d3119b4",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.24.fnv1a64-bbf7e8ace7ce90b9",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.25.fnv1a64-41f0916c58321fa9",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.26.fnv1a64-2dc342159d326cbe",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.27.fnv1a64-0789bd34a4e70e91",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.28.fnv1a64-ebeb0204ba6f3b62",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.29.fnv1a64-e3e9f62ea4f52597",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.30.fnv1a64-13db373308187719",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.31.fnv1a64-c41c5a5d5844f901",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.32.fnv1a64-f6a8e6cf861f5dd6",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.33.fnv1a64-45536ca8bd6e98da",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.34.fnv1a64-8a6f7321a8ff2abc",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.35.fnv1a64-5d70dec7f61897db",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.36.fnv1a64-f9d23fbfbe4d248f",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.37.fnv1a64-5c4d8961b5e03348",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.fact.crosslang-contract",
+            "item.example.span-unit-mismatch",
+            "item.example.span-rust-decl"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.38.fnv1a64-02aa31e2bc87067e",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.39.fnv1a64-40b32c8e7ef31efc",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.40.fnv1a64-71818952bd23cecc",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.41.fnv1a64-0871fba57f2aa9da",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.42.fnv1a64-0e6a14d2b48f766d",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.43.fnv1a64-514320c9bdd7308d",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.44.fnv1a64-04906c5b91f6d41a",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.45.fnv1a64-7f65140ee9be621e",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.46.fnv1a64-cb07b62759836ad7",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.fact.base-schema-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.47.fnv1a64-56a5a6c60d26e877",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.48.fnv1a64-67aa656154115427",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.49.fnv1a64-964bad03ad89240d",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.fact.base-schema-scope"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.50.fnv1a64-4c8c5a8241d3ee11",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.fact.crosslang-rationale"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.51.fnv1a64-965ed6ca54f30729",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.fact.crosslang-rationale"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.52.fnv1a64-bd68925dd0ee414e",
+          "target_item_ids": [
+            "item.progress.crosslang-taught"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.53.fnv1a64-a84a98a39912cec3",
+          "target_item_ids": [
+            "item.progress.crosslang-taught",
+            "item.ambiguity.base-schema-scope",
+            "item.fact.crosslang-contract",
+            "item.fact.span-units",
+            "item.fact.base-schema-scope",
+            "item.fact.crosslang-rationale",
+            "item.example.span-unit-mismatch",
+            "item.example.span-rust-decl"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.54.fnv1a64-8e9dbd5f3639398f",
+          "target_item_ids": [
+            "item.goal.explain-text-fn",
+            "item.constraint.evidence-gate",
+            "item.obligation.explain-text-fn",
+            "item.next.read-text-fn-context"
+          ]
+        }
+      ],
+      "unresolved_ambiguities": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.ambiguity.graph-nodes",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The read range names graph_nodes and graph_edges but does not state what relations that point-edge structure carries, so its content cannot be derived from the passage alone."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            }
+          ],
+          "item_id": "item.ambiguity.user-records",
+          "source_item_ids": [
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "The 用户记录 data category is only named in the relevant passages; it is not expanded, so its contents remain unspecified."
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            }
+          ],
+          "item_id": "item.ambiguity.base-schema-scope",
+          "source_item_ids": [
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "The account of base-schema contents covers only the passages read in this turn and is not a complete inventory of the crate."
+        }
+      ],
+      "user_constraints": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.constraint.execute-within-range",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "Execute the accepted request within its original source range and read the relevant original text before teaching; user_supplement, if present, is the reader's own request."
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.constraint.evidence-gate",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608",
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "resolved_quote and citation_candidate_lids are server-verified and already added to this turn's evidence; do not call tools merely to re-verify the selection, use only the minimum book tools when the answer truly needs information outside the selection, keep final citations under the existing evidence gate, and never use the raw quote as a citation, memory citation, or PDF geometry."
+        }
+      ]
+    }
+  },
+  {
+    "run_id": "01a1428d-48c9-7e12-9fd3-c6d6d3aefdd6",
+    "model": "deepseek-v4-flash",
+    "draft": {
+      "active_goal": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.goal.textfn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "回答读者对 7.7.7 选区中 Rust `text` 函数的疑问：end_lid 为 Option 是否表示可能不存在、None 与 Some 分支各做什么，并解释看不懂的 Rust 名词。"
+        }
+      ],
+      "critical_examples": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.example.utf16_utf8",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "教学字符串 A中B：中 在 UTF-16 下对应 [1,2)，在 UTF-8 字节序列中对应 [1,4)；把构建侧的 [1,2) 当作 UTF-8 字节范围只会取到该汉字编码的一部分，普通中文正文已足以触发这种单位错误。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.example.span_code",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Span 的 Rust 声明代码块：pub struct Span { pub start: usize, pub end: usize }，上方带 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)] 与 export_to 注解。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.example.lid_cache",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "讲解给出的判断题：用 LID 当 key 的原话缓存，在两份不同材料都含 LID 3.2.5 时会返回错的原文；key 需带上材料身份，且光改 key 仍省不掉正文加载这一步。"
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.example.text_fn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "读者选区中的 Rust 函数：pub fn text(&self, lid: &str, end_lid: Option<&str>) -> Result<String, ToolError>；start 取 lid 节点的 span.start，end 在有 end_lid 时取该节点 span.end、否则取 lid 节点 span.end，最后 String::from_utf16_lossy(&self.source_u16[start..end])。"
+        }
+      ],
+      "critical_facts": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8ef850fdd1d52"
+            }
+          ],
+          "item_id": "item.fact.readonlybase_fields",
+          "source_item_ids": [
+            "source.3.fnv1a64-b615f406d36c10dd",
+            "source.11.fnv1a64-a7826445260acf1b",
+            "source.18.fnv1a64-2ada8af27120a711",
+            "source.42.fnv1a64-0e6a14d2b48f766d",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "ReadOnlyBase 包含 book_id、lid_nodes、graph_nodes 和 graph_edges，不含任何正文字符；它存的是身份与位置，正文由读取工具加载后按 LID 找到对应文字。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.fact.lidnode",
+          "source_item_ids": [
+            "source.11.fnv1a64-a7826445260acf1b",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "LidNode 的 span 只指向原文范围而非文字本身；children 与 3.2.5 这类数值路径一起表达层级和顺序。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            }
+          ],
+          "item_id": "item.fact.lid_insufficient",
+          "source_item_ids": [
+            "source.13.fnv1a64-beddd15eb8db2cd2",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "LID 只解决材料内部寻址：另一份材料也可以有同样的 LID，引用必须同时知道所在材料才能解析成有意义的原文，这正是 book_id 与 lid_nodes 并列的原因。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            }
+          ],
+          "item_id": "item.fact.position_base",
+          "source_item_ids": [
+            "source.15.fnv1a64-e9c52a51534801a7",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "原文位置贯穿系统：LID 让构建侧整理的线索连回原文，也让读取、引用、导航和批注共用同一套定位依据。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            }
+          ],
+          "item_id": "item.fact.three_categories",
+          "source_item_ids": [
+            "source.10.fnv1a64-5d723e06cd0726a5",
+            "source.12.fnv1a64-dcbd14cdcb057062",
+            "source.14.fnv1a64-c1f26eedc4fc4169",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "理解项目所需数据分三类：原文与定位答「文字实际在哪里」，语义与结构答「怎样接近所需信息」，用户记录只被点名未展开。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            }
+          ],
+          "item_id": "item.fact.baseschema",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.39.fnv1a64-40b32c8e7ef31efc",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "base-schema 用 Rust 声明基座类型并通过 ts-rs 向构建侧导出 TypeScript 定义；生成的 LidNode.ts 能看到相应字段，segment.ts 导入该类型构造位置节点。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.fact.span_unit",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.40.fnv1a64-71818952bd23cecc",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Span 含 start、end 两个整数，实际含义是原文中半开区间的 UTF-16 code unit 下标；构建侧用 JavaScript 字符串下标，Rust 字符串以 UTF-8 存储，用同一对数字直接索引两种表示可能取得不同结果。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            }
+          ],
+          "item_id": "item.fact.contract_two_layers",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.41.fnv1a64-0871fba57f2aa9da",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "数据契约分两层：生成类型约束「有哪些字段、用什么形状」，源码语义约定约束「这些数字怎样解释」；仅能成功解析 JSON 还不够。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            }
+          ],
+          "item_id": "item.fact.shared_semantics",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.45.fnv1a64-7f65140ee9be621e",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "共享语义固定为 UTF-16 code unit 半开区间：生成的 Span.ts 使用 number，Rust 的 Book 加载时把原文转成 Vec<u16>，text 按同一单位切片。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            }
+          ],
+          "item_id": "item.fact.span_decl",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.44.fnv1a64-04906c5b91f6d41a",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "Span 的 Rust 声明带 derive(…, TS, …) 与 #[ts(export, export_to = \"../../../packages/core/src/generated/\")]，同一声明产出 TypeScript 类型。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            }
+          ],
+          "item_id": "item.fact.named_types",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.43.fnv1a64-514320c9bdd7308d",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "base-schema 中被点名的类型有 Span、LidNode、ReadOnlyBase；阅读索引把这一组标为「基座定义、TS 投影」，回答材料的位置和字段怎样跨语言表达。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            }
+          ],
+          "item_id": "item.fact.lang_split",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.47.fnv1a64-56a5a6c60d26e877",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "分工为 TypeScript 用构建生态、Rust 承接读取与运行时、由 Rust 类型生成 TypeScript 定义；代价是数据契约与调试成本，类型生成只解决部分一致性问题，还要检查字段含义、单位和版本边界。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            }
+          ],
+          "item_id": "item.fact.interface",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "主要交界面是已经形成的材料成果：构建侧写出数据，读取侧按约定加载；相比持续共享一组频繁变化的运行对象，方向明确的接口更容易说明各自责任。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            }
+          ],
+          "item_id": "item.fact.adr",
+          "source_item_ids": [
+            "source.48.fnv1a64-67aa656154115427",
+            "source.50.fnv1a64-4c8c5a8241d3ee11",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "2026-06-22 的 ADR-0021 在这条边界上选择 TypeScript/Node 预构建与 Rust 读时后端；冻结产物使跨语言接缝主要表现为材料交付，而不是一次采样中频繁互调两套可变对象。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            }
+          ],
+          "item_id": "item.fact.base_vs_schema",
+          "source_item_ids": [
+            "source.48.fnv1a64-67aa656154115427",
+            "source.49.fnv1a64-964bad03ad89240d",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "base-schema 回答「类型从哪来」，不回答「数据放在哪」；基座数据（source.txt、base.json）装规范原文、book_id、lid_nodes、graph_nodes、graph_edges，权威与读取入口是 ReadOnlyBase 与 Book::load。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "item.fact.lid_provenance_error",
+          "source_item_ids": [
+            "source.29.fnv1a64-e3e9f62ea4f52597",
+            "source.30.fnv1a64-13db373308187719",
+            "source.35.fnv1a64-5d70dec7f61897db",
+            "source.36.fnv1a64-f9d23fbfbe4d248f"
+          ],
+          "text": "一次对 7.6.3 的 book.text 调用返回错误 LID_PROVENANCE_REQUIRED；随后通过 book.text_batch 成功取得 7.6.3 与 31.4.2。"
+        }
+      ],
+      "decisions": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            }
+          ],
+          "item_id": "item.decision.move_readonlybase",
+          "source_item_ids": [
+            "source.16.fnv1a64-057f9f8abe5b8638"
+          ],
+          "text": "采用 explain 教学动作 explain-readonlybase-position-layer，绑定 7.6.2、7.6.3、7.6.4、7.5.9、4.6.2，聚焦定位层与正文层的分工。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "6.8.2",
+              "kind": "lid_range",
+              "start_lid": "6.8.2"
+            },
+            {
+              "end_lid": "6.13.5",
+              "kind": "lid_range",
+              "start_lid": "6.13.4"
+            },
+            {
+              "end_lid": "7.12.2",
+              "kind": "lid_range",
+              "start_lid": "7.12.2"
+            },
+            {
+              "end_lid": "26.5.4.3",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.3"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "31.4.2",
+              "kind": "lid_range",
+              "start_lid": "31.4.2"
+            }
+          ],
+          "item_id": "item.decision.move_crosslang",
+          "source_item_ids": [
+            "source.51.fnv1a64-965ed6ca54f30729"
+          ],
+          "text": "采用 explain 教学动作 explain-crosslang-contract-base-schema，绑定 7.7.1-7.7.9、7.6.3、6.8.2、6.13.4-6.13.5、7.12.2、26.5.4.3-26.5.4.5、31.4.2。"
+        }
+      ],
+      "next_steps": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.next.explain_textfn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "就 server 已验证的选区引用直接解释 `text` 函数与相关 Rust 名词，不重复验证选区；仅当确需选区外信息时才调用最少的 book 工具。"
+        }
+      ],
+      "open_obligations": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.obligation.textfn",
+          "source_item_ids": [
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "回答 reader 对 7.7.7 `text` 函数的提问：end_lid 是否是「可能不存在」的形参，None 与 Some 各自决定什么，以及函数其余部分和陌生 Rust 名词怎么读。"
+        }
+      ],
+      "progress": [
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.6.3",
+              "kind": "lid_range",
+              "start_lid": "7.6.3"
+            },
+            {
+              "end_lid": "7.5.8",
+              "kind": "lid_range",
+              "start_lid": "7.5.8"
+            },
+            {
+              "end_lid": "7.6.2",
+              "kind": "lid_range",
+              "start_lid": "7.6.2"
+            },
+            {
+              "end_lid": "7.6.4",
+              "kind": "lid_range",
+              "start_lid": "7.6.4"
+            },
+            {
+              "end_lid": "7.5.9",
+              "kind": "lid_range",
+              "start_lid": "7.5.9"
+            },
+            {
+              "end_lid": "4.6.2",
+              "kind": "lid_range",
+              "start_lid": "4.6.2"
+            }
+          ],
+          "item_id": "item.progress.readonlybase",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f",
+            "source.2.fnv1a64-54b0829dc4adda8f",
+            "source.3.fnv1a64-b615f406d36c10dd",
+            "source.7.fnv1a64-d3450b1ad437cda3",
+            "source.9.fnv1a64-0a9ee69d394b15e3",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "已按 7.6.3 选区完成 ReadOnlyBase 位置层讲解；期间读取工具成功取得 7.6.3、7.5.8 以及批量 7.6.2/7.6.4/7.5.9/4.6.2 的原文。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "end_lid": "7.7.1",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.2",
+              "kind": "lid_range",
+              "start_lid": "7.7.1"
+            },
+            {
+              "end_lid": "7.7.9",
+              "kind": "lid_range",
+              "start_lid": "7.7.2"
+            },
+            {
+              "end_lid": "26.5.4.4",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.4"
+            },
+            {
+              "end_lid": "26.5.4.5",
+              "kind": "lid_range",
+              "start_lid": "26.5.4.5"
+            },
+            {
+              "end_lid": "7.13.9",
+              "kind": "lid_range",
+              "start_lid": "7.13.9"
+            },
+            {
+              "end_lid": "26.5.3.2",
+              "kind": "lid_range",
+              "start_lid": "26.5.3.2"
+            }
+          ],
+          "item_id": "item.progress.crosslang",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608",
+            "source.21.fnv1a64-d338ee5d1f8f709b",
+            "source.24.fnv1a64-bbf7e8ace7ce90b9",
+            "source.28.fnv1a64-ebeb0204ba6f3b62",
+            "source.33.fnv1a64-45536ca8bd6e98da",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "已针对 7.7.1 选区问题完成跨语言契约与 base-schema 讲解；期间读取 7.7.1、7.7.1-7.7.2、7.7.2-7.7.9 及 26.5.4.x、7.13.x、7.12.2、6.8.2、6.13.4-6.13.5、31.4.2 等段落。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_0c8e34607de9cf15"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_1e56e892a4db361c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_31cc5d85468b4eee"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b368fa25fd752c6"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_3b3c66f169586332"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_50cf813d7c7c3cfa"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_6cb451d5d8756f4c"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8ef850fdd1d52"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_79342f03686efb1b"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_b2653f4a12a6ae7f"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_c0488caad47272e4"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_cdafd1d16e96ab2a"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d6d99832d158d498"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_d9bc3b74ffefa865"
+            },
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_f62d31bf66b138c6"
+            }
+          ],
+          "item_id": "item.progress.present_receipts",
+          "source_item_ids": [
+            "source.37.fnv1a64-5c4d8961b5e03348",
+            "source.38.fnv1a64-02aa31e2bc87067e",
+            "source.39.fnv1a64-40b32c8e7ef31efc",
+            "source.40.fnv1a64-71818952bd23cecc",
+            "source.41.fnv1a64-0871fba57f2aa9da",
+            "source.42.fnv1a64-0e6a14d2b48f766d",
+            "source.43.fnv1a64-514320c9bdd7308d",
+            "source.44.fnv1a64-04906c5b91f6d41a",
+            "source.45.fnv1a64-7f65140ee9be621e",
+            "source.46.fnv1a64-cb07b62759836ad7",
+            "source.47.fnv1a64-56a5a6c60d26e877",
+            "source.48.fnv1a64-67aa656154115427",
+            "source.49.fnv1a64-964bad03ad89240d",
+            "source.50.fnv1a64-4c8c5a8241d3ee11"
+          ],
+          "text": "两轮讲解通过 source.present 提交引用并已登记为 source_ref；全部指向的 source_ref 均在本轮允许证据内。"
+        }
+      ],
+      "source_coverage": [
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.1.fnv1a64-86ed285dc8249c6f",
+          "target_item_ids": [
+            "item.progress.readonlybase",
+            "item.constraint.accepted_request"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.2.fnv1a64-54b0829dc4adda8f",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.3.fnv1a64-b615f406d36c10dd",
+          "target_item_ids": [
+            "item.progress.readonlybase",
+            "item.fact.readonlybase_fields"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.4.fnv1a64-f808523fcba8fd59",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.5.fnv1a64-02723cdc67abaae4",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.6.fnv1a64-830af68b00cf7145",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.7.fnv1a64-d3450b1ad437cda3",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.8.fnv1a64-28010aa6a4c30354",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.9.fnv1a64-0a9ee69d394b15e3",
+          "target_item_ids": [
+            "item.progress.readonlybase"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.10.fnv1a64-5d723e06cd0726a5",
+          "target_item_ids": [
+            "item.fact.three_categories"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.11.fnv1a64-a7826445260acf1b",
+          "target_item_ids": [
+            "item.fact.readonlybase_fields",
+            "item.fact.lidnode",
+            "item.ambiguity.graph_nodes"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.12.fnv1a64-dcbd14cdcb057062",
+          "target_item_ids": [
+            "item.fact.three_categories"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.13.fnv1a64-beddd15eb8db2cd2",
+          "target_item_ids": [
+            "item.fact.lid_insufficient"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.14.fnv1a64-c1f26eedc4fc4169",
+          "target_item_ids": [
+            "item.fact.three_categories"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.15.fnv1a64-e9c52a51534801a7",
+          "target_item_ids": [
+            "item.fact.position_base"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.16.fnv1a64-057f9f8abe5b8638",
+          "target_item_ids": [
+            "item.decision.move_readonlybase",
+            "item.example.lid_cache"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.17.fnv1a64-816cc2a84c47146e",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.18.fnv1a64-2ada8af27120a711",
+          "target_item_ids": [
+            "item.progress.readonlybase",
+            "item.fact.readonlybase_fields",
+            "item.fact.lidnode",
+            "item.fact.lid_insufficient",
+            "item.fact.position_base",
+            "item.fact.three_categories",
+            "item.example.lid_cache",
+            "item.ambiguity.graph_nodes"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.19.fnv1a64-ad8443540bb0a608",
+          "target_item_ids": [
+            "item.progress.crosslang",
+            "item.constraint.evidence_gate"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.20.fnv1a64-0aadfa331121a974",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.21.fnv1a64-d338ee5d1f8f709b",
+          "target_item_ids": [
+            "item.progress.crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.22.fnv1a64-79a6bc27505ceecd",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.23.fnv1a64-d7a069eb2d3119b4",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.24.fnv1a64-bbf7e8ace7ce90b9",
+          "target_item_ids": [
+            "item.progress.crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.25.fnv1a64-41f0916c58321fa9",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.26.fnv1a64-2dc342159d326cbe",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.27.fnv1a64-0789bd34a4e70e91",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.28.fnv1a64-ebeb0204ba6f3b62",
+          "target_item_ids": [
+            "item.progress.crosslang"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.29.fnv1a64-e3e9f62ea4f52597",
+          "target_item_ids": [
+            "item.fact.lid_provenance_error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.30.fnv1a64-13db373308187719",
+          "target_item_ids": [
+            "item.fact.lid_provenance_error"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.31.fnv1a64-c41c5a5d5844f901",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "non_task",
+          "reason": "transport_only",
+          "source_item_id": "source.32.fnv1a64-f6a8e6cf861f5dd6",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.33.fnv1a64-45536ca8bd6e98da",
+          "target_item_ids": [
+            "item.progress.crosslang"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.34.fnv1a64-8a6f7321a8ff2abc",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.35.fnv1a64-5d70dec7f61897db",
+          "target_item_ids": [
+            "item.fact.lid_provenance_error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.36.fnv1a64-f9d23fbfbe4d248f",
+          "target_item_ids": [
+            "item.fact.lid_provenance_error"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.37.fnv1a64-5c4d8961b5e03348",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.baseschema",
+            "item.fact.span_unit",
+            "item.fact.contract_two_layers",
+            "item.fact.shared_semantics",
+            "item.fact.span_decl",
+            "item.fact.named_types",
+            "item.fact.lang_split",
+            "item.fact.interface",
+            "item.example.utf16_utf8",
+            "item.example.span_code"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.38.fnv1a64-02aa31e2bc87067e",
+          "target_item_ids": [
+            "item.progress.present_receipts"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.39.fnv1a64-40b32c8e7ef31efc",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.baseschema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.40.fnv1a64-71818952bd23cecc",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.span_unit"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.41.fnv1a64-0871fba57f2aa9da",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.contract_two_layers"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.42.fnv1a64-0e6a14d2b48f766d",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.readonlybase_fields"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.43.fnv1a64-514320c9bdd7308d",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.named_types"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.44.fnv1a64-04906c5b91f6d41a",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.span_decl"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.45.fnv1a64-7f65140ee9be621e",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.shared_semantics"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.46.fnv1a64-cb07b62759836ad7",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.interface"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.47.fnv1a64-56a5a6c60d26e877",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.lang_split"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.48.fnv1a64-67aa656154115427",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.adr",
+            "item.fact.base_vs_schema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.49.fnv1a64-964bad03ad89240d",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.base_vs_schema"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.50.fnv1a64-4c8c5a8241d3ee11",
+          "target_item_ids": [
+            "item.progress.present_receipts",
+            "item.fact.adr"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.51.fnv1a64-965ed6ca54f30729",
+          "target_item_ids": [
+            "item.decision.move_crosslang",
+            "item.ambiguity.utf8_change"
+          ]
+        },
+        {
+          "disposition": "non_task",
+          "reason": "status_only",
+          "source_item_id": "source.52.fnv1a64-bd68925dd0ee414e",
+          "target_item_ids": []
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.53.fnv1a64-a84a98a39912cec3",
+          "target_item_ids": [
+            "item.progress.crosslang",
+            "item.fact.readonlybase_fields",
+            "item.fact.baseschema",
+            "item.fact.span_unit",
+            "item.fact.contract_two_layers",
+            "item.fact.shared_semantics",
+            "item.fact.span_decl",
+            "item.fact.named_types",
+            "item.fact.lang_split",
+            "item.fact.interface",
+            "item.fact.adr",
+            "item.fact.base_vs_schema",
+            "item.example.utf16_utf8",
+            "item.example.span_code",
+            "item.ambiguity.utf8_change"
+          ]
+        },
+        {
+          "disposition": "compacted",
+          "source_item_id": "source.54.fnv1a64-8e9dbd5f3639398f",
+          "target_item_ids": [
+            "item.goal.textfn",
+            "item.constraint.evidence_gate",
+            "item.obligation.textfn",
+            "item.example.text_fn",
+            "item.next.explain_textfn"
+          ]
+        }
+      ],
+      "unresolved_ambiguities": [
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_71a8eb850fdd1686"
+            }
+          ],
+          "item_id": "item.ambiguity.graph_nodes",
+          "source_item_ids": [
+            "source.11.fnv1a64-a7826445260acf1b",
+            "source.18.fnv1a64-2ada8af27120a711"
+          ],
+          "text": "7.6.3 只列出 graph_nodes 与 graph_edges 的名称，未说明这类点边结构具体承载什么关系，故「图里放什么」从该段本身得不出。"
+        },
+        {
+          "evidence_refs": [
+            {
+              "kind": "source",
+              "source_ref_id": "source_ref_793c7eeafa031d21"
+            }
+          ],
+          "item_id": "item.ambiguity.utf8_change",
+          "source_item_ids": [
+            "source.51.fnv1a64-965ed6ca54f30729",
+            "source.53.fnv1a64-a84a98a39912cec3"
+          ],
+          "text": "若两侧改约定共享单位为 UTF-8 字节，哪些代码必须改、哪条约定照旧，作为可选思考题仍未答复。"
+        }
+      ],
+      "user_constraints": [
+        {
+          "evidence_refs": [],
+          "item_id": "item.constraint.accepted_request",
+          "source_item_ids": [
+            "source.1.fnv1a64-86ed285dc8249c6f"
+          ],
+          "text": "在原始来源范围内执行 accepted_request；教学前先读相关原文；user_supplement（若有）是读者本人的请求。"
+        },
+        {
+          "evidence_refs": [],
+          "item_id": "item.constraint.evidence_gate",
+          "source_item_ids": [
+            "source.19.fnv1a64-ad8443540bb0a608",
+            "source.54.fnv1a64-8e9dbd5f3639398f"
+          ],
+          "text": "resolved_quote 与 citation_candidate_lids 已由 server 验证并计入本轮 evidence；局部含义问题若 resolved_quote 已足够应直接回答，不得仅为重复验证选区而调用工具；只有确需选区外信息时才调用最少的 book 工具；raw quote 不能用作 citation、memory citation 或 PDF geometry。"
+        }
+      ]
+    }
+  }
+]

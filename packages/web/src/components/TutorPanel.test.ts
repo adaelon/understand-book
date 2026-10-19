@@ -6,13 +6,13 @@ import type { TutorState } from '../generated/TutorState';
 import type { TutorSession } from '../generated/TutorSession';
 
 const session = (id = 'learn', patch: Partial<TutorSession> = {}): TutorSession => ({
-  id, revision: 1, status: 'active', user_intent: '理解速度', explicit_constraints: [],
+  id, revision: 1, workspace_goal_revision: null, status: 'active', user_intent: '理解速度', explicit_constraints: [],
   current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
   material_scope: [{ source_id: 'book', scope_refs: [], role: 'primary' }],
   default_teaching_intent: null, path_instance_ref: null, progress_ref: null, ...patch,
 });
 const state = (sessions: TutorState['sessions'] = { learn: session() }, current: string | null = 'learn'): TutorState =>
-  ({ control: { enabled: true, revision: 2, current_tutor_session_id: current }, sessions });
+  ({ control: { enabled: true, revision: 2, current_tutor_session_id: current }, sessions, workspace_goal_revision: null });
 const wrappers: VueWrapper[] = [];
 function setup(value: TutorState | null = state(), initialView?: 'current' | 'understanding' | 'history') {
   const w = mount(TutorPanel, { attachTo: document.body, props: { state: value, busy: false, error: '', pending: false, sourceId: 'book', label: 'Tutor 已开启',

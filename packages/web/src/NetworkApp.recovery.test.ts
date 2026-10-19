@@ -24,7 +24,9 @@ it('INV5 displays email after login while preferences and workspace storage reta
       signedIn = true; return Response.json(identity);
     }
     if (url === '/api/auth/me') return signedIn ? Response.json(identity) : Response.json({}, { status: 401 });
+    if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return Response.json({ books: [] });
+    if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
     throw new Error(url);
   }));
   const wrapper = mount(NetworkApp);
@@ -90,6 +92,7 @@ it('keeps the page animation until the initial authorized catalog arrives', asyn
   let finish!: (response: Response) => void;
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url === '/api/auth/me') return Response.json({ user_id: 'A', csrf_token: 'csrf' });
+    if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return new Promise<Response>(resolve => { finish = resolve; });
     throw new Error(`Unexpected request: ${url}`);
   }));
@@ -117,7 +120,7 @@ it('ADM8 leaves the Reader and draft mounted while viewing allowance, then clear
     if (url === '/api/workspaces/w' || url.endsWith('/attach')) return Response.json(workspace);
     if (url.endsWith('/chat/history')) return Response.json({ result: { active_session_id: 'chat', sessions: [], current: { id: 'chat', book_id: 'b', turns: [] } } });
     if (url.endsWith('/allowance')) return Response.json({ current_allowance: null });
-    if (url.includes('/account/usage')) return Response.json({ items: [], total: 0, offset: 0, limit: 20 });
+    if (url.includes('/account/usage')) return Response.json({ items: [], period_groups: [], total: 0, offset: 0, limit: 20 });
     throw new Error(url);
   }));
   const wrapper = mount(NetworkApp);

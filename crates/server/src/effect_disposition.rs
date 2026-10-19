@@ -51,7 +51,7 @@ pub(crate) fn start(
         .agent_history
         .sessions
         .iter()
-        .find(|s| s.id == request.session_id && s.book_id == workspace.book.base.book_id)
+        .find(|s| s.id == request.session_id && s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
         .ok_or_else(authorization::missing)?;
     let turn = session
         .turns
@@ -88,7 +88,7 @@ pub(crate) fn start(
         }
         let mut disposition = disposition.clone();
         // Only a known result object or in-place promotion proves a keep succeeded.
-        if let Some(receipt) = reconcile(user, record.as_ref().unwrap(), &session.book_id) {
+        if let Some(receipt) = reconcile(user, record.as_ref().unwrap(), turn.published_book_ref.as_ref().map_or(session.book_id.as_str(), |r| r.book_id.as_str())) {
             append(
                 user,
                 &reference,

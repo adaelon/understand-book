@@ -62,10 +62,60 @@ pub struct SavedPresentationState {
     pub state: PresentationState,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub enum PresentationFeedbackChoice {
+    Like,
+    Dislike,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub enum PresentationFeedbackReason {
+    EasierToUnderstand,
+    AptExample,
+    UsefulInteraction,
+    Unclear,
+    IncorrectContent,
+    HardToRead,
+    HardToOperate,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct PresentationFeedbackSelection {
+    pub choice: PresentationFeedbackChoice,
+    #[serde(default)]
+    pub reasons: Vec<PresentationFeedbackReason>,
+    #[serde(default)]
+    pub comment: String,
+}
+
+/// Current private preference for one content version, not a learning judgment.
+/// A cleared record retains its revision so outstanding snapshots stay invalid.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct PresentationFeedback {
+    pub session_id: String,
+    pub turn_id: String,
+    pub reference: PresentationRef,
+    pub feedback_revision: u32,
+    pub selection: Option<PresentationFeedbackSelection>,
+    pub saved_state: Option<PresentationFollowUp>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
 /// Reader projection deliberately omits internal evidence locations and ownership data.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PresentationView {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub teaching_binding: Option<PresentationTeachingBinding>,
     #[serde(default)]
     pub animation_assets: BTreeMap<String, AnimationAsset>,
     pub restored_state: Option<PresentationState>,
@@ -88,16 +138,90 @@ pub struct PresentationRef {
     pub revision: u32,
 }
 
+/// The concrete relationship made observable by this exact page version.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct PresentationTeachingBinding {
+    pub design_ref: String,
+    pub block_refs: Vec<String>,
+    #[serde(default)]
+    pub regions: Vec<PresentationTeachingRegion>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct PresentationTeachingRegion {
+    pub region_id: String,
+    pub block_refs: Vec<String>,
+    #[serde(default)]
+    pub state_fields: Vec<String>,
+    pub observation: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PresentationOwner {
     pub book_id: String,
     pub session_id: String,
 }
 
+/// Author-declared use, separate from catalog exposure and source observation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PresentationMethodRef {
+    pub method_id: String,
+    pub revision: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PresentationMethodBasis {
+    Read { turn_id: String, tool_call_ids: Vec<String> },
+    Candidate { candidate_id: String },
+    Version { reference: PresentationRef },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PresentationMethodUse {
+    #[serde(flatten)]
+    pub method: PresentationMethodRef,
+    pub basis: PresentationMethodBasis,
+}
+
+/// Exact source range included in a successful Provider sampling, after projection.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PresentationMethodRead {
+    pub tool_call_id: String,
+    pub method_id: String,
+    pub revision: u64,
+    pub file: String,
+    pub offset: usize,
+    pub characters: usize,
+    pub end_offset: usize,
+    pub total_characters: usize,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct PresentationMethodObservations {
+    /// The compiled catalog exposed in this run, including an empty catalog.
+    pub catalog: Option<Value>,
+    pub reads: Vec<PresentationMethodRead>,
+}
+
 /// Logical files, not filesystem paths. HTML may include CSS/JS and data assets.
 /// Source bindings come from the existing source compiler, never from page assertions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PresentationContent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub teaching_binding: Option<PresentationTeachingBinding>,
+    /// None means historical use was not recorded; Some([]) declares no methods.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub method_refs: Option<Vec<PresentationMethodUse>>,
+    #[serde(default)]
+    pub method_observations: PresentationMethodObservations,
     #[serde(default)]
     pub animation_assets: BTreeMap<String, AnimationAsset>,
     pub title: String,

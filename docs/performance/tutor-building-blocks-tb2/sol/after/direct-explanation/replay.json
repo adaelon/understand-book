@@ -82,7 +82,7 @@
           "constraints": [],
           "current_request": "我知道非 Copy 值移动后旧变量不能再用，但引用还没弄清。\n请直接完整讲解这段借用代码：&foo 做了什么，foo 和 bar 分别是什么，为什么都能打印，去掉 & 会怎样，以及能不能通过 bar 修改 Foo。不要先让我回答问题。",
           "current_target": null,
-          "details": "tutor.step understanding with object_id and after",
+          "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
           "entries": [],
           "evidence_watermark": 0,
           "interpretations": [],
@@ -235,7 +235,7 @@
       ],
       "event_id": "move:turn_ab532cab6797fd00:explain-borrowing-foo-bar",
       "kind": "move_selected",
-      "occurred_at": "2026-10-12T07:24:16.8698244Z",
+      "occurred_at": "2026-10-16T07:56:26.4851457Z",
       "payload": {
         "help_policy": "preserve_exposure",
         "move": {
@@ -820,7 +820,7 @@
       "injected_fact_ids": [],
       "snapshot_revision": 0
     },
-    "tokens_spent": 36912,
+    "tokens_spent": 47467,
     "trace": [
       {
         "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",

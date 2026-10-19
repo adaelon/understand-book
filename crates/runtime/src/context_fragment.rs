@@ -220,16 +220,7 @@ impl ContextFragmentLedger {
         }
         let mut snapshot = vec![Message::system(content)];
         if self.sampling_instructions != instructions {
-            let mut content = String::from(
-                "sampling_guidance.v1\nThis selection replaces all earlier sampling guidance. It remains active until the next sampling_guidance selection; runtime state snapshots do not expire it. Only the selected workflows, phase and references apply.\n",
-            );
-            if instructions.is_empty() {
-                content.push_str("No task workflows, presentation phase or technical references are active. Earlier sampling guidance and design data have expired.\n");
-            }
-            for module in instructions {
-                content.push_str(&format!("\nasset={}\nrevision={}\n{}\n", module.asset_id, module.revision, module.text));
-            }
-            snapshot.push(Message::system(content));
+            snapshot.push(sampling_guidance(instructions, &self.sampling_instructions));
             self.sampling_instructions = instructions.to_vec();
         }
         snapshot.extend(task_data);
@@ -246,6 +237,19 @@ impl ContextFragmentLedger {
         self.recorded_sampling_anchor = None;
     }
 
+    /// At request pressure, obsolete runtime decisions can leave the model
+    /// context. The latest snapshot is complete; its active guidance must be
+    /// republished in full because earlier delta definitions are removed too.
+    pub fn retire_sampling_history(&mut self) -> bool {
+        if self.sampling_snapshots.len() <= 1 { return false; }
+        let (anchor, mut snapshot)=self.sampling_snapshots.pop().unwrap();
+        snapshot.retain(|message| !message.content.as_deref().is_some_and(|text|text.starts_with("sampling_guidance.v1\n")));
+        snapshot.insert(1,sampling_guidance(&self.sampling_instructions, &[]));
+        self.sampling_snapshots.clear();
+        self.sampling_snapshots.push((anchor,snapshot));
+        true
+    }
+
     pub fn project_sampling_snapshots(
         &self,
         messages: &mut Vec<Message>,
@@ -259,6 +263,25 @@ impl ContextFragmentLedger {
             messages.splice(insert_at..insert_at, snapshot.clone());
         }
     }
+}
+
+fn sampling_guidance(instructions: &[InstructionModule], previous: &[InstructionModule]) -> Message {
+    let mut content = String::from(
+        "sampling_guidance.v1\nThe latest active_assets manifest replaces all earlier selections. Apply only its listed workflows, phase and references, using each asset's latest published definition below or in earlier sampling guidance. Unchanged definitions remain valid while listed; unlisted assets are inactive. This selection remains active until the next sampling_guidance manifest; runtime state snapshots do not expire it. Guidance does not grant tools or permissions.\n",
+    );
+    let active_assets = instructions.iter().map(|module| serde_json::json!({
+        "asset_id": module.asset_id,
+        "revision": module.revision,
+    })).collect::<Vec<_>>();
+    content.push_str(&format!("active_assets={}\n", serde_json::json!(active_assets)));
+    if instructions.is_empty() {
+        content.push_str("No task workflows, presentation phase or technical references are active. Earlier sampling guidance and design data have expired.\n");
+    }
+    content.push_str("definitions:\n");
+    for module in instructions.iter().filter(|module| !previous.contains(module)) {
+        content.push_str(&format!("\nasset={}\nrevision={}\n{}\n", module.asset_id, module.revision, module.text));
+    }
+    Message::system(content)
 }
 
 fn fragment_revision(key: &str, content: &str) -> String {
@@ -391,6 +414,159 @@ mod tests {
         assert_eq!(ledger.sampling_snapshots[1].1.len(), 2, "same selection re-appended guidance");
         ledger.record_sampling(14, &[], Vec::new());
         assert!(ledger.sampling_snapshots[2].1.iter().any(|m| m.content.as_deref().unwrap().contains("Earlier sampling guidance and design data have expired")));
+    }
+
+    #[test]
+    fn sampling_guidance_delta_keeps_manifest_and_retained_definitions() {
+        fn guidance(ledger: &ContextFragmentLedger) -> &str {
+            ledger.sampling_snapshots.last().unwrap().1.iter()
+                .filter_map(|message| message.content.as_deref())
+                .find(|content| content.starts_with("sampling_guidance.v1\n"))
+                .unwrap()
+        }
+        fn active_assets(content: &str) -> serde_json::Value {
+            serde_json::from_str(content.lines()
+                .find_map(|line| line.strip_prefix("active_assets="))
+                .expect("each selection must publish its complete active manifest"))
+                .unwrap()
+        }
+        let common = InstructionModule::new("fixture.common", "v1", "Shared policy body");
+        let first_phase = InstructionModule::new("fixture.phase", "v1", "First phase body");
+        let next_phase = InstructionModule::new("fixture.phase", "v1", "Changed phase body");
+        let both_assets = serde_json::json!([
+            {"asset_id":"fixture.common", "revision":"v1"},
+            {"asset_id":"fixture.phase", "revision":"v1"},
+        ]);
+        let mut ledger = ContextFragmentLedger::default();
+        ledger.record_sampling(10, &[common.clone(), first_phase], Vec::new());
+        assert_eq!(active_assets(guidance(&ledger)), both_assets);
+        assert!(guidance(&ledger).contains("Shared policy body"));
+        assert!(guidance(&ledger).contains("First phase body"));
+
+        // A phase can change its body without changing its asset ID or revision.
+        ledger.record_sampling(12, &[common.clone(), next_phase.clone()], Vec::new());
+        assert_eq!(active_assets(guidance(&ledger)), both_assets);
+        assert!(!guidance(&ledger).contains("Shared policy body"));
+        assert!(guidance(&ledger).contains("Changed phase body"));
+
+        let mut retained = ContextFragmentLedger::default();
+        retained.retain_sampling_history(&ledger);
+        retained.record_sampling(14, std::slice::from_ref(&common), Vec::new());
+        assert_eq!(active_assets(guidance(&retained)), serde_json::json!([
+            {"asset_id":"fixture.common", "revision":"v1"},
+        ]));
+        assert!(!guidance(&retained).contains("Shared policy body"));
+        assert!(!guidance(&retained).contains("Changed phase body"));
+
+        // Re-activation republishes its definition; unchanged common text stays shared.
+        retained.record_sampling(16, &[common, next_phase], Vec::new());
+        assert_eq!(active_assets(guidance(&retained)), both_assets);
+        assert!(!guidance(&retained).contains("Shared policy body"));
+        assert!(guidance(&retained).contains("Changed phase body"));
+        retained.record_sampling(18, &[], Vec::new());
+        assert_eq!(active_assets(guidance(&retained)), serde_json::json!([]));
+        assert!(guidance(&retained).contains("Earlier sampling guidance and design data have expired"));
+
+        let mut compacted = vec![Message::system("checkpoint"), Message::user("current question")];
+        compacted.extend((0..8).map(|_| Message::user("raw current-turn message")));
+        retained.project_sampling_snapshots(&mut compacted, 18);
+        let bodies = compacted.iter().filter_map(|message| message.content.as_deref()).collect::<Vec<_>>();
+        assert_eq!(bodies.iter().filter(|body| body.contains("Shared policy body")).count(), 1);
+        assert_eq!(bodies.iter().filter(|body| body.contains("First phase body")).count(), 1);
+        assert_eq!(bodies.iter().filter(|body| body.contains("Changed phase body")).count(), 2);
+        assert!(retained.projected_messages().is_empty());
+    }
+
+    #[test]
+    fn sampling_history_retirement_preserves_current_state_and_complete_active_definitions() {
+        let mut ledger=ContextFragmentLedger::default();
+        let common=InstructionModule::new("common","v1","COMMON_DEFINITION");
+        let old=InstructionModule::new("phase.old","v1","OBSOLETE_PHASE");
+        let current=InstructionModule::new("phase.current","v1","CURRENT_PHASE");
+        ledger.upsert(ContextFragment::new("frozen",FragmentScope::TurnFrozen,Role::System,"ORIGINAL_SCENE",FragmentSensitivity::Private)).unwrap();
+        ledger.upsert(ContextFragment::new("learner",FragmentScope::Dynamic,Role::System,"OLDER_LEARNER_STATE",FragmentSensitivity::Private)).unwrap();
+        ledger.record_sampling(2,&[common.clone(),old],vec![Message::user("OLD_AUTHOR_DESIGN")]);
+        ledger.upsert(ContextFragment::new("learner",FragmentScope::Dynamic,Role::System,"CURRENT_LEARNER_STATE",FragmentSensitivity::Private)).unwrap();
+        ledger.record_sampling(4,&[common,current.clone()],vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
+        let frozen=ledger.projected_messages();
+        assert!(ledger.retire_sampling_history());
+        assert!(!ledger.retire_sampling_history(),"the retained current state is not repeatedly retired");
+        assert_eq!(ledger.projected_messages(),frozen);
+        let raw=vec![Message::system("base"),Message::user("ORIGINAL_USER"),Message {provider_continuation:None,role:Role::Assistant,content:None,
+            tool_calls:vec![crate::ToolCall {id:"call".into(),name:"book.text".into(),arguments:r#"{"lid":"1.1"}"#.into()}],tool_call_id:None},
+            Message {provider_continuation:None,role:Role::Tool,content:Some("OBSERVED_TOOL_BODY".into()),tool_calls:vec![],tool_call_id:Some("call".into())}];
+        let mut projected=raw.clone(); ledger.project_sampling_snapshots(&mut projected,raw.len());
+        assert_eq!(&projected[..raw.len()],raw.as_slice());
+        let text=serde_json::to_string(&projected).unwrap();
+        for kept in ["CURRENT_LEARNER_STATE","CURRENT_AUTHOR_DESIGN","COMMON_DEFINITION","CURRENT_PHASE"] { assert!(text.contains(kept)); }
+        for retired in ["OLDER_LEARNER_STATE","OLD_AUTHOR_DESIGN","OBSOLETE_PHASE"] { assert!(!text.contains(retired)); }
+        ledger.record_sampling(6,std::slice::from_ref(&current),vec![]);
+        let latest=ledger.sampling_snapshots.last().unwrap().1.iter().filter_map(|message|message.content.as_deref()).collect::<Vec<_>>().join("\n");
+        assert!(!latest.contains("CURRENT_PHASE"),"the full rebase remains the reference for later normal deltas");
+    }
+
+    #[test]
+    #[ignore="requires SAMPLING_PRESSURE_INPUT and SAMPLING_PRESSURE_OUTPUT for a real recorded request"]
+    fn recorded_sampling_pressure_retires_only_obsolete_runtime_context() {
+        let recorded:serde_json::Value=serde_json::from_slice(&std::fs::read(std::env::var_os("SAMPLING_PRESSURE_INPUT").unwrap()).unwrap()).unwrap();
+        let input:Vec<Message>=serde_json::from_value(recorded["input"].clone()).unwrap();
+        let tools=recorded["tools"].as_array().unwrap().iter().map(|tool|crate::ToolSpec {
+            name:tool["name"].as_str().unwrap().into(),description:tool["description"].as_str().unwrap().into(),parameters:tool["parameters"].clone(),
+        }).collect::<Vec<_>>();
+        let mut ledger=ContextFragmentLedger::default();
+        let mut raw=vec![];
+        let mut definitions=BTreeMap::<(String,String),String>::new();
+        let mut manifest=vec![];
+        for message in &input {
+            let text=message.content.as_deref().unwrap_or_default();
+            if text.starts_with("runtime_state_snapshot.v1\n") {
+                ledger.sampling_snapshots.push((raw.len(),vec![message.clone()]));
+            } else if text.starts_with("sampling_guidance.v1\n") {
+                manifest=serde_json::from_str::<Vec<serde_json::Value>>(text.lines().find_map(|line|line.strip_prefix("active_assets=")).unwrap()).unwrap();
+                for part in text.split("\nasset=").skip(1) {
+                    let (id,rest)=part.split_once('\n').unwrap();
+                    let (revision,body)=rest.strip_prefix("revision=").unwrap().split_once('\n').unwrap();
+                    definitions.insert((id.into(),revision.into()),body.trim().into());
+                }
+                ledger.sampling_snapshots.last_mut().unwrap().1.push(message.clone());
+            } else if text.starts_with("presentation_guidance_state.v1\n") || text.starts_with("context_fragment.v1\nkey=presentation.authoring_context\n") {
+                ledger.sampling_snapshots.last_mut().unwrap().1.push(message.clone());
+            } else { raw.push(message.clone()); }
+        }
+        ledger.sampling_instructions=manifest.iter().map(|asset| {
+            let id=asset["asset_id"].as_str().unwrap(); let revision=asset["revision"].as_str().unwrap();
+            InstructionModule::new(id,revision,definitions[&(id.into(),revision.into())].clone())
+        }).collect();
+        let snapshots=ledger.sampling_snapshots.len();
+        let latest=ledger.sampling_snapshots.last().unwrap().1.clone();
+        let original_raw=raw.clone();
+        let mut before=raw.clone(); ledger.project_sampling_snapshots(&mut before,raw.len());
+        assert_eq!(before,input,"reconstructed sampling history must reproduce the actual recorded request exactly");
+        let mut profile=crate::ModelRuntimeProfile::fallback("recorded-pressure",crate::ProviderToolProtocol::Native);
+        profile.context_window_tokens=recorded["active_context"]["context_window_tokens"].as_u64().unwrap() as u32;
+        profile.output_reserve_tokens=recorded["active_context"]["output_reserve_tokens"].as_u64().unwrap() as u32;
+        profile.safety_margin_tokens=recorded["active_context"]["safety_margin_tokens"].as_u64().unwrap() as u32;
+        let plan=|input:&[Message]| {
+            let mut messages=vec![Message::system(recorded["instructions"].as_str().unwrap())]; messages.extend_from_slice(input);
+            crate::AgentRequestPlan::for_ad_hoc(profile.clone(),&messages,&tools)
+        };
+        let before_tokens=plan(&before).active_context.estimated_input_tokens;
+        let image_tokens=recorded["preview_images"].as_array().unwrap().len() as u32*4096;
+        assert_eq!(before_tokens+image_tokens,recorded["active_context"]["estimated_input_tokens"].as_u64().unwrap() as u32);
+        assert!(ledger.retire_sampling_history());
+        let mut after=raw.clone(); ledger.project_sampling_snapshots(&mut after,raw.len());
+        let after_plan=plan(&after);
+        assert!(after_plan.active_context.remaining_tokens>=i64::from(image_tokens));
+        assert!(after_plan.active_context.estimated_input_tokens<before_tokens);
+        assert_eq!(raw,original_raw);
+        for message in latest.iter().filter(|message|!message.content.as_deref().unwrap_or_default().starts_with("sampling_guidance.v1\n")) { assert!(after.contains(message)); }
+        for module in &ledger.sampling_instructions { assert!(after.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains(&module.text)))); }
+        let report=serde_json::json!({"recorded_input_tokens_with_images":before_tokens+image_tokens,
+            "retained_input_tokens_with_images":after_plan.active_context.estimated_input_tokens+image_tokens,
+            "snapshots_before":snapshots,"snapshots_after":ledger.sampling_snapshots.len(),"raw_messages_preserved":raw.len(),
+            "active_modules_preserved":ledger.sampling_instructions.len(),"fits_with_original_images":true});
+        std::fs::write(std::env::var_os("SAMPLING_PRESSURE_OUTPUT").unwrap(),serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+        println!("{report}");
     }
 
     #[test]

@@ -63,6 +63,44 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::require_reference(self.scope, Some(reference))?;
+        Ok(runtime::library::LibrarySource { reference: reference.clone(), book: self.scope.book.clone(), title: "当前资料".into() })
+    }
+
+    fn record_presentation_methods(&mut self, observations: &runtime::presentation::PresentationMethodObservations) -> Result<(), ToolError> {
+        self.with_private(|state| state.record_presentation_methods(&self.turn_ref.session_id, &self.turn_ref.turn_id, observations))
+    }
+    fn media_source_snapshot(&mut self, target: base_schema::EvidenceTarget) -> Result<runtime::video_source::MediaSource, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_source::snapshot(&self.scope.book, &self.scope.book_dir, target)
+    }
+    fn media_source_for_text(&mut self, range: &EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+    }
+    fn video_source_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::source_context(self.scope)
+    }
+    fn review_video_audio(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: runtime::video_audio::ReviewAudio, cancellation: &CancellationToken) -> Result<runtime::video_audio::AudioReview, ToolError> {
+        crate::video_frames::require_reference(self.scope, reference)?;
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        let result = crate::video_audio::review_for_run(self.scope, request, cancellation)?;
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        Ok(result)
+    }
+    fn search_video(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: read_tools::video_search::VideoSearch) -> Result<Value, ToolError> {
+        crate::video_frames::require_reference(self.scope, reference)?;
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::search_for_run(self.scope, request)
+    }
+    fn read_video_frames(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: runtime::video::ReadFrames, cancellation: &CancellationToken) -> Result<runtime::video::FrameBatch, ToolError> {
+        crate::video_frames::require_reference(self.scope, reference)?;
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::video_frames::read_for_run(self.scope, request, cancellation)
+    }
     fn tutor_assessment_input(&mut self, action: &str) -> Result<Value, ToolError> {
         self.with_private(|state| teaching::assessment_input(state, self.turn_ref, action))
     }
@@ -72,8 +110,20 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
     fn tutor_active(&mut self) -> Result<bool, ToolError> {
         self.with_private(|state| teaching::turn_active(state, &self.turn_ref.turn_id))
     }
+    fn tutor_step_preflight(&self, request: &Value, evidence: &[SourceBinding], ranges: &[EvidenceRange]) -> Result<Value, runtime::run_context::TeachingSelectionPreflightError> {
+        self.port.with_app(|state| {
+            self.scope.check_owner(state)?;
+            teaching::preflight_step(&self.scope.private_context(state), self.turn_ref, request, evidence, ranges)
+        })
+    }
     fn tutor_step(&mut self, request: Value, evidence: &[SourceBinding], ranges: &[EvidenceRange]) -> Result<Value, ToolError> {
         self.with_private(|state| teaching::step(state, self.turn_ref, request, evidence, ranges))
+    }
+    fn tutor_record_review(&mut self, record: Value) -> Result<Value, ToolError> {
+        self.with_private(|state| teaching::record_agent_review(state,self.turn_ref,record))
+    }
+    fn tutor_working_state(&mut self) -> Result<Value, ToolError> {
+        self.with_private(|state| teaching::agent_working_state(state,self.turn_ref))
     }
     fn persist_goal(&mut self, goal: &runtime::goal::ResidentGoal) -> Result<(), ToolError> {
         self.port.with_app(|state| {
@@ -189,6 +239,7 @@ impl<P: UserStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
 }
 
 pub(crate) struct PreparedAgentChat {
+    pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub tutor: Option<Value>,
     pub goal: Option<runtime::goal::ResidentGoal>,
     pub scope: crate::run_scope::RunScope,
@@ -268,6 +319,12 @@ pub(crate) fn execute_model(
         prepared.scope.provider_binding.clone(),
     );
     context.tutor = prepared.tutor.clone();
+    context.workspace_goal = prepared.scope.learning_workspace_id.as_ref()
+        .zip(prepared.scope.goal.as_ref())
+        .map(|(id, goal)| runtime::workspace_goal::WorkspaceGoalContext {
+            learning_workspace_id: id.clone(), goal: goal.clone(),
+        });
+    context.accepted_workspace_goal = prepared.accepted_workspace_goal.clone();
     context.goal = prepared.goal.clone();
     context.current_user_message = Some(prepared.message.clone());
     context.cancellation = cancellation.clone();

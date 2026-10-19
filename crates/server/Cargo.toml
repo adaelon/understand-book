@@ -19,6 +19,7 @@ memory = { path = "../memory" }
 rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
 runtime = { path = "../runtime" }
 base64 = "0.22"
+png = "0.17.16"
 httpdate = "1.0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["arbitrary_precision"] }
@@ -33,5 +34,3 @@ uuid = { version = "1.23.4", features = ["v7"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
-[dev-dependencies]
-png = "0.17.16"

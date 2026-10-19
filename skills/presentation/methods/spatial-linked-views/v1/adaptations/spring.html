@@ -1,0 +1,473 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>能量来回的路</title><style>:root{color-scheme:light;--paper:var(--presentation-bg,#f5f3ed);--ink:var(--presentation-fg,#203b3e);--muted:#657572;--line:#d6ded6;--gold:#b78535;--teal:#32858c}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.75 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:48px 36px 60px}.eyebrow{font-size:11px;letter-spacing:.2em;color:var(--teal);font-weight:750}h1{font:650 clamp(32px,5vw,58px)/1.22 Georgia,"Noto Serif SC",serif;letter-spacing:-.035em;margin:18px 0}header>p{max-width:660px;color:var(--muted);margin:0 0 28px}figure{margin:0}h2{font-size:17px;margin:0;font-weight:650}.figure-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 22px 0}.figure-head span{font-size:11px;letter-spacing:.12em;color:var(--muted)}.stage{position:relative;border-top:1px solid var(--line);background:radial-gradient(ellipse at 50% 45%,#fff9 0%,#dce6df55 75%,transparent);border-radius:4px}#spatial{display:block;width:100%;height:clamp(300px,48vw,470px);touch-action:none;cursor:grab}#spatial:active{cursor:grabbing}.stage-note{font-size:12px;color:var(--muted);text-align:center;padding:0 14px 12px;margin:0}.view-tools{display:flex;gap:8px;align-items:center;padding:0 22px 18px;flex-wrap:wrap}.view-tools label{flex:1;min-width:130px;display:flex;align-items:center;gap:12px;font-size:13px}.view-tools input{width:100%;min-width:60px}button,input,select{font:inherit;min-height:44px}button{padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;cursor:pointer}button:hover{background:#dfe9df}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible{outline:3px solid #b78535;outline-offset:3px}#play{color:#fff;background:#286a70;border-color:#286a70;min-width:90px}input[type=range]{accent-color:var(--teal);margin:0}select{background:#fff8;border:1px solid var(--line);color:inherit;border-radius:6px;padding:4px 8px;width:100%}.controls{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 0;margin-bottom:28px}.timeline{display:grid;grid-template-columns:auto auto 1fr;gap:12px;align-items:center}.timeline label{grid-column:1/-1;font-size:13px;display:flex;justify-content:space-between}.parameters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}.parameters label{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px}.parameters input{width:100%}output{font-variant-numeric:tabular-nums;color:var(--teal)}.diagrams{display:grid;grid-template-columns:1fr 1fr;gap:28px}.diagrams figure{min-width:0;border-bottom:1px solid var(--line)}.diagrams h2{font-size:18px}.diagrams .index{font:italic 22px Georgia,serif;color:var(--gold);margin-right:8px}.diagrams canvas{display:block;width:100%;height:256px}#diagram{touch-action:none}.diagrams p{color:var(--muted);font-size:13px;line-height:1.7;margin:0 0 18px;min-height:44px}.readout{margin:24px 0;border-left:3px solid var(--teal);padding:5px 20px}.readout strong{font-size:clamp(18px,2.6vw,26px);font-weight:550;font-variant-numeric:tabular-nums}.readout p{margin:7px 0 0;color:var(--muted);font-size:14px}.explanation{max-width:730px;margin:34px auto 0}.explanation h2{font:600 26px/1.5 Georgia,"Noto Serif SC",serif}.explanation p{color:var(--muted);font-size:15px}.formula{font:24px/1.8 Georgia,serif;color:var(--teal);padding:15px 0}.assumption{border-top:1px solid var(--line);margin:26px 0 0;padding-top:20px;font-size:12px;color:var(--muted)}#fallback{padding:50px 24px;color:var(--muted)}[hidden]{display:none!important}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin:12px 0}.gold{color:var(--gold)}.teal{color:var(--teal)}
+body{padding:0}button{min-width:44px;white-space:nowrap}input[type=range]{min-width:0;width:100%}.timeline{grid-template-columns:auto auto minmax(44px,1fr)}
+.view-tools label,.view-tools output{white-space:nowrap}.view-tools input{flex:1;width:auto}.view-tools output{min-width:34px;text-align:right}
+@media(max-width:650px){main{padding:28px 20px 40px}.diagrams{grid-template-columns:1fr;gap:24px}.parameters{gap:12px}.figure-head{padding:16px 12px 0}.view-tools{padding:0 12px 16px}.view-tools label{flex-basis:100%}.diagrams p{min-height:0}.timeline{gap:8px}.parameters label{font-size:12px}.readout{padding-left:14px}}
+@media(max-width:360px){main{padding:24px 12px}.parameters{grid-template-columns:1fr}.parameters label{display:grid;grid-template-columns:1fr auto}.parameters input,.parameters select{grid-column:1/-1}.figure-head span{display:none}.timeline button{padding:8px 12px}}
+</style></head><body><main>
+<header><div class="eyebrow">SPATIAL STUDY / 02</div><h1>能量来回的路</h1><p>把质量块拉开，再松手。它为什么越过中点，又为什么会折返？转动模型，沿曲线移动，再观察能量怎样从一种形式变成另一种。</p></header>
+<div id="experiment"><figure class="stage"><div class="figure-head"><h2>一根弹簧，一块质量</h2><span>DRAG TO EXPLORE</span></div><canvas id="spatial" tabindex="0" aria-label="三维模型，拖动或使用方向键改变观察角度"></canvas><p id="fallback" hidden>当前环境无法显示三维模型。下方图解和参数仍可操作。</p><p class="stage-note">拖动旋转 · 方向键微调 · 拆开看结构</p><div class="view-tools"><button id="front">正视</button><button id="view-reset">恢复视角</button><label for="explode">拆解 <input id="explode" type="range" min="0" max="1" step="0.01" value="0"><output id="explode-value">0%</output></label></div></figure>
+<section class="controls" aria-label="实验控制"><div class="timeline"><button id="play" aria-pressed="false">播放</button><button id="reset">回到起点</button><input id="position" aria-label="周期位置" type="range" min="0" max="4" step="0.001" value="0"><label for="position">沿过程观察<output id="position-value"></output></label></div><div class="parameters"><label for="mass">质量<output id="mass-value"></output><input id="mass" data-param="mass" type="range" min="0.5" max="2" step="0.1"></label><label for="stiffness">劲度系数<output id="stiffness-value"></output><input id="stiffness" data-param="stiffness" type="range" min="4" max="20" step="1"></label><label for="amplitude">振幅<output id="amplitude-value"></output><input id="amplitude" data-param="amplitude" type="range" min="0" max="0.8" step="0.05"></label></div></section>
+<div class="legend"><span class="gold">● 金色：弹簧与势能</span><span class="teal">● 青色：质量块与动能</span></div><div class="diagrams"><figure><h2><span class="index">01</span>每一圈，回到相同位置</h2><canvas id="diagram" tabindex="0" aria-label="每一圈，回到相同位置"></canvas><p>横轴是一个完整周期，纵轴是相对平衡位置的位移。拖动曲线上的观察线，三维质量块与能量柱同时改变。</p></figure><figure><h2><span class="index">02</span>总量不变，形式在变</h2><canvas id="detail" aria-label="总量不变，形式在变"></canvas><p>金色是弹簧势能，青色是质量块动能，灰色是它们的和。使用固定能量尺度，改变振幅时也能直接比较。</p></figure></div><section id="readout" class="readout" aria-live="off"></section></div>
+<section class="explanation"><h2>到中点，为什么还不停下？</h2><p>两端是位移的极值，速度为零，能量全在弹簧里。质量块向中点运动时，势能不断转成动能。经过中点的一刻，回复力虽然为零，速度却最大，于是质量块继续前进，直到动能重新变成势能。</p><div class="formula">x = A cos(ωt)　　ω = √(k/m)　　E = ½kA²</div><p>增大质量会让往复更慢；增大劲度系数会让往复更快。改变振幅会改变总能量，在这个理想模型中却不改变周期。把振幅设为零，整套图解会停在平衡位置。</p></section><p class="assumption">模型：水平、无阻尼、无摩擦的线性弹簧振子，从最大正位移静止释放。导轨限制为一维运动；弹簧的线圈外观和质量块尺寸作示意，不表示实际材料或质量密度。拆解时暂停运动。</p>
+</main><script data-presentation-library="three" src="libraries/three-0.180.0.min.js"></script><script>"use strict";
+(() => {
+  // skills/presentation/methods/spatial-linked-views/v1/runtime.js
+  var clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  var $ = (id) => document.getElementById(id);
+  var fmt = (x, digits = 2) => Number(x.toFixed(digits)).toString();
+  function canvas2D(canvas) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(devicePixelRatio, 2);
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = "13px system-ui";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 1.5;
+    return { ctx, w, h };
+  }
+  function createStage(canvas) {
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-100, 100, 80, -80, 1, 1500);
+    scene.add(new THREE.HemisphereLight(16777215, 7832695, 2.7));
+    const key = new THREE.DirectionalLight(16775400, 3.5);
+    key.position.set(-80, 90, 160);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    Object.assign(key.shadow.camera, { left: -160, right: 160, top: 150, bottom: -150, near: 1, far: 500 });
+    key.shadow.bias = -4e-4;
+    key.shadow.normalBias = 0.1;
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(15069941, 2);
+    rim.position.set(100, -30, 70);
+    scene.add(rim);
+    const environment = new THREE.Scene();
+    environment.add(new THREE.Mesh(new THREE.BoxGeometry(1e3, 1e3, 1e3), new THREE.MeshBasicMaterial({ color: 10991542, side: THREE.BackSide })));
+    for (const [x, y, z, w, h, color, intensity] of [[-200, 150, 150, 180, 400, 16777215, 5], [100, 100, -100, 150, 500, 15786695, 3], [200, -200, 250, 300, 180, 16777215, 4]]) {
+      const light = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+      light.material.color.multiplyScalar(intensity);
+      light.position.set(x, y, z);
+      light.lookAt(0, 0, 0);
+      environment.add(light);
+    }
+    const pmrem = new THREE.PMREMGenerator(renderer), env = pmrem.fromScene(environment, 0.05);
+    scene.environment = env.texture;
+    pmrem.dispose();
+    disposeObject(environment);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.ShadowMaterial({ opacity: 0.14, color: 3886404 }));
+    floor.position.z = -19;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    let width = 0, height = 0;
+    return {
+      scene,
+      renderer,
+      camera,
+      draw(s, bounds) {
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) return;
+        if (w !== width || h !== height) {
+          width = w;
+          height = h;
+          renderer.setSize(w, h, false);
+        }
+        camera.position.set(300 * Math.sin(s.yaw) * Math.sin(s.tilt), -300 * Math.cos(s.yaw) * Math.sin(s.tilt), 300 * Math.cos(s.tilt));
+        camera.lookAt(0, 0, 0);
+        camera.updateMatrixWorld();
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const box of bounds) for (const x of [box[0], box[3]]) for (const y of [box[1], box[4]]) for (const z of [box[2], box[5]]) {
+          const p = new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse);
+          x0 = Math.min(x0, p.x);
+          x1 = Math.max(x1, p.x);
+          y0 = Math.min(y0, p.y);
+          y1 = Math.max(y1, p.y);
+        }
+        const span = Math.max((y1 - y0) * h / (h - 56), (x1 - x0) * h / (w - 48), 20);
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        camera.left = cx - span * w / h / 2;
+        camera.right = cx + span * w / h / 2;
+        camera.top = cy + span / 2;
+        camera.bottom = cy - span / 2;
+        camera.updateProjectionMatrix();
+        renderer.render(scene, camera);
+      },
+      dispose() {
+        disposeObject(scene);
+        env.dispose();
+        renderer.dispose();
+      }
+    };
+  }
+  function disposeObject(root) {
+    const geometries = /* @__PURE__ */ new Set(), materials = /* @__PURE__ */ new Set();
+    root.traverse((o) => {
+      if (o.geometry) geometries.add(o.geometry);
+      for (const m of o.material ? Array.isArray(o.material) ? o.material : [o.material] : []) materials.add(m);
+    });
+    geometries.forEach((g) => g.dispose());
+    materials.forEach((m) => m.dispose());
+  }
+  function createLinkedDemo(topic2) {
+    const defaults = { ...topic2.defaults, yaw: -0.28, tilt: 0.62, explode: 0, semantic_state: 0, transition_progress: 0 };
+    const initial = window.presentation?.initialState ?? {};
+    const state = { ...defaults, playing: false };
+    for (const key of Object.keys(defaults)) if (initial[key] !== void 0) state[key] = initial[key];
+    let stage, objects, derived, frame = 0, previous = 0, visible = true, drag;
+    const canvas = $("spatial");
+    try {
+      stage = createStage(canvas);
+      objects = topic2.createObjects(stage.scene);
+    } catch {
+      $("fallback").hidden = false;
+      canvas.hidden = true;
+      $("front").disabled = true;
+      $("view-reset").disabled = true;
+      $("explode").disabled = true;
+    }
+    const values = () => Object.fromEntries(Object.keys(defaults).map((k) => [k, state[k]]));
+    const snapshot = () => ({ ...values(), playing: state.playing });
+    const commit = () => window.presentation?.commitState();
+    function position(q) {
+      q = clamp(q, 0, 4);
+      state.semantic_state = Math.floor(q);
+      state.transition_progress = q - state.semantic_state;
+    }
+    function render() {
+      derived = topic2.derive(state);
+      if (stage) {
+        topic2.updateObjects(objects, derived, state);
+        stage.draw(state, topic2.bounds(derived, state));
+      }
+      if ($("diagram").clientWidth && $("detail").clientWidth) topic2.drawDiagrams(derived, state);
+      $("readout").innerHTML = topic2.describe(derived, state);
+      for (const control of document.querySelectorAll("[data-param]")) {
+        const key = control.dataset.param;
+        control.value = state[key];
+        const output = $(key + "-value");
+        if (output) output.textContent = topic2.label?.(key, state[key]) ?? fmt(state[key]);
+      }
+      $("position").value = state.semantic_state + state.transition_progress;
+      $("position-value").textContent = `${fmt(state.semantic_state + state.transition_progress, 3)} \u5468\u671F`;
+      $("explode").value = state.explode;
+      $("explode-value").textContent = `${Math.round(state.explode * 100)}%`;
+      $("play").textContent = state.playing ? "\u6682\u505C" : "\u64AD\u653E";
+      $("play").setAttribute("aria-pressed", String(state.playing));
+      $("play").disabled = state.explode > 0 || !Number.isFinite(topic2.period(state));
+    }
+    function pause() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      state.playing = false;
+    }
+    function seek({ semantic_state, transition_progress = 0 }) {
+      pause();
+      position(semantic_state + transition_progress);
+      render();
+      return snapshot();
+    }
+    function schedule() {
+      if (state.playing && visible && !document.hidden && !frame) {
+        previous = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    function tick(now) {
+      frame = 0;
+      position(state.semantic_state + state.transition_progress + Math.min((now - previous) / 1e3, 0.08) / topic2.period(state));
+      previous = now;
+      if (state.semantic_state === 4) state.playing = false;
+      render();
+      if (state.playing && visible && !document.hidden) frame = requestAnimationFrame(tick);
+      else if (!state.playing) commit();
+    }
+    $("play").onclick = () => {
+      if (state.playing) pause();
+      else {
+        if (state.semantic_state === 4) position(0);
+        state.playing = true;
+        schedule();
+      }
+      render();
+      commit();
+    };
+    $("reset").onclick = () => {
+      seek({ semantic_state: 0 });
+      commit();
+    };
+    $("position").oninput = (e) => seek({ semantic_state: 0, transition_progress: Number(e.target.value) });
+    $("position").onchange = commit;
+    for (const control of document.querySelectorAll("[data-param]")) {
+      control.addEventListener("input", () => {
+        state[control.dataset.param] = Number(control.value);
+        seek({ semantic_state: 0 });
+      });
+      control.addEventListener("change", commit);
+    }
+    $("explode").oninput = (e) => {
+      pause();
+      state.explode = Number(e.target.value);
+      if (state.explode > 0 && state.tilt < 0.35) state.tilt = 0.75;
+      render();
+    };
+    $("explode").onchange = commit;
+    $("front").onclick = () => {
+      state.yaw = 0;
+      state.tilt = 0;
+      render();
+      commit();
+    };
+    $("view-reset").onclick = () => {
+      state.yaw = defaults.yaw;
+      state.tilt = defaults.tilt;
+      render();
+      commit();
+    };
+    canvas.addEventListener("pointerdown", (e) => {
+      drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, tilt: state.tilt };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      state.yaw = drag.yaw + (e.clientX - drag.x) * 9e-3;
+      state.tilt = clamp(drag.tilt + (e.clientY - drag.y) * 6e-3, 0, 1.22);
+      render();
+    });
+    const release = () => {
+      if (drag) {
+        drag = null;
+        commit();
+      }
+    };
+    canvas.addEventListener("pointerup", release);
+    canvas.addEventListener("pointercancel", release);
+    canvas.addEventListener("keydown", (e) => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+      e.preventDefault();
+      state.yaw += e.key === "ArrowLeft" ? -0.12 : e.key === "ArrowRight" ? 0.12 : 0;
+      state.tilt = clamp(state.tilt + (e.key === "ArrowUp" ? -0.1 : e.key === "ArrowDown" ? 0.1 : 0), 0, 1.22);
+      render();
+      commit();
+    });
+    const resize = new ResizeObserver(render);
+    for (const c of document.querySelectorAll("canvas")) resize.observe(c);
+    const visibility = new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (visible) {
+        render();
+        schedule();
+      } else {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    });
+    visibility.observe($("experiment"));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      } else {
+        render();
+        schedule();
+      }
+    });
+    window.addEventListener("pagehide", () => {
+      pause();
+      resize.disconnect();
+      visibility.disconnect();
+      stage?.dispose();
+    }, { once: true });
+    window.presentationScene = { seek, snapshot };
+    window.presentation?.registerStateReader(() => {
+      render();
+      return { values: values(), visible_step: `${topic2.name} \xB7 ${fmt(state.semantic_state + state.transition_progress, 3)} \u5468\u671F` };
+    });
+    window.presentation?.registerStateRestorer((saved) => {
+      const restored = saved.values.page;
+      for (const key of Object.keys(defaults)) if (restored?.[key] !== void 0) state[key] = restored[key];
+      seek(state);
+    });
+    window.linkedDemo = { inspect: () => ({ model: { ...derived }, geometry: stage ? topic2.inspect(objects) : null, webgl: !!stage }) };
+    seek(state);
+    return { seek, commit, snapshot };
+  }
+
+  // skills/presentation/methods/spatial-linked-views/v1/spring-model.js
+  function springModel(s) {
+    const phase = 2 * Math.PI * (s.semantic_state + s.transition_progress), omega = Math.sqrt(s.stiffness / s.mass);
+    const x = s.amplitude * Math.cos(phase), velocity = -s.amplitude * omega * Math.sin(phase);
+    return {
+      phase,
+      omega,
+      x,
+      velocity,
+      force: -s.stiffness * x,
+      period: 2 * Math.PI / omega,
+      time: (s.semantic_state + s.transition_progress) * 2 * Math.PI / omega,
+      potential: 0.5 * s.stiffness * x * x,
+      kinetic: 0.5 * s.mass * velocity * velocity,
+      total: 0.5 * s.stiffness * s.amplitude * s.amplitude
+    };
+  }
+
+  // skills/presentation/methods/spatial-linked-views/v1/spring.js
+  var SCALE = 40;
+  var TAU = 2 * Math.PI;
+  var topic = {
+    name: "\u5F39\u7C27\u632F\u5B50",
+    defaults: { mass: 1, stiffness: 12, amplitude: 0.6 },
+    derive: springModel,
+    period: (s) => TAU * Math.sqrt(s.mass / s.stiffness),
+    createObjects(scene) {
+      const metal = new THREE.MeshStandardMaterial({ color: 10332836, metalness: 0.8, roughness: 0.28 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(19, 24, 20), new THREE.MeshStandardMaterial({ color: 5214872, metalness: 0.5, roughness: 0.3 }));
+      body.castShadow = true;
+      body.receiveShadow = true;
+      scene.add(body);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(19.5, 24.5, 1), new THREE.MeshStandardMaterial({ color: 7513252, metalness: 0.65, roughness: 0.3 }));
+      top.position.z = 10.5;
+      scene.add(top);
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 39, 32), metal);
+      wall.position.x = -70;
+      wall.castShadow = true;
+      scene.add(wall);
+      const rails = [];
+      for (const y of [-10, 10]) {
+        const rail = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 150, 32), metal);
+        rail.rotation.z = TAU / 4;
+        rail.position.set(0, y, -12);
+        scene.add(rail);
+        rails.push(rail);
+      }
+      class Helix extends THREE.Curve {
+        getPoint(t, target = new THREE.Vector3()) {
+          return target.set(60 * t, 6 * Math.cos(t * TAU * 10), 6 * Math.sin(t * TAU * 10));
+        }
+      }
+      const spring = new THREE.Mesh(new THREE.TubeGeometry(new Helix(), 320, 0.65, 10, false), new THREE.MeshStandardMaterial({ color: 13738060, metalness: 0.7, roughness: 0.3 }));
+      spring.castShadow = true;
+      scene.add(spring);
+      const guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -15), new THREE.Vector3(0, 0, 45)]), new THREE.LineDashedMaterial({ color: 7899776, dashSize: 2, gapSize: 2 }));
+      guide.computeLineDistances();
+      scene.add(guide);
+      return { body, top, wall, spring, rails, guide };
+    },
+    updateObjects(o, m, s) {
+      const x = m.x * SCALE, length = x + 57.5;
+      o.body.position.set(x, 0, 20 * s.explode);
+      o.top.position.set(x, 0, 10.5 + 38 * s.explode);
+      o.spring.position.set(-67.5, 0, 20 * s.explode);
+      const position = o.spring.geometry.attributes.position, normal = o.spring.geometry.attributes.normal;
+      for (let i = 0; i <= 320; i++) {
+        const t = i / 320, a = t * TAU * 10, c = Math.cos(a), sn = Math.sin(a), speed = Math.hypot(length, 6 * TAU * 10);
+        const bx = -6 * TAU * 10 / speed, by = -length * sn / speed, bz = length * c / speed;
+        for (let j = 0; j <= 10; j++) {
+          const b = j / 10 * TAU, co = -Math.cos(b), si = Math.sin(b), nx = si * bx, ny = co * c + si * by, nz = co * sn + si * bz, index = i * 11 + j;
+          position.setXYZ(index, length * t + 0.65 * nx, 6 * c + 0.65 * ny, 6 * sn + 0.65 * nz);
+          normal.setXYZ(index, nx, ny, nz);
+        }
+      }
+      position.needsUpdate = true;
+      normal.needsUpdate = true;
+      o.spring.geometry.computeBoundingSphere();
+      o.length = length;
+      o.guide.position.x = x;
+      o.guide.visible = s.explode > 0;
+    },
+    bounds: (m, s) => [[-76, -23, -19, 76, 23, Math.max(18, 12 + 38 * s.explode)]],
+    inspect: (o) => ({ massX: o.body.position.x, coilStart: o.spring.position.x, coilEnd: o.spring.position.x + o.length, coverZ: o.top.position.z }),
+    drawDiagrams(m, s) {
+      const { ctx, w, h } = canvas2D($("diagram")), x0 = 38, x1 = w - 16, y0 = 27, y1 = h - 38, mid = (y0 + y1) / 2, amp = (y1 - y0) / 2;
+      ctx.strokeStyle = "#c5d2c9";
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0, y1);
+      ctx.moveTo(x0, mid);
+      ctx.lineTo(x1, mid);
+      ctx.stroke();
+      ctx.strokeStyle = "#32858c";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i <= 160; i++) {
+        const x = x0 + (x1 - x0) * i / 160, y = mid - s.amplitude * Math.cos(TAU * i / 160) * amp / 0.8;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      const phase = (s.semantic_state + s.transition_progress) % 1, cx = x0 + (x1 - x0) * phase, cy = mid - m.x * amp / 0.8;
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = "#b78535";
+      ctx.beginPath();
+      ctx.moveTo(cx, y0);
+      ctx.lineTo(cx, y1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#32858c";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = "#657572";
+      ctx.textAlign = "left";
+      ctx.fillText("x / m", 3, 13);
+      ctx.fillText("+0.8", 1, y0);
+      ctx.fillText("0", 15, mid);
+      ctx.fillText("\u22120.8", 1, y1);
+      ctx.fillText("0", x0, h - 16);
+      ctx.textAlign = "right";
+      ctx.fillText(`T = ${fmt(m.period, 3)} s`, x1, h - 16);
+      const d = canvas2D($("detail")), c = d.ctx, left = 26, right = d.w - 26, bottom = 196, height = 145, maxEnergy = 6.4, barW = Math.min(72, (d.w - 90) / 3), xs = [left, (left + right - barW) / 2, right - barW];
+      for (const [i, value, color, label] of [[0, m.potential, "#b78535", "\u52BF\u80FD U"], [1, m.kinetic, "#32858c", "\u52A8\u80FD K"], [2, m.total, "#95a69c", "\u603B\u80FD E"]]) {
+        c.fillStyle = color;
+        c.fillRect(xs[i], bottom - value / maxEnergy * height, barW, value / maxEnergy * height);
+        c.fillStyle = "#203b3e";
+        c.textAlign = "center";
+        c.fillText(`${fmt(value, 3)} J`, xs[i] + barW / 2, bottom - value / maxEnergy * height - 16);
+        c.fillText(label, xs[i] + barW / 2, bottom + 25);
+      }
+      c.strokeStyle = "#c5d2c9";
+      c.beginPath();
+      c.moveTo(left - 4, bottom);
+      c.lineTo(right + 4, bottom);
+      c.stroke();
+      c.fillStyle = "#657572";
+      c.textAlign = "left";
+      c.fillText("\u56FA\u5B9A\u5C3A\u5EA6\uFF1A\u6EE1\u9AD8 6.4 J", left, 18);
+    },
+    label: (k, v) => k === "mass" ? `${fmt(v)} kg` : k === "stiffness" ? `${fmt(v)} N/m` : `${fmt(v)} m`,
+    describe: (m, s) => `<strong>\u4F4D\u7F6E ${fmt(m.x, 3)} m\uFF0C\u56DE\u590D\u529B ${fmt(m.force, 3)} N</strong><p>\u901F\u5EA6 <output>${fmt(m.velocity, 3)} m/s</output> \xB7 \u5468\u671F <output>${fmt(m.period, 3)} s</output> \xB7 \u5DF2\u8FC7 <output>${fmt(m.time, 3)} s</output>\u3002</p><p>\u52BF\u80FD ${fmt(m.potential, 3)} J + \u52A8\u80FD ${fmt(m.kinetic, 3)} J = \u603B\u80FD ${fmt(m.total, 3)} J\u3002${s.explode > 0 ? "\u62C6\u89E3\u72B6\u6001\u6682\u505C\u8FD0\u52A8\uFF0C\u76D6\u677F\u4E0E\u5BFC\u8F68\u6CBF\u8F74\u5206\u79BB\u3002" : "\u901A\u8FC7\u5E73\u8861\u4F4D\u7F6E\u65F6\u6700\u5FEB\uFF1B\u5728\u4E24\u4E2A\u7AEF\u70B9\uFF0C\u901F\u5EA6\u4E3A\u96F6\u3002"}</p>`
+  };
+  var demo = createLinkedDemo(topic);
+  var dragging = false;
+  function point(e) {
+    const r = $("diagram").getBoundingClientRect(), s = demo.snapshot(), p = clamp((e.clientX - r.left - 38) / (r.width - 54), 0, 0.999);
+    demo.seek({ semantic_state: Math.min(s.semantic_state, 3), transition_progress: p });
+  }
+  $("diagram").addEventListener("pointerdown", (e) => {
+    dragging = true;
+    $("diagram").setPointerCapture(e.pointerId);
+    point(e);
+  });
+  $("diagram").addEventListener("pointermove", (e) => {
+    if (dragging) point(e);
+  });
+  for (const event of ["pointerup", "pointercancel"]) $("diagram").addEventListener(event, () => {
+    dragging = false;
+    demo.commit();
+  });
+  $("diagram").addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const s = demo.snapshot();
+    demo.seek({ semantic_state: 0, transition_progress: s.semantic_state + s.transition_progress + (e.key === "ArrowRight" ? 0.02 : -0.02) });
+    demo.commit();
+  });
+})();
+</script></body></html>

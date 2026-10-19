@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
+import VideoReaderPane from './components/VideoReaderPane.vue';
+import type { PreparingVideo } from './video-api';
+const videos = ref<PreparingVideo[]>([]), selectedVideo = ref<PreparingVideo | null>(null);
 import BookCover from './components/BookCover.vue';
 import YeyeMascot from './components/YeyeMascot.vue';
 import brandLogo from './assets/brand/understand-book-logo.svg';
@@ -9,6 +12,10 @@ import LoadingAnimation from './components/LoadingAnimation.vue';
 import AccountAllowance from './components/AccountAllowance.vue';
 import AccountSettings from './components/AccountSettings.vue';
 import AccountMcp from './components/AccountMcp.vue';
+import LearningRecordsPanel from './components/LearningRecordsPanel.vue';
+import SharedWorkspaceCatalog from './components/SharedWorkspaceCatalog.vue';
+import SharedWorkspaceInstance from './components/SharedWorkspaceInstance.vue';
+import PersonalPreparations from './components/PersonalPreparations.vue';
 import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
 import AccountAccess from './components/AccountAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
@@ -16,10 +23,16 @@ import AgentPresentation from './components/AgentPresentation.vue';
 import SourceExcerpt from './components/SourceExcerpt.vue';
 import { api, ApiError } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
-import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef } from './network-context';
-import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, type ReadingResumption, type PendingSubmission } from './network-client';
+import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, workspaceStorageKey, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef, type LearningWorkspace } from './network-context';
+import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
+import { savedLearningSelection, saveLearningSelection, learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
+function showFailure(failure: unknown) {
+  // A superseded request has nothing to report in the newly selected book or chat.
+  if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') return;
+  error.value = failure instanceof Error ? failure.message : String(failure);
+}
 const sourceTarget = ref<McpSource | null>(null), sourceError = ref('');
 let pendingSource: McpSource | null = null;
 try { pendingSource = readMcpSource(location.search); } catch (failure) { sourceError.value = (failure as Error).message; }
@@ -44,6 +57,108 @@ function passwordChanged() {
 }
 type CatalogBook = { published_book_ref: PublishedBookRef; title?: string | null; is_default?: boolean; cover?: import('./api').BookCoverSource | null };
 const books = ref<CatalogBook[]>([]);
+const learningSpaces = ref<LearningWorkspace[]>([]), learningError = ref(''), learningLoading = ref(false);
+const selectedLearningId = ref<string | null>(network.value.workspace?.learning_workspace_id ?? savedLearningSelection());
+const selectedLearning = computed(() => learningSpaces.value.find(space => space.learning_workspace_id === selectedLearningId.value) ?? null);
+const currentLearningGoal = computed(() => {
+  const scene = network.value.workspace?.learning_workspace_goal;
+  const saved = learningSpaces.value.find(space => space.learning_workspace_id === network.value.workspace?.learning_workspace_id)?.goal;
+  return saved && (!scene || saved.revision >= scene.revision) ? saved : scene;
+});
+const createGoal = ref(''), goalDraft = ref(''), editingGoal = ref(false);
+const recordsOpen = ref(false), legacyRecordsOpen = ref(false);
+const sharedOpen = ref(false);
+const memberBooks = computed(() => selectedLearning.value?.members.map(member => ({ ...member,
+  book: books.value.find(book => samePublication(book.published_book_ref, member.published_book_ref)),
+})) ?? []);
+const availableBooks = computed(() => books.value.filter(book => !selectedLearning.value?.members.some(member => samePublication(member.published_book_ref, book.published_book_ref))));
+function samePublication(left: PublishedBookRef, right: PublishedBookRef) { return left.book_id === right.book_id && left.publication_id === right.publication_id; }
+async function loadLearningSpaces() {
+  learningLoading.value = true; learningError.value = '';
+  try { learningSpaces.value = (await learningWorkspaces.list()).workspaces; }
+  catch (failure) { if (!(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) learningError.value = failure instanceof Error ? failure.message : String(failure); }
+  finally { learningLoading.value = false; }
+}
+function selectLearning(space: LearningWorkspace | null) {
+  selectedLearningId.value = space?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value);
+  editingGoal.value = false; goalDraft.value = ''; error.value = '';
+  recordsOpen.value = false; legacyRecordsOpen.value = false;
+}
+function updateLearning(space: LearningWorkspace) {
+  learningSpaces.value = [space, ...learningSpaces.value.filter(item => item.learning_workspace_id !== space.learning_workspace_id)];
+}
+async function createLearning() {
+  if (!createGoal.value.trim() || busy.value) return;
+  busy.value = true; error.value = '';
+  try { const space = await learningWorkspaces.create(createGoal.value.trim()); updateLearning(space); selectLearning(space); createGoal.value = ''; }
+  catch (failure) { showFailure(failure); }
+  finally { busy.value = false; }
+}
+async function startSharedLearning(space: LearningWorkspace) {
+  updateLearning(space); sharedOpen.value = false; await enterLearning(space);
+}
+async function updateSharedLearning(space: LearningWorkspace) {
+  updateLearning(space);
+  const current = network.value.workspace;
+  if (current?.learning_workspace_id !== space.learning_workspace_id
+    || space.members.some(member => member.readable && samePublication(member.published_book_ref, current.published_book_ref))) return;
+  const next = space.members.find(member => member.readable && member.published_book_ref.book_id === current.published_book_ref.book_id)
+    ?? space.members.find(member => member.readable);
+  if (!next) return;
+  busy.value = true; error.value = '';
+  try { await openLearningMaterial(next.published_book_ref, space.learning_workspace_id); }
+  catch (failure) { showFailure(failure); }
+  finally { busy.value = false; }
+}
+async function archiveLearning() {
+  const space = selectedLearning.value; if (!space || busy.value) return;
+  busy.value = true; error.value = '';
+  try { updateLearning(await learningWorkspaces.archive(space.learning_workspace_id, !space.archived)); }
+  catch (failure) { showFailure(failure); }
+  finally { busy.value = false; }
+}
+async function reviseGoal() {
+  const space = selectedLearning.value;
+  if (!space || !goalDraft.value.trim() || busy.value) return;
+  busy.value = true; error.value = '';
+  try {
+    updateLearning(await learningWorkspaces.goal(space.learning_workspace_id, goalDraft.value.trim(), space.goal.constraints)); editingGoal.value = false;
+    if (network.value.workspace?.learning_workspace_id === space.learning_workspace_id) {
+      const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${network.value.workspace.workspace_id}`); installWorkspace(latest);
+      window.dispatchEvent(new Event('tutor-state-changed'));
+    }
+  } catch (failure) { showFailure(failure); }
+  finally { busy.value = false; }
+}
+async function changeMember(reference: PublishedBookRef, add: boolean) {
+  const space = selectedLearning.value; if (!space || busy.value) return;
+  busy.value = true; error.value = '';
+  try { updateLearning(await learningWorkspaces.member(space.learning_workspace_id, reference, add)); }
+  catch (failure) { showFailure(failure); }
+  finally { busy.value = false; }
+}
+async function enterLearning(space: LearningWorkspace) {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换工作区')) return;
+  selectLearning(space);
+  if (!space.members.some(item => item.readable)) return;
+  try {
+    if (!network.value.workspace) await restoreAvailableScene();
+    const previous = network.value.workspace?.learning_workspace_positions?.[space.learning_workspace_id];
+    const member = space.members.find(item => item.readable && previous && samePublication(item.published_book_ref, previous)) ?? space.members.find(item => item.readable);
+    if (member) await openBook(member.published_book_ref, space.learning_workspace_id);
+  } catch (failure) { showFailure(failure); }
+}
+async function restoreAvailableScene() {
+  try { await recoverWorkspaceBinding(); }
+  catch (failure) {
+    if (!(failure instanceof ApiError && failure.status === 404)) throw failure;
+    sessionStorage.removeItem(workspaceStorageKey());
+  }
+}
+function manageCurrentLearning() {
+  selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null;
+  saveLearningSelection(selectedLearningId.value); void showLibrary();
+}
 const libraryOpen = ref(!network.value.workspace);
 const resumption = ref<ReadingResumption | null>(null), resumptionError = ref(''), resumptionLoading = ref(false);
 const resumptionBook = computed(() => books.value.find(book =>
@@ -60,7 +175,7 @@ async function loadResumption() {
     if (scope === sceneKey()) {
       const unavailable = failure instanceof ApiError && failure.status === 404;
       if (unavailable) resumption.value = null;
-      resumptionError.value = unavailable ? '原阅读材料或现场已不可用，请选择其他材料。' : '接续记录暂时无法读取，请重试。';
+      resumptionError.value = unavailable ? '原书籍或阅读记录已不可用，请选择其他材料。' : '接续记录暂时无法读取，请重试。';
     }
   } finally { if (scope === sceneKey()) resumptionLoading.value = false; }
 }
@@ -68,14 +183,14 @@ async function showLibrary() {
   if (readerApp.value && !await readerApp.value.beforeNoteLeave('返回书架')) return;
   libraryOpen.value = true; error.value = '';
   try { await catalog(); await loadResumption(); }
-  catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { showFailure(failure); }
 }
 async function continueReading() {
   if (!resumption.value || busy.value) return;
   busy.value = true; error.value = '';
-  try { await recoverWorkspaceBinding(resumption.value); await recover(); libraryOpen.value = false; suspended.value = false; }
+  try { await recoverWorkspaceBinding(resumption.value); await recover(); selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value); libraryOpen.value = false; suspended.value = false; }
   catch (failure) {
-    error.value = failure instanceof Error ? failure.message : String(failure);
+    showFailure(failure);
     await loadResumption();
   } finally { busy.value = false; }
 }
@@ -88,7 +203,10 @@ function bookLabel(book: CatalogBook) {
 const readerApp = ref<InstanceType<typeof App> | null>(null);
 const key = computed(sceneKey);
 const appKey = computed(readerKey);
-const chatDraft = ref<ChatDraft | null>(null);
+const chatDraft = ref<ChatDraft | null>(readLearningDraft(learningDraftKey()));
+let draftStorageKey = learningDraftKey();
+let restoringDraft = false;
+watch(chatDraft, draft => { if (!restoringDraft) saveLearningDraft(draftStorageKey, draft); }, { flush: 'sync' });
 const allowanceOpen = ref(false), settingsOpen = ref(false), mcpOpen = ref(false);
 function showMcp() {
   mcpOpen.value = true;
@@ -131,8 +249,11 @@ watch([() => network.value.epoch, () => network.value.identity?.user_id, () => n
 // A transport generation changes on reattachment; the user's unsent question does not.
 watch(() => {
   const n = network.value, w = n.workspace;
-  return JSON.stringify([n.epoch, n.identity?.user_id, w?.workspace_id, w?.published_book_ref, w?.selected_chat]);
-}, () => { chatDraft.value = null; }, { flush: 'sync' });
+  return JSON.stringify([n.epoch, n.identity?.user_id, w?.workspace_id, w?.learning_workspace_id, w?.published_book_ref, w?.selected_chat]);
+}, () => {
+  draftStorageKey = learningDraftKey(); restoringDraft = true;
+  chatDraft.value = readLearningDraft(draftStorageKey); restoringDraft = false;
+}, { flush: 'sync' });
 const recapTarget = ref<RecapTarget | null>(null), openingRecap = ref(false);
 async function openRecapPublication(target: RecapTarget) {
   const publication = targetPublication(target);
@@ -143,7 +264,7 @@ async function openRecapPublication(target: RecapTarget) {
     await api.openBook(JSON.stringify(publication));
     await api.agentHistorySelect(target.session_id);
     recapTarget.value = target;
-  } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+  } catch (failure) { showFailure(failure); }
   finally { openingRecap.value = false; }
 }
 const linkedRequested = new URLSearchParams(location.search).get('linked') === '1';
@@ -154,7 +275,7 @@ async function showLinkedSource(id: string) {
   const turn = linkedPresentation.value?.turn_id, scope = sceneKey();
   if (!turn) return;
   try { const result = await api.agentSourceResolve(turn, id); if (scope === sceneKey()) linkedSource.value = result; }
-  catch (failure) { if (scope === sceneKey()) error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { if (scope === sceneKey()) showFailure(failure); }
 }
 async function openLinkedSource() {
   const turn = linkedPresentation.value?.turn_id, source = linkedSource.value, scope = sceneKey();
@@ -163,7 +284,7 @@ async function openLinkedSource() {
     error.value = '来源已定位，请回原阅读窗口查看';
     window.opener?.postMessage({ kind: 'reader-linked-reader-changed' }, location.origin); window.opener?.focus();
   } }
-  catch (failure) { if (scope === sceneKey()) error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { if (scope === sceneKey()) showFailure(failure); }
 }
 const suspended = ref(false);
 async function receiveLinked(event: MessageEvent) {
@@ -180,7 +301,7 @@ async function receiveLinked(event: MessageEvent) {
 async function followUp(message: string, receipt: import('./generated/PresentationFollowUp').PresentationFollowUp) {
   const scope = sceneKey();
   try { await api.agentRunCreate(message, { presentation_follow_up: receipt }); if (scope === sceneKey()) error.value = '问题已提交到原对话，可回原窗口查看回答'; }
-  catch (failure) { if (scope === sceneKey()) error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { if (scope === sceneKey()) showFailure(failure); }
 }
 function pageHide() {
   invalidateLinkedWindows();
@@ -196,23 +317,29 @@ function pageHide() {
 const pending = ref(0);
 const pendingItems = ref<PendingSubmission[]>([]);
 watch(() => network.value.identity?.user_id, () => {
-  pendingItems.value = []; pending.value = 0; linkedPresentation.value = null; books.value = [];
+  videos.value = []; selectedVideo.value = null;
+  pendingItems.value = []; pending.value = 0; linkedPresentation.value = null; books.value = []; learningSpaces.value = [];
+  selectedLearningId.value = savedLearningSelection(); sharedOpen.value = false;
 }, { flush: 'sync' });
 let identityCheck: Promise<void> | null = null;
 const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('understand-book:authentication');
 network.value = { ...network.value, enabled: true };
-async function catalog() { books.value = (await networkFetch<{ books: typeof books.value }>('GET', '/library')).books; }
+async function catalog() {
+  books.value = (await networkFetch<{ books: typeof books.value }>('GET', '/library')).books;
+  videos.value = (await networkFetch<{ videos: PreparingVideo[] }>('GET', '/videos')).videos;
+  await loadLearningSpaces();
+}
 async function restore() {
   await recoverWorkspaceBinding();
   await recover();
 }
 async function recover() {
   try { await recoverSubmissions(); pendingChanged(); }
-  catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { showFailure(failure); }
 }
 async function retryOriginal(key: string) {
   try { await retrySubmission(key); pendingChanged(); }
-  catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+  catch (failure) { showFailure(failure); }
 }
 async function checkIdentity() {
   if (accountView.value) { checking.value = false; return; }
@@ -237,12 +364,12 @@ async function checkIdentity() {
       suspended.value = false;
       if (network.value.workspace && network.value.linked) {
         const current = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${network.value.workspace.workspace_id}`);
-        installWorkspace(current); await recover();
+        installWorkspace(current); await loadLearningSpaces(); await recover();
       }
       window.dispatchEvent(new Event('workspace-recovered'));
       await openAccountDestination();
     } catch (failure) {
-      if (network.value.identity) error.value = failure instanceof Error ? failure.message : String(failure);
+      if (network.value.identity) showFailure(failure);
     } finally { checking.value = false; identityCheck = null; }
   })();
   return identityCheck;
@@ -278,18 +405,23 @@ async function logout() {
   } finally { busy.value = false; }
   channel?.postMessage('changed');
 }
-async function openBook(reference: PublishedBookRef) {
+async function openBook(reference: PublishedBookRef, learningId: string | null = selectedLearningId.value) {
   if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换材料')) return;
   busy.value = true; error.value = '';
   try {
-    if (network.value.workspace) await api.openBook(JSON.stringify(reference));
-    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', { attachment_id: network.value.attachment, published_book_ref: reference }));
+    if (!network.value.workspace) await restoreAvailableScene();
+    if (network.value.workspace) await openLearningMaterial(reference, learningId);
+    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', { attachment_id: network.value.attachment, published_book_ref: reference, learning_workspace_id: learningId }));
+    selectedLearningId.value = learningId; saveLearningSelection(learningId);
     libraryOpen.value = false; suspended.value = false;
-  } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); }
+  } catch (failure) { showFailure(failure); }
   finally { busy.value = false; }
 }
 function pendingChanged() { pendingItems.value = pendingSubmissions(); pending.value = pendingItems.value.length; }
 function onVisible() { if (document.visibilityState !== 'hidden') void checkIdentity(); }
+function onLearningGoalChanged(event: Event) {
+  if ((event as CustomEvent<{ learning_workspace_id: string }>).detail?.learning_workspace_id === network.value.workspace?.learning_workspace_id) void loadLearningSpaces();
+}
 async function onAccountChange(event: MessageEvent) {
   if (event.data === 'profile-changed') { void checkIdentity(); return; }
   const previous = identityCheck;
@@ -302,6 +434,7 @@ onMounted(() => {
   window.addEventListener('pagehide', pageHide);
   window.addEventListener('message', receiveLinked);
   window.addEventListener('submission-pending-changed', pendingChanged);
+  window.addEventListener('learning-workspace-goal-changed', onLearningGoalChanged);
   channel?.addEventListener('message', onAccountChange);
   document.addEventListener('visibilitychange', onVisible);
   window.addEventListener('pageshow', onVisible); window.addEventListener('online', onVisible); window.addEventListener('focus', onVisible);
@@ -310,6 +443,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('pagehide', pageHide);
   window.removeEventListener('message', receiveLinked);
   window.removeEventListener('submission-pending-changed', pendingChanged);
+  window.removeEventListener('learning-workspace-goal-changed', onLearningGoalChanged);
   channel?.close(); document.removeEventListener('visibilitychange', onVisible);
   window.removeEventListener('pageshow', onVisible); window.removeEventListener('online', onVisible); window.removeEventListener('focus', onVisible);
 });
@@ -345,8 +479,13 @@ onBeforeUnmount(() => {
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
+    <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
-    <App ref="readerApp" v-else-if="!suspended && network.workspace" v-show="!libraryOpen" :reader-visible="!libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <section v-if="!selectedVideo && !libraryOpen && network.workspace?.learning_workspace_id && currentLearningGoal" class="workspace-goal-bar" aria-label="工作区大目标">
+      <div><span>工作区大目标</span><p>{{ currentLearningGoal.text }}</p></div>
+      <button v-if="!network.linked" :disabled="busy" @click="manageCurrentLearning">工作区与资料</button>
+    </section>
+    <App ref="readerApp" v-if="!suspended && !network.linked && !openingRecap && network.workspace" v-show="!selectedVideo && !libraryOpen" :reader-visible="!selectedVideo && !libraryOpen" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
           <summary>账号</summary>
@@ -360,13 +499,64 @@ onBeforeUnmount(() => {
         </details>
       </template>
     </App>
-    <p v-else-if="linkedRequested" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
-    <main v-if="!linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
+    <p v-if="linkedRequested && !linkedPresentation" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
+    <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
       <header class="network-library-head">
-        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="28" height="28" alt="" />你的书架</p><h1>选择阅读材料</h1></div>
+        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="28" height="28" alt="" />你的学习</p><h1>学习工作区</h1></div>
         <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
       </header>
-      <section v-if="resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
+      <section class="learning-spaces" aria-label="学习工作区" :aria-busy="learningLoading">
+        <form class="learning-create" @submit.prevent="createLearning">
+          <label>这次想学会什么？<input v-model="createGoal" placeholder="比如：学习深度学习，或期末考试冲刺" required :disabled="busy" /></label>
+          <button :disabled="busy || !createGoal.trim()">创建工作区</button>
+        </form>
+        <p v-if="learningError" role="alert">工作区暂时无法读取：{{ learningError }} <button @click="loadLearningSpaces">重试工作区</button></p>
+        <div class="learning-space-list">
+          <article v-for="space in learningSpaces" :key="space.learning_workspace_id" class="learning-space-card" :class="{ selected: selectedLearningId === space.learning_workspace_id }">
+            <p>{{ space.goal.text }}</p><small>{{ space.members.length }} 份资料{{ space.archived ? ' · 已归档' : '' }}</small>
+            <div><button :disabled="busy" @click="selectLearning(space)">管理工作区</button><button :disabled="busy || space.archived" @click="enterLearning(space)">打开工作区</button></div>
+          </article>
+        </div>
+      </section>
+      <section class="shared-entry">
+        <button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen">{{ sharedOpen ? '收起共享工作区' : '浏览共享预构建工作区' }}</button>
+        <SharedWorkspaceCatalog v-if="sharedOpen" :books="books" @started="startSharedLearning" />
+      </section>
+      <section v-if="selectedLearning" class="learning-details" aria-label="当前工作区">
+        <header><div><span class="network-library-kicker">工作区大目标 · 第 {{ selectedLearning.goal.revision }} 版</span><h2>{{ selectedLearning.goal.text }}</h2></div>
+          <button :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">修改大目标</button></header>
+        <form v-if="editingGoal" class="learning-goal-edit" @submit.prevent="reviseGoal">
+          <label>工作区大目标<textarea v-model="goalDraft" required :disabled="busy" /></label>
+          <button :disabled="busy || !goalDraft.trim()">保存大目标</button><button type="button" :disabled="busy" @click="editingGoal = false">取消修改</button>
+        </form>
+        <p v-if="selectedLearning.goal.constraints.length">{{ selectedLearning.goal.constraints.join('；') }}</p>
+        <SharedWorkspaceInstance :workspace="selectedLearning" :books="books" @updated="updateSharedLearning" />
+        <PersonalPreparations :key="selectedLearning.learning_workspace_id" :workspace="selectedLearning" @ready="catalog" @open="reference => openBook(reference, selectedLearning!.learning_workspace_id)" @allowance="allowanceOpen = true" />
+        <p v-if="!memberBooks.length" class="learning-empty">工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。</p>
+        <h3>工作区资料</h3>
+        <div class="learning-members">
+          <article v-for="member in memberBooks" :key="JSON.stringify(member.published_book_ref)" class="learning-member">
+            <strong>{{ member.book ? bookLabel(member.book) : member.published_book_ref.book_id }}</strong>
+            <span v-if="!member.readable">资料暂不可读</span>
+            <div><button :disabled="busy || !member.readable || selectedLearning.archived" @click="openBook(member.published_book_ref)">{{ network.workspace?.learning_workspace_id === selectedLearningId && samePublication(network.workspace.published_book_ref, member.published_book_ref) ? '继续阅读' : '开始阅读' }}</button>
+              <button :disabled="busy || selectedLearning.archived" @click="changeMember(member.published_book_ref, false)">移出资料</button></div>
+          </article>
+        </div>
+        <details v-if="!selectedLearning.archived" class="learning-add" :open="!memberBooks.length">
+          <summary>加入资料</summary>
+          <div v-for="book in availableBooks" :key="JSON.stringify(book.published_book_ref)" class="learning-add-book"><span>{{ bookLabel(book) }}</span><button :disabled="busy" @click="changeMember(book.published_book_ref, true)">加入工作区</button></div>
+          <p v-if="!availableBooks.length">当前可用资料均已加入。</p>
+        </details>
+        <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? '收起已有学习记录' : '带入已有学习记录' }}</button>
+        <LearningRecordsPanel v-if="recordsOpen" :target="selectedLearning" :key="selectedLearning.learning_workspace_id" @refresh-goal="loadLearningSpaces" />
+        <div class="learning-archive"><p>{{ selectedLearning.archived ? '工作区已归档，学习记录与来源保留。恢复后可继续学习。' : '归档后暂停主动教学和新增后台整理，学习记录与来源保留。' }}</p><button :disabled="busy" @click="archiveLearning">{{ selectedLearning.archived ? '恢复工作区' : '归档工作区' }}</button></div>
+        <button class="learning-legacy" :disabled="busy" @click="selectLearning(null)">返回书架</button>
+      </section>
+      <section class="learning-records-entry">
+        <button :aria-expanded="legacyRecordsOpen" @click="legacyRecordsOpen = !legacyRecordsOpen">{{ legacyRecordsOpen ? '收起旧记录' : '旧聊天与学习记录' }}</button>
+        <LearningRecordsPanel v-if="legacyRecordsOpen" />
+      </section>
+      <section v-if="!selectedLearning && resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
         <div class="resumption-cover"><BookCover :title="bookTitle({ title: resumptionBook.title, book_id: resumption.published_book_ref.book_id })" :cover="resumptionBook.cover" /></div>
         <div class="resumption-content">
           <p class="network-library-kicker">接着上次读</p>
@@ -380,13 +570,15 @@ onBeforeUnmount(() => {
       </section>
       <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">正在读取接续记录…</p>
       <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">重试</button></p>
-      <div class="network-library-grid">
+      <h2 v-if="!selectedLearning" class="library-section-title">书架</h2>
+      <div v-if="!selectedLearning" class="network-library-grid">
+        <button v-for="video in videos" :key="video.video.media_id" class="network-book-card" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
         <button v-for="book in books" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
           <BookCover :title="bookTitle({ title: book.title, book_id: book.published_book_ref.book_id })" :cover="book.cover" />
           <strong>{{ bookLabel(book) }}</strong>
         </button>
       </div>
-      <p v-if="!books.length">账号已创建，等待管理员开通材料。</p>
+      <p v-if="!books.length && !videos.length">账号已创建，等待管理员开通材料。</p>
     </main>
     <AccountMcp v-if="mcpOpen" @close="closeMcp" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
@@ -401,6 +593,52 @@ onBeforeUnmount(() => {
   </div>
 </template>
 <style scoped>
+.workspace-goal-bar { flex: none; display: flex; align-items: center; gap: 16px; justify-content: space-between; padding: 8px 24px; background: var(--surface-soft, #f4f0e8); border-bottom: 1px solid var(--line); }
+.workspace-goal-bar > div { min-width: 0; }
+.workspace-goal-bar span { color: var(--muted); font-size: 11px; }
+.workspace-goal-bar p { margin: 2px 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-goal-bar button { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+.learning-spaces, .learning-details, .library-section-title { max-width: 1100px; margin: 0 auto 28px; }
+.shared-entry { max-width: 1100px; margin: 0 auto 28px; }.shared-entry>button { padding: 10px 15px; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }.learning-archive { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }.learning-archive p { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 0; }
+.learning-records-entry { max-width: 1100px; margin: 0 auto 28px; }.learning-records-entry > button { padding: 9px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }.learning-records-toggle { margin-right: 12px; }
+.learning-create { display: flex; gap: 12px; align-items: end; padding: 20px; border-radius: 18px; background: var(--surface-soft, #f4f0e8); }
+.learning-create label { flex: 1; margin: 0; color: var(--muted); font-size: 13px; }
+.learning-create input, .learning-goal-edit textarea { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); color: var(--ink); padding: 10px; }
+.learning-spaces button, .learning-details button { border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }
+.learning-create > button { flex: none; background: var(--brand-accent); color: var(--brand-on-accent); }
+.learning-spaces button:disabled, .learning-details button:disabled { opacity: .5; cursor: default; }
+.learning-space-list { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.learning-space-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; }
+.learning-space-card.selected { border-color: var(--brand-accent); background: var(--surface-soft); }
+.learning-space-card p { margin: 0 0 8px; line-height: 1.6; overflow-wrap: anywhere; }
+.learning-space-card small { color: var(--muted); }
+.learning-space-card > div, .learning-member > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: 13px; }
+.learning-details { border-top: 1px solid var(--line); padding-top: 24px; }
+.learning-details header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.learning-details header > div { min-width: 0; }
+.learning-details header > button { flex: none; }
+.learning-details h2 { margin: 6px 0 12px; font-weight: 500; font-size: 22px; overflow-wrap: anywhere; }
+.learning-details h3, .library-section-title { font-size: 16px; font-weight: 500; }
+.learning-goal-edit { max-width: 680px; }
+.learning-goal-edit textarea { min-height: 80px; font: inherit; }
+.learning-goal-edit button + button { margin-left: 8px; }
+.learning-empty { color: var(--muted); line-height: 1.8; }
+.learning-members { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.learning-member { min-width: 0; padding: 16px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
+.learning-member > span { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
+.learning-add { margin: 20px 0; }
+.learning-add summary { cursor: pointer; padding: 12px 0; }
+.learning-add-book { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.learning-add-book span { min-width: 0; overflow-wrap: anywhere; }
+.learning-add-book button { flex: none; }
+@media (max-width: 540px) {
+  .workspace-goal-bar { padding: 6px 12px; gap: 8px; }
+  .workspace-goal-bar button { min-height: 44px; font-size: 12px; }
+  .learning-create { flex-direction: column; align-items: stretch; }
+  .learning-create input, .learning-goal-edit textarea { font-size: 16px; }
+  .learning-space-list, .learning-members { grid-template-columns: minmax(0, 1fr); }
+  .learning-spaces button, .learning-details button { min-height: 44px; }
+}
 .network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
 .network-login h1, .network-library-head h1 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; line-height: 1.45; }

@@ -1,0 +1,36 @@
+{
+  "status": "completed",
+  "presentation_id": "presentation-1791469383816308218-2",
+  "revision": 1,
+  "tool_counts": {
+    "book.search_text": 7,
+    "book.structure": 1,
+    "tool.search": 1,
+    "book.text": 8,
+    "presentation.author": 15,
+    "source.present": 7
+  },
+  "media_calls": [
+    {
+      "call_id": "01a11be5-e460-7090-b374-232d8f0c5fb6",
+      "estimated_image_tokens": 4096
+    },
+    {
+      "call_id": "01a11be5-914d-7452-b422-7272917a8e80",
+      "estimated_image_tokens": 6144
+    },
+    {
+      "call_id": "01a11be3-e3d5-73d3-b2af-c58c88c5402c",
+      "estimated_image_tokens": 7168
+    }
+  ],
+  "effects": [
+    {
+      "kind": "presentation",
+      "reference": {
+        "presentation_id": "presentation-1791469383816308218-2",
+        "revision": 1
+      }
+    }
+  ]
+}

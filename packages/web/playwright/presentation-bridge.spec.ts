@@ -179,3 +179,62 @@ test("editing focus reports only a boolean bound to the host content generation"
     "channel", "editing", "generation", "kind",
   ]);
 });
+
+test('locating a registered teaching region reveals the same objects without changing their model state', async ({ page }) => {
+  const bridge = readFileSync(new URL('../src/presentation-bridge.js', import.meta.url), 'utf8');
+  await page.goto('about:blank');
+  await page.evaluate(bridge => {
+    (window as any).events = [];
+    window.addEventListener('message', event => (window as any).events.push(event.data));
+    const frame = document.createElement('iframe'); frame.setAttribute('sandbox', 'allow-scripts');
+    frame.srcdoc = `<script>(${bridge})({channel:'teaching',sources:[],initialState:{},teachingBinding:{regions:[{region_id:'retained'}]}})</script>
+      <p style="height:900px">章节路线只选择甲和丙。</p><section data-teaching-region="retained"><p>候选目录仍然保留乙。</p><input id="selection" value="甲、丙"></section>
+      <script>presentation.registerStateReader(()=>({values:{selected:document.querySelector('#selection').value}}));</script>`;
+    document.body.append(frame);
+  }, bridge);
+  await expect.poll(() => page.evaluate(() => (window as any).events.some((event: any) => event.kind === 'ready'))).toBe(true);
+  const frame = page.frameLocator('iframe');
+  await page.locator('iframe').evaluate((element: HTMLIFrameElement) => element.contentWindow!.postMessage({ channel: 'teaching', kind: 'locate-region', region_id: 'retained' }, '*'));
+  await expect.poll(() => frame.locator('body').evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect(frame.locator('#selection')).toHaveValue('甲、丙');
+  expect(await frame.locator('[data-teaching-region]').evaluate(element => element.getAnimations().length)).toBe(1);
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'state'))).toEqual([]);
+  await page.locator('iframe').evaluate((element: HTMLIFrameElement) => element.contentWindow!.postMessage({ channel: 'teaching', kind: 'locate-region', region_id: 'selection' }, '*'));
+  await expect.poll(() => page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'region-located').at(-1))).toMatchObject({ region_id: 'selection', located: false });
+});
+
+test('only explicitly revealed, registered help is acknowledged; local exploration and prefilled wording stay distinct', async ({ page }) => {
+  const bridge = readFileSync(new URL('../src/presentation-bridge.js', import.meta.url), 'utf8');
+  await page.goto('about:blank');
+  await page.evaluate(bridge => {
+    (window as any).events = [];
+    window.addEventListener('message', event => {
+      (window as any).events.push(event.data);
+      if (event.data.kind === 'teaching-help') (event.source as Window).postMessage({ channel: 'teaching', kind: 'teaching-help-recorded', request_id: event.data.request_id }, '*');
+    });
+    const frame = document.createElement('iframe'); frame.setAttribute('sandbox', 'allow-scripts');
+    frame.srcdoc = `<script>(${bridge})({channel:'teaching',sources:[],initialState:{},teachingBinding:{regions:[{region_id:'help'}]}})</script>
+      <input id="selected" type="checkbox"><section id="help" hidden>没有选用乙，不等于删除乙。<span hidden>不应当作已展示</span></section>
+      <button id="reveal" onclick="document.querySelector('#help').hidden=false;presentation.reportTeachingHelp('invite','explanation','help').then(()=>document.querySelector('#done').textContent='已记录')">看解释</button>
+      <button id="prefill" onclick="presentation.requestTeachingAction('invite','乙仍然存在。')">用这段文字继续</button><output id="done"></output>`;
+    document.body.append(frame);
+  }, bridge);
+  const frame = page.frameLocator('iframe');
+  await expect(frame.locator('#selected')).toBeVisible();
+  await frame.locator('#selected').check();
+  const hiddenError = await frame.locator('body').evaluate(async () => {
+    try { await (window as any).presentation.reportTeachingHelp('invite', 'hint', 'help'); return ''; }
+    catch (failure) { return (failure as Error).message; }
+  });
+  expect(hiddenError).toContain('尚未显示');
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'teaching-help'))).toEqual([]);
+  await frame.locator('#reveal').click();
+  await expect(frame.locator('#done')).toHaveText('已记录');
+  const help = await page.evaluate(() => (window as any).events.find((event: any) => event.kind === 'teaching-help'));
+  expect(help).toMatchObject({ move_id: 'invite', help_kind: 'explanation', region_id: 'help' });
+  expect(help.text).toContain('没有选用乙，不等于删除乙');
+  expect(help.text).not.toContain('不应当作已展示');
+  await frame.locator('#prefill').click();
+  await expect.poll(() => page.evaluate(() => (window as any).events.find((event: any) => event.kind === 'teaching-action'))).toMatchObject({ move_id: 'invite', response: '乙仍然存在。' });
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'teaching-help'))).toHaveLength(1);
+});

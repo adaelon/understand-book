@@ -35,7 +35,7 @@ export function readDshExecutorObservation(value: unknown): DshExecutorObservati
       || e.version !== "automatic_build_executor_mcp_error.v2"
       || !["interrupted", "retryable_failure"].includes(e.status)
       || !["bootstrap", "session", "transport", "candidate_sink", "writer", "internal"].includes(e.category)
-      || !["invalid_arguments", "protocol_incompatible", "connection_terminal", "handoff_ref_mismatch", "bootstrap_unavailable", "stale_generation_session", "lease_expired", "candidate_request_too_large", "candidate_sink_unavailable", "writer_failed", "executor_internal"].includes(e.diagnostic_code)
+      || !["invalid_arguments", "protocol_incompatible", "connection_terminal", "handoff_ref_mismatch", "bootstrap_unavailable", "stale_generation_session", "lease_expired", "candidate_request_too_large", "candidate_sink_unavailable", "writer_failed", "executor_internal", "executor_media_capability_unavailable", "executor_media_context_limit"].includes(e.diagnostic_code)
       || !["open", "input_delivery", "generation_start", "candidate_submit"].includes(e.phase)
       || (e.field !== undefined && !["arguments", "version", "opaque_handoff_ref"].includes(e.field))) throw new Error("DSH Engine observation is invalid");
   }

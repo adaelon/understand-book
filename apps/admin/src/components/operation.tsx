@@ -8,6 +8,8 @@ import {
 } from "react";
 import { ApiError, queryClient, session } from "@/lib/api";
 import { OperationJournal, type Receipt } from "@/lib/operations";
+import { percentage, milliPercentage } from "@/lib/allowance";
+import type { Period } from "@/lib/types";
 import { date, money } from "@/lib/format";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -39,7 +41,12 @@ const fieldNames: Record<string, string> = {
   delta_units: "次数差额（次）",
   amount_fen: "实际收款（元）",
   delta_fen: "收款差额（元）",
-  delta_micro_cny: "授予 / 调整额度（元）",
+  delta_micro_cny: "内部额度差额（元）",
+  delta_milli_percent: "增加 / 调整额度",
+  basis_version: "固定基准版本",
+  title: "方案名称",
+  instructions: "收款说明",
+  enabled: "启用方案",
   provider_cost_micro_cny: "供应商成本（元）",
   starts_at: "开始时间",
   expires_at: "到期时间",
@@ -52,6 +59,15 @@ const fieldNames: Record<string, string> = {
   disabled: "停用账号",
   waive_account: "账号免扣",
   published_book_ref: "材料发布",
+  release_id: "共享发布标识",
+  expected_version: "提交时的最新版本",
+  visible_to_users: "可见账号",
+  archived: "归档共享入口",
+  task_id: "运营任务",
+  name: "名称",
+  max_micro_cny: "平台预算上限（元）",
+  reserved_per_execution_micro_cny: "每次执行预计占用（元）",
+  expected_revision: "提交时的任务版本",
 };
 function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
   return (
@@ -61,9 +77,9 @@ function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
         <dd>{money(body.pack_count * 1000, 2)} 元 / {body.pack_count * 1000} 次</dd>
       </>}
       {Object.entries(body)
-        .filter(([key]) => fieldNames[key])
+        .filter(([key, value]) => fieldNames[key] && !(key === "max_micro_cny" && value == null))
         .map(([key, value]) => {
-          const text = key.endsWith("_fen")
+          const text = key === "delta_milli_percent" ? milliPercentage(value as number) : key.endsWith("_fen")
             ? money(value as number, 2)
             : key.endsWith("_micro_cny")
               ? money(value as number | null)
@@ -83,6 +99,10 @@ function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
             </div>
           );
         })}
+      {body.manifest != null && (() => {
+        const manifest = body.manifest as { name: string; public_goal: string; materials: { published_book_ref: { book_id: string; publication_id: string }; required_capabilities: string[] }[] };
+        return <><dt>共享工作区名称</dt><dd>{manifest.name}</dd><dt>公开目标</dt><dd>{manifest.public_goal}</dd><dt>资料版本</dt><dd>{manifest.materials.map(material => `${material.published_book_ref.book_id} · ${material.published_book_ref.publication_id}（${material.required_capabilities.join('、')}）`).join('；')}</dd></>;
+      })()}
     </dl>
   );
 }
@@ -225,21 +245,18 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
           {receipt.allowance_period != null && (
             <p>
               提交后可用额度：
-              {money(
-                (
-                  receipt.allowance_period as {
-                    balance: { available_micro_cny: number };
-                  }
-                ).balance.available_micro_cny,
-              )}{" "}
-              元
+              {percentage((receipt.allowance_period as Period).balance.percentages?.available)}
+
             </p>
           )}
+          {receipt.parameters && !receipt.kind.startsWith("mcp-") && <SubmissionSummary body={receipt.parameters} />}
           {receipt.receipt_id != null && (
             <p className="break-all text-sm">
               收款记录：{String(receipt.receipt_id)}
             </p>
           )}
+          {receipt.workspace_release != null && (() => { const release = receipt.workspace_release as {release_id: string; version: number; readiness_at_publication:{status:string}}; return <p>共享发布 {release.release_id} · v{release.version}：{release.readiness_at_publication.status === 'ready' ? '完整可用' : '尚未完整就绪，请查看版本中的资料与授权情况。'}</p>; })()}
+          {receipt.operator_build != null && <p>运营任务已保存，可打开任务查看最新准备状态与费用。</p>}
           {receipt.kind.startsWith("mcp-") && <>
             {receipt.parameters && <SubmissionSummary body={receipt.parameters} />}
             {receipt.call_pack && <p>
@@ -289,6 +306,7 @@ export function OperationDialog({
   onSubmit,
   open,
   onOpenChange,
+  submitLabel = "确认提交",
 }: {
   title: string;
   description: string;
@@ -296,6 +314,7 @@ export function OperationDialog({
   onSubmit: (data: FormData) => Promise<boolean>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  submitLabel?: string;
 }) {
   const ops = useOperations();
   const [error, setError] = useState("");
@@ -335,7 +354,7 @@ export function OperationDialog({
               {error}
             </p>
             <Button className="mt-3 w-full" type="submit">
-              {ops.busy ? "正在提交…" : "确认提交"}
+              {ops.busy ? "正在提交…" : submitLabel}
             </Button>
           </fieldset>
         </form>

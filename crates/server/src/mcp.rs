@@ -917,6 +917,8 @@ mod tests {
             ],
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:alpha".into(),
                     node_type: GraphNodeType::Entity,
                     name: "alpha".into(),
@@ -924,6 +926,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:beta".into(),
                     node_type: GraphNodeType::Entity,
                     name: "beta".into(),
@@ -931,6 +935,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:gamma".into(),
                     node_type: GraphNodeType::Entity,
                     name: "gamma".into(),
@@ -940,6 +946,7 @@ mod tests {
             ],
             graph_edges: vec![
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:alpha".into(),
                     target: "entity:beta".into(),
                     edge_type: "builds_on".into(),
@@ -948,6 +955,7 @@ mod tests {
                     weight: 0.9,
                 },
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:alpha".into(),
                     target: "entity:gamma".into(),
                     edge_type: "exemplifies".into(),

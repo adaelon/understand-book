@@ -1,0 +1,149 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "当前步 w_k = w_5 | **12.756480**",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "w",
+      "value": "12.756480",
+      "expected": 12.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "下一步 w_{k+1} = w_6 | **-13.059072**",
+      "eta": 1.2,
+      "step": 6,
+      "quantity": "w",
+      "value": "-13.059072",
+      "expected": -13.059071999999995,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "w_k − w*（w*=2） | **+10.756480**",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "e",
+      "value": "+10.756480",
+      "expected": 10.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "w_{k+1} − w* | **-15.059072**",
+      "eta": 1.2,
+      "step": 6,
+      "quantity": "e",
+      "value": "-15.059072",
+      "expected": -15.059071999999995,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "w_4 = **-5.683200**",
+      "eta": 1.2,
+      "step": 4,
+      "quantity": "w",
+      "value": "-5.683200",
+      "expected": -5.6831999999999985,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/outcome.json",
+      "field": "answer",
+      "quote": "w_5 = **12.756480**",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "w",
+      "value": "12.756480",
+      "expected": 12.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "当前步 w_4 = −5.683200",
+      "eta": 1.2,
+      "step": 4,
+      "quantity": "w",
+      "value": "−5.683200",
+      "expected": -5.6831999999999985,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "下一步 w_5 = 12.756480",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "w",
+      "value": "12.756480",
+      "expected": 12.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "差值为 −7.683200 与 +10.756480",
+      "eta": 1.2,
+      "step": 4,
+      "quantity": "e",
+      "value": "−7.683200",
+      "expected": -7.6831999999999985,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "差值为 −7.683200 与 +10.756480",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "e",
+      "value": "+10.756480",
+      "expected": 10.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "当前步 w_5 = 12.756480",
+      "eta": 1.2,
+      "step": 5,
+      "quantity": "w",
+      "value": "12.756480",
+      "expected": 12.756479999999996,
+      "tolerance": 5.001e-7,
+      "pass": true
+    },
+    {
+      "source": "result-read-D1/view.json",
+      "field": "readable_view.parts.0.text",
+      "quote": "下一步 w_6 = −13.059072",
+      "eta": 1.2,
+      "step": 6,
+      "quantity": "w",
+      "value": "−13.059072",
+      "expected": -13.059071999999995,
+      "tolerance": 5.001e-7,
+      "pass": true
+    }
+  ]
+}

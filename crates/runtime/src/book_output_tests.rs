@@ -63,9 +63,7 @@ fn to12_resident_results_export_real_dispatch_and_budget_envelopes() {
                     let mut ledger = crate::tool_result::ActiveToolResultLedger::default();
                     ledger.insert("to12-evicted", envelope.clone());
                     ledger.mark_projected_fresh_results_sampled();
-                    ledger.make_room_for(
-                        crate::tool_result::ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES,
-                    );
+                    assert!(ledger.retire_sampled_bodies());
                     let mut messages = vec![Message {
                         role: Role::Tool,
                         content: None,

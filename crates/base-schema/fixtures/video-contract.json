@@ -1,0 +1,923 @@
+{
+  "provenance": {
+    "samples": "evals/video/samples.json",
+    "transcript": "evals/video/results/vi0b-20261010/responses/review-overflow.json",
+    "frames": "evals/video/results/vi0c-20261010/inputs.json",
+    "note": "VI1 contract fixture: source identities, times, frame sizes and crop are real experiment values; book/publication/run/request IDs, coverage states, translation and silent transcript are constructed. Receipts are not production observations. Machine word times are not human alignment truth.",
+    "zero_duration_word": "evals/video/results/vi0b-20261010/responses/einsum.json:segments[0].words[0]"
+  },
+  "cases": [
+    {
+      "manifest": {
+        "version": "video_source_manifest.v1",
+        "material": {
+          "book_id": "vi1-lecture",
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          },
+          "transcript": {
+            "transcript_id": "vi1-review-overflow",
+            "transcript_revision": "small-en-20261010",
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            }
+          }
+        },
+        "source": {
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          },
+          "imported_path": "media/original.mp4",
+          "original_path": "E:/allwork/cs336/videos/（中英字幕完结）斯坦福CS336：从零开始构建大模型 _ 2026年春季/[P2]斯坦福 CS336：PyTorch.mp4",
+          "duration_ms": 4641376.145,
+          "width": 1920,
+          "height": 1080
+        },
+        "canonical_text_path": "source.txt",
+        "transcript_map_path": "transcript/map.json",
+        "coverage": [
+          {
+            "capability": "transcript",
+            "accepted": [
+              {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "start_ms": 578000,
+                "end_ms": 585999.9319727891
+              }
+            ],
+            "pending": [
+              {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "start_ms": 0,
+                "end_ms": 578000
+              }
+            ],
+            "failed": [
+              {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "start_ms": 585999.9319727891,
+                "end_ms": 4641376.145
+              }
+            ]
+          }
+        ],
+        "previous_book_id": null
+      },
+      "map": {
+        "transcript": {
+          "transcript_id": "vi1-review-overflow",
+          "transcript_revision": "small-en-20261010",
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          }
+        },
+        "raw_result_path": "transcript/raw/review-overflow.json",
+        "machine_transcription": {
+          "engine": "faster-whisper 1.2.1",
+          "model": "small.en",
+          "language": "en"
+        },
+        "segments": [
+          {
+            "segment_id": "review-overflow-1",
+            "text": " back in the day, you will get instability.",
+            "location": {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "start_ms": 578000.0,
+              "end_ms": 582260.0
+            },
+            "text_range": {
+              "lid": "1.1",
+              "range": {
+                "start": 0,
+                "end": 43
+              }
+            },
+            "words": [
+              {
+                "range": {
+                  "start": 0,
+                  "end": 5
+                },
+                "start_ms": 578000.0,
+                "end_ms": 578120.0
+              },
+              {
+                "range": {
+                  "start": 5,
+                  "end": 8
+                },
+                "start_ms": 578120.0,
+                "end_ms": 578280.0
+              },
+              {
+                "range": {
+                  "start": 8,
+                  "end": 12
+                },
+                "start_ms": 578280.0,
+                "end_ms": 578660.0
+              },
+              {
+                "range": {
+                  "start": 12,
+                  "end": 17
+                },
+                "start_ms": 578660.0,
+                "end_ms": 579460.0
+              },
+              {
+                "range": {
+                  "start": 17,
+                  "end": 21
+                },
+                "start_ms": 580640.0,
+                "end_ms": 581000.0
+              },
+              {
+                "range": {
+                  "start": 21,
+                  "end": 26
+                },
+                "start_ms": 581000.0,
+                "end_ms": 581520.0
+              },
+              {
+                "range": {
+                  "start": 26,
+                  "end": 30
+                },
+                "start_ms": 581520.0,
+                "end_ms": 581720.0
+              },
+              {
+                "range": {
+                  "start": 30,
+                  "end": 43
+                },
+                "start_ms": 581720.0,
+                "end_ms": 582260.0
+              }
+            ]
+          },
+          {
+            "segment_id": "review-overflow-2",
+            "text": " You'll get underflow, you'll get overflow,",
+            "location": {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "start_ms": 583020.0,
+              "end_ms": 584500.0
+            },
+            "text_range": {
+              "lid": "1.1",
+              "range": {
+                "start": 43,
+                "end": 86
+              }
+            },
+            "words": [
+              {
+                "range": {
+                  "start": 0,
+                  "end": 7
+                },
+                "start_ms": 583020.0,
+                "end_ms": 583240.0
+              },
+              {
+                "range": {
+                  "start": 7,
+                  "end": 11
+                },
+                "start_ms": 583240.0,
+                "end_ms": 583320.0
+              },
+              {
+                "range": {
+                  "start": 11,
+                  "end": 22
+                },
+                "start_ms": 583320.0,
+                "end_ms": 583820.0
+              },
+              {
+                "range": {
+                  "start": 22,
+                  "end": 29
+                },
+                "start_ms": 583960.0,
+                "end_ms": 584080.0
+              },
+              {
+                "range": {
+                  "start": 29,
+                  "end": 33
+                },
+                "start_ms": 584080.0,
+                "end_ms": 584100.0
+              },
+              {
+                "range": {
+                  "start": 33,
+                  "end": 43
+                },
+                "start_ms": 584100.0,
+                "end_ms": 584500.0
+              }
+            ]
+          },
+          {
+            "segment_id": "review-overflow-3",
+            "text": " you'll get NANs.",
+            "location": {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "start_ms": 584800.0,
+              "end_ms": 585960.0
+            },
+            "text_range": {
+              "lid": "1.1",
+              "range": {
+                "start": 86,
+                "end": 103
+              }
+            },
+            "words": [
+              {
+                "range": {
+                  "start": 0,
+                  "end": 7
+                },
+                "start_ms": 584800.0,
+                "end_ms": 585000.0
+              },
+              {
+                "range": {
+                  "start": 7,
+                  "end": 11
+                },
+                "start_ms": 585000.0,
+                "end_ms": 585220.0
+              },
+              {
+                "range": {
+                  "start": 11,
+                  "end": 17
+                },
+                "start_ms": 585220.0,
+                "end_ms": 585960.0
+              }
+            ]
+          }
+        ]
+      },
+      "base": {
+        "book_id": "vi1-lecture",
+        "lid_nodes": [
+          {
+            "lid": "1",
+            "path": [
+              1
+            ],
+            "kind": "chapter",
+            "span": {
+              "start": 0,
+              "end": 112
+            },
+            "children": [
+              "1.1"
+            ]
+          },
+          {
+            "lid": "1.1",
+            "path": [
+              1,
+              1
+            ],
+            "kind": "paragraph",
+            "span": {
+              "start": 9,
+              "end": 112
+            },
+            "children": []
+          }
+        ],
+        "graph_nodes": [],
+        "graph_edges": []
+      },
+      "source_text": "CS336 转写\n back in the day, you will get instability. You'll get underflow, you'll get overflow, you'll get NANs.",
+      "questions": [
+        {
+          "draft_id": "fixture-draft",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "material": {
+            "book_id": "vi1-lecture",
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            },
+            "transcript": {
+              "transcript_id": "vi1-review-overflow",
+              "transcript_revision": "small-en-20261010",
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              }
+            }
+          },
+          "frame": {
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            },
+            "actual_pts_ms": 555133.3125,
+            "width": 1920,
+            "height": 1080
+          },
+          "region": {
+            "frame": {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "actual_pts_ms": 555133.3125,
+              "width": 1920,
+              "height": 1080
+            },
+            "rect_normalized": [
+              0.015625,
+              0.4444444444444444,
+              0.5833333333333334,
+              0.1388888888888889
+            ]
+          },
+          "range": {
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            },
+            "start_ms": 550000,
+            "end_ms": 586000
+          }
+        }
+      ],
+      "targets": [
+        {
+          "kind": "text",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "transcript": {
+            "transcript_id": "vi1-review-overflow",
+            "transcript_revision": "small-en-20261010",
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            }
+          },
+          "text_range": {
+            "lid": "1.1",
+            "range": {
+              "start": 43,
+              "end": 86
+            }
+          }
+        },
+        {
+          "kind": "visual",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "frames": [
+            {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "actual_pts_ms": 1200000,
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "actual_pts_ms": 1210000,
+              "width": 1920,
+              "height": 1080
+            }
+          ],
+          "regions": []
+        },
+        {
+          "kind": "audio",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "location": {
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            },
+            "start_ms": 578000,
+            "end_ms": 585999.9319727891
+          },
+          "review_result_ref": "fixture-audio-result"
+        },
+        {
+          "kind": "joint",
+          "members": [
+            {
+              "target": {
+                "kind": "text",
+                "publication": {
+                  "book_id": "vi1-lecture",
+                  "publication_id": "vi1-contract-fixture"
+                },
+                "transcript": {
+                  "transcript_id": "vi1-review-overflow",
+                  "transcript_revision": "small-en-20261010",
+                  "video": {
+                    "media_id": "cs336-2026-p2-pytorch-vq27",
+                    "media_revision": "vq27-local-20261008"
+                  }
+                },
+                "text_range": {
+                  "lid": "1.1",
+                  "range": {
+                    "start": 43,
+                    "end": 86
+                  }
+                }
+              },
+              "support_role": "machine transcript wording"
+            },
+            {
+              "target": {
+                "kind": "audio",
+                "publication": {
+                  "book_id": "vi1-lecture",
+                  "publication_id": "vi1-contract-fixture"
+                },
+                "location": {
+                  "video": {
+                    "media_id": "cs336-2026-p2-pytorch-vq27",
+                    "media_revision": "vq27-local-20261008"
+                  },
+                  "start_ms": 578000,
+                  "end_ms": 585999.9319727891
+                },
+                "review_result_ref": "fixture-audio-result"
+              },
+              "support_role": "original audio review"
+            }
+          ]
+        },
+        {
+          "kind": "visual",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "frames": [],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        }
+      ],
+      "observations": [
+        {
+          "kind": "visual",
+          "observation_id": "fixture-visual",
+          "run_id": "fixture-run",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "model_request_id": "fixture-successful-request",
+          "frames": [
+            {
+              "requested_ms": 555123,
+              "frame": {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              }
+            }
+          ],
+          "regions": [
+            {
+              "frame": {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "actual_pts_ms": 555133.3125,
+                "width": 1920,
+                "height": 1080
+              },
+              "rect_normalized": [
+                0.015625,
+                0.4444444444444444,
+                0.5833333333333334,
+                0.1388888888888889
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "audio",
+          "observation_id": "fixture-audio",
+          "run_id": "fixture-run",
+          "publication": {
+            "book_id": "vi1-lecture",
+            "publication_id": "vi1-contract-fixture"
+          },
+          "tool_call_id": "fixture-tool-call",
+          "location": {
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            },
+            "start_ms": 578000,
+            "end_ms": 585999.9319727891
+          },
+          "review_result_ref": "fixture-audio-result"
+        }
+      ],
+      "translations": [
+        {
+          "transcript": {
+            "transcript_id": "vi1-review-overflow",
+            "transcript_revision": "small-en-20261010",
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            }
+          },
+          "segment_id": "review-overflow-2",
+          "zh_text": "会出现下溢，也会出现上溢。"
+        }
+      ]
+    },
+    {
+      "manifest": {
+        "version": "video_source_manifest.v1",
+        "material": {
+          "book_id": "vi1-supplement",
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "vi0a-20261008"
+          },
+          "transcript": {
+            "transcript_id": "vi1-silent-supplement",
+            "transcript_revision": "empty-machine-result",
+            "video": {
+              "media_id": "vi0a-controlled-dtype-v1",
+              "media_revision": "vi0a-20261008"
+            }
+          }
+        },
+        "source": {
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "vi0a-20261008"
+          },
+          "imported_path": "media/supplement.mp4",
+          "original_path": "evals/video/media.mjs:makeSupplement",
+          "duration_ms": 6000,
+          "width": 1920,
+          "height": 1080
+        },
+        "canonical_text_path": "source.txt",
+        "transcript_map_path": "transcript/map.json",
+        "coverage": [
+          {
+            "capability": "transcript",
+            "accepted": [
+              {
+                "video": {
+                  "media_id": "vi0a-controlled-dtype-v1",
+                  "media_revision": "vi0a-20261008"
+                },
+                "start_ms": 0,
+                "end_ms": 6000
+              }
+            ],
+            "pending": [],
+            "failed": []
+          }
+        ],
+        "previous_book_id": null
+      },
+      "map": {
+        "transcript": {
+          "transcript_id": "vi1-silent-supplement",
+          "transcript_revision": "empty-machine-result",
+          "video": {
+            "media_id": "vi0a-controlled-dtype-v1",
+            "media_revision": "vi0a-20261008"
+          }
+        },
+        "raw_result_path": "transcript/raw/silence.json",
+        "machine_transcription": {
+          "engine": "fixture",
+          "model": "no-audio",
+          "language": "en"
+        },
+        "segments": []
+      },
+      "base": {
+        "book_id": "vi1-supplement",
+        "lid_nodes": [],
+        "graph_nodes": [],
+        "graph_edges": []
+      },
+      "source_text": "",
+      "questions": [],
+      "targets": [
+        {
+          "kind": "visual",
+          "publication": {
+            "book_id": "vi1-supplement",
+            "publication_id": "fixture-supplement"
+          },
+          "frames": [
+            {
+              "video": {
+                "media_id": "vi0a-controlled-dtype-v1",
+                "media_revision": "vi0a-20261008"
+              },
+              "actual_pts_ms": 1000,
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "video": {
+                "media_id": "vi0a-controlled-dtype-v1",
+                "media_revision": "vi0a-20261008"
+              },
+              "actual_pts_ms": 5000,
+              "width": 1920,
+              "height": 1080
+            }
+          ],
+          "regions": []
+        }
+      ],
+      "observations": [],
+      "translations": []
+    },
+    {
+      "manifest": {
+        "version": "video_source_manifest.v1",
+        "material": {
+          "book_id": "vi1-lecture",
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          },
+          "transcript": {
+            "transcript_id": "vi1-einsum",
+            "transcript_revision": "small-en-20261010",
+            "video": {
+              "media_id": "cs336-2026-p2-pytorch-vq27",
+              "media_revision": "vq27-local-20261008"
+            }
+          }
+        },
+        "source": {
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          },
+          "imported_path": "media/original.mp4",
+          "original_path": "E:/allwork/cs336/videos/（中英字幕完结）斯坦福CS336：从零开始构建大模型 _ 2026年春季/[P2]斯坦福 CS336：PyTorch.mp4",
+          "duration_ms": 4641376.145,
+          "width": 1920,
+          "height": 1080
+        },
+        "canonical_text_path": "source.txt",
+        "transcript_map_path": "transcript/map.json",
+        "coverage": [
+          {
+            "capability": "transcript",
+            "accepted": [
+              {
+                "video": {
+                  "media_id": "cs336-2026-p2-pytorch-vq27",
+                  "media_revision": "vq27-local-20261008"
+                },
+                "start_ms": 1180000.0,
+                "end_ms": 1184440.0
+              }
+            ],
+            "pending": [],
+            "failed": []
+          }
+        ],
+        "previous_book_id": null
+      },
+      "map": {
+        "transcript": {
+          "transcript_id": "vi1-einsum",
+          "transcript_revision": "small-en-20261010",
+          "video": {
+            "media_id": "cs336-2026-p2-pytorch-vq27",
+            "media_revision": "vq27-local-20261008"
+          }
+        },
+        "raw_result_path": "transcript/raw/einsum.json",
+        "machine_transcription": {
+          "engine": "faster-whisper 1.2.1",
+          "model": "small.en",
+          "language": "en"
+        },
+        "segments": [
+          {
+            "segment_id": "einsum-1",
+            "text": " you say X has two dimensions, the row and the column,",
+            "location": {
+              "video": {
+                "media_id": "cs336-2026-p2-pytorch-vq27",
+                "media_revision": "vq27-local-20261008"
+              },
+              "start_ms": 1180000.0,
+              "end_ms": 1184440.0
+            },
+            "text_range": {
+              "lid": "1.1",
+              "range": {
+                "start": 0,
+                "end": 54
+              }
+            },
+            "words": [
+              {
+                "range": {
+                  "start": 0,
+                  "end": 4
+                },
+                "start_ms": 1180000.0,
+                "end_ms": 1180000.0
+              },
+              {
+                "range": {
+                  "start": 4,
+                  "end": 8
+                },
+                "start_ms": 1180000.0,
+                "end_ms": 1180520.0
+              },
+              {
+                "range": {
+                  "start": 8,
+                  "end": 10
+                },
+                "start_ms": 1180520.0,
+                "end_ms": 1181500.0
+              },
+              {
+                "range": {
+                  "start": 10,
+                  "end": 14
+                },
+                "start_ms": 1181500.0,
+                "end_ms": 1181860.0
+              },
+              {
+                "range": {
+                  "start": 14,
+                  "end": 18
+                },
+                "start_ms": 1181860.0,
+                "end_ms": 1182380.0
+              },
+              {
+                "range": {
+                  "start": 18,
+                  "end": 30
+                },
+                "start_ms": 1182380.0,
+                "end_ms": 1183160.0
+              },
+              {
+                "range": {
+                  "start": 30,
+                  "end": 34
+                },
+                "start_ms": 1183560.0,
+                "end_ms": 1183760.0
+              },
+              {
+                "range": {
+                  "start": 34,
+                  "end": 38
+                },
+                "start_ms": 1183760.0,
+                "end_ms": 1183960.0
+              },
+              {
+                "range": {
+                  "start": 38,
+                  "end": 42
+                },
+                "start_ms": 1183960.0,
+                "end_ms": 1184140.0
+              },
+              {
+                "range": {
+                  "start": 42,
+                  "end": 46
+                },
+                "start_ms": 1184140.0,
+                "end_ms": 1184180.0
+              },
+              {
+                "range": {
+                  "start": 46,
+                  "end": 54
+                },
+                "start_ms": 1184180.0,
+                "end_ms": 1184440.0
+              }
+            ]
+          }
+        ]
+      },
+      "base": {
+        "book_id": "vi1-lecture",
+        "lid_nodes": [
+          {
+            "lid": "1.1",
+            "path": [
+              1,
+              1
+            ],
+            "kind": "paragraph",
+            "span": {
+              "start": 0,
+              "end": 54
+            },
+            "children": []
+          }
+        ],
+        "graph_nodes": [],
+        "graph_edges": []
+      },
+      "source_text": " you say X has two dimensions, the row and the column,",
+      "questions": [],
+      "targets": [],
+      "observations": [],
+      "translations": []
+    }
+  ]
+}

@@ -4,8 +4,9 @@ import type { AgentAnswerView } from "./AgentAnswerView";
 import type { AnimationAsset } from "./AnimationAsset";
 import type { PresentationRef } from "./PresentationRef";
 import type { PresentationState } from "./PresentationState";
+import type { PresentationTeachingBinding } from "./PresentationTeachingBinding";
 
 /**
  * Reader projection deliberately omits internal evidence locations and ownership data.
  */
-export type PresentationView = { animation_assets: { [key in string]?: AnimationAsset }, restored_state: PresentationState | null, restored_state_revision: number | null, reference: PresentationRef, title: string, content_files: { [key in string]?: string }, entrypoint: string, readable_view: AgentAnswerView, sources: Array<AgentAnswerSource>, assumptions: Array<string>, initial_state: unknown, };
+export type PresentationView = { teaching_binding?: PresentationTeachingBinding, animation_assets: { [key in string]?: AnimationAsset }, restored_state: PresentationState | null, restored_state_revision: number | null, reference: PresentationRef, title: string, content_files: { [key in string]?: string }, entrypoint: string, readable_view: AgentAnswerView, sources: Array<AgentAnswerSource>, assumptions: Array<string>, initial_state: unknown, };

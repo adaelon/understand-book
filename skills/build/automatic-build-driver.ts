@@ -1,4 +1,5 @@
 import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../packages/core/src/build-executor-model-runtime";
+import { readExternalBuildCostBinding, type ExternalBuildCostBinding } from "../../packages/core/src/external-build-cost";
 import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
@@ -293,6 +294,7 @@ export interface AutomaticBuildInvocationCreateV1 {
   budget?: AutomaticBuildBudgetLimitsV1;
   wall_budget?: AutomaticBuildWallBudgetV1;
   executor_provenance?: AutomaticBuildExecutorProvenanceV1;
+  external_cost?: ExternalBuildCostBinding;
 }
 
 export interface AutomaticBuildInvocationCreateV2 extends Omit<AutomaticBuildInvocationCreateV1, "version"> {
@@ -525,7 +527,7 @@ function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
       "max_parallel",
       "created_at",
     ],
-    ["budget", "wall_budget", "executor_provenance", ...(value.version === "automatic_build_invocation_create.v2" ? ["execution_profile", "model_runtime", "confirmation"] : [])],
+    ["budget", "wall_budget", "executor_provenance", "external_cost", ...(value.version === "automatic_build_invocation_create.v2" ? ["execution_profile", "model_runtime", "confirmation"] : [])],
   );
   if ((value.version !== "automatic_build_invocation_create.v1" && value.version !== "automatic_build_invocation_create.v2") || value.quality_profile !== "full") {
     throw new Error("automatic build invocation create version or quality profile is invalid");
@@ -534,6 +536,12 @@ function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
   if (maxParallel < 1 || maxParallel > 3) throw new Error("max_parallel must be 1, 2, or 3");
   const createdAt = boundedString(value.created_at, "created_at", 128);
   if (!Number.isFinite(new Date(createdAt).getTime())) throw new Error("created_at is invalid");
+  const costProfile = value.version === "automatic_build_invocation_create.v2"
+    ? resolveBuildExecutionProfile(value.execution_profile) : CODEX_BUILD_EXECUTION_PROFILE_V1;
+  const externalCost = value.external_cost === undefined ? undefined : readExternalBuildCostBinding(value.external_cost, costProfile);
+  if (externalCost && costProfile.harness_kind === "codex") {
+    throw new Error("external_build_cost_host_unsupported: Codex host does not expose pre-launch admission and terminal cost callbacks");
+  }
   const common = {
     target_input: boundedString(value.target_input, "target_input"),
     root_dir: boundedString(value.root_dir, "root_dir"),
@@ -541,6 +549,7 @@ function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
     quality_profile: "full" as const,
     max_parallel: maxParallel as 1 | 2 | 3,
     created_at: createdAt,
+    ...(externalCost ? { external_cost: externalCost } : {}),
     ...(value.budget === undefined ? {} : { budget: validateBudget(value.budget)! }),
     ...(value.wall_budget === undefined ? {} : { wall_budget: validateWallBudget(value.wall_budget)! }),
     ...(value.executor_provenance === undefined ? {} : {
@@ -806,6 +815,7 @@ function readInvocation(invocationRef: string): AutomaticBuildInvocationRecord {
 export function createAutomaticBuildInvocation(inputValue: AutomaticBuildInvocationCreate): {
   version: "automatic_build_invocation_ref.v1";
   invocation_ref: string;
+  cost_accounting: "platform_pending_receipts" | "operator_unaccounted";
 } {
   const requested = validateCreateInput(inputValue);
   const buildPlan = readBuildPlan(requested.build_plan_path);
@@ -833,7 +843,8 @@ export function createAutomaticBuildInvocation(inputValue: AutomaticBuildInvocat
     initial_build_plan_digest: buildPlan.plan_digest,
   };
   writeCreateOnly(invocationRecordPath(invocationRef), record);
-  return { version: "automatic_build_invocation_ref.v1", invocation_ref: invocationRef };
+  return { version: "automatic_build_invocation_ref.v1", invocation_ref: invocationRef,
+    cost_accounting: input.external_cost ? "platform_pending_receipts" : "operator_unaccounted" };
 }
 
 function resolveInvocationTarget(invocation: AutomaticBuildInvocationRecord) {
@@ -2535,7 +2546,9 @@ export function readDshBuildInvocation(invocationRef: string, rootSessionId: str
   if (input.version !== "automatic_build_invocation_create.v2" || input.execution_profile.profile_id !== "dsh_native_v4"
     || input.confirmation?.root_session_id !== rootSessionId) throw new Error("DSH invocation owner mismatch");
   return { version: "dsh_build_invocation.v1" as const, invocation_ref: invocationRef,
-    execution_profile: input.execution_profile, model_runtime: input.model_runtime!, max_parallel: input.max_parallel };
+    execution_profile: input.execution_profile, model_runtime: input.model_runtime!, max_parallel: input.max_parallel,
+    ...(input.external_cost ? { external_cost: input.external_cost } : {}),
+    cost_accounting: input.external_cost ? "platform_pending_receipts" : "operator_unaccounted" };
 }
 
 /** Engine-owned foreground ownership. Unknown process liveness remains blocked. */
@@ -2671,12 +2684,14 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     return { build_plan_path: file, plan: confirmed, review_markdown: buildRetrievalReview(confirmed) };
   }
   if (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2") {
-    exactKeys(value, ["version", "target_input", "root_dir", "pass2", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["budget", "retrieval"]);
+    exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor"]);
+    if (value.build_tutor !== undefined && typeof value.build_tutor !== 'boolean') throw new Error('build_tutor must be boolean');
     const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
     if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
-    if (value.pass2 !== "enabled" && value.pass2 !== "disabled") throw new Error("DSH Pass2 choice is required");
+    const pass2 = value.pass2 === undefined ? "disabled" : value.pass2;
+    if (pass2 !== "enabled" && pass2 !== "disabled") throw new Error("DSH Pass2 must be enabled or disabled");
     let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
-      boundedString(value.root_dir, "root_dir"), { pass2: value.pass2,
+      boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
     if (value.retrieval !== undefined) {
       if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
@@ -2694,6 +2709,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
       formal_objects: "正式学习对象与关系", cognitive_materials: "重点认知素材", teaching_publish: "来源审阅与教学发布" };
     const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
     const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
+      `Tutor 教学材料：${value.build_tutor === true ? '构建' : '不预构建；阅读时仍可提问'}`,
       `构建目标：${path.resolve(value.target_input as string)}`,
       `工作根目录：${path.resolve(value.root_dir as string)}`,
       `材料类型：${plan.content_profile.id === "paper" ? "论文" : "技术书籍"}`,
@@ -2707,7 +2723,8 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
       ...(estimate.preflight ? [`当前阶段：${stageLabel(estimate.preflight.stage)}；预计 token：${estimate.preflight.token_estimate.total_lower}–${estimate.preflight.token_estimate.total_upper}。此数字仅覆盖当前阶段。`] : []),
       buildRetrievalReview(plan), "后续阶段按完整计划逐段评估，质量门通过后发布。"].join("\n\n");
     // The snapshot contains generation inputs. Only this control projection may enter a root question.
-    return { version: value.version === "dsh_build_prepare.v2" ? "dsh_build_prepared.v2" : "dsh_build_prepared.v1", build_plan_path: prepared.build_plan_path, plan, review_markdown: review };
+    return { version: value.version === "dsh_build_prepare.v2" ? "dsh_build_prepared.v2" : "dsh_build_prepared.v1", build_plan_path: prepared.build_plan_path,
+      workspace_dir: estimate.snapshot.target.workspace_dir, plan, review_markdown: review };
   }
   if (value.version === "automatic_build_invocation_create.v1" || value.version === "automatic_build_invocation_create.v2") {
     return createAutomaticBuildInvocation(value as unknown as AutomaticBuildInvocationCreate);
@@ -2725,6 +2742,16 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
 
 /** Keep raw errors in the local driver registry, outside the root's semantic boundary. */
 export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBuildStepResponseV1 | AutomaticBuildRequestErrorV1 {
+  const costCode = error instanceof Error && error.message.startsWith("external_build_personal_payment_unsupported")
+    ? "external_build_personal_payment_unsupported" : error instanceof Error && error.message.startsWith("external_build_cost_host_unsupported")
+      ? "external_build_cost_host_unsupported" : undefined;
+  if (costCode) return finalizeResponse({ version: "automatic_build_step.v1", action: {
+    kind: "NEEDS_USER", request_id: `abreq1_${randomBytes(32).toString("hex")}`, reason: "build_engine_failed", choices: [],
+    message: costCode === "external_build_personal_payment_unsupported"
+      ? "Personal paid builds are unavailable: this executor cannot enforce a monetary budget and return complete provider cost receipts. No build was created."
+      : "This Codex host cannot connect build costs before executor launch and after termination. Platform cost accounting requires the supported DSH host. No build was created.",
+    projection: { category: "build_engine_failed", code: costCode },
+  } });
   if (error instanceof AutomaticBuildRefillRequestError) {
     return {
       version: "automatic_build_request_error.v1", code: "invalid_refill_request",

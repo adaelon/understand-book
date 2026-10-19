@@ -18,7 +18,7 @@ test("reopen restores saved controls and custom step without replaying actions, 
     node.dispatchEvent(new Event("input", { bubbles: true }));
     node.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await expect(page.getByText("现场已保存", { exact: true })).toBeVisible();
+  await expect(page.getByText("演示状态已保存", { exact: true })).toBeVisible();
   await frame.locator("#next-step").click();
   await expect.poll(() => saves).toBe(2);
   // Read from disk after the last save completed, then reconstruct the Reader state.
@@ -38,11 +38,11 @@ test("reopen restores saved controls and custom step without replaying actions, 
   await expect(frame.locator("#result")).toHaveText("1/3");
   await expect(frame.locator("#evidence-count")).toHaveValue("1");
   await expect(frame.locator("#step")).toHaveAttribute("data-presentation-step", "explain");
-  await expect(page.getByText("已恢复上次保存的现场")).toBeVisible();
+  await expect(page.getByText("已恢复上次保存的演示状态")).toBeVisible();
   expect(saves).toBe(2);
   expect(sourceActions).toBe(0);
   expect(await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json())).toHaveLength(before.length);
-  await page.getByRole("textbox", { name: "针对当前现场追问" }).fill("给这个版本增加一个例子");
+  await page.getByRole("textbox", { name: "针对当前演示追问" }).fill("给这个版本增加一个例子");
   await page.getByRole("button", { name: "发送追问", exact: true }).click();
   await expect(page.getByTestId("follow-up-status")).toHaveText("追问已完成");
   const requests = await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json());

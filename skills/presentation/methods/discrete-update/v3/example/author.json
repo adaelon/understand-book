@@ -1,0 +1,20 @@
+{
+  "title": "一步，离谷底更近？",
+  "initial_state": {
+    "eta": 0.25,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "eta": "fixed dimensionless learning rate in 0..1.2",
+    "semantic_state": "已完成的解释区间，整数0至8；见适配说明中的时间定义",
+    "transition_progress": "当前区间的视觉进度，[0,1)；终点8时为0"
+  },
+  "readable_content": "沿着坡度往下走，步子越大越好吗？把学习率调高，看同一条更新规则怎样从靠近，变成越过，再变成远离。 从 x₀=4 出发，在 f(x)=(x−2)² 上做八次更新 xₖ₊₁=xₖ−2η(xₖ−2)。η∈[0,1.2]。当前方框、下一空心圆和橙色画面插值由同一递推序列得到；误差图显示 x−2。0<η<1 收敛，η=0 静止，η=1 等幅往返，η>1 在当前初值下发散。 先辨认当前点、更新量和下一点，再讨论“收敛”。动画中的橙色点连接两次迭代，不是额外做了一次计算。",
+  "assumptions": [
+    "无量纲教学模型 f(x)=(x−2)²，x₀=4，0≤η≤1.2，展示八次显式更新。结论只适用于这个二次函数及给定规则。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

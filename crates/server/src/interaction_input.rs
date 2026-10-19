@@ -7,6 +7,7 @@ use memory::teaching::TeachingSourceBinding;
 pub(crate) enum InteractionInput {
     Typed,
     Selection,
+    GuideChapter { chapter_lid: String },
     Answer { action: EntryAction, reference: AnswerRef },
     Choice(TeachingChoice),
 }
@@ -45,7 +46,7 @@ pub(crate) fn local_repeat(state: &AppState, body: &str) -> Result<Option<Reply>
 
 /// Repairs facts only. An accepted local run is never restarted by this path.
 pub(crate) fn resume_local_facts(user: &user_runtime::UserRuntime, turn: &AgentChatTurn) -> Result<(), ToolError> {
-    if let Some(event) = &turn.domain.choice_event { user.learning_store()?.append_teaching(event)?; }
+    if let Some(event) = &turn.domain.choice_event { user.learning_store_for_workspace(turn.domain.scene.as_ref().and_then(|s|s.learning_workspace_id.as_deref()))?.append_teaching(event)?; }
     if let Some(prepared) = &turn.domain.local_preparation { prepared.resume(user)?; }
     Ok(())
 }
@@ -63,7 +64,7 @@ pub(crate) fn local_point(point: &str) -> Result<(), ToolError> {
 pub(crate) fn prepare_local(state: &mut AppState, turn: &AgentTurnRef, request: &Value, now: &str) -> Result<Option<Value>, ToolError> {
     let original = state.user.agent_history.sessions.iter().find(|s| s.id == turn.session_id).unwrap()
         .turns.iter().find(|t| t.turn_id == turn.turn_id).unwrap();
-    if let Some(event) = &original.domain.choice_event { state.user.learning_store()?.append_teaching(event)?; }
+    if let Some(event) = &original.domain.choice_event { state.user.learning_store_for_workspace(original.domain.scene.as_ref().and_then(|s|s.learning_workspace_id.as_deref()))?.append_teaching(event)?; }
     let frozen = teaching::freeze_prepare(&state.private_context(), turn, request, original.domain.interaction.as_ref(), now)?;
     if state.user.session_store.is_some() {
         session_runtime::append(&mut state.user, turn, now, session_event::EventBody::TurnPrepared { teaching:frozen.clone() })?;
@@ -76,7 +77,7 @@ pub(crate) fn prepare_local(state: &mut AppState, turn: &AgentTurnRef, request: 
     #[cfg(test)]
     local_point("snapshot")?;
     for event in &frozen.events {
-        state.user.learning_store()?.append_teaching(event)?;
+        state.user.learning_store_for_workspace(frozen.learning_workspace_id.as_deref())?.append_teaching(event)?;
         #[cfg(test)]
         local_point("teaching_receipt")?;
     }
@@ -88,7 +89,8 @@ pub(crate) fn prepare_local(state: &mut AppState, turn: &AgentTurnRef, request: 
 pub(crate) fn choice_event(user: &user_runtime::UserRuntime, interaction: Option<&ResolvedInteraction>, turn: &AgentTurnRef, now: &str)
     -> Result<Option<memory::teaching::TeachingEvent>, ToolError> {
     let Some(ResolvedInteraction { action: InteractionAction::UiChoice { teaching_choice, .. }, .. }) = interaction else { return Ok(None); };
-    let original = user.learning_store()?.teaching_event(&teaching_choice.delivery_ref)?;
+    let scope = user.agent_history.sessions.iter().find(|s|s.id == turn.session_id).and_then(|s|s.learning_workspace_id.as_deref());
+    let original = user.learning_store_for_workspace(scope)?.teaching_event(&teaching_choice.delivery_ref)?;
     let mut binding = original.binding;
     binding.turn_id = turn.turn_id.clone();
     binding.chat_session_id = turn.session_id.clone();
@@ -132,6 +134,7 @@ impl InteractionInput {
         -> Result<Option<InteractionResolution>, ToolError> {
         if *self == Self::Typed { return Ok(None); }
         self.validate_reference(user, workspace)?;
+        let mut has_reference_sources = false;
         let mut resolved = ResolvedInteraction {
             action: InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection },
             user_supplement: input["message"].as_str().unwrap_or_default().into(),
@@ -142,10 +145,11 @@ impl InteractionInput {
         };
         match self {
             Self::Choice(choice) => {
-                let saved = user.learning_store()?.teaching_event(&choice.delivery_ref)?;
+                let saved = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&choice.delivery_ref)?;
                 Self::Answer { action:EntryAction::ContinueAnswer, reference:AnswerRef { turn_id:saved.binding.turn_id.clone(), excerpt:None } }
                     .validate_reference(user, workspace)?;
                 let private = PrivateBookContext { user, book:&workspace.book, book_dir:&workspace.book_dir,
+                    learning_workspace_id:workspace.learning_workspace_id.as_deref(),
                     messages:&workspace.messages, selected_chat:workspace.selected_chat.as_deref() };
                 let view = teaching::continuation_view(&private, &saved)?.ok_or_else(||invalid("原交付没有建议集合"))?;
                 use runtime::tutor_continuation::ContinuationAvailability;
@@ -176,6 +180,20 @@ impl InteractionInput {
                     }
                 }
             },
+            Self::GuideChapter { chapter_lid } => {
+                if input["source_id"] != workspace.book.base.book_id
+                    || input["source_revision"] != workspace.book.source_fingerprint() {
+                    return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新选择章节"));
+                }
+                let title = chapter_title(&workspace.book, chapter_lid)?;
+                resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter };
+                resolved.accepted_request = format!("带我读《{title}》这一章");
+                resolved.source_bindings = vec![TeachingSourceBinding {
+                    source_id: workspace.book.base.book_id.clone(),
+                    source_revision: workspace.book.source_fingerprint().into(),
+                    start_lid: chapter_lid.clone(), end_lid: chapter_lid.clone(),
+                }];
+            },
             Self::Selection => {
                 if input["source_id"] != workspace.book.base.book_id
                     || input["source_revision"] != workspace.book.source_fingerprint() {
@@ -194,6 +212,7 @@ impl InteractionInput {
                 let turn = user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == workspace.selected_chat.as_deref())
                     .unwrap().turns.iter().find(|t| t.turn_id == reference.turn_id).unwrap();
                 let outcome = turn.outcome.as_ref().unwrap();
+                has_reference_sources = turn.source_bindings.iter().any(|s| s.publication_id.is_some());
                 resolved.action = InteractionAction::UiEntry { entry_action: *action };
                 resolved.accepted_request = if *action == EntryAction::ContinueAnswer { "继续理解这段" } else { "这一步没跟上" }.into();
                 resolved.answer_ref = Some(reference.clone());
@@ -207,7 +226,7 @@ impl InteractionInput {
                 } else {
                     // Historical ordinary answers have no action snapshot. Verify their
                     // stored quote against the current book; never infer a new viewport.
-                    let original_binding = match user.learning_store()?.teaching_event(&format!("binding:{}", turn.turn_id)) {
+                    let original_binding = match user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&format!("binding:{}", turn.turn_id)) {
                         Ok(event) => Some(event),
                         Err(error) if error.error_code == "TEACHING_INVALID" => None,
                         Err(error) => return Err(error),
@@ -225,13 +244,15 @@ impl InteractionInput {
                         if let Some(original) = original_binding {
                             let mut excerpts = Vec::new();
                             for binding in &turn.source_bindings {
+                                if binding.publication_id.is_some() { continue; }
                                 if binding.book_id != workspace.book.base.book_id { return Err(invalid("接续范围包含其他材料，请明确选择原文")); }
-                                let source = workspace.book.resolve_source(&binding.evidence_range,"zh-CN",Some(&binding.evidence_text_digest))
+                                let range = binding.evidence_range.as_ref().ok_or_else(unavailable)?;
+                                let source = workspace.book.resolve_source(range,"zh-CN",Some(&binding.evidence_text_digest))
                                     .map_err(|_|invalid("原回答的引用来源已失效"))?;
                                 excerpts.push(source.highlighted_quote);
                                 resolved.source_bindings.push(TeachingSourceBinding { source_id:binding.book_id.clone(),
                                     source_revision:original.binding.source_revision.clone(),
-                                    start_lid:binding.evidence_range.start_lid.clone(),end_lid:binding.evidence_range.end_lid.clone() });
+                                    start_lid:range.start_lid.clone(),end_lid:range.end_lid.clone() });
                             }
                             if !excerpts.is_empty() { resolved.source_excerpt=Some(excerpts.join("\n\n")); }
                         }
@@ -245,11 +266,17 @@ impl InteractionInput {
             return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原回答的来源已变化，请重新选择原文"));
         }
         let private = PrivateBookContext { user, book:&workspace.book, book_dir:&workspace.book_dir,
+                    learning_workspace_id:workspace.learning_workspace_id.as_deref(),
             messages:&workspace.messages, selected_chat:workspace.selected_chat.as_deref() };
-        let helps = teaching::pending_activity_help(&private, &resolved)?;
-        if !helps.is_empty() { return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps })); }
-        if matches!(self, Self::Answer { action:EntryAction::ContinueAnswer, .. }) {
-            let view = user.learning_store()?.state()?;
+        // A chapter is a navigation scope, not a claim that the user selected
+        // every pending activity inside it for more help.
+        let helps = if matches!(self, Self::GuideChapter { .. }) { vec![] }
+            else { teaching::pending_activity_help(&private, &resolved)? };
+        if !helps.is_empty() && resolved.user_supplement.trim().is_empty() {
+            return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
+        }
+        if matches!(self, Self::Answer { action:EntryAction::ContinueAnswer, .. }) && !has_reference_sources {
+            let view = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.state()?;
             let current = view.control.current_tutor_session_id.as_ref().and_then(|id|view.sessions.get(id));
             if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book,&workspace.book_dir)["status"] != "ready"
                 || current.is_some_and(|s| s.status != memory::learning::TutorSessionStatus::Active
@@ -270,7 +297,7 @@ impl InteractionInput {
             .map_err(|_| invalid("回答引用格式无效"))?;
         let choice: Option<TeachingChoice> = serde_json::from_value(parse("teaching_choice"))
             .map_err(|_| invalid("建议选择格式无效"))?;
-        if present("resolved_interaction") || present("current_action") {
+        if present("resolved_interaction") || present("current_action") || present("guide_chapter_lid") {
             return Err(invalid("解析结果由服务端生成"));
         }
         if action.is_some() && choice.is_some() {
@@ -281,7 +308,16 @@ impl InteractionInput {
             .iter().any(|key| present(key)) {
             return Err(invalid("阅读操作不能混用原活动回应、笔记或任务替换元数据"));
         }
+        if present("chapter_lid") && action != Some(EntryAction::GuideChapter) {
+            return Err(invalid("章节定位只用于章节导读操作"));
+        }
         let result = match (action, answer, choice) {
+            (Some(EntryAction::GuideChapter), None, None)
+                if !present("question_quote") && !present("question_anchor_lid") => {
+                    let chapter_lid = input["chapter_lid"].as_str().filter(|s| !s.trim().is_empty())
+                        .ok_or_else(|| invalid("章节导读需要规范章节标识"))?;
+                    Self::GuideChapter { chapter_lid: chapter_lid.into() }
+                },
             (None, None, None) => Self::Typed,
             (Some(EntryAction::ExplainSelection), None, None) if input["question_quote"].is_object() => Self::Selection,
             (Some(action @ (EntryAction::ClarifyAnswer | EntryAction::ContinueAnswer)), Some(reference), None)
@@ -317,7 +353,7 @@ impl InteractionInput {
         match self {
             Self::Answer { reference, .. } => {
                 let turn = user.agent_history.sessions.iter()
-                    .find(|s| Some(s.id.as_str()) == chat && s.book_id == workspace.book.base.book_id)
+                    .find(|s| Some(s.id.as_str()) == chat && s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
                     .and_then(|s| s.turns.iter().find(|t| t.turn_id == reference.turn_id))
                     .ok_or_else(|| invalid("原回答不属于当前聊天"))?;
                 let outcome = turn.outcome.as_ref().filter(|o| turn.status == AgentAssistantStatus::Completed
@@ -333,7 +369,7 @@ impl InteractionInput {
                 }
             },
             Self::Choice(choice) => {
-                let event = user.learning_store()?.teaching_event(&choice.delivery_ref)
+                let event = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&choice.delivery_ref)
                     .map_err(|e| if e.error_code == "TEACHING_INVALID" { invalid("建议交付不存在") } else { e })?;
                 if event.kind != memory::teaching::TeachingFact::MessageDelivered
                     || Some(event.binding.chat_session_id.as_str()) != chat
@@ -352,4 +388,26 @@ impl InteractionInput {
         }
         Ok(())
     }
+}
+
+/// Canonical chapter topology supplies the container; its source heading supplies the name.
+pub(crate) fn chapter_title(book: &Book, lid: &str) -> Result<String, ToolError> {
+    let node = book.base.lid_nodes.iter().find(|n| n.lid == lid && n.kind == base_schema::NodeKind::Chapter)
+        .ok_or_else(|| invalid("章节导读需要当前材料的规范章节点"))?;
+    let label = book.source_label(&EvidenceRange { start_lid: node.lid.clone(), end_lid: node.lid.clone(), ranges: vec![] }, "zh-CN")?;
+    Ok(label.strip_prefix("章节 · ").unwrap_or(&label).to_owned())
+}
+
+/// Only a new explicit current-chapter request selects a chapter from the admitted viewport.
+pub(crate) fn requested_current_chapter(book: &Book, message: &str, anchor: &str) -> Result<Option<String>, ToolError> {
+    use runtime::tool_exposure::{classify_turn_intent, TurnIntentHint};
+    if !classify_turn_intent(message).contains(&TurnIntentHint::ExplicitGuidedRead)
+        || !["这一章", "这章", "当前章", "this chapter"].iter().any(|phrase| message.to_lowercase().contains(phrase)) {
+        return Ok(None);
+    }
+    let at = book.base.lid_nodes.iter().find(|n| n.lid == anchor)
+        .ok_or_else(|| invalid("当前阅读位置无法定位章节"))?;
+    let chapter = book.base.lid_nodes.iter().filter(|n| n.kind == base_schema::NodeKind::Chapter && at.path.starts_with(&n.path))
+        .max_by_key(|n| n.path.len()).ok_or_else(|| invalid("当前阅读位置没有规范章节点"))?;
+    Ok(Some(chapter.lid.clone()))
 }

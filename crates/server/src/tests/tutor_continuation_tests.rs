@@ -22,8 +22,9 @@ fn tc3_move(state: &AppState) -> Value {
             "source_bindings":[{"source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint(),
                 "start_lid":"1.1","end_lid":"1.1"}],"object_refs":[]},"continuation":scenario()["continuation"]})
 }
-fn tc3_select(state: &AppState, turn: &AgentTurnRef, movement: Value) -> Result<Value, read_tools::ToolError> {
-    teaching::step(&state.private_context(),turn,json!({"operation":"select","move":movement}),&[],
+fn tc3_select(state: &AppState, turn: &AgentTurnRef, mut movement: Value) -> Result<Value, read_tools::ToolError> {
+    if movement["interaction_intent"].is_null() { movement["interaction_intent"]=json!("neutral"); movement["intent_origin"]=json!("current_action"); }
+    super::tutor_loop_tests::step_with_design(&state.private_context(),turn,json!({"operation":"select","move":movement}),&[],
         &[EvidenceRange { start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![] }])
 }
 fn tc3_views(state: &mut AppState, turn: &AgentTurnRef) -> Value {
@@ -76,7 +77,7 @@ fn continuation_tc6_assistant_delivery_alone_cannot_diagnose_learner() {
     let run = prepare(&mut state,input);
     let session = run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap();
     for fact in [format!("delivery:{}:explain",origin.turn_id),format!("usage:{session}:assistant:{}",origin.turn_id)] {
-        let result = teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"evidence","nature":"hypothesis",
+        let result = super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"evidence","nature":"hypothesis",
             "operation_id":format!("unsupported-{fact}"),"target":tc3_move(&state)["target"],"fact_refs":[fact],
             "interpretation":"The reader cannot calculate.","teaching_implication":"Teach arithmetic prerequisites."}),&[],
             &[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]);
@@ -99,8 +100,8 @@ fn continuation_tc6_repeated_choices_and_reads_leave_learning_and_profile_unchan
         assert_eq!(post_ok(&mut state,"/agent/reading-action-status",input.clone())["turn_id"],run.turn_ref.turn_id);
         let mut movement = tc3_move(&state);
         movement["kind"] = json!("compare");
-        movement.as_object_mut().unwrap().remove("interaction_intent");
-        movement.as_object_mut().unwrap().remove("intent_origin");
+        movement["interaction_intent"] = json!("neutral");
+        movement["intent_origin"] = json!("current_action");
         tc3_select(&state,&run.turn_ref,movement).unwrap();
         super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
         origin = run.turn_ref;
@@ -119,7 +120,7 @@ fn continuation_tc6_repeated_choices_and_reads_leave_learning_and_profile_unchan
     let review=host::copy_user_review_input(&state.user,&job,"technical_learning").unwrap();
     assert_eq!(review.turns.len(),4);
     for turn in &review.turns[1..] { assert_eq!(turn.user,""); assert!(turn.input_action.is_some()); }
-    let pending=pending_review_context(&state.user,&source);
+    let pending=pending_review_context(&state.user,&source,state.workspace.learning_workspace_id.as_deref());
     assert_eq!(pending.len(),1); assert_eq!(pending[0].text,"Explain average speed");
 }
 
@@ -139,7 +140,7 @@ fn continuation_tc6_answer_actions_preserve_authorship_and_require_real_expressi
         assert!(!context["learner_context"]["uninterpreted_fact_refs"].as_array().unwrap().contains(&json!(fact)));
         let request=json!({"operation":"evidence","nature":"hypothesis","operation_id":"button-diagnosis",
             "target":tc3_move(&state)["target"],"fact_refs":[fact],"interpretation":"Missing arithmetic prerequisites.","teaching_implication":"Teach multiplication."});
-        assert!(teaching::step(&state.private_context(),&run.turn_ref,request,&[],
+        assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,request,&[],
             &[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).is_err());
         super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
         let correction="不是不懂计算，是不懂停顿为什么也算在总时间里。";
@@ -150,10 +151,10 @@ fn continuation_tc6_answer_actions_preserve_authorship_and_require_real_expressi
         assert!(context["learner_context"]["uninterpreted_fact_refs"].as_array().unwrap().contains(&json!(fact)));
         let request=json!({"operation":"evidence","nature":"hypothesis","operation_id":"real-correction",
             "target":tc3_move(&state)["target"],"fact_refs":[fact],"interpretation":"The question concerns elapsed time including stops.","teaching_implication":"Compare elapsed and moving time."});
-        teaching::step(&state.private_context(),&next.turn_ref,request,&[],
+        super::tutor_loop_tests::step_with_design(&state.private_context(),&next.turn_ref,request,&[],
             &[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap();
         assert_eq!(state.user.learning_store().unwrap().evidence("interpretation:real-correction").unwrap().learner_quote,correction);
-        let pending=pending_review_context(&state.user,&state.workspace.book.base.book_id);
+        let pending=pending_review_context(&state.user,&state.workspace.book.base.book_id,state.workspace.learning_workspace_id.as_deref());
         assert!(pending.iter().any(|p|p.text==correction));
         assert!(!pending.iter().any(|p|p.text.contains("操作：")));
     }
@@ -186,7 +187,7 @@ fn continuation_tc6_source_change_excludes_old_interpretations() {
     let target=tc3_move(&state)["target"].clone();
     let request=json!({"operation":"evidence","nature":"hypothesis","operation_id":"old-revision","target":target,
         "fact_refs":[fact],"interpretation":"The reader asks about stopped time.","teaching_implication":"Explain elapsed duration."});
-    teaching::step(&state.private_context(),&run.turn_ref,request,&[],
+    super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,request,&[],
         &[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap();
     super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
     state.workspace.book=Arc::new(Book::new(state.workspace.book.base.clone(),&format!("{SOURCE}\nNew source revision.")));
@@ -211,7 +212,7 @@ fn continuation_tc6_live_correction_trajectory() {
         "target":tc3_move(&state)["target"],"fact_refs":[format!("usage:{session}:user:{}",original.turn_ref.turn_id)],
         "interpretation":"读者当前在问除法定义与乘法回代的连接，可能需要拆开等式变形。",
         "teaching_implication":"先用除法与乘法互逆解释回代，再用一组数字演示。"});
-    teaching::step(&state.private_context(),&original.turn_ref,prior.clone(),&[],
+    super::tutor_loop_tests::step_with_design(&state.private_context(),&original.turn_ref,prior.clone(),&[],
         &[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap();
     let mut movement=tc3_move(&state); movement["interpretation_refs"]=json!([old_ref]);
     tc3_select(&state,&original.turn_ref,movement).unwrap();
@@ -346,11 +347,14 @@ fn continuation_tc5_browser_api() {
         let mut body=String::new(); request.as_reader().read_to_string(&mut body).unwrap();
         let method=request.method().as_str().to_owned();
         let reply=if path=="/network-reset" {
-            let (f,w,_,_)=tc4_network_offer();
+            let (f,w,input,_)=tc4_network_offer();
             let target=tc3_move(&state.lock().unwrap())["target"].clone();
+            let handle=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
+            let previous=handle.lock().unwrap().learning_store().unwrap().teaching_event(input["teaching_choice"]["delivery_ref"].as_str().unwrap()).unwrap()
+                .payload["move"]["design_ref"].as_str().map(str::to_owned);
             let collected=samples.clone(); samples.lock().unwrap().clear();
             f.access.runs.configure_fake(move || Box::new(TutorRequestRecorder {samples:collected.clone(),directory:None,
-                inner:Box::new(ChatStubAdapter::scripted(tc4_script(target.clone()))) }));
+                inner:Box::new(tc4_delivery(target.clone(),previous.clone())) }));
             let result=ok_json(&w); network_fixture=Some((f,w)); result
         } else if let Some(path)=path.strip_prefix("/network") {
             let (f,_)=network_fixture.as_ref().unwrap();
@@ -364,7 +368,7 @@ fn continuation_tc5_browser_api() {
             let mut movement=tc3_move(&fresh);
             let reference=if path.contains("presentation") {
                 let candidate=fresh.private_context().create_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,None,
-                    PresentationContent { animation_assets:Default::default(),title:"平均速度：观察总时间".into(),
+                    PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"平均速度：观察总时间".into(),
                         content_files:BTreeMap::from([("index.html".into(),"<h2>总路程固定为 120 公里</h2><label>总时间 <input id=hours type=range min=1 max=6 value=2></label><p>观察时间变长后的平均速度。</p>".into())]),
                         entrypoint:"index.html".into(),readable_content:"总路程固定；增加总时间时，每小时对应的路程减少。".into(),
                         source_bindings:vec![],assumptions:vec![],state_contract:json!({}),initial_state:json!({"hours":2}) }).unwrap();
@@ -387,8 +391,11 @@ fn continuation_tc5_browser_api() {
             std::fs::write(output.join(format!("{file}.json")),serde_json::to_vec_pretty(&value).unwrap()).unwrap(); ok_json(&value)
         } else if path=="/agent/runs" {
             let target=tc3_move(&state.lock().unwrap())["target"].clone();
+            let previous={let state=state.lock().unwrap();let store=state.user.learning_store().unwrap();
+                store.state().unwrap().control.current_tutor_session_id.as_deref().and_then(|session|
+                    store.current_teaching_design(session,&state.workspace.book.base.book_id,state.workspace.book.source_fingerprint()).unwrap().map(|event|event.event_id))};
             coordinator.start(&body,"1001",Box::new(TutorRequestRecorder {samples:samples.clone(),directory:None,
-                inner:Box::new(ChatStubAdapter::scripted(tc4_script(target))) }),||{},||{})
+                inner:Box::new(tc4_delivery(target,previous)) }),||{},||{})
         } else if let Some(id)=path.strip_prefix("/agent/runs/") {
             let id=id.split('/').next().unwrap();
             match coordinator.stream(id) {Some(stream)=>ok_json(&json!(stream.snapshot())),None=>Reply {status:404,body:"{}".into()}}
@@ -542,14 +549,15 @@ fn tc4_network_offer() -> (super::mu5_tests::Fixture, Value, Value, Probe) {
     {
         let mut user = handle.lock().unwrap();
         let session = &user.agent_history.sessions[0]; let turn = &session.turns[0];
-        let private = PrivateBookContext { user:&user, book:&publication.book, book_dir:publication.directory(),
+        let private = PrivateBookContext { learning_workspace_id:None, user:&user, book:&publication.book, book_dir:publication.directory(),
             messages:&session.messages, selected_chat:Some(&session.id) };
         let (_root, state) = fixture(true);
         let movement = tc3_move(&state);
         let reference = AgentTurnRef { session_id:session.id.clone(), turn_id:turn.turn_id.clone(), user_turn_ordinal:turn.user_turn_ordinal };
-        teaching::step(&private, &reference,
+        let selected=super::tutor_loop_tests::step_with_design(&private, &reference,
             json!({"operation":"select","move":movement}), &[], &[EvidenceRange { start_lid:"1.1".into(), end_lid:"1.1".into(), ranges:vec![] }]).unwrap();
-        let result = super::tutor_loop_tests::outcome(None);
+        let mut result = super::tutor_loop_tests::outcome(None);
+        result.teaching_delivery_move_refs=serde_json::from_value(selected["delivery_move_refs"].clone()).unwrap();
         finalize_user_agent_turn(&mut user, &reference, AgentAssistantStatus::Completed, Some(result), None, None, &[], "1000").unwrap();
     }
     f.access.runs.recover(&f.access).unwrap();
@@ -634,13 +642,54 @@ fn continuation_tc4_network_two_choices_conflicts_and_unknown_execution() {
 
 struct Tc4CrashProbe(Probe);
 
-fn tc4_script(target: Value) -> Vec<AssistantTurn> {
-    let call = |name:&str, arguments:Value| AssistantTurn { provider_continuation:None,text:None,usage_total_tokens:Some(1),
-        tool_calls:vec![ToolCall { id:format!("tc4-{name}"),name:name.into(),arguments:arguments.to_string() }] };
-    vec![call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),
-        call("tutor.step",json!({"operation":"select","move":{"move_id":"chosen-comparison","object_ids":[],"kind":"compare",
-            "target":target,"prompt":"Compare equal-distance journeys using total distance and total time."}})),
-        AssistantTurn { provider_continuation:None,text:Some("Equal distances need not take equal times. Compare the journeys using total distance divided by total time.".into()),tool_calls:vec![],usage_total_tokens:Some(1) }]
+pub(super) fn accepted_design(plan:&AgentRequestPlan, call_id:&str) -> Value {
+    let message=plan.input.iter().rev().find(|message|message.tool_call_id.as_deref()==Some(call_id))
+        .expect("the next sampling must contain the design acceptance");
+    let result:Value=serde_json::from_str(message.content.as_deref().unwrap()).unwrap();
+    let accepted=result["model_body"].clone();
+    assert!(accepted["design_ref"].is_string(),"design was not accepted: {result}");
+    accepted
+}
+
+struct ContinuationDelivery {
+    movement: Value,
+    previous_design_ref: Option<String>,
+    stage: std::cell::Cell<usize>,
+}
+impl ModelAdapter for ContinuationDelivery {
+    fn complete(&self,_:CompletionRequest)->Result<ParsedResponse,AdapterError> {unreachable!()}
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
+        unreachable!()
+    }
+    fn chat(&self,plan:&AgentRequestPlan)->Result<AssistantTurn,AdapterError> {
+        let stage=self.stage.get();self.stage.set(stage+1);
+        let call=|id:&str,name:&str,arguments:Value|AssistantTurn {provider_continuation:None,text:None,usage_total_tokens:Some(1),
+            tool_calls:vec![ToolCall {id:id.into(),name:name.into(),arguments:arguments.to_string()}]};
+        Ok(match stage {
+            0=>call("read","book.text",json!({"lid":"1.1","end_lid":"1.1"})),
+            1=>{
+                let mut design=super::teaching_design_tests::design_request("continuation-design",self.previous_design_ref.as_deref());
+                design["design"]["target"]=self.movement["target"].clone();
+                design["design"]["blocks"][0]["source_bindings"]=self.movement["target"]["source_bindings"].clone();
+                call("design","tutor.step",design)
+            },
+            2=>{
+                let mut movement=self.movement.clone();
+                movement["design_ref"]=accepted_design(plan,"design")["design_ref"].clone();
+                movement["block_refs"]=json!(["total-time"]);
+                super::tutor_loop_tests::fixture_participation(&mut movement);
+                call("select","tutor.step",json!({"operation":"select","move":movement}))
+            },
+            3=>AssistantTurn {provider_continuation:None,text:Some("Equal distances need not take equal times. Compare the journeys using total distance divided by total time.".into()),tool_calls:vec![],usage_total_tokens:Some(1)},
+            _=>return Err(AdapterError {message:format!("Continuation fixture exhausted: {:?}",plan.input.last()),spend_stop:None}),
+        })
+    }
+}
+fn tc4_delivery(target:Value, previous_design_ref:Option<String>) -> ContinuationDelivery {
+    ContinuationDelivery {movement:json!({"move_id":"chosen-comparison","object_ids":[],"kind":"compare",
+        "interaction_intent":"neutral","intent_origin":"current_action","target":target,
+        "prompt":"Compare equal-distance journeys using total distance and total time."}),previous_design_ref,stage:Default::default()}
 }
 
 #[test]
@@ -648,28 +697,34 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     let (_root, mut state) = fixture(true);
     let (_origin, input) = tc4_offer(&mut state);
     let target = tc3_move(&state)["target"].clone();
+    let previous=state.user.learning_store().unwrap().teaching_event(input["teaching_choice"]["delivery_ref"].as_str().unwrap()).unwrap()
+        .payload["move"]["design_ref"].as_str().map(str::to_owned);
     let samples = Arc::new(std::sync::Mutex::new(Vec::new()));
     state.services.adapter = Box::new(TutorRequestRecorder { samples:samples.clone(),directory:None,
-        inner:Box::new(ChatStubAdapter::scripted(tc4_script(target.clone()))) });
+        inner:Box::new(tc4_delivery(target.clone(),previous)) });
     let answer = post_ok(&mut state,"/agent/chat",input.clone());
     assert_eq!(answer["incomplete"],false,"{answer}");
     let accepted = state.user.agent_history.sessions[0].turns[1].turn_id.clone();
     assert_eq!(post_ok(&mut state,"/agent/chat",input.clone())["turn_id"],accepted);
-    assert_eq!(samples.lock().unwrap().len(),3);
+    assert_eq!(samples.lock().unwrap().len(),5,"four chat samplings plus the teaching delivery review");
     let chosen = state.user.learning_store().unwrap().teaching_event(&format!("chosen:{accepted}")).unwrap();
     assert_eq!(state.user.learning_store().unwrap().teaching_deliveries(state.workspace.selected_chat.as_deref().unwrap(),&accepted).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"local","action":"choice","request":input,"accepted_turn":accepted,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":3,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":5,"terminal":"completed","incomplete":false}));
 
     let (f,w,input,_) = tc4_network_offer();
+    let handle=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
+    let prior=handle.lock().unwrap().learning_store().unwrap().teaching_event(input["teaching_choice"]["delivery_ref"].as_str().unwrap()).unwrap();
+    let previous=prior.payload["move"]["design_ref"].as_str().map(str::to_owned);
+    let target=prior.payload["move"]["target"].clone();
     let samples = Arc::new(std::sync::Mutex::new(Vec::new())); let collected = samples.clone();
     f.access.runs.configure_fake(move || Box::new(TutorRequestRecorder { samples:collected.clone(),directory:None,
-        inner:Box::new(ChatStubAdapter::scripted(tc4_script(target.clone()))) }));
+        inner:Box::new(tc4_delivery(target.clone(),previous.clone())) }));
     let (status,accepted) = admit(&f,&w,input.clone()); assert_eq!(status,202,"{accepted}");
     assert!(f.access.runs.run_one(&f.access).unwrap());
     assert!(!f.access.runs.run_one(&f.access).unwrap());
     assert_eq!(admit(&f,&w,input.clone()).1["turn_id"],accepted["turn_id"]);
-    assert_eq!(samples.lock().unwrap().len(),3);
+    assert_eq!(samples.lock().unwrap().len(),5,"four chat samplings plus the teaching delivery review");
     let handle = f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap(); let user = handle.lock().unwrap();
     let turn = &user.agent_history.sessions[0].turns[1];
     assert_eq!(turn.status,AgentAssistantStatus::Completed,"{:?}",turn.error);
@@ -677,7 +732,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     let chosen = user.learning_store().unwrap().teaching_event(&format!("chosen:{}",turn.turn_id)).unwrap();
     assert_eq!(user.learning_store().unwrap().teaching_deliveries(w["selected_chat"].as_str().unwrap(),&turn.turn_id).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"network","action":"choice","request":input,"accepted_turn":turn.turn_id,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":3,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":5,"terminal":"completed","incomplete":false}));
 }
 
 impl ModelAdapter for Tc4CrashProbe {
@@ -756,10 +811,10 @@ fn continuation_tc4_local_answer_identity_and_open_goal() {
     let run = prepare(&mut state, choice);
     assert_eq!(run.goal.as_ref().unwrap().id, goal.id);
     assert_eq!(run.tutor.as_ref().unwrap()["current_action"]["action"]["origin"], "ui_choice");
-    assert_eq!(runtime::tutor::action_intent(run.tutor.as_ref().unwrap()), Some(("neutral","current_action")));
+    assert_eq!(runtime::tutor::action_intent(run.tutor.as_ref().unwrap()),None,"a choice keeps its selected content but does not dictate teaching intent");
     let mut movement = tc3_move(&state);
     movement.as_object_mut().unwrap().remove("continuation"); movement["kind"] = json!("compare");
-    movement.as_object_mut().unwrap().remove("interaction_intent"); movement.as_object_mut().unwrap().remove("intent_origin");
+    movement["interaction_intent"]=json!("neutral"); movement["intent_origin"]=json!("current_action");
     tc3_select(&state,&run.turn_ref,movement).unwrap();
     super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
     let next = json!({"message":"", "session_id":origin.session_id, "client_request_id":"answer",
@@ -788,10 +843,11 @@ fn continuation_tc3_optional_set_delivers_once_and_reads_without_provider() {
         movement["hint"]=json!("PRIVATE_HELP"); movement["explanation"]=json!("PRIVATE_ANSWER");
         if options==0 { movement.as_object_mut().unwrap().remove("continuation"); }
         else { movement["continuation"]["options"].as_array_mut().unwrap().truncate(options); }
-        tc3_select(&state,&run.turn_ref,movement.clone()).unwrap();
+        let selected=tc3_select(&state,&run.turn_ref,movement.clone()).unwrap();
         assert_eq!(tc3_views(&mut state,&run.turn_ref)["activities"],json!([]));
         // Persist the answer without its teaching receipt: reads repair only that receipt.
-        let result=super::tutor_loop_tests::outcome(None);
+        let mut result=super::tutor_loop_tests::outcome(None);
+        result.teaching_delivery_move_refs=serde_json::from_value(selected["delivery_move_refs"].clone()).unwrap();
         finalize_agent_turn_completed(&mut state,&run.turn_ref,&result,&[],"now").unwrap();
         let first=tc3_views(&mut state,&run.turn_ref);
         assert_eq!(first,tc3_views(&mut state,&run.turn_ref));
@@ -818,19 +874,29 @@ fn continuation_tc3_optional_set_delivers_once_and_reads_without_provider() {
 }
 
 #[test]
-fn continuation_tc3_rejects_second_set_and_unread_or_missing_target() {
+fn continuation_tc3_rejects_second_set_unread_target_and_selection_without_design() {
     let (_root,mut state)=fixture(true); enable(&mut state);
     let run=prepare(&mut state,json!({"message":"Explain average speed"}));
     let movement=tc3_move(&state);
     let mut missing=movement.clone(); missing.as_object_mut().unwrap().remove("target");
-    assert!(tc3_select(&state,&run.turn_ref,missing).is_err());
+    assert!(teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":missing.clone()}),&[],
+        &[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).is_err());
     let mut unread=movement.clone(); unread["target"]["source_bindings"][0]["end_lid"]=json!("1.2");
     assert!(tc3_select(&state,&run.turn_ref,unread).is_err());
     for field in ["label","purpose"] {
         let mut invalid=movement.clone(); invalid["continuation"]["options"][0][field]=json!("Look at LID 1.2");
         assert!(tc3_select(&state,&run.turn_ref,invalid).is_err(),"public provenance: {field}");
     }
-    tc3_select(&state,&run.turn_ref,movement.clone()).unwrap();
+    let selected=tc3_select(&state,&run.turn_ref,movement.clone()).unwrap();
+    missing["move_id"]=json!("inherited-target");
+    missing["design_ref"]=selected["design_ref"].clone();
+    missing["block_refs"]=json!(["total-time"]);
+    missing.as_object_mut().unwrap().remove("continuation");
+    super::tutor_loop_tests::fixture_participation(&mut missing);
+    let inherited=teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":missing,
+        "delivery_move_refs":selected["delivery_move_refs"]}),&[],&[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap();
+    let store=state.user.learning_store().unwrap();
+    assert_eq!(store.teaching_event(inherited["selected"].as_str().unwrap()).unwrap().payload["move"]["target"],movement["target"]);
     let mut second=movement; second["move_id"]=json!("second");
     assert!(tc3_select(&state,&run.turn_ref,second).unwrap_err().message.contains("一组"));
 }
@@ -872,7 +938,7 @@ fn continuation_tc3_current_assessment_and_unrelated_history_are_distinct() {
     movement["target"]["learning_focus"]=json!("bicycle colour");
     movement["continuation"]=json!({"recommended_option_id":"observe","options":[
         {"option_id":"observe","label":"Locate the colour word","purpose":"Connect the adjective to the bicycle","move_kind":"observe"}]});
-    teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],
+    super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],
         &[EvidenceRange{start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]}]).unwrap();
 
     let (_root,mut state)=fixture(true); enable(&mut state);
@@ -898,6 +964,7 @@ fn continuation_tc3_delivery_failure_and_pause_do_not_offer_executable_candidate
     tc3_select(&state,&run.turn_ref,tc3_move(&state)).unwrap();
     let mut result=super::tutor_loop_tests::outcome(None);
     result.delivery_diagnostics=Some(runtime::orchestrator::AnswerDeliveryDiagnostics {
+                        fallback: None,
         initial:Default::default(),repair:Some(runtime::orchestrator::AnswerDeliveryAttemptDiagnostics { issues:vec![
             runtime::orchestrator::AnswerDeliveryIssue { error_code:"ANSWER_PROVENANCE".into(),start:None,end:None,
                 trigger_value:None,match_form:"test".into(),source_channels:vec![] }] }) });
@@ -1190,11 +1257,11 @@ fn continuation_tc2_cross_lid_and_direct_help_require_full_source_before_select(
     let movement=json!({"move_id":"direct","object_ids":[],"capability":"explanation","kind":"explain",
         "interaction_intent":"direct_explanation","intent_origin":"current_action","prompt":"Explain the selected relationship",
         "target":{"learning_focus":"speed","expected_performance":"explain","capability":"explanation","source_bindings":bindings,"object_refs":[]}});
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&[]).is_err());
+    assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&[]).is_err());
     let mut wrong=movement.clone();wrong["kind"]=json!("question");wrong["interaction_intent"]=json!("neutral");wrong["intent_origin"]=json!("neutral");
     let reads=[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.2".into(),ranges:vec![]}];
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":wrong}),&[],&reads).is_err());
-    teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&reads).unwrap();
+    assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":wrong}),&[],&reads).is_err());
+    super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&reads).unwrap();
 }
 
 #[test]
@@ -1271,9 +1338,9 @@ fn activity(state: &mut AppState, object_only: bool) -> (AgentTurnRef, String) {
     if object_only {
         movement.as_object_mut().unwrap().remove("target");
         movement["object_ids"] = json!(["speed"]);
-        teaching::step(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
+        super::tutor_loop_tests::step_with_design(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
     }
-    teaching::step(&state.private_context(), &run.turn_ref, json!({"operation":"select","move":movement}), &[],
+    super::tutor_loop_tests::step_with_design(&state.private_context(), &run.turn_ref, json!({"operation":"select","move":movement}), &[],
         &[EvidenceRange { start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![] }]).unwrap();
     super::tutor_loop_tests::finish(state, &run.turn_ref, &super::tutor_loop_tests::outcome(None));
     let delivery = format!("delivery:{}:question", run.turn_ref.turn_id);
@@ -1299,16 +1366,17 @@ struct ActionToolContract {
 }
 impl ModelAdapter for ActionToolContract {
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { self.inner.complete(request) }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> { self.inner.complete_structured(request) }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
-        let tool = request.tools.iter().find(|tool| tool.name == "tutor.step").expect("action turn has Tutor context");
-        let movement = &tool.parameters["properties"]["move"];
+        let tool = request.tools.iter().find(|tool| tool.name == "tutor.step");
+        let movement = tool.map(|tool| &tool.parameters["properties"]["move"]).unwrap_or(&Value::Null);
         let active = movement.is_object();
         if active {
             assert!(movement["properties"].get("continuation").is_some());
             for field in ["interaction_intent","intent_origin","intent_quote","preference_ref","capability"] {
                 assert!(movement["properties"].get(field).is_none(), "program-owned or unavailable: {field}");
             }
-        } else {
+        } else if let Some(tool) = tool {
             assert_eq!(tool.parameters["properties"]["operation"]["enum"], json!(["trace","understanding","evidence"]));
             assert!(!tool.description.contains("Select"));
         }
@@ -1331,7 +1399,12 @@ fn tutor_to3_projected_ui_examples_execute_with_runtime_bound_fields() {
         .find(|e| e["operation"] == "select").unwrap().clone();
     for action in ["explain_selection", "continue_answer", "clarify_answer"] {
         let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
-        state.services.adapter = Box::new(PublishedExample { example:example.clone(), stage:AtomicUsize::new(0), observed:observed.clone() });
+        let previous_design_ref={
+            let store=state.user.learning_store().unwrap();
+            store.state().unwrap().control.current_tutor_session_id.as_deref().and_then(|session|
+                store.current_teaching_design(session,&state.workspace.book.base.book_id,state.workspace.book.source_fingerprint()).unwrap().map(|event|event.event_id))
+        };
+        state.services.adapter = Box::new(PublishedExample { example:example.clone(), previous_design_ref, stage:AtomicUsize::new(0), observed:observed.clone() });
         let input = if action == "explain_selection" { selection_input(&state, "to3-selection") } else {
             let turn = &state.user.agent_history.sessions[0].turns.last().unwrap().turn_id;
             json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":format!("to3-{action}"),
@@ -1340,12 +1413,15 @@ fn tutor_to3_projected_ui_examples_execute_with_runtime_bound_fields() {
         let result = post_ok(&mut state, "/agent/chat", input);
         assert_eq!(result["incomplete"], false, "{action}: {result}");
         let sent = observed.lock().unwrap();
-        for key in ["capability", "interaction_intent", "intent_origin"] { assert!(sent[0]["move"].get(key).is_none()); }
+        assert!(sent[0]["move"].get("capability").is_none(),"the accepted source target supplies capability for every UI action");
+        for key in ["interaction_intent", "intent_origin"] {
+            assert_eq!(sent[0]["move"].get(key).is_none(),action!="clarify_answer");
+        }
         let chat = &state.user.agent_history.sessions[0];
         let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&chat.id, &chat.turns.last().unwrap().turn_id).unwrap();
         assert_eq!(deliveries.len(), 1);
-        assert_eq!(deliveries[0].payload["move"]["intent_origin"], "current_action");
-        assert_eq!(deliveries[0].payload["move"]["interaction_intent"], if action == "continue_answer" { "neutral" } else { "direct_explanation" });
+        assert_eq!(deliveries[0].payload["move"]["intent_origin"],if action=="clarify_answer" {"neutral"} else {"current_action"});
+        assert_eq!(deliveries[0].payload["move"]["interaction_intent"],if action=="explain_selection" {"direct_explanation"} else {"neutral"});
         assert_eq!(deliveries[0].payload["move"]["target"]["source_bindings"][0]["source_revision"], state.workspace.book.source_fingerprint());
     }
 }
@@ -1366,8 +1442,6 @@ fn action_contract_samples() -> Vec<Value> {
     state.services.adapter = Box::new(TutorRequestRecorder { samples:samples.clone(), directory:None, inner:Box::new(ActionToolContract {
         observations:observations.clone(), inner:Box::new(ChatStubAdapter::scripted(vec![
             tool_call("book.text",json!({"lid":"1.1","end_lid":"1.1"})), answer(),
-            tool_call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),
-            tool_call("tutor.step",json!({"operation":"select","move":movement})), answer(),
         ])),
     }) });
     let input = selection_input(&state,"contract-first");
@@ -1375,10 +1449,13 @@ fn action_contract_samples() -> Vec<Value> {
     let original = state.user.agent_history.sessions[0].turns[0].turn_id.clone();
     assert!(state.user.learning_store().unwrap().state().unwrap().sessions.is_empty());
     enable(&mut state);
+    state.services.adapter=Box::new(TutorRequestRecorder {samples:samples.clone(),directory:None,inner:Box::new(ActionToolContract {
+        observations:observations.clone(),inner:Box::new(ContinuationDelivery {movement,previous_design_ref:None,stage:Default::default()})
+    })});
     let input = json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"contract-next",
         "entry_action":"continue_answer","answer_ref":{"turn_id":original},"expected_chat_head":original});
     post_ok(&mut state,"/agent/chat",input);
-    assert_eq!(*observations.lock().unwrap(), vec![false,false,true,true,true]);
+    assert_eq!(*observations.lock().unwrap(), vec![false,false,true,true,true,true]);
     let session = &state.user.agent_history.sessions[0];
     let turn = &session.turns[1];
     assert_eq!(turn.status,AgentAssistantStatus::Completed);
@@ -1401,7 +1478,23 @@ pub(super) struct TutorRequestRecorder {
 impl ModelAdapter for TutorRequestRecorder {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.inner.model_runtime_profile() }
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { self.inner.complete(request) }
-    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> { self.inner.complete_structured(request) }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if !request.system.starts_with("Teaching delivery acceptance review.") { return self.inner.complete_structured(request); }
+        let value=json!({"kind":"structured_completion","instructions":request.system,"input":[{"role":runtime::Role::User,"content":request.user}],
+            "tools":[],"output_token_limit":request.output_token_limit,"reasoning_effort":request.reasoning_effort});
+        let index={let mut samples=self.samples.lock().unwrap();let index=samples.len();samples.push(value.clone());index};
+        if let Some(dir)=&self.directory {
+            std::fs::write(dir.join(format!("request-{index:02}.json")),serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+        }
+        // A recorder forwards to its actual inner adapter. In live provider
+        // runs this is a genuine review call, never a fixture acceptance.
+        let result=self.inner.complete_structured(request);
+        if let Some(dir)=&self.directory {
+            let output=match &result {Ok(value)=>value.clone(),Err(error)=>json!({"error":error.message})};
+            std::fs::write(dir.join(format!("response-{index:02}.json")),serde_json::to_vec_pretty(&output).unwrap()).unwrap();
+        }
+        result
+    }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         let mut input = serde_json::to_value(&request.input).unwrap();
         for message in input.as_array_mut().into_iter().flatten() {
@@ -1445,7 +1538,7 @@ fn continuation_tc2a_continue_omits_assessment_workflow() {
     let samples = action_contract_samples();
     let continued = samples[2].to_string();
     assert!(!continued.contains("If a formal open response is pending"), "continuation without a formal response carries the assessment workflow");
-    assert!(continued.contains("Select before final delivery"));
+    assert!(continued.contains("Select prepares the actual final delivery"));
     for workflow in ["assessment", "understanding", "presentation"] {
         assert!(!continued.contains(&format!("resident-agent.tutor.{workflow}")));
     }
@@ -1781,9 +1874,28 @@ fn continuation_contract_snapshot_survives_jsonl_and_drives_current_action() {
             "source_bindings":snapshot.source_bindings,"object_refs":[]}});
     let ranges=[EvidenceRange { start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![] }];
     let mut bad=movement.clone(); bad["interaction_intent"]=json!("guided_inquiry"); bad["kind"]=json!("question");
-    assert!(teaching::step(&state.private_context(),&turn,json!({"operation":"select","move":bad}),&[],&ranges).is_err());
-    let selected=teaching::step(&state.private_context(),&turn,json!({"operation":"select","move":movement}),&[],&ranges).unwrap();
+    assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&turn,json!({"operation":"select","move":bad}),&[],&ranges).is_err());
+    let store=state.user.learning_store().unwrap();
+    let binding=store.teaching_event(&format!("binding:{}",turn.turn_id)).unwrap().binding;
+    let design=store.current_teaching_design(&binding.tutor_session_id,&binding.source_id,&binding.source_revision).unwrap().unwrap();
+    let mut request=json!({"operation":"select","move":movement});
+    request["move"]["design_ref"]=json!(design.event_id);
+    request["move"]["block_refs"]=json!(["total-time"]);
+    request["move"]["interaction_intent"]=json!("neutral");
+    request["move"]["intent_origin"]=json!("neutral");
+    request["move"]["intent_quote"]=json!("ignored model quote");
+    request["move"]["preference_ref"]=json!("ignored model preference");
+    super::tutor_loop_tests::fixture_participation(&mut request["move"]);
+    let before=store.teaching_turn_events(&binding.tutor_session_id,&turn.turn_id).unwrap().len();
+    let normalized=teaching::preflight_step(&state.private_context(),&turn,&request,&[],&ranges).unwrap();
+    assert_eq!(normalized["move"]["interaction_intent"],"direct_explanation");
+    assert_eq!(normalized["move"]["intent_origin"],"current_action");
+    assert!(normalized["move"]["intent_quote"].is_null());
+    assert!(normalized["move"]["preference_ref"].is_null());
+    assert_eq!(store.teaching_turn_events(&binding.tutor_session_id,&turn.turn_id).unwrap().len(),before);
+    let selected=teaching::step(&state.private_context(),&turn,request,&[],&ranges).unwrap();
     let saved=state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap();
+    assert_eq!(saved.payload["move"],normalized["move"],"review and commit must see the same accepted action intent");
     assert_eq!(saved.payload["move"]["interaction_intent"], "direct_explanation");
     assert_eq!(saved.payload["move"]["intent_origin"], "current_action");
     assert!(saved.payload["move"]["intent_quote"].is_null());
@@ -1797,7 +1909,8 @@ fn continuation_contract_no_action_cannot_claim_current_action() {
         "interaction_intent":"direct_explanation","intent_origin":"current_action","prompt":"average speed",
         "target":{"learning_focus":"speed","expected_performance":"explain time","capability":"explanation",
             "source_bindings":resolved_action(&state).source_bindings,"object_refs":[]}});
-    let error=teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&[]).unwrap_err();
+    let error=super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],
+        &[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap_err();
     assert!(error.message.contains("教学意图"));
     let saved=&state.user.agent_history.sessions[0].turns[0];
     let mut old=serde_json::to_value(saved).unwrap(); old.as_object_mut().unwrap().remove("domain");

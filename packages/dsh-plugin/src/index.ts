@@ -4,6 +4,7 @@ import { createBuildControl } from "./build-control.ts";
 import { resolvePluginConfig, type PluginConfig } from "./config.ts";
 import { connectExecutor, engineCommand } from "./engine-client.ts";
 import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../core/src/dsh-build-executor-contract.ts";
+import { createOperatorBuildHost } from './operator-build-host.ts';
 
 export const name = "understand-book-build";
 export const inject = ["agents", "subagents", "tools", "agentPresets", "userQuestions", "llm"];
@@ -34,17 +35,20 @@ export async function apply(ctx: Context, input: Config = {}) {
   const presetId = "understand-book-build-executor";
   const unregisterPreset = await ctx.agentPresets.register({ id: presetId, plugins: [] });
   const control = createBuildControl(ctx, config, presetId);
+  const operatorHost = config.operatorBuild ? createOperatorBuildHost(ctx, config, presetId, config.operatorBuild) : undefined;
+  operatorHost?.start();
   ctx.effect(() => async () => {
-    try { await control.dispose(); } finally { await unregisterPreset(); }
+    try { await operatorHost?.dispose(); await control.dispose(); } finally { await unregisterPreset(); }
   });
   ctx.tools.register({ name: "ub_build_prepare_and_confirm", description: "Prepare an exact standard book build plan and ask the human to approve it. Returns a durable invocation reference; does not start executors.",
-    parameters: { type: "object", properties: { target_input: { type: "string" }, root_dir: { type: "string" }, pass2: { type: "string", enum: ["enabled", "disabled"] }, max_parallel: { type: "integer", minimum: 1, maximum: 3 },
+    parameters: { type: "object", properties: { target_input: { type: "string" }, root_dir: { type: "string" }, pass2: { type: "string", enum: ["enabled", "disabled"], description: "Optional long-range relation enrichment. Defaults to disabled; enable only when explicitly requested." }, max_parallel: { type: "integer", minimum: 1, maximum: 3 },
+      build_tutor: { type: 'boolean', description: 'Explicitly include extra Tutor teaching assets. Defaults to false; source understanding and book structure remain available.' },
       retrieval: { type: "object", properties: { retrieval_mode: { type: "string", enum: ["lexical_only", "semantic_required"] },
         budget: { type: "object", properties: { max_documents: { type: "integer", minimum: 0 }, max_queries: { type: "integer", minimum: 0 },
           max_calls: { type: "integer", minimum: 0 }, max_input_tokens: { type: "integer", minimum: 0 } },
           required: ["max_documents", "max_queries", "max_calls"], additionalProperties: false } }, required: ["retrieval_mode", "budget"], additionalProperties: false },
       budget: { type: "object", properties: { on_exceed: { type: "string", enum: ["needs_user"] }, max_total_tokens: { type: "integer", minimum: 0 }, max_wall_clock_minutes: { type: "number", minimum: 0 } }, required: ["on_exceed"], additionalProperties: false } },
-      required: ["target_input", "root_dir", "pass2"], additionalProperties: false },
+      required: ["target_input", "root_dir"], additionalProperties: false },
     output: { schema: {}, render: (_args, value) => [{ type: "text", text: JSON.stringify(value) }] },
     async execute(args: any, exec) {
       if (!exec.agent) throw new Error("build_root_required");

@@ -1,12 +1,15 @@
 import { expect, it } from 'vitest';
-import { allowanceAmount, allowanceTime, spendNotice, usageOccupation, type AccountUsage } from './account-allowance';
+import { allowancePercent, allowanceTime, offerPercentage, paymentAmount, spendNotice, usageOccupation, type AccountUsage } from './account-allowance';
 
-it('keeps micro amounts, negative balances and unknown charges distinct', () => {
-  expect([0, 1, 1_000_001, -200_001].map(allowanceAmount)).toEqual(['0.00', '0.000001', '1.000001', '-0.200001']);
-  expect(allowanceAmount(null)).toBe('待核算');
+it('preserves server percentages, nonzero tiny usage and unknown basis without a local currency conversion', () => {
+  expect(allowancePercent({ value: '120.7', nonzero: true, below_tenth: false })).toBe('120.7%');
+  expect(allowancePercent({ value: '0', nonzero: true, below_tenth: true })).toBe('低于 0.1%');
+  expect(allowancePercent({ value: '0', nonzero: false, below_tenth: false })).toBe('0%');
+  expect(allowancePercent(null)).toBe('待配置比例');
   expect(allowanceTime(0)).toBe('1970/01/01 08:00');
+  expect(offerPercentage(50250)).toBe('50.25%'); expect(paymentAmount(1250)).toBe('12.50');
   for (const state of ['reserved', 'sent', 'pending', 'settled', 'released'] as const) {
-    expect(usageOccupation({ state, reserved_micro_cny: 123 } as AccountUsage)).toBe(['reserved', 'sent', 'pending'].includes(state) ? 123 : 0);
+    expect(usageOccupation({ state, allowance_percentages: { reserved: { value: '3', nonzero: true, below_tenth: false } } } as AccountUsage)).toBe(['reserved', 'sent', 'pending'].includes(state) ? '3%' : '0%');
   }
 });
 

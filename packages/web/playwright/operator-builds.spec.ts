@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+// Start s2_b1_browser_host (4190/4191), admin Vite (4184), and run the DSH HTTP acceptance first.
+const backend = 'http://127.0.0.1:4190';
+const output = resolve('../../docs/performance/workspace-s2-b1-20261018');
+test.afterEach(async ({page},info)=>{
+  if(info.status!==info.expectedStatus){await page.screenshot({path:info.outputPath('failure.png'),fullPage:true});writeFileSync(info.outputPath('body.txt'),await page.locator('body').innerText());}
+});
+test('B1 operator creates, confirms, reuses and publishes; completed DSH task retains actual plan and pending costs', async ({page,context})=>{
+  test.setTimeout(120000);
+  const fixture=await page.request.get('http://127.0.0.1:4191/fixture').then(r=>r.json());
+  const built=JSON.parse(readFileSync(resolve('../../target/b1-http-acceptance-result.json'),'utf8'));
+  const suffix=Date.now(),taskName=`运营页面复用课程 ${suffix}`,reusedRelease=`b1-browser-reused-${suffix}`;
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await context.route(/\/api\/|\/books\//,async route=>{
+    const request=route.request(),url=new URL(request.url());
+    const response=await route.fetch({url:`${backend}${url.pathname}${url.search}`,headers:{...await request.allHeaders(),host:'127.0.0.1:4190',origin:fixture.origin,cookie:fixture.admin_cookie}});
+    await route.fulfill({response});
+  });
+  const api=async(path:string)=>{const response=await page.request.get(`${backend}${path}`,{headers:{origin:fixture.origin,cookie:fixture.admin_cookie}});expect(response.ok(),await response.text()).toBe(true);return response.json();};
+  const label=(ref:{book_id:string;publication_id:string})=>`${ref.book_id} · ${ref.publication_id}`;
+  const submit=async(title:string)=>{const dialog=page.getByRole('dialog',{name:title,exact:true});await dialog.getByRole('button',{name:title==='创建准备任务'?'创建准备任务':'确认提交',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(page.getByText('操作已完成',{exact:false})).toBeVisible();};
+  await page.setViewportSize({width:1440,height:1000});await page.goto('http://127.0.0.1:4184/admin/operator-builds');
+  await page.getByRole('button',{name:'创建准备任务',exact:true}).click();
+  const create=page.getByRole('dialog',{name:'创建准备任务',exact:true});
+  await create.locator('[name="name"]').fill(taskName);await create.locator('[name="max"]').fill('1.00');await create.locator('[name="reserved"]').fill('0.01');await create.locator('[name="visible_to_users"]').fill('A, B');
+  await create.getByRole('group',{name:'复用已有成果',exact:true}).getByLabel(label(fixture.first),{exact:true}).check();
+  await create.getByRole('group',{name:'复用已有成果',exact:true}).getByLabel(label(fixture.second),{exact:true}).check();
+  await submit('创建准备任务');
+  const row=page.getByRole('row').filter({hasText:taskName});await row.getByRole('button',{name:'查看构建任务'}).click();
+  const detail=page.getByRole('region',{name:'运营构建任务详情',exact:true});
+  await detail.getByRole('button',{name:'准备构建计划',exact:true}).click();await submit('准备构建计划');
+  await expect(detail).toContainText('等待确认计划');await detail.getByRole('button',{name:'确认计划并启动',exact:true}).click();await submit('确认计划并启动');
+  await expect(detail).toContainText('成果已就绪');await expect(detail).toContainText('0 笔费用未完整确认');
+  const list=await api('/api/admin/operator-builds');const reused=list.items.find((task:{name:string})=>task.name===taskName);expect(reused.materials.every((m:{state:string})=>m.state==='reused')).toBe(true);expect(reused.budget.provider_cost_micro_cny).toBe(0);
+  await detail.getByRole('button',{name:'选择成果并发布',exact:true}).click();
+  const release=page.getByRole('dialog',{name:'发布新工作区',exact:true});
+  for(const [name,value] of Object.entries({release_id:reusedRelease,name:'两书复用学习工作区',publisher:'课程运营',public_goal:'完成课程复习',applicability:'期末复习',prerequisites:'基础概念'}))await release.locator(`[name="${name}"]`).fill(value);
+  await expect(release.locator('[name="visible_to_users"]')).toHaveValue('A, B');
+  for(const ref of [fixture.first,fixture.second])await expect(release.getByRole('group',{name:'选择确切资料版本',exact:true}).getByLabel(label(ref),{exact:true})).toBeChecked();
+  await submit('发布新工作区');
+  const published=await api(`/api/workspace-releases/${reusedRelease}/versions/1`);expect(published.availability.status).toBe('ready');expect(published.manifest.materials).toHaveLength(2);
+  await detail.getByRole('button',{name:'关闭构建详情'}).click();
+  const actual=page.getByRole('row').filter({hasText:'B1真实HTTP双资料构建'});await actual.getByRole('button',{name:'查看构建任务'}).click();
+  await expect(detail).toContainText('待核算占用');await expect(detail).toContainText(`${built.actual_executions} 笔费用未完整确认`);
+  await detail.getByText('查看本资料的实际准备计划',{exact:true}).click();await expect(detail).toContainText('模型：');
+  await expect(detail).toContainText(label(built.materials[1]));
+  mkdirSync(output,{recursive:true});await detail.scrollIntoViewIfNeeded();await page.screenshot({path:resolve(output,'operator-build-desktop.png'),fullPage:true});
+  await page.setViewportSize({width:390,height:844});await detail.scrollIntoViewIfNeeded();expect(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:resolve(output,'operator-build-mobile.png'),fullPage:true});
+  const costsBefore=await api('/api/admin/cost-summary');
+  await context.route('**/b1-reader-acceptance',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="app"></div><script type="module">import {createApp} from '/node_modules/.vite/deps/vue.js'; import NetworkApp from '/src/NetworkApp.vue'; import '/src/style.css'; createApp(NetworkApp).mount('#app');</script></body></html>`}));
+  await page.setViewportSize({width:1440,height:1000});await page.goto('/b1-reader-acceptance');
+  await page.getByRole('button',{name:'浏览共享预构建工作区',exact:true}).click();
+  await page.locator('.shared-card').filter({hasText:'B1双资料课程'}).filter({hasText:`第 ${built.version} 版`}).getByRole('button',{name:'查看目标与路线',exact:true}).click();
+  const shared=page.getByRole('article',{name:'共享工作区详情',exact:true});await shared.getByRole('textbox',{name:'确认你的学习目标',exact:true}).fill('通过两份资料完成事务复习');await shared.getByRole('button',{name:'确认目标并开始学习',exact:true}).click();
+  await expect(page.locator('.workspace-goal-bar')).toContainText('通过两份资料完成事务复习');
+  await page.getByRole('button',{name:'工作区与资料',exact:true}).click();
+  const members=page.getByRole('region',{name:'当前工作区',exact:true}).locator('.learning-member');await expect(members).toHaveCount(2);
+  const library=await api('/api/library');const generated=library.books.find((book:any)=>book.published_book_ref.publication_id===built.materials[1].publication_id);
+  const generatedTitle=generated.title||generated.published_book_ref.book_id.replace(/[-_]+/g,' ');
+  await members.filter({hasText:generatedTitle}).getByRole('button',{name:/^(开始阅读|继续阅读)$/}).click();
+  await expect.poll(()=>page.evaluate(async()=>{const source='/src/network-context.ts';return(await import(source)).network.value.workspace.published_book_ref;})).toEqual(built.materials[1]);
+  const freshText=await api(`/api/books/${built.materials[1].book_id}/publications/${built.materials[1].publication_id}/text?lid=1.1`);expect(freshText.text).toContain('Transactions');
+  const costsAfter=await api('/api/admin/cost-summary');for(const owner of ['account','platform'])expect(costsAfter[owner]).toEqual(costsBefore[owner]);
+  await expect(page.getByText('Transactions group operations into one atomic change.',{exact:true})).toBeVisible();
+  await page.evaluate(()=>document.fonts.ready);
+  await page.screenshot({path:resolve(output,'operator-release-reader.png'),fullPage:true});
+  expect(errors).toEqual([]);
+});

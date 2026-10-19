@@ -9,6 +9,13 @@ function (config, staticCapture) {
   let editing = false;
   let zoom = 1;
   const pendingCaptures = new Map();
+  const pendingHelp = new Map();
+  let helpRequest = 0;
+  function teachingRegion(regionId) {
+    if (!config.teachingBinding?.regions.some(region => region.region_id === regionId)) return null;
+    return Array.from(document.querySelectorAll('[data-teaching-region], [id]'))
+      .find(node => node.getAttribute('data-teaching-region') === regionId || node.id === regionId) ?? null;
+  }
   window.presentation = Object.freeze({
     initialState: config.initialState,
     restoredState: config.restoredState ?? null,
@@ -17,11 +24,44 @@ function (config, staticCapture) {
     commitState: () => scheduleCommit(),
     // Opens the host action form; only an explicit host submission records a learner action.
     requestTeachingAction: (moveId, response) => send({ kind: "teaching-action", move_id: moveId, response }),
+    // Only teaching help explicitly revealed on the page is reported. Moving
+    // sliders, expanding ordinary prose or locating a region is not an answer.
+    reportTeachingHelp: (moveId, kind, regionId) => new Promise((resolve, reject) => {
+      const region = teachingRegion(regionId);
+      const bounds = region?.getBoundingClientRect();
+      const text = region ? visibleText(region).trim() : '';
+      if (!region || !bounds || !text || !['hint', 'explanation'].includes(kind)
+        || bounds.bottom <= 0 || bounds.top >= innerHeight || bounds.right <= 0 || bounds.left >= innerWidth) {
+        reject(new Error('帮助区域尚未显示。')); return;
+      }
+      const requestId = ++helpRequest;
+      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error('帮助展示记录未确认。')); }, 15000);
+      pendingHelp.set(requestId, { resolve, reject, timer });
+      send({ kind: 'teaching-help', request_id: requestId, move_id: moveId, help_kind: kind, region_id: regionId, text });
+    }),
   });
   window.addEventListener("error", () => send({ kind: "error" }));
   window.addEventListener("unhandledrejection", () => send({ kind: "error" }));
   window.addEventListener("message", event => {
     if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === 'locate-region') {
+      const region = teachingRegion(event.data.region_id);
+      if (region) {
+        region.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        region.animate([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+          { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+      }
+      send({ kind: 'region-located', region_id: event.data.region_id, located: !!region });
+      return;
+    }
+    if (event.data.kind === 'teaching-help-recorded') {
+      const pending = pendingHelp.get(event.data.request_id);
+      if (pending) {
+        clearTimeout(pending.timer); pendingHelp.delete(event.data.request_id);
+        if (event.data.error) pending.reject(new Error(event.data.error)); else pending.resolve();
+      }
+      return;
+    }
     if (event.data.kind === "zoom" && Number.isFinite(event.data.scale) && event.data.scale >= .5 && event.data.scale <= 1.5) {
       const next = event.data.scale;
       if (next !== zoom) {

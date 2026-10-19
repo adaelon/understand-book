@@ -116,6 +116,13 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
         };
         match request {
             AuthorRequest::Prepare { .. } => return Err(invalid("prepare is handled by the active Runtime run")),
+            AuthorRequest::ReadMethod { method_id, revision, file, offset, length } => {
+                let file = file.as_deref().unwrap_or("card.md");
+                let (method, source) = runtime::presentation_methods::source(&method_id, revision, file)?;
+                result.body = crate::presentation_source::read(source, offset, length).map_err(invalid)?;
+                result.body.as_object_mut().unwrap().extend(
+                    runtime::presentation_methods::read_metadata(method, file).as_object().unwrap().clone());
+            }
             AuthorRequest::RenderAnimation { code, data, size, cues } => {
                 let rendered = if let Some(executor) = &self.sandbox {
                     executor.run(crate::presentation_sandbox::Job::Animation { code, data, size, cues }, cancellation)?
@@ -167,6 +174,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 }
                 result.body = crate::presentation_source::read(source, offset, length).map_err(invalid)?;
                 let metadata = json!({"status":"version_read","reference":reference,"candidate_id":candidate_id,"based_on":based_on,
+                    "method_refs":content.method_refs,"teaching_binding":content.teaching_binding,
                     "title":content.title,"libraries":library_metadata,"animations":animations,"files":content.content_files.keys().collect::<Vec<_>>(),"entrypoint":content.entrypoint,
                     "asset_refs":content.content_files.keys().filter_map(|path| path.strip_prefix("assets/").and_then(|name| name.strip_suffix(".svg"))).chain(content.animation_assets.keys().map(String::as_str)).collect::<Vec<_>>(),
                     "file":file,"assumptions":content.assumptions,"source_ref_ids":content.source_bindings.iter().map(|b| &b.source_ref_id).collect::<Vec<_>>(),
@@ -185,8 +193,13 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     result.body[key] = value;
                 }
             }
-            AuthorRequest::Patch { reference, candidate_id, edits, title, readable_content, state_contract, initial_state } => {
+            AuthorRequest::Patch { reference, candidate_id, edits, title, readable_content, state_contract, initial_state, method_refs, teaching_binding } => {
                 let (mut content, based_on) = self.edit_base(&reference, &candidate_id)?;
+                let observations = self.with_private(|state| state.presentation_method_observations(&self.turn_ref.session_id, &self.turn_ref.turn_id))?;
+                let basis = reference.as_ref().map(|r| PresentationMethodBasis::Version { reference:r.clone() })
+                    .or_else(|| candidate_id.as_ref().map(|id| PresentationMethodBasis::Candidate { candidate_id:id.clone() }));
+                content.method_refs = resolve_method_refs(method_refs, content.method_refs.as_deref(), basis, true, &observations, &self.turn_ref.turn_id)?;
+                content.method_observations = observations;
                 let old_contract = content.state_contract.clone();
                 let html = crate::presentation_source::patch(&content.content_files[&content.entrypoint], &edits).map_err(invalid)?;
                 content.content_files.insert(content.entrypoint.clone(), html);
@@ -194,6 +207,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 if let Some(text) = readable_content { content.readable_content = text; }
                 if let Some(contract) = state_contract { content.state_contract = contract; }
                 if let Some(initial) = initial_state { content.initial_state = initial; }
+                if let Some(binding) = teaching_binding { content.teaching_binding = Some(binding); }
                 if content.content_files.values().map(String::len).sum::<usize>() > 1024 * 1024 {
                     return Err(invalid("Candidate and version assets exceed 1 MiB"));
                 }
@@ -220,10 +234,13 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 let candidate = self.with_private(|state| state.create_presentation_candidate(
                     &self.turn_ref.session_id, &self.turn_ref.turn_id, based_on, content))?;
                 result.body = json!({"status":"candidate_saved","candidate_id":candidate.candidate_id,"based_on":candidate.based_on,
+                    "method_refs":candidate.content.method_refs,
                     "initial_state":candidate.content.initial_state,"applied_edits":edits.len(),
                     "next":"Preview and inspect this new candidate in all required environments before deliver. The base and its preview receipts are unchanged."});
             }
             AuthorRequest::Write {
+                method_refs,
+                teaching_binding,
                 based_on,
                 new_object,
                 state_contract,
@@ -257,6 +274,11 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                         Ok::<_, ToolError>((base, saved))
                     }).transpose()
                 })?;
+                let method_observations = self.with_private(|state| state.presentation_method_observations(&self.turn_ref.session_id, &self.turn_ref.turn_id))?;
+                let method_refs = resolve_method_refs(method_refs,
+                    base_and_saved.as_ref().and_then(|(base,_)| base.content.method_refs.as_deref()),
+                    based_on.as_ref().map(|reference| PresentationMethodBasis::Version { reference:reference.clone() }),
+                    false, &method_observations, &self.turn_ref.turn_id)?;
                 #[cfg(test)]
                 let html = crate::tests::presentation_author_tests::ex10::assemble_write(&html);
                 if html.len() > 1024 * 1024 {
@@ -348,6 +370,9 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     return Err(invalid("Candidate and version assets exceed 1 MiB"));
                 }
                 let content = PresentationContent {
+                    method_refs,
+                    teaching_binding,
+                    method_observations,
                     animation_assets,
                     title,
                     content_files,
@@ -367,7 +392,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                         content,
                     )
                 })?;
-                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"initial_state":candidate.content.initial_state,"status":"candidate_saved","libraries":crate::presentation_libraries::metadata(&candidate.content.content_files),"next":"Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews."});
+                result.body = json!({"candidate_id":candidate.candidate_id,"based_on":candidate.based_on,"method_refs":candidate.content.method_refs,"initial_state":candidate.content.initial_state,"status":"candidate_saved","libraries":crate::presentation_libraries::metadata(&candidate.content.content_files),"next":"Preview with real actions and inspect screenshots. For local changes, search/read/patch this candidate_id. Patch preserves assets and creates a new candidate; preview it again. Use write with full HTML for broad rewrites; based_on is only for a delivered presentation reference. Deliver the final candidate after its required previews."});
             }
             AuthorRequest::Preview {
                 candidate_id,
@@ -501,6 +526,42 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
     }
 }
 
+fn resolve_method_refs(
+    declared: Option<Vec<PresentationMethodRef>>,
+    base: Option<&[PresentationMethodUse]>,
+    inherited: Option<PresentationMethodBasis>,
+    patch: bool,
+    observations: &PresentationMethodObservations,
+    turn_id: &str,
+) -> Result<Option<Vec<PresentationMethodUse>>, ToolError> {
+    let refs = match declared {
+        Some(refs) => refs,
+        None if patch => match base {
+            Some(base) => base.iter().map(|used| used.method.clone()).collect(),
+            None => return Ok(None),
+        },
+        None if base.is_some_and(|base| !base.is_empty()) => return Err(invalid("A full write must explicitly redeclare method_refs for this version; use [] when no methods remain")),
+        None => Vec::new(),
+    };
+    let mut uses: Vec<PresentationMethodUse> = Vec::new();
+    for method in refs {
+        if uses.iter().any(|used| used.method == method) { return Err(invalid("Duplicate method_refs entry")); }
+        let basis = if base.is_some_and(|base| base.iter().any(|used| used.method.method_id == method.method_id && used.method.revision == method.revision)) {
+            // A retained exact version remains valid even after catalog retirement.
+            inherited.clone().expect("an inherited method has an exact base")
+        } else {
+            runtime::presentation_methods::source(&method.method_id, method.revision, "card.md")?;
+            let tool_call_ids: Vec<_> = observations.reads.iter()
+                .filter(|read| read.method_id == method.method_id && read.revision == method.revision && read.characters > 0)
+                .map(|read| read.tool_call_id.clone()).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+            if tool_call_ids.is_empty() { return Err(invalid(format!("Read {}@{} with read_method and observe its result in a subsequent sampling before declaring it in method_refs", method.method_id, method.revision))); }
+            PresentationMethodBasis::Read { turn_id:turn_id.into(), tool_call_ids }
+        };
+        uses.push(PresentationMethodUse { method, basis });
+    }
+    Ok(Some(uses))
+}
+
 #[cfg(test)]
 mod preview_contract_tests {
     use super::*;
@@ -628,13 +689,13 @@ fn validate_observation(
     )
 }
 
-fn preview_document(content: &PresentationContent) -> String {
+pub(crate) fn preview_document(content: &PresentationContent) -> String {
     let sources: Vec<_> = content
         .source_bindings
         .iter()
         .map(|b| json!({"source_ref_id":b.source_ref_id,"label":b.label_snapshot}))
         .collect();
-    let config = json!({"initialState":content.initial_state,"sources":sources})
+    let config = json!({"initialState":content.initial_state,"sources":sources,"teachingBinding":content.teaching_binding})
         .to_string()
         .replace('<', "\\u003c");
     let mut html = crate::presentation_libraries::inline(&content.content_files[&content.entrypoint], &content.content_files);
@@ -673,7 +734,40 @@ fn preview_document(content: &PresentationContent) -> String {
     format!(
         r#"<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <style>{}</style><script>{}</script><script>{}</script><script>
-(()=>{{const config={config};let stateReader=null;window.__presentationPreviewState=()=>stateReader?stateReader():null;window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:()=>{{}},commitState:()=>{{}}}});
+(()=>{{const config={config};let stateReader=null,stateRestorer=null;
+window.__presentationPreviewState=()=>stateReader?stateReader():null;
+window.__presentationPreviewSnapshot=()=>{{
+ const custom=stateReader?stateReader():{{}};
+ const controls=Array.from(document.querySelectorAll('input,textarea,select')).map((node,index)=>({{
+  key:node.id||node.name||`control-${{index}}`,type:node.type,
+  value:node instanceof HTMLSelectElement&&node.multiple?Array.from(node.selectedOptions,option=>option.value):node.value,
+  ...(['checkbox','radio'].includes(node.type)?{{checked:node.checked}}:{{}})
+ }}));
+ return {{values:{{controls,page:custom.values??null}},visible_step:custom.visible_step??document.querySelector('[data-presentation-step]')?.getAttribute('data-presentation-step')??null,
+  observed_result:document.body.innerText,source_ref_ids:Array.from(document.querySelectorAll('[data-source-ref]'),node=>node.getAttribute('data-source-ref'))}};
+}};
+window.__presentationPreviewRestore=async saved=>{{
+ document.querySelectorAll('input,textarea,select').forEach((node,index)=>{{
+  const control=saved.values.controls.find(control=>control.key===(node.id||node.name||`control-${{index}}`)&&control.type===node.type);
+  if(!control)return;
+  if(node instanceof HTMLSelectElement&&node.multiple)Array.from(node.options).forEach(option=>{{option.selected=control.value.includes(option.value)}});
+  else if(node.type!=='file')node.value=control.value;
+  if('checked'in control)node.checked=control.checked;
+  node.dispatchEvent(new Event('input',{{bubbles:true}}));node.dispatchEvent(new Event('change',{{bubbles:true}}));
+ }});
+ if(stateRestorer)await stateRestorer(saved);
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ return window.__presentationPreviewSnapshot();
+}};
+window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:restorer=>{{stateRestorer=restorer}},commitState:()=>{{}},
+requestTeachingAction:(moveId,response)=>{{window.__presentationPreviewTeachingRequest={{moveId,response}}}},
+reportTeachingHelp:async(moveId,kind,regionId)=>{{
+ const binding=config.teachingBinding?.regions.find(region=>region.region_id===regionId);
+ const region=Array.from(document.querySelectorAll('[data-teaching-region],[id]')).find(node=>node.getAttribute('data-teaching-region')===regionId||node.id===regionId);
+ const bounds=region?.getBoundingClientRect();const text=region?.innerText?.trim();
+ if(!binding||!text||!['hint','explanation'].includes(kind)||bounds.bottom<=0||bounds.top>=innerHeight||bounds.right<=0||bounds.left>=innerWidth)throw new Error('Help region is not visible');
+ window.__presentationPreviewTeachingHelp={{moveId,kind,regionId,text,preview:true}};
+}}}});
 document.addEventListener('DOMContentLoaded',()=>{{
  const label=()=>document.querySelectorAll('[data-source-ref]').forEach(e=>{{const id=e.getAttribute('data-source-ref');const s=config.sources.find(s=>s.source_ref_id===id);const t=sourceChipLabel(config.sources,id);if(e.textContent!==t)e.textContent=t;const title=s?s.label:'来源不可用';if(e.title!==title)e.title=title;const aria=s?t+'：'+s.label:title;if(e.getAttribute('aria-label')!==aria)e.setAttribute('aria-label',aria);}});
  label();new MutationObserver(label).observe(document.body,{{subtree:true,childList:true,attributes:true}});

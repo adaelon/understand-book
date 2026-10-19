@@ -1,0 +1,159 @@
+{
+  "date": "2026-10-16",
+  "status": "passed",
+  "method": {
+    "id": "spatial-linked-views",
+    "revision": 1,
+    "catalog_revision": 3
+  },
+  "browser": {
+    "status": "passed",
+    "geometry_cases": 42,
+    "reopens": 6,
+    "exports": 6,
+    "topics": [
+      {
+        "topic": "gear",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        },
+        "pixelProof": {
+          "visible": 69368,
+          "colors": 3719,
+          "width": 888,
+          "height": 461
+        },
+        "status": "passed"
+      },
+      {
+        "topic": "gear",
+        "viewport": {
+          "width": 320,
+          "height": 420
+        },
+        "pixelProof": {
+          "visible": 17999,
+          "colors": 2300,
+          "width": 296,
+          "height": 300
+        },
+        "status": "passed"
+      },
+      {
+        "topic": "gear",
+        "viewport": {
+          "width": 640,
+          "height": 240
+        },
+        "pixelProof": {
+          "visible": 22295,
+          "colors": 2392,
+          "width": 600,
+          "height": 307
+        },
+        "status": "passed"
+      },
+      {
+        "topic": "spring",
+        "viewport": {
+          "width": 960,
+          "height": 720
+        },
+        "pixelProof": {
+          "visible": 54985,
+          "colors": 3088,
+          "width": 888,
+          "height": 461
+        },
+        "status": "passed"
+      },
+      {
+        "topic": "spring",
+        "viewport": {
+          "width": 320,
+          "height": 420
+        },
+        "pixelProof": {
+          "visible": 5729,
+          "colors": 1258,
+          "width": 296,
+          "height": 300
+        },
+        "status": "passed"
+      },
+      {
+        "topic": "spring",
+        "viewport": {
+          "width": 640,
+          "height": 240
+        },
+        "pixelProof": {
+          "visible": 14629,
+          "colors": 1936,
+          "width": 600,
+          "height": 307
+        },
+        "status": "passed"
+      }
+    ],
+    "provider_calls": 0,
+    "fallback": "passed",
+    "discarded_buffer": "reported"
+  },
+  "author": {
+    "methods": [
+      {
+        "environments": 3,
+        "id": "spatial-linked-views",
+        "reference": {
+          "presentation_id": "presentation-1792128075491167500-0",
+          "revision": 1
+        },
+        "revision": 1,
+        "status": "passed"
+      },
+      {
+        "environments": 3,
+        "id": "spatial-linked-views-spring",
+        "reference": {
+          "presentation_id": "presentation-1792128090099169200-2",
+          "revision": 1
+        },
+        "revision": 1,
+        "status": "passed"
+      }
+    ],
+    "provider_calls": 0,
+    "status": "passed"
+  },
+  "gallery": [
+    {
+      "width": 320,
+      "selection_count": 9,
+      "status": "passed"
+    },
+    {
+      "width": 960,
+      "selection_count": 9,
+      "status": "passed"
+    },
+    {
+      "width": 1440,
+      "selection_count": 9,
+      "status": "passed"
+    }
+  ],
+  "tests": {
+    "runtime_presentation": 110,
+    "server_managed_libraries": 2,
+    "server_method_read": 2,
+    "frontend_document": 5
+  },
+  "controlled_provider": {
+    "new_method_reads": 23,
+    "new_method_requests": 25,
+    "paid_model_calls": 0
+  },
+  "scope": "Shared core adapted from accepted gears to spring; no autonomous model migration or learning-effect experiment; local implementation, not published"
+}

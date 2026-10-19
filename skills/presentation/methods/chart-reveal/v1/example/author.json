@@ -1,0 +1,20 @@
+{
+  "title": "先建立尺度，再揭示数据",
+  "initial_state": {
+    "dataset": "positive",
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "dataset": "illustrative count series: positive=[12,18,15,24], signed=[-6,0,12,24]",
+    "semantic_state": "completed explanation steps, integer 0..3",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 3"
+  },
+  "readable_content": "固定坐标和单位，依次展示四批数据，再聚焦首末差异。切换数据可观察负值与零值。 单位：份；构造数据。柱从零基线展开，过渡帧是显示过程，数据表始终保留原值。 坐标范围固定为 −10 到 30 份。同一组数据共用尺度；起点为负时，只报告首末差值。",
+  "assumptions": [
+    "坐标范围固定为 −10 到 30 份。同一组数据共用尺度；起点为负时，只报告首末差值。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

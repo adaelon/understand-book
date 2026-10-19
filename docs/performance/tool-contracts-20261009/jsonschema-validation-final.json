@@ -1,0 +1,181 @@
+{
+  "schemas_valid": 34,
+  "cases_passed": 35,
+  "cases": [
+    {
+      "case": "goal_missing_next_move",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "goal_good_working",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "goal_refine_ignores_working",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "tutor_missing_move",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "tutor_good_select",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "tutor_incomplete_assessment",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "layout_missing_slot",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "layout_good_focus",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "minimap_missing_region",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "minimap_good_focus",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "memory_advertised_note",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "artifact_field_name",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "artifact_good_pointer",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "artifact_refs_and_cursor",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "query_one_comparison_target",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "query_good_comparison",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "control_note_missing_text",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "control_source_missing_quote",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "artifact.search_length",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "book.search_text_length",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "book.concept_length",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "pointer_title",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "pointer_/title",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "pointer_/meaning/text",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "pointer_/a~1b",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "pointer_/bad~2escape",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "optional_null_0",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "optional_null_1",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "optional_null_2",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "optional_null_3",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "optional_null_4",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "optional_null_5",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "optional_null_6",
+      "schema_accepts": false,
+      "expected": false
+    },
+    {
+      "case": "optional_null_7",
+      "schema_accepts": true,
+      "expected": true
+    },
+    {
+      "case": "optional_null_8",
+      "schema_accepts": true,
+      "expected": true
+    }
+  ]
+}

@@ -15,6 +15,8 @@ mod book_delivery_schema;
 pub use book_delivery_schema::book_envelope_schema;
 
 pub const TOOL_RESULT_ENVELOPE_VERSION: &str = "tool_result_envelope.v1";
+/// Shared allowance for fresh results awaiting their first model sampling.
+/// Previously sampled bodies stay in history until whole-request pressure.
 pub const ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES: usize = 48 * 1024;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
@@ -1033,8 +1035,35 @@ pub(crate) fn project_tool_result(
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
     }
+    if tool == "tutor.step" && serde_json::from_str::<Value>(arguments).is_ok_and(|v| matches!(v["operation"].as_str(), Some("design"|"evidence"|"assess"))) {
+        // Full results remain in the trace and have already refreshed the runtime.
+        // Supply current derived state in replaceable fragments, not snapshots in
+        // historical receipts. Keep accepted references atomic under the budget.
+        let mut body = raw.clone();
+        for key in ["design", "learner_context_update", "learner_context"] {
+            body.as_object_mut().unwrap().remove(key);
+        }
+        for optional in ["instruction", "teaching_implication"] {
+            if json_len(&body) > limit { body.as_object_mut().unwrap().remove(optional); }
+        }
+        let fits = json_len(&body) <= limit;
+        return ToolResultDraft {
+            status: if fits { ToolResultStatus::Ok } else { ToolResultStatus::Partial },
+            model_body: if fits { body } else { semantic_budget_failure(&body, limit) },
+            truncated: !fits, continuation: None, evidence_arguments: arguments.into(),
+        };
+    }
     if tool == "book.text_batch" {
         return project_text_batch(arguments, &raw, limit, book);
+    }
+    if tool == "library.read" && serde_json::from_str::<Value>(arguments).is_ok_and(|v| v["operation"] == "text") {
+        return project_library_text(arguments, &raw, limit, book);
+    }
+    if matches!(tool, "library.list" | "library.read") && json_len(&raw) > limit {
+        return project_library_collections(tool, arguments, &raw, limit);
+    }
+    if tool == "library.learning" && json_len(&raw) > limit {
+        return project_library_learning(arguments, &raw, limit);
     }
     if tool == "presentation.author" && raw["status"] == "source_matches" {
         return project_presentation_search(arguments, &raw, limit);
@@ -1053,11 +1082,141 @@ pub(crate) fn project_tool_result(
         };
     }
     match tool {
-        "presentation.author" if raw["status"] == "version_read" => project_presentation_source(arguments, &raw, limit),
+        "presentation.author" if matches!(raw["status"].as_str(), Some("version_read" | "method_read")) => project_presentation_source(arguments, &raw, limit),
         "book.text" => project_text(arguments, &raw, limit, book),
         "book.search_text" => project_search(arguments, &raw, limit),
         _ => project_structured(tool, arguments, &raw, limit, output_policy.result_policy),
     }
+}
+
+// Understanding records and their identifiers are atomic. Both native collections use
+// the same offset, so trimming them together keeps the next page from skipping records.
+fn project_library_learning(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    let mut next: Value = serde_json::from_str(arguments).unwrap();
+    let mut body = raw.clone();
+    body["delivery"] = json!({"status":"partial"});
+    if next["operation"] != "read" {
+        body.as_object_mut().unwrap().remove("teaching_implication");
+        if json_len(&body) > limit { body = semantic_budget_failure(raw, limit); }
+        return ToolResultDraft { status:ToolResultStatus::Partial, model_body:body,
+            truncated:true, continuation:None, evidence_arguments:arguments.into() };
+    }
+    while json_len(&body) > limit && body["recent_facts"].as_array().is_some_and(|items| !items.is_empty()) {
+        body["recent_facts"].as_array_mut().unwrap().pop();
+        body["delivery"]["recent_facts_omitted"] = json!(true);
+    }
+    let count = |field: &str| raw[field].as_array().map_or(0, Vec::len);
+    let original = count("rows").max(count("interpretations"));
+    let mut kept = original;
+    while json_len(&body) > limit && kept > 0 {
+        kept -= 1;
+        for field in ["rows", "interpretations"] {
+            if let Some(items) = body[field].as_array_mut() { items.truncate(kept); }
+        }
+        body["next"] = json!(next["after"].as_u64().unwrap_or(0) + kept as u64);
+    }
+    let continuation = if kept == 0 && original > 0 || json_len(&body) > limit {
+        body = semantic_budget_failure(raw, limit);
+        Some(refine_continuation("library.learning", arguments,
+            "A complete understanding record did not fit. Retry with sufficient context budget; no learning record was delivered."))
+    } else {
+        body["next"].as_u64().map(|after| {
+            next["after"] = json!(after);
+            ToolContinuation::NextCall { tool:"library.learning".into(), arguments:next,
+                reason:"Continue complete understanding records for the same publication.".into() }
+        })
+    };
+    ToolResultDraft { status:ToolResultStatus::Partial, model_body:body, truncated:true,
+        continuation, evidence_arguments:arguments.into() }
+}
+
+/// Trim only collection boundaries and keep executable, publication-bound continuations.
+fn project_library_collections(tool:&str, arguments:&str, raw:&Value, limit:usize)->ToolResultDraft {
+    let args:Value=serde_json::from_str(arguments).unwrap();
+    let mut body=raw.clone();
+    // Resident citations are registered from text, not these remote source links.
+    body.as_object_mut().unwrap().remove("sources");
+    let mut calls=raw["next_calls"].as_array().cloned().unwrap_or_default();
+    body["complete"]=json!(false);
+    if tool=="library.list" {
+        while json_len(&body)>limit && body["items"].as_array().is_some_and(|items|!items.is_empty()) {
+            body["items"].as_array_mut().unwrap().pop();
+            let mut next=args.clone();
+            if let Some(last)=body["items"].as_array().and_then(|items|items.last()) {next["after"]=last["published_book_ref"].clone();}
+            next["limit"]=json!(1.max(body["items"].as_array().unwrap().len()));
+            calls=vec![json!({"name":tool,"arguments":next})];
+            body["next_calls"]=json!(calls);
+        }
+    } else {
+        fn arrays(value:&Value,path:String,paths:&mut Vec<String>) {
+            match value {
+                Value::Array(_) => paths.push(path),
+                Value::Object(fields) => for (key,value) in fields { arrays(value,format!("{path}/{}",key.replace('~',"~0").replace('/',"~1")),paths); },
+                _=>{}
+            }
+        }
+        let mut paths=vec![]; arrays(&body["data"],String::new(),&mut paths);
+        for path in paths {
+            let original=body["data"].pointer(&path).and_then(Value::as_array).map_or(0,Vec::len);
+            let full_path=format!("{}{path}",raw["data_path"].as_str().unwrap_or_default());
+            let base=if path.is_empty() {args["page"]["offset"].as_u64().unwrap_or(0)} else {0};
+            while json_len(&body)>limit {
+                let items=body["data"].pointer_mut(&path).and_then(Value::as_array_mut).unwrap();
+                if items.is_empty(){break;}
+                items.pop(); let kept=items.len();
+                let mut next=args.clone();next["page"]=json!({"path":full_path,"offset":base+kept as u64,"limit":original.max(1).min(10)});
+                calls.retain(|c|c["arguments"]["page"]["path"]!=full_path);
+                calls.insert(0,json!({"name":tool,"arguments":next}));
+                body["next_calls"]=json!(calls);
+            }
+        }
+    }
+    if json_len(&body)>limit {
+        body=json!({"projection":"budget_exhausted"});
+        calls=vec![json!({"name":tool,"arguments":args})];
+    }
+    ToolResultDraft {status:ToolResultStatus::Partial,model_body:body,truncated:true,evidence_arguments:arguments.into(),
+        continuation:calls.first().map(|c|ToolContinuation::NextCall {tool:tool.into(),arguments:c["arguments"].clone(),reason:"Continue omitted items from the same publication and collection; no omitted item was delivered.".into()})}
+}
+
+/// Keep exact text prefixes and the publication identity when the model budget cuts a remote page.
+fn project_library_text(arguments: &str, raw: &Value, limit: usize, book: &Book) -> ToolResultDraft {
+    let mut args: Value = serde_json::from_str(arguments).expect("validated library arguments");
+    args.as_object_mut().unwrap().remove("operation");
+    args.as_object_mut().unwrap().remove("published_book_ref");
+    let native_next = raw["next_calls"].as_array().and_then(|v|v.first()).cloned();
+    let next_call = |call: &Value| ToolContinuation::NextCall { tool:"library.read".into(), arguments:call["arguments"].clone(), reason:"continue the same publication".into() };
+    if json_len(raw) <= limit {
+        return ToolResultDraft { status:ToolResultStatus::Ok, model_body:raw.clone(), truncated:false,
+            continuation:native_next.as_ref().map(next_call), evidence_arguments:arguments.into() };
+    }
+    let mut body = raw.clone();
+    body["data"] = Value::Null;
+    let budget = limit.saturating_sub(json_len(&body) + 256);
+    let draft = project_text(&args.to_string(), &raw["data"], budget, book);
+    body["data"] = draft.model_body;
+    // Projected raw-text coordinates, not the original full page, delimit what was observed.
+    if let Some(end) = body["data"]["source_range"]["end"].as_u64() {
+        for source in body["sources"].as_array_mut().into_iter().flatten() {
+            source["source_range"]["end"] = json!(end);
+            source.as_object_mut().unwrap().remove("source_url");
+        }
+    } else { body["sources"] = json!([]); }
+    let next = if let Some(ToolContinuation::NextCall { arguments:mut next, .. }) = draft.continuation {
+        next["operation"] = json!("text"); next["published_book_ref"] = raw["published_book_ref"].clone();
+        Some(json!({"name":"library.read","arguments":next}))
+    } else { native_next };
+    body["next_calls"] = json!(next.iter().collect::<Vec<_>>());
+    body["complete"] = json!(next.is_none());
+    if json_len(&body) > limit {
+        return ToolResultDraft { status:ToolResultStatus::Partial,
+            model_body:json!({"projection":"budget_exhausted"}), truncated:true,
+            continuation:Some(ToolContinuation::NextCall { tool:"library.read".into(),
+                arguments:serde_json::from_str(arguments).unwrap(), reason:"Retry the same range when context budget is available; no source was delivered.".into() }),
+            evidence_arguments:arguments.into() };
+    }
+    ToolResultDraft { status:ToolResultStatus::Partial, model_body:body, truncated:true,
+        continuation:next.as_ref().map(next_call), evidence_arguments:arguments.into() }
 }
 
 #[derive(Debug, Clone)]
@@ -1065,7 +1224,6 @@ struct ActiveToolResult {
     envelope: ToolResultEnvelope,
     sampled: bool,
     retain_model_body: bool,
-    sequence: u64,
     saved_author_call: Option<SavedAuthorCall>,
 }
 
@@ -1095,42 +1253,31 @@ impl SavedAuthorCall {
         }
         let parent_candidate_id = arguments["candidate_id"].as_str().map(str::to_owned);
         let object = arguments.as_object_mut()?;
-        let mut omitted = Vec::new();
         for field in ["html", "readable_content"] {
-            if object.remove(field).is_some() { omitted.push(field); }
+            object.remove(field);
         }
-        object.insert("saved_source".into(), json!({
-            "candidate_id":candidate_id, "file":"index.html", "omitted_fields":omitted,
-            "read":{"operation":"read","candidate_id":candidate_id},
-            "note":"Saved source omitted from model history after its successful receipt was sampled. Read this candidate in the current run for source and readable_content; this locator grants no preview or delivery eligibility."
-        }));
         Some(Self { candidate_id, parent_candidate_id, arguments })
     }
 
     fn retire_edits(&mut self) {
-        if let Some(edits) = self.arguments.as_object_mut().unwrap().remove("edits") {
-            self.arguments["saved_source"]["applied_edits"] = json!(edits.as_array().map_or(0, Vec::len));
-            self.arguments["saved_source"]["omitted_fields"].as_array_mut().unwrap().push(json!("edits"));
-        }
+        self.arguments.as_object_mut().unwrap().remove("edits");
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct ActiveToolResultLedger {
     by_call_id: HashMap<String, ActiveToolResult>,
-    next_sequence: u64,
 }
 
 impl ActiveToolResultLedger {
     pub fn project_result(&mut self, tool: &str, arguments: &str, raw: &str, mut policy: ToolOutputPolicy, book: &Book) -> ToolResultDraft {
-        // An editable file can use the existing active-result budget; a small
-        // result must not evict earlier source just to reserve its maximum size.
-        if tool == "presentation.author" && serde_json::from_str::<Value>(arguments).ok().is_some_and(|v| v["operation"] == "read") {
+        // An editable file can use the fresh-result batch allowance. Admission
+        // never rewrites a body that was already sent to the model.
+        if tool == "presentation.author" && serde_json::from_str::<Value>(arguments).ok().is_some_and(|v| matches!(v["operation"].as_str(), Some("read" | "read_method"))) {
             policy.max_model_body_bytes = ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES;
         }
         let projected = project_tool_result(tool, arguments, raw, policy, ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES, book);
         let needed = json_len(&projected.model_body);
-        self.make_room_for(needed);
         let available = self.remaining_model_body_bytes();
         if needed <= available { projected }
         else { project_tool_result(tool, arguments, raw, policy, available, book) }
@@ -1140,40 +1287,39 @@ impl ActiveToolResultLedger {
         let fresh: usize = self
             .by_call_id
             .values()
-            .filter(|result| result.retain_model_body)
+            .filter(|result| !result.sampled && result.retain_model_body)
             .map(|result| json_len(&result.envelope.model_body))
             .sum();
         ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES.saturating_sub(fresh)
     }
 
-    pub fn make_room_for(&mut self, desired_model_body_bytes: usize) {
-        let desired = desired_model_body_bytes.min(ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
-        while self.remaining_model_body_bytes() < desired {
-            let oldest = self
-                .by_call_id
-                .iter()
-                .filter(|(_, result)| result.sampled && result.retain_model_body)
-                .min_by_key(|(_, result)| result.sequence)
-                .map(|(call_id, _)| call_id.clone());
-            let Some(oldest) = oldest else {
-                break;
-            };
-            if let Some(result) = self.by_call_id.get_mut(&oldest) {
-                result.retain_model_body = false;
-            }
+    pub fn sampled_model_body_bytes(&self) -> usize {
+        self.by_call_id.values()
+            .filter(|result| result.sampled && result.retain_model_body && !result.envelope.model_body.is_null())
+            .map(|result| json_len(&result.envelope.model_body))
+            .sum()
+    }
+
+    /// Retire one observed batch at a request-pressure boundary. Fresh results
+    /// must still reach a successful sampling before becoming eligible.
+    pub fn retire_sampled_bodies(&mut self) -> bool {
+        let mut changed = false;
+        for result in self.by_call_id.values_mut()
+            .filter(|result| result.sampled && result.retain_model_body && !result.envelope.model_body.is_null())
+        {
+            result.retain_model_body = false;
+            changed = true;
         }
+        changed
     }
 
     pub fn insert(&mut self, call_id: impl Into<String>, envelope: ToolResultEnvelope) {
-        let sequence = self.next_sequence;
-        self.next_sequence = self.next_sequence.saturating_add(1);
         self.by_call_id.insert(
             call_id.into(),
             ActiveToolResult {
                 envelope,
                 sampled: false,
                 retain_model_body: true,
-                sequence,
                 saved_author_call: None,
             },
         );
@@ -1186,6 +1332,10 @@ impl ActiveToolResultLedger {
     }
 
     pub fn project_messages(&self, messages: &mut [Message]) {
+        // Provider call IDs are only unique within a user turn. This ledger
+        // contains the current run's results, never results for earlier turns.
+        let current_start=messages.iter().rposition(|message|message.role==Role::User).unwrap_or(0);
+        let messages=&mut messages[current_start..];
         // Only project complete pairs still present in this history window.
         // The ledger is run-local and is never reconstructed from old messages.
         let paired: HashSet<_> = messages.iter().filter(|m| m.role == Role::Tool)
@@ -1214,6 +1364,15 @@ impl ActiveToolResultLedger {
             let mut envelope = result.envelope.clone();
             if !result.retain_model_body {
                 envelope.model_body = Value::Null;
+            }
+            if let Some(saved) = result.saved_author_call.as_ref().filter(|_| result.sampled) {
+                // Recovery belongs in the result, never in an invented input
+                // parameter that the model may copy into its next write/patch.
+                envelope.continuation = Some(ToolContinuation::NextCall {
+                    tool: "presentation.author".into(),
+                    arguments: json!({"operation":"read","candidate_id":saved.candidate_id,"file":"index.html"}),
+                    reason: "The preceding write/patch arguments are a historical summary, not an executable call: saved html/readable_content and superseded edits may be omitted. Before editing this candidate, read/search its actual source and copy old_text exactly from it; readable_content is explanatory prose, not the HTML source. This locator grants no preview or delivery eligibility.".into(),
+                });
             }
             message.content = Some(
                 serde_json::to_string(&envelope).unwrap_or_else(|_| {
@@ -1258,6 +1417,16 @@ mod tests {
         serde_json::from_str(&projected.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == id).unwrap().arguments).unwrap()
     }
 
+    fn projected_author_read(ledger: &ActiveToolResultLedger, messages: &[Message], id: &str) -> Value {
+        let mut projected = messages.to_vec();
+        ledger.project_messages(&mut projected);
+        let result: Value = serde_json::from_str(projected.iter().find(|m| m.tool_call_id.as_deref() == Some(id)).unwrap().content.as_deref().unwrap()).unwrap();
+        assert!(result["continuation"]["reason"].as_str().unwrap().contains("not an executable call"));
+        let read = result["continuation"]["arguments"].clone();
+        crate::orchestrator::resident_tool_registry().registration("presentation.author").unwrap().validate_arguments(&read.to_string()).unwrap();
+        read
+    }
+
     #[test]
     fn ex13_author_source_requires_observed_save_and_keeps_receipts_after_eviction() {
         let mut ledger = ActiveToolResultLedger::default();
@@ -1281,14 +1450,16 @@ mod tests {
         for field in ["operation","title","based_on","new_object","source_ref_ids","asset_refs","libraries","assumptions","state_contract","initial_state"] {
             assert_eq!(compact[field], args[field]);
         }
-        assert_eq!(compact["saved_source"]["read"], json!({"operation":"read","candidate_id":"c1"}));
+        assert!(compact.get("saved_source").is_none());
+        assert_eq!(projected_author_read(&ledger, &messages, "saved"), json!({"operation":"read","candidate_id":"c1","file":"index.html"}));
         // The immutable candidate remains a recovery target after result-body
         // eviction. Neither receipt identity nor raw history is rewritten.
-        ledger.make_room_for(ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        assert!(ledger.retire_sampled_bodies());
         let mut projected = messages.clone();
         ledger.project_messages(&mut projected);
         let envelope: ToolResultEnvelope = serde_json::from_str(projected.last().unwrap().content.as_deref().unwrap()).unwrap();
         assert!(envelope.model_body.is_null());
+        assert_eq!(projected_author_read(&ledger, &messages, "saved")["candidate_id"], "c1");
         assert_eq!(envelope.receipt, receipt("presentation.author"));
         assert_eq!(projected_author_args(&ledger, &messages, "saved"), compact);
         assert_eq!(projected_author_args(&ActiveToolResultLedger::default(), &messages, "saved"), args, "a new run cannot recover eligibility from history");
@@ -1317,11 +1488,12 @@ mod tests {
         let retired = projected_author_args(&ledger, &messages, "patch-1");
         assert!(retired.get("edits").is_none());
         assert_eq!(retired["reference"], recent["reference"]);
-        assert_eq!(retired["saved_source"]["candidate_id"], "p1");
-        assert_eq!(retired["saved_source"]["applied_edits"], 1);
+        assert!(retired.get("saved_source").is_none());
+        assert_eq!(projected_author_read(&ledger, &messages, "patch-1")["candidate_id"], "p1");
         let latest = projected_author_args(&ledger, &messages, "patch-2");
         assert_eq!(latest["candidate_id"], "p1");
-        assert_eq!(latest["saved_source"]["candidate_id"], "p2");
+        assert!(latest.get("saved_source").is_none());
+        assert_eq!(projected_author_read(&ledger, &messages, "patch-2")["candidate_id"], "p2");
         assert_eq!(latest["edits"], child["edits"]);
         ledger.mark_projected_fresh_results_sampled();
         assert_eq!(projected_author_args(&ledger, &messages, "patch-1"), retired, "projection must stay stable");
@@ -1451,6 +1623,39 @@ mod tests {
         ToolOutputPolicy {
             result_policy,
             max_model_body_bytes,
+        }
+    }
+
+    #[test]
+    fn teaching_design_receipt_keeps_complete_reference_without_repeating_context() {
+        let reference = "design:turn_b5910f5c3cdf0ec6:borrowed-access";
+        let raw = json!({"design_ref":reference,"instruction":"Consume the accepted design before choosing teaching support.",
+            "design":{"organizing_model":"One owned value and a borrowed access path"},
+            "learner_context_update":{"interpretation":"A detailed learner explanation. ".repeat(1000)}});
+        for limit in [4096, 80] {
+            let projected = project_tool_result("tutor.step",r#"{"operation":"design"}"#,&raw.to_string(),
+                policy(ToolResultPolicy::MemoryReceipt,limit),limit,&two_leaf_book());
+            assert_eq!(projected.model_body["design_ref"],reference);
+            assert!(projected.model_body.get("design").is_none());
+            assert!(projected.model_body.get("learner_context_update").is_none());
+            assert!(!projected.truncated);
+            assert!(json_len(&projected.model_body)<=limit);
+        }
+    }
+
+    #[test]
+    fn teaching_evidence_receipt_keeps_identity_without_historical_learner_snapshot() {
+        let reference = "interpretation:turn_b5910f5c3cdf0ec6:revise-relation";
+        let raw = json!({"evidence_ref":reference,"nature":"hypothesis","instruction":"Use this current interpretation.",
+            "teaching_implication":"A detailed teaching implication. ".repeat(500),
+            "learner_context_update":{"interpretations":[{"interpretation":"The learner's latest explanation. ".repeat(500)}]}});
+        for limit in [4096, 128] {
+            let projected=project_tool_result("tutor.step",r#"{"operation":"evidence"}"#,&raw.to_string(),
+                policy(ToolResultPolicy::MemoryReceipt,limit),limit,&two_leaf_book());
+            assert_eq!(projected.model_body["evidence_ref"],reference);
+            assert!(projected.model_body.get("learner_context_update").is_none());
+            assert!(!projected.truncated);
+            assert!(json_len(&projected.model_body)<=limit);
         }
     }
 
@@ -1699,6 +1904,29 @@ mod tests {
     }
 
     #[test]
+    fn active_tool_results_do_not_replace_a_prior_turn_with_the_same_call_id() {
+        let mut messages=vec![Message::user("The earlier page")];
+        let mut previous=ActiveToolResultLedger::default();
+        author_save(&mut previous,&mut messages,"save",json!({"operation":"write","title":"old","html":"OLD_PAGE_HTML","readable_content":"Old meaning"}),
+            json!({"status":"candidate_saved","candidate_id":"old-candidate"}));
+        messages.push(Message {provider_continuation:None,role:Role::Assistant,content:Some("The earlier answer".into()),tool_calls:vec![],tool_call_id:None});
+        let historical=messages.clone();
+        messages.push(Message::user("The current page"));
+        let mut current=ActiveToolResultLedger::default();
+        author_save(&mut current,&mut messages,"save",json!({"operation":"write","title":"new","html":"CURRENT_PAGE_HTML","readable_content":"Current meaning"}),
+            json!({"status":"candidate_saved","candidate_id":"current-candidate"}));
+        current.mark_projected_fresh_results_sampled();
+        let mut projected=messages.clone();
+        current.project_messages(&mut projected);
+        assert_eq!(&projected[..historical.len()],historical.as_slice(),"current results and saved-author projections must not overwrite earlier turns sharing an ID");
+        let active_args=&projected[historical.len()+1].tool_calls[0].arguments;
+        assert!(!active_args.contains("CURRENT_PAGE_HTML"),"the current saved author call still receives its compact projection");
+        let active:ToolResultEnvelope=serde_json::from_str(projected.last().unwrap().content.as_deref().unwrap()).unwrap();
+        assert_eq!(active.model_body["candidate_id"],"current-candidate");
+        assert!(messages[historical.len()+1].tool_calls[0].arguments.contains("CURRENT_PAGE_HTML"),"projection must not rewrite durable history");
+    }
+
+    #[test]
     fn tool_result_projection_fresh_body_is_retained_until_budget_pressure_then_receipt_only() {
         let envelope = ToolResultEnvelope {
             version: TOOL_RESULT_ENVELOPE_VERSION.into(),
@@ -1729,7 +1957,7 @@ mod tests {
             serde_json::from_str(second[0].content.as_deref().unwrap()).unwrap();
         assert_eq!(second.model_body, json!({"text":"FRESH_BODY"}));
 
-        ledger.make_room_for(ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        assert!(ledger.retire_sampled_bodies());
         let mut evicted = vec![durable.clone()];
         ledger.project_messages(&mut evicted);
         let evicted: ToolResultEnvelope =
@@ -1766,6 +1994,64 @@ mod tests {
     }
 
     #[test]
+    fn cc2_sampled_bodies_remain_when_new_results_cross_the_old_rolling_limit() {
+        let mut ledger = ActiveToolResultLedger::default();
+        let book = two_leaf_book();
+        let mut messages = Vec::new();
+        for index in 0..3 {
+            let raw = json!({"status":"version_read","file":"index.html","offset":0,
+                "end_offset":35000,"total_characters":35000,"chunk_characters":35000,
+                "text":"a".repeat(35000),"next_offset":null});
+            let draft = ledger.project_result(
+                "presentation.author", r#"{"operation":"read","file":"index.html"}"#,
+                &raw.to_string(), policy(ToolResultPolicy::EvidenceProjection, 16384), &book,
+            );
+            assert!(!draft.truncated, "sampled history must not consume the fresh-result allowance");
+            assert_eq!(draft.model_body["text"].as_str().unwrap().len(), 35000);
+            let id = format!("cc2-read-{index}");
+            ledger.insert(id.clone(), draft.into_envelope(receipt("presentation.author")));
+            messages.push(Message {
+                provider_continuation: None, role: Role::Tool,
+                content: Some(format!("durable raw result {index}")),
+                tool_calls: Vec::new(), tool_call_id: Some(id),
+            });
+            let mut projected = messages.clone();
+            ledger.project_messages(&mut projected);
+            for message in &projected {
+                let envelope: ToolResultEnvelope = serde_json::from_str(message.content.as_deref().unwrap()).unwrap();
+                assert_eq!(envelope.model_body["text"].as_str().map(str::len), Some(35000),
+                    "new results must not retire any already sampled body");
+            }
+            ledger.mark_projected_fresh_results_sampled();
+        }
+        assert!(ledger.by_call_id.values().map(|result| json_len(&result.envelope.model_body)).sum::<usize>()
+            > ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        assert_eq!(messages[0].content.as_deref(), Some("durable raw result 0"));
+    }
+
+    #[test]
+    fn cc2_fresh_batch_allowance_excludes_sampled_history() {
+        let mut ledger = ActiveToolResultLedger::default();
+        ledger.insert("sampled", ToolResultEnvelope {
+            version: TOOL_RESULT_ENVELOPE_VERSION.into(), status: ToolResultStatus::Ok,
+            model_body: json!({"text":"x".repeat(40_000)}), receipt: receipt("book.text"),
+            truncated: false, continuation: None,
+        });
+        ledger.mark_projected_fresh_results_sampled();
+        assert_eq!(ledger.remaining_model_body_bytes(), ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
+        let fresh = json!({"text":"new unsampled source"});
+        ledger.insert("fresh", ToolResultEnvelope {
+            version: TOOL_RESULT_ENVELOPE_VERSION.into(), status: ToolResultStatus::Ok,
+            model_body: fresh.clone(), receipt: receipt("book.text"),
+            truncated: false, continuation: None,
+        });
+        assert_eq!(ledger.remaining_model_body_bytes(),
+            ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES - json_len(&fresh));
+        assert!(ledger.by_call_id["sampled"].retain_model_body);
+        assert!(ledger.by_call_id["fresh"].retain_model_body);
+    }
+
+    #[test]
     fn presentation_edit_truncated_range_continues_only_to_requested_end() {
         let raw=json!({"status":"version_read","file":"index.html","offset":3,"end_offset":1003,
             "total_characters":5000,"chunk_characters":1000,"text":"中".repeat(1000),"next_offset":null});
@@ -1775,6 +2061,95 @@ mod tests {
         let next=arguments["offset"].as_u64().unwrap();
         assert!(next>3 && next<1003);
         assert_eq!(next+arguments["length"].as_u64().unwrap(),1003);
+    }
+
+    #[test]
+    fn cross_book_collection_budget_reassembles_without_skipping_items_or_changing_identity() {
+        let reference=json!({"book_id":"rust","publication_id":"rust-published-edition-1"});
+        let original:Vec<_>=(0..18).map(|i|json!({"lid":format!("1.{i}"),"summary":"长描述".repeat(30)})).collect();
+        let mut args=json!({"operation":"context","published_book_ref":reference,"lid":"1.1"});
+        let mut rebuilt=vec![];
+        for _ in 0..30 {
+            let offset=args["page"]["offset"].as_u64().unwrap_or(0) as usize;
+            let data=if args["page"].is_null() {json!({"anchor":"1.1","items":original})} else {json!(&original[offset..])};
+            let raw=json!({"operation":"context","published_book_ref":reference,"data":data,
+                "data_path":if args["page"].is_null(){""}else{"/items"},"sources":[],"complete":true,"next_calls":[]});
+            let draft=project_tool_result("library.read",&args.to_string(),&raw.to_string(),policy(ToolResultPolicy::EvidenceProjection,1500),1500,&two_leaf_book());
+            assert_eq!(draft.model_body["published_book_ref"],reference);
+            let delivered=if draft.model_body["data_path"]=="" {&draft.model_body["data"]["items"]}else{&draft.model_body["data"]};
+            rebuilt.extend(delivered.as_array().unwrap().clone());
+            if !draft.truncated {break;}
+            let Some(ToolContinuation::NextCall {arguments,..})=draft.continuation else {panic!("omitted items need continuation")};
+            assert!(arguments["page"]["offset"].as_u64().unwrap()>offset as u64);
+            args=arguments;
+        }
+        assert_eq!(rebuilt,original);
+    }
+
+    #[test]
+    fn cross_book_understanding_budget_preserves_whole_records_and_exact_next_offset() {
+        let reference = json!({"book_id":"rust","publication_id":"p".repeat(70)});
+        let records: Vec<_> = (0..12).map(|i| json!({"evidence_id":format!("learning-record-{i}-{}", "e".repeat(60)),
+            "interpretation":"理解及其局限".repeat(24),"assistance_refs":["assistance".repeat(10)],"status":"unassessed"})).collect();
+        let mut args = json!({"operation":"read","published_book_ref":reference});
+        let mut received = vec![];
+        loop {
+            let offset = args["after"].as_u64().unwrap_or(0) as usize;
+            let raw = json!({"published_book_ref":reference,"rows":[],"interpretations":&records[offset..],
+                "recent_facts":[{"event_id":"fact","payload":"long history".repeat(2000)}],"next":null});
+            let draft = project_tool_result("library.learning", &args.to_string(), &raw.to_string(),
+                policy(ToolResultPolicy::MemoryProjection, 1700), 1700, &two_leaf_book());
+            assert!(json_len(&draft.model_body) <= 1700);
+            assert_eq!(draft.model_body["published_book_ref"], reference);
+            let page = draft.model_body["interpretations"].as_array().unwrap();
+            assert!(!page.is_empty());
+            received.extend(page.clone());
+            let Some(ToolContinuation::NextCall { arguments, .. }) = draft.continuation else { break; };
+            assert_eq!(arguments["after"], received.len());
+            args = arguments;
+        }
+        assert_eq!(received, records);
+    }
+
+    #[test]
+    fn se2_method_projection_reassembles_actual_source_with_exact_range() {
+        let source = include_str!("../../../skills/presentation/methods/discrete-update/v1/example/index.html");
+        let chars: Vec<_> = source.chars().collect();
+        for end in [chars.len(), 1200] {
+            let mut args = json!({"operation":"read_method","method_id":"discrete-update","revision":1,
+                "file":"example/index.html","offset":0,"length":end});
+            let mut reconstructed = String::new();
+            loop {
+                let offset = args["offset"].as_u64().unwrap() as usize;
+                let raw = json!({"status":"method_read","method_id":"discrete-update","revision":1,
+                    "file":"example/index.html","offset":offset,"end_offset":end,
+                    "total_characters":chars.len(),"chunk_characters":end-offset,"next_offset":null,
+                    "text":chars[offset..end].iter().collect::<String>()});
+                let draft = project_tool_result("presentation.author", &args.to_string(), &raw.to_string(),
+                    policy(ToolResultPolicy::EvidenceProjection, 900), 900, &two_leaf_book());
+                assert!(json_len(&draft.model_body) <= 900);
+                assert_eq!(draft.model_body["method_id"], "discrete-update");
+                assert_eq!(draft.model_body["revision"], 1);
+                assert_eq!(draft.model_body["end_offset"], end);
+                let text = draft.model_body["text"].as_str().expect("contiguous method source");
+                assert!(!text.is_empty());
+                reconstructed.push_str(text);
+                match draft.continuation {
+                    Some(ToolContinuation::NextCall { arguments, .. }) => {
+                        assert_eq!(arguments["operation"], "read_method");
+                        assert_eq!(arguments["file"], args["file"]);
+                        assert_eq!(arguments["method_id"], args["method_id"]);
+                        assert_eq!(arguments["revision"], args["revision"]);
+                        assert_eq!(arguments["offset"], reconstructed.chars().count());
+                        assert_eq!(arguments["offset"].as_u64().unwrap()+arguments["length"].as_u64().unwrap(), end as u64);
+                        args = arguments;
+                    }
+                    None => break,
+                    _ => panic!("expected an exact next range"),
+                }
+            }
+            assert_eq!(reconstructed, chars[..end].iter().collect::<String>());
+        }
     }
 
     #[test]

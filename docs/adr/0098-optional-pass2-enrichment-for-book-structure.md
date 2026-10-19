@@ -8,6 +8,8 @@ Revises: ADR-0093 §5 standard_deep fixed closure.
 
 **决策**:Pass2 由用户选择并绑定 BuildPlan。
 
+2026-10-18 默认策略更新：新计划未指定时使用 `pass2=disabled`；只有明确选择 `enabled` 才加入长程关系增强。标准计划、论文投影、命令入口、DSH 与后台采用相同默认值。已有确认计划恢复时继续使用已保存的阶段范围。
+
 **否决**:
 - BookStructure 硬依赖 Pass2:无长程边也无法生成结构地图。
 - 只在 skill 记住选择:恢复执行时无法验证已确认范围。

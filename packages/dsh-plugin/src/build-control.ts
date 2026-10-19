@@ -4,18 +4,31 @@ import type { Agent } from "@deepseek-ai/dsh-agent";
 import type { AutomaticBuildStepResponseV1 } from "../../../skills/build/automatic-build-driver.ts";
 import type { BuildPlanV1, BuildRetrievalPlan } from "../../core/src/build-intent.ts";
 import type { DshExecutorObservationV1 } from "../../core/src/dsh-executor-observation.ts";
-import { readBuildExecutorModelRuntime } from "../../core/src/build-executor-model-runtime.ts";
+import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../core/src/build-executor-model-runtime.ts";
 import { checkHarnessCapabilities } from "./capability-check.ts";
 import { createExecutorHost } from "./executor-host.ts";
 import { prepareExecutorBridge, type ExecutorObservation } from "./executor-bridge.ts";
 import { resolveExecutorRuntime } from "./executor-runtime.ts";
 import { engineCommand, type EngineConfig } from "./engine-client.ts";
+import { ExternalBuildCostLedger, readExternalBuildCostBinding, type ExternalBuildCostBinding,
+  type ExternalBuildCostConnection } from "../../core/src/external-build-cost.ts";
 
 export interface BuildControlConfig extends EngineConfig {
   maxOutputTokens: number;
   safetyMarginTokens: number;
   handoffsPerCall: number;
+  /** Operator-owned connection. Never forwarded to the Engine, model, or saved invocation. */
+  externalCost?: { binding: ExternalBuildCostBinding; connection: ExternalBuildCostConnection };
 }
+
+export interface OperatorBuildPlan {
+  build_plan_path: string;
+  workspace_dir: string;
+  plan: BuildPlanV1;
+  review_markdown: string;
+  model_runtime: BuildExecutorModelRuntimeV1;
+}
+type DecisionObservation = (boundary: {message:string;choices:{label:string;consequence:string}[]}|null)=>Promise<void>;
 
 const reservations = new WeakMap<object, Set<{ agent?: Agent }>>();
 
@@ -36,16 +49,18 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
   const command = (request: unknown, signal?: AbortSignal) => engineCommand(config, ["build.step"], request, signal);
 
   async function prepareAndConfirmOwned(agent: Agent, signal: AbortSignal,
-    input: { target_input: string; root_dir: string; pass2: "enabled" | "disabled"; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3;
+    input: { target_input: string; root_dir: string; pass2?: "enabled" | "disabled"; build_tutor?:boolean; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3;
       retrieval?: { retrieval_mode: "lexical_only" | "semantic_required"; budget: BuildRetrievalPlan["budget"] } }) {
     assertRoot(agent);
-    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel", "retrieval"].includes(k))
+    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel", "retrieval", "build_tutor"].includes(k))
       || typeof input.target_input !== "string" || typeof input.root_dir !== "string"
-      || !["enabled", "disabled"].includes(input.pass2)) throw new Error("build_prepare_arguments_invalid");
+      || (input.pass2 !== undefined && !["enabled", "disabled"].includes(input.pass2))) throw new Error("build_prepare_arguments_invalid");
     if (checkHarnessCapabilities(ctx).status !== "available") throw new Error("build_harness_unsupported");
     const workers = input.max_parallel ?? 1;
     if (![1, 2, 3].includes(workers)) throw new Error("build_capacity_invalid");
     const runtime = await resolveExecutorRuntime(ctx, { ...agent.options, maxTokens: config.maxOutputTokens }, config.safetyMarginTokens, signal);
+    const externalCost = config.externalCost ? readExternalBuildCostBinding(config.externalCost.binding,
+      { profile_id: "dsh_native_v4", profile_revision: 1 }) : undefined;
     const { retrieval } = input;
     const prepared = await command({ version: "dsh_build_prepare.v2", ...input, max_parallel: workers }, signal) as {
       version: string; build_plan_path: string; plan: BuildPlanV1; review_markdown: string;
@@ -54,7 +69,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     if (retrieval && (!prepared.plan.retrieval || prepared.plan.status !== "draft")) throw new Error("build_retrieval_configuration_failed");
     const questionId = `ub-plan-${randomUUID()}`;
     const answer = await ctx.userQuestions.ask({ agent, signal, questions: [{ id: questionId,
-      question: "确认本次 Understand Book 预构建计划", detail: `${prepared.review_markdown}\n\n模型：${runtime.provider} / ${runtime.model}\n\n推理设置：${runtime.reasoning_effort ?? "默认"}；单次输出上限：${runtime.max_output_tokens} token。`,
+      question: "确认本次 Understand Book 预构建计划", detail: `${prepared.review_markdown}\n\n模型：${runtime.provider} / ${runtime.model}\n\n推理设置：${runtime.reasoning_effort ?? "默认"}；单次输出上限：${runtime.max_output_tokens} token。\n\n${externalCost ? "费用由平台承担；开始前检查已确认预算，供应商完整费用回执缺失时保留待核算。" : "本次由外部执行器运行，费用尚未接入平台账目。"}`,
       options: [{ label: "批准" }, { label: "拒绝" }], intent: { kind: "plan-review", approve: "批准" } }] });
     if (!exactlySelected(answer, questionId, "批准") || signal.aborted) throw new Error("build_plan_not_approved");
     assertRoot(agent);
@@ -64,6 +79,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     return command({ version: "automatic_build_invocation_create.v2", target_input: input.target_input, root_dir: input.root_dir,
       build_plan_path: prepared.build_plan_path, quality_profile: "full", max_parallel: workers, created_at: new Date().toISOString(),
       execution_profile: { profile_id: "dsh_native_v4", profile_revision: 1 }, model_runtime: runtime,
+      ...(externalCost ? { external_cost: externalCost } : {}),
       confirmation: { version: "dsh_build_confirmation.v1", plan_id: prepared.plan.plan_id, plan_revision: prepared.plan.revision,
         plan_digest: prepared.plan.plan_digest, root_session_id: agent.id, question_id: questionId, selected: "批准", answered_at: new Date().toISOString() } }, signal);
   }
@@ -76,7 +92,30 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     return work;
   }
 
-  async function drive(agent: Agent, signal: AbortSignal, invocationRef: string) {
+  async function prepareOperator(agent: Agent, signal: AbortSignal, input: Parameters<typeof prepareAndConfirmOwned>[2]): Promise<OperatorBuildPlan> {
+    assertRoot(agent);
+    if (checkHarnessCapabilities(ctx).status !== "available") throw new Error("build_harness_unsupported");
+    const runtime = await resolveExecutorRuntime(ctx, { ...agent.options, maxTokens: config.maxOutputTokens }, config.safetyMarginTokens, signal);
+    const result = await command({ version: "dsh_build_prepare.v2", ...input, max_parallel: input.max_parallel ?? 1 }, signal) as OperatorBuildPlan & {version:string};
+    if (result.version !== "dsh_build_prepared.v2" || result.plan.private_artifacts.length) throw new Error("build_plan_unsupported");
+    return { build_plan_path: result.build_plan_path, workspace_dir: result.workspace_dir, plan: result.plan,
+      review_markdown: result.review_markdown, model_runtime: runtime };
+  }
+
+  async function createOperatorInvocation(agent: Agent, signal: AbortSignal, input: Parameters<typeof prepareAndConfirmOwned>[2],
+    prepared: OperatorBuildPlan, confirmation: { id: string; confirmed_at: string; max_micro_cny: number }) {
+    assertRoot(agent);
+    if (!config.externalCost || !confirmation.id) throw new Error("operator_build_confirmation_required");
+    const externalCost = readExternalBuildCostBinding({...config.externalCost.binding,max_micro_cny:confirmation.max_micro_cny}, { profile_id: "dsh_native_v4", profile_revision: 1 });
+    return command({ version: "automatic_build_invocation_create.v2", target_input: input.target_input, root_dir: input.root_dir,
+      build_plan_path: prepared.build_plan_path, quality_profile: "full", max_parallel: input.max_parallel ?? 1, created_at: confirmation.confirmed_at,
+      execution_profile: { profile_id: "dsh_native_v4", profile_revision: 1 }, model_runtime: readBuildExecutorModelRuntime(prepared.model_runtime),
+      external_cost: externalCost, confirmation: { version: "dsh_build_confirmation.v1", plan_id: prepared.plan.plan_id,
+        plan_revision: prepared.plan.revision, plan_digest: prepared.plan.plan_digest, root_session_id: agent.id,
+        question_id: confirmation.id, selected: "批准", answered_at: confirmation.confirmed_at } }, signal);
+  }
+
+  async function drive(agent: Agent, signal: AbortSignal, invocationRef: string, askQuestions: boolean, onDecision?: DecisionObservation) {
     const saved = await command({ version: "dsh_build_invocation_read.v2", invocation_ref: invocationRef, root_session_id: agent.id }, signal) as any;
     if (saved.version !== "dsh_build_invocation.v2") throw new Error("build_invocation_invalid");
     const runtime = readBuildExecutorModelRuntime(saved.model_runtime);
@@ -85,8 +124,21 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     // Acquisition is not cancelled halfway through publication. The finally boundary owns release.
     const acquired = await command({ ...owner, action: "acquire" }) as { acquired: boolean };
     if (!acquired.acquired) return { invocation_ref: invocationRef, host_observation: { code: "build_owner_active" } };
+    let cost: ExternalBuildCostLedger | undefined;
+    if (saved.external_cost) {
+      if (!config.externalCost?.connection) {
+        await command({ ...owner, action: "release" });
+        throw new Error("external_build_cost_connection_required");
+      }
+      const binding = saved.external_cost.task_ref && saved.external_cost.task_ref === config.externalCost.binding.task_ref
+        ? config.externalCost.binding : saved.external_cost;
+      cost = new ExternalBuildCostLedger(saved.external_cost.task_ref ?? invocationRef, readExternalBuildCostBinding(binding,
+        { profile_id: "dsh_native_v4", profile_revision: 1 }), config.externalCost.connection, config.driverRoot);
+      try { await cost.prepare(); } catch (error) { await command({ ...owner, action: "release" }); throw error; }
+    }
     type Live = { id: string; ref: string; slot: string; agent?: Agent; observation: ExecutorObservation;
-      work: Promise<void>; report?: DshExecutorObservationV1 };
+      work: Promise<void>; report?: DshExecutorObservationV1; admissionBlocked?: boolean;
+      costObservation?: { model_calls: number; usages: Record<string, unknown>[] } };
     const live = new Map<string, Live>();
     const ready: Live[] = [];
     const reports: DshExecutorObservationV1[] = [];
@@ -96,6 +148,9 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     const host = createExecutorHost(ctx, presetId, binding => {
       const item = byId.get(binding.launch.launch_id!)!;
       item.agent = binding.agent;
+      item.costObservation = binding.costObservation;
+      if (cost?.binding.metering === "provider_calls_v1") binding.modelCost = {ledger:cost,executionId:item.id,logicalId:`${cost.taskRef}:${item.slot}`,
+        blocked:()=>{ item.admissionBlocked=true; costIssue="admission_blocked"; stop=true; }};
       return prepareExecutorBridge(binding, config, item.observation);
     });
     let launched = 0;
@@ -103,6 +158,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     let drainBoundary = false;
     let decision: { request_id: string; choice_id: string } | undefined;
     let last: AutomaticBuildStepResponseV1 | undefined;
+    let costIssue: "admission_blocked" | "receipt_pending" | undefined;
     const capacity = () => {
       const children = ctx.agents.list().filter(a => (a.options.subagentDepth ?? 0) > 0).length;
       const pending = [...allReservations].filter(r => !r.agent || ctx.agents.get(r.agent.id) !== r.agent).length;
@@ -113,6 +169,8 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     const step = (slots: number) => command({ ...owner, action: "step", available_agent_slots: slots,
       ...(decision ? { decision } : {}) }, signal) as Promise<AutomaticBuildStepResponseV1>;
     const result = () => ({ invocation_ref: invocationRef, ...(last ? { step: last } : {}),
+      cost_accounting: cost?.binding.metering === "provider_calls_v1" ? "provider_calls" : cost ? "platform_pending_receipts" : "operator_unaccounted",
+      ...(costIssue ? { cost_issue: costIssue } : {}),
       capacity: { limit: Math.min(saved.max_parallel, 3), source: "agent_registry_conservative" },
       ...(launched >= config.handoffsPerCall && last?.action.kind !== "DONE" ? { yielded: true } : {}),
       ...(reports.some(r => r.outcome !== "receipt") ? { host_observations: reports.filter(r => r.outcome !== "receipt") } : {}) });
@@ -122,7 +180,8 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         // Exact launch identity prevents any old terminal from retiring a replacement slot.
         if (live.get(item.slot) !== item || live.get(item.slot)?.ref !== item.ref) { ready.shift(); continue; }
         const report = item.report!;
-        await command({ ...owner, action: "observe", observation: report });
+        // Budget denial did not launch an executor and must not consume a semantic retry.
+        if (!item.admissionBlocked) await command({ ...owner, action: "observe", observation: report });
         ready.shift();
         reports.push(report);
         live.delete(item.slot); byId.delete(item.id); allReservations.delete(item);
@@ -139,7 +198,13 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         let code: DshExecutorObservationV1["code"];
         let outcome: DshExecutorObservationV1["outcome"] = "runtime";
         let owned: Awaited<ReturnType<typeof host.launch>> | undefined;
+        let costCallId: string | undefined;
         try {
+          if (cost && cost.binding.metering !== "provider_calls_v1") {
+            try { costCallId = await cost.admit(item.id, item.slot, runtime.provider, runtime.model); }
+            catch (error) { item.admissionBlocked = true; costIssue = "admission_blocked"; throw error; }
+          }
+          if (signal.aborted) throw new Error("build_cancelled");
           owned = await host.launch({ parent: agent, signal, opaque_handoff_ref: item.ref, runtime,
             launch_id: item.id, dispatch_slot_ref: slot });
           const terminal = await owned.terminal;
@@ -159,6 +224,11 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         } finally {
           if (signal.aborted) { outcome = "cancelled"; code = "build_cancelled"; }
           try { await owned?.dispose(); } catch { outcome = "cleanup"; code = "executor_cleanup_failed"; }
+          if (cost && costCallId) {
+            try { await cost.settle(costCallId, { ...(item.costObservation ?? { model_calls: 0, usages: [] }),
+              succeeded: outcome === "receipt", outcome }); }
+            catch { costIssue = "receipt_pending"; stop = true; } // Durable replay precedes the next launch.
+          }
           item.report = { version: "dsh_executor_observation.v1", launch_id: item.id,
             opaque_handoff_ref: item.ref, dispatch_slot_ref: slot, outcome, calls: item.observation.calls ?? null,
             ...(item.observation.last_operation ? { last_operation: item.observation.last_operation } : {}),
@@ -203,14 +273,17 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         }
         if (last.action.kind === "DONE" || last.action.kind === "WAIT") return result();
         if (last.action.kind === "NEEDS_USER") {
+          if (!askQuestions) return result();
           // Re-read the boundary after all terminal observations were persisted.
           last = await step(capacity());
           if (last.action.kind !== "NEEDS_USER") continue;
           const action = last.action;
           if (!action.choices.length) return result();
+          await onDecision?.({message:action.message,choices:action.choices});
           const answer = await ctx.userQuestions.ask({ agent, signal, questions: [{ id: action.request_id, question: action.message,
             detail: JSON.stringify(action.projection ?? {}, null, 2), options: action.choices.map(c => ({ label: c.label, description: c.consequence })) }] });
           const choice = action.choices.find(c => exactlySelected(answer, action.request_id, c.label));
+          await onDecision?.(null);
           if (!choice || signal.aborted) return result();
           decision = { request_id: action.request_id, choice_id: choice.choice_id };
         }
@@ -232,17 +305,17 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     }
   }
 
-  function run(agent: Agent, signal: AbortSignal, invocationRef: string) {
+  function run(agent: Agent, signal: AbortSignal, invocationRef: string, askQuestions = true, onDecision?: DecisionObservation) {
     assertRoot(agent);
     if (active.has(invocationRef)) throw new Error("build_already_running");
     const controller = new AbortController();
-    const done = drive(agent, AbortSignal.any([signal, controller.signal, shutdown.signal]), invocationRef);
+    const done = drive(agent, AbortSignal.any([signal, controller.signal, shutdown.signal]), invocationRef, askQuestions, onDecision);
     active.set(invocationRef, { controller, done });
     const settled = () => active.delete(invocationRef);
     void done.then(settled, settled);
     return done;
   }
-  return { prepareAndConfirm, run, async dispose() {
+  return { prepareAndConfirm, prepareOperator, createOperatorInvocation, run, async dispose() {
     closed = true;
     shutdown.abort();
     for (const item of active.values()) item.controller.abort();

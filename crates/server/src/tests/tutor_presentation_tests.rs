@@ -61,6 +61,10 @@ impl AuthorReplay {
 }
 impl ModelAdapter for AuthorReplay {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse,AdapterError> { unreachable!("local replay has no Provider") }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
+        unreachable!("local replay has no other Provider helpers")
+    }
     fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn,AdapterError> {
         use base64::Engine as _;
         let n = self.stage.get(); self.stage.set(n+1);

@@ -49,6 +49,12 @@ struct RunProvider {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FrozenTurn<M = Vec<Message>> {
     version: u32,
+    #[serde(default)]
+    pub(crate) learning_workspace_id: Option<String>,
+    #[serde(default)]
+    pub(crate) learning_workspace_goal: Option<base_schema::WorkspaceGoal>,
+    #[serde(default)]
+    pub(crate) learning_workspace_members: Option<Vec<PublishedBookRef>>,
     owner: String,
     workspace: String,
     generation: u64,
@@ -75,6 +81,9 @@ pub(crate) struct FrozenTurn<M = Vec<Message>> {
 impl<M> FrozenTurn<M> {
     pub(crate) fn map_messages<N>(self, map: impl FnOnce(M) -> N) -> FrozenTurn<N> {
         FrozenTurn {
+            learning_workspace_id: self.learning_workspace_id,
+            learning_workspace_goal: self.learning_workspace_goal,
+            learning_workspace_members: self.learning_workspace_members,
             version: self.version, owner: self.owner, workspace: self.workspace,
             generation: self.generation, effect_revision: self.effect_revision, chat: self.chat,
             turn: self.turn, ordinal: self.ordinal, head: self.head, publication: self.publication,
@@ -108,7 +117,10 @@ impl FrozenTurn {
             .unwrap()
             .load(&self.owner, &self.publication)?;
         Ok(PreparedAgentChat {
+            accepted_workspace_goal: None,
             scope: run_scope::RunScope {
+                learning_workspace_id: self.learning_workspace_id.clone(),
+                goal: self.learning_workspace_goal.clone(), members: self.learning_workspace_members.clone(),
                 user_id: self.owner.clone(),
                 workspace_id: self.workspace.clone(),
                 workspace_generation: self.generation,
@@ -384,13 +396,18 @@ impl RunAdmissions {
             drop(user);
             return self.repeat(access, context, &row, &normalized);
         }
-        let scene = access.workspaces.lock().unwrap().scene(
+        let mut registry = access.workspaces.lock().unwrap();
+        let scene = registry.scene(
             context.user_id(),
             workspace,
             &user,
             &access.library,
         )?;
-        let scene = scene.lock().unwrap();
+        let mut scene = scene.lock().unwrap();
+        registry.refresh_learning_scope(context.user_id(), &mut scene.workspace, true)?;
+        if let Some((id, goal)) = scene.workspace.learning_workspace_id.as_deref().zip(scene.workspace.learning_goal.as_ref()) {
+            user.learning_store_for_workspace(Some(id))?.sync_workspace_goal(goal.revision, now)?;
+        }
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         scene.check(&stamp)?;
         if input.get("published_book_ref").is_some_and(|v| {
@@ -406,7 +423,7 @@ impl RunAdmissions {
             .agent_history
             .sessions
             .iter()
-            .find(|s| s.id == chat && s.book_id == scene.workspace.book.base.book_id)
+            .find(|s| s.id == chat && s.matches_scope(scene.workspace.learning_workspace_id.as_deref(), &scene.workspace.book.base.book_id))
             .ok_or_else(missing)?;
         let head = session.turns.last().map(|t| t.turn_id.clone());
         if input.get("expected_chat_head").is_some() && input["expected_chat_head"] != json!(head) {
@@ -488,6 +505,7 @@ impl RunAdmissions {
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                video_question,
                 interaction,
                 request,
                 message,
@@ -517,6 +535,7 @@ impl RunAdmissions {
             session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(&user, interaction.as_ref(), &turn_ref, now)?;
             session.turns.last_mut().unwrap().domain.interaction = interaction;
             let private = PrivateBookContext {
+                learning_workspace_id: scene.workspace.learning_workspace_id.as_deref(),
                 user: &user,
                 book: &scene.workspace.book,
                 book_dir: &scene.workspace.book_dir,
@@ -525,7 +544,7 @@ impl RunAdmissions {
             };
             let teaching = if session.turns.last().unwrap().domain.interaction.is_some() {
                 // Save acceptance before first-question preparation can create a session.
-                teaching::FrozenTeachingPreparation { context:None, events:vec![] }
+                teaching::FrozenTeachingPreparation { learning_workspace_id:scene.workspace.learning_workspace_id.clone(), context:None, events:vec![] }
             } else { teaching::freeze_prepare(&private, &turn_ref, &request, None, now)? };
             if let Some(text) = presentation_context {
                 agent_message.push_str(&text);
@@ -538,6 +557,9 @@ impl RunAdmissions {
                 .cloned();
             let frozen = FrozenTurn {
                 version: 1,
+                learning_workspace_id: scene.workspace.learning_workspace_id.clone(),
+                learning_workspace_goal: scene.workspace.learning_goal.clone(),
+                learning_workspace_members: scene.workspace.learning_members.clone(),
                 owner: row.owner.clone(),
                 workspace: row.workspace.clone(),
                 generation: row.generation,
@@ -548,11 +570,11 @@ impl RunAdmissions {
                 head,
                 publication: row.publication.clone(),
                 normalized,
-                reader: runtime::run_context::ReaderInputSnapshot::capture(
-                    &scene.workspace.book,
-                    &scene.workspace.reader,
-                    &message,
-                ),
+                reader: {
+                    let mut reader = runtime::run_context::ReaderInputSnapshot::capture(&scene.workspace.book, &scene.workspace.reader, &message);
+                    reader.video_question = video_question.clone();
+                    reader
+                },
                 confirmation: user.agent_history.confirmation_id(chat).map(str::to_owned),
                 provider: provider.binding,
                 message,
@@ -565,6 +587,7 @@ impl RunAdmissions {
                 now: now.into(),
                 preparation_complete: false,
             };
+            session.turns.last_mut().unwrap().video_question = video_question.clone();
             session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&scene.workspace));
             session.turns.last_mut().unwrap().admission_input = Some(frozen);
             if user.session_store.is_some() {
@@ -576,11 +599,20 @@ impl RunAdmissions {
                 save_agent_history_path(&user.history_path, &candidate)?;
                 user.agent_history = candidate;
             }
+            if let Some(question) = &video_question {
+                scene.workspace.video_drafts.retain(|_, d| d.context.draft_id != question.draft_id);
+                // The accepted log already owns the binding. An older checkpoint is
+                // reconciled against that log if this cleanup cannot be committed.
+                if let Err(error) = registry.persist_video_draft_handoff(context.user_id(), &scene) {
+                    eprintln!("video draft handoff checkpoint: {}", error.message);
+                }
+            }
             self.point("pending")?;
             self.complete_preparation(&mut user, &row, access)?;
             Ok(())
         })();
         drop(scene);
+        drop(registry);
         match result {
             Ok(()) => Ok(descriptor(&self.by_turn(&row.owner, &row.turn)?)),
             Err(e) if e.error_code == "INJECTED_CRASH" => Err(e),
@@ -619,12 +651,13 @@ impl RunAdmissions {
             return Err(fault("RUN_INPUT_INCOMPATIBLE", "conflict"));
         }
         if let Some(event) = find_turn(user, row).and_then(|t| t.domain.choice_event.as_ref()) {
-            user.learning_store()?.append_teaching(event)?;
+            user.learning_store_for_workspace(frozen.learning_workspace_id.as_deref())?.append_teaching(event)?;
             self.point("chosen_receipt")?;
         }
         if frozen.teaching.context.is_none() && find_turn(user,row).is_some_and(|t|t.domain.interaction.is_some()) {
             let publication = access.library.lock().unwrap().load(&row.owner,&row.publication)?;
             let private = PrivateBookContext { user, book:&publication.book, book_dir:publication.directory(),
+                learning_workspace_id:frozen.learning_workspace_id.as_deref(),
                 messages:&frozen.messages, selected_chat:Some(&row.chat) };
             frozen.teaching = teaching::freeze_prepare(&private,&frozen.turn_ref(),&frozen.normalized,
                 find_turn(user,row).and_then(|t|t.domain.interaction.as_ref()),&frozen.now)?;
@@ -642,7 +675,7 @@ impl RunAdmissions {
             frozen.preparation_complete = true;
         }
         // Each original event is checked/reused individually before the private completion flag.
-        let mut learning = user.learning_store()?;
+        let mut learning = user.learning_store_for_workspace(frozen.learning_workspace_id.as_deref())?;
         for event in &frozen.teaching.events {
             learning.append_teaching(event)?;
             self.point("teaching_receipt")?;
@@ -823,12 +856,14 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
         "goal_id",
         "goal_action",
         "retry_of",
+        "video_window_id",
+        "video_draft_id",
     ] {
         v[key] = input[key].clone();
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["entry_action", "answer_ref", "teaching_choice", "source_id", "source_revision"] {
+    for key in ["entry_action", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }
@@ -1014,7 +1049,9 @@ impl RunAdmissions {
             self.update(&row, "settled", false)?;
             return Ok(true);
         };
-        let prepared = frozen.prepared(access)?;
+        let mut prepared = frozen.prepared(access)?;
+        prepared.accepted_workspace_goal = find_turn(&handle.lock().unwrap(), &row)
+            .and_then(|turn| turn.domain.workspace_goal_update.clone());
         let mut port = workspace_registry::NetworkRunPort::resume(
             access.clone(),
             handle.clone(),
@@ -1077,8 +1114,12 @@ impl RunAdmissions {
         let spend_scope = runtime::model_spend::ChargeScope::ReaderRun {
             user_id: row.owner.clone(), run_ref: row.turn.clone(),
         };
-        provider_adapter.set_spend_context(spend_scope.clone(), Some(access.spend.port(
-            spend_scope, row.publication.clone(), cancellation.clone(),
+        provider_adapter.set_spend_context(spend_scope.clone(), Some(access.spend.port_with_attribution(
+            spend_scope, row.publication.clone(), runtime::model_spend::ChargeAttribution {
+                parent_task_ref: row.turn.clone(),
+                learning_workspace_id: prepared.scope.learning_workspace_id.clone(),
+                related_learning_workspace_ids: vec![],
+            }, cancellation.clone(),
         )));
         let adapter = crate::service_limits::LimitedAdapter {
             inner: provider_adapter.as_ref(),
@@ -1186,7 +1227,7 @@ impl RunAdmissions {
         let mut user = handle.lock().unwrap();
         #[cfg(test)]
         let _timing = crate::tests::mu10_tests::measure("user_lock");
-        let (status, outcome, error) = match &finished.result {
+        let (status, mut outcome, error) = match &finished.result {
             Ok(outcome) => (AgentAssistantStatus::Completed, Some(outcome.clone()), None),
             Err(e) => (
                 if finished.cancelled {
@@ -1202,6 +1243,16 @@ impl RunAdmissions {
                 }),
             ),
         };
+        if prepared.scope.learning_workspace_id.is_some() {
+            if let (Some(outcome), Some(publication)) = (&mut outcome, &prepared.scope.publication) {
+                for binding in &mut outcome.source_bindings {
+                    if binding.publication_id.is_none() && binding.book_id == publication.reference.book_id {
+                        binding.publication_id = Some(publication.reference.publication_id.clone());
+                        binding.source_revision = Some(prepared.scope.book.source_fingerprint().into());
+                    }
+                }
+            }
+        }
         let already_saved = user
             .agent_history
             .sessions
@@ -1567,6 +1618,7 @@ fn validate_frozen(
         && f.chat == row.chat
         && f.turn == row.turn
         && f.publication == row.publication
+        && f.learning_workspace_id == session.learning_workspace_id
         && session
             .turns
             .last()

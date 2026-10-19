@@ -2,6 +2,253 @@ use super::*;
 use crate::presentation_author::{AuthorRequest, AuthorResult, PreviewImage};
 use serde_json::{json, Value};
 
+fn saved_source_read(messages: &[Message], id: &str) -> Value {
+    let result: Value = serde_json::from_str(tool_result(messages, id)).unwrap();
+    result["continuation"]["arguments"].clone()
+}
+
+#[test]
+fn cc1_tool_policy_changes_preserve_sent_message_prefix() {
+    let b = book();
+    let registry = resident_tool_registry();
+    let profile = ModelRuntimeProfile::fallback("cc1", ProviderToolProtocol::Native);
+    let mut fragments = ContextFragmentLedger::default();
+    let mut exposure = ToolExposureState::default();
+    let mut messages = new_session();
+    messages.push(Message::user("Explain the observed passage, then prepare a presentation."));
+    let mut plans = Vec::new();
+    for step in 0..3 {
+        if step == 2 { exposure.activate("presentation.author"); }
+        let (_, plan) = build_sample_request(
+            &messages, &mut fragments, &b, &mut ActiveToolResultLedger::default(), None,
+            COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile, ToolPermissions::default(),
+            &exposure, ArtifactExposureContext::no_overlay(),
+            if step == 0 { EvidenceState::Unlocated } else { EvidenceState::KnownLids },
+            &[], None, false, None,
+        ).unwrap();
+        plans.push(plan);
+        let id = format!("cc1-{step}");
+        messages.push(Message { provider_continuation: None, role: Role::Assistant, content: None,
+            tool_calls: vec![call(&id, "book.text", r#"{"lid":"1.1"}"#)], tool_call_id: None });
+        messages.push(Message { provider_continuation: None, role: Role::Tool, content: Some("observed passage".into()),
+            tool_calls: vec![], tool_call_id: Some(id) });
+    }
+    assert!(plans[1].ordered_messages().iter().any(|m| m.content.as_deref().is_some_and(|s| s.contains("Source presentation:"))));
+    assert!(plans[2].tools.iter().any(|t| t.name == "presentation.author"));
+    for pair in plans.windows(2) {
+        assert_eq!(pair[0].instructions, pair[1].instructions, "tool policy rewrote the first system message");
+        let (before, _) = crate::native_chat_request_projection("cc1", &pair[0]);
+        let (after, _) = crate::native_chat_request_projection("cc1", &pair[1]);
+        let prior = before["messages"].as_array().unwrap();
+        assert_eq!(prior.as_slice(), &after["messages"].as_array().unwrap()[..prior.len()], "native changed sent history");
+        let before = crate::react_chat_request_projection("cc1", &pair[0]);
+        let after = crate::react_chat_request_projection("cc1", &pair[1]);
+        // ReAct's tool protocol message necessarily changes when tools change.
+        let prior = before["messages"].as_array().unwrap();
+        assert_eq!(&prior[1..], &after["messages"].as_array().unwrap()[1..prior.len()]);
+    }
+}
+
+#[test]
+fn cc1_open_presentation_goal_seeds_capability_without_old_turn_authority() {
+    use crate::goal::{GoalStatus, ResidentGoal};
+    for (label, status, request, unavailable, expected) in [
+        ("open", GoalStatus::Open, "制作演示页", false, true),
+        ("completed", GoalStatus::Completed, "制作演示页", false, false),
+        ("cancelled", GoalStatus::Cancelled, "制作演示页", false, false),
+        ("content", GoalStatus::Open, "解释这个概念", false, false),
+        ("unavailable", GoalStatus::Open, "制作演示页", true, false),
+    ] {
+        let b = book();
+        let mut port = AuthoringPort::new(&b, &format!("cc1-goal-{label}"));
+        if unavailable { port.unavailable_reason = Some("probe_failed"); }
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("No page has been delivered.")], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(1), ..Default::default() }, adapter.model_runtime_profile());
+        let mut goal = ResidentGoal::new("g".into(), "old-turn".into(), request.into());
+        goal.status = status;
+        context.goal = Some(goal);
+        let _ = execute(&mut port, &b, &adapter, &mut context);
+        let plans = adapter.seen_plans.borrow();
+        let first = plans.first().expect("first model decision");
+        assert_eq!(first.tools.iter().any(|t| t.name == "presentation.author"), expected, "{label}");
+        assert!(!first.tools.iter().any(|t| t.name == "source.present" || t.name == "reader.gotoLid"), "old Goal restored current-turn authority");
+        assert_eq!((port.writes, port.deliveries), (0, 0));
+    }
+}
+
+#[test]
+fn teaching_presentation_exposure_waits_for_accepted_design() {
+    let b = book();
+    let registry = resident_tool_registry();
+    let profile = ModelRuntimeProfile::fallback("teaching-presentation-exposure", ProviderToolProtocol::Native);
+    let mut exposure = ToolExposureState::default();
+    // A page request or tool search may already have activated this capability.
+    exposure.activate("presentation.author");
+    let accepted = |kind| json!({"status":"active","current_design":{
+        "design_ref":"design:accepted","design":{"representation":{"kind":kind}}
+    }});
+    for (label, tutor, expected) in [
+        ("before design", Some(json!({"status":"active","current_design":null})), false),
+        ("text design", Some(accepted("text")), false),
+        ("accepted presentation", Some(accepted("presentation")), true),
+        ("outside teaching", Some(json!({"status":"active","outside_current_request":true})), true),
+        ("ordinary presentation", None, true),
+    ] {
+        let mut messages = new_session();
+        messages.push(Message::user("Embedding 在哪里用，怎么用？给我一个演示页。"));
+        let (tools, plan) = build_sample_request(
+            &messages, &mut ContextFragmentLedger::default(), &b,
+            &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER,
+            &registry, &profile, ToolPermissions::default(), &exposure,
+            ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
+            &[], None, false, tutor.as_ref(),
+        ).unwrap();
+        assert!(tools.is_visible("presentation.author"), "{label}: existing pages remain readable");
+        let author = plan.tools.iter().find(|tool| tool.name == "presentation.author").unwrap();
+        let operations = &author.parameters["properties"]["operation"]["enum"];
+        if expected {
+            assert_eq!(operations, &crate::presentation_author::spec().parameters["properties"]["operation"]["enum"], "{label}");
+        } else {
+            assert_eq!(operations, &json!(["read", "search"]), "{label}");
+            assert_eq!(author.parameters["anyOf"].as_array().unwrap().len(), 2);
+        }
+        assert_eq!(selection_state(&plan).is_some_and(|state| state["active"] == true), expected, "{label}");
+        assert_eq!(plan.instruction_assets.iter().any(|asset|
+            asset.asset_id.starts_with("resident-agent.presentation.phase.")), expected, "{label}");
+    }
+}
+
+#[test]
+fn teaching_presentation_inspection_before_design_keeps_mutations_blocked() {
+    for kind in [None, Some("text")] {
+        for mutation in [
+            json!({"operation":"prepare","phase":"local","needs":[]}),
+            // The real repair attempted write with assets/based_on. Report the
+            // unavailable operation before misleading the caller into deleting fields.
+            json!({"operation":"write","title":"Unplanned","html":"<p>Unplanned</p>","readable_content":"Unplanned",
+                "assets":[],"based_on":{"presentation_id":"already-delivered","revision":5}}),
+            json!({"operation":"deliver","candidate_id":"c1"}),
+        ] {
+            let b = book();
+            let mut port = AuthoringPort::new(&b, &format!("inspect-before-design-{}-{}", kind.unwrap_or("none"), mutation["operation"].as_str().unwrap()));
+            let reference = json!({"presentation_id":"already-delivered","revision":5});
+            let adapter = RequestPlanRecordingAdapter::new(vec![
+                discover(),
+                author("read", json!({"operation":"read","reference":reference,"file":"readable_content"})),
+                author("search", json!({"operation":"search","reference":reference,"query":"comparison"})),
+                author("mutation", mutation.clone()),
+                turn_final("No revised page was delivered."),
+            ], vec![]);
+            let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(5), ..Default::default() }, adapter.model_runtime_profile());
+            context.tutor = Some(json!({"status":"active","learner_context":{},"current_design":kind.map(|kind|
+                json!({"design_ref":"design:text","design":{"representation":{"kind":kind}}}))}));
+            let _ = execute(&mut port, &b, &adapter, &mut context);
+            assert_eq!(port.inspections, ["read", "search"], "{kind:?}: both existing-page operations must reach the host");
+            assert_eq!((port.writes, port.deliveries), (0, 0), "inspection must not grant mutation authority");
+            assert!(context.presentation_authoring.is_none(), "prepare must remain blocked");
+            assert!(tool_result(&context.messages, "mutation").contains("PRESENTATION_ARGUMENTS_INVALID"));
+            let plans = adapter.seen_plans.borrow();
+            let feedback = plans[4].input.iter().find(|message| message.tool_call_id.as_deref() == Some("mutation")).unwrap();
+            let feedback: Value = serde_json::from_str(feedback.content.as_deref().unwrap()).unwrap();
+            let message = feedback["model_body"]["message"].as_str().unwrap();
+            assert!(message.starts_with(&format!("operation={} is unavailable.", mutation["operation"].as_str().unwrap())), "{message}");
+            assert!(message.contains("tutor.step") && message.contains("operation=design") && message.contains("design.representation.kind=presentation"), "{message}");
+            assert!(!message.contains("$.assets") && !message.contains("$.based_on"), "{message}");
+            assert!(plans.iter().all(|plan| !plan.instruction_assets.iter().any(|asset|
+                asset.asset_id.starts_with("resident-agent.presentation.phase."))));
+        }
+    }
+}
+
+#[test]
+fn teaching_presentation_reuses_focused_design_and_preserves_review() {
+    let b = book();
+    let registry = resident_tool_registry();
+    let profile = ModelRuntimeProfile::fallback("teaching-local-authoring", ProviderToolProtocol::Native);
+    let tutor = json!({"status":"active","current_design":{"design_ref":"design:clock","design":{
+        "target":{"learning_focus":"Elapsed time","expected_performance":"Include a stopped interval"},
+        "focus_block_refs":["clock"],"blocks":[
+            {"block_id":"clock","relation":"The clock continues during the stop.","purpose":"Count the whole interval."},
+            {"block_id":"later-ratio","relation":"UNFOCUSED_RELATION"}],
+        "representation":{"kind":"presentation","reason":"Keep the same clock visible.","observation":"The stopped interval remains in elapsed time."}
+    }}});
+    let binding: crate::presentation::PresentationTeachingBinding = serde_json::from_value(json!({
+        "design_ref":"design:clock","block_refs":["clock"],"regions":[{
+            "region_id":"clock-face","block_refs":["clock"],"state_fields":["elapsed"],
+            "observation":"The stopped interval remains in elapsed time."}]
+    })).unwrap();
+    let review = crate::presentation_author::PresentationAuthoringContext {
+        phase:PresentationPhase::Review, framework:Some("SECOND_WHOLE_LESSON".into()),
+        focus:Some("Check the corrected clock reading and narrow-screen labels.".into()),
+        needs:vec![crate::agent_prompt::PresentationNeed::State], teaching_binding:Some(binding.clone()),
+    };
+    let mut global = review.clone(); global.phase = PresentationPhase::Global;
+    let mut stale = review.clone(); stale.teaching_binding.as_mut().unwrap().design_ref = "design:old".into();
+    let mut exposure = ToolExposureState::default(); exposure.activate("presentation.author");
+    for (label, authoring, expected_phase) in [
+        ("initial",None,"local"),("global prepare",Some(&global),"local"),
+        ("review",Some(&review),"review"),("new design",Some(&stale),"local"),
+    ] {
+        let (_, plan) = build_sample_request(
+            &new_session(), &mut ContextFragmentLedger::default(), &b,
+            &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER,
+            &registry, &profile, ToolPermissions::default(), &exposure,
+            ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
+            &[], authoring, false, Some(&tutor),
+        ).unwrap();
+        assert_eq!(selection_state(&plan).unwrap()["phase"], expected_phase, "{label}");
+        let context = design(&plan).unwrap();
+        let framework: Value = serde_json::from_str(context["framework"].as_str().unwrap()).unwrap();
+        assert_eq!(framework["target"], tutor["current_design"]["design"]["target"]);
+        assert_eq!(framework["blocks"].as_array().unwrap().len(),1);
+        assert_eq!(framework["blocks"][0]["block_id"],"clock");
+        assert_eq!(framework["representation"]["observation"],"The stopped interval remains in elapsed time.");
+        assert!(!context.to_string().contains("SECOND_WHOLE_LESSON"),"{label}");
+        assert!(!context.to_string().contains("UNFOCUSED_RELATION"),"{label}");
+        assert!(!plan.instruction_assets.iter().any(|asset|asset.asset_id == "resident-agent.presentation.phase.global"));
+        if label == "review" {
+            assert_eq!(context["focus"],review.focus.as_deref().unwrap());
+            assert_eq!(context["needs"],json!(["state"]));
+            assert_eq!(context["teaching_binding"],serde_json::to_value(&binding).unwrap());
+        }
+    }
+    assert!(focused_teaching_authoring(None,Some(&review)).is_none());
+    let mut outside = tutor; outside["outside_current_request"] = json!(true);
+    assert!(focused_teaching_authoring(Some(&outside),Some(&review)).is_none());
+}
+
+#[test]
+fn teaching_presentation_prepare_keeps_local_scope_in_run_state() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b,"teaching-local-prepare");
+    let adapter = RequestPlanRecordingAdapter::new(vec![
+        prepare("global","global","A NEW WHOLE LESSON","Expand every section",json!(["state"])),
+        prepare("review","review","ANOTHER WHOLE LESSON","Verify the repaired clock label",json!(["state"])),
+        turn_final("The page is not delivered yet."),
+    ],vec![]);
+    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(3),..Default::default()},adapter.model_runtime_profile());
+    context.tutor = Some(json!({"status":"active","current_design":{"design_ref":"design:clock","design":{
+        "target":{"learning_focus":"Elapsed time"},"focus_block_refs":["clock"],
+        "blocks":[{"block_id":"clock","relation":"Count stopped time."}],
+        "representation":{"kind":"presentation","observation":"The stopped interval remains visible."}
+    }},"learner_context":{}}));
+    let _ = execute(&mut port,&b,&adapter,&mut context);
+    let plans = adapter.seen_plans.borrow();
+    for (id, plan) in [("global", &plans[1]), ("review", &plans[2])] {
+        let result = plan.input.iter().find(|message| message.tool_call_id.as_deref() == Some(id)).unwrap();
+        let result: Value = serde_json::from_str(result.content.as_deref().unwrap()).unwrap();
+        assert_eq!(result["model_body"]["status"], "authoring_context_prepared", "{id}: {result}");
+    }
+    assert_eq!(selection_state(&plans[0]).unwrap()["phase"],"local");
+    assert_eq!(design(&plans[1]).unwrap()["phase"],"local");
+    assert_eq!(design(&plans[1]).unwrap()["focus"],"The stopped interval remains visible.");
+    let current = design(&plans[2]).unwrap();
+    assert_eq!(current["phase"],"review");
+    assert_eq!(current["focus"],"Verify the repaired clock label");
+    assert!(!current["framework"].as_str().unwrap().contains("WHOLE LESSON"));
+    assert_eq!((port.writes,port.deliveries),(0,0));
+}
+
 #[test]
 fn presentation_to4_prepare_example_applies_at_next_sampling() {
     let b = book();
@@ -60,11 +307,11 @@ fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
         assert_eq!(plan.instructions, plans[1].instructions, "phase/needs/delivery rewrote common instructions");
     }
     let expected = [
-        (1, "global", json!([]), 1), (2, "local", json!(["state"]), 2),
-        (3, "local", json!(["state"]), 2), (4, "local", json!(["state"]), 2),
-        (5, "local", json!(["editing"]), 3), (6, "local", json!(["editing"]), 3),
-        (7, "local", json!(["editing"]), 3), (8, "review", json!([]), 4),
-        (9, "inactive", Value::Null, 5), (10, "global", json!([]), 6),
+        (1, "global", json!([]), 2), (2, "local", json!(["state"]), 3),
+        (3, "local", json!(["state"]), 3), (4, "local", json!(["state"]), 3),
+        (5, "local", json!(["editing"]), 4), (6, "local", json!(["editing"]), 4),
+        (7, "local", json!(["editing"]), 4), (8, "review", json!([]), 5),
+        (9, "inactive", Value::Null, 6), (10, "global", json!([]), 7),
     ];
     for (index, phase, needs, events) in expected {
         let plan = &plans[index];
@@ -98,8 +345,11 @@ fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
             let saved = pair[1].input.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "write").unwrap();
             let args: Value = serde_json::from_str(&saved.arguments).unwrap();
             assert!(args.get("html").is_none());
-            assert_eq!(args["saved_source"]["candidate_id"], "c1");
+            assert!(args.get("saved_source").is_none());
+            assert_eq!(saved_source_read(&pair[1].input, "write")["candidate_id"], "c1");
             expected_before.input.iter_mut().flat_map(|m| &mut m.tool_calls).find(|c| c.id == "write").unwrap().arguments = saved.arguments.clone();
+            expected_before.input.iter_mut().find(|m| m.tool_call_id.as_deref() == Some("write")).unwrap().content =
+                pair[1].input.iter().find(|m| m.tool_call_id.as_deref() == Some("write")).unwrap().content.clone();
         }
         let (before, _) = crate::native_chat_request_projection("ex13-controlled", &expected_before);
         let (after, _) = crate::native_chat_request_projection("ex13-controlled", &pair[1]);
@@ -174,7 +424,8 @@ fn ex13_saved_source_projection_keeps_first_observation_and_raw_history() {
         let compact = args(&plans[first + 1].input, &original.id);
         let value: Value = serde_json::from_str(&compact).unwrap();
         assert!(value.get("html").is_none() && value.get("readable_content").is_none());
-        assert_eq!(value["saved_source"]["candidate_id"], format!("c{}", index + 1));
+        assert!(value.get("saved_source").is_none());
+        assert_eq!(saved_source_read(&plans[first + 1].input, &original.id), json!({"operation":"read","candidate_id":format!("c{}",index+1),"file":"index.html"}));
         for plan in &plans[first + 1..] {
             assert_eq!(args(&plan.input, &original.id), compact);
             assert_eq!(plan.input.iter().filter(|m| m.tool_call_id.as_deref() == Some(&original.id)).count(), 1);
@@ -190,6 +441,7 @@ struct AuthoringPort {
     reader: Reader,
     writes: usize,
     deliveries: usize,
+    inspections: Vec<&'static str>,
     recorded_preview: Option<AuthorResult>,
     unavailable_reason: Option<&'static str>,
     fail_next_write: bool,
@@ -215,6 +467,74 @@ fn tool_contract_invalid_arguments_stop_before_host_and_can_be_corrected() {
     let feedback = plans[2].input.iter().find(|m| m.tool_call_id.as_deref() == Some("invalid")).unwrap();
     assert!(feedback.content.as_deref().unwrap().contains("state_contract"));
 }
+
+#[test]
+fn presentation_teaching_focus_rejects_scope_expansion_before_authoring_mutations() {
+    for operation in ["prepare", "write", "patch", "write-region"] {
+        let b = book();
+        let mut port = AuthoringPort::new(&b, &format!("teaching-focus-{operation}"));
+        let source = json!({"source_id":b.base.book_id,"source_revision":b.source_fingerprint(),"start_lid":"1.1","end_lid":"1.1"});
+        let current_design = json!({"design_ref":"design:focused","design":{
+            "target":{"learning_focus":"Count elapsed time for the trip","expected_performance":"Identify the departure-to-arrival interval",
+                "capability":"explanation","source_bindings":[source],"object_refs":[]},
+            "representation":{"kind":"presentation","reason":"The learner needs a visible interval.","observation":"The clock continues during a stop."},
+            "organizing_model":"The whole-trip average uses total distance and all elapsed time.",
+            "blocks":[
+                {"block_id":"elapsed-time","relation":"The clock continues during a stop.","purpose":"Include stopped minutes.","source_bindings":[source]},
+                {"block_id":"distance","relation":"Distance is the amount travelled.","purpose":"Keep distance distinct from time.","source_bindings":[source]},
+                {"block_id":"average-speed","relation":"Average speed divides distance by total time.","purpose":"Return to the whole-trip comparison.","source_bindings":[source]}],
+            "connections":[],"focus_block_refs":["elapsed-time","distance"],"basis_refs":[],"open_question_refs":[],
+            "revision_reason":"Make the quantities clear before returning to their ratio."}});
+        let focused = json!({"design_ref":"design:focused","block_refs":["elapsed-time"],"regions":[{
+            "region_id":"clock","block_refs":["elapsed-time"],"state_fields":[],"observation":"The clock covers the stopped interval too."}]});
+        let mut outside = focused.clone();
+        if operation == "write-region" {
+            // This relationship is in focus but was not selected for this page.
+            outside["regions"][0]["block_refs"] = json!(["distance"]);
+        } else {
+            // The block exists in the design, so identity checks alone cannot catch this expansion.
+            outside["block_refs"] = json!(["average-speed"]);
+            outside["regions"] = json!([]);
+        }
+        let valid_write = json!({"operation":"write","title":"The trip clock","html":"<p id=\"clock\">The clock keeps going during the stop.</p>",
+            "readable_content":"The clock keeps going during the stop.","teaching_binding":focused});
+        let invalid = match operation {
+            "prepare" => json!({"operation":"prepare","phase":"local","framework":"The departure-to-arrival clock","focus":"Elapsed minutes",
+                "needs":[],"teaching_binding":outside}),
+            "patch" => json!({"operation":"patch","candidate_id":"c1","edits":[{"old_text":"clock","new_text":"average speed"}],"teaching_binding":outside}),
+            _ => {
+                let mut request = valid_write.clone();
+                request["teaching_binding"] = outside;
+                request
+            }
+        };
+        let turns = if operation == "patch" {
+            vec![discover(), author("valid-write", valid_write), author("outside-scope", invalid)]
+        } else {
+            vec![discover(), author("outside-scope", invalid), author("valid-write", valid_write)]
+        };
+        let max_turns = turns.len();
+        let adapter = RequestPlanRecordingAdapter::new(turns, vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(max_turns), ..Default::default() }, adapter.model_runtime_profile());
+        context.tutor = Some(json!({"status":"active","current_design":current_design,"learner_context":{}}));
+        let unfinished = execute(&mut port, &b, &adapter, &mut context).unwrap();
+        assert_eq!(unfinished.warning.as_deref().unwrap(),"TEACHING_INVALID");
+        assert!(!unfinished.answer.as_ref().unwrap().contains("预算终答"),
+            "the fixture stops after authoring without fabricating a selected teaching move: {unfinished:?}");
+        assert_eq!((port.writes, port.deliveries), (1, 0), "{operation}: only the valid page may mutate host storage");
+        assert_eq!(context.presentation_candidates.len(), 1, "{operation}: rejected authoring must not register a candidate");
+        assert!(context.presentation_authoring.is_none(), "a rejected prepare must not replace the working authoring scope");
+        assert!(tool_result(&context.messages, "outside-scope").contains("TEACHING_INVALID"), "{operation}");
+        let plans = adapter.seen_plans.borrow();
+        assert_eq!(plans.len(), max_turns + 1, "one small fallback is sampled without selecting the unfinished teaching move");
+        if operation != "patch" {
+            let correction = plans[2].input.iter().find(|message|message.tool_call_id.as_deref()==Some("outside-scope")).unwrap();
+            let expected = if operation == "write-region" { "本页已选择的关系" } else { "当前教学焦点" };
+            assert!(correction.content.as_deref().unwrap().contains(expected), "{operation}: the model needs the concrete scope correction");
+        }
+    }
+}
+
 impl AuthoringPort {
     fn new(book: &Book, label: &str) -> Self {
         Self {
@@ -222,6 +542,7 @@ impl AuthoringPort {
             reader: Reader::new(book, 1),
             writes: 0,
             deliveries: 0,
+            inspections: Vec::new(),
             recorded_preview: None,
             unavailable_reason: None,
             fail_next_write: false,
@@ -271,6 +592,14 @@ impl ResidentStatePort for AuthoringPort {
         };
         match request {
             AuthorRequest::Prepare { .. } => panic!("prepare reached host storage"),
+            AuthorRequest::Read { .. } => {
+                self.inspections.push("read");
+                result.body = json!({"status":"read","text":"Compare the query vector with each item vector."});
+            }
+            AuthorRequest::Search { .. } => {
+                self.inspections.push("search");
+                result.body = json!({"status":"matches","matches":[{"text":"comparison","offset":0}]});
+            }
             AuthorRequest::Write { source_ref_ids, .. } => {
                 crate::presentation_author::bindings_for(&source_ref_ids, bindings)?;
                 self.writes += 1;
@@ -282,7 +611,7 @@ impl ResidentStatePort for AuthoringPort {
                 result.body =
                     json!({"status":"candidate_saved", "candidate_id":format!("c{}",self.writes)});
             }
-            AuthorRequest::Preview { candidate_id, .. } => {
+            AuthorRequest::Preview { candidate_id, viewport, .. } => {
                 if let Some(recorded) = self.recorded_preview.take() {
                     assert_eq!(recorded.body["candidate_id"], candidate_id);
                     return Ok(recorded);
@@ -294,7 +623,7 @@ impl ResidentStatePort for AuthoringPort {
                     caption: format!("{candidate_id} actual fixture observation"),
                     png_base64: "png".into(),
                     candidate_id: Some(candidate_id),
-                    environment_name: Some("desktop".into()),
+                    environment_name: Some(viewport.map(crate::presentation_preview::preview_environment_name).unwrap_or_else(|| "desktop".into())),
                 });
             }
             AuthorRequest::Deliver { .. } => {
@@ -451,8 +780,10 @@ fn phase(plan: &AgentRequestPlan, name: &str, references: &[&str]) {
         .filter_map(|id| id.strip_prefix("resident-agent.presentation.reference."))
         .collect();
     assert_eq!(actual, references);
-    assert!(plan.instructions.contains("subsequent model sampling"));
-    assert!(plan.instructions.contains("source.present"));
+    let selected = plan.input.iter().filter_map(|m| m.content.as_deref())
+        .filter(|text| text.starts_with("sampling_guidance.v1\n")).collect::<Vec<_>>().join("\n");
+    assert!(selected.contains("subsequent model sampling"));
+    assert!(selected.contains("source.present"));
 }
 
 #[test]
@@ -805,6 +1136,11 @@ fn check_framework_survives_mid_turn_compaction(selected_phase: &str, needs: Val
     let author_schema_tokens = crate::model_runtime::estimate_text_tokens(
         &crate::presentation_author::spec().parameters.to_string(),
     );
+    // Discovery also activates the compiled method directory. Its growth must
+    // not replace working material as the cause of this fixture's compaction.
+    let catalog_tokens = crate::model_runtime::estimate_text_tokens(
+        &crate::presentation_methods::directory().text,
+    );
     let profile = tune_profile_just_above_initial_pressure(
         &b,
         &snapshot,
@@ -812,7 +1148,7 @@ fn check_framework_survives_mid_turn_compaction(selected_phase: &str, needs: Val
         &messages,
         "Explain the relationship",
         compaction_profile("ex12-compaction"),
-        (if media_selected { 20_000 } else { 10_000 }) + author_schema_tokens,
+        (if media_selected { 20_000 } else { 10_000 }) + author_schema_tokens + catalog_tokens,
     );
     let local = prepare(
         "latest",
@@ -916,7 +1252,8 @@ fn check_framework_survives_mid_turn_compaction(selected_phase: &str, needs: Val
     let saved = sampled[4].iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
     let args: Value = serde_json::from_str(&saved.arguments).unwrap();
     assert!(args.get("html").is_none());
-    assert_eq!(args["saved_source"]["candidate_id"], "c1");
+    assert!(args.get("saved_source").is_none());
+    assert_eq!(saved_source_read(&sampled[4], "saved-before-pressure")["candidate_id"], "c1");
     assert_eq!(sampled[4].iter().filter(|m| m.tool_call_id.as_deref() == Some("saved-before-pressure")).count(), 1);
     let raw = context.messages.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
     assert_eq!(serde_json::from_str::<Value>(&raw.arguments).unwrap()["html"], "<p>Example</p>");
@@ -967,4 +1304,117 @@ fn ex12_omitted_fields_clear_previous_work_before_delivery() {
     assert!(replaced["framework"].is_null());
     assert!(replaced["focus"].is_null());
     assert_eq!((port.writes, port.deliveries), (1, 0));
+}
+
+
+#[test]
+fn presentation_omitted_environments_report_remaining_groups_and_recover_after_observation() {
+    let b=book();
+    let mut port=AuthoringPort::new(&b,"presentation-omitted-recovery");
+    // The supported batch preview path can return more observations than the
+    // active image budget fits. Keep desktop last, while both earlier groups
+    // are partially or wholly omitted by the actual projection.
+    let images=(0..60).map(|step| {
+        let environment=if step<20 {"narrow-content"} else if step<59 {"short-content"} else {"desktop-content"};
+        PreviewImage {caption:format!("c1 {environment} observation {step}"),png_base64:"png".into(),
+            candidate_id:Some("c1".into()),environment_name:Some(environment.into())}
+    }).collect();
+    port.recorded_preview=Some(AuthorResult {body:json!({"status":"preview_ready_for_inspection","candidate_id":"c1"}),
+        images,previewed_candidate:Some("c1".into()),delivered:None});
+    let adapter=RequestPlanRecordingAdapter::new(vec![
+        discover(),write("write"),
+        author("preview-many",json!({"operation":"preview","candidate_id":"c1"})),
+        author("blocked-both",json!({"operation":"deliver","candidate_id":"c1"})),
+        author("recover-narrow",json!({"operation":"preview","candidate_id":"c1","viewport":{"width":320,"height":420,"input":"touch"}})),
+        author("blocked-short",json!({"operation":"deliver","candidate_id":"c1"})),
+        author("recover-short",json!({"operation":"preview","candidate_id":"c1","viewport":{"width":640,"height":240,"input":"touch"}})),
+        author("deliver",json!({"operation":"deliver","candidate_id":"c1"})),turn_final("The page is ready."),
+    ],vec![]);
+    let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+    context.unobserved_preview_environments.insert(("other-candidate".into(),"other-environment".into()));
+    let outcome=execute(&mut port,&b,&adapter,&mut context).unwrap();
+    assert_eq!(port.deliveries,1,"omitted groups must block delivery until every current-candidate group is observed");
+    assert!(!outcome.incomplete);
+    assert!(outcome.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})));
+    assert!(!context.unobserved_preview_environments.iter().any(|(candidate,_)|candidate=="c1"));
+    assert!(context.unobserved_preview_environments.contains(&("other-candidate".into(),"other-environment".into())),"recovery must not clear another candidate's observation debt");
+    let plans=adapter.seen_plans.borrow();
+    assert!(!plans[3].preview_images.is_empty() && plans[3].preview_images.len()<60);
+    assert!(plans[3].input.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains("images omitted by the active image budget"))));
+    let correction=|index:usize,id:&str| {
+        let message=plans[index].input.iter().find(|message|message.tool_call_id.as_deref()==Some(id)).unwrap();
+        let result:Value=serde_json::from_str(message.content.as_deref().unwrap()).unwrap();
+        assert_eq!(result["model_body"]["error_code"],"PRESENTATION_INSPECTION_REQUIRED");
+        result["model_body"]["message"].as_str().unwrap().to_owned()
+    };
+    let both=correction(4,"blocked-both");
+    assert!(both.contains("narrow-content") && both.contains("short-content"));
+    assert!(!both.contains("desktop-content") && !both.contains("other-environment"));
+    let remaining=correction(6,"blocked-short");
+    assert!(remaining.contains("short-content"));
+    assert!(!remaining.contains("narrow-content") && !remaining.contains("other-environment"));
+}
+
+#[test]
+fn presentation_restore_failure_loads_state_contract_without_replanning() {
+    for phase_name in ["local", "review"] {
+        let b = book();
+        let mut port = AuthoringPort::new(&b, &format!("restore-guidance-{phase_name}"));
+        port.recorded_preview = Some(AuthorResult {
+            body: json!({"status":"preview_failed","candidate_id":"c1",
+                "reading":{"page_state":{"page":2,"mode":"lexical"}},
+                "errors":[{"kind":"state_restore_mismatch","message":"The button-driven result was lost after reopening."}]}),
+            images: vec![], previewed_candidate: None, delivered: None,
+        });
+        let adapter = RequestPlanRecordingAdapter::new(vec![
+            discover(),
+            prepare("prepare", phase_name, "ACCEPTED_CONTENT", "REPAIR_CURRENT_PAGE", json!([])),
+            write("write"),
+            author("preview", json!({"operation":"preview","candidate_id":"c1"})),
+            turn_final("Draft remains."),
+        ], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        execute(&mut port, &b, &adapter, &mut context).unwrap();
+        let plans = adapter.seen_plans.borrow();
+        phase(&plans[3], phase_name, &[]);
+        phase(&plans[4], phase_name, &["state"]);
+        let mut expected = design(&plans[3]).unwrap();
+        expected["needs"] = json!(["state"]);
+        assert_eq!(design(&plans[4]).unwrap(), expected, "a restore failure must not replace the page task");
+        assert_eq!((port.writes, port.deliveries), (1, 0));
+    }
+}
+
+
+#[test]
+fn presentation_sampling_pressure_rebases_runtime_context_without_dropping_turn_evidence() {
+    let b=book(); let registry=resident_tool_registry();
+    let profile=ModelRuntimeProfile::fallback("pressure",ProviderToolProtocol::Native);
+    let mut fragments=ContextFragmentLedger::default();
+    let mut exposure=ToolExposureState::default(); exposure.activate("presentation.author");
+    let mut results=ActiveToolResultLedger::default();
+    let mut raw=new_session(); raw.push(Message::user("ORIGINAL_USER_DOUBT"));
+    let mut previous_count=0; let mut retired=false;
+    for step in 0..12 {
+        let state=format!("CURRENT_STATE_{step} {}", "具体用户困惑与已经给过的帮助。".repeat(1300));
+        fragments.upsert(ContextFragment::new("agent.learner_context",FragmentScope::Dynamic,Role::System,state,FragmentSensitivity::Private)).unwrap();
+        let before=raw.clone();
+        let (_,plan)=build_sample_request(&raw,&mut fragments,&b,&mut results,None,COMPACTION_CONSUMPTION_WRAPPER,&registry,&profile,
+            ToolPermissions::default(),&exposure,ArtifactExposureContext::no_overlay(),EvidenceState::Unlocated,&[],None,false,None).unwrap();
+        let count=plan.input.iter().filter(|message|message.content.as_deref().is_some_and(|text|text.starts_with("runtime_state_snapshot.v1\n"))).count();
+        assert_eq!(raw,before);
+        assert!(plan.active_context.fits);
+        if previous_count>1 && count==1 {
+            let all=serde_json::to_string(&plan.ordered_messages()).unwrap();
+            assert!(all.contains(&format!("CURRENT_STATE_{step}")));
+            assert!(!all.contains("CURRENT_STATE_0"));
+            assert!(all.contains("ORIGINAL_USER_DOUBT") && all.contains("OBSERVED_TOOL_RESULT_0"));
+            assert!(all.contains("resident-agent.presentation.phase.global"));
+            retired=true; break;
+        }
+        previous_count=count;
+        raw.push(Message {provider_continuation:None,role:Role::Assistant,content:None,tool_calls:vec![call(&format!("read-{step}"),"book.text",r#"{"lid":"1.1"}"#)],tool_call_id:None});
+        raw.push(Message {provider_continuation:None,role:Role::Tool,content:Some(format!("OBSERVED_TOOL_RESULT_{step}")),tool_calls:vec![],tool_call_id:Some(format!("read-{step}"))});
+    }
+    assert!(retired,"real request pressure must invoke snapshot retirement before exhausting the model context");
 }

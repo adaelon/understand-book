@@ -15,6 +15,11 @@ use ts_rs::TS;
 use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::char::{canonical_combining_class, compose, decompose_compatible};
 
+mod video;
+pub mod video_search;
+mod video_discourse;
+pub mod video_graph;
+
 /// Versioned normalized-search semantics. Dependency or Unicode-data upgrades must change this
 /// value because it is bound into every search cursor's canonical request digest.
 pub const SEARCH_TEXT_NORMALIZATION_VERSION: &str =
@@ -32,6 +37,7 @@ pub struct Book {
     node_idx: HashMap<String, usize>,
     formula_semantics: Vec<FormulaSemantics>,
     discourse_index: Vec<TechnicalLearningDiscourseItem>,
+    video_discourse: Vec<video_discourse::Item>,
     book_structure: Option<BookStructureSidecar>,
     paper_metadata: Option<PaperMetadataSidecar>,
     paper_lexicon: Option<PaperLexiconSidecar>,
@@ -1909,6 +1915,9 @@ pub struct ConceptPreview {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ConceptCandidate {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "unknown", optional)]
+    pub video_graph: Option<serde_json::Value>,
     pub node_id: String,
     pub kind: ConceptCandidateKind,
     pub name: String,
@@ -3331,7 +3340,7 @@ impl Book {
     pub fn load(dir: &str) -> Result<Book, String> {
         let base_s = std::fs::read_to_string(std::path::Path::new(dir).join("base.json"))
             .map_err(|e| format!("读 base.json 失败: {e}"))?;
-        let base: ReadOnlyBase =
+        let mut base: ReadOnlyBase =
             serde_json::from_str(&base_s).map_err(|e| format!("解析 base.json 失败: {e}"))?;
         let source = std::fs::read_to_string(std::path::Path::new(dir).join("source.txt"))
             .map_err(|e| format!("读 source.txt 失败(原文旁路缺失,book.text 不可用): {e}"))?;
@@ -3371,13 +3380,20 @@ impl Book {
             Err(e) => return Err(format!("读 paper_lexicon.json 失败: {e}")),
         };
         let paper_minimap_artifacts = load_paper_minimap_artifacts(dir);
-        Ok(Book::new(base, &source)
+        video_graph::load_into(std::path::Path::new(dir), &mut base, &source)?;
+        let video_discourse = video_discourse::load(std::path::Path::new(dir), &base, &source)?;
+        let mut book = Book::new(base, &source)
             .with_formula_semantics(formula_semantics)
             .with_discourse_items(discourse_items)
             .with_book_structure(book_structure)
             .with_paper_metadata(paper_metadata)
             .with_paper_lexicon(paper_lexicon)
-            .with_paper_minimap_artifacts(paper_minimap_artifacts))
+            .with_paper_minimap_artifacts(paper_minimap_artifacts);
+        book.video_discourse = video_discourse;
+        if std::path::Path::new(dir).join("video_source_manifest.json").exists() {
+            book.load_video_source(std::path::Path::new(dir)).map_err(|e| e.message)?;
+        }
+        Ok(book)
     }
 
     pub fn new(base: ReadOnlyBase, source: &str) -> Book {
@@ -3403,6 +3419,7 @@ impl Book {
             node_idx,
             formula_semantics: Vec::new(),
             discourse_index: Vec::new(),
+            video_discourse: Vec::new(),
             book_structure: None,
             paper_metadata: None,
             paper_lexicon: None,
@@ -3454,7 +3471,7 @@ impl Book {
     /// and a serialization-based allowance for all parsed public structures.
     pub fn resident_budget_bytes(&self) -> u64 {
         let structures = serde_json::json!([
-            self.base, self.formula_semantics, self.discourse_index, self.book_structure,
+            self.base, self.formula_semantics, self.discourse_index, self.video_discourse, self.book_structure,
             self.paper_metadata, self.paper_lexicon
         ]);
         let parsed = serde_json::to_vec(&structures).map(|v| v.len() as u64).unwrap_or(u64::MAX / 16);
@@ -3642,10 +3659,11 @@ impl Book {
             )
         }) {
             let occurrences = self.ordered_concept_occurrences(&node.occurrences);
-            let occurrence_texts = occurrences
+            let mut occurrence_texts = occurrences
                 .iter()
                 .filter_map(|lid| self.text(lid, None).ok())
                 .collect::<Vec<_>>();
+            if let Some(base_schema::GraphIdentity::VideoObject { meaning }) = &node.identity { occurrence_texts.push(meaning.clone()); }
             let analysis = analyze_lexical_match(
                 query,
                 std::slice::from_ref(&node.name),
@@ -3664,6 +3682,7 @@ impl Book {
                 distinct_matched_terms,
                 anchor_distance: self.concept_anchor_distance(anchor_index, &occurrences),
                 candidate: ConceptCandidate {
+                    video_graph: self.video_graph_recall(node),
                     node_id: node.id.clone(),
                     kind: if node.node_type == GraphNodeType::Concept {
                         ConceptCandidateKind::Concept
@@ -8213,6 +8232,8 @@ mod tests {
             ],
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:a".into(),
                     node_type: GraphNodeType::Entity,
                     name: "A".into(),
@@ -8220,6 +8241,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:b".into(),
                     node_type: GraphNodeType::Entity,
                     name: "B".into(),
@@ -8228,6 +8251,7 @@ mod tests {
                 },
             ],
             graph_edges: vec![GraphEdge {
+                evidence: vec![],
                 source: "entity:a".into(),
                 target: "entity:b".into(),
                 edge_type: "builds_on".into(),
@@ -8396,6 +8420,8 @@ mod tests {
             ],
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:ea".into(),
                     node_type: GraphNodeType::Entity,
                     name: "EA".into(),
@@ -8403,6 +8429,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:eb".into(),
                     node_type: GraphNodeType::Entity,
                     name: "EB".into(),
@@ -8410,6 +8438,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:ec".into(),
                     node_type: GraphNodeType::Entity,
                     name: "EC".into(),
@@ -8419,6 +8449,7 @@ mod tests {
             ],
             graph_edges: vec![
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:ea".into(),
                     target: "entity:eb".into(),
                     edge_type: "builds_on".into(),
@@ -8427,6 +8458,7 @@ mod tests {
                     weight: 0.9,
                 },
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:eb".into(),
                     target: "entity:ec".into(),
                     edge_type: "builds_on".into(),
@@ -9359,6 +9391,8 @@ mod tests {
         occurrences: &[&str],
     ) -> GraphNode {
         GraphNode {
+            identity: None,
+            evidence: vec![],
             id: id.into(),
             node_type,
             name: name.into(),
@@ -9409,6 +9443,8 @@ mod tests {
             lid_nodes,
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "concept:nearby".into(),
                     node_type: GraphNodeType::Concept,
                     name: "nearby".into(),
@@ -9416,6 +9452,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "concept:target".into(),
                     node_type: GraphNodeType::Concept,
                     name: "target".into(),
@@ -9423,6 +9461,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "concept:RAG".into(),
                     node_type: GraphNodeType::Concept,
                     name: "RAG".into(),
@@ -9430,6 +9470,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "concept:SameName".into(),
                     node_type: GraphNodeType::Concept,
                     name: "SameName".into(),
@@ -9437,6 +9479,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "concept:CoLocated".into(),
                     node_type: GraphNodeType::Concept,
                     name: "CoLocated".into(),
@@ -9588,6 +9632,8 @@ mod tests {
     fn concept_found_and_missing() {
         let mut b = book();
         b.base.graph_nodes.push(GraphNode {
+            identity: None,
+            evidence: vec![],
             id: "concept:command-duplicate".into(),
             node_type: GraphNodeType::Concept,
             name: "command".into(),
@@ -10294,6 +10340,8 @@ mod tests {
         let mut base: ReadOnlyBase = serde_json::from_str(&base_raw).unwrap();
         base.graph_nodes = vec![
             base_schema::GraphNode {
+                identity: None,
+                evidence: vec![],
                 id: "claim:hypothesis".into(),
                 node_type: GraphNodeType::Claim,
                 name: "The intervention should improve the outcome".into(),
@@ -10301,6 +10349,8 @@ mod tests {
                 source_lid: Some("1.1.1".into()),
             },
             base_schema::GraphNode {
+                identity: None,
+                evidence: vec![],
                 id: "entity:experiment".into(),
                 node_type: GraphNodeType::Entity,
                 name: "Controlled experiment".into(),
@@ -10308,6 +10358,8 @@ mod tests {
                 source_lid: None,
             },
             base_schema::GraphNode {
+                identity: None,
+                evidence: vec![],
                 id: "claim:result".into(),
                 node_type: GraphNodeType::Claim,
                 name: "The experiment improved the outcome".into(),
@@ -10317,6 +10369,7 @@ mod tests {
         ];
         base.graph_edges = vec![
             base_schema::GraphEdge {
+                evidence: vec![],
                 source: "claim:hypothesis".into(),
                 target: "entity:experiment".into(),
                 edge_type: "hypothesis_tested_by_experiment".into(),
@@ -10325,6 +10378,7 @@ mod tests {
                 weight: 1.0,
             },
             base_schema::GraphEdge {
+                evidence: vec![],
                 source: "entity:experiment".into(),
                 target: "claim:result".into(),
                 edge_type: "method_supports_result".into(),

@@ -38,11 +38,16 @@ Do not copy input fields or runtime metadata into the output:
 
 The first nine sections are arrays of objects with exactly item_id, text,
 source_item_ids, and evidence_refs. item_id is a unique nonempty ID you assign
-(letters, digits, dots, underscores or hyphens); source_item_ids must be copied
+(1-128 ASCII letters, digits, dots, underscores, colons or hyphens).
+Prefer simple sequential IDs such as item.1, item.2. Keep Chinese and other
+non-ASCII characters in text, never in item_id. source_item_ids must be copied
 from eligible_items. Each source_coverage object has source_item_id, disposition,
 target_item_ids, and optional reason. disposition is one of "compacted",
 "duplicate", "superseded", "non_task". target_item_ids refer to your item_id
-values, not source IDs. For compacted, duplicate and superseded, omit reason
+values, not source IDs. Every target must name an item actually present in one
+of the first nine sections; never leave a target pointing to an omitted or
+renamed item. Renaming an item requires updating all its coverage targets.
+For compacted, duplicate and superseded, omit reason
 (or set it to null). For non_task, use an empty target_item_ids array and set
 reason to exactly "transport_only", "duplicate_envelope", or "status_only";
 free-form reason text is not accepted. Only optional_source_ids may be non_task.
@@ -53,6 +58,10 @@ the earlier source and its later source from an allowed_supersession_edge.
 evidence_refs are copied from allowed_evidence_refs and are either
 {"kind":"lid_range","start_lid":"...","end_lid":"..."} or
 {"kind":"source","source_ref_id":"..."}; use [] when there is no evidence.
+Copy each evidence reference exactly. Do not merge adjacent or overlapping
+LID ranges, split ranges, or derive new endpoints, even when their union seems
+equivalent. For example, allowed ranges 7.7.1-7.7.2 and 7.7.2-7.7.9 must remain
+two references; they do not authorize a new 7.7.1-7.7.9 reference.
 
 Complete output-shape example (replace the illustrative text and source.1 with
 the actual request's content and eligible source IDs; empty arrays stay present):
@@ -82,17 +91,19 @@ Rules:
 8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.
 9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.
 10. Use empty arrays when a section has no supported content. Do not omit schema fields.
-11. A trailing runtime_repair_diagnostic object describes a rejected draft. Regenerate the complete CompactionDraft from the same input, following all rules above. This is the single repair attempt."#;
+11. A trailing runtime_repair_diagnostic object contains the rejected_draft and its validation errors. Correct every reported error in that draft, preserving its supported content and valid links. If a referenced target is missing, restore a source-supported semantic item or link to an existing item that actually contains that source; do not drop coverage. Return the complete CompactionDraft, not a patch or the diagnostic object. This is the single repair attempt."#;
 
-pub const COMPACTION_CONSUMPTION_WRAPPER: &str = r#"A previous active-history segment has been replaced by the source-linked compaction_checkpoint below.
+pub const COMPACTION_CONSUMPTION_WRAPPER: &str = r#"A previous active-history segment has been replaced by the validated compaction_checkpoint below.
 This checkpoint is derived handoff state. It is not a user message and is not evidence by itself.
 Continue from it without repeating completed work. Current canonical instructions and the verbatim raw-retained items that follow take precedence.
-For factual claims, rely only on the checkpoint's allowed evidence references or reacquire evidence with the tools available in the current turn."#;
+For factual claims, rely only on each semantic item's evidence_refs or reacquire evidence with the tools available in the current turn."#;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CompactionPhase {
+    /// Contains only prior history; the next user message has not been appended.
     PreTurn,
+    /// Includes the current turn, which must remain verbatim in the raw suffix.
     MidTurn,
     HierarchicalMerge,
 }
@@ -163,7 +174,7 @@ pub struct SourcedCheckpointItem {
     pub evidence_refs: Vec<EvidenceRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CompactionDraft {
     pub active_goal: Vec<SourcedCheckpointItem>,
@@ -254,19 +265,7 @@ impl PreparedCompaction {
     /// Compare against the whole eligible provider projection, including legacy
     /// protocol quoting, so this precheck cannot reject a useful short source.
     pub(crate) fn can_reduce(&self, profile: &ModelRuntimeProfile, wrapper: &str) -> Result<bool, CompactionError> {
-        let minimum = serde_json::json!({
-            "schema_version": COMPACTION_CHECKPOINT_VERSION,
-            "prompt_version": self.request.prompt_version,
-            "window_id": "",
-            "source_history_revision": self.request.source_history_revision,
-            "raw_retained_item_ids": self.request.raw_retained_item_ids,
-            "semantic": {"active_goal":[],"progress":[],"decisions":[],"user_constraints":[],
-                "open_obligations":[],"unresolved_ambiguities":[],"critical_facts":[],
-                "critical_examples":[],"next_steps":[],"source_coverage":[]},
-            "tool_receipts": self.tool_receipts,
-            "pending_effects": self.pending_effects,
-            "context_revisions": self.context_revisions,
-        });
+        let minimum = checkpoint_consumption_projection(&CompactionDraft::default(), &self.pending_effects);
         let envelope = Message::system(format!("{CONTEXT_COMPACTION_ITEM_VERSION}\n{wrapper}\ncompaction_checkpoint:\n{minimum}"));
         let eligible = crate::AgentRequestPlan::for_ad_hoc(profile.clone(), &self.eligible_messages, &[]);
         Ok(eligible.active_context.estimated_input_tokens > message_tokens(&[envelope])?)
@@ -415,7 +414,7 @@ fn turn_is_complete(messages: &[Message]) -> Result<bool, CompactionError> {
     Ok(pairs_complete && has_final)
 }
 
-fn conversation_turns(messages: &[Message]) -> Result<Vec<(usize, usize, bool)>, CompactionError> {
+fn conversation_turns(messages: &[Message], phase: CompactionPhase) -> Result<Vec<(usize, usize, bool)>, CompactionError> {
     let system_end = messages
         .iter()
         .position(|message| message.role != Role::System)
@@ -445,10 +444,11 @@ fn conversation_turns(messages: &[Message]) -> Result<Vec<(usize, usize, bool)>,
     let mut turns = Vec::with_capacity(starts.len());
     for (ordinal, start) in starts.iter().copied().enumerate() {
         let end = starts.get(ordinal + 1).copied().unwrap_or(messages.len());
-        // A later user turn closes a prior user-only turn, even if that turn
-        // failed before producing an assistant message. Its question remains
-        // eligible for coverage without inventing an answer.
-        let past_user_only = end < messages.len() && end == start + 1;
+        // A later user turn, or the pre-turn boundary before appending that
+        // user, closes a prior user-only turn left by a failed run. Cover its
+        // question once without inventing an answer or consuming current text.
+        let past_user_only = end == start + 1
+            && (end < messages.len() || phase == CompactionPhase::PreTurn);
         turns.push((
             start,
             end,
@@ -473,7 +473,7 @@ pub fn prepare_compaction(
         ));
     }
     validate_message_projection(raw_messages, deterministic_messages)?;
-    let turns = conversation_turns(raw_messages)?;
+    let turns = conversation_turns(raw_messages, phase)?;
     if turns.is_empty() {
         return Err(CompactionError::not_applicable(
             "history contains no conversation turn to compact",
@@ -519,7 +519,6 @@ pub fn prepare_compaction(
     let mut optional_source_ids = Vec::new();
     let mut derived_evidence_refs = BTreeSet::new();
     let mut tool_receipts = Vec::new();
-    let mut receipt_calls = HashSet::new();
 
     for index in compactable_turns
         .iter()
@@ -550,14 +549,9 @@ pub fn prepare_compaction(
                         "eligible tool result is not a deterministic receipt: {error}"
                     ))
                 })?;
-                let call_id = raw.tool_call_id.clone().ok_or_else(|| {
-                    CompactionError::invalid("eligible tool result lost its call identity")
-                })?;
-                if !receipt_calls.insert(call_id) {
-                    return Err(CompactionError::invalid(
-                        "eligible tool receipt is duplicated",
-                    ));
-                }
+                // conversation_turns already validated call/result uniqueness
+                // within each user turn. Across turns the same provider call ID
+                // can recur; source_item_id keeps each occurrence distinct.
                 let refs = evidence_refs_from_receipt(&receipt);
                 let required = !refs.is_empty();
                 let content = serde_json::to_string(&receipt).map_err(|error| {
@@ -871,25 +865,31 @@ fn validate_draft(
 
     let items = semantic_items(draft);
     let mut item_ids = BTreeMap::new();
+    let mut errors = Vec::new();
     for (section, item) in &items {
-        if !valid_generated_id(&item.item_id)
-            || item.text.trim().is_empty()
+        if !valid_generated_id(&item.item_id) {
+            errors.push(format!(
+                "{}.item_id {:?} must use 1-128 ASCII letters, digits, dots, underscores, colons or hyphens; rename it and update every source_coverage.target_item_ids reference",
+                section.as_str(), item.item_id
+            ));
+        }
+        if item.text.trim().is_empty()
             || item.text.chars().count() > 4_000
             || item.source_item_ids.is_empty()
         {
-            return Err(CompactionError::invalid(format!(
-                "{} contains an invalid semantic item",
-                section.as_str()
-            )));
+            errors.push(format!(
+                "{} item {:?} requires nonempty text of at most 4000 characters and nonempty source_item_ids",
+                section.as_str(), item.item_id
+            ));
         }
         if item_ids
             .insert(item.item_id.as_str(), (*section, *item))
             .is_some()
         {
-            return Err(CompactionError::invalid(format!(
+            errors.push(format!(
                 "duplicate semantic item_id {}",
                 item.item_id
-            )));
+            ));
         }
         let sources = item
             .source_item_ids
@@ -899,21 +899,23 @@ fn validate_draft(
         if sources.len() != item.source_item_ids.len()
             || sources.iter().any(|source| !eligible.contains_key(source))
         {
-            return Err(CompactionError::invalid(format!(
+            errors.push(format!(
                 "semantic item {} invented or duplicated a source ID",
                 item.item_id
-            )));
+            ));
         }
         let refs = item.evidence_refs.iter().collect::<BTreeSet<_>>();
-        if refs.len() != item.evidence_refs.len()
-            || refs
-                .iter()
-                .any(|reference| !allowed_refs.contains(reference))
-        {
-            return Err(CompactionError::invalid(format!(
-                "semantic item {} invented or duplicated an evidence reference",
+        if refs.len() != item.evidence_refs.len() {
+            errors.push(format!(
+                "semantic item {}.evidence_refs contains duplicate references; keep each reference once",
                 item.item_id
-            )));
+            ));
+        }
+        for reference in refs.difference(&allowed_refs) {
+            errors.push(format!(
+                "semantic item {}.evidence_refs contains {}; copy exact entries from allowed_evidence_refs without merging, splitting or deriving ranges",
+                item.item_id, serde_json::to_string(reference).expect("EvidenceRef is serializable")
+            ));
         }
     }
 
@@ -931,10 +933,10 @@ fn validate_draft(
             || matching.contains(&SemanticSection::Progress)
             || matching.contains(&SemanticSection::Decisions)
         {
-            return Err(CompactionError::invalid(format!(
+            errors.push(format!(
                 "source {source_id} must remain in {} and cannot be marked complete",
                 expected.as_str()
-            )));
+            ));
         }
     }
 
@@ -944,10 +946,10 @@ fn validate_draft(
             .insert(coverage.source_item_id.as_str(), coverage)
             .is_some()
         {
-            return Err(CompactionError::invalid(format!(
+            errors.push(format!(
                 "duplicate source coverage for {}",
                 coverage.source_item_id
-            )));
+            ));
         }
     }
     if coverage_by_source.len() != eligible.len()
@@ -958,9 +960,7 @@ fn validate_draft(
             .keys()
             .any(|source| !eligible.contains_key(source))
     {
-        return Err(CompactionError::invalid(
-            "source coverage must contain exactly one record for every eligible source",
-        ));
+        errors.push("source coverage must contain exactly one record for every eligible source".into());
     }
 
     const OPTIONAL_NON_TASK_REASONS: [&str; 3] =
@@ -971,12 +971,17 @@ fn validate_draft(
             .iter()
             .map(String::as_str)
             .collect::<BTreeSet<_>>();
-        if targets.len() != coverage.target_item_ids.len()
-            || targets.iter().any(|target| !item_ids.contains_key(target))
-        {
-            return Err(CompactionError::invalid(format!(
-                "coverage for {source_id} contains an invalid target item",
-            )));
+        if targets.len() != coverage.target_item_ids.len() {
+            errors.push(format!("coverage for {source_id}.target_item_ids contains duplicate targets"));
+        }
+        let missing = targets.iter().filter(|target| !item_ids.contains_key(**target)).copied().collect::<Vec<_>>();
+        if !missing.is_empty() {
+            errors.push(format!(
+                "coverage for {source_id}.target_item_ids references undefined semantic items {missing:?}; restore the source-supported items or use existing items whose source_item_ids include this source"
+            ));
+            // These targets cannot be dereferenced for the disposition checks.
+            // The draft remains rejected; continue finding independent errors.
+            continue;
         }
         match coverage.disposition {
             SourceDisposition::NonTask => {
@@ -987,16 +992,16 @@ fn validate_draft(
                         .as_deref()
                         .is_some_and(|reason| OPTIONAL_NON_TASK_REASONS.contains(&reason))
                 {
-                    return Err(CompactionError::invalid(format!(
+                    errors.push(format!(
                         "NonTask coverage for {source_id} is not an allowed optional disposition"
-                    )));
+                    ));
                 }
             }
             SourceDisposition::Superseded => {
                 if targets.is_empty() || coverage.reason.is_some() {
-                    return Err(CompactionError::invalid(format!(
+                    errors.push(format!(
                         "Superseded coverage for {source_id} must have targets and no free-form reason"
-                    )));
+                    ));
                 }
                 let allowed = targets.iter().any(|target| {
                     let (_, item) = item_ids[target];
@@ -1009,9 +1014,9 @@ fn validate_draft(
                     })
                 });
                 if !allowed {
-                    return Err(CompactionError::invalid(format!(
+                    errors.push(format!(
                         "Superseded coverage for {source_id} has no allowed edge"
-                    )));
+                    ));
                 }
             }
             SourceDisposition::Compacted | SourceDisposition::Duplicate => {
@@ -1024,19 +1029,23 @@ fn validate_draft(
                             .any(|source| source == source_id)
                     })
                 {
-                    return Err(CompactionError::invalid(format!(
+                    errors.push(format!(
                         "coverage for {source_id} does not map to a source-linked semantic item"
-                    )));
+                    ));
                 }
             }
         }
         if required.contains(source_id) && coverage.disposition == SourceDisposition::NonTask {
-            return Err(CompactionError::invalid(format!(
+            errors.push(format!(
                 "required source {source_id} cannot be NonTask"
-            )));
+            ));
         }
     }
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompactionError::invalid(errors.join("\n")))
+    }
 }
 
 pub fn decode_compaction_draft_strict(input: &str) -> Result<CompactionDraft, CompactionError> {
@@ -1113,7 +1122,7 @@ fn call_generator(
                 Some(reason) => CompactionError { error_code: reason.code().into(), message: reason.message().into() },
                 None => CompactionError::generation(error.message),
             })?;
-        let checked = serde_json::from_value::<CompactionDraft>(value).map_err(|error| {
+        let checked = CompactionDraft::deserialize(&value).map_err(|error| {
             CompactionError::generation(format!("compaction draft schema mismatch: {error}"))
         }).and_then(|draft| {
             validate_draft(request, &draft, required_states)?;
@@ -1124,11 +1133,12 @@ fn call_generator(
             Err(error) => {
                 if repairing { return Err(error); }
                 // EX11 real revisions produced forbidden metadata and broken
-                // coverage links. Give one validation-guided regeneration from the
-                // same source request; never install or sanitize a rejected draft.
+                // coverage links. Give one validation-guided repair of the actual
+                // rejected draft; never install or sanitize it locally.
                 user.push_str("\n\n");
                 user.push_str(&serde_json::json!({"runtime_repair_diagnostic": {
                     "error_code": error.error_code, "message": error.message,
+                    "rejected_draft": value,
                 }}).to_string());
                 if request_input_tokens(&user, system) > generation_input_limit_tokens {
                     return Err(error);
@@ -1589,6 +1599,34 @@ fn checkpoint_source_ids(checkpoint: &CompactionCheckpoint) -> BTreeSet<&str> {
         .collect()
 }
 
+/// Model handoff content. Audit and source identities remain in the persisted
+/// checkpoint and are validated before this projection is installed.
+fn checkpoint_consumption_projection(
+    semantic: &CompactionDraft,
+    pending_effects: &[PendingEffectRef],
+) -> serde_json::Value {
+    let items = |section: &[SourcedCheckpointItem]| {
+        section.iter().map(|item| serde_json::json!({
+            "text": item.text,
+            "evidence_refs": item.evidence_refs,
+        })).collect::<Vec<_>>()
+    };
+    serde_json::json!({
+        "semantic": {
+            "active_goal": items(&semantic.active_goal),
+            "progress": items(&semantic.progress),
+            "decisions": items(&semantic.decisions),
+            "user_constraints": items(&semantic.user_constraints),
+            "open_obligations": items(&semantic.open_obligations),
+            "unresolved_ambiguities": items(&semantic.unresolved_ambiguities),
+            "critical_facts": items(&semantic.critical_facts),
+            "critical_examples": items(&semantic.critical_examples),
+            "next_steps": items(&semantic.next_steps),
+        },
+        "pending_effects": pending_effects,
+    })
+}
+
 pub fn project_compaction_checkpoint_messages(
     raw_messages: &[Message],
     checkpoint: &CompactionCheckpoint,
@@ -1664,7 +1702,9 @@ pub fn project_compaction_checkpoint_messages(
         ));
     }
 
-    let checkpoint_json = serde_json::to_string(checkpoint).map_err(|error| {
+    let checkpoint_json = serde_json::to_string(&checkpoint_consumption_projection(
+        &checkpoint.semantic, &checkpoint.pending_effects,
+    )).map_err(|error| {
         CompactionError::invalid(format!("checkpoint serialize failed: {error}"))
     })?;
     let checkpoint_message = Message::system(format!(
@@ -1720,6 +1760,10 @@ pub(crate) struct RecordedCompactionInput {
     pub eligible_items: Vec<CompactionSourceItem>,
     pub required_source_ids: Vec<String>,
 }
+
+#[cfg(test)]
+#[path = "compaction_recorded_tests.rs"]
+mod recorded_tests;
 
 #[cfg(test)]
 mod tests {
@@ -1890,7 +1934,10 @@ mod tests {
         let repaired = feedback5_recording("completion-01-response.json")["response"].clone();
         let invalid: CompactionDraft = serde_json::from_value(rejected.clone()).unwrap();
         let error = validate_draft(&request, &invalid, &BTreeMap::new()).unwrap_err();
-        assert_eq!(error.message, "semantic item item.fact.quote_receipts invented or duplicated a source ID");
+        assert_eq!(error.message, concat!(
+            "semantic item item.fact.quote_receipts invented or duplicated a source ID\n",
+            "source coverage must contain exactly one record for every eligible source"
+        ));
         let profile = crate::ModelRuntimeCatalog::default().resolve("deepseek-flash", ProviderToolProtocol::Native, None);
         let adapter = ScriptedCompactor::new(vec![rejected, repaired.clone()]);
         let result = call_generator(&adapter, &profile, COMPACTION_GENERATION_PROMPT, &request, &BTreeMap::new(), 100_000).unwrap();
@@ -1907,7 +1954,8 @@ mod tests {
         }
         assert_eq!(requests[0].system, requests[1].system, "repair must keep the entire system prefix");
         assert!(requests[1].user.starts_with(&requests[0].user));
-        assert!(requests[1].user[requests[0].user.len()..].contains(&error.message));
+        let repair_tail: serde_json::Value = serde_json::from_str(&requests[1].user[requests[0].user.len()..]).unwrap();
+        assert_eq!(repair_tail["runtime_repair_diagnostic"]["message"], error.message);
         let input: serde_json::Value = serde_json::from_str(&requests[0].user).unwrap();
         for field in ["eligible_items", "required_source_ids", "optional_source_ids", "allowed_evidence_refs", "allowed_supersession_edges", "phase"] {
             assert_eq!(input[field], serde_json::to_value(&request).unwrap()[field], "changed {field}");
@@ -2106,6 +2154,26 @@ mod tests {
     }
 
     #[test]
+    fn compaction_pre_turn_covers_closed_user_only_before_mid_turn() {
+        let mut raw = vec![Message::system("base")];
+        raw.extend(completed_turn("first question", "first answer"));
+        raw.push(Message::user("failed question without an answer"));
+        let preturn = prepare_compaction(
+            CompactionPhase::PreTurn, &raw, &raw, vec![], vec![], vec![], BTreeMap::new(),
+        ).unwrap();
+        let failed_id = source_item_id(3, &raw[3]).unwrap();
+        assert!(preturn.request.required_source_ids.contains(&failed_id));
+        assert!(preturn.request.raw_retained_item_ids.is_empty());
+
+        raw.push(Message::user("current question"));
+        let midturn = prepare_compaction(
+            CompactionPhase::MidTurn, &raw, &raw, vec![], vec![], vec![], BTreeMap::new(),
+        ).unwrap();
+        assert_eq!(preturn.request.eligible_items, midturn.request.eligible_items);
+        assert_eq!(midturn.request.raw_retained_item_ids, vec![source_item_id(4, &raw[4]).unwrap()]);
+    }
+
+    #[test]
     fn compaction_prepare_covers_past_user_only_turn_without_consuming_current_turn() {
         let mut raw = vec![Message::system("base")];
         raw.extend(completed_turn("first question", "first answer"));
@@ -2208,6 +2276,206 @@ mod tests {
             &prepared.required_semantic_states
         )
         .is_ok());
+    }
+
+    fn cc3_consumption_fixture() -> (Vec<Message>, CompactionCheckpoint) {
+        let receipt = HistoricalToolReceipt {
+            version: "historical_tool_receipt.v1".into(),
+            tool: "book.text".into(),
+            locator_args: serde_json::json!({"lid":"1.9"}),
+            status: HistoricalToolStatus::Ok,
+            error_code: None,
+            accepted_evidence: vec![EvidenceRange {
+                start_lid: "1.9".into(),
+                end_lid: "1.10".into(),
+                ranges: Vec::new(),
+            }],
+            source_refs: vec!["source.observed".into()],
+            opaque_result_digest: "tool-result-audit-only".into(),
+        };
+        let raw = vec![
+            Message::system("canonical base"),
+            Message::user("Explain the observed passage and preserve unfinished work."),
+            Message {
+                provider_continuation: None,
+                role: Role::Assistant,
+                content: None,
+                tool_calls: vec![ToolCall {
+                    id: "read-cc3".into(),
+                    name: "book.text".into(),
+                    arguments: r#"{"lid":"1.9"}"#.into(),
+                }],
+                tool_call_id: None,
+            },
+            Message {
+                provider_continuation: None,
+                role: Role::Tool,
+                content: Some(serde_json::to_string(&receipt).unwrap()),
+                tool_calls: Vec::new(),
+                tool_call_id: Some("read-cc3".into()),
+            },
+            assistant("The first part is explained; the comparison remains open."),
+            Message::user("Continue with the comparison; preserve this exact text."),
+        ];
+        let prepared = prepare_compaction(
+            CompactionPhase::MidTurn,
+            &raw,
+            &raw,
+            Vec::new(),
+            Vec::new(),
+            vec![PendingEffectRef {
+                effect_id: "effect.pending".into(),
+                kind: "reader_layout".into(),
+            }],
+            BTreeMap::from([("reader.profile_snapshot".into(), "revision-7".into())]),
+        )
+        .unwrap();
+        let mut draft = serde_json::to_value(covering_draft(&prepared.request, "goal")).unwrap();
+        let source_item_ids = prepared.request.eligible_items.iter()
+            .map(|item| item.source_item_id.clone()).collect::<Vec<_>>();
+        for section in [
+            "active_goal", "progress", "decisions", "user_constraints", "open_obligations",
+            "unresolved_ambiguities", "critical_facts", "critical_examples", "next_steps",
+        ] {
+            draft[section] = serde_json::json!([{
+                "item_id": format!("item.{section}"),
+                "text": format!("{section}: preserve exact wording.\nSecond line."),
+                "source_item_ids": source_item_ids,
+                "evidence_refs": prepared.request.allowed_evidence_refs,
+            }]);
+        }
+        for coverage in draft["source_coverage"].as_array_mut().unwrap() {
+            coverage["target_item_ids"] = serde_json::json!(["item.active_goal"]);
+        }
+        let checkpoint = compact_with_adapter(
+            &ScriptedCompactor::new(vec![draft]),
+            &profile(),
+            &prepared,
+            CompactionLimits::default(),
+        )
+        .unwrap();
+        (raw, checkpoint)
+    }
+
+    #[test]
+    fn cc3_checkpoint_consumption_preserves_semantics_without_audit_payload() {
+        let (raw, checkpoint) = cc3_consumption_fixture();
+        let raw_before = serde_json::to_vec(&raw).unwrap();
+        let stored_before = serde_json::to_vec(&checkpoint).unwrap();
+        let context = Message::system("current frozen profile");
+        let projected = project_compaction_checkpoint_messages(
+            &raw, &checkpoint, &[context.clone()], COMPACTION_CONSUMPTION_WRAPPER,
+        )
+        .unwrap();
+        assert_eq!(projected[0], raw[0]);
+        assert_eq!(projected[1], context);
+        assert_eq!(projected.last(), raw.last());
+        let payload: serde_json::Value = serde_json::from_str(
+            projected[2].content.as_deref().unwrap().split_once("compaction_checkpoint:\n").unwrap().1,
+        )
+        .unwrap();
+        let stored = serde_json::to_value(&checkpoint).unwrap();
+        let mut expected_semantic = serde_json::Map::new();
+        for section in [
+            "active_goal", "progress", "decisions", "user_constraints", "open_obligations",
+            "unresolved_ambiguities", "critical_facts", "critical_examples", "next_steps",
+        ] {
+            let items = stored["semantic"][section].as_array().unwrap().iter().map(|item| {
+                serde_json::json!({"text": item["text"], "evidence_refs": item["evidence_refs"]})
+            }).collect::<Vec<_>>();
+            expected_semantic.insert(section.into(), serde_json::Value::Array(items));
+        }
+        assert_eq!(payload, serde_json::json!({
+            "semantic": expected_semantic,
+            "pending_effects": checkpoint.pending_effects,
+        }));
+        assert!(!checkpoint.semantic.source_coverage.is_empty());
+        assert!(!checkpoint.tool_receipts.is_empty());
+        assert!(!checkpoint.raw_retained_item_ids.is_empty());
+        assert!(!checkpoint.context_revisions.is_empty());
+        assert_eq!(serde_json::to_vec(&raw).unwrap(), raw_before);
+        assert_eq!(serde_json::to_vec(&checkpoint).unwrap(), stored_before);
+        let restored: CompactionCheckpoint = serde_json::from_slice(&stored_before).unwrap();
+        validate_persisted_checkpoint(&raw, &restored).unwrap();
+    }
+
+    #[test]
+    fn cc3_checkpoint_consumption_validates_coverage_before_omitting_it() {
+        let (raw, mut checkpoint) = cc3_consumption_fixture();
+        checkpoint.semantic.source_coverage.pop();
+        // A fresh identity cannot turn missing source coverage into a valid handoff.
+        checkpoint.window_id = checkpoint_window_id(&checkpoint).unwrap();
+        let error = project_compaction_checkpoint_messages(
+            &raw, &checkpoint, &[], COMPACTION_CONSUMPTION_WRAPPER,
+        )
+        .unwrap_err();
+        assert_eq!(error.error_code, "COMPACTION_VALIDATION_FAILED");
+        assert!(error.message.contains("source outside coverage"));
+        assert!(validate_persisted_checkpoint(&raw, &checkpoint).is_err());
+    }
+
+    #[test]
+    fn cc3_can_reduce_ignores_audit_overhead_for_retained_current_turn() {
+        let mut raw = vec![Message::system("base")];
+        raw.extend(completed_turn(&"older question ".repeat(40), &"older answer ".repeat(40)));
+        raw.push(Message::user("Current task is still in progress."));
+        for index in 0..12 {
+            let id = format!("current-read-{index}");
+            raw.push(Message {
+                provider_continuation: None,
+                role: Role::Assistant,
+                content: None,
+                tool_calls: vec![ToolCall {
+                    id: id.clone(),
+                    name: "book.text".into(),
+                    arguments: format!(r#"{{"lid":"1.{index}"}}"#),
+                }],
+                tool_call_id: None,
+            });
+            raw.push(Message {
+                provider_continuation: None,
+                role: Role::Tool,
+                content: Some("Current source remains outside compaction.".into()),
+                tool_calls: Vec::new(),
+                tool_call_id: Some(id),
+            });
+        }
+        let prepared = prepare_compaction(
+            CompactionPhase::MidTurn, &raw, &raw, Vec::new(), Vec::new(), Vec::new(), BTreeMap::new(),
+        )
+        .unwrap();
+        assert_eq!(prepared.request.raw_retained_item_ids.len(), 25);
+        let draft = covering_draft(&prepared.request, "Continue from the earlier answer.");
+        let checkpoint = compact_with_adapter(
+            &ScriptedCompactor::new(vec![serde_json::to_value(draft).unwrap()]),
+            &profile(), &prepared, CompactionLimits::default(),
+        )
+        .unwrap();
+        let projected = project_compaction_checkpoint_messages(
+            &raw, &checkpoint, &[], COMPACTION_CONSUMPTION_WRAPPER,
+        )
+        .unwrap();
+        assert!(message_tokens(&projected).unwrap() < message_tokens(&raw).unwrap(),
+            "the lean checkpoint must make this supported mid-turn history smaller");
+        assert!(prepared.can_reduce(&profile(), COMPACTION_CONSUMPTION_WRAPPER).unwrap(),
+            "raw-retained source IDs are validation data, not unavoidable model input");
+    }
+
+    #[test]
+    #[ignore = "requires CC3_CHECKPOINT_INPUT and CC3_CHECKPOINT_OUTPUT for recorded projection measurement"]
+    fn cc3_record_consumption_projection() {
+        let input = std::env::var_os("CC3_CHECKPOINT_INPUT").expect("CC3_CHECKPOINT_INPUT path");
+        let output = std::env::var_os("CC3_CHECKPOINT_OUTPUT").expect("CC3_CHECKPOINT_OUTPUT path");
+        let stored = std::fs::read(input).unwrap();
+        let checkpoint: CompactionCheckpoint = serde_json::from_slice(&stored).unwrap();
+        // This records the production serializer against a captured checkpoint.
+        // Full source validation requires its original raw history, exercised by
+        // the fixture tests above rather than inferred from this capture.
+        let consumed = serde_json::to_vec(&checkpoint_consumption_projection(
+            &checkpoint.semantic, &checkpoint.pending_effects,
+        )).unwrap();
+        std::fs::write(output, &consumed).unwrap();
+        println!("stored_bytes={} consumption_bytes={}", stored.len(), consumed.len());
     }
 
     #[test]
@@ -2338,6 +2606,49 @@ mod tests {
         let mut tampered = raw;
         tampered[1].content = Some("changed old source".into());
         assert!(validate_persisted_checkpoint(&tampered, &checkpoint).is_err());
+    }
+
+    #[test]
+    fn compaction_preserves_reused_call_ids_across_turns_and_rejects_duplicates_within_one() {
+        let mut raw=vec![Message::system("base")];
+        let mut receipts=Vec::new();
+        for lid in ["1.1","1.2"] {
+            let receipt=HistoricalToolReceipt {version:"historical_tool_receipt.v1".into(),tool:"book.text".into(),
+                locator_args:serde_json::json!({"lid":lid}),status:HistoricalToolStatus::Ok,error_code:None,
+                accepted_evidence:vec![],source_refs:vec![],opaque_result_digest:format!("receipt-{lid}")};
+            raw.push(Message::user(format!("Explain {lid}: {}", "question context ".repeat(100))));
+            raw.push(Message {provider_continuation:None,role:Role::Assistant,content:None,
+                tool_calls:vec![ToolCall {id:"read".into(),name:"book.text".into(),arguments:serde_json::json!({"lid":lid}).to_string()}],tool_call_id:None});
+            raw.push(Message {provider_continuation:None,role:Role::Tool,content:Some(format!("source body {lid}")),
+                tool_calls:vec![],tool_call_id:Some("read".into())});
+            raw.push(assistant(&format!("Answer {lid}: {}", "answer context ".repeat(100))));
+            receipts.push(receipt);
+        }
+        raw.push(Message::user("Continue the current question verbatim."));
+        let before=serde_json::to_vec(&raw).unwrap();
+        let mut deterministic=raw.clone();
+        for (index,receipt) in [3,7].into_iter().zip(&receipts) { deterministic[index].content=Some(serde_json::to_string(receipt).unwrap()); }
+        let prepared=prepare_compaction(CompactionPhase::MidTurn,&raw,&deterministic,vec![],vec![],vec![],BTreeMap::new()).unwrap();
+        let tools=prepared.request.eligible_items.iter().filter(|item|item.role==Role::Tool).collect::<Vec<_>>();
+        assert_eq!(tools.len(),2);
+        assert_ne!(tools[0].source_item_id,tools[1].source_item_id);
+        assert!(tools[0].content.contains("1.1") && tools[1].content.contains("1.2"));
+        let adapter=ScriptedCompactor::new(vec![serde_json::to_value(covering_draft(&prepared.request,"Both prior passages were explained; continue the current question.")).unwrap()]);
+        let checkpoint=compact_with_adapter(&adapter,&profile(),&prepared,CompactionLimits {generation_input_limit_tokens:100_000,target_active_tokens:20_000}).unwrap();
+        assert_eq!(checkpoint.tool_receipts,receipts);
+        validate_persisted_checkpoint(&raw,&checkpoint).unwrap();
+        let projected=project_compaction_checkpoint_messages(&raw,&checkpoint,&[],COMPACTION_CONSUMPTION_WRAPPER).unwrap();
+        assert_eq!(projected.last(),raw.last());
+        assert_eq!(serde_json::to_vec(&raw).unwrap(),before,"compaction must not rename or mutate historical call IDs");
+        for duplicate_call in [true,false] {
+            let mut duplicate=raw[..5].to_vec();
+            let mut repeated=vec![];
+            if duplicate_call { repeated.push(raw[2].clone()); }
+            repeated.push(raw[3].clone());
+            duplicate.splice(4..4,repeated);
+            let error=prepare_compaction(CompactionPhase::PreTurn,&duplicate,&duplicate,vec![],vec![],vec![],BTreeMap::new()).unwrap_err();
+            assert!(error.message.contains(if duplicate_call {"unique within a turn"} else {"orphaned or duplicated"}));
+        }
     }
 
     #[test]

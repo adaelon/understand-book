@@ -1,0 +1,41 @@
+{
+  "status": "passed",
+  "at_utc": "2026-10-15T14:48:36.110416+00:00",
+  "operation_id": "understandbook-online-20261015-v1",
+  "reference": {
+    "book_id": "understandbook",
+    "publication_id": "01a14006-1291-7dd1-8641-9c4a18148419"
+  },
+  "previous_reference": {
+    "book_id": "understandbook",
+    "publication_id": "01a13fbf-8230-7173-856d-1f388850f13f"
+  },
+  "pid_before": 4476,
+  "pid_after": 4476,
+  "command_seconds": 3.403,
+  "command_may_replay_completed_operation": true,
+  "old_body_read_during_cli": true,
+  "old_reference_still_readable": true,
+  "retry_same_publication": true,
+  "admin": {
+    "catalog": true,
+    "body": true,
+    "image": true,
+    "tutor_status": "ready"
+  },
+  "reader": {
+    "visible": false,
+    "direct_access_http": 404,
+    "verified_with_authenticated_client": true,
+    "rechecked_at_utc": "2026-10-15T15:03:59.858314+00:00"
+  },
+  "authorization": {
+    "grants": [
+      "adaelon",
+      "admin"
+    ],
+    "automatic": 0,
+    "operations": 1
+  },
+  "model_calls": 0
+}

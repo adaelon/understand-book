@@ -16,7 +16,7 @@ if (!publicGit) {
 
 const desktopRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = JSON.parse(readFileSync(path.join(desktopRoot, "src-tauri", "tauri.conf.json"), "utf8"));
-for (const externalBinary of ["binaries/understand-book-build", "binaries/book-mcp"]) {
+for (const externalBinary of ["binaries/understand-book-build", "binaries/book-mcp", "binaries/publish-book", "binaries/video-audio-review"]) {
   assert(
     config.bundle?.externalBin?.includes(externalBinary),
     `Windows Setup must package the external binary: ${externalBinary}`,
@@ -26,6 +26,7 @@ assert(
   config.bundle?.resources?.includes("resources/web-dist/**/*"),
   "Windows Setup must package the prepared web resources",
 );
+assert(config.bundle?.resources?.includes("resources/video/**/*"), "Windows Setup must package video dependencies");
 
 const beforeBuildCommand = config.build?.beforeBuildCommand ?? "";
 const requiredBuildSteps = [
@@ -35,6 +36,7 @@ const requiredBuildSteps = [
   "node scripts/build-book-mcp.mjs",
   "node scripts/smoke-book-mcp-plugin.mjs",
   "node scripts/prepare-resources.mjs",
+  "node scripts/prepare-video-resources.mjs",
 ];
 let previousIndex = -1;
 for (const step of requiredBuildSteps) {

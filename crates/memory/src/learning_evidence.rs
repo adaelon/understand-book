@@ -2,7 +2,7 @@
 use crate::{
     assessment::AssessmentStatus,
     learning::{storage, LearningStore},
-    teaching::{invalid, TeachingFact},
+    teaching::{invalid, TeachingBinding, TeachingEvent, TeachingFact},
 };
 use read_tools::ToolError;
 use rusqlite::{params, OptionalExtension, TransactionBehavior};
@@ -35,6 +35,10 @@ pub struct LearningEvidence {
     pub nature: EvidenceNature,
     #[serde(default)]
     pub target: Option<crate::teaching::TeachingTarget>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub design_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub block_refs: Vec<String>,
     #[serde(default)]
     pub fact_refs: Vec<String>,
     #[serde(default)]
@@ -82,22 +86,73 @@ pub struct LearnerProjection {
 
 impl LearningStore {
     pub fn fact_has_interpretation(&self, id: &str) -> Result<bool, ToolError> {
-        self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence e, json_each(e.evidence,'$.fact_refs') f WHERE f.value=?)", [id], |r|r.get(0)).map_err(storage)
+        self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence e, json_each(e.evidence,'$.fact_refs') f WHERE e.learning_workspace_id=? AND f.value=?)", params![self.workspace_scope,id], |r|r.get(0)).map_err(storage)
     }
     pub fn evidence_is_superseded(&self, id: &str) -> Result<bool, ToolError> {
-        self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence WHERE json_extract(evidence,'$.supersedes')=?)", [id], |r|r.get(0)).map_err(storage)
+        self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence WHERE learning_workspace_id=? AND json_extract(evidence,'$.supersedes')=?)", params![self.workspace_scope,id], |r|r.get(0)).map_err(storage)
     }
     pub fn evidence(&self, id: &str) -> Result<LearningEvidence, ToolError> {
         let row: Option<String> = self
             .connection
             .query_row(
-                "SELECT evidence FROM learning_evidence WHERE evidence_id=?",
-                [id],
+                "SELECT evidence FROM learning_evidence WHERE learning_workspace_id=? AND evidence_id=?",
+                params![self.workspace_scope,id],
                 |r| r.get(0),
             )
             .optional()
             .map_err(storage)?;
         serde_json::from_str(&row.ok_or_else(|| invalid("学习证据不存在"))?).map_err(storage)
+    }
+
+    /// Resolve a current interpretation to the learner's original expressions.
+    /// Understanding may carry across sessions for the same source version, but
+    /// its original facts must still belong to the interpretation's own session.
+    pub fn understanding_basis(
+        &self,
+        binding: &TeachingBinding,
+        evidence_id: &str,
+    ) -> Result<(LearningEvidence, Vec<TeachingEvent>), ToolError> {
+        let evidence = self.evidence(evidence_id)?;
+        if evidence.source_id != binding.source_id
+            || evidence.source_revision != binding.source_revision
+            || self.evidence_is_superseded(evidence_id)?
+        {
+            return Err(invalid("理解记录不属于当前来源版本或已被更新"));
+        }
+        let mut origin = binding.clone();
+        origin.tutor_session_id = evidence.session_id.clone();
+        let facts = if evidence.nature == EvidenceNature::Performance {
+            // Existing performance records also list delivered support in fact_refs.
+            if evidence.correction.as_ref().is_some_and(|text| !text.trim().is_empty()) {
+                let action = self.teaching_event(&evidence.action_ref)?;
+                if action.binding.source_id != origin.source_id
+                    || action.binding.source_revision != origin.source_revision
+                    || action.binding.tutor_session_id != origin.tutor_session_id
+                {
+                    return Err(invalid("理解依据不属于原记录的来源、版本或会话"));
+                }
+                // The later user correction is an expression in its own right.
+                // Do not turn the original interface response into learner words.
+                action.learner_expression().is_some().then_some(action).into_iter().collect()
+            } else {
+                vec![self.learner_expression_fact(&origin, &evidence.action_ref)?]
+            }
+        } else {
+            let mut expressions = Vec::new();
+            for id in &evidence.fact_refs {
+                let fact = self.teaching_event(id)?;
+                // Historic hypotheses can mix support with expressions. Keep only
+                // actual expressions in the basis supplied to design and review.
+                if fact.learner_expression().is_some() {
+                    expressions.push(self.learner_expression_fact(&origin, id)?);
+                }
+            }
+            if expressions.is_empty() {
+                return Err(invalid("理解记录没有真实用户表达依据；保持理解未知并继续讲清当前问题"));
+            }
+            expressions
+        };
+        Ok((evidence, facts))
     }
 
     pub fn append_evidence(
@@ -107,8 +162,8 @@ impl LearningStore {
         let existing: Option<String> = self
             .connection
             .query_row(
-                "SELECT evidence FROM learning_evidence WHERE evidence_id=?",
-                [&evidence.evidence_id],
+                "SELECT evidence FROM learning_evidence WHERE learning_workspace_id=? AND evidence_id=?",
+                params![self.workspace_scope,evidence.evidence_id],
                 |r| r.get(0),
             )
             .optional()
@@ -121,27 +176,33 @@ impl LearningStore {
             return Ok(old);
         }
         let action = self.teaching_event(&evidence.action_ref)?;
+        if let Some(id) = &evidence.design_ref {
+            let event = self.teaching_event(id)?;
+            if event.kind != TeachingFact::DesignRevised || event.binding.tutor_session_id != evidence.session_id
+                || event.binding.source_id != evidence.source_id || event.binding.source_revision != evidence.source_revision {
+                return Err(invalid("理解关系不属于当前设计来源和会话"));
+            }
+            let design: crate::teaching_design::TeachingDesign = serde_json::from_value(event.payload["design"].clone()).map_err(storage)?;
+            design.validate_blocks(&evidence.block_refs)?;
+        } else if !evidence.block_refs.is_empty() { return Err(invalid("关系理解需要设计版本")); }
         if evidence.nature == EvidenceNature::Hypothesis {
             if evidence.fact_refs.is_empty() || !evidence.fact_refs.contains(&evidence.action_ref)
                 || evidence.interpretation.trim().is_empty() || evidence.teaching_implication.trim().is_empty()
                 || evidence.assessment_ref.is_some() || evidence.status != AssessmentStatus::Unassessed
                 || evidence.delivery_ref.is_some() || evidence.object_id.is_some() || evidence.object_revision.is_some()
             { return Err(invalid("理解假设需要事实与教学影响，不附加评分或对象能力")); }
-            let mut has_learner_expression = false;
+            let mut origin = action.binding.clone();
+            origin.tutor_session_id = evidence.session_id.clone();
+            origin.source_id = evidence.source_id.clone();
+            origin.source_revision = evidence.source_revision.clone();
+            let mut quote_is_original = false;
             for id in &evidence.fact_refs {
-                let fact = self.teaching_event(id)?;
-                has_learner_expression |= fact.learner_expression().is_some();
-                if fact.payload["usage"]["kind"] == "reading_action" && fact.learner_expression().is_none() {
-                    return Err(invalid("纯阅读操作没有用户补充，不能作为理解假设依据；保留理解未知并继续原请求，无需创建理解假设"));
-                }
-                if fact.binding.source_id != evidence.source_id || fact.binding.source_revision != evidence.source_revision
-                    || fact.binding.tutor_session_id != evidence.session_id
-                    || matches!(fact.kind, TeachingFact::TurnBound | TeachingFact::MoveSelected | TeachingFact::HelpDelivered
-                        | TeachingFact::ContinuationDisplayed | TeachingFact::ContinuationChosen)
-                { return Err(invalid("理解依据不属于当前来源、会话或实际使用事实")); }
+                let fact = self.learner_expression_fact(&origin, id)?;
+                quote_is_original |= !evidence.learner_quote.trim().is_empty()
+                    && fact.learner_expression().is_some_and(|text| text.contains(&evidence.learner_quote));
             }
-            if !has_learner_expression {
-                return Err(invalid("理解假设需要真实用户表达；助手交付或内容展示不能单独支持知识诊断"));
+            if !quote_is_original {
+                return Err(invalid("理解记录的用户引文必须来自所引用的真实用户表达"));
             }
             let target = evidence.target.as_ref().ok_or_else(||invalid("理解假设缺少适用目标"))?;
             target.validate(&action.binding)?;
@@ -178,15 +239,16 @@ impl LearningStore {
             {
                 return Err(invalid("替代解释必须属于同一次对象表现"));
             }
-            let replaced:bool=self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence WHERE json_extract(evidence,'$.supersedes')=?)",[id],|r|r.get(0)).map_err(storage)?;
+            let replaced:bool=self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence WHERE learning_workspace_id=? AND json_extract(evidence,'$.supersedes')=?)",params![self.workspace_scope,id],|r|r.get(0)).map_err(storage)?;
             if replaced {
                 return Err(invalid("解释已经更新，请刷新后纠正"));
             }
         }
         self.connection
             .execute(
-                "INSERT INTO learning_evidence(evidence_id,source_id,evidence) VALUES (?,?,?)",
+                "INSERT INTO learning_evidence(learning_workspace_id,evidence_id,source_id,evidence) VALUES (?,?,?,?)",
                 params![
+                    self.workspace_scope,
                     evidence.evidence_id,
                     evidence.source_id,
                     serde_json::to_string(evidence).map_err(storage)?
@@ -253,6 +315,8 @@ impl LearningStore {
                         object_revision: object["object_revision"].as_u64(),
                         nature: EvidenceNature::Performance,
                         target: serde_json::from_value(delivery.payload["move"].get("target").cloned().unwrap_or(Value::Null)).map_err(storage)?,
+                        design_ref: delivery.payload["move"]["design_ref"].as_str().map(str::to_owned),
+                        block_refs: serde_json::from_value(delivery.payload["move"].get("block_refs").cloned().unwrap_or(json!([]))).map_err(storage)?,
                         fact_refs: vec![delivery.event_id.clone(), action.event_id.clone()],
                         teaching_implication: "结合本次表现及帮助条件调整下一步；不足时保持未知".into(),
                         label: object["meaning"].as_str().or_else(||delivery.payload["move"]["target"]["learning_focus"].as_str()).unwrap_or("学习表现").into(),
@@ -309,6 +373,20 @@ impl LearningStore {
             return Err(invalid("请填写纠正说明"));
         }
         let mut next = self.evidence(id)?;
+        if next.nature == EvidenceNature::Hypothesis {
+            // A user can correct an older interpretation whose fact_refs also
+            // contained help. The new record keeps only its actual expressions.
+            let facts = next.fact_refs.iter().map(|id| self.teaching_event(id))
+                .collect::<Result<Vec<_>, _>>()?;
+            let expressions = facts.iter().filter_map(|fact| fact.learner_expression().map(|text| (fact, text)))
+                .collect::<Vec<_>>();
+            let (first, quote) = expressions.first().ok_or_else(|| invalid("理解记录没有真实用户表达依据；保持理解未知并继续讲清当前问题"))?;
+            next.fact_refs = expressions.iter().map(|(fact, _)| fact.event_id.clone()).collect();
+            if !next.fact_refs.contains(&next.action_ref) { next.action_ref = first.event_id.clone(); }
+            if next.learner_quote.trim().is_empty() || !expressions.iter().any(|(_, text)| text.contains(&next.learner_quote)) {
+                next.learner_quote = (*quote).into();
+            }
+        }
         next.evidence_id = format!("correction:{operation}");
         next.supersedes = Some(id.into());
         next.correction = Some(text.into());
@@ -322,9 +400,25 @@ impl LearningStore {
     /// Current source-bound interpretations, including source-only performances.
     /// Replacement is resolved before the page limit, so superseded claims never reappear.
     pub fn current_interpretations(&self, source: &str, revision: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ? OFFSET ?").map_err(storage)?;
-        let rows = q.query_map(params![source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.learning_workspace_id=? AND e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ? OFFSET ?").map_err(storage)?;
+        let rows = q.query_map(params![self.workspace_scope,source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
+    }
+
+    /// Stable relationship IDs carry across revisions of the same private design only.
+    /// Relevant older understanding is fetched before the recency limit is applied.
+    pub fn current_design_interpretations(&self, session: &str, source: &str, revision: &str, design_ref: Option<&str>, blocks: &[String], limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
+        let mut q=self.connection.prepare("WITH RECURSIVE lineage(id) AS (
+            SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
+            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?7 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)
+            SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.learning_workspace_id=?7 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3
+            AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
+            ORDER BY CASE WHEN json_extract(e.evidence,'$.session_id')=?4
+              AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM lineage)
+              AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
+              THEN 0 ELSE 1 END, e.seq DESC LIMIT ?6").map_err(storage)?;
+        let rows=q.query_map(params![design_ref,source,revision,session,serde_json::to_string(blocks).map_err(storage)?,limit.min(20),self.workspace_scope],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+        rows.map(|r| {let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?))}).collect()
     }
 
     pub fn evidence_page(
@@ -333,9 +427,9 @@ impl LearningStore {
         after: u64,
         limit: u32,
     ) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut query=self.connection.prepare("SELECT seq,evidence FROM learning_evidence WHERE source_id=? AND seq>? ORDER BY seq LIMIT ?").map_err(storage)?;
+        let mut query=self.connection.prepare("SELECT seq,evidence FROM learning_evidence WHERE learning_workspace_id=? AND source_id=? AND seq>? ORDER BY seq LIMIT ?").map_err(storage)?;
         let rows = query
-            .query_map(params![source, after, limit.min(100)], |r| {
+            .query_map(params![self.workspace_scope,source, after, limit.min(100)], |r| {
                 Ok((r.get::<_, u64>(0)?, r.get::<_, String>(1)?))
             })
             .map_err(storage)?;
@@ -354,10 +448,11 @@ impl LearningStore {
         capability: &str,
         before: Option<u64>,
     ) -> Result<Vec<(u64, String)>, ToolError> {
-        let mut q=self.connection.prepare("SELECT seq,evidence_id FROM learning_evidence WHERE source_id=? AND json_extract(evidence,'$.object_id')=? AND json_extract(evidence,'$.object_revision')=? AND json_extract(evidence,'$.capability')=? AND seq<? ORDER BY seq DESC LIMIT 10").map_err(storage)?;
+        let mut q=self.connection.prepare("SELECT seq,evidence_id FROM learning_evidence WHERE learning_workspace_id=? AND source_id=? AND json_extract(evidence,'$.object_id')=? AND json_extract(evidence,'$.object_revision')=? AND json_extract(evidence,'$.capability')=? AND seq<? ORDER BY seq DESC LIMIT 10").map_err(storage)?;
         let rows = q
             .query_map(
                 params![
+                    self.workspace_scope,
                     source,
                     object,
                     revision,
@@ -377,8 +472,8 @@ impl LearningStore {
         let text: Option<String> = self
             .connection
             .query_row(
-                "SELECT projection FROM learner_projection WHERE source_id=?",
-                [source],
+                "SELECT projection FROM learner_projection WHERE learning_workspace_id=? AND source_id=?",
+                params![self.workspace_scope,source],
                 |r| r.get(0),
             )
             .optional()
@@ -386,8 +481,8 @@ impl LearningStore {
         let watermark = self
             .connection
             .query_row(
-                "SELECT coalesce(max(seq),0) FROM learning_evidence WHERE source_id=?",
-                [source],
+                "SELECT coalesce(max(seq),0) FROM learning_evidence WHERE learning_workspace_id=? AND source_id=?",
+                params![self.workspace_scope,source],
                 |r| r.get(0),
             )
             .map_err(storage)?;
@@ -410,11 +505,11 @@ impl LearningStore {
         let all: Vec<(u64, LearningEvidence)> = {
             let mut q = tx
                 .prepare(
-                    "SELECT seq,evidence FROM learning_evidence WHERE source_id=? ORDER BY seq",
+                    "SELECT seq,evidence FROM learning_evidence WHERE learning_workspace_id=? AND source_id=? ORDER BY seq",
                 )
                 .map_err(storage)?;
             let rows = q
-                .query_map([source], |r| {
+                .query_map(params![self.workspace_scope,source], |r| {
                     Ok((r.get::<_, u64>(0)?, r.get::<_, String>(1)?))
                 })
                 .map_err(storage)?;
@@ -488,8 +583,8 @@ impl LearningStore {
             );
             let action_sequence: u64 = tx
                 .query_row(
-                    "SELECT seq FROM teaching_trace WHERE event_id=?",
-                    [&e.action_ref],
+                    "SELECT seq FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
+                    params![self.workspace_scope,e.action_ref],
                     |r| r.get(0),
                 )
                 .map_err(storage)?;
@@ -512,7 +607,7 @@ impl LearningStore {
             rows: rows.into_values().collect(),
             paths,
         };
-        tx.execute("INSERT INTO learner_projection(source_id,projection) VALUES (?,?) ON CONFLICT(source_id) DO UPDATE SET projection=excluded.projection",params![source,serde_json::to_string(&projection).map_err(storage)?]).map_err(storage)?;
+        tx.execute("INSERT INTO learner_projection(learning_workspace_id,source_id,projection) VALUES (?,?,?) ON CONFLICT(learning_workspace_id,source_id) DO UPDATE SET projection=excluded.projection",params![self.workspace_scope,source,serde_json::to_string(&projection).map_err(storage)?]).map_err(storage)?;
         tx.commit().map_err(storage)?;
         Ok(projection)
     }
@@ -525,6 +620,262 @@ mod tests {
         assessment::ResponseAssessment,
         teaching::{TeachingBinding, TeachingEvent},
     };
+    fn observation(id: &str, kind: TeachingFact, payload: Value) -> TeachingEvent {
+        TeachingEvent {
+            event_id: id.into(),
+            binding: TeachingBinding {
+                tutor_session_id: "session".into(), session_revision: 1, control_revision: 0,
+                source_id: "book".into(), source_revision: "source-v1".into(), map_revision: None,
+                chat_session_id: "chat".into(), turn_id: "turn".into(),
+            },
+            kind, causal_refs: vec![], payload, occurred_at: "now".into(),
+        }
+    }
+
+    fn hypothesis(fact: &TeachingEvent) -> LearningEvidence {
+        serde_json::from_value(json!({
+            "evidence_id":format!("hypothesis:{}",fact.event_id),"action_ref":fact.event_id,
+            "session_id":fact.binding.tutor_session_id,"source_id":fact.binding.source_id,
+            "source_revision":fact.binding.source_revision,"nature":"hypothesis","fact_refs":[fact.event_id],
+            "teaching_implication":"explain the requested relation","label":"embedding","capability":"explanation",
+            "assistance_refs":[],"attempt":0,"status":"unassessed","interpretation":"asks how embedding is used",
+            "learner_quote":fact.learner_expression().unwrap_or_default(),"interpreter_version":"test","source_quotes":[],
+            "target":{"learning_focus":"embedding","expected_performance":"explain the input",
+                "capability":"explanation","source_bindings":[{"source_id":fact.binding.source_id,
+                    "source_revision":fact.binding.source_revision,"start_lid":"1.1","end_lid":"1.2"}],"object_refs":[]}
+        })).unwrap()
+    }
+
+    #[test]
+    fn hypothesis_requires_every_basis_to_be_an_actual_expression() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
+        let question = observation("question", TeachingFact::UsageObserved,
+            json!({"usage":{"kind":"user_message"},"response":"进入 embedding 的是中间产物，对吗？"}));
+        store.append_teaching(&question).unwrap();
+        for (id, kind, payload) in [
+            ("delivered", TeachingFact::MessageDelivered, json!({"answer":"向量只负责排入口"})),
+            ("displayed", TeachingFact::Displayed, json!({"response":"向量只负责排入口"})),
+            ("help", TeachingFact::HelpDisplayed, json!({"response":"向量只负责排入口"})),
+            ("click", TeachingFact::UsageObserved, json!({"usage":{"kind":"reading_action"},
+                "interaction":{"user_supplement":""},"response":"解释这段"})),
+            ("interface", TeachingFact::LearnerAction, json!({"action":"chat_response","response":"继续",
+                "response_origin":{"kind":"interface_request"}})),
+            ("prefill", TeachingFact::UsageObserved, json!({"usage":{"kind":"user_message"},
+                "response":"向量只负责排入口","response_origin":{"kind":"presentation_prefill","prefill_text":"向量只负责排入口"}})),
+        ] {
+            store.append_teaching(&observation(id, kind, payload)).unwrap();
+            let mut evidence = hypothesis(&question);
+            evidence.fact_refs.push(id.into());
+            let error = store.append_evidence(&evidence).unwrap_err();
+            assert!(error.message.contains("真实用户表达"), "{id}: {}", error.message);
+            assert!(store.learner_expression_fact(&question.binding, id).is_err());
+        }
+        store.append_evidence(&hypothesis(&question)).unwrap();
+        assert_eq!(store.understanding_basis(&question.binding, "hypothesis:question").unwrap().1, vec![question]);
+    }
+
+    #[test]
+    fn hypothesis_quotes_remain_original_for_questions_self_reports_and_answers() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
+        for (id, kind, payload) in [
+            ("question", TeachingFact::UsageObserved, json!({"usage":{"kind":"user_message"},"response":"是根据 lid 树切分的吗？"})),
+            ("self-report", TeachingFact::LearnerAction, json!({"action":"self_report","response":"我还不明白输入怎样变成向量"})),
+            ("answer", TeachingFact::LearnerAction, json!({"action":"submit","response":"输入是预构建的中间产物"})),
+            ("supplement", TeachingFact::UsageObserved, json!({"usage":{"kind":"reading_action"},
+                "interaction":{"user_supplement":"这里的输入是什么？"},"response":"解释这段"})),
+            ("edited-prefill", TeachingFact::UsageObserved, json!({"usage":{"kind":"user_message"},
+                "response":"我不理解向量如何比较","response_origin":{"kind":"presentation_prefill","prefill_text":"继续"}})),
+        ] {
+            let fact = observation(id, kind, payload);
+            store.append_teaching(&fact).unwrap();
+            let mut evidence = hypothesis(&fact);
+            evidence.learner_quote = "用户已经理解向量只排入口".into();
+            assert!(store.append_evidence(&evidence).unwrap_err().message.contains("用户引文"));
+            store.append_evidence(&hypothesis(&fact)).unwrap();
+            assert_eq!(store.learner_expression_fact(&fact.binding, id).unwrap(), fact);
+        }
+        let question = store.teaching_event("question").unwrap();
+        let mut evidence = hypothesis(&question);
+        evidence.evidence_id = "multiple-expressions".into();
+        evidence.fact_refs.push("answer".into());
+        evidence.learner_quote = "预构建的中间产物".into();
+        store.append_evidence(&evidence).unwrap();
+        assert_eq!(store.understanding_basis(&question.binding, &evidence.evidence_id).unwrap().1.len(), 2);
+    }
+
+    #[test]
+    fn understanding_basis_uses_original_session_and_legacy_performance_action() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
+        performance(&mut store, "answer", AssessmentStatus::Correct);
+        let action = store.teaching_event("answer").unwrap();
+        let mut current = action.binding.clone();
+        current.tutor_session_id = "later-session".into();
+        current.chat_session_id = "later-chat".into();
+        let id = "assessment:answer:gradient";
+        let (evidence, facts) = store.understanding_basis(&current, id).unwrap();
+        assert!(evidence.fact_refs.contains(&"delivery".into()));
+        assert_eq!(facts, vec![action.clone()]);
+        assert!(store.learner_expression_fact(&current, "answer").is_err());
+        current.source_revision = "source-v2".into();
+        assert!(store.understanding_basis(&current, id).is_err());
+        let correction = store.correct_evidence(id, "correction", "我仍然不理解方向").unwrap();
+        assert!(store.understanding_basis(&action.binding, id).is_err());
+        assert_eq!(store.understanding_basis(&action.binding, &correction.evidence_id).unwrap().1, vec![action]);
+    }
+
+    #[test]
+    fn understanding_basis_filters_legacy_help_but_requires_a_real_expression() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
+        let fact = observation("question", TeachingFact::UsageObserved,
+            json!({"usage":{"kind":"user_message"},"response":"向量怎样参与检索？"}));
+        store.append_teaching(&fact).unwrap();
+        store.append_teaching(&observation("help", TeachingFact::HelpDisplayed, json!({"text":"解释"}))).unwrap();
+        let mut legacy = hypothesis(&fact);
+        legacy.fact_refs.push("help".into());
+        for (id, refs) in [("mixed", legacy.fact_refs.clone()), ("only-help", vec!["help".into()])] {
+            legacy.evidence_id = id.into();
+            legacy.fact_refs = refs;
+            store.connection.execute("INSERT INTO learning_evidence(learning_workspace_id,evidence_id,source_id,evidence) VALUES (?,?,?,?)",
+                params![store.workspace_scope,legacy.evidence_id,legacy.source_id,serde_json::to_string(&legacy).unwrap()]).unwrap();
+        }
+        assert_eq!(store.understanding_basis(&fact.binding, "mixed").unwrap().1, vec![fact.clone()]);
+        assert!(store.understanding_basis(&fact.binding, "only-help").is_err());
+        let correction = store.correct_evidence("mixed", "correct-mixed", "我只是在确认输入").unwrap();
+        assert_eq!(correction.fact_refs, vec![fact.event_id]);
+        assert_eq!(store.correct_evidence("mixed", "correct-mixed", "我只是在确认输入").unwrap(), correction);
+    }
+
+    #[test]
+    fn understanding_basis_keeps_user_correction_when_original_response_was_prefilled() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
+        performance(&mut store, "independent", AssessmentStatus::Correct);
+        let original = store.teaching_event("independent").unwrap();
+        let mut prefilled = original.clone();
+        prefilled.event_id = "prefilled".into();
+        prefilled.payload["response_origin"] = json!({"kind":"presentation_prefill","prefill_text":"我的推导"});
+        store.append_teaching(&prefilled).unwrap();
+        store.save_assessment(&ResponseAssessment { action_ref:"prefilled".into(), contract_ref:"delivery".into(),
+            evaluator_version:"test".into(), status:AssessmentStatus::Correct, items:vec![] }).unwrap();
+        store.derive_assessed_evidence("session").unwrap();
+        let id = "assessment:prefilled:gradient";
+        assert!(store.understanding_basis(&original.binding, id).is_err());
+        let correction = store.correct_evidence(id, "prefill-correction", "这段是预填的，我还不理解").unwrap();
+        let (basis, expressions) = store.understanding_basis(&original.binding, &correction.evidence_id).unwrap();
+        assert_eq!(basis.correction.as_deref(), Some("这段是预填的，我还不理解"));
+        assert!(expressions.is_empty());
+        assert_eq!(store.teaching_event("prefilled").unwrap(), prefilled);
+        let mut wrong_source = original.binding.clone();
+        wrong_source.source_revision = "other-version".into();
+        assert!(store.understanding_basis(&wrong_source, &correction.evidence_id).is_err());
+        let mut wrong_session = correction.clone();
+        wrong_session.evidence_id = "wrong-session".into();
+        wrong_session.session_id = "other-session".into();
+        store.connection.execute("INSERT INTO learning_evidence(learning_workspace_id,evidence_id,source_id,evidence) VALUES (?,?,?,?)",
+            params![store.workspace_scope,wrong_session.evidence_id,wrong_session.source_id,serde_json::to_string(&wrong_session).unwrap()]).unwrap();
+        assert!(store.understanding_basis(&original.binding, &wrong_session.evidence_id).is_err());
+    }
+
+    fn performance(store: &mut LearningStore, id: &str, status: AssessmentStatus) {
+        let binding = TeachingBinding {
+            tutor_session_id: "session".into(), session_revision: 1, control_revision: 0,
+            source_id: "book".into(), source_revision: "source-v1".into(), map_revision: None,
+            chat_session_id: "chat".into(), turn_id: "turn".into(),
+        };
+        store.append_teaching(&TeachingEvent {
+            event_id: "delivery".into(), binding: binding.clone(), kind: TeachingFact::MessageDelivered,
+            causal_refs: vec![], occurred_at: "now".into(),
+            payload: json!({"move":{"capability":"explanation"},"object_versions":[{"ref":{"object_id":"gradient"},"object_revision":1,"meaning":"Gradient"}]}),
+        }).unwrap();
+        store.append_teaching(&TeachingEvent {
+            event_id: id.into(), binding, kind: TeachingFact::LearnerAction,
+            causal_refs: vec!["delivery".into()], occurred_at: "now".into(),
+            payload: json!({"delivery_ref":"delivery","action":"submit","response":"我的推导","assistance_refs":[],"attempt":1}),
+        }).unwrap();
+        store.save_assessment(&ResponseAssessment { action_ref: id.into(), contract_ref: "delivery".into(),
+            evaluator_version: "test".into(), status, items: vec![] }).unwrap();
+        store.derive_assessed_evidence("session").unwrap();
+    }
+
+    #[test]
+    fn w3_same_book_evidence_corrections_pages_and_projection_stay_in_workspace() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut a = LearningStore::open(&path, false).unwrap().with_workspace(Some("A"));
+        let mut b = LearningStore::open(&path, false).unwrap().with_workspace(Some("B"));
+        let mut legacy = LearningStore::open(&path, false).unwrap();
+        performance(&mut legacy, "legacy", AssessmentStatus::Partial);
+        performance(&mut a, "same-id", AssessmentStatus::Incorrect);
+        performance(&mut b, "same-id", AssessmentStatus::Correct);
+        performance(&mut a, "only-a", AssessmentStatus::Incorrect);
+        assert!(b.teaching_event("only-a").is_err());
+        assert!(b.assessment("only-a").unwrap().is_none());
+        assert!(b.correct_evidence("assessment:only-a:gradient", "cross", "不属于此工作区").is_err());
+        let correction = a.correct_evidence("assessment:same-id:gradient", "correct", "我理解了梯度，但计算出错").unwrap();
+        assert_eq!(correction.supersedes.as_deref(), Some("assessment:same-id:gradient"));
+        assert!(!b.evidence_is_superseded("assessment:same-id:gradient").unwrap());
+        assert_eq!(b.current_interpretations("book", "source-v1", 0, 20).unwrap()[0].1.status, AssessmentStatus::Correct);
+        assert_eq!(a.current_interpretations("book", "source-v1", 0, 1).unwrap()[0].1.evidence_id, correction.evidence_id);
+        assert_eq!(a.current_interpretations("book", "source-v1", 1, 1).unwrap()[0].1.evidence_id, "assessment:only-a:gradient");
+        let first = a.evidence_page("book", 0, 1).unwrap();
+        let second = a.evidence_page("book", first[0].0, 1).unwrap();
+        assert_eq!(first[0].1.status, AssessmentStatus::Incorrect);
+        assert_eq!(second[0].1.evidence_id, "assessment:only-a:gradient");
+        assert_eq!(b.object_evidence_refs("book", "gradient", 1, "explanation", None).unwrap().len(), 1);
+        let a_projection = a.rebuild_learner_projection("book").unwrap();
+        let b_projection = b.rebuild_learner_projection("book").unwrap();
+        assert_eq!((a_projection.rows[0].difficulty, a_projection.rows[0].uncertain), (1, 1));
+        assert_eq!(b_projection.rows[0].independent_support, 1);
+        assert_eq!(legacy.rebuild_learner_projection("book").unwrap().rows[0].partial, 1);
+        assert_eq!(b.teaching_events("session", 0, 100).unwrap().len(), 2);
+        assert_eq!(b.teaching_activity_events("delivery").unwrap().len(), 1);
+        assert_eq!(b.teaching_expression_interpretations("same-id").unwrap()[0].status, AssessmentStatus::Correct);
+        assert_eq!(b.current_design_interpretations("session", "book", "source-v1", None, &[], 20).unwrap().len(), 1);
+        assert_eq!(b.teaching_learning_opportunity("session", "book", "source-v1", None, &[]).unwrap(), (vec![], vec![]));
+        assert!(b.teaching_lineage_support("session", "book", "source-v1", None).unwrap().is_empty());
+        a.connection.execute("DELETE FROM learner_projection WHERE learning_workspace_id='A'", []).unwrap();
+        assert_eq!(a.rebuild_learner_projection("book").unwrap(), a_projection);
+        assert_eq!(b.learner_projection("book").unwrap().0.unwrap(), b_projection);
+        drop(a);
+        let mut reopened = LearningStore::open(&path, false).unwrap().with_workspace(Some("A"));
+        assert_eq!(reopened.rebuild_learner_projection("book").unwrap(), a_projection);
+        assert!(reopened.evidence("assessment:legacy:gradient").is_err());
+    }
+
+    #[test]
+    fn w3_ordinary_understanding_is_recorded_while_teaching_is_disabled() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut a = LearningStore::open(&path, false).unwrap().with_workspace(Some("A"));
+        let b = LearningStore::open(&path, false).unwrap().with_workspace(Some("B"));
+        assert!(!a.state().unwrap().control.enabled);
+        let binding = TeachingBinding { tutor_session_id:"ordinary".into(), session_revision:0, control_revision:0,
+            source_id:"book".into(), source_revision:"source-v1".into(), map_revision:None,
+            chat_session_id:"chat".into(), turn_id:"turn".into() };
+        a.append_teaching(&TeachingEvent { event_id:"question".into(), binding, kind:TeachingFact::UsageObserved,
+            causal_refs:vec![], payload:json!({"usage":{"kind":"user_message"},"response":"我不理解梯度为什么指向增长方向"}), occurred_at:"now".into() }).unwrap();
+        let evidence = LearningEvidence {
+            evidence_id:"question-understanding".into(), action_ref:"question".into(), delivery_ref:None,
+            session_id:"ordinary".into(), source_id:"book".into(), source_revision:"source-v1".into(), map_revision:None,
+            object_id:None, object_revision:None, nature:EvidenceNature::Hypothesis,
+            target:Some(crate::teaching::TeachingTarget { media_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
+                capability:"explanation".into(), source_bindings:vec![crate::teaching::TeachingSourceBinding {source_id:"book".into(), source_revision:"source-v1".into(),start_lid:"L1".into(),end_lid:"L2".into()}],object_refs:vec![] }),
+            design_ref:None, block_refs:vec![], fact_refs:vec!["question".into()], teaching_implication:"结合方向导数解释".into(),
+            label:"梯度方向".into(),capability:"explanation".into(),assistance_refs:vec![],attempt:1,assessment_ref:None,
+            status:AssessmentStatus::Unassessed,interpretation:"用户对梯度方向有疑问".into(),learner_quote:"我不理解梯度为什么指向增长方向".into(),
+            interpreter_version:"test".into(),supersedes:None,correction:None,source_quotes:json!([]),
+        };
+        a.append_evidence(&evidence).unwrap();
+        assert!(a.fact_has_interpretation("question").unwrap());
+        assert!(!b.fact_has_interpretation("question").unwrap());
+        assert_eq!(a.current_interpretations("book","source-v1",0,20).unwrap()[0].1,evidence);
+        assert!(a.rebuild_learner_projection("book").unwrap().rows.is_empty());
+        assert!(!a.state().unwrap().control.enabled);
+    }
     #[test]
     fn learning_evidence_replays_conditions_corrections_and_interrupted_projection() {
         let dir = tempfile::tempdir().unwrap();

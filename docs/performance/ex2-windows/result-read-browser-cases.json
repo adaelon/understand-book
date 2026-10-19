@@ -1,0 +1,16 @@
+[
+  {"directory":"result-read-D1","samples":[
+    {"eta":1.2,"state":{"page":{"eta":1.2,"k":4},"eta":1.2,"k":4},"probes":[
+      {"selector":"#wkOut","step":4,"quantity":"w","decimals":6},
+      {"selector":"#wnOut","step":5,"quantity":"w","decimals":6},
+      {"selector":"#wkDist","step":4,"quantity":"e","decimals":6},
+      {"selector":"#wnDist","step":5,"quantity":"e","decimals":6}
+    ]},
+    {"eta":1.2,"state":{"page":{"eta":1.2,"k":5},"eta":1.2,"k":5},"probes":[
+      {"selector":"#wkOut","step":5,"quantity":"w","decimals":6},
+      {"selector":"#wnOut","step":6,"quantity":"w","decimals":6},
+      {"selector":"#wkDist","step":5,"quantity":"e","decimals":6},
+      {"selector":"#wnDist","step":6,"quantity":"e","decimals":6}
+    ]}
+  ]}
+]

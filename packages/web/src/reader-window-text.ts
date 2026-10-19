@@ -1,5 +1,41 @@
 import type { BookText, Manifest } from './api';
 
+/** One mounted publication's recent windows; never retain an entire long book. */
+export class ReaderWindowTextCache {
+  private texts = new Map<string, BookText>();
+  private bytes = 0;
+  private readWindow: (lids: string[]) => Promise<BookText[]>;
+  constructor(tree: Manifest['tree'], read: (lid: string, end?: string) => Promise<BookText>,
+    private maxLeaves = 100, private maxBytes = 512 * 1024) {
+    this.readWindow = createWindowTextReader(tree, read);
+  }
+  remember(texts: BookText[]) {
+    for (const text of texts) {
+      const previous = this.texts.get(text.lid);
+      if (previous) { this.bytes -= previous.text.length * 2; this.texts.delete(text.lid); }
+      if (text.text.length * 2 > this.maxBytes) continue;
+      this.texts.set(text.lid, text); this.bytes += text.text.length * 2;
+      while (this.texts.size > this.maxLeaves || this.bytes > this.maxBytes) {
+        const first = this.texts.keys().next().value!;
+        this.bytes -= this.texts.get(first)!.text.length * 2; this.texts.delete(first);
+      }
+    }
+  }
+  peek(lids: string[]): BookText[] | null {
+    if (!lids.every(lid => this.texts.has(lid))) return null;
+    const texts = lids.map(lid => this.texts.get(lid)!);
+    this.remember(texts);
+    return texts;
+  }
+  async read(lids: string[]): Promise<BookText[]> {
+    const cached = new Map(lids.flatMap(lid => this.texts.has(lid) ? [[lid, this.texts.get(lid)!] as const] : []));
+    const incoming = await this.readWindow(lids.filter(lid => !cached.has(lid)));
+    this.remember(incoming);
+    for (const text of incoming) cached.set(text.lid, text);
+    return lids.map(lid => cached.get(lid)!);
+  }
+}
+
 /** Read adjacent leaves once, retaining each paragraph's canonical UTF-16 span. */
 export async function readWindowText(
   lids: string[],

@@ -263,7 +263,7 @@ fn call(
         value["usage"] = usage_value(access.mcp_usage.status(identity.user_id())?, 0, Value::Null, origin);
         return Ok(tool_result(value, false));
     }
-    let prepared = reader.prepare(identity, name, arguments)?;
+    let prepared = reader.prepare(identity.user_id(), name, arguments)?;
     let usage = access.mcp_usage.status(identity.user_id())?;
     if usage.free_remaining == 0 && usage.paid_remaining == 0 {
         return Err(error(
@@ -273,7 +273,7 @@ fn call(
         ));
     }
     let reference = prepared.reference.clone();
-    let value = reader.read_prepared(identity, prepared)?;
+    let value = reader.read_prepared(identity.user_id(), prepared)?;
     // Encode the entire content projection before touching the ledger. Afterwards only
     // JSON Values and the typed debit receipt are added; no content conversion or IO remains.
     let mut result = tool_result(value, false);

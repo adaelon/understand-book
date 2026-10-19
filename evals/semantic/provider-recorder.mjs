@@ -22,6 +22,52 @@ export function usageByPurpose(records) {
     (r.purpose === 'grading' ? 'grading' : requestPurpose(r.request)) === p))]));
 }
 
+function recordStreamResponse(record, text) {
+  const choices = new Map();
+  record.response = { choices: [] };
+  record.stream_done = false;
+  record.response_complete = false;
+  for (const event of text.split(/\r?\n\r?\n/)) {
+    const data = event.split(/\r?\n/).filter(line => line.startsWith('data:'))
+      .map(line => line.slice(5).trimStart()).join('\n').trim();
+    if (!data) continue;
+    if (data === '[DONE]') { record.stream_done = true; continue; }
+    const value = JSON.parse(data);
+    if (value.id) record.response.id = value.id;
+    if (value.model) record.response.model = value.model;
+    if (value.usage) record.usage = value.usage;
+    if (value.error) record.provider_error = value.error.message ?? value.error;
+    for (const part of value.choices ?? []) {
+      const index = part.index ?? 0;
+      if (!choices.has(index)) {
+        const choice = { index, finish_reason: null, message: { role: 'assistant', content: '' } };
+        choices.set(index, { choice, tools: new Map() });
+        record.response.choices.push(choice);
+      }
+      const { choice, tools } = choices.get(index);
+      if (part.finish_reason != null) choice.finish_reason = part.finish_reason;
+      const delta = part.delta ?? part.message ?? {};
+      if (delta.role) choice.message.role = delta.role;
+      if (typeof delta.content === 'string') choice.message.content += delta.content;
+      for (const fragment of delta.tool_calls ?? []) {
+        const toolIndex = fragment.index ?? 0;
+        if (!tools.has(toolIndex)) {
+          const tool = { function: { name: '', arguments: '' } };
+          tools.set(toolIndex, tool);
+          (choice.message.tool_calls ??= []).push(tool);
+        }
+        const tool = tools.get(toolIndex);
+        if (fragment.id) tool.id = fragment.id;
+        if (fragment.type) tool.type = fragment.type;
+        if (fragment.function?.name) tool.function.name += fragment.function.name;
+        if (fragment.function?.arguments) tool.function.arguments += fragment.function.arguments;
+      }
+    }
+  }
+  record.response_complete = record.stream_done || (choices.size > 0
+    && record.response.choices.every(choice => choice.finish_reason != null));
+}
+
 // Local test instrumentation only. Forward request/response bytes unchanged;
 // retain no HTTP credentials and omit provider reasoning text from local records.
 export async function startProviderRecorder(providerBase, { tokenLimit = null, intercept = null } = {}) {
@@ -44,9 +90,13 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
       const buffers = [];
       for await (const b of req) buffers.push(b);
       const body = Buffer.concat(buffers);
-      record.request = JSON.parse(body.toString('utf8'));
+      const request = JSON.parse(body.toString('utf8'));
+      record.request = { ...request, ...(request.messages ? { messages: request.messages.map(message => {
+        const { reasoning_content, ...publicMessage } = message;
+        return publicMessage;
+      }) } : {}) };
       record.purpose = requestPurpose(record.request);
-      const scripted = intercept ? await intercept(record.request, records) : null;
+      const scripted = intercept ? await intercept(request, records) : null;
       if (scripted) {
         record.scripted = true;
         record.status = 200;
@@ -65,12 +115,18 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
       record.status = upstream.status;
       record.usage = null;
       try {
-        const response = JSON.parse(bytes.toString('utf8'));
-        record.usage = response.usage ?? null;
-        if (!upstream.ok) record.provider_error = response.error?.message ?? response.error ?? null;
-        record.response = { id: response.id, model: response.model,
-          choices: response.choices?.map(c => ({ finish_reason: c.finish_reason,
-            message: { role: c.message?.role, content: c.message?.content, tool_calls: c.message?.tool_calls } })) };
+        if ((upstream.headers.get('content-type') ?? '').includes('text/event-stream')) {
+          recordStreamResponse(record, bytes.toString('utf8'));
+        } else {
+          const response = JSON.parse(bytes.toString('utf8'));
+          record.usage = response.usage ?? null;
+          if (!upstream.ok) record.provider_error = response.error?.message ?? response.error ?? null;
+          record.response = { id: response.id, model: response.model,
+            choices: response.choices?.map(c => ({ finish_reason: c.finish_reason,
+              message: { role: c.message?.role, content: c.message?.content, tool_calls: c.message?.tool_calls } })) };
+          record.response_complete = !!response.choices?.length
+            && response.choices.every(choice => choice.finish_reason != null);
+        }
       } catch { record.non_json_response = true; }
       res.writeHead(upstream.status, { 'content-type': upstream.headers.get('content-type') ?? 'application/json' });
       res.end(bytes);

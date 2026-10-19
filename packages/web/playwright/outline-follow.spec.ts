@@ -39,6 +39,41 @@ test('first and last chapters stop at the natural outline boundaries', async ({ 
   expect(await page.locator('.outline-list').evaluate(el => Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop))).toBeLessThanOrEqual(1);
 });
 
+for (const width of [390, 320]) {
+  test(`opening the mobile outline reveals the current chapter at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/playwright/fixtures/outline-follow.html');
+    await expect(page.locator('.left-rail')).toBeHidden();
+    await page.locator('.reader-pane').evaluate(el => { el.scrollTop = 850; });
+
+    const openOutline = async () => {
+      await page.getByRole('button', { name: '目录', exact: true }).click();
+      await expect(page.locator('.left-rail')).toBeVisible();
+      await expect.poll(() => centerError(page)).toBeLessThanOrEqual(1);
+      expect(await page.locator('.reader-pane').evaluate(el => el.scrollTop)).toBe(850);
+      expect(await page.locator('.left-rail').evaluate(el => el.scrollTop)).toBe(0);
+    };
+    const closeOutline = async () => {
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.left-rail')).toBeHidden();
+    };
+
+    // The current chapter is already known while the drawer is initially hidden.
+    await openOutline();
+    await page.locator('.outline-list').evaluate(el => { el.scrollTop = 120; });
+    await setAnchor(page, '25.2');
+    expect(await page.locator('.outline-list').evaluate(el => el.scrollTop)).toBe(120);
+    await closeOutline();
+    await openOutline();
+
+    // Reading onward while closed must be reflected the next time it opens.
+    await closeOutline();
+    await setAnchor(page, '45.1');
+    await openOutline();
+    await expect(page.locator('.outline-item.active')).toHaveText('章第 45 章 阅读目录');
+  });
+}
+
 for (const viewport of [{ width: 1280, height: 900 }, { width: 1100, height: 440 }, { width: 390, height: 844 }]) {
   test(`wrapped outline titles stay inside their rows at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);

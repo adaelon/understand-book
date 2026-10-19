@@ -65,7 +65,7 @@ fn assert_constraint(db: &Connection, sql: &str) {
 fn inv1_upgrades_preserve_old_fields_and_match_fresh_schema_on_reopen() {
     let fresh_root = tempfile::tempdir().unwrap();
     let fresh = ControlStore::open(ServiceWriter::acquire(fresh_root.path()).unwrap()).unwrap();
-    assert_eq!(CONTROL_SCHEMA_VERSION, 13);
+    assert_eq!(fresh.connection.pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0)).unwrap(), CONTROL_SCHEMA_VERSION);
     let expected_schema = schema_definitions(&fresh.connection);
     for version in 5..=8 {
         let root = tempfile::tempdir().unwrap();

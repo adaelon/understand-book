@@ -31,12 +31,12 @@ watch(() => props.receipt, async receipt => {
     const view = props.memId ? await api.notePresentationRead(props.memId, true) : await api.presentationRead(receipt.session_id, receipt.turn_id, receipt.reference, receipt);
     if (props.receipt.saved_state_ref !== receipt.saved_state_ref) return;
     summary.value = [view.restored_state?.visible_step, view.restored_state?.observed_result].filter(Boolean).join(' · ').slice(0, 240);
-  } catch { summary.value = '提问现场暂时无法读取'; }
+  } catch { summary.value = '提问时的演示状态暂时无法读取'; }
 }, { immediate: true });
 </script>
 <template>
   <div class="scene-binding">
-    <span>{{ memId ? "记录现场" : "提问现场" }} · 版本 {{ receipt.reference.revision }} · 快照 {{ receipt.state_revision }}</span>
+    <span>{{ memId ? "记录时的演示" : "提问时的演示" }}</span>
     <p v-if="summary">{{ summary }}</p>
     <button @click="emit('locate')">{{ memId ? "打开演示" : "定位到演示" }}</button>
     <button v-if="memId && sharePresentation" :disabled="exporting" @click="shareRecorded">{{ exporting ? '正在恢复并取图…' : '分享记录时的图解' }}</button>

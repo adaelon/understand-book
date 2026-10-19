@@ -21,7 +21,7 @@ fn tutor_ordinary_chat_records_understanding_without_enabling_teaching() {
     let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
     let request = json!({"operation":"evidence","nature":"hypothesis","operation_id":"ordinary","target":original["move"]["target"],
         "fact_refs":[fact],"interpretation":"The denominator connection is unclear.","teaching_implication":"Explain the total elapsed time first."});
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,original.clone(),&[],&[range()]).is_err(), "observation cannot select a teaching move");
+    assert!(step_with_design(&state.private_context(),&run.turn_ref,original.clone(),&[],&[range()]).is_err(), "observation cannot select a teaching move");
     let adapter = ChatStubAdapter::scripted(vec![call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),call("tutor.step",request),answer("Use total time.")]);
     let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
     assert_eq!(result.reply.status,200,"{}",result.reply.body);
@@ -40,7 +40,7 @@ fn tutor_ordinary_chat_records_understanding_without_enabling_teaching() {
     let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
     let changed = json!({"operation":"evidence","nature":"hypothesis","operation_id":"ordinary-revised","target":original["move"]["target"],
         "fact_refs":[fact],"supersedes":"interpretation:ordinary","interpretation":"The question is now about validity conditions.","teaching_implication":"Explain positive total time."});
-    let accepted = teaching::step(&state.private_context(),&run.turn_ref,changed,&[],&[range()]).unwrap();
+    let accepted = step_with_design(&state.private_context(),&run.turn_ref,changed,&[],&[range()]).unwrap();
     assert_eq!(accepted["evidence_ref"],"interpretation:ordinary-revised");
     assert!(state.user.learning_store().unwrap().evidence_is_superseded("interpretation:ordinary").unwrap());
 }
@@ -106,15 +106,79 @@ fn range() -> EvidenceRange {
         ranges: vec![],
     }
 }
+
+/// Existing storage/assessment fixtures explicitly describe their intended participation.
+pub(super) fn fixture_participation(movement:&mut Value) {
+    if movement["delivery_text"].is_null() { movement["delivery_text"]=movement["prompt"].clone(); }
+    if !movement["participation"].is_null() { return; }
+    let invite=movement["response_expectation"].is_object() || movement["assessment"].is_object()
+        || movement["actions"].as_array().into_iter().flatten().any(|action|action=="submit");
+    movement["participation"]=if invite {json!({"choice":"invite","reason":"The fixture exercises the learner response to this activity.",
+        "learner_inference":"Apply the displayed relationship to the requested comparison.","support":"The displayed source and activity supply the comparison quantities."})}
+        else {json!({"choice":"support","reason":"The fixture delivers an explanation without requesting a new response.",
+            "support":"The complete journey includes stopped time as well as moving time.","learner_inference":null})};
+}
+
+/// Scripted storage/dispatch fixtures do not evaluate teaching content. The
+/// acceptance gate itself is exercised with rejecting/failing runtime adapters;
+/// live teaching adapters continue to send this request to the real model.
+pub(super) fn fixture_delivery_review(request:&CompletionRequest) -> Option<Value> {
+    if !request.system.starts_with("Teaching delivery acceptance review.") { return None; }
+    let packet:Value=serde_json::from_str(&request.user).unwrap();
+    let question=[&packet["frozen_input"]["current_request"],&packet["frozen_input"]["learner_request"],
+        &packet["frozen_input"]["current_action"]["accepted_request"],&packet["original_request"]]
+        .into_iter().filter_map(Value::as_str).find(|text| !text.trim().is_empty()).unwrap();
+    let delivered=packet["proposed_delivery"]["text"].as_str().unwrap();
+    // These deterministic fixtures exercise dispatch and persistence; live
+    // adapters still produce their own review through TutorRequestRecorder.
+    Some(json!({"decision":"accept","revision":null,"learner_claims":[],"findings":[],
+        "request_resolution":{"status":"answered","question_quote":question,
+            "requested_relation":format!("Fixture request: {question}"),"delivered_relation":delivered,
+            "answer_quotes":[delivered],"reason":"The fixture supplies its requested comparison."},
+        "agent_work":{"understanding":[],"open_questions":[]}}))
+}
+
+/// Existing storage/assessment fixtures establish the real design precondition.
+pub(super) fn step_with_design(state:&PrivateBookContext<'_>,turn:&AgentTurnRef,mut request:Value,evidence:&[SourceBinding],ranges:&[EvidenceRange]) -> Result<Value,read_tools::ToolError> {
+    if request["operation"]=="select" { fixture_participation(&mut request["move"]); }
+    if request["operation"]=="select" && request["move"]["design_ref"].is_null() {
+        let store=state.user.learning_store()?;
+        let binding=store.teaching_event(&format!("binding:{}",turn.turn_id))?.binding;
+        let current=store.current_teaching_design(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)?;
+        let previous_selected=store.teaching_turn_events(&binding.tutor_session_id,&turn.turn_id)?.into_iter().rev().find(|e|e.kind==TeachingFact::MoveSelected);
+        if request["move"]["target"].is_null() {
+            let mut target=super::teaching_design_tests::target();
+            target["capability"]=request["move"]["capability"].clone();
+            let mut objects=Vec::new();
+            for id in request["move"]["object_ids"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+                let material=store.teaching_event(&format!("material:{}:{id}",turn.turn_id))?;
+                objects.push(json!({"source_id":binding.source_id,"object_id":id,"object_revision":material.payload["object"]["object_revision"]}));
+            }
+            target["object_refs"]=json!(objects);
+            request["move"]["target"]=target;
+        }
+        drop(store);
+        let design_ref=if let Some(current)=current {current.event_id} else {
+            let mut design=super::teaching_design_tests::design_request("fixture-design",None);
+            if request["move"]["target"].is_object() {design["design"]["target"]=request["move"]["target"].clone();}
+            design["design"]["blocks"][0]["source_bindings"]=design["design"]["target"]["source_bindings"].clone();
+            teaching::step(state,turn,design,evidence,ranges)?["design_ref"].as_str().unwrap().to_owned()
+        };
+        request["move"]["design_ref"]=json!(design_ref);
+        request["move"]["block_refs"]=json!(["total-time"]);
+        if let Some(previous)=previous_selected {request["delivery_move_refs"]=previous.payload["delivery_move_refs"].clone();}
+    }
+    teaching::step(state,turn,request,evidence,ranges)
+}
 pub(super) fn select(state: &AppState, turn: &AgentTurnRef, id: &str, reference: Option<&PresentationRef>) {
-    teaching::step(&state.private_context(),
+    step_with_design(&state.private_context(),
         turn,
         json!({"operation":"material","object_id":"speed"}),
         &[],
         &[],
     )
     .unwrap();
-    teaching::step(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":id,"object_ids":["speed"],"capability":"explanation","kind":"observe","interaction_intent":"neutral","intent_origin":"neutral","prompt":format!("Observe {id}"),
+    step_with_design(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":id,"object_ids":["speed"],"capability":"explanation","kind":"observe","interaction_intent":"neutral","intent_origin":"neutral","prompt":format!("Observe {id}"),
         "actions":["submit","revise","request_hint","reveal","skip","self_report"],"hint":"Compare the two times.","explanation":"Use total distance divided by total time.","presentation":reference}}),&[],&[range()]).unwrap();
 }
 pub(super) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
@@ -128,6 +192,7 @@ pub(super) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
         });
     }
     OuterOutcome {
+        teaching_delivery_move_refs: vec![],
         answer: Some("Compare total distance and total time.".into()),
         answer_view: Some(AgentAnswerView {
             parts,
@@ -147,7 +212,16 @@ pub(super) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
     }
 }
 pub(super) fn finish(state: &mut AppState, turn: &AgentTurnRef, result: &OuterOutcome) {
-    finalize_agent_turn_completed(state, turn, result, &state.workspace.messages.clone(), "now").unwrap();
+    let mut result=result.clone();
+    if result.teaching_delivery_move_refs.is_empty() {
+        let store=state.user.learning_store().unwrap();
+        if let Ok(bind)=store.teaching_event(&format!("binding:{}",turn.turn_id)) {
+            if let Some(selected)=store.teaching_turn_events(&bind.binding.tutor_session_id,&turn.turn_id).unwrap().into_iter().rev().find(|e|e.kind==TeachingFact::MoveSelected) {
+                result.teaching_delivery_move_refs=serde_json::from_value(selected.payload["delivery_move_refs"].clone()).unwrap_or_default();
+            }
+        }
+    }
+    finalize_agent_turn_completed(state, turn, &result, &state.workspace.messages.clone(), "now").unwrap();
     teaching::record_delivery(&state.private_context(), turn, "now").unwrap();
 }
 fn json_post(state: &mut AppState, path: &str, body: Value) -> Value {
@@ -163,7 +237,7 @@ fn assessed_activity(
 ) -> (AgentTurnRef, String, Value) {
     let run = prepare(state);
     let turn = run.turn_ref;
-    teaching::step(&state.private_context(),
+    step_with_design(&state.private_context(),
         &turn,
         json!({"operation":"material","object_id":"speed"}),
         &[],
@@ -174,7 +248,7 @@ fn assessed_activity(
         "prompt":"Choose the necessary quantities: A total distance; B total time; C colour. Submit choice tokens as a JSON array.","actions":["submit","revise","request_hint","reveal","skip","self_report"],
         "hint":"Consider the denominator.","explanation":"Use total distance and total time; time must be positive.",
         "assessment":{"rule":rule,"source_lids":["1.1"],"source_sufficient":true,"feedback":feedback}}});
-    teaching::step(&state.private_context(), &turn, proposal.clone(), &[], &[range()]).unwrap();
+    step_with_design(&state.private_context(), &turn, proposal.clone(), &[], &[range()]).unwrap();
     finish(state, &turn, &outcome(None));
     let id = format!("delivery:{}:scored", turn.turn_id);
     json_post(state, "/tutor/display", json!({"delivery_ref":id}));
@@ -190,7 +264,7 @@ fn tutor_frozen_assessment_uses_original_key_and_retains_attempt_conditions() {
         "on_reveal",
     );
     proposal["move"]["assessment"]["rule"]["correct"] = json!(["C"]);
-    assert!(teaching::step(&state.private_context(), &turn, proposal, &[], &[range()]).is_err());
+    assert!(step_with_design(&state.private_context(), &turn, proposal, &[], &[range()]).is_err());
     let public = json_post(
         &mut state,
         "/tutor/activities",
@@ -397,6 +471,11 @@ fn tutor_understanding_correction_changes_next_context_without_changing_public_m
     assert!(context["learner_context"]
         .to_string()
         .contains("copied an earlier worked example"));
+    let expressions=context["learner_context"]["learner_grounding"]["expressions"].as_array().unwrap();
+    let correction=expressions.iter().find(|expression|expression["evidence_ref"]==corrected["evidence_ref"]).unwrap();
+    assert_eq!(correction["kind"],"learner_correction");
+    assert_eq!(correction["text"],"I copied an earlier worked example");
+    assert!(correction.get("fact_ref").is_none(),"a correction is original user text but not a teaching-event id");
     assert_eq!(std::fs::read(&map_path).unwrap(), original);
     let replay = json_post(&mut state, "/tutor/understanding", json!({"rebuild":true}));
     assert_eq!(replay, new_view);
@@ -407,14 +486,14 @@ fn tutor_ungraded_discrimination_is_referenced_and_self_report_remains_subjectiv
     let (_root, mut state) = fixture();
     let run = prepare(&mut state);
     let turn = &run.turn_ref;
-    teaching::step(&state.private_context(),
+    step_with_design(&state.private_context(),
         turn,
         json!({"operation":"material","object_id":"speed"}),
         &[],
         &[],
     )
     .unwrap();
-    teaching::step(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"discriminate","object_ids":["speed"],"capability":"evaluation","kind":"source_focus","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Which quantities does this source support?","actions":["submit","revise","self_report"]}}),&[],&[range()]).unwrap();
+    step_with_design(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"discriminate","object_ids":["speed"],"capability":"evaluation","kind":"source_focus","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Which quantities does this source support?","actions":["submit","revise","self_report"]}}),&[],&[range()]).unwrap();
     finish(&mut state, turn, &outcome(None));
     let id = format!("delivery:{}:discriminate", turn.turn_id);
     json_post(&mut state, "/tutor/display", json!({"delivery_ref":id}));
@@ -427,7 +506,7 @@ fn tutor_ungraded_discrimination_is_referenced_and_self_report_remains_subjectiv
         "/tutor/action",
         json!({"operation_id":"discrimination","delivery_ref":id,"action":"submit","response":"The source supports total distance; colour is not supported."}),
     );
-    let accepted=teaching::step(&state.private_context(),turn,json!({"operation":"evidence","operation_id":"discrimination-evidence","action_ref":"action:discrimination","object_id":"speed","response_quote":"The source supports total distance","sources":[{"lid":"1.1","quote":"total distance"}],"interpretation":"The learner distinguished a source-supported quantity from an unsupported property."}),&[],&[]).unwrap();
+    let accepted=step_with_design(&state.private_context(),turn,json!({"operation":"evidence","operation_id":"discrimination-evidence","action_ref":"action:discrimination","object_id":"speed","response_quote":"The source supports total distance","sources":[{"lid":"1.1","quote":"total distance"}],"interpretation":"The learner distinguished a source-supported quantity from an unsupported property."}),&[],&[]).unwrap();
     let detail = json_post(
         &mut state,
         "/tutor/evidence",
@@ -451,23 +530,17 @@ fn tutor_ungraded_discrimination_is_referenced_and_self_report_remains_subjectiv
 #[test]
 fn tutor_scoring_keys_stay_out_of_history_and_public_trace() {
     let (_root, mut state) = fixture();
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+    let run=prepare_agent_chat(&mut state,r#"{"message":"Teach average speed"}"#,"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let (design,movement)=planned_move(&run,json!({"operation":"select","move":{"move_id":"private","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Choose A or B","actions":["submit"],"hint":"PRIVATE_HINT","assessment":{"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"on_reveal"}}}));
+    let result=execute_script(&mut state,run,vec![
         call(
             "tutor.step",
             json!({"operation":"material","object_id":"speed"}),
         ),
         call("book.text", json!({"lid":"1.1","end_lid":"1.1"})),
-        call(
-            "tutor.step",
-            json!({"operation":"select","move":{"move_id":"private","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Choose A or B","actions":["submit"],"hint":"PRIVATE_HINT","assessment":{"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"on_reveal"}}}),
-        ),
+        design,call("tutor.step",movement),
         answer("Choose A or B"),
-    ]));
-    let result = json_post(
-        &mut state,
-        "/agent/chat",
-        json!({"message":"Teach average speed"}),
-    );
+    ]);
     for text in [
         result.to_string(),
         serde_json::to_string(&state.workspace.messages).unwrap(),
@@ -723,7 +796,9 @@ fn tutor_candidate_failed_and_unmounted_deliveries_are_distinct() {
     );
     let recovery = prepare(&mut state);
     select(&state, &recovery.turn_ref, "recovery", None);
-    finalize_agent_turn_completed(&mut state, &recovery.turn_ref, &outcome(None), &[], "now")
+    let mut recovery_outcome=outcome(None);
+    recovery_outcome.teaching_delivery_move_refs=vec![format!("move:{}:recovery",recovery.turn_ref.turn_id)];
+    finalize_agent_turn_completed(&mut state, &recovery.turn_ref, &recovery_outcome, &[], "now")
         .unwrap();
     let revision = state
         .user.learning_store()
@@ -761,7 +836,8 @@ fn tutor_two_activities_keep_exact_scene_help_and_cross_chat_ownership() {
             &turn.session_id,
             &turn.turn_id,
             None,
-            PresentationContent {
+            PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "Speed".into(),
                 content_files: BTreeMap::from([(
@@ -966,19 +1042,40 @@ fn answer(text: &str) -> AssistantTurn {
         usage_total_tokens: Some(5),
     }
 }
-fn script(kind: &str) -> ChatStubAdapter {
-    ChatStubAdapter::scripted(vec![
+fn planned_move(run:&agent_run::PreparedAgentChat,mut movement:Value) -> (AssistantTurn,Value) {
+    fixture_participation(&mut movement["move"]);
+    let context=run.tutor.as_ref().unwrap();
+    let previous=context["current_design"]["design_ref"].as_str();
+    let mut design=super::teaching_design_tests::design_request("script-design",previous);
+    if movement["move"]["target"].is_null() {
+        let mut target=super::teaching_design_tests::target();
+        target["capability"]=movement["move"]["capability"].clone();
+        target["object_refs"]=json!(movement["move"]["object_ids"].as_array().into_iter().flatten()
+            .map(|id|json!({"source_id":context["binding"]["source_id"],"object_id":id,"object_revision":1})).collect::<Vec<_>>());
+        movement["move"]["target"]=target;
+    }
+    design["design"]["target"]=movement["move"]["target"].clone();
+    design["design"]["blocks"][0]["source_bindings"]=movement["move"]["target"]["source_bindings"].clone();
+    movement["move"]["design_ref"]=json!(format!("design:{}:script-design",run.turn_ref.turn_id));
+    movement["move"]["block_refs"]=json!(["total-time"]);
+    (call("tutor.step",design),movement)
+}
+fn execute_script(state:&mut AppState,run:agent_run::PreparedAgentChat,script:Vec<AssistantTurn>) -> Value {
+    let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(state)),&ChatStubAdapter::scripted(script),run,Default::default());
+    assert_eq!(result.reply.status,200,"{}",result.reply.body);
+    serde_json::from_str(&result.reply.body).unwrap()
+}
+fn script(run:&agent_run::PreparedAgentChat,kind: &str) -> Vec<AssistantTurn> {
+    let (design,movement)=planned_move(run,json!({"operation":"select","move":{"move_id":"next","object_ids":["speed"],"capability":"explanation","kind":kind,"interaction_intent":if kind=="explain" {"direct_explanation"} else {"neutral"},"intent_origin":if kind=="explain" {"current_request"} else {"neutral"},"intent_quote":if kind=="explain" {Some("directly explain this time")} else {None},"prompt":"Compare total distance with total time.","actions":[]}}));
+    vec![
         call(
             "tutor.step",
             json!({"operation":"material","object_id":"speed"}),
         ),
         call("book.text", json!({"lid":"1.1","end_lid":"1.1"})),
-        call(
-            "tutor.step",
-            json!({"operation":"select","move":{"move_id":"next","object_ids":["speed"],"capability":"explanation","kind":kind,"interaction_intent":if kind=="explain" {"direct_explanation"} else {"neutral"},"intent_origin":if kind=="explain" {"current_request"} else {"neutral"},"intent_quote":if kind=="explain" {Some("directly explain this time")} else {None},"prompt":"Compare total distance with total time.","actions":[]}}),
-        ),
+        design,call("tutor.step",movement),
         answer("Average speed uses total distance divided by total time."),
-    ])
+    ]
 }
 
 fn source_move(state: &AppState) -> Value {
@@ -1017,7 +1114,7 @@ fn tutor_t17a_ordinary_messages_and_closed_reading_survive_reopen() {
     assert!(reply.causal_refs.contains(&question.event_id));
     assert!(facts.iter().any(|e|e.payload["response"]=="I understand time; I mean when the denominator is valid."));
     assert_eq!(context["learner_context"]["entries"],json!([]));
-    let read = teaching::step(&state.private_context(), &run.turn_ref,json!({"operation":"trace","event_id":question.event_id}),&[],&[]).unwrap();
+    let read = step_with_design(&state.private_context(), &run.turn_ref,json!({"operation":"trace","event_id":question.event_id}),&[],&[]).unwrap();
     assert!(read["chunk"].as_str().unwrap().contains("Why total time?"));
     assert!(store.evidence_page(&state.workspace.book.base.book_id,0,100).unwrap().is_empty());
 }
@@ -1026,12 +1123,13 @@ fn tutor_t17a_ordinary_messages_and_closed_reading_survive_reopen() {
 fn tutor_t16_source_only_resident_delivers_and_continues_after_reopen() {
     let (root, mut state) = fixture_with_assets(false);
     let movement = source_move(&state);
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+    let run=prepare_agent_chat(&mut state,&json!({"message":"I just opened this book and have not read it. Explain average speed."}).to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let (design,first_move)=planned_move(&run,movement.clone());
+    let first=execute_script(&mut state,run,vec![
         call("book.text", json!({"lid":"1.1","end_lid":"1.1"})),
-        call("tutor.step", movement.clone()),
+        design,call("tutor.step", first_move),
         answer("Average speed uses total distance divided by total time."),
-    ]));
-    let first = json_post(&mut state, "/agent/chat", json!({"message":"I just opened this book and have not read it. Explain average speed."}));
+    ]);
     assert_eq!(first["incomplete"], false, "{first}");
     let session = state.user.agent_history.sessions.last().unwrap();
     let turn = session.turns.last().unwrap();
@@ -1049,13 +1147,14 @@ fn tutor_t16_source_only_resident_delivers_and_continues_after_reopen() {
     let activities = json_post(&mut state, "/tutor/activities", activity_request);
     assert_eq!(activities["activities"][0]["status"], "active", "{activities}");
     post(&mut state, "/agent/new", "{}");
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+    let run=prepare_agent_chat(&mut state,&json!({"message":"Why total time?","teaching_ref":rows[0].event_id}).to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let (design,second_move)=planned_move(&run,movement.clone());
+    let second=execute_script(&mut state,run,vec![
         answer("An unfinished explanation before choosing a move."),
         call("book.text", json!({"lid":"1.1","end_lid":"1.1"})),
         call("tutor.step", json!({"operation":"trace","event_id":rows[0].event_id})),
-        call("tutor.step", movement.clone()), answer("The denominator is the total time."),
-    ]));
-    let second = json_post(&mut state, "/agent/chat", json!({"message":"Why total time?","teaching_ref":rows[0].event_id}));
+        design,call("tutor.step", second_move), answer("The denominator is the total time."),
+    ]);
     assert_eq!(second["incomplete"], false, "{second}");
     let session = state.user.agent_history.sessions.last().unwrap();
     let turn = session.turns.last().unwrap();
@@ -1089,11 +1188,12 @@ fn tutor_t17b_resident_revises_and_adopts_ordinary_understanding() {
         let mut request = json!({"operation":"evidence","nature":"hypothesis","operation_id":id,"target":original["move"]["target"],
             "fact_refs":[fact],"interpretation":interpretation,"teaching_implication":implication});
         if let Some(previous) = &previous { request["supersedes"] = json!(previous); }
+        let (design,movement)=planned_move(&run,movement);
         let samples = Arc::new(std::sync::Mutex::new(Vec::new()));
         let adapter = super::tutor_continuation_tests::TutorRequestRecorder { samples:samples.clone(), directory:None,
             inner:Box::new(ChatStubAdapter::scripted(vec![
             call("book.text",json!({"lid":"1.1","end_lid":"1.1"})), call("tutor.step",request),
-            call("tutor.step",movement), answer(explanation),
+            design,call("tutor.step",movement), answer(explanation),
         ])) };
         let turn = run.turn_ref.clone();
         let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
@@ -1118,10 +1218,10 @@ fn tutor_t17b_resident_revises_and_adopts_ordinary_understanding() {
     assert_eq!(interpretations.as_array().unwrap().len(),1);
     assert_eq!(interpretations[0]["evidence_ref"],"interpretation:corrected");
     let mut stale = original.clone(); stale["move"]["interpretation_refs"]=json!(["interpretation:first"]);
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,stale,&[],&[range()]).is_err());
+    assert!(step_with_design(&state.private_context(),&run.turn_ref,stale,&[],&[range()]).is_err());
     let bad = json!({"operation":"evidence","nature":"hypothesis","operation_id":"bad","target":original["move"]["target"],
         "fact_refs":[format!("binding:{}",run.turn_ref.turn_id)],"interpretation":"invented","teaching_implication":"invented"});
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,bad,&[],&[range()]).is_err());
+    assert!(step_with_design(&state.private_context(),&run.turn_ref,bad,&[],&[range()]).is_err());
     let view = json_post(&mut state,"/tutor/understanding",json!({}));
     assert_eq!(view["interpretations"][0]["evidence_id"],"interpretation:corrected");
     let corrected = json_post(&mut state,"/tutor/correct",json!({"evidence_ref":"interpretation:corrected","operation_id":"user-correction","text":"I also know the positive-time condition."}));
@@ -1136,25 +1236,25 @@ fn tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene() {
     let (_root,mut state)=fixture_with_assets(false);
     let run=prepare(&mut state);
     let candidate=state.private_context().create_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,None,
-        PresentationContent { animation_assets:Default::default(),title:"Journey".into(),
+        PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"Journey".into(),
             content_files:BTreeMap::from([("index.html".into(),"<p>Journey</p>".into())]),entrypoint:"index.html".into(),
             readable_content:"Watch the total elapsed time.".into(),source_bindings:vec![],assumptions:vec![],state_contract:json!({}),initial_state:json!({"time":2}) }).unwrap();
     let reference=state.private_context().persist_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,&candidate.candidate_id).unwrap();
     let mut movement=source_move(&state); movement["move"]["presentation"]=json!(reference);
-    teaching::step(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap();
-    assert!(teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"trace","event_id":format!("move:{}:source",run.turn_ref.turn_id)}),&[],&[]).is_err());
+    step_with_design(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap();
+    assert!(step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"trace","event_id":format!("move:{}:source",run.turn_ref.turn_id)}),&[],&[]).is_err());
     let binding=run.tutor.as_ref().unwrap()["binding"].clone();
     let usage=format!("usage:{}:assistant:{}",binding["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
     assert!(state.user.learning_store().unwrap().teaching_event(&usage).is_err());
     finish(&mut state,&run.turn_ref,&outcome(Some(&reference)));
-    let read=teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"trace","event_id":usage}),&[],&[]).unwrap();
+    let read=step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"trace","event_id":usage}),&[],&[]).unwrap();
     assert!(read["chunk"].as_str().unwrap().contains("Watch the total elapsed time."));
     assert!(!read["chunk"].as_str().unwrap().contains("content_files"));
     let scene=state.private_context().save_presentation_state(&run.turn_ref.session_id,&run.turn_ref.turn_id,&reference,
         PresentationState{values:json!({"time":4}),visible_step:Some("waiting".into()),observed_result:"four seconds".into(),source_ref_ids:vec![]}).unwrap();
     let next=prepare_agent_chat(&mut state,&json!({"message":"Why four seconds?","presentation_follow_up":scene}).to_string(),"later").unwrap_or_else(|r|panic!("{}",r.body));
     let usage=format!("usage:{}:user:{}",binding["tutor_session_id"].as_str().unwrap(),next.turn_ref.turn_id);
-    let read=teaching::step(&state.private_context(),&next.turn_ref,json!({"operation":"trace","event_id":usage}),&[],&[]).unwrap();
+    let read=step_with_design(&state.private_context(),&next.turn_ref,json!({"operation":"trace","event_id":usage}),&[],&[]).unwrap();
     assert!(read["chunk"].as_str().unwrap().contains("four seconds"));
     assert!(read["chunk"].as_str().unwrap().contains("waiting"));
 }
@@ -1168,7 +1268,7 @@ fn tutor_t17c_source_only_assessments_keep_help_and_reopen() {
     movement["move"]["actions"]=json!(["submit","revise","request_hint"]);
     movement["move"]["hint"]=json!("Think about all elapsed time.");
     movement["move"]["assessment"]=json!({"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
-    teaching::step(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap();
+    step_with_design(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap();
     finish(&mut state,&run.turn_ref,&outcome(None));
     let id=format!("delivery:{}:source",run.turn_ref.turn_id);
     json_post(&mut state,"/tutor/display",json!({"delivery_ref":id}));
@@ -1193,7 +1293,7 @@ fn tutor_t17c_source_only_assessments_keep_help_and_reopen() {
     let mut movement=source_move(&state);
     movement["move"]["actions"]=json!(["submit"]);
     movement["move"]["assessment"]=json!({"rule":open_rule(),"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
-    teaching::step(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap(); finish(&mut state,&run.turn_ref,&outcome(None));
+    step_with_design(&state.private_context(),&run.turn_ref,movement,&[],&[range()]).unwrap(); finish(&mut state,&run.turn_ref,&outcome(None));
     let id=format!("delivery:{}:source",run.turn_ref.turn_id);
     json_post(&mut state,"/tutor/display",json!({"delivery_ref":id}));
     json_post(&mut state,"/tutor/action",json!({"operation_id":"source-open","delivery_ref":id,"action":"submit","response":"all distance over all time"}));
@@ -1242,7 +1342,7 @@ fn tutor_t18_publications_add_materials_without_rebinding_prior_activities() {
         let expected_map = (revision > 0).then(||format!("v{revision}"));
         assert_eq!(run.tutor.as_ref().unwrap()["binding"]["map_revision"], json!(expected_map));
         if revision > 0 {
-            let material = teaching::step(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
+            let material = step_with_design(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
             assert!(material.to_string().contains(&format!("Material revision {revision}")));
         }
         let mut movement = source_move(&state);
@@ -1253,7 +1353,7 @@ fn tutor_t18_publications_add_materials_without_rebinding_prior_activities() {
             movement["move"]["object_ids"] = json!(["speed"]);
             movement["move"]["target"]["object_refs"] = json!([{"source_id":state.workspace.book.base.book_id,"object_id":"speed","object_revision":revision}]);
         }
-        teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
+        step_with_design(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
         finish(&mut state, &run.turn_ref, &outcome(None));
         let delivery = state.user.learning_store().unwrap().teaching_event(&format!("delivery:{}:source",run.turn_ref.turn_id)).unwrap();
         json_post(&mut state, "/tutor/display", json!({"delivery_ref":delivery.event_id}));
@@ -1308,7 +1408,7 @@ fn tutor_target_coverage_accepts_split_paragraphs_but_rejects_unread_text() {
         let mut movement = source_move(&state);
         movement["move"]["target"]["source_bindings"][0]["end_lid"] = json!("1.2");
         let reads = [range(), EvidenceRange { start_lid: "1.2".into(), end_lid: "1.2".into(), ranges: vec![] }];
-        let result = teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &reads);
+        let result = step_with_design(&state.private_context(), &run.turn_ref, movement, &[], &reads);
         assert_eq!(result.is_ok(), accepted, "gap {gap:?}: {result:?}");
     }
 }
@@ -1320,10 +1420,11 @@ fn tutor_target_binds_current_source_without_model_copying_revision() {
     let source = movement["move"]["target"]["source_bindings"][0].as_object_mut().unwrap();
     source.remove("source_id");
     source.remove("source_revision");
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
-        call("book.text", json!({"lid":"1.1"})), call("tutor.step", movement), answer("Use total time."),
-    ]));
-    let reply = json_post(&mut state, "/agent/chat", json!({"message":"Explain average speed"}));
+    let run=prepare(&mut state);
+    let (design,movement)=planned_move(&run,movement);
+    let reply=execute_script(&mut state,run,vec![
+        call("book.text", json!({"lid":"1.1"})),design,call("tutor.step", movement), answer("Use total time."),
+    ]);
     assert_eq!(reply["incomplete"], false, "{reply}");
     let session = state.user.agent_history.sessions.last().unwrap();
     let turn = session.turns.last().unwrap();
@@ -1339,7 +1440,7 @@ fn tutor_target_reports_revision_mismatch_before_interpretation_scope() {
     let mut movement = source_move(&state);
     movement["move"]["target"]["source_bindings"][0]["source_revision"] = json!("search-index-revision");
     movement["move"]["interpretation_refs"] = json!(["interpretation:unread"]);
-    let error = teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap_err();
+    let error = step_with_design(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap_err();
     assert!(error.message.contains("source_revision"), "{error:?}");
     assert!(error.message.contains("省略"), "{error:?}");
 }
@@ -1349,6 +1450,8 @@ fn tutor_validation_recovery_allows_one_correction_then_stops_churn() {
     for recover in [true, false] {
         let (_root, mut state) = fixture_with_assets(false);
         let movement = source_move(&state);
+        let run=prepare(&mut state);
+        let (design,movement)=planned_move(&run,movement);
         let mut bad_target = movement.clone();
         bad_target["move"]["target"]["source_bindings"][0]["source_revision"] = json!("wrong-revision");
         let mut missing_hint = movement.clone();
@@ -1356,13 +1459,27 @@ fn tutor_validation_recovery_allows_one_correction_then_stops_churn() {
         let mut third = missing_hint.clone();
         if recover { third["move"]["hint"] = json!("Compare elapsed times."); }
         else { third["move"]["prompt"] = json!("Try another wording."); }
-        state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+        let adapter=ChatStubAdapter::scripted(vec![
             call("tutor.step", json!({"operation":"trace"})),
             call("book.text", json!({"lid":"1.1"})),
+            design,
             call("tutor.step", bad_target), call("tutor.step", missing_hint),
             call("tutor.step", third), answer("Use total time."),
-        ]));
-        let reply = json_post(&mut state, "/agent/chat", json!({"message":"Explain average speed"}));
+        ]);
+        let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
+        if !recover {
+            assert_eq!(result.reply.status,400,"{}",result.reply.body);
+            let error:Value=serde_json::from_str(&result.reply.body).unwrap();
+            assert_eq!(error["error_code"],"TOOL_ARGUMENTS_INVALID","{error}");
+            assert!(error["message"].as_str().unwrap().contains("hint"),"{error}");
+            assert!(!result.reply.body.contains("预算终答"));
+            let session=state.user.agent_history.sessions.last().unwrap();
+            let turn=session.turns.last().unwrap();
+            assert!(state.user.learning_store().unwrap().teaching_deliveries(&session.id,&turn.turn_id).unwrap().is_empty());
+            continue;
+        }
+        assert_eq!(result.reply.status,200,"{}",result.reply.body);
+        let reply:Value=serde_json::from_str(&result.reply.body).unwrap();
         let trace = reply["trace"].as_array().unwrap();
         for code in ["TEACHING_INVALID", "TOOL_ARGUMENTS_INVALID"] {
             assert!(trace.iter().any(|step| step["result_digest"].as_str().is_some_and(|result| result.contains(code))),
@@ -1382,20 +1499,20 @@ fn tutor_t16_target_requires_exact_current_turn_source_and_object_identity() {
     let (_root, mut state) = fixture_with_assets(false);
     let run = prepare(&mut state);
     let movement = source_move(&state);
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[]).is_err());
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[]).is_err());
     let mut invalid_move = movement.clone();
     invalid_move["move"]["target"]["source_bindings"][0]["end_lid"] = json!("1.2");
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
     let mut invalid_move = movement.clone();
     invalid_move["move"]["target"]["source_bindings"][0]["source_revision"] = json!("other");
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
     let mut invalid_move = movement.clone();
     invalid_move["move"]["target"]["object_refs"] = json!([{"source_id":state.workspace.book.base.book_id,"object_id":"invented","object_revision":1}]);
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, invalid_move, &[], &[range()]).is_err());
     let mut partial = range();
     partial.ranges = vec![read_tools::SourceSelectedRange { lid:"1.1".into(), range:read_tools::SourceTextRange { start:0, end:5 } }];
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[partial]).is_err());
-    teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[partial]).is_err());
+    step_with_design(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
 }
 
 #[test]
@@ -1416,25 +1533,25 @@ fn tutor_t16_accepted_objects_without_materials_stay_frozen_and_deliver() {
     let mut movement = source_move(&state);
     movement["move"]["object_ids"] = json!(["speed"]);
     movement["move"]["target"]["object_refs"] = json!([{"source_id":state.workspace.book.base.book_id,"object_id":"speed","object_revision":1}]);
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[range()]).is_err());
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, movement.clone(), &[], &[range()]).is_err());
     // A supported builder publication replaces the mutable standalone artifact.
     objects["revision"] = json!(2);
     objects["objects"][0]["object_revision"] = json!(2);
     std::fs::write(root.path().join("formal_objects.json"), objects.to_string()).unwrap();
     super::tutor_tests::t15_close(root.path(), &state.workspace.book, "formal_objects", &["formal_objects.json"]);
-    let material = teaching::step(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
+    let material = step_with_design(&state.private_context(), &run.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
     assert_eq!(material["object"]["object_revision"], 1);
     assert_eq!(material["materials"], json!([]));
     let mut wrong_revision = movement.clone();
     wrong_revision["move"]["target"]["object_refs"][0]["object_revision"] = json!(2);
-    assert!(teaching::step(&state.private_context(), &run.turn_ref, wrong_revision, &[], &[range()]).is_err());
-    teaching::step(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
+    assert!(step_with_design(&state.private_context(), &run.turn_ref, wrong_revision, &[], &[range()]).is_err());
+    step_with_design(&state.private_context(), &run.turn_ref, movement, &[], &[range()]).unwrap();
     finish(&mut state, &run.turn_ref, &outcome(None));
     let rows = state.user.learning_store().unwrap().teaching_deliveries(&run.turn_ref.session_id, &run.turn_ref.turn_id).unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].payload["object_versions"][0]["object_revision"], 1);
     let next = prepare(&mut state);
-    let material = teaching::step(&state.private_context(), &next.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
+    let material = step_with_design(&state.private_context(), &next.turn_ref, json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
     assert_eq!(material["object"]["object_revision"], 2);
     // T17: accepted standalone objects remain current in the understanding view.
     let mut scored=source_move(&state);
@@ -1442,7 +1559,7 @@ fn tutor_t16_accepted_objects_without_materials_stay_frozen_and_deliver() {
     scored["move"]["target"]["object_refs"]=json!([{"source_id":state.workspace.book.base.book_id,"object_id":"speed","object_revision":2}]);
     scored["move"]["actions"]=json!(["submit"]);
     scored["move"]["assessment"]=json!({"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
-    teaching::step(&state.private_context(),&next.turn_ref,scored,&[],&[range()]).unwrap();
+    step_with_design(&state.private_context(),&next.turn_ref,scored,&[],&[range()]).unwrap();
     finish(&mut state,&next.turn_ref,&outcome(None));
     let delivery=format!("delivery:{}:source",next.turn_ref.turn_id);
     json_post(&mut state,"/tutor/display",json!({"delivery_ref":delivery}));
@@ -1476,12 +1593,9 @@ fn tutor_t16_context_keeps_confirmed_background_without_inventing_knowledge() {
 #[test]
 fn tutor_resident_reads_sources_then_adapts_next_turn_and_stops_when_disabled() {
     let (_root, mut state) = fixture();
-    state.services.adapter = Box::new(script("observe"));
-    let first = json_post(
-        &mut state,
-        "/agent/chat",
-        json!({"message":"Teach me average speed"}),
-    );
+    let run=prepare_agent_chat(&mut state,r#"{"message":"Teach me average speed"}"#,"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let turns=script(&run,"observe");
+    let first=execute_script(&mut state,run,turns);
     assert!(first["trace"]
         .as_array()
         .unwrap()
@@ -1514,12 +1628,9 @@ fn tutor_resident_reads_sources_then_adapts_next_turn_and_stops_when_disabled() 
         json!({"operation_id":"mode","expected_revision":revision,"action":{"kind":"set_mode","session_id":old_session,"mode":"guided_inquiry"}}),
     );
     post(&mut state, "/agent/new", "{}");
-    state.services.adapter = Box::new(script("explain"));
-    let second = json_post(
-        &mut state,
-        "/agent/chat",
-        json!({"message":"I am confused; directly explain this time","teaching_ref":rows[0].event_id}),
-    );
+    let run=prepare_agent_chat(&mut state,&json!({"message":"I am confused; directly explain this time","teaching_ref":rows[0].event_id}).to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let turns=script(&run,"explain");
+    let second=execute_script(&mut state,run,turns);
     assert!(second["answer"].as_str().unwrap().contains("total time"));
     assert_eq!(
         state
@@ -1604,7 +1715,7 @@ fn tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves(
         turn_id: turn.turn_id.clone(),
         user_turn_ordinal: 0,
     };
-    let reread = teaching::step(&state.private_context(),
+    let reread = step_with_design(&state.private_context(),
         &ordinary_ref,
         json!({"operation":"trace","event_id":delivery}),
         &[],
@@ -1615,7 +1726,7 @@ fn tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves(
         .as_str()
         .unwrap()
         .contains("Compare total distance"));
-    assert!(teaching::step(&state.private_context(),
+    assert!(step_with_design(&state.private_context(),
         &ordinary_ref,
         json!({"operation":"material","object_id":"speed"}),
         &[],
@@ -1664,7 +1775,7 @@ fn tutor_ordinary_reply_keeps_help_facts_and_unready_never_exposes_formal_moves(
     std::fs::remove_file(root.path().join("book_structure.json")).unwrap();
     let unready = prepare(&mut state);
     assert_eq!(unready.tutor.unwrap()["status"], "observing");
-    assert!(teaching::step(&state.private_context(),
+    assert!(step_with_design(&state.private_context(),
         &unready.turn_ref,
         json!({"operation":"material","object_id":"speed"}),
         &[],
@@ -1733,7 +1844,8 @@ window.presentation.registerStateRestorer(s=>{control.value=String(s.values.page
             &turn.session_id,
             &turn.turn_id,
             None,
-            PresentationContent {
+            PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "Average speed".into(),
                 content_files: BTreeMap::from([("index.html".into(), html.into())]),
@@ -1755,21 +1867,21 @@ window.presentation.registerStateRestorer(s=>{control.value=String(s.values.page
         movement["move"]["presentation"] = json!(reference);
         movement["move"]["actions"] = json!(["submit","revise"]);
         movement["move"]["assessment"] = json!({"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
-        teaching::step(&state.private_context(), turn, movement, &[], &[range()]).unwrap();
+        step_with_design(&state.private_context(), turn, movement, &[], &[range()]).unwrap();
     } else if scored {
-        teaching::step(&state.private_context(),
+        step_with_design(&state.private_context(),
             turn,
             json!({"operation":"material","object_id":"speed"}),
             &[],
             &[],
         )
         .unwrap();
-        teaching::step(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"one","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Observe one: A total distance; B total time; C colour.","actions":["submit","revise","request_hint","reveal","skip","self_report"],"hint":"Compare the two times.","explanation":"Use total distance divided by total time.","presentation":reference,"assessment":{"rule":{"kind":"choice_set","choices":["A","B","C"],"correct":["A","B"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"}}}),&[],&[range()]).unwrap();
+        step_with_design(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"one","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Observe one: A total distance; B total time; C colour.","actions":["submit","revise","request_hint","reveal","skip","self_report"],"hint":"Compare the two times.","explanation":"Use total distance divided by total time.","presentation":reference,"assessment":{"rule":{"kind":"choice_set","choices":["A","B","C"],"correct":["A","B"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"}}}),&[],&[range()]).unwrap();
     } else {
         select(&state, turn, "one", Some(&reference));
     }
     if scored {
-        teaching::step(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"two","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Observe two: Explain average speed.","actions":["submit","revise"],"presentation":reference,"assessment":{"rule":open_rule(),"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"}}}),&[],&[range()]).unwrap();
+        step_with_design(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":"two","object_ids":["speed"],"capability":"explanation","kind":"question","interaction_intent":"neutral","intent_origin":"neutral","prompt":"Observe two: Explain average speed.","actions":["submit","revise"],"presentation":reference,"assessment":{"rule":open_rule(),"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"}}}),&[],&[range()]).unwrap();
     } else if !source_only {
         select(&state, turn, "two", Some(&reference));
     }
@@ -1900,4 +2012,44 @@ fn jl5_teaching_receipts_keep_original_revision_across_chats_and_restart() {
         }
     }
     assert_eq!(json!(learning_before), json!(state.user.learning_store().unwrap().state().unwrap()));
+}
+
+
+#[test]
+fn w3_ordinary_understanding_and_frozen_preparation_stay_in_origin_workspace() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let private = tempfile::tempdir().unwrap();
+    state.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    state.workspace.learning_workspace_id = Some("workspace-a".into());
+    let mut session = new_agent_session(&state.workspace.book.base.book_id, "1", state.user.agent_history.sessions.len());
+    session.learning_workspace_id = Some("workspace-a".into());
+    state.workspace.select_chat(session.id.clone(), session.messages.clone());
+    state.user.agent_history.sessions.push(session);
+    let original = source_move(&state);
+    let run = prepare_agent_chat(&mut state, r#"{"message":"I do not understand the denominator."}"#, "1").unwrap_or_else(|r|panic!("{}",r.body));
+    run.scope.check_user(&state.user).unwrap();
+    assert_eq!(state.user.agent_history.sessions.iter().find(|s|s.id==run.turn_ref.session_id).unwrap().learning_workspace_id.as_deref(), Some("workspace-a"));
+    let context = run.tutor.as_ref().unwrap();
+    assert_eq!(context["status"], "observing");
+    let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
+    let request = json!({"operation":"evidence","nature":"hypothesis","operation_id":"workspace-a-difficulty","target":original["move"]["target"],
+        "fact_refs":[fact],"interpretation":"The denominator connection is unclear.","teaching_implication":"Explain total elapsed time."});
+    let frozen = teaching::freeze_prepare(&state.private_context(), &run.turn_ref,
+        &json!({"message":"I do not understand the denominator."}), None, "1").unwrap();
+    let frozen: teaching::FrozenTeachingPreparation = serde_json::from_value(serde_json::to_value(frozen).unwrap()).unwrap();
+    let adapter = ChatStubAdapter::scripted(vec![call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),call("tutor.step",request),answer("Use total time.")]);
+    let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
+    assert_eq!(result.reply.status,200,"{}",result.reply.body);
+    state.workspace.learning_workspace_id = Some("workspace-b".into());
+    frozen.resume(&state.user).unwrap();
+    let a = state.user.learning_store_for_workspace(Some("workspace-a")).unwrap();
+    assert_eq!(a.evidence("interpretation:workspace-a-difficulty").unwrap().learner_quote, "I do not understand the denominator.");
+    assert!(!a.state().unwrap().control.enabled);
+    let b = state.user.learning_store_for_workspace(Some("workspace-b")).unwrap();
+    assert!(b.evidence("interpretation:workspace-a-difficulty").is_err());
+    assert!(b.teaching_event(&fact).is_err());
+    drop(a); drop(b);
+    state.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    assert!(state.user.learning_store_for_workspace(Some("workspace-a")).unwrap().evidence("interpretation:workspace-a-difficulty").is_ok());
+    assert!(state.user.learning_store_for_workspace(Some("workspace-b")).unwrap().evidence("interpretation:workspace-a-difficulty").is_err());
 }

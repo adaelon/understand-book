@@ -1,0 +1,32 @@
+{
+  "title": "能量来回的路",
+  "initial_state": {
+    "mass": 1,
+    "stiffness": 12,
+    "amplitude": 0.6,
+    "yaw": -0.28,
+    "tilt": 0.62,
+    "explode": 0,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "mass": "质量；kg；0.5至2",
+    "stiffness": "劲度系数；N/m；4至20",
+    "amplitude": "初始最大正位移；m；0至0.8",
+    "yaw": "观察方位角；弧度；不改变物理模型",
+    "tilt": "观察倾角；弧度；0至1.22",
+    "explode": "沿轴拆解比例；0至1；不改变物理参数",
+    "semantic_state": "已完成的周期数；整数0至4",
+    "transition_progress": "当前周期分数；0至1，不含1；终点归入下一周期"
+  },
+  "readable_content": "无阻尼线性弹簧振子满足x=Acos(√(k/m)t)，周期2π√(m/k)。势能为kx²/2，动能为mv²/2，总能量为kA²/2。质量块、位移曲线和两种能量共享同一时刻；相机和拆解只改变观察方式。",
+  "assumptions": [
+    "模型：水平、无阻尼、无摩擦的线性弹簧振子，从最大正位移静止释放。导轨限制为一维运动；弹簧的线圈外观和质量块尺寸作示意，不表示实际材料或质量密度。拆解时暂停运动。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [
+    "three"
+  ],
+  "asset_refs": []
+}

@@ -34,20 +34,20 @@ describe("presentation document", () => {
     expect(doc.head.firstElementChild?.getAttribute("content")).toContain("connect-src 'none'");
     expect(doc.documentElement.hasAttribute("data-presentation-pending")).toBe(false);
   });
-  it("loads a managed library from the saved version once before business code", () => {
+  it.each([['konva','Konva','10.7.0'],['three','THREE','0.180.0']])("loads managed %s from the saved version once before business code", (name, global, version) => {
     const saved = view();
     saved.entrypoint = "index.html";
     saved.content_files = {
-      "index.html": '<script data-presentation-library="konva" src="libraries/konva-10.7.0.min.js"></script><script>window.sceneVersion = Konva.version</script>',
-      "libraries/konva-10.7.0.min.js": 'window.Konva = {version:"10.7.0"};',
-      "libraries/konva-10.7.0.LICENSE.txt": "MIT"
+      "index.html": `<script data-presentation-library="${name}" src="libraries/${name}-${version}.min.js"></script><script>window.sceneVersion = ${global}.version</script>`,
+      [`libraries/${name}-${version}.min.js`]: `window.${global} = {version:"${version}"};`,
+      [`libraries/${name}-${version}.LICENSE.txt`]: "MIT"
     };
     const output = presentationDocument(saved);
     const doc = new DOMParser().parseFromString(output, "text/html");
     expect(doc.querySelectorAll("script[data-presentation-library]")).toHaveLength(1);
     expect(doc.querySelector("script[src]")).toBeNull();
-    expect(output.indexOf('window.Konva =')).toBeLessThan(output.indexOf('window.sceneVersion ='));
-    expect(output).toContain('version:"10.7.0"');
+    expect(output.indexOf(`window.${global} =`)).toBeLessThan(output.indexOf('window.sceneVersion ='));
+    expect(output).toContain(`version:"${version}"`);
     expect(saved.content_files["index.html"]).toContain('src="libraries/');
   });
   it("reports missing and external assets instead of silently rendering a partial page", () => {

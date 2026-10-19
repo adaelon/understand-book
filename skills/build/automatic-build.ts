@@ -8,6 +8,8 @@ import { readTeachingBuildInput } from "../../packages/core/src/build-orchestrat
 import { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
 export { validateAutomaticBuildProtocolDoctorBoundaryV3 } from "./codex-build-doctor";
 import path from "node:path";
+import { importVideo, readVideoImport } from "../../packages/core/src/video-import";
+import { buildVideoTranscript, readVideoBuild } from "../../packages/core/src/build-orchestrator";
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -71,7 +73,7 @@ import {
   readBookStructureGenerationTask,
   writeBookStructureGenerationCandidate,
 } from "../../packages/core/src/book-structure-generation";
-import type { BuildPlanV1 } from "../../packages/core/src/build-intent";
+import { attachBuildPlanDigest, type BuildPlanV1 } from "../../packages/core/src/build-intent";
 import type { Pass2PlanChoice } from "../../packages/core/src/build-capability";
 import { mapLegacyBuildInvocation } from "../../packages/core/src/build-intent-controller";
 import {
@@ -1348,6 +1350,7 @@ export function prepareExplicitLegacyBuildPlan(
     budget?: BuildPlanV1["budget"];
     book_id?: string;
     pass2?: Pass2PlanChoice;
+    build_tutor?: boolean;
     execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
 ) {
@@ -1376,8 +1379,20 @@ export function prepareExplicitLegacyBuildPlan(
     ...(options.pass2 ? { pass2: options.pass2 } : {}),
   });
   if (!selection?.plan) throw new Error("explicit legacy full build did not compile a BuildPlan");
+  if (options.build_tutor === false) {
+    const teaching = new Set(['formal_objects','cognitive_materials','teaching_publish']);
+    const excluded = selection.plan.public_stage_closure.filter(stage=>teaching.has(stage));
+    const {plan_digest:_,...plan}=selection.plan;
+    selection.plan=attachBuildPlanDigest({...plan,
+      public_stage_closure:plan.public_stage_closure.filter(stage=>!teaching.has(stage)),
+      create:plan.create.filter(artifact=>!teaching.has(artifact.replace(/^public\./u,''))),
+      reuse:plan.reuse.filter(item=>!teaching.has(item.artifact.replace(/^public\./u,''))),
+      excluded:[...plan.excluded,...excluded.map(stage=>({artifact:`public.${stage}`,reason:'Tutor teaching assets were not selected'}))],
+      estimate:{...plan.estimate,unknown_stages:plan.estimate.unknown_stages.filter(stage=>!teaching.has(stage))},
+    });
+  }
   const invocationId = createHash("sha256")
-    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "enabled" }), "utf8")
+    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "disabled", build_tutor:options.build_tutor ?? true }), "utf8")
     .digest("hex")
     .slice(0, 16);
   const directory = path.join(target.workspace_dir, ".build", "automatic-build", "v2", "legacy-plans");
@@ -3190,7 +3205,7 @@ function buildPlanFromArgs(argv: string[]): BuildPlanV1 | undefined {
 }
 
 function pass2ChoiceFromArgs(argv: string[]): Pass2PlanChoice {
-  const choice = valueArg(argv, "--pass2") ?? "enabled";
+  const choice = valueArg(argv, "--pass2") ?? "disabled";
   if (choice !== "enabled" && choice !== "disabled") {
     throw new Error(`--pass2 must be enabled or disabled, got: ${choice}`);
   }
@@ -3206,7 +3221,41 @@ function resolveAutomaticBuildTargetFromArgs(
 }
 
 export async function runAutomaticBuildCli(argv = process.argv.slice(2)) {
-if (argv[0] === "legacy-plan") {
+if (argv[0] === 'video-doctor') {
+  const report = await (await import('../../packages/core/src/video-dependencies')).inspectVideoDependencies({
+    python: valueArg(argv, '--python'), modelDir: valueArg(argv, '--model-dir'), codex: valueArg(argv, '--codex') });
+  printAutomaticBuildJson(report);
+  if (!report.ready) process.exitCode = 1;
+  return;
+}
+if (argv[0] === 'video-translation') { await (await import('./video-translation')).runVideoTranslationCli(argv.slice(1)); return; }
+if (argv[0] === 'video-operator') { await (await import('./video-operator-cli')).runOperatorVideoCli(); return; }
+if (argv[0] === 'video-visual-units') { await (await import('./video-visual-units')).runVideoVisualCli(argv.slice(1)); return; }
+if (argv[0] === 'video-semantic-series') { await (await import('./video-semantic-series')).runVideoSemanticSeriesCli(argv.slice(1)); return; }
+if (argv[0] === 'video-graph') { await (await import('./video-graph')).runVideoGraphCli(argv.slice(1)); return; }
+if (argv[0] === 'video-discourse') { await (await import('./video-discourse')).runVideoDiscourseCli(argv.slice(1)); return; }
+if (argv[0] === "video-revision") {
+  await (await import("./video-revision")).runVideoRevisionCli(argv.slice(1));
+  return;
+}
+if (argv[0] === "video-correction") {
+  await (await import("./video-correction")).runVideoCorrectionCli(argv.slice(1));
+  return;
+}
+if (argv[0] === "video-transcribe") {
+  const workspace = valueArg(argv, "--workspace");
+  if (!workspace) throw new Error("video-transcribe --workspace <directory> --python <executable> --model-dir <small.en>");
+  const result = await buildVideoTranscript(workspace, { python: valueArg(argv, "--python"), modelDir: valueArg(argv, "--model-dir") });
+  printAutomaticBuildJson(result);
+  if (result.stage !== "ready") process.exitCode = 1;
+  return;
+}
+if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "video-status") {
+  const workspace = valueArg(argv, "--workspace");
+  if (!workspace) throw new Error("video-import <local.mp4> | video-resume | video-status --workspace <directory>");
+  printAutomaticBuildJson(argv[0] === "video-status" ? { ...readVideoImport(workspace), transcript_build: readVideoBuild(workspace) }
+    : await importVideo(argv[0] === "video-import" ? argv[1] : undefined, workspace));
+} else if (argv[0] === "legacy-plan") {
   const targetInput = argv[1];
   if (!targetInput) {
     console.error("usage: tsx skills/build/automatic-build.ts legacy-plan <target> [--root <dir>] [--now <ISO timestamp>] [--pass2 enabled|disabled] [budget flags]");
@@ -3608,7 +3657,7 @@ if (argv[0] === "legacy-plan") {
     if (operation === "close") {
       const outcome = closeAutomaticBuildStage({
         target,
-        stage: stageValue as AutomaticBuildPublicationStage,
+        stage: stageValue as Exclude<AutomaticBuildPublicationStage, "video_transcript" | "video_enrichment">,
         quality_profile: qualityProfileFromArgs(argv),
         run_batch: () => {
           const batch = forwardStageScript(target, script, args, true);

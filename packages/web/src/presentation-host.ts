@@ -15,6 +15,11 @@ export function acceptsPresentationMessage(event: MessageEvent, source: Window |
       && (data.request_id === undefined || Number.isSafeInteger(data.request_id));
     case "source": return typeof data.source_ref_id === "string";
     case "teaching-action": return typeof data.move_id === "string" && data.move_id.length <= 256;
+    case "teaching-help": return Number.isSafeInteger(data.request_id)
+      && typeof data.move_id === "string" && data.move_id.length <= 256
+      && (data.help_kind === "hint" || data.help_kind === "explanation")
+      && typeof data.region_id === "string" && typeof data.text === "string";
+    case "region-located": return typeof data.region_id === "string" && typeof data.located === "boolean";
     case "editing-focus": return typeof data.editing === "boolean" && Number.isSafeInteger(data.generation);
     case "ready": case "restore-partial": case "error": return true;
     default: return false;

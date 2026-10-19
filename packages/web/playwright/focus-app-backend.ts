@@ -16,7 +16,7 @@ export async function backend(page: Page, material = 'complex', chunk?: string, 
   const manifest = [...parents, ...tree].sort((a, b) => a.span.start - b.span.start || b.span.end - a.span.end);
   const source = sources.map((s: any) => s.text).join('\n\n');
   const calls: { method: string; path: string; at: number; body?: any }[] = [];
-  const control = { offline: false, delay: 0, downloadBytesPerMs: 0, formulaDelay: 0, positionDelay: 0, revision: 'fp3-source-1', position: null as any, annotations: [] as any[] };
+  const control = { offline: false, delay: 0, downloadBytesPerMs: 0, formulaDelay: 0, positionDelay: 0, gotoDelays: {} as Record<string, number>, positionSavedAt: 0, revision: 'fp3-source-1', position: null as any, annotations: [] as any[] };
   await page.route('**/api/**', async route => {
     const request = route.request(), url = new URL(request.url()), p = url.pathname.slice(4);
     calls.push({ method: request.method(), path: p + url.search, at: Date.now(), body: request.postData() ? request.postDataJSON() : undefined });
@@ -35,6 +35,7 @@ export async function backend(page: Page, material = 'complex', chunk?: string, 
     if (p === '/reader/position') {
       if (control.positionDelay) await new Promise(r => setTimeout(r, control.positionDelay));
       control.position = request.postDataJSON();
+      control.positionSavedAt = Date.now();
       const lids = [...new Set(control.position.ranges.map((r: any) => r.lid))];
       return answer({ ok: true, viewport: { anchor_lid: control.position.lid, top_lid: control.position.lid, bottom_lid: lids.at(-1), width: 8, visible_lids: lids } });
     }
@@ -51,8 +52,10 @@ export async function backend(page: Page, material = 'complex', chunk?: string, 
     if (p === '/agent/runs') return answer({ answer: '已解释当前原文。', answer_view: { parts: [] }, effects: [] });
     if (p === '/reader/goto') {
       const lid = request.postDataJSON().lid, index = tree.findIndex((n: any) => n.lid === lid || n.lid.startsWith(`${lid}.`));
+      if (control.gotoDelays[lid]) await new Promise(r => setTimeout(r, control.gotoDelays[lid]));
       const visible = tree.slice(Math.max(0, index), Math.max(0, index) + 8).map((n: any) => n.lid);
-      return answer({ viewport: { anchor_lid: lid, top_lid: lid, bottom_lid: visible.at(-1), width: visible.length, visible_lids: visible } });
+      return answer({ ok: true, viewport: { anchor_lid: visible[0], top_lid: visible[0], bottom_lid: visible.at(-1), width: 8, visible_lids: visible },
+        ...(request.postDataJSON().include_text ? { texts: visible.map(lid => ({ lid, text: sources.find(s => s.lid === lid).text })) } : {}) });
     }
     const first = tree[0].lid;
     const data: Record<string, unknown> = {
@@ -64,7 +67,11 @@ export async function backend(page: Page, material = 'complex', chunk?: string, 
       '/book/source_manifest': null,
       '/reader/state': { book_id: material, revision: 0, visible_position: control.position, viewport: control.position ? { anchor_lid: control.position.lid, top_lid: control.position.lid, bottom_lid: control.position.ranges.at(-1).lid, width: 8, visible_lids: [...new Set(control.position.ranges.map((r: any) => r.lid))] } : { anchor_lid: first, top_lid: first, bottom_lid: tree[7]?.lid ?? first, width: 8, visible_lids: tree.slice(0, 8).map((n: any) => n.lid) }, profile: { profile_id: 'technical_learning', profile_version: '1' }, layout: { rev: 0, open_slots: [] } },
       '/profile/manifest': { profile_id: 'technical_learning', slots: [] },
-      '/memory/recall': control.annotations, '/memory/profile': {}, '/profile/memory': {}, '/profile/backfill': { jobs: [], sessions: [] },
+      '/memory/recall': control.annotations, '/memory/profile': {},
+      '/profile/memory': { current_book_id: material, status: { document_revision: 0, projection_revision: 0, profile_status: 'current', pending_sensitive_confirmation: false, pending_review_jobs: 0, review_error: null },
+        snapshot: { source_revision: 0, profile_status: 'current', global_core: [], applicable_global: [], book_state_core: [], profile_projection: [], pending_context: [] },
+        facts: [], pending_candidates: [], evidence: [], collection_rules: [] },
+      '/profile/backfill': { jobs: [], sessions: [] },
       '/agent/history': { active_session_id: 'fp3-chat', sessions: [], current: { id: 'fp3-chat', book_id: material, turns: [], goals: [] } },
       '/build_intent/artifacts': { overlay: null }, '/build_intent/usage.event': {},
       '/tutor/state': { control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} },

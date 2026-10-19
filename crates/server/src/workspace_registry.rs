@@ -53,7 +53,15 @@ fn conflict() -> ToolError {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Checkpoint {
+    #[serde(default)]
+    video_drafts: crate::video_draft::Drafts,
     version: u32,
+    #[serde(default)]
+    learning_workspace_id: Option<String>,
+    #[serde(default)]
+    learning_chat_selections: BTreeMap<String, String>,
+    #[serde(default)]
+    learning_reading_positions: Vec<crate::reader_workspace::LearningReadingPosition>,
     reader: reader::ReaderCheckpoint,
     presentation: Option<runtime::presentation::PresentationFollowUp>,
 }
@@ -138,8 +146,20 @@ impl WorkspaceRegistry {
     }
 
     fn checkpoint(scene: &ResidentWorkspace) -> Checkpoint {
+        let mut positions = scene.workspace.learning_reading_positions.clone();
+        if let (Some(scope), Some(publication)) = (&scene.workspace.learning_workspace_id, &scene.workspace.publication) {
+            positions.retain(|p| p.learning_workspace_id != *scope || p.published_book_ref != publication.reference);
+            positions.push(crate::reader_workspace::LearningReadingPosition {
+                learning_workspace_id: scope.clone(), published_book_ref: publication.reference.clone(),
+                reader: scene.workspace.reader.checkpoint(),
+            });
+        }
         Checkpoint {
+            video_drafts: scene.workspace.video_drafts.clone(),
             version: 1,
+            learning_workspace_id: scene.workspace.learning_workspace_id.clone(),
+            learning_chat_selections: scene.workspace.learning_chat_selections.clone(),
+            learning_reading_positions: positions,
             reader: scene.workspace.reader.checkpoint(),
             presentation: scene.presentation.clone(),
         }
@@ -150,8 +170,12 @@ impl WorkspaceRegistry {
         scene: &mut ResidentWorkspace,
         insert: bool,
     ) -> Result<(), ToolError> {
+        if let (Some(scope), Some(chat)) = (&scene.workspace.learning_workspace_id, &scene.workspace.selected_chat) {
+            scene.workspace.learning_chat_selections.insert(scope.clone(), chat.clone());
+        }
         let reference = &scene.workspace.publication.as_ref().unwrap().reference;
-        let saved = serde_json::to_string(&Self::checkpoint(scene)).map_err(|_| storage())?;
+        let checkpoint = Self::checkpoint(scene);
+        let saved = serde_json::to_string(&checkpoint).map_err(|_| storage())?;
         #[cfg(test)]
         let _timing = crate::tests::mu10_tests::measure("control_commit");
         let tx = self
@@ -177,8 +201,25 @@ impl WorkspaceRegistry {
             return Err(conflict());
         }
         tx.commit().map_err(|_| storage())?;
+        scene.workspace.learning_reading_positions = checkpoint.learning_reading_positions;
         scene.revision += 1;
         scene.touched = Instant::now();
+        Ok(())
+    }
+
+    // Acceptance only transfers draft ownership; it is not a new reader action.
+    // Preserve the revision captured by the accepted Run for its reader effects.
+    pub(crate) fn persist_video_draft_handoff(
+        &mut self,
+        owner: &str,
+        scene: &ResidentWorkspace,
+    ) -> Result<(), ToolError> {
+        let saved = serde_json::to_string(&Self::checkpoint(scene)).map_err(|_| storage())?;
+        let changed = self.control.connection.execute(
+            "UPDATE reader_workspaces SET checkpoint=? WHERE owner_user_id=? AND workspace_id=? AND revision=?",
+            params![saved, owner, scene.workspace.id, scene.revision],
+        ).map_err(|_| storage())?;
+        if changed != 1 { return Err(conflict()); }
         Ok(())
     }
 
@@ -236,6 +277,7 @@ impl WorkspaceRegistry {
         let key = (owner.to_owned(), id.to_owned());
         if let Some(handle) = self.residents.get(&key).cloned() {
             let mut scene = handle.lock().unwrap();
+            self.refresh_learning_scope(owner, &mut scene.workspace, false)?;
             self.reconcile_chat(owner, &mut scene, user)?;
             scene.touched = Instant::now();
             drop(scene);
@@ -248,7 +290,7 @@ impl WorkspaceRegistry {
                 .agent_history
                 .sessions
                 .iter()
-                .any(|s| &s.id == id && s.book_id == record.reference.book_id)
+                .any(|s| &s.id == id && s.matches_scope(record.checkpoint.learning_workspace_id.as_deref(), &record.reference.book_id))
         }) {
             record.selected_chat = None;
             record.checkpoint.presentation = None;
@@ -261,8 +303,13 @@ impl WorkspaceRegistry {
             None,
         );
         workspace.publication = Some(publication);
+        workspace.learning_workspace_id = record.checkpoint.learning_workspace_id.clone();
+        workspace.learning_chat_selections = record.checkpoint.learning_chat_selections.clone();
+        workspace.learning_reading_positions = record.checkpoint.learning_reading_positions.clone();
+        self.refresh_learning_scope(owner, &mut workspace, false)?;
         workspace.id = id.into();
         workspace.generation = record.generation + 1;
+        workspace.video_drafts = record.checkpoint.video_drafts;
         workspace.selected_chat = record.selected_chat;
         workspace.messages = messages(user, workspace.selected_chat.as_deref());
         let mut scene = ResidentWorkspace {
@@ -289,7 +336,7 @@ impl WorkspaceRegistry {
                 .agent_history
                 .sessions
                 .iter()
-                .any(|s| &s.id == id && s.book_id == scene.workspace.book.base.book_id)
+                .any(|s| &s.id == id && s.matches_scope(scene.workspace.learning_workspace_id.as_deref(), &scene.workspace.book.base.book_id))
         }) {
             let old = scene.workspace.selected_chat.take();
             let presentation = scene.presentation.take();
@@ -334,6 +381,7 @@ impl WorkspaceRegistry {
     ) -> Result<Value, ToolError> {
         let attachment = attachment(input)?;
         let reference = reference(input, library)?;
+        let learning_workspace_id = learning_scope(input.get("learning_workspace_id"))?;
         self.create_bound(
             context.user_id(),
             user,
@@ -342,6 +390,7 @@ impl WorkspaceRegistry {
             attachment,
             None,
             None,
+            learning_workspace_id,
         )
     }
     fn create_bound(
@@ -353,13 +402,14 @@ impl WorkspaceRegistry {
         attachment: String,
         copy: Option<Checkpoint>,
         chat: Option<String>,
+        learning_workspace_id: Option<String>,
     ) -> Result<Value, ToolError> {
         self.reserve(owner)?;
         let publication = library.lock().unwrap().load(owner, &reference)?;
         let checkpoint = if copy.is_some() {
             copy
         } else {
-            let saved: Option<String> = self.control.connection.query_row("SELECT checkpoint FROM reader_workspaces WHERE owner_user_id=? AND book_id=? AND publication_id=? AND checkpoint IS NOT NULL ORDER BY checkpoint_seq DESC LIMIT 1", params![owner,reference.book_id,reference.publication_id], |r| r.get(0)).optional().map_err(|_| storage())?;
+            let saved: Option<String> = self.control.connection.query_row("SELECT checkpoint FROM reader_workspaces WHERE owner_user_id=? AND book_id=? AND publication_id=? AND checkpoint IS NOT NULL AND json_extract(checkpoint,'$.learning_workspace_id') IS ? ORDER BY checkpoint_seq DESC LIMIT 1", params![owner,reference.book_id,reference.publication_id,learning_workspace_id], |r| r.get(0)).optional().map_err(|_| storage())?;
             saved
                 .map(|s| serde_json::from_str::<Checkpoint>(&s).map_err(|_| storage()))
                 .transpose()?
@@ -389,7 +439,18 @@ impl WorkspaceRegistry {
         workspace.id = format!("ws-{}", uuid::Uuid::now_v7());
         workspace.generation = 1;
         workspace.publication = Some(publication);
-        workspace.selected_chat = chat;
+        workspace.learning_workspace_id = learning_workspace_id;
+        workspace.learning_chat_selections = checkpoint.as_ref().map(|c| c.learning_chat_selections.clone()).unwrap_or_default();
+        workspace.learning_reading_positions = checkpoint.as_ref().map(|c| c.learning_reading_positions.clone()).unwrap_or_default();
+        workspace.video_drafts = checkpoint.as_ref().map(|c|c.video_drafts.clone()).unwrap_or_default();
+        self.refresh_learning_scope(owner, &mut workspace, true)?;
+        workspace.selected_chat = chat.or_else(|| workspace.learning_workspace_id.as_ref()
+            .and_then(|scope| workspace.learning_chat_selections.get(scope)).filter(|id|user.agent_history.sessions.iter()
+                .any(|s|&s.id == *id && s.matches_scope(workspace.learning_workspace_id.as_deref(), &reference.book_id))).cloned())
+            .or_else(|| workspace.learning_workspace_id.as_deref().and_then(|scope|
+            user.agent_history.sessions.iter().filter(|s| s.matches_scope(Some(scope), &reference.book_id))
+                .max_by(|a,b| a.updated_at.cmp(&b.updated_at)).map(|s| s.id.clone())));
+        workspace.messages = messages(user, workspace.selected_chat.as_deref());
         let mut scene = ResidentWorkspace {
             workspace,
             revision: 0,
@@ -405,6 +466,21 @@ impl WorkspaceRegistry {
             Arc::new(Mutex::new(scene)),
         );
         Ok(result)
+    }
+
+    pub(crate) fn refresh_learning_scope(&self, owner: &str, workspace: &mut ReaderWorkspace, for_run: bool) -> Result<(), ToolError> {
+        let Some(id) = workspace.learning_workspace_id.as_deref() else { return Ok(()); };
+        let learning = self.control.learning_workspace(owner, id)?;
+        if for_run && learning.archived {
+            return Err(error("LEARNING_WORKSPACE_ARCHIVED", "conflict", "Restore the learning workspace before starting new work"));
+        }
+        let members: Vec<_> = learning.members.into_iter().filter(|m| m.readable).map(|m| m.published_book_ref).collect();
+        if for_run && !members.iter().any(|m| Some(m) == workspace.publication.as_ref().map(|p| &p.reference)) {
+            return Err(error("WORKSPACE_MATERIAL_OUT_OF_SCOPE", "permission", "The publication is not a readable member of this learning workspace"));
+        }
+        workspace.learning_goal = Some(learning.goal);
+        workspace.learning_members = Some(members);
+        Ok(())
     }
 
     pub(crate) fn prepare_translation(
@@ -452,12 +528,13 @@ impl WorkspaceRegistry {
                 .map(|text| text.chars().take(140).collect::<String>());
             let chat = user.agent_history.sessions.iter().find(|session|
                 Some(&session.id) == record.selected_chat.as_ref()
-                    && session.book_id == record.reference.book_id);
+                    && session.matches_scope(record.checkpoint.learning_workspace_id.as_deref(), &record.reference.book_id));
             let question = chat.and_then(|session| session.turns.iter().rev().find(|turn|
                 turn.published_book_ref.as_ref() == Some(&record.reference)
                     && !turn.user.trim().is_empty()))
                 .map(|turn| turn.user.chars().take(240).collect::<String>());
             return Ok(json!({"workspace_id":id, "published_book_ref":record.reference,
+                "learning_workspace_id":record.checkpoint.learning_workspace_id,
                 "selected_chat":chat.map(|session| &session.id), "position_label":position,
                 "position_excerpt":excerpt, "last_question":question}));
         }
@@ -492,10 +569,11 @@ impl WorkspaceRegistry {
                     .unwrap()
                     .reference
                     .clone();
+                let learning_workspace_id = scene.workspace.learning_workspace_id.clone();
                 drop(scene);
                 drop(handle);
                 let mut result =
-                    self.create_bound(owner, user, library, reference, next, Some(saved), chat)?;
+                    self.create_bound(owner, user, library, reference, next, Some(saved), chat, learning_workspace_id)?;
                 result["forked_from"] = json!(id);
                 return Ok(result);
             }
@@ -524,6 +602,58 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
+        if action == "agent/source.resolve" {
+            let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
+            let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            if let Some(media) = &binding.media {
+                let loaded = library.lock().unwrap().load(owner, &media.publication);
+                let popup = crate::video_source::popup(&binding, loaded.as_ref().map(|p| (p.book.as_ref(), p.directory())).map_err(|e| crate::user_storage_paths::error(&e.error_code, &e.category, &e.message)), media.publication.url("video/media"));
+                let mut value = view(&scene); value["result"] = popup; return Ok(value);
+            }
+        }
+        if action == "reader/adopt_same_source_publication" {
+            if scene.workspace.learning_workspace_id.is_some() {
+                let mut value = view(&scene);
+                value["result"] = json!({"status":"selection_required"});
+                return Ok(value);
+            }
+            let in_flight: bool = self.control.connection.query_row(
+                "SELECT EXISTS(SELECT 1 FROM run_admissions WHERE owner_user_id=? AND workspace_id=? AND (dispatch_state IN ('preparing','queued','claimed') OR unsaved=1))",
+                params![owner,id], |r| r.get(0)).map_err(|_| storage())?;
+            let mut value = view(&scene);
+            if in_flight || scene.workspace.video_adoption_busy(user) {
+                value["result"] = json!({"status":"busy"}); return Ok(value);
+            }
+            let old = scene.workspace.publication.as_ref().unwrap().clone();
+            let next = library.lock().unwrap().video_successor(owner, &old.reference)?;
+            let Some(next) = next else {
+                value["result"] = json!({"status":"current"});
+                if input["publication_id"].as_str().is_some_and(|id| id != old.reference.publication_id) {
+                    value["result"]["video"] = crate::video_publication::projection(&old.book, old.directory())?;
+                }
+                return Ok(value);
+            };
+            // Build the projection before committing, so a read failure cannot half-adopt.
+            let video = crate::video_publication::projection(&next.book, next.directory())?;
+            scene.workspace.adopt_same_source_publication(next)?;
+            if let Err(e) = self.persist(owner, &mut scene, false) {
+                scene.workspace.adopt_same_source_publication(old)?;
+                return Err(e);
+            }
+            let mut value = view(&scene); value["result"] = json!({"status":"adopted","video":video});
+            return Ok(value);
+        }
+        if action == "reader/video_draft" {
+            let before = scene.workspace.video_drafts.clone();
+            let result = crate::video_draft::command(&mut scene.workspace, user, input)?;
+            if input["action"] != "get" {
+                if let Err(e) = self.persist(owner, &mut scene, false) {
+                    scene.workspace.video_drafts = before;
+                    return Err(e);
+                }
+            }
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if action == "linked/attach" {
             if scene.attachment.as_deref() != Some(&stamp.attachment_id) {
                 return Err(stale());
@@ -587,16 +717,40 @@ impl WorkspaceRegistry {
             }
             let reference = reference(input, library)?;
             let publication = library.lock().unwrap().load(owner, &reference)?;
+            let learning_workspace_id = if input.get("learning_workspace_id").is_some() {
+                learning_scope(input.get("learning_workspace_id"))?
+            } else { scene.workspace.learning_workspace_id.clone() };
+            let reader = learning_workspace_id.as_deref().and_then(|scope| scene.workspace.learning_reading_positions.iter()
+                .find(|p| p.learning_workspace_id == scope && p.published_book_ref == reference))
+                .map(|p| reader::Reader::from_checkpoint(&publication.book, &p.reader))
+                .unwrap_or_else(|| reader::Reader::new(&publication.book, reader::DEFAULT_RADIUS));
             let mut workspace = ReaderWorkspace::local(
                 publication.directory.clone(),
                 publication.book.clone(),
-                reader::Reader::new(&publication.book, reader::DEFAULT_RADIUS),
+                reader,
                 vec![],
                 None,
             );
             workspace.id = id.into();
             workspace.generation = scene.workspace.generation + 1;
             workspace.publication = Some(publication);
+            workspace.learning_chat_selections = scene.workspace.learning_chat_selections.clone();
+            workspace.learning_reading_positions = scene.workspace.learning_reading_positions.clone();
+            workspace.video_drafts = scene.workspace.video_drafts.clone();
+            workspace.learning_workspace_id = learning_workspace_id;
+            self.refresh_learning_scope(owner, &mut workspace, true)?;
+            if workspace.learning_workspace_id.is_some() {
+                workspace.selected_chat = if workspace.learning_workspace_id == scene.workspace.learning_workspace_id {
+                    scene.workspace.selected_chat.clone()
+                } else {
+                    workspace.learning_workspace_id.as_ref().and_then(|scope| workspace.learning_chat_selections.get(scope))
+                        .filter(|id|user.agent_history.sessions.iter().any(|s| &s.id == *id
+                            && s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))).cloned()
+                        .or_else(|| user.agent_history.sessions.iter().filter(|s| s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
+                            .max_by(|a,b| a.updated_at.cmp(&b.updated_at)).map(|s| s.id.clone()))
+                };
+                workspace.messages = messages(user, workspace.selected_chat.as_deref());
+            }
             let mut next = ResidentWorkspace {
                 workspace,
                 revision: scene.revision,
@@ -615,6 +769,7 @@ impl WorkspaceRegistry {
             }
             let chat = if action == "chat/new" && user.session_store.is_some() {
                 let mut session = crate::new_agent_session(&scene.workspace.book.base.book_id, now, 0);
+                session.learning_workspace_id = scene.workspace.learning_workspace_id.clone();
                 session.id = format!("chat-{}", uuid::Uuid::now_v7());
                 let id = session.id.clone();
                 let crate::user_runtime::UserRuntime { session_store, agent_history, .. } = user;
@@ -627,6 +782,7 @@ impl WorkspaceRegistry {
                     now,
                     candidate.sessions.len() + 1,
                 );
+                session.learning_workspace_id = scene.workspace.learning_workspace_id.clone();
                 session.id = format!("chat-{}", uuid::Uuid::now_v7());
                 let id = session.id.clone();
                 candidate.sessions.push(session);
@@ -640,7 +796,7 @@ impl WorkspaceRegistry {
                 .agent_history
                 .sessions
                 .iter()
-                .any(|s| s.id == chat && s.book_id == scene.workspace.book.base.book_id)
+                .any(|s| s.id == chat && s.matches_scope(scene.workspace.learning_workspace_id.as_deref(), &scene.workspace.book.base.book_id))
             {
                 return Err(missing());
             }
@@ -689,6 +845,17 @@ impl WorkspaceRegistry {
             }
             return serde_json::from_str(&reply.body).map_err(|_| storage());
         }
+        if matches!(action, "presentation/feedback/read" | "presentation/feedback/set"
+            | "presentation/feedback/clear" | "presentation/feedback/attach_state") {
+            let session = input["session_id"].as_str().ok_or_else(invalid)?;
+            let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
+            if scene.workspace.selected_chat.as_deref() != Some(session) { return Err(stale()); }
+            require_turn_publication(user, &scene.workspace, session, turn)?;
+            let result = crate::workspace_client::reply(crate::presentation_api::feedback_route(
+                &private_context(user, &scene.workspace), &input.to_string(), action.rsplit('/').next().unwrap(), now,
+            ))?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if matches!(action, "presentation/read" | "presentation/observe") {
             let session = input["session_id"].as_str().ok_or_else(invalid)?;
             let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
@@ -714,6 +881,20 @@ impl WorkspaceRegistry {
             };
             let mut value = view(&scene);
             value["result"] = crate::workspace_client::reply(reply)?;
+            return Ok(value);
+        }
+        if matches!(action, "agent/source.resolve" | "agent/source.open") {
+            let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
+            let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            if binding.publication_id.is_some() {
+                let mut value = view(&scene);
+                value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
+                return Ok(value);
+            }
+        }
+        if action == "chat/history" {
+            let mut value = view(&scene);
+            value["result"] = crate::workspace_client::history_with_library(user, &scene.workspace, library, owner)?;
             return Ok(value);
         }
         if let Some(result) = crate::workspace_client::read(user, &scene.workspace, action, input, now) {
@@ -750,18 +931,18 @@ impl WorkspaceRegistry {
             "agent/source.open" => {
                 let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
                 let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
-                book.resolve_source(&binding.evidence_range, "zh-CN", Some(&binding.evidence_text_digest))?;
-                reader.goto_lid(book, &mut user.store, &binding.evidence_range.start_lid, now)?;
+                let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
+                book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
+                reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
                 json!({"source_ref_id":binding.source_ref_id,"opened":true})
             }
             "reader/position" => json!(reader.confirm_visible_position(book, &mut user.store,
                 serde_json::from_value(input.clone()).map_err(|_| invalid())?, now)?),
-            "reader/goto" => json!(reader.goto_lid(
-                book,
-                &mut user.store,
-                input["lid"].as_str().ok_or_else(invalid)?,
-                now
-            )?),
+            "reader/goto" => {
+                let effect = reader.goto_lid(book, &mut user.store,
+                    input["lid"].as_str().ok_or_else(invalid)?, now)?;
+                crate::reader_navigation_result(book, &effect, input["include_text"].as_bool() == Some(true))?
+            },
             "reader/scroll" => json!(reader.scroll(
                 book,
                 &mut user.store,
@@ -965,7 +1146,7 @@ fn require_turn_publication(
         .agent_history
         .sessions
         .iter()
-        .find(|s| s.id == chat && s.book_id == w.book.base.book_id)
+        .find(|s| s.id == chat && s.matches_scope(w.learning_workspace_id.as_deref(), &w.book.base.book_id))
         .and_then(|s| s.turns.iter().find(|t| t.turn_id == turn))
         .ok_or_else(missing)?;
     if saved.published_book_ref.as_ref() != w.publication.as_ref().map(|p| &p.reference) {
@@ -982,6 +1163,7 @@ fn private_context<'a>(
     w: &'a ReaderWorkspace,
 ) -> crate::PrivateBookContext<'a> {
     crate::PrivateBookContext {
+        learning_workspace_id: w.learning_workspace_id.as_deref(),
         user,
         book: &w.book,
         book_dir: &w.book_dir,
@@ -989,8 +1171,19 @@ fn private_context<'a>(
         selected_chat: w.selected_chat.as_deref(),
     }
 }
+fn learning_scope(value: Option<&Value>) -> Result<Option<String>, ToolError> {
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => value.as_str().filter(|id| !id.is_empty()).map(|id| Some(id.to_owned())).ok_or_else(invalid),
+    }
+}
+
 fn view(scene: &ResidentWorkspace) -> Value {
+    let positions: BTreeMap<_, _> = scene.workspace.learning_reading_positions.iter()
+        .map(|p| (&p.learning_workspace_id, &p.published_book_ref)).collect();
     json!({"workspace_id":scene.workspace.id,"generation":scene.workspace.generation,"revision":scene.revision,
+        "learning_workspace_id":scene.workspace.learning_workspace_id,
+        "learning_workspace_goal":scene.workspace.learning_goal,"learning_workspace_positions":positions,
         "published_book_ref":scene.workspace.publication.as_ref().map(|p| &p.reference),"selected_chat":scene.workspace.selected_chat,
         "reader":crate::reader_state_response(&scene.workspace.book,&scene.workspace.reader),"presentation":scene.presentation})
 }
@@ -1008,6 +1201,12 @@ pub(crate) struct NetworkRunPort {
     effect_revision: u64,
 }
 impl NetworkRunPort {
+    fn media_publication(&self, reference: &base_schema::PublishedBookRef) -> Result<Arc<crate::published_library::PublishedBook>, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        crate::cross_book::check_member(self.scope.members.as_deref(), reference)?;
+        self.access.library.lock().unwrap().load(&self.scope.user_id, reference)
+    }
     pub(crate) fn capture(
         access: Arc<crate::authorization::Authorization>,
         context: AuthorizedContext,
@@ -1031,6 +1230,8 @@ impl NetworkRunPort {
         w.check(&stamp)?;
         require_turn_publication(&user, &w.workspace, &turn.session_id, &turn.turn_id)?;
         let scope = crate::run_scope::RunScope {
+            learning_workspace_id: w.workspace.learning_workspace_id.clone(),
+            goal: w.workspace.learning_goal.clone(), members: w.workspace.learning_members.clone(),
             publication: w.workspace.publication.clone(),
             user_id: context.user_id().into(),
             workspace_id: id.into(),
@@ -1172,6 +1373,95 @@ impl crate::presentation_author::AuthorStorage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn workspace_records_available(&self) -> bool { self.scope.learning_workspace_id.is_some() }
+    fn workspace_records(&mut self, request: Value) -> Result<Value, ToolError> {
+        self.authorized()?;
+        let user = self.user.lock().unwrap();
+        self.scope.check_user(&user)?;
+        let id = self.scope.learning_workspace_id.as_deref().ok_or_else(missing)?;
+        crate::workspace_record_context::read(&user, id, request)
+    }
+    fn library_available(&self) -> bool { true }
+    fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {
+        let publication = self.media_publication(reference)?;
+        Ok(runtime::library::LibrarySource { reference: reference.clone(), title: crate::book_title::read(publication.directory(), None).unwrap_or_else(|| "参考材料".into()), book: publication.book.clone() })
+    }
+    fn library_read(&mut self, name: &str, arguments: Value) -> Result<runtime::library::LibraryReadResult, ToolError> {
+        self.authorized()?;
+        crate::cross_book::read(&self.access.library, &self.scope.user_id, self.scope.members.as_deref(), name, arguments)
+    }
+    fn library_learning(&mut self, arguments:Value, bindings:&[runtime::orchestrator::SourceBinding]) -> Result<Value,ToolError> {
+        self.authorized()?;
+        let reference=serde_json::from_value(arguments["published_book_ref"].clone()).map_err(|e|memory::teaching::invalid(e.to_string()))?;
+        crate::cross_book::check_member(self.scope.members.as_deref(), &reference)?;
+        let publication=self.access.library.lock().unwrap().load(&self.scope.user_id,&reference)?;
+        self.private(|state|crate::cross_book::learning(&crate::PrivateBookContext {user:state.user,book:&publication.book,book_dir:publication.directory(),
+            learning_workspace_id:self.scope.learning_workspace_id.as_deref(), messages:state.messages,selected_chat:state.selected_chat},&self.turn,&reference,&arguments,bindings,&crate::multi_user_host::now().to_string()))
+    }
+    fn record_presentation_methods(&mut self, observations: &runtime::presentation::PresentationMethodObservations) -> Result<(), ToolError> {
+        use crate::presentation_author::AuthorStorage;
+        self.authorized()?;
+        let storage = NetworkAuthorStorage { access: &self.access, user: &self.user, scope: &self.scope };
+        storage.with_private(|state| state.record_presentation_methods(&self.turn.session_id, &self.turn.turn_id, observations))
+    }
+    fn media_source_snapshot(&mut self, target: base_schema::EvidenceTarget) -> Result<runtime::video_source::MediaSource, ToolError> {
+        let reference = runtime::video_source::publication(&target).ok_or_else(missing)?;
+        let publication = self.media_publication(reference)?;
+        crate::video_source::snapshot(&publication.book, publication.directory(), target)
+    }
+    fn media_source_for_text(&mut self, range: &read_tools::EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
+        self.authorized()?;
+        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+    }
+    fn library_media_source_for_text(&mut self, reference: &base_schema::PublishedBookRef, range: &read_tools::EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
+        self.authorized()?;
+        crate::cross_book::check_member(self.scope.members.as_deref(), reference)?;
+        let publication = self.access.library.lock().unwrap().load(&self.scope.user_id, reference)?;
+        crate::video_source::text_snapshot(&publication.book, publication.directory(), range)
+    }
+    fn video_source_context(&mut self) -> Result<Option<serde_json::Value>, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        crate::video_frames::source_context(&self.scope)
+    }
+    fn review_video_audio(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: runtime::video_audio::ReviewAudio, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::video_audio::AudioReview, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = if let Some(reference) = reference {
+            let publication = self.media_publication(reference)?;
+            let result = crate::video_audio::review_audio(&publication.book, publication.directory(), reference, &self.scope.turn_id, request, cancellation, &crate::video_audio::AudioConfig::from_env()?)?;
+            self.media_publication(reference)?;
+            result
+        } else { crate::video_audio::review_for_run(&self.scope, request, cancellation)? };
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        Ok(result)
+    }
+    fn search_video(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: read_tools::video_search::VideoSearch) -> Result<serde_json::Value, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = if let Some(reference) = reference {
+            let publication = self.media_publication(reference)?;
+            let mut result = publication.book.search_video(publication.directory(), reference, request)?;
+            crate::cross_book::scope_video_hints(&mut result, reference);
+            result
+        } else { crate::video_frames::search_for_run(&self.scope, request)? };
+        self.authorized()?;
+        Ok(result)
+    }
+    fn read_video_frames(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: runtime::video::ReadFrames, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::video::FrameBatch, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let result = if let Some(reference) = reference {
+            let publication = self.media_publication(reference)?;
+            let cache = publication.localization_cache.parent().unwrap().join("video-frames");
+            let result = crate::video_frames::read_frames(&publication.book, publication.directory(), reference, &self.scope.turn_id, &cache, request, cancellation)?;
+            self.media_publication(reference)?;
+            result
+        } else { crate::video_frames::read_for_run(&self.scope, request, cancellation)? };
+        self.authorized()?;
+        Ok(result)
+    }
     fn presentation_unavailable_reason(&self) -> Option<&'static str> {
         self.access.sandbox.unavailable_reason()
     }
@@ -1249,7 +1539,22 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         self.scope.reader_input.clone()
     }
     fn tutor_active(&mut self) -> Result<bool, ToolError> {
+        if let Some(id) = &self.scope.learning_workspace_id {
+            let user = self.user.lock().unwrap();
+            self.access.sync_learning_goal(&user, id, &crate::multi_user_host::now().to_string())?;
+        }
         self.private(|p| crate::teaching::turn_active(p, &self.turn.turn_id))
+    }
+    fn tutor_step_preflight(
+        &self,
+        request: &Value,
+        evidence: &[runtime::orchestrator::SourceBinding],
+        ranges: &[read_tools::EvidenceRange],
+    ) -> Result<Value, runtime::run_context::TeachingSelectionPreflightError> {
+        self.authorized()?;
+        let user = self.user.lock().unwrap();
+        self.scope.check_user(&user)?;
+        crate::teaching::preflight_step(&self.scope.private_user(&user), &self.turn, request, evidence, ranges)
     }
     fn tutor_step(
         &mut self,
@@ -1261,6 +1566,12 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
     }
     fn tutor_assessment_input(&mut self, action: &str) -> Result<Value, ToolError> {
         self.private(|p| crate::teaching::assessment_input(p, &self.turn, action))
+    }
+    fn tutor_record_review(&mut self, record: Value) -> Result<Value, ToolError> {
+        self.private(|p| crate::teaching::record_agent_review(p,&self.turn,record))
+    }
+    fn tutor_working_state(&mut self) -> Result<Value, ToolError> {
+        self.private(|p| crate::teaching::agent_working_state(p,&self.turn))
     }
     fn tutor_assessment_accept(&mut self, action: &str, items: Value) -> Result<Value, ToolError> {
         self.private(|p| crate::teaching::assessment_accept(p, &self.turn, action, items))
@@ -1287,5 +1598,10 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         crate::save_agent_history_path(&user.history_path, &candidate)?;
         user.agent_history = candidate;
         Ok(())
+    }
+    fn update_workspace_goal(&mut self, update: &runtime::workspace_goal::WorkspaceGoalUpdate, current_user: &str) -> Result<base_schema::WorkspaceGoal, ToolError> {
+        self.authorized()?;
+        let mut user = self.user.lock().unwrap();
+        self.access.revise_goal_from_run(&mut user, &self.scope, &self.turn, update, current_user, crate::multi_user_host::now())
     }
 }

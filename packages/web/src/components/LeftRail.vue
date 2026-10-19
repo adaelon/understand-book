@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { OutlineItem } from "../App.vue";
 import type {
   PaperMinimapBase,
@@ -14,6 +14,7 @@ const props = defineProps<{
   progressPct: number;
   anchorLid: string | null;
   selectedLid: string | null;
+  pendingLid?: string | null;
   leafCount: number;
   debugOpen: boolean;
   gotoInput: string;
@@ -41,6 +42,7 @@ const emit = defineEmits<{
 }>();
 
 const outlineList = ref<HTMLElement | null>(null);
+let outlineResizeObserver: ResizeObserver | null = null;
 const normalizedQuery = computed(() => props.searchQuery.trim().toLowerCase());
 const filteredOutline = computed(() => {
   const q = normalizedQuery.value;
@@ -74,7 +76,7 @@ async function scrollActiveOutlineIntoView() {
   await nextTick();
   const list = outlineList.value;
   const active = list?.querySelector<HTMLElement>(".outline-item.active");
-  if (!list || !active) return;
+  if (!list || !active || !list.clientWidth || !list.clientHeight) return;
   const itemBounds = active.getBoundingClientRect();
   const listBounds = list.getBoundingClientRect();
   // Center within the outline only; let the browser clamp at either end.
@@ -95,7 +97,17 @@ function forwardPaperPin(landmarkId: string, pinned: boolean) {
 }
 
 onMounted(() => {
-  void scrollActiveOutlineIntoView();
+  let wasVisible = false;
+  outlineResizeObserver = new ResizeObserver(([entry]) => {
+    const visible = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+    // Mobile drawers stay mounted while hidden; center once their layout is available.
+    if (visible && !wasVisible) void scrollActiveOutlineIntoView();
+    wasVisible = visible;
+  });
+  if (outlineList.value) outlineResizeObserver.observe(outlineList.value);
+});
+onBeforeUnmount(() => {
+  outlineResizeObserver?.disconnect();
 });
 watch(activeOutlineLid, () => {
   void scrollActiveOutlineIntoView();
@@ -145,10 +157,11 @@ watch(activeOutlineLid, () => {
           :style="{ paddingLeft: `${0.45 + item.depth * 0.75}rem` }"
           :title="item.title"
           :aria-current="item.lid === activeOutlineLid ? 'location' : undefined"
+          :aria-busy="item.lid === props.pendingLid || undefined"
           @click="gotoOutline(item.lid)"
         >
           <span class="outline-kind">{{ outlineKindLabel(item.kind) }}</span>
-          <span class="outline-title">{{ item.title }}</span>
+          <span class="outline-title">{{ item.title }}<small v-if="item.lid === props.pendingLid" role="status" class="outline-pending">正在跳转…</small></span>
         </button>
       </nav>
       <p v-if="filteredOutline.length === 0" class="rail-muted">没有匹配的目录项。</p>
@@ -177,4 +190,8 @@ watch(activeOutlineLid, () => {
     </details>
   </aside>
 </template>
+
+<style scoped>
+.outline-pending { display: block; color: var(--accent); font-size: .75rem; font-weight: 400; }
+</style>
 

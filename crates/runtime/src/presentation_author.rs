@@ -2,7 +2,7 @@
 use crate::{
     agent_prompt::presentation::{PresentationGuidance, PresentationNeed, PresentationPhase},
     orchestrator::SourceBinding,
-    presentation::PresentationRef,
+    presentation::{PresentationRef, PresentationMethodRef},
     presentation_preview::{PreviewAction, PreviewViewport},
     ToolSpec,
 };
@@ -13,12 +13,15 @@ use serde_json::{json, Value};
 #[serde(rename_all = "snake_case")]
 pub enum PresentationLibrary {
     Konva,
+    Three,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AuthorRequest {
     Prepare {
+        #[serde(default)]
+        teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
         phase: PresentationPhase,
         #[serde(default)]
         framework: Option<String>,
@@ -54,6 +57,16 @@ pub enum AuthorRequest {
         #[serde(default)]
         length: Option<usize>,
     },
+    ReadMethod {
+        method_id: String,
+        revision: u64,
+        #[serde(default)]
+        file: Option<String>,
+        #[serde(default)]
+        offset: usize,
+        #[serde(default)]
+        length: Option<usize>,
+    },
     Search {
         #[serde(default)]
         reference: Option<PresentationRef>,
@@ -69,6 +82,10 @@ pub enum AuthorRequest {
     },
     Patch {
         #[serde(default)]
+        teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
+        #[serde(default)]
+        method_refs: Option<Vec<PresentationMethodRef>>,
+        #[serde(default)]
         reference: Option<PresentationRef>,
         #[serde(default)]
         candidate_id: Option<String>,
@@ -83,6 +100,10 @@ pub enum AuthorRequest {
         initial_state: Option<Value>,
     },
     Write {
+        #[serde(default)]
+        teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
+        #[serde(default)]
+        method_refs: Option<Vec<PresentationMethodRef>>,
         #[serde(default)]
         based_on: Option<PresentationRef>,
         #[serde(default)]
@@ -123,6 +144,8 @@ pub enum AuthorRequest {
 /// candidate/inspection authority, and is never restored from tool history.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct PresentationAuthoringContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
     pub phase: PresentationPhase,
     pub framework: Option<String>,
     pub focus: Option<String>,
@@ -184,22 +207,27 @@ pub fn unavailable() -> read_tools::ToolError {
 }
 
 pub fn spec() -> ToolSpec {
-    let source_properties = json!({
+    let mut source_properties = json!({
+            "teaching_binding":book_tool_contracts::schema_value::<crate::presentation::PresentationTeachingBinding>(),
+            "method_refs":{"type":"array","items":{"type":"object","properties":{"method_id":{"type":"string","minLength":1},"revision":{"type":"integer","minimum":1},"scope":{"type":"string","minLength":1}},"required":["method_id","revision"],"additionalProperties":false},"description":"write/patch: complete list of methods actually used, with exact method_id/revision and optional local scope. New references require method source observed in a previous sampling; inherited references need no reread. patch omission inherits, a supplied list replaces all references ([] clears). write never implicitly inherits; when rewriting a version with recorded methods, explicitly declare the full list, including [] if none remain."},
             "new_object":{"type":"boolean","description":"write: true explicitly creates a separate presentation, including from a follow-up. Use only when the user wants a new object. Cannot be true together with based_on. Defaults to false; without a follow-up or based_on, ordinary creation is unchanged."},
             "phase":{"type":"string","enum":["global","local","review"],"description":"Required for prepare: current design responsibility."},
             "framework":{"type":"string","description":"prepare: brief current whole-work design, as task data. Omission clears the previous framework."},
             "focus":{"type":"string","description":"prepare: current local purpose and its relation to the whole. Omission clears the previous focus."},
-            "needs":{"type":"array","items":{"type":"string","enum":["editing","static_plot","state","continuous_scene","konva","manim"]},"description":"Required for prepare, including []: technical guidance needed for the next sampling."},
-            "length":{"type":"integer","minimum":1,"description":"read: maximum characters requested from offset; omitted reads to file end, within model output budget."},
+            "needs":{"type":"array","items":{"type":"string","enum":["editing","static_plot","state","continuous_scene","konva","three","manim"]},"description":"Required for prepare, including []: technical guidance needed for the next sampling."},
+            "method_id":{"type":"string","minLength":1,"description":"read_method: exact id from the method directory."},
+            "revision":{"type":"integer","minimum":1,"description":"read_method: exact method revision from the directory; no implicit latest version."},
+            "length":{"type":"integer","minimum":1,"description":"read/read_method: maximum characters requested from offset; omitted reads to file end, within model output budget."},
             "query":{"type":"string","minLength":1,"description":"search: literal case-sensitive source text, not a regular expression."},
             "max_matches":{"type":"integer","minimum":1,"maximum":50,"description":"search: default 20. Follow next_offset to find subsequent occurrences."},
             "edits":{"type":"array","minItems":1,"items":{"type":"object","properties":{"old_text":{"type":"string","minLength":1},"new_text":{"type":"string"}},"required":["old_text","new_text"],"additionalProperties":false},"description":"patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved."}
     });
+    source_properties["teaching_binding"]["description"] = json!("For active Tutor write/patch, bind this exact page version to the accepted current design_ref and block_refs. regions map real id or data-teaching-region attributes to relationships, state_fields and the meaningful observable change. Keep object identity stable across conditions; a static representation is valid. prepare may omit this field to use the current design focus. A changed teaching design requires an explicit current binding when revising a candidate.");
     let mut tool = ToolSpec {
         name: "presentation.author".into(),
         description: "Create or revise rich answers. prepare replaces the complete run-local phase/framework/focus/needs; phase and needs are required. Omitted framework/focus clear previous values. Call prepare alone; selected guidance applies at the next sampling. It does not create or deliver content. read/search/patch require exactly one delivered reference or current-run candidate_id. read returns a file or offset/length range; search returns literal matches and character offsets. patch applies ordered edits, each old_text matching exactly once, atomically producing a new immutable candidate while preserving other content/resources; optional metadata replaces only supplied fields. write saves a complete candidate and requires title, html and readable_content; based_on selects an exact delivered version, never a candidate. render_plot returns a static SVG asset; render_animation returns a fixed movie asset. Include returned asset_refs and selected libraries on every write. preview executes actions and returns candidate/environment-bound DOM, errors and screenshots; width and viewport are mutually exclusive. deliver saves only a candidate meeting the preview and subsequent-observation contract; changed candidates need new previews.".into(),
         parameters: json!({"type":"object","properties":{
-            "operation":{"type":"string","enum":["prepare","render_plot","render_animation","read","search","patch","write","preview","deliver"]},
+            "operation":{"type":"string","enum":["prepare","render_plot","render_animation","read","read_method","search","patch","write","preview","deliver"]},
             "code":{"type":"string","description":"render_plot: statements using plt/fig/ax/data. render_animation: define PresentationAnimation(Scene), with Manim symbols and JSON data available."},
             "data":{"description":"JSON data available as the Python variable data"},
             "size":{"type":"object","properties":{"width":{"type":"integer","minimum":320,"maximum":1600},"height":{"type":"integer","minimum":240,"maximum":1200}},"required":["width","height"],"additionalProperties":false},
@@ -207,11 +235,11 @@ pub fn spec() -> ToolSpec {
             "reference":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},
             "based_on":{"type":"object","description":"write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},
             "state_contract":{"type":"object","description":"Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults."},
-            "file":{"type":"string","description":"read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only."},
-            "offset":{"type":"integer","minimum":0,"description":"read/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null."},
+            "file":{"type":"string","description":"read_method: registered relative file name, defaults to card.md; read the listed entrypoint and adaptation guide separately. read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only."},
+            "offset":{"type":"integer","minimum":0,"description":"read/read_method/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null."},
             "title":{"type":"string"}, "html":{"type":"string"},
             "readable_content":{"type":"string"},
-            "libraries":{"type":"array","items":{"type":"string","enum":["konva"]},"description":"Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none."},
+            "libraries":{"type":"array","items":{"type":"string","enum":["konva","three"]},"description":"Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none."},
             "asset_refs":{"type":"array","items":{"type":"string"},"description":"Refs returned by render_plot/render_animation or listed by read; include each asset used by html."},
             "source_ref_ids":{"type":"array","items":{"type":"string"},"description":"write: explicitly list every source ref used in HTML data-source-ref or readable_content [[source:ref]], including refs already observed through source.present or preserved by based_on. Observing a ref does not automatically attach it to the candidate. patch: omission preserves the candidate's sources."},
             "assumptions":{"type":"array","items":{"type":"string"}},
@@ -234,6 +262,7 @@ pub fn spec() -> ToolSpec {
     };
     tool.parameters["properties"].as_object_mut().unwrap().extend(source_properties.as_object().unwrap().clone());
     tool.parameters["examples"] = input_examples();
+    tool.description.push_str(" read_method reads a registered explanation method by exact method_id and revision, without a presentation reference or candidate. Default file is card.md; the result lists the entrypoint and all registered files. Read only selected files/ranges; source is returned on demand and grants no delivery eligibility.");
     tool.description.push_str(" Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.");
     crate::tool_schema::complete_spec(tool)
 }
@@ -248,6 +277,7 @@ fn input_examples() -> Value {
         {"operation":"render_plot","code":"ax.plot(data['x'], data['y'], marker='o'); ax.set_xlabel('Required'); ax.set_ylabel('Found')","data":{"x":[1,2,3],"y":[1,2,2]},"size":{"width":640,"height":400}},
         {"operation":"render_animation","code":"class PresentationAnimation(Scene):\n    def construct(self):\n        dot = Dot(LEFT)\n        self.add(dot)\n        self.play(dot.animate.shift(RIGHT * data['distance']), run_time=1)\n","data":{"distance":2},"size":{"width":640,"height":360},"cues":[{"id":"middle","label":"Midpoint","at_seconds":0.5}]},
         {"operation":"read","reference":reference},
+        {"operation":"read_method","method_id":"METHOD_ID_FROM_DIRECTORY","revision":1,"file":"card.md"},
         {"operation":"read","candidate_id":candidate,"file":"readable_content","offset":0,"length":200},
         {"operation":"search","reference":reference,"query":"补齐证据","max_matches":5},
         {"operation":"search","candidate_id":candidate,"query":"补齐全部证据","max_matches":5},
@@ -292,6 +322,9 @@ pub fn redact_history(messages: &mut [crate::Message]) {
                     if let Some(choice) = value.get("new_object") {
                         locator["new_object"] = choice.clone();
                     }
+                    for key in ["method_refs", "method_id", "revision", "file", "offset", "length"] {
+                        if let Some(value) = value.get(key) { locator[key] = value.clone(); }
+                    }
                     call.arguments = locator.to_string();
                 }
             }
@@ -301,6 +334,28 @@ pub fn redact_history(messages: &mut [crate::Message]) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn se3_method_refs_contract_and_history_preserve_exact_declarations() {
+        let refs = serde_json::json!([{"method_id":"discrete-update","revision":1,"scope":"update diagram"}]);
+        let registry = crate::orchestrator::resident_tool_registry();
+        let registration = registry.registration("presentation.author").unwrap();
+        for args in [
+            serde_json::json!({"operation":"write","title":"t","html":"<p>t</p>","readable_content":"t","method_refs":refs}),
+            serde_json::json!({"operation":"patch","candidate_id":"c","edits":[{"old_text":"a","new_text":"b"}],"method_refs":[]}),
+        ] {
+            registration.validate_arguments(&args.to_string()).unwrap();
+            serde_json::from_value::<super::AuthorRequest>(args.clone()).unwrap();
+            let mut message = crate::Message::user("edit");
+            message.tool_calls.push(crate::ToolCall { id:"call".into(),name:"presentation.author".into(),arguments:args.to_string() });
+            super::redact_history(std::slice::from_mut(&mut message));
+            let saved: serde_json::Value = serde_json::from_str(&message.tool_calls[0].arguments).unwrap();
+            assert_eq!(saved["method_refs"], args["method_refs"]);
+        }
+        for method in [serde_json::json!({"method_id":"a"}), serde_json::json!({"method_id":"a","revision":0}), serde_json::json!({"method_id":"a","revision":1,"basis":"invented"})] {
+            let args = serde_json::json!({"operation":"write","title":"t","html":"<p>t</p>","readable_content":"t","method_refs":[method]});
+            assert!(registration.validate_arguments(&args.to_string()).is_err());
+        }
+    }
     #[test]
     fn ex13_redaction_preserves_pre_new_object_history_bytes() {
         let arguments = serde_json::json!({"operation":"write","title":"existing","reference":null,
@@ -345,6 +400,25 @@ mod tests {
     }
     use super::*;
     use crate::{tool_exposure::*, ModelRuntimeProfile, ProviderToolProtocol};
+
+    #[test]
+    fn se2_read_method_contract_requires_exact_identity_and_accepts_ranges() {
+        let args = json!({"operation":"read_method","method_id":"discrete-update","revision":1});
+        assert!(matches!(serde_json::from_value::<AuthorRequest>(args.clone()).unwrap(), AuthorRequest::ReadMethod { file:None,offset:0,length:None,.. }));
+        for field in ["method_id", "revision"] {
+            let mut bad = args.clone(); bad.as_object_mut().unwrap().remove(field);
+            assert!(serde_json::from_value::<AuthorRequest>(bad).is_err());
+        }
+        let schema = spec().parameters;
+        let branch = schema["anyOf"].as_array().unwrap().iter()
+            .find(|b| b["properties"]["operation"]["enum"] == json!(["read_method"])).unwrap();
+        assert!(branch["required"].as_array().unwrap().contains(&json!("method_id")));
+        assert!(branch["required"].as_array().unwrap().contains(&json!("revision")));
+        let registry = crate::orchestrator::resident_tool_registry();
+        registry.registration("presentation.author").unwrap().validate_arguments(&args.to_string()).unwrap();
+        let ranged = json!({"operation":"read_method","method_id":"discrete-update","revision":1,"file":"example/index.html","offset":80,"length":500});
+        registry.registration("presentation.author").unwrap().validate_arguments(&ranged.to_string()).unwrap();
+    }
 
     #[test]
     fn ex12_prepare_contract_requires_explicit_phase_and_needs() {
@@ -398,8 +472,10 @@ mod tests {
         named["libraries"] = json!(["konva"]);
         assert!(matches!(serde_json::from_value::<AuthorRequest>(named.clone()).unwrap(), AuthorRequest::Write {libraries,..} if libraries == vec![PresentationLibrary::Konva]));
         named["libraries"] = json!(["other"]);
-        assert!(serde_json::from_value::<AuthorRequest>(named).is_err());
-        assert_eq!(spec().parameters["properties"]["libraries"]["items"]["enum"], json!(["konva"]));
+        assert!(serde_json::from_value::<AuthorRequest>(named.clone()).is_err());
+        named["libraries"] = json!(["three"]);
+        assert!(matches!(serde_json::from_value::<AuthorRequest>(named).unwrap(), AuthorRequest::Write {libraries,..} if libraries == vec![PresentationLibrary::Three]));
+        assert_eq!(spec().parameters["properties"]["libraries"]["items"]["enum"], json!(["konva","three"]));
     }
 
     #[test]

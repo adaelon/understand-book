@@ -3,8 +3,10 @@ import { computed, onMounted, onBeforeUnmount, nextTick, ref, watch } from 'vue'
 import { ChevronRight, CornerDownRight, Lightbulb, MessageSquareText, PencilLine, Shapes } from '@lucide/vue';
 import { api as sharedApi, ApiError, type UnderstandingView, type UnderstandingRow, type LearningEvidenceView } from '../api';
 import { bindSceneApi } from '../network-context';
+import LearningRecordPreview from './LearningRecordPreview.vue';
 const api = bindSceneApi(sharedApi);
 const view = ref<UnderstandingView | null>(null);
+const importedPreview = ref<{ sessionId: string; throughSeq: number } | null>(null);
 const active = ref<{ kind: 'interpretation'; id: string } | { kind: 'object'; row: UnderstandingRow } | null>(null);
 const selected = ref<LearningEvidenceView | null>(null);
 const historicalEvidence = ref(false);
@@ -133,7 +135,7 @@ async function recordFeedback(action: string) {
   }
   catch (e) {
     if (!disposed) {
-      feedbackFailure.value = { action, message: `反馈展示记录未保存：${e instanceof Error ? e.message : String(e)}` };
+      feedbackFailure.value = { action, message: `学习反馈的阅读进度未保存：${e instanceof Error ? e.message : String(e)}` };
     }
   } finally { feedbackBusy.value = false; }
 }
@@ -164,7 +166,14 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
     <p v-if="busy" role="status">正在读取或保存…</p>
     <p v-if="view?.stale" role="status">有新的依据尚未合入此视图。<button :disabled="locked" @click="load(true)">更新理解视图</button></p>
     <div v-show="!active" ref="listing" tabindex="-1" class="listing">
-      <p v-if="view && !view.rows.length && !view.interpretations?.length" class="empty">尚无理解记录；相关提问、回应和活动表现会成为后续讲解的依据。</p>
+      <p v-if="view && !view.rows.length && !view.interpretations?.length" class="empty">{{ view.imported_records?.length ? '当前工作区尚无新的理解记录' : '尚无理解记录' }}；相关提问、回应和活动表现会成为后续讲解的依据。</p>
+      <section v-if="view?.imported_records?.length" aria-label="带入的原记录" class="imported-records">
+        <h4>带入的原记录</h4><p>保留原聊天、解释与来源，作为这个目标的历史参考。新的理解会从当前工作区的交流中形成。</p>
+        <article v-for="record in view.imported_records" :key="`${record.selection.source_learning_workspace_id}:${record.selection.chat_session_id}`">
+          <strong>{{ record.title || '未命名聊天' }}</strong><span>{{ record.source_goal || (record.selection.source_learning_workspace_id ? '其他工作区' : '旧单书记录') }}</span>
+          <button :disabled="!record.available || locked" @click="importedPreview = { sessionId: record.selection.chat_session_id, throughSeq: record.through_seq }">查看原记录</button><small v-if="!record.available">原记录暂不可读</small>
+        </article>
+      </section>
       <section v-if="view?.interpretations?.length" aria-label="当前理解解释" class="concept-list">
         <h4>当前解释</h4>
         <button v-for="item in view.interpretations" :key="item.evidence_id" class="concept" :disabled="locked" @click="openItem({ kind: 'interpretation', id: item.evidence_id }, $event)">
@@ -238,11 +247,13 @@ onBeforeUnmount(() => { disposed = true; observer?.disconnect(); window.removeEv
         <section v-if="history" aria-label="解释历史"><h5>{{ row.label }}的解释历史</h5><div class="evidence-links"><button v-for="(id, index) in history.refs" :key="id" :disabled="locked" :aria-pressed="selected?.evidence_id === id" @click="inspect(id, true)">查看历史依据 {{ index + 1 }}</button></div><button v-if="history.next != null" :disabled="locked" @click="older(true)">更早的解释</button></section>
       </details>
     </section>
+    <LearningRecordPreview v-if="importedPreview" :session-id="importedPreview.sessionId" :through-seq="importedPreview.throughSeq" @close="importedPreview = null" />
   </section>
 </template>
 
 <style scoped>
 .understanding-space { min-width: 0; overflow-wrap: anywhere; color: var(--reader-ink, var(--ink)); font: 14px/1.7 var(--sans); }
+.imported-records { margin: 20px 0 28px; padding: 16px; background: var(--surface-soft); border-radius: 10px; }.imported-records > p { margin: 8px 0 14px; color: var(--tutor-muted, var(--reader-muted)); font-size: 12px; }.imported-records article { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 12px 0; border-top: 1px solid var(--line); }.imported-records article > span, .imported-records small { color: var(--tutor-muted, var(--reader-muted)); font-size: 12px; }.imported-records article > strong { flex: 1; }
 .space-heading h3, h4, h5, p { margin: 0; }
 .space-heading { margin: 4px 0 25px; }.space-heading h3 { font-size: 24px; line-height: 1.45; font-weight: 650; margin-bottom: 7px; }.space-heading p, .preview, .conditions { color: var(--tutor-muted, var(--reader-muted)); }.space-heading p { font-size: 13px; }
 svg { width: 18px; height: 18px; stroke-width: 1.7; flex-shrink: 0; }

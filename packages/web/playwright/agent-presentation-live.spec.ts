@@ -181,7 +181,7 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
     const start = Date.now(), firstCall = calls.length;
     if (name !== "follow-up") message += " 页面请保持精简，复用宿主共同样式，文字和背景颜色沿用宿主主题变量；必须通过制作工具交付，不要把HTML贴在最终回答里。";
     if (presentation) {
-      await presentation.getByRole("textbox", { name: "针对当前现场追问" }).fill(message);
+      await presentation.getByRole("textbox", { name: "针对当前演示追问" }).fill(message);
       await presentation.getByRole("button", { name: "发送追问", exact: true }).click();
     } else {
       await page.locator(".agent-input textarea").fill(message);
@@ -248,7 +248,7 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
     await frame.getByRole("slider", { name: "找到的证据数", exact: true }).focus();
     await page.keyboard.press("Home"); await expect(frame.locator("#recall")).toBeVisible(); await page.keyboard.press("ArrowRight");
     await expect(frame.locator("#recall")).toHaveText("1/3");
-    await expect(experiment.getByText("现场已保存", { exact: true })).toBeVisible();
+    await expect(experiment.getByText("演示状态已保存", { exact: true })).toBeVisible();
     const originalVersion = await readVersion(1);
     const beforeFollowUpCount = await page.locator(".agent-presentation").count();
     await ask("follow-up", "解释现在的结果，指出找到几处、总需几处及为何不是答案正确率。只解释，不制作新页面。", experiment);
@@ -285,7 +285,7 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
     // A real generated page may render correctly while violating the save contract.
     // Correct it through the same user-facing authoring route; preserve the failed version.
     const needsStateRepair = scenes.some(scene => scene.name === "argument-state-revision") ||
-      !(await argument.getByText(/^(现场已保存|已恢复上次保存的现场)$/).waitFor({ state: "visible", timeout: 5000 }).then(() => true, () => false));
+      !(await argument.getByText(/^(演示状态已保存|已恢复上次保存的演示状态)$/).waitFor({ state: "visible", timeout: 5000 }).then(() => true, () => false));
     if (needsStateRepair) {
       await ask("argument-state-revision", "请修复刚交付的‘主张与依据：关系边本身不是事实证据’论证页面；该版本展开后没有成功保存现场，无法从页内发送追问。请只修复状态合同：registerStateReader返回的visible_step必须是字符串或null，不能是数字；expanded数值仍放values中。恢复时从scene.values.page.expanded读取。先发现制作工具，读取当前确切版本，保留已有内容、按钮名称、全部来源列表和data-source-ref，不重新检索或登记来源。以based_on创建同一对象的新版本，实际展开预览后交付。", undefined, 6);
       argumentIndex = 5;
@@ -295,12 +295,12 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
       const toggle = argument.frameLocator("iframe").getByRole("button", { name: "展开依据", exact: true });
       if (await toggle.count() && await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
     }
-    await expect(argument.getByText(/^(现场已保存|已恢复上次保存的现场)$/)).toBeVisible();
+    await expect(argument.getByText(/^(演示状态已保存|已恢复上次保存的演示状态)$/)).toBeVisible();
     await source(argument); await checkLayout(argument, "argument");
     const expandedArgument = await argument.frameLocator("iframe").locator("body").innerText();
     // Exercise custom button state on the corrected current version before reopening.
     await fitted.frameLocator("iframe").getByRole("button", { name: "加入无关材料", exact: true }).click();
-    await expect(fitted.getByText("现场已保存", { exact: true })).toBeVisible();
+    await expect(fitted.getByText("演示状态已保存", { exact: true })).toBeVisible();
     let savedFitted = await readVersion(fittedIndex);
     if (scenes.some(scene => scene.name === "experiment-state-revision") ||
         savedFitted.restored_state?.values?.page?.irrelevant === undefined) {
@@ -309,7 +309,7 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
       fitted = page.locator(".agent-presentation").nth(fittedIndex);
       await expect(fitted.frameLocator("iframe").locator("#recall")).toHaveText("1/3");
       await fitted.frameLocator("iframe").getByRole("button", { name: "加入无关材料", exact: true }).click();
-      await expect(fitted.getByText("现场已保存", { exact: true })).toBeVisible();
+      await expect(fitted.getByText("演示状态已保存", { exact: true })).toBeVisible();
       await source(fitted); await checkLayout(fitted, "revision");
       savedFitted = await readVersion(fittedIndex);
       expect(savedFitted.reference.presentation_id).toBe(originalVersion.reference.presentation_id);
@@ -325,7 +325,7 @@ test("RP7 live generation, sources, experiment, follow-up, revision and disk reo
     await expect(page.locator(".agent-presentation").nth(fittedIndex).frameLocator("iframe").locator("body")).toHaveText(fittedText, { useInnerText: true });
     expect((await readVersion(fittedIndex)).restored_state).toEqual(savedFitted.restored_state);
     expect((await readVersion(fittedIndex)).restored_state_revision).toEqual(savedFitted.restored_state_revision);
-    await expect(restored.getByText("已恢复上次保存的现场")).toBeVisible();
+    await expect(restored.getByText("已恢复上次保存的演示状态")).toBeVisible();
     await expect(page.locator(".agent-presentation").nth(2)).toContainText("版本 2");
     await expect(page.locator(".agent-presentation").nth(argumentIndex).frameLocator("iframe").locator("body")).toHaveText(expandedArgument, { useInnerText: true });
     await source(restored);

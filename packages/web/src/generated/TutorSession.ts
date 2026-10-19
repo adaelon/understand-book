@@ -4,4 +4,4 @@ import type { TutorMaterial } from "./TutorMaterial";
 import type { TutorSessionMode } from "./TutorSessionMode";
 import type { TutorSessionStatus } from "./TutorSessionStatus";
 
-export type TutorSession = { id: string, revision: number, status: TutorSessionStatus, user_intent: string, explicit_constraints: Array<string>, current_focus: TutorFocus, material_scope: Array<TutorMaterial>, default_teaching_intent: TutorSessionMode | null, path_instance_ref: string | null, progress_ref: string | null, };
+export type TutorSession = { id: string, revision: number, status: TutorSessionStatus, user_intent: string, explicit_constraints: Array<string>, current_focus: TutorFocus, material_scope: Array<TutorMaterial>, default_teaching_intent: TutorSessionMode | null, path_instance_ref: string | null, progress_ref: string | null, workspace_goal_revision: number | null, };

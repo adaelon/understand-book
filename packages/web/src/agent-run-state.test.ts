@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { initialRun, interruptRun, reduceRun, type RunActivity, type RunEvent } from "./agent-run-state";
+import { agentFailureMessage, initialRun, interruptRun, reduceRun, type RunActivity, type RunEvent } from "./agent-run-state";
 const descriptor = { book_id: "book", session_id: "session", turn_id: "turn" };
 const activity: RunActivity = { step_id: 1, parent_step_id: null, kind: "tool", name: "book.text", label: "读取原文", status: "running", started_ms: 5, duration_ms: null, error_code: null, result_count: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
 const event = (seq: number, type: string, payload: unknown): RunEvent => ({ turn_id: "turn", seq, type, payload, elapsed_ms: seq });
+
+it('explains the two recorded Embedding failures without rewriting their diagnostic data', () => {
+  const legacy = { error_code: 'TEACHING_INVALID', category: 'validation', message: '教学设计或动作尚未就绪，无法将预算终答标为已交付' };
+  const author = { effects: [], trace: [{ model_tool_loop: 12, tool: 'presentation.author', args: '{"operation":null}', result_digest: '{"error_code":"PRESENTATION_ARGUMENTS_INVALID","message":"$.operation is required"}' }] };
+  expect(agentFailureMessage(legacy, author)).toBe('演示页制作未完成。请重试。');
+  const reviewed = { effects: [], trace: [{ model_tool_loop: 18, tool: 'presentation.author', args: '{"operation":"deliver"}', result_digest: '{"reference":{"presentation_id":"saved","revision":1},"status":"version_saved"}' }],
+    activities: [{ ...activity, kind: 'model' as const, name: 'tutor_delivery_review', status: 'failed' as const, error_code: 'PROVIDER_ERROR' }] };
+  expect(agentFailureMessage(legacy, reviewed)).toBe('演示页已生成，但回答检查未完成。请重试。');
+  expect(agentFailureMessage(legacy, { ...reviewed, activities: [] })).toBe('演示页已生成，但回答检查未完成。请重试。');
+  const failure = { error_code: 'TEACHING_REVIEW_FAILED', category: 'provider', message: 'PROVIDER_ERROR: finish_reason=length' };
+  expect(agentFailureMessage(failure, reviewed)).toBe(agentFailureMessage(legacy, reviewed));
+  expect(failure.message).toBe('PROVIDER_ERROR: finish_reason=length');
+  expect(agentFailureMessage({ error_code: 'UNAVAILABLE', category: 'provider', message: '连接暂时不可用' })).toBe('连接暂时不可用');
+});
 describe("Resident run reducer", () => {
   it("merges live and snapshot activities without duplicate steps or stale replacement", () => {
     const started = reduceRun(initialRun(descriptor), event(2, "tool.started", activity));

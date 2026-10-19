@@ -1,4 +1,5 @@
 import { BUILD_EXECUTOR_SERVER_NAME_V1, BUILD_EXECUTOR_TOOL_NAMES_V1, BUILD_EXECUTOR_TOOL_CONTRACTS_V3, type BuildExecutorToolNameV1 } from "./build-executor-tool-contract";
+import { CODEX_EXECUTOR_MEDIA_CAPABILITY_V1 } from "./build-executor-media";
 
 const SHARED_EXECUTOR_LAUNCHER_ARGS = Object.freeze([
   "/d",
@@ -22,6 +23,7 @@ export const BUILD_EXECUTOR_MCP_CONTRACT_V3 = Object.freeze({
   child_connection_ownership: "thread_owned_stdio_connection" as const,
   parent_child_connection_shared: false as const,
   tools: BUILD_EXECUTOR_TOOL_CONTRACTS_V3,
+  media_input: CODEX_EXECUTOR_MEDIA_CAPABILITY_V1,
 });
 
 export interface BuildExecutorSharedMcpConfigValidationV3 {

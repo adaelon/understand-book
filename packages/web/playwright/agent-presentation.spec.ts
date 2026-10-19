@@ -89,6 +89,7 @@ test("rich answer uses bound static/dynamic sources, one frame, responsive layou
   });
   await expect.poll(() => frame.locator("body").evaluate(node => getComputedStyle(node).backgroundColor)).toBe("rgb(32, 32, 32)");
   await page.screenshot({ path: info.outputPath("narrow-theme.png") });
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
   await page.getByRole('button', { name: '文字说明与来源', exact: true }).click();
   await expect(page.locator(".readable-text")).toContainText("需要三处证据");
 });
@@ -120,13 +121,17 @@ test('compact mobile toolbar remains reachable when switching to discussion', as
   const frame = page.frameLocator('.agent-presentation iframe');
   await expect(frame.locator('#result')).toHaveText('2/3');
   await page.getByRole('button', { name: '展开', exact: true }).click();
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
   await page.getByRole('button', { name: '缩小演示' }).click();
   await expect(frame.locator('html')).toHaveCSS('zoom', '0.9');
   const tools = await page.locator('.workspace-tools').boundingBox();
   expect(tools!.height).toBeLessThan(140);
+  await page.getByRole('button', { name: '关闭演示工具', exact: true }).click();
   await page.getByRole('button', { name: '展开讨论', exact: true }).click();
   await expect(page.locator('.agent-input')).toBeVisible();
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
   await expect(page.getByRole('button', { name: '缩小演示' })).toBeVisible();
+  await page.getByRole('button', { name: '关闭演示工具', exact: true }).click();
   await page.getByRole('button', { name: '收起讨论', exact: true }).click();
   await expect(frame.locator('#result')).toBeVisible();
   await page.screenshot({ path: info.outputPath('mobile-workspace.png') });
@@ -160,7 +165,8 @@ test("delayed save notices keep the same frame position and load", async ({ page
   await frame.locator("#evidence-count").evaluate((node: HTMLInputElement) => {
     node.value = "1"; node.dispatchEvent(new Event("input", { bubbles: true })); node.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await expect(page.getByText("现场已保存", { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
+  await expect(page.getByText("演示状态已保存", { exact: true })).toBeVisible();
   expect(await iframe.boundingBox()).toEqual(before);
   expect(await iframe.getAttribute("data-load-count")).toBe(loads);
 });

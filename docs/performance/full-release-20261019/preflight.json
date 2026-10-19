@@ -1,0 +1,37 @@
+{
+  "schema_before": 14,
+  "schema_after": 18,
+  "preserved_tables": {
+    "users": 4,
+    "book_grants": 47,
+    "book_defaults": 11,
+    "reader_workspaces": 110,
+    "allowance_periods": 4,
+    "allowance_adjustments": 5,
+    "model_call_charges": 712
+  },
+  "accounts": {
+    "reader": {
+      "books": 11,
+      "read_body": true,
+      "presentation_ready": true,
+      "new_endpoints": [
+        "/api/learning-workspaces",
+        "/api/account/cost-summary"
+      ]
+    },
+    "admin": {
+      "books": 12,
+      "read_body": true,
+      "presentation_ready": true,
+      "new_endpoints": [
+        "/api/learning-workspaces",
+        "/api/account/cost-summary",
+        "/api/admin/operator-builds",
+        "/api/admin/cost-summary"
+      ]
+    }
+  },
+  "model_calls": 0,
+  "status": "passed"
+}

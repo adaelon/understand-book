@@ -22,14 +22,14 @@ const row = (patch: Partial<UnderstandingRow> = {}): UnderstandingRow => ({
   independent_support: 1, assisted_support: 1, revised_support: 1, partial: 1, difficulty: 1, uncertain: 1,
   evidence_count: 3, evidence_refs: ['independent', 'assisted', 'revised'], ...patch,
 });
-function setup(options: { rows?: UnderstandingRow[]; interpretations?: LearningEvidenceView[];
+function setup(options: { rows?: UnderstandingRow[]; interpretations?: LearningEvidenceView[]; importedRecords?: import('../learning-records').ImportedLearningRecord[];
   records?: Record<string, LearningEvidenceView>; handler?: (path: string, body: any) => Response | undefined | Promise<Response | undefined> } = {}) {
   let interpretations = options.interpretations ?? [evidence()];
   const records: Record<string, LearningEvidenceView> = { hypothesis: evidence(), ...options.records };
   const fetch = vi.fn(async (url: string, init: RequestInit) => {
-    const path = url.split('/').pop()!; const body = JSON.parse(init.body as string);
+    const path = url.split('/').pop()!; const body = init.body ? JSON.parse(init.body as string) : null;
     const response = await options.handler?.(path, body); if (response) return response;
-    if (path === 'understanding') return Response.json({ rows: options.rows ?? [], interpretations, next: null, stale: false });
+    if (path === 'understanding') return Response.json({ rows: options.rows ?? [], interpretations, imported_records: options.importedRecords, next: null, stale: false });
     if (path === 'evidence') return Response.json(records[body.evidence_ref]);
     if (path === 'correct') {
       records.corrected = evidence('corrected', { ...records[body.evidence_ref], evidence_id: 'corrected', interpretation: '原解释已被用户纠正，等待新的表现依据', correction: body.text });
@@ -51,6 +51,21 @@ beforeEach(() => {
   });
 });
 afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ''; });
+
+it('shows imported records as read-only historical context and previews the saved prefix without adding a current interpretation', async () => {
+  const selection = { source_learning_workspace_id: 'original', chat_session_id: 'original-chat', turn_ids: ['old-turn'], through_seq: 8 };
+  const { w, fetch } = setup({ rows: [], interpretations: [], importedRecords: [{ selection, through_seq: 8, linked_at: '2', title: '原来的链式法则讨论', book_id: 'book', available: true, source_goal: '原学习目标' }],
+    handler: (path) => path === 'original-chat?through_seq=8' ? Response.json({ session_id: 'original-chat', title: '原来的链式法则讨论', learning_workspace_id: 'original', through_seq: 8, turns: [], sources: [],
+      recap: { through_at: '1' }, learning: { selection, linked_at: '', facts: [], evidence: [{ evidence_id: 'e1', label: '旧解释', interpretation: '只属于原空间的解释', learner_quote: '原回答', correction: null, supersedes: null }], assessments: [] } }) : undefined,
+  });
+  try {
+    await flushPromises(); expect(w.findAll('.concept')).toHaveLength(0); const imported = w.get('[aria-label="带入的原记录"]');
+    expect(imported.text()).toContain('原学习目标'); await imported.get('button').trigger('click'); await flushPromises();
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('只属于原空间的解释'); expect(document.querySelector('[role="dialog"] textarea')).toBeNull();
+    expect(fetch.mock.calls.some(([url]) => url === '/api/me/learning-records/original-chat?through_seq=8')).toBe(true);
+    expect(fetch.mock.calls.some(([url]) => url.endsWith('/correct'))).toBe(false);
+  } finally { w.unmount(); }
+});
 
 it('opens one hypothesis with real words and corrects it without inventing a performance', async () => {
   const { w, fetch } = setup();
@@ -253,7 +268,7 @@ it('keeps correction retry available when a displayed-feedback receipt fails lat
     await w.get('textarea').setValue('这是我自己的解释'); await w.get('form').trigger('submit'); await flushPromises();
     failFeedback(Response.json({ error: '回执断线' }, { status: 503 })); await flushPromises();
     expect(w.text()).toContain('纠正提交或刷新未完成');
-    expect(w.text()).toContain('反馈展示记录未保存');
+    expect(w.text()).toContain('学习反馈的阅读进度未保存');
     await button(w, '重试').trigger('click'); await flushPromises();
     expect(w.get('[aria-label="表现依据"]').text()).toContain('你的纠正：这是我自己的解释');
     await button(w, '重试反馈记录').trigger('click'); await flushPromises();

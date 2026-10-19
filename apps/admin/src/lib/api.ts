@@ -22,6 +22,11 @@ export class ApiError extends Error {
   }
 }
 const messages: Record<string, string> = {
+  BUILD_BUDGET_EXHAUSTED: "本任务剩余预算不足。请核对待核算费用，或提高预算后继续。",
+  WORKSPACE_RELEASE_INVALID: "请填写完整公开编排，选择确切资料版本、必要能力和可见账号。",
+  WORKSPACE_RELEASE_VERSION_CONFLICT: "已有更新版本，请刷新发布列表后重新确认公开编排。",
+  WORKSPACE_RELEASE_READER_UNAVAILABLE: "所选可见账号不可用，请核对账号状态。",
+  WORKSPACE_RELEASE_STORAGE_FAILED: "发布结果暂未确认，请核对原操作回执后重试。",
   MCP_PACK_REVISION_CONFLICT: "调用包已被更正，请重新读取后确认金额与次数。",
   MCP_PACK_ALREADY_CONSUMED: "只能扣回尚未消费的次数，请刷新调用包后重新填写。",
   MCP_USAGE_INPUT_INVALID: "赠送次数须为正整数，并填写原因。",
@@ -31,6 +36,10 @@ const messages: Record<string, string> = {
   INVITE_BATCH_CONFLICT: "原操作号的生成数量不同，请核对原批次。",
   INVITE_ALREADY_USED: "内测码已被使用，不能停用。请刷新列表查看使用账号。",
   INVITE_STORAGE_UNAVAILABLE: "内测码操作暂未确认，请核对原批次后重试。",
+  ALLOWANCE_BASIS_UNBOUND: "请先为该额度期配置百分比基准。",
+  ALLOWANCE_BASIS_ALREADY_BOUND: "该额度期已绑定固定基准，不能更改。",
+  ALLOWANCE_BASIS_VERSION_CONFLICT: "百分比基准版本与该额度期不一致，请重新确认。",
+  ALLOWANCE_PERCENT_NOT_REPRESENTABLE: "该百分比不能换算为完整内部额度，请调整输入。",
   ALLOWANCE_REVISION_CONFLICT: "额度期已改变，请重新读取后确认。",
   CHARGE_REVISION_CONFLICT: "费用记录已改变，请重新读取后确认。",
   ALLOWANCE_PERIOD_OVERLAP: "有效期与已有额度期重叠，请调整起止时间。",

@@ -60,8 +60,8 @@ fn advertised_book_examples_dispatch_and_bind_only_observed_source() {
     assert_eq!(count, 8);
     ledger.present(&book, &source.to_string()).unwrap();
     let binding = &ledger.bindings()[0];
-    assert_eq!(binding.evidence_range.start_lid, "1.1");
-    assert_eq!(book.resolve_source(&binding.evidence_range, SOURCE_PRESENTATION_LOCALE, None).unwrap().highlighted_quote, source["quote"]);
+    assert_eq!(binding.evidence_range.as_ref().unwrap().start_lid, "1.1");
+    assert_eq!(book.resolve_source(binding.evidence_range.as_ref().unwrap(), SOURCE_PRESENTATION_LOCALE, None).unwrap().highlighted_quote, source["quote"]);
     let text_input = &specs.iter().find(|s| s.name == "book.text").unwrap().parameters["examples"][0];
     let fake = FakeAdapter::new(vec![
         turn_calls(vec![call("read-example", "book.text", &text_input.to_string())]),

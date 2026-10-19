@@ -62,6 +62,7 @@ impl Default for SnapshotBudgets {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SnapshotContext {
+    pub learning_workspace_id: Option<String>,
     pub book_id: Option<String>,
     pub content_profile: Option<String>,
     pub paper_subtype: Option<String>,
@@ -73,6 +74,7 @@ impl SnapshotContext {
     fn resolution_context(&self) -> ProfileResolutionContext {
         ProfileResolutionContext {
             book_id: self.book_id.clone(),
+            learning_workspace_id: self.learning_workspace_id.clone(),
             content_profile: self.content_profile.clone(),
             paper_subtype: self.paper_subtype.clone(),
             domain: self.domain.clone(),
@@ -178,7 +180,7 @@ impl MemoryStore {
             match (&fact.scope, &fact.applicability) {
                 (ProfileScope::Global, Applicability::Any) => global_core.push(item),
                 (ProfileScope::Global, _) => applicable_global.push(item),
-                (ProfileScope::Book { .. }, _) => book_state_core.push(item),
+                (ProfileScope::Book { .. } | ProfileScope::Workspace { .. }, _) => book_state_core.push(item),
             }
         }
 
@@ -486,6 +488,7 @@ mod tests {
 
     fn context() -> SnapshotContext {
         SnapshotContext {
+            learning_workspace_id: None,
             book_id: Some("book-a".into()),
             content_profile: Some("technical_learning".into()),
             paper_subtype: None,

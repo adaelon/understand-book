@@ -11,6 +11,13 @@ function success(body: unknown): Response {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("source manifest API compatibility", () => {
+  it('loads image assets from the cited publication without changing the current workspace', async () => {
+    const manifest = { version: 'asset_manifest.v1', book_id: 'reference book', images: [] };
+    const fetch = vi.fn(async () => success(manifest));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.assetManifest({ book_id: 'reference book', publication_id: 'version-2' })).resolves.toEqual(manifest);
+    expect(fetch).toHaveBeenCalledWith('/api/books/reference%20book/publications/version-2/asset_manifest', expect.objectContaining({ method: 'GET' }));
+  });
   it("treats a legacy technical-book manifest as no PDF runtime manifest", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => success({
       book_id: "legacy-technical-book",

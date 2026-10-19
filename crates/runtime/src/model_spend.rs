@@ -18,6 +18,39 @@ impl ChargeScope {
             Self::OperatorTask { task_ref } => !task_ref.is_empty(),
         }
     }
+
+    pub fn task_ref(&self) -> &str {
+        match self {
+            Self::ReaderRun { run_ref, .. } => run_ref,
+            Self::ReaderTask { task_ref, .. } | Self::OperatorTask { task_ref } => task_ref,
+        }
+    }
+}
+
+/// Bound when a task starts, independently of whichever Reader scene is open.
+/// The account-wide task keeps `learning_workspace_id` empty; any known source
+/// workspaces are references, not additional copies of its account charge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChargeAttribution {
+    pub parent_task_ref: String,
+    pub learning_workspace_id: Option<String>,
+    #[serde(default)]
+    pub related_learning_workspace_ids: Vec<String>,
+}
+impl ChargeAttribution {
+    pub fn for_scope(scope: &ChargeScope) -> Self {
+        Self {
+            parent_task_ref: scope.task_ref().to_owned(),
+            learning_workspace_id: None,
+            related_learning_workspace_ids: Vec::new(),
+        }
+    }
+
+    pub fn valid(&self) -> bool {
+        !self.parent_task_ref.trim().is_empty()
+            && self.learning_workspace_id.as_ref().is_none_or(|id| !id.trim().is_empty())
+            && self.related_learning_workspace_ids.iter().all(|id| !id.trim().is_empty())
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendIdentity {

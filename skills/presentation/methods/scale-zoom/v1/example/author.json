@@ -1,0 +1,18 @@
+{
+  "title": "保留定位的尺度缩放",
+  "initial_state": {
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "semantic_state": "completed explanation steps, integer 0..3",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 3"
+  },
+  "readable_content": "从 1 m 的视野，逐级放大到 1 mm。被观察的青色线段始终长 1 mm。 上方保留 1 m 整体及观察范围，下方为放大后的局部。放大改变显示比例，不改变对象长度。 视野宽度 L=10⁻ᵠ m，q 从 0 到 3。每推进一级，放大 10 倍，标尺同步换算。",
+  "assumptions": [
+    "视野宽度 L=10⁻ᵠ m，q 从 0 到 3。每推进一级，放大 10 倍，标尺同步换算。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

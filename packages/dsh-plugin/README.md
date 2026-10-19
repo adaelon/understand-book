@@ -41,7 +41,7 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 
 ## 使用流程
 
-1. 根会话调用 `ub_build_prepare_and_confirm`，指定 `target_input`、`root_dir`、`pass2`（`enabled` 或 `disabled`），可附计划预算与 `max_parallel`（1–3，默认 1）。
+1. 根会话调用 `ub_build_prepare_and_confirm`，指定 `target_input`、`root_dir`；`pass2` 可省略，默认 `disabled`，明确选择 `enabled` 才纳入跨段关系复核。可附计划预算与 `max_parallel`（1–3，默认 1）。
 2. 完整计划显示材料类型、阶段闭包、生成/复用/排除项、预算与模型配置。明确批准后返回持久 `invocation_ref`。此调用不启动抽取 child。
 3. 调用 `ub_build_run`，只提交上述引用。使用批准时保存的并发上限，最多同时运行三个 child。
 4. 正常让出后继续调用同一引用。取消后资源清理完成，仍保留同一引用供恢复。遇到 Engine 用户边界时由根问答服务请求决定。
@@ -61,11 +61,44 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 
 ## 并发与恢复
 
+### 运营后台任务
+
+源码中的 B1 将运营后台「运营资料构建」接到同一 Build Engine。宿主启动前设置
+`UNDERSTAND_BOOK_OPERATOR_BUILD_CONFIG` 为本机 JSON 配置的绝对路径，内容为：
+
+```json
+{"rootSessionId":"运营根 Agent 的原 id","connection":{"base_url":"https://reader.example","origin":"https://reader.example","cookie":"运营登录 Cookie","csrf_token":"该登录的 CSRF token"}}
+```
+
+配置和凭据仅由运行中的运营宿主读取，不写进计划、invocation 或公开发布。根 Agent 必须已存在并具备所选模型；恢复时保持原根 Agent id 和 driverRoot。插件启用后串行领取任务，无可用根 Agent 时保留排队状态。服务和宿主需访问相同的资料及成果路径。
+
+后台先选择已有确切成果、缺失资料、平台预算与成果授权账号，点击「准备构建计划」。宿主沿原引擎准备实际计划、模型快照及复用信息，不调用抽取模型。运营者在后台检查并明确确认计划后启动；缺失资料的各 invocation 共用一个运营父任务预算与 Q3 回执，已存在的公开成果不生成模型调用。暂停会收尾当前执行，继续沿原 invocation 重读已接纳单元；提高预算须在「继续构建」中明确确认。
+
+新视频任务可在填写预算后直接点击「创建并开始构建」；已保存但未启动的任务可从详情继续启动。运营配置增加 `video`：
+
+```json
+{"codexExecutable":"E:/tools/codex.exe","publisherExecutable":"E:/UnderstandBook/publish_book.exe","publicationServiceRoot":"E:/build-data/video-staging","pythonExecutable":"E:/video-python/python.exe","whisperModelDir":"E:/models/small.en"}
+```
+
+`video` 是上方运营配置的一个字段；所有路径均为本机绝对路径。`publicationServiceRoot` 可省略，默认使用 `driverRoot/video-publications/<task_id>`。它是构建专用的暂存发布目录，不能指向正在运行的 Reader 服务目录；视频语义执行需要阶段性不可变证据，最终成果由 Reader 服务自己的导入接口接纳。FFmpeg/FFprobe 默认按现有安装规则定位，也可在 `video` 中指定 `ffmpegExecutable`、`ffprobeExecutable`。
+
+视频在已安装 Build Engine 内运行原有媒体执行链路。宿主把临时费用连接通过进程输入交给 Engine，收到进度后先保存到后台再确认推进；取消同样通过进程输入传递，等待当前执行器收尾和费用回执。进度来自实际复制字节、转写分段、解码位置和已接纳候选；阶段未知总量时不显示伪造百分比。默认生成转写、双语字幕、画面索引、图谱及原讲解结构，不生成额外 Tutor 教学材料。书籍的默认准备计划也不生成额外的正式教学对象、认知材料和教学发布，仍保留原文理解与全书结构；明确设置 `build_tutor:true` 才纳入额外教学阶段。
+
+只有原引擎返回 DONE，宿主才请求服务使用既有发布导入器接纳成果；随后后台选择本任务的确切成果、填写公共编排并发布共享工作区。费用观察仍是部分或未知，完整供应商费用缺失时持续显示待核算。原引擎遇到需要额外决定的边界时，后台显示等待决定的原因；运营者在已连接的 DSH 根会话原问答中选择后继续。换用新的根 Agent id 不会静默接管旧 invocation。
+
 容量取已确认并发、当前 owned child、宿主实时 Agent 注册表和在途创建的交集。固定宿主已验证三并发；原生 spawn 没有实时配额 API，因此按所有当前子代理占用保守扣减，返回 `agent_registry_conservative` 来源。先完成的 child 清理后立即推进 Engine，正常让出和用户边界会收尾已有 child。
 
 同一实例中的重叠继续请求返回 `build_already_running`；另一插件实例或进程遇到 Engine 保存的活动 controller 返回 `build_owner_active`。Engine 只有证明原宿主进程已退出才允许重新取得控制权；无法证明时保持阻塞。不同 invocation 的工作区竞争继续使用已有 dispatch/lease 所有权门。
 
 每次启动的有界观察保存在 Engine registry 的 `dsh-observations/<invocation_ref>/<launch_id>.json`。bootstrap 零调用、精确 open 拒绝、连接中断、运行时故障、候选回执和取消分别保存；没有调用证据时为 `null`。已提交但响应丢失时继续原引用，由 Engine 重读持久成果；未知故障不会自动变成语义重试。跨宿主接手需停止旧 owner，重新评估并确认新 invocation，已有有效产物继续复用。
+
+### 个人资料准备（B2）
+
+同一宿主也领取Reader工作区发起的个人准备任务，沿上述连接、根会话和共享目录运行。Reader支持EPUB、Markdown、文本和MP4上传；书籍先准备实际计划，用户确认百分比上限与当前额度期后才执行。原始PDF仍需既有工作台完成来源对齐。默认关闭Pass2和额外Tutor材料，完成后自动加入发起工作区；暂停、宿主恢复及切换工作区不改变任务归属。
+
+个人书籍启用`ExternalBuildCostBinding.metering: provider_calls_v1`，每次实际`llm/stream`发送前经服务端准入，结束后提交用量。Reader服务的`model-rates.json`须配置与DSH实际provider路由名、model相匹配且有效的费率；服务端冻结费率，未知用量继续待核算。该模式必须配套本轮插件与Engine，旧DSH粗粒度及Codex执行能力不会因此自动支持个人扣费。费率字段沿现有服务配置合同，本插件不提供商业默认值。
+
+个人MP4使用`personal_source_only`，配置仍沿上面的`video`字段，实际只执行原视频导入、本地Whisper和原文发布；不启动Codex语义执行。原文就绪即可在工作区播放、问答、按需取帧和原声复核。完整翻译、视觉索引、图谱和原讲解结构由运营预构建及共享成果提供。实际HTTP、计量及恢复证据见[实施记录](../../docs/个人资料准备与跨资料媒体-20261018.md)。
 
 ## 数据与生命周期
 

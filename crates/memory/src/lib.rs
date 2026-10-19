@@ -21,8 +21,11 @@ mod reading_state;
 mod review;
 pub mod learning;
 pub mod teaching;
+pub mod agent_work;
+pub mod teaching_design;
 pub mod assessment;
 pub mod learning_evidence;
+pub mod learning_records;
 
 pub use backfill::{
     HistoricalBackfillClearOutcome, HistoricalBackfillCommitOutcome, HistoricalBackfillJob,
@@ -58,7 +61,7 @@ use read_tools::ToolError;
 pub use reading_state::{BookReadingState, EngagementSignals, LegacyReaderProfileProjection};
 pub use review::{
     GlobalConsolidationJob, IntentObservation, IntentObservationCandidate, ReviewCommitOutcome,
-    ReviewErrorState, ReviewFactCandidate, ReviewJob, ReviewJobStatus, ReviewReconciliation,
+    ReviewErrorState, ReviewFactCandidate, ReviewJob, ReviewJobStatus, ReviewReconciliation, ReviewTurnOrigin,
     ReviewSessionCursor, ReviewState,
 };
 use serde::{Deserialize, Serialize};

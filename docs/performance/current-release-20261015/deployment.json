@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "started_at_utc": "2026-10-15T07:15:07.713470+00:00",
+  "finished_at_utc": "2026-10-15T07:15:29.929237+00:00",
+  "release": "/opt/understand-book/releases/current-20261015",
+  "previous_release": "/opt/understand-book/releases/tutor-question-discrimination-20261014",
+  "data_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "schema": 13,
+  "data_root_changed": false,
+  "schema_changed": false,
+  "active_or_unsaved_before_stop": 0,
+  "service_pid": 101669,
+  "guidance_revision": "tb4.v5",
+  "service_active": "active",
+  "running_executable_verified": true,
+  "guidance_present_in_executable": true,
+  "before": {
+    "presentation": {
+      "animation": true,
+      "authoring": true,
+      "plot": true,
+      "preview": true,
+      "reason": "ready"
+    },
+    "authorized_books": 11
+  },
+  "after": {
+    "presentation": {
+      "animation": true,
+      "authoring": true,
+      "plot": true,
+      "preview": true,
+      "reason": "ready"
+    },
+    "authorized_books": 11
+  },
+  "public": {
+    "presentation": {
+      "animation": true,
+      "authoring": true,
+      "plot": true,
+      "preview": true,
+      "reason": "ready"
+    },
+    "authorized_books": 11
+  },
+  "configuration_backup": "/opt/understand-book/acceptance/current-20261015/previous-configuration",
+  "model_requests": 0,
+  "frontend": "current working-tree production multi-user build; previous assets retained",
+  "fp7_acceptance": "paused-by-user; incomplete",
+  "source_state": "working-tree",
+  "source_commit": "6612932"
+}

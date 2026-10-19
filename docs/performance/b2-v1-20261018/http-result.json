@@ -1,0 +1,5608 @@
+{
+  "scenario": "personal-preparation-http",
+  "compiled_engine": "E:\\allwork\\download\\agent\\understand-book\\target\\b2-v1-20261018\\bin\\understand-book-build-x86_64-pc-windows-msvc.exe",
+  "book_task": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+  "workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+  "other_workspace_id": "01a14e0c-bce9-7661-a5e2-06b5ba9eb732",
+  "book": {
+    "allowance": {
+      "available": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "99.9363"
+      },
+      "expires_at": 1792314376,
+      "maximum": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "50"
+      },
+      "pending": {
+        "below_tenth": false,
+        "nonzero": false,
+        "value": "0"
+      },
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "remaining": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "49.9363"
+      },
+      "used": {
+        "below_tenth": true,
+        "nonzero": true,
+        "value": "0.0637"
+      }
+    },
+    "error": null,
+    "estimate": {
+      "lower": {
+        "below_tenth": false,
+        "nonzero": false,
+        "value": "0"
+      },
+      "message": "准备成本随资料长度和实际模型调用变化，按逐次用量结算，最多扣减已确认的上限。",
+      "partial": true,
+      "per_call_maximum": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "100.4096"
+      },
+      "status": "estimated",
+      "upper": {
+        "below_tenth": false,
+        "nonzero": false,
+        "value": "0"
+      }
+    },
+    "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+    "materials": [
+      {
+        "kind": "book",
+        "label": "transactions.md",
+        "plan_ready": true,
+        "progress": null,
+        "published_book_ref": {
+          "book_id": "source",
+          "publication_id": "01a14e0d-48ff-7360-8ec3-7e70dfbef3d1"
+        },
+        "state": "imported"
+      }
+    ],
+    "name": "transactions.md",
+    "pause_requested": false,
+    "revision": 21,
+    "state": "ready",
+    "task_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1"
+  },
+  "video": {
+    "allowance": {
+      "available": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "99.9363"
+      },
+      "expires_at": 1792314376,
+      "maximum": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "50"
+      },
+      "pending": {
+        "below_tenth": false,
+        "nonzero": false,
+        "value": "0"
+      },
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "remaining": {
+        "below_tenth": false,
+        "nonzero": true,
+        "value": "50"
+      },
+      "used": {
+        "below_tenth": false,
+        "nonzero": false,
+        "value": "0"
+      }
+    },
+    "error": null,
+    "estimate": {
+      "message": "本地转写和原文阅读不扣模型额度；语义预构建仍由平台提供。",
+      "status": "no_model_cost"
+    },
+    "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+    "materials": [
+      {
+        "kind": "video",
+        "label": "tensor.mp4",
+        "plan_ready": true,
+        "progress": {
+          "completed": 1,
+          "message": "视频原文已就绪，可继续原工作区学习",
+          "stage": "ready",
+          "status": "completed",
+          "total": 1,
+          "unit": "publications"
+        },
+        "published_book_ref": {
+          "book_id": "13281afd-1d76-4a7d-909a-dd80ea4dd184",
+          "publication_id": "01a14e0d-7433-7690-8d70-7146929da7db"
+        },
+        "state": "imported"
+      }
+    ],
+    "name": "tensor.mp4",
+    "pause_requested": false,
+    "revision": 14,
+    "state": "ready",
+    "task_id": "5a21bf0e-90a6-4383-811c-aefb310fbce3"
+  },
+  "budget": {
+    "confirmation": "905dc170-06db-4173-bd01-9253b39ad9d4",
+    "cost_owner": "account",
+    "debited_micro_cny": 637,
+    "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+    "max_micro_cny": 500000,
+    "pending_micro_cny": 0,
+    "planning_allowance": {
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "expires_at": 1792314376,
+      "percentages": {
+        "maximum": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "50"
+        },
+        "remaining": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "49.9363"
+        }
+      },
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7"
+    },
+    "platform_covered_micro_cny": 0,
+    "provider_cost_micro_cny": 637,
+    "remaining_micro_cny": 499363,
+    "reserved_micro_cny": 0,
+    "revision": 1,
+    "task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+    "unknown_count": 0,
+    "user_id": "A"
+  },
+  "video_budget": {
+    "confirmation": "a84bf1c7-9738-41bf-b2eb-2ade3f72052d",
+    "cost_owner": "account",
+    "debited_micro_cny": 0,
+    "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+    "max_micro_cny": 500000,
+    "pending_micro_cny": 0,
+    "planning_allowance": {
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "expires_at": 1792314376,
+      "percentages": {
+        "maximum": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "50"
+        },
+        "remaining": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "50"
+        }
+      },
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7"
+    },
+    "platform_covered_micro_cny": 0,
+    "provider_cost_micro_cny": 0,
+    "remaining_micro_cny": 500000,
+    "reserved_micro_cny": 0,
+    "revision": 0,
+    "task_ref": "5a21bf0e-90a6-4383-811c-aefb310fbce3",
+    "unknown_count": 0,
+    "user_id": "A"
+  },
+  "provider_calls": 49,
+  "charges": [
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.195"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_f5d88a3b-796a-45f1-b807-59f8b0470394",
+      "cost_owner": "account",
+      "created_at": 1792310853,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11950
+      },
+      "reserved_micro_cny": 11950,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_f5d88a3b-796a-45f1-b807-59f8b0470394",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_f5d88a3b-796a-45f1-b807-59f8b0470394",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310853,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1739"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_b2e8db37-a1af-4eb1-8798-976bc9278fbd",
+      "cost_owner": "account",
+      "created_at": 1792310853,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11739
+      },
+      "reserved_micro_cny": 11739,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_b2e8db37-a1af-4eb1-8798-976bc9278fbd",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_b2e8db37-a1af-4eb1-8798-976bc9278fbd",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310853,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0866"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_faf80b94-011a-40e4-ad07-9dca35c68e4a",
+      "cost_owner": "account",
+      "created_at": 1792310852,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10866
+      },
+      "reserved_micro_cny": 10866,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_faf80b94-011a-40e4-ad07-9dca35c68e4a",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_faf80b94-011a-40e4-ad07-9dca35c68e4a",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310852,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_84a5887c-0328-4844-80f8-7441af0f2f73",
+      "cost_owner": "account",
+      "created_at": 1792310852,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_84a5887c-0328-4844-80f8-7441af0f2f73",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_84a5887c-0328-4844-80f8-7441af0f2f73",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310852,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_69aac7d7-b96c-45a9-b493-0fa7fbed35ce",
+      "cost_owner": "account",
+      "created_at": 1792310852,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_69aac7d7-b96c-45a9-b493-0fa7fbed35ce",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_69aac7d7-b96c-45a9-b493-0fa7fbed35ce",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310852,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1327"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_0def1de4-10f5-4798-b94b-dd6db2ca6f7a",
+      "cost_owner": "account",
+      "created_at": 1792310852,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11327
+      },
+      "reserved_micro_cny": 11327,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_0def1de4-10f5-4798-b94b-dd6db2ca6f7a",
+        "execution_id": "783b3e28-719f-4d1f-84df-7672651151ad",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_02481ec83863756676f6dcfb8933eafc02125ff7786475ff128238328451bc01:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_0def1de4-10f5-4798-b94b-dd6db2ca6f7a",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310852,
+      "state": "settled",
+      "task_ref": "783b3e28-719f-4d1f-84df-7672651151ad",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1898"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_f1f4a800-f244-46f7-adc6-52c0e3a80aff",
+      "cost_owner": "account",
+      "created_at": 1792310850,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11898
+      },
+      "reserved_micro_cny": 11898,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_f1f4a800-f244-46f7-adc6-52c0e3a80aff",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_f1f4a800-f244-46f7-adc6-52c0e3a80aff",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310850,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.2102"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_b3cb4447-f029-475c-a0f3-b182d5dd4739",
+      "cost_owner": "account",
+      "created_at": 1792310850,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 12102
+      },
+      "reserved_micro_cny": 12102,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_b3cb4447-f029-475c-a0f3-b182d5dd4739",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_b3cb4447-f029-475c-a0f3-b182d5dd4739",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310850,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1489"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_bacdfe20-c3f8-4fea-b081-da45c5ea819b",
+      "cost_owner": "account",
+      "created_at": 1792310849,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11489
+      },
+      "reserved_micro_cny": 11489,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_bacdfe20-c3f8-4fea-b081-da45c5ea819b",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_bacdfe20-c3f8-4fea-b081-da45c5ea819b",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310849,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0866"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_3be5b166-b608-4421-a4a0-9e28875f2a8c",
+      "cost_owner": "account",
+      "created_at": 1792310849,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10866
+      },
+      "reserved_micro_cny": 10866,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_3be5b166-b608-4421-a4a0-9e28875f2a8c",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_3be5b166-b608-4421-a4a0-9e28875f2a8c",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310849,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_2460307e-e5cb-43b5-b210-adf730725775",
+      "cost_owner": "account",
+      "created_at": 1792310849,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_2460307e-e5cb-43b5-b210-adf730725775",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_2460307e-e5cb-43b5-b210-adf730725775",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310849,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_dbe4993e-4841-4b99-8b41-70545d4bc5a6",
+      "cost_owner": "account",
+      "created_at": 1792310848,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_dbe4993e-4841-4b99-8b41-70545d4bc5a6",
+        "execution_id": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_f94c120d1b656385d6f1d7df66bdd721b6fc08ed9cf175d88fb959bab70a5317:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_dbe4993e-4841-4b99-8b41-70545d4bc5a6",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310848,
+      "state": "settled",
+      "task_ref": "e67d0d01-820c-4272-b391-f2bc10c6320c",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1825"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_2e61bfcf-0cd2-41a0-bbaa-f206926cea11",
+      "cost_owner": "account",
+      "created_at": 1792310847,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11825
+      },
+      "reserved_micro_cny": 11825,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_2e61bfcf-0cd2-41a0-bbaa-f206926cea11",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_2e61bfcf-0cd2-41a0-bbaa-f206926cea11",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310847,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_db41a79b-cf41-49d4-bc6d-1888c7dce669",
+      "cost_owner": "account",
+      "created_at": 1792310846,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_db41a79b-cf41-49d4-bc6d-1888c7dce669",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_db41a79b-cf41-49d4-bc6d-1888c7dce669",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310846,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0135"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_8c76021a-ca19-47b3-878c-8acf9fe60364",
+      "cost_owner": "account",
+      "created_at": 1792310846,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10135
+      },
+      "reserved_micro_cny": 10135,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_8c76021a-ca19-47b3-878c-8acf9fe60364",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_8c76021a-ca19-47b3-878c-8acf9fe60364",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310846,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1147"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_3b96c39d-5a46-4775-91a6-6e43407343e1",
+      "cost_owner": "account",
+      "created_at": 1792310846,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11147
+      },
+      "reserved_micro_cny": 11147,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_3b96c39d-5a46-4775-91a6-6e43407343e1",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_3b96c39d-5a46-4775-91a6-6e43407343e1",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310846,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1556"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_03cae191-948e-4ffa-9b2b-b1ef3ca929d2",
+      "cost_owner": "account",
+      "created_at": 1792310846,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11556
+      },
+      "reserved_micro_cny": 11556,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_03cae191-948e-4ffa-9b2b-b1ef3ca929d2",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_03cae191-948e-4ffa-9b2b-b1ef3ca929d2",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310846,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_ea5423ab-e6b8-4221-99ed-4ebe95b42263",
+      "cost_owner": "account",
+      "created_at": 1792310845,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_ea5423ab-e6b8-4221-99ed-4ebe95b42263",
+        "execution_id": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_01dbd1feded8a25ccf8cc933d6c579880b8ac35923eb97cd89c9b7dd505cc04f:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_ea5423ab-e6b8-4221-99ed-4ebe95b42263",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310845,
+      "state": "settled",
+      "task_ref": "86dc6cad-1e67-4dbf-9e38-24117078b96a",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1636"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_862f96d4-df7c-429f-81f7-067397425dc5",
+      "cost_owner": "account",
+      "created_at": 1792310844,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11636
+      },
+      "reserved_micro_cny": 11636,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_862f96d4-df7c-429f-81f7-067397425dc5",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_862f96d4-df7c-429f-81f7-067397425dc5",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310844,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_d3ca85c4-7ff9-42c8-9526-df8b99e79deb",
+      "cost_owner": "account",
+      "created_at": 1792310843,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_d3ca85c4-7ff9-42c8-9526-df8b99e79deb",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_d3ca85c4-7ff9-42c8-9526-df8b99e79deb",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310843,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0135"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_cff04aa3-5f99-4cf1-bbf3-bf2d06801464",
+      "cost_owner": "account",
+      "created_at": 1792310843,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10135
+      },
+      "reserved_micro_cny": 10135,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_cff04aa3-5f99-4cf1-bbf3-bf2d06801464",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_cff04aa3-5f99-4cf1-bbf3-bf2d06801464",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310843,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1011"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_a3e838c7-981a-4459-a12f-48a3a87b4619",
+      "cost_owner": "account",
+      "created_at": 1792310843,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11011
+      },
+      "reserved_micro_cny": 11011,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_a3e838c7-981a-4459-a12f-48a3a87b4619",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_a3e838c7-981a-4459-a12f-48a3a87b4619",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310843,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.142"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_17fc06bb-d14e-4693-8f06-27f0c025a8f5",
+      "cost_owner": "account",
+      "created_at": 1792310843,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11420
+      },
+      "reserved_micro_cny": 11420,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_17fc06bb-d14e-4693-8f06-27f0c025a8f5",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_17fc06bb-d14e-4693-8f06-27f0c025a8f5",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310843,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_0ad9b190-953d-4cef-8811-e7e4e8a0fe4c",
+      "cost_owner": "account",
+      "created_at": 1792310842,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_0ad9b190-953d-4cef-8811-e7e4e8a0fe4c",
+        "execution_id": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_2e18619c4399f31b4ed178c0fdb7888f905f0af7eee5035c15bbde4ba1ecd2f3:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_0ad9b190-953d-4cef-8811-e7e4e8a0fe4c",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310843,
+      "state": "settled",
+      "task_ref": "8be6e4f0-dca9-43ed-8572-2c7d4c3dd26e",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1495"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_54d1948e-d82a-4628-859d-e44ffd0a8b87",
+      "cost_owner": "account",
+      "created_at": 1792310841,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11495
+      },
+      "reserved_micro_cny": 11495,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_54d1948e-d82a-4628-859d-e44ffd0a8b87",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_54d1948e-d82a-4628-859d-e44ffd0a8b87",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310841,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1161"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_48220704-65a7-44c3-ab28-68ba9b8ecf6b",
+      "cost_owner": "account",
+      "created_at": 1792310841,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11161
+      },
+      "reserved_micro_cny": 11161,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_48220704-65a7-44c3-ab28-68ba9b8ecf6b",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_48220704-65a7-44c3-ab28-68ba9b8ecf6b",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310841,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.9746"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_fa1bce74-4ca8-46e8-b472-78db75c69510",
+      "cost_owner": "account",
+      "created_at": 1792310840,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 9746
+      },
+      "reserved_micro_cny": 9746,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_fa1bce74-4ca8-46e8-b472-78db75c69510",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_fa1bce74-4ca8-46e8-b472-78db75c69510",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310840,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0757"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_56f409b4-d532-48b8-bf3a-9421892a9e59",
+      "cost_owner": "account",
+      "created_at": 1792310840,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10757
+      },
+      "reserved_micro_cny": 10757,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_56f409b4-d532-48b8-bf3a-9421892a9e59",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_56f409b4-d532-48b8-bf3a-9421892a9e59",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310840,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_4a69d559-5502-4849-b718-68801d7beaf1",
+      "cost_owner": "account",
+      "created_at": 1792310840,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_4a69d559-5502-4849-b718-68801d7beaf1",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_4a69d559-5502-4849-b718-68801d7beaf1",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310840,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_15f1718b-39ef-4450-ac9f-37fb9b204c32",
+      "cost_owner": "account",
+      "created_at": 1792310840,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_15f1718b-39ef-4450-ac9f-37fb9b204c32",
+        "execution_id": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_142b7f1bf437b061952be1a1965a729d74573f0ba0a24009619697d4c1ae86fa:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_15f1718b-39ef-4450-ac9f-37fb9b204c32",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310840,
+      "state": "settled",
+      "task_ref": "25836750-ada4-40c9-bdda-f30a3bb2676b",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0216"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_9f92feca-258c-4ae1-91c4-34d96a0d6073",
+      "cost_owner": "account",
+      "created_at": 1792310838,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10216
+      },
+      "reserved_micro_cny": 10216,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_9f92feca-258c-4ae1-91c4-34d96a0d6073",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_9f92feca-258c-4ae1-91c4-34d96a0d6073",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310838,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0896"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_9429e5b8-4dd8-474e-89e9-f8146c86ace7",
+      "cost_owner": "account",
+      "created_at": 1792310838,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10896
+      },
+      "reserved_micro_cny": 10896,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_9429e5b8-4dd8-474e-89e9-f8146c86ace7",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_9429e5b8-4dd8-474e-89e9-f8146c86ace7",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310838,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.0624"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_33deed6e-3d25-4a2f-9f51-89ffa87dc89a",
+      "cost_owner": "account",
+      "created_at": 1792310838,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10624
+      },
+      "reserved_micro_cny": 10624,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_33deed6e-3d25-4a2f-9f51-89ffa87dc89a",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_33deed6e-3d25-4a2f-9f51-89ffa87dc89a",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310838,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_e7584e56-01f5-45ab-8b28-48e16d0b135f",
+      "cost_owner": "account",
+      "created_at": 1792310837,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_e7584e56-01f5-45ab-8b28-48e16d0b135f",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_e7584e56-01f5-45ab-8b28-48e16d0b135f",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310837,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.9611"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_6298cd54-6c22-4274-b105-a3bcc11c52f2",
+      "cost_owner": "account",
+      "created_at": 1792310837,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 9611
+      },
+      "reserved_micro_cny": 9611,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_6298cd54-6c22-4274-b105-a3bcc11c52f2",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_6298cd54-6c22-4274-b105-a3bcc11c52f2",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310837,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8921"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_3dd8364a-32da-48d7-ad76-ec5c97c17658",
+      "cost_owner": "account",
+      "created_at": 1792310837,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8921
+      },
+      "reserved_micro_cny": 8921,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_3dd8364a-32da-48d7-ad76-ec5c97c17658",
+        "execution_id": "e9996856-05c4-479f-82d7-fd5f3d485663",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_53b5e66821fcb4fd3c27487e480fffafbb76e3c134f9a648f828e36b3bac557e:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_3dd8364a-32da-48d7-ad76-ec5c97c17658",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310837,
+      "state": "settled",
+      "task_ref": "e9996856-05c4-479f-82d7-fd5f3d485663",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.3615"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_d555f30e-0c5a-4f52-8dd9-34f347beb695",
+      "cost_owner": "account",
+      "created_at": 1792310835,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:6",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 13615
+      },
+      "reserved_micro_cny": 13615,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_d555f30e-0c5a-4f52-8dd9-34f347beb695",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:6",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_d555f30e-0c5a-4f52-8dd9-34f347beb695",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310835,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1408"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_e6c64889-15c4-4ed6-81b5-b10f014046b9",
+      "cost_owner": "account",
+      "created_at": 1792310834,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11408
+      },
+      "reserved_micro_cny": 11408,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_e6c64889-15c4-4ed6-81b5-b10f014046b9",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_e6c64889-15c4-4ed6-81b5-b10f014046b9",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310834,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.892"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_b55b673e-6887-4cec-ba23-cdbb7ce4ae9f",
+      "cost_owner": "account",
+      "created_at": 1792310834,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8920
+      },
+      "reserved_micro_cny": 8920,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_b55b673e-6887-4cec-ba23-cdbb7ce4ae9f",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_b55b673e-6887-4cec-ba23-cdbb7ce4ae9f",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310834,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.2986"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_67b86f0e-f3b7-476e-bb79-1ce17c2b2bf3",
+      "cost_owner": "account",
+      "created_at": 1792310834,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 12986
+      },
+      "reserved_micro_cny": 12986,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_67b86f0e-f3b7-476e-bb79-1ce17c2b2bf3",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_67b86f0e-f3b7-476e-bb79-1ce17c2b2bf3",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310834,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.3394"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_2c3d1136-4405-434f-b216-0e7c1331b094",
+      "cost_owner": "account",
+      "created_at": 1792310834,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 13394
+      },
+      "reserved_micro_cny": 13394,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_2c3d1136-4405-434f-b216-0e7c1331b094",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_2c3d1136-4405-434f-b216-0e7c1331b094",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310834,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.2533"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_28adb54d-316c-4893-a148-95f36f2b9cdb",
+      "cost_owner": "account",
+      "created_at": 1792310834,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 12533
+      },
+      "reserved_micro_cny": 12533,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_28adb54d-316c-4893-a148-95f36f2b9cdb",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_28adb54d-316c-4893-a148-95f36f2b9cdb",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310834,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_5184d593-06ea-4dac-a866-f1a80f76040d",
+      "cost_owner": "account",
+      "created_at": 1792310833,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_5184d593-06ea-4dac-a866-f1a80f76040d",
+        "execution_id": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_75e2586edf710570d9a51c571eb4436391c00829cbf11d9a6a4250ba1cfc6736:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_5184d593-06ea-4dac-a866-f1a80f76040d",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310833,
+      "state": "settled",
+      "task_ref": "d04f9b01-5b31-4560-aa58-dca5bbbbedf5",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1675"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_906d0c5f-d612-45f8-bda0-4c97747c4b3d",
+      "cost_owner": "account",
+      "created_at": 1792310829,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:5",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11675
+      },
+      "reserved_micro_cny": 11675,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_906d0c5f-d612-45f8-bda0-4c97747c4b3d",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:5",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_906d0c5f-d612-45f8-bda0-4c97747c4b3d",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": false,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310830,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.1034"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_fa256839-e0f8-40ae-95e1-585cb25a04b7",
+      "cost_owner": "account",
+      "created_at": 1792310828,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:3",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11034
+      },
+      "reserved_micro_cny": 11034,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_fa256839-e0f8-40ae-95e1-585cb25a04b7",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:3",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_fa256839-e0f8-40ae-95e1-585cb25a04b7",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310828,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.143"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_bb92dc44-ed71-47ca-beb9-8c8ab786d1d3",
+      "cost_owner": "account",
+      "created_at": 1792310828,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:4",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 11430
+      },
+      "reserved_micro_cny": 11430,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_bb92dc44-ed71-47ca-beb9-8c8ab786d1d3",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:4",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_bb92dc44-ed71-47ca-beb9-8c8ab786d1d3",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310828,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "1.062"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_9f954417-dcfd-4053-abe9-70644ad872a2",
+      "cost_owner": "account",
+      "created_at": 1792310828,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:2",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 10620
+      },
+      "reserved_micro_cny": 10620,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_9f954417-dcfd-4053-abe9-70644ad872a2",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:2",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_9f954417-dcfd-4053-abe9-70644ad872a2",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310828,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.892"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_9002c647-bff6-4951-8488-90863955d4cd",
+      "cost_owner": "account",
+      "created_at": 1792310828,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:1",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8920
+      },
+      "reserved_micro_cny": 8920,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_9002c647-bff6-4951-8488-90863955d4cd",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:1",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_9002c647-bff6-4951-8488-90863955d4cd",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310828,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    },
+    {
+      "account_debit_micro_cny": 13,
+      "allowance_basis": {
+        "basis_micro_cny": 1000000,
+        "version": "b2-http-basis"
+      },
+      "allowance_percentages": {
+        "debited": {
+          "below_tenth": true,
+          "nonzero": true,
+          "value": "0.0013"
+        },
+        "reserved": {
+          "below_tenth": false,
+          "nonzero": true,
+          "value": "0.8419"
+        }
+      },
+      "attempt": 1,
+      "call_id": "ext_b39f3dd7-d3e5-4166-9922-901c6530d3c0",
+      "cost_owner": "account",
+      "created_at": 1792310827,
+      "evidence_kind": "external_confirmed",
+      "learning_workspace_id": "01a14e0c-bce1-74e1-bbd1-23e682d409de",
+      "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:0",
+      "model": "scripted",
+      "needs_reconciliation": false,
+      "parent_task_ref": "5584ad59-4837-403d-8986-8aa3f0b0c4c1",
+      "period_id": "01a14e0c-1452-7e72-8c39-b58788805fa7",
+      "platform_covered_micro_cny": 0,
+      "provider_cost_micro_cny": 13,
+      "provider_cost_status": "confirmed",
+      "provider_usage": {
+        "cache_creation_input_tokens": 0,
+        "cached_input_tokens": 4,
+        "input_tokens": 14,
+        "output_tokens": 2,
+        "reasoning_output_tokens": null,
+        "total_tokens": 16
+      },
+      "purpose": "external_build",
+      "rate_snapshot": {
+        "cached_input_micro_cny_per_million": 100000,
+        "expires_at": 9223372036854776000,
+        "image_meter": "deep_seek1024",
+        "input_micro_cny_per_million": 1000000,
+        "model": "scripted",
+        "output_micro_cny_per_million": 1000000,
+        "provider": "probe",
+        "source": {
+          "checked_on": "2026-10-08",
+          "cny_conversion": "1",
+          "currency": "CNY",
+          "official_url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "original_prices": "fixture only"
+        },
+        "starts_at": 0,
+        "usage_contract": "deep_seek",
+        "version": "fixture"
+      },
+      "related_learning_workspace_ids": [],
+      "reservation_estimate": {
+        "budget_enforced": true,
+        "receipt_capability": "complete",
+        "reserved_micro_cny": 8419
+      },
+      "reserved_micro_cny": 8419,
+      "revision": 1,
+      "run_ref": null,
+      "send_identity": {
+        "attempt": 1,
+        "call_id": "ext_b39f3dd7-d3e5-4166-9922-901c6530d3c0",
+        "execution_id": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+        "external": true,
+        "granularity": "calls",
+        "logical_call_id": "5584ad59-4837-403d-8986-8aa3f0b0c4c1:abdispatchslot1_3b863585a94a6a86fdecbc2f0903bfcbca4a6d384c98a095c9636249f2661c58:call:0",
+        "model": "scripted",
+        "provider": "probe"
+      },
+      "send_outcome": {
+        "call_id": "ext_b39f3dd7-d3e5-4166-9922-901c6530d3c0",
+        "evidence": {
+          "billing_granularity": "calls",
+          "rate_version": "fixture",
+          "raw_usage": {
+            "cacheReadTokens": 4,
+            "cacheWriteTokens": 0,
+            "inputTokens": 10,
+            "outputTokens": 2,
+            "totalTokens": 16
+          },
+          "source": "provider_calls_v1"
+        },
+        "provider_cost_micro_cny": 13,
+        "status": "confirmed",
+        "succeeded": true,
+        "usage": {
+          "cache_creation_input_tokens": 0,
+          "cached_input_tokens": 4,
+          "input_tokens": 14,
+          "output_tokens": 2,
+          "reasoning_output_tokens": null,
+          "total_tokens": 16
+        }
+      },
+      "settled_at": 1792310827,
+      "state": "settled",
+      "task_ref": "4c5a9b44-7864-4836-824c-5d136329ad8d",
+      "user_id": "A"
+    }
+  ],
+  "pass1_reused": true,
+  "transcript_segments": 2,
+  "paid_provider": false
+}

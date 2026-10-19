@@ -1,0 +1,281 @@
+{
+  "kind": "fixed_transcript_cache_probe",
+  "experiment": "20261015T152934Z-90bb201b-a236-4989-854b-e2da96c7b88f",
+  "sample_description": "Controlled presentation activation and stable-tool phase sequence, baseline versus CC1/CC2; scripted transcript without provider reasoning, thinking disabled, max_tokens=1",
+  "protocol": "native",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "model": "deepseek-v4-flash",
+  "selected_indexes": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "planned_calls": 8,
+  "maximum_calls": 8,
+  "output_token_cap": 1,
+  "maximum_request_bytes": 1000000,
+  "delay_seconds": 2,
+  "request_adjustments": [
+    "unique leading system marker per arm",
+    "configured provider model",
+    "max_tokens output cap",
+    "stream=true and include_usage=true",
+    "thinking disabled for scripted transcript without provider reasoning continuation"
+  ],
+  "limitations": [
+    "Fixed-transcript cache probe: model outputs are not used as subsequent inputs; this is not an end-to-end quality test.",
+    "Output is capped for measurement; truncated output is expected and does not assess task completion.",
+    "A unique leading system marker per arm separates its text prefix; the provider controls cache placement, persistence and eviction.",
+    "Offline UTF-8 bytes and common message prefixes are not tokenizer counts or provider cache block positions.",
+    "A short sequence measures these selected requests only; it does not establish an application-wide hit rate or cost reduction."
+  ],
+  "results": [
+    {
+      "ordinal": 1,
+      "arm": "baseline",
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\baseline-requests\\native-00.json",
+      "usage": {
+        "prompt_tokens": 5834,
+        "completion_tokens": 1,
+        "total_tokens": 5835,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 5834
+      },
+      "response_id": "5823a842-cdaf-4892-b92e-ec4a890cc682",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 5834,
+        "cached_input_tokens": 0,
+        "output_tokens": 1
+      },
+      "duration_ms": 781
+    },
+    {
+      "ordinal": 2,
+      "arm": "baseline",
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\baseline-requests\\native-01.json",
+      "usage": {
+        "prompt_tokens": 13025,
+        "completion_tokens": 1,
+        "total_tokens": 13026,
+        "prompt_tokens_details": {
+          "cached_tokens": 768
+        },
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 12257
+      },
+      "response_id": "22902447-aebc-42ed-b2a0-2b487bd73214",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 13025,
+        "cached_input_tokens": 768,
+        "output_tokens": 1
+      },
+      "duration_ms": 1145
+    },
+    {
+      "ordinal": 3,
+      "arm": "baseline",
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\baseline-requests\\native-02.json",
+      "usage": {
+        "prompt_tokens": 14482,
+        "completion_tokens": 1,
+        "total_tokens": 14483,
+        "prompt_tokens_details": {
+          "cached_tokens": 12928
+        },
+        "prompt_cache_hit_tokens": 12928,
+        "prompt_cache_miss_tokens": 1554
+      },
+      "response_id": "736d9b89-c914-44c4-90ba-fceb13816d27",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 14482,
+        "cached_input_tokens": 12928,
+        "output_tokens": 1
+      },
+      "duration_ms": 665
+    },
+    {
+      "ordinal": 4,
+      "arm": "baseline",
+      "index": 5,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\baseline-requests\\native-05.json",
+      "usage": {
+        "prompt_tokens": 17032,
+        "completion_tokens": 1,
+        "total_tokens": 17033,
+        "prompt_tokens_details": {
+          "cached_tokens": 14464
+        },
+        "prompt_cache_hit_tokens": 14464,
+        "prompt_cache_miss_tokens": 2568
+      },
+      "response_id": "52987137-04f5-405a-8d8a-e64d03bddbd4",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 17032,
+        "cached_input_tokens": 14464,
+        "output_tokens": 1
+      },
+      "duration_ms": 613
+    },
+    {
+      "ordinal": 5,
+      "arm": "candidate",
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\candidate-requests\\native-00.json",
+      "usage": {
+        "prompt_tokens": 6073,
+        "completion_tokens": 1,
+        "total_tokens": 6074,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 6073
+      },
+      "response_id": "2a4a390a-b774-4c2f-95fa-9350840027cf",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 6073,
+        "cached_input_tokens": 0,
+        "output_tokens": 1
+      },
+      "duration_ms": 580
+    },
+    {
+      "ordinal": 6,
+      "arm": "candidate",
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\candidate-requests\\native-01.json",
+      "usage": {
+        "prompt_tokens": 13528,
+        "completion_tokens": 1,
+        "total_tokens": 13529,
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        },
+        "prompt_cache_hit_tokens": 128,
+        "prompt_cache_miss_tokens": 13400
+      },
+      "response_id": "68619412-2508-415e-b14c-1cb2dbfa7164",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 13528,
+        "cached_input_tokens": 128,
+        "output_tokens": 1
+      },
+      "duration_ms": 1013
+    },
+    {
+      "ordinal": 7,
+      "arm": "candidate",
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\candidate-requests\\native-02.json",
+      "usage": {
+        "prompt_tokens": 15212,
+        "completion_tokens": 1,
+        "total_tokens": 15213,
+        "prompt_tokens_details": {
+          "cached_tokens": 13440
+        },
+        "prompt_cache_hit_tokens": 13440,
+        "prompt_cache_miss_tokens": 1772
+      },
+      "response_id": "fe43bd4d-297f-4010-9059-e3f34963f1b2",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 15212,
+        "cached_input_tokens": 13440,
+        "output_tokens": 1
+      },
+      "duration_ms": 804
+    },
+    {
+      "ordinal": 8,
+      "arm": "candidate",
+      "index": 5,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\context-cache-cc-20261015\\candidate-requests\\native-05.json",
+      "usage": {
+        "prompt_tokens": 17400,
+        "completion_tokens": 1,
+        "total_tokens": 17401,
+        "prompt_tokens_details": {
+          "cached_tokens": 15104
+        },
+        "prompt_cache_hit_tokens": 15104,
+        "prompt_cache_miss_tokens": 2296
+      },
+      "response_id": "14c40323-36f7-429f-9141-7468f6fa0e22",
+      "model": "deepseek-flash",
+      "finish_reasons": [
+        "length"
+      ],
+      "measured_usage": {
+        "input_tokens": 17400,
+        "cached_input_tokens": 15104,
+        "output_tokens": 1
+      },
+      "duration_ms": 717
+    }
+  ],
+  "stop_reason": null,
+  "totals": {
+    "baseline": {
+      "calls_with_usage": 4,
+      "input_tokens": 50373,
+      "cached_input_tokens": 28160,
+      "output_tokens": 4,
+      "uncached_input_tokens": 22213,
+      "duration_ms": 3204,
+      "cache_hit_rate": 0.5590296388938518
+    },
+    "candidate": {
+      "calls_with_usage": 4,
+      "input_tokens": 52213,
+      "cached_input_tokens": 28672,
+      "output_tokens": 4,
+      "uncached_input_tokens": 23541,
+      "duration_ms": 3114,
+      "cache_hit_rate": 0.5491352728247755
+    }
+  },
+  "finished_utc": "2026-10-15T15:29:54.777596+00:00",
+  "initial_attempt": {
+    "successful_calls": 1,
+    "input_tokens": 5861,
+    "cached_input_tokens": 0,
+    "output_tokens": 1,
+    "http_400_calls": 2,
+    "reason": "Scripted assistant tool-call messages have no reasoning_content; provider rejected thinking-mode replay. The second HTTP400 was an explicit diagnostic call to read its error. Both arms below explicitly disable thinking."
+  }
+}

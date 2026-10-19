@@ -8,6 +8,8 @@ export interface AutomaticBuildExecutorInputManifestV4 extends Omit<AutomaticBui
   version: "automatic_build_executor_input_manifest.v4";
   execution_profile: BuildExecutionProfileSelectionV1;
   transport_profile: ExecutorTransportProfileV3;
+  // This published DSH revision is text-only; its exact decoder rejects media fields.
+  media_input?: never;
 }
 
 function exactObject(value: unknown, keys: string[]): Record<string, unknown> {

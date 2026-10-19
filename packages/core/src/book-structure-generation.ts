@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { renderStructureOrganizationInput, acceptStructureOrganizationAction, type StructureOrganizationInput, type StructureOrganizationAcceptance } from "./book-structure-organization";
+import { renderStructureOrganizationInput, acceptStructureOrganizationAction, applyStructureOrganizationAction, type StructureOrganizationInput, type StructureOrganizationAcceptance, type StructureOrganizationState } from "./book-structure-organization";
 import { readAutomaticBuildTaskStage } from "./build-orchestrator";
 import { createHash } from "node:crypto";
 import { relocateGenerationTask } from "./semantic-artifact";
@@ -111,16 +111,6 @@ const KEY_STOP_TYPES = new Set([
   "warning",
   "summary",
 ]);
-
-function stableJson(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return "[" + value.map(stableJson).join(",") + "]";
-  const record = value as Record<string, unknown>;
-  return "{" + Object.keys(record)
-    .sort()
-    .map((key) => JSON.stringify(key) + ":" + stableJson(record[key]))
-    .join(",") + "}";
-}
 
 function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
@@ -279,7 +269,9 @@ function validateBookStructureGenerationTask(
     output_role: value.output_role,
   });
   if (!sameTarget(canonical.target_ref, target.target_ref)
-    || stableJson(canonical) !== stableJson(value)) {
+    // Canonicalization retains the exact input object. Structural comparison
+    // checks normalized headers without serializing the whole book twice.
+    || !isDeepStrictEqual(canonical, value)) {
     throw new Error("BookStructure generation task identity is invalid");
   }
   return canonical;
@@ -811,10 +803,7 @@ function validateStoredPayload(
   payload: unknown,
 ): BookStructureGenerationPayloadV1 {
   if (task.output_role === "organization_action") {
-    const action = recordValue(payload, "BookStructure action");
-    exactKeys(action, ["version", "accepted_action"]);
-    if (action.version !== "book_structure_action.v1") throw new Error("unsupported BookStructure action");
-    return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, action.accepted_action);
+    return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, storedOrganizationAction(payload));
   }
   if (task.output_role === "relation_selection") return validateBookStructureRelationSelection(payload, task.input as BookStructureRelationSelectionInput);
   if (task.output_role === "relation_delta") return validateBookStructureRelationDelta(payload, task.input as BookStructureRelationInput);
@@ -876,10 +865,17 @@ export function writeBookStructureGenerationCandidate(input: {
   return envelope;
 }
 
-export function readBookStructureGenerationArtifact(
+function storedOrganizationAction(payload: unknown): unknown {
+  const action = recordValue(payload, "BookStructure action");
+  exactKeys(action, ["version", "accepted_action"]);
+  if (action.version !== "book_structure_action.v1") throw new Error("unsupported BookStructure action");
+  return action.accepted_action;
+}
+
+function readBookStructureGenerationEnvelope(
   target: AutomaticBuildTarget,
   taskValue: BookStructureGenerationTaskV1,
-): SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> | undefined {
+): { task: BookStructureGenerationTaskV1; envelope: SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> } | undefined {
   const task = validateBookStructureGenerationTask(target, taskValue);
   const file = automaticBuildGenerationArtifactPath(
     target,
@@ -903,8 +899,28 @@ export function readBookStructureGenerationArtifact(
   if (inspected.format !== "v3" || !inspected.policy_fresh) {
     throw new Error("BookStructure generation artifact identity is stale");
   }
-  const payload = validateStoredPayload(task, inspected.payload);
-  return { ...(value as SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1>), payload };
+  return { task, envelope: value as SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> };
+}
+
+export function readBookStructureGenerationArtifact(
+  target: AutomaticBuildTarget,
+  taskValue: BookStructureGenerationTaskV1,
+): SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> | undefined {
+  const read = readBookStructureGenerationEnvelope(target, taskValue);
+  if (!read) return undefined;
+  return { ...read.envelope, payload: validateStoredPayload(read.task, read.envelope.payload) };
+}
+
+/** Applying an organization action validates it and produces the next state.
+ * The router consumes that state instead of validating and then applying twice. */
+export function readBookStructureOrganizationState(
+  target: AutomaticBuildTarget,
+  taskValue: BookStructureGenerationTaskV1,
+): StructureOrganizationState | undefined {
+  if (taskValue.output_role !== "organization_action") throw new Error("BookStructure organization task required");
+  const read = readBookStructureGenerationEnvelope(target, taskValue);
+  return read && applyStructureOrganizationAction(read.task.input as StructureOrganizationInput,
+    storedOrganizationAction(read.envelope.payload));
 }
 
 /** Reuse current tasks supplied by the router; historical task files alone are not freshness evidence. */

@@ -139,6 +139,7 @@ fn ex11_animation_render_version_read_reuse() {
         .unwrap();
     app.with_app(|s| {
         let outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("motion".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {

@@ -1,0 +1,11 @@
+{
+  "workspace": "E:\\allwork\\download\\agent\\understand-book\\target\\video-integration-20261018\\compiled-video-workspace",
+  "status": "passed",
+  "chunks": 1,
+  "checks": [
+    "compiled_import_interruption_and_resume",
+    "embedded_python_actual_short_audio",
+    "completed_resume_without_dependencies"
+  ],
+  "source_text": "Right?\n\nSo even if you have, let's say, try to construct a 1e minus 8 tensor, then that is actually just 0.\n\n"
+}

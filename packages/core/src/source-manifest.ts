@@ -1,4 +1,7 @@
 export type CanonicalSourceKind = "markdown" | "epub";
+// Video contracts are additive. Import/publication wiring is implemented by VI2/VI3.
+export { validateVideoSourceManifest as buildVideoSourceManifest } from "./video-contract";
+export type { VideoSourceManifest } from "./generated/VideoSourceManifest";
 export type PdfCapabilityStatus = "unavailable" | "available" | "degraded" | "stale" | "failed";
 export type PdfCapabilityName =
   | "view_pdf"

@@ -39,6 +39,29 @@ fn guidance_count(plan: &AgentRequestPlan) -> usize {
         .count()
 }
 
+fn active_guidance_assets(plan: &AgentRequestPlan) -> Vec<String> {
+    let Some(manifest) = plan.ordered_messages().into_iter()
+        .filter_map(|message| message.content)
+        .filter(|content| content.starts_with("sampling_guidance.v1\n"))
+        .last()
+    else { return Vec::new(); };
+    let assets: Value = serde_json::from_str(manifest.lines()
+        .find_map(|line| line.strip_prefix("active_assets="))
+        .expect("selected guidance must publish its active assets")).unwrap();
+    assets.as_array().unwrap().iter()
+        .map(|asset| asset["asset_id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+fn active_definition_contains(plan: &AgentRequestPlan, asset: &str, text: &str) -> bool {
+    active_guidance_assets(plan).iter().any(|name| name == asset)
+        && plan.ordered_messages().into_iter().rev()
+            .filter_map(|message| message.content)
+            .filter(|content| content.starts_with("sampling_guidance.v1\n"))
+            .find(|content| content.contains(&format!("\nasset={asset}\n")))
+            .is_some_and(|content| content.contains(text))
+}
+
 #[test]
 fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
     let b = book();
@@ -116,7 +139,7 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
         for asset in plans[index]
             .instruction_assets
             .iter()
-            .filter(|a| a.asset_id.contains("presentation"))
+            .filter(|a| a.asset_id.contains("presentation") && a.asset_id != "resident-agent.presentation.methods")
         {
             assert_eq!(asset.revision, crate::agent_prompt::presentation::REVISION);
         }
@@ -143,26 +166,12 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
     assert!(review.contains("观察关系真正发生的位置"));
     assert!(review.contains("修改后复查当前候选"));
     assert_eq!(guidance_count(&plans[4]), guidance_count(&plans[5]));
-    let last = plans[7]
-        .ordered_messages()
-        .into_iter()
-        .filter_map(|m| m.content)
-        .filter(|s| s.starts_with("sampling_guidance.v1\n"))
-        .last()
-        .unwrap();
-    assert!(!last.contains("requestVideoFrameCallback"));
-    assert!(!last.contains("Continuous scene contract"));
+    let last = active_guidance_assets(&plans[7]);
+    assert!(!last.iter().any(|asset| asset.starts_with("resident-agent.presentation.reference.")));
     let visual = include_str!("../../../skills/presentation/phases/local.md").trim();
     for index in [2, 3, 6] {
-        let selected = plans[index]
-            .ordered_messages()
-            .into_iter()
-            .filter_map(|m| m.content)
-            .filter(|s| s.starts_with("sampling_guidance.v1\n"))
-            .last()
-            .unwrap();
         assert!(
-            selected.contains(visual),
+            active_definition_contains(&plans[index], "resident-agent.presentation.phase.local", visual),
             "local methods missing at sampling {index}"
         );
         for wire in [
@@ -177,15 +186,9 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
         }
     }
     for index in [1, 4, 7] {
-        let selected = plans[index]
-            .ordered_messages()
-            .into_iter()
-            .filter_map(|m| m.content)
-            .filter(|s| s.starts_with("sampling_guidance.v1\n"))
-            .last()
-            .unwrap();
         assert!(
-            !selected.contains("对象对应不清楚时"),
+            !active_guidance_assets(&plans[index]).iter()
+                .any(|asset| asset == "resident-agent.presentation.phase.local"),
             "local methods leaked at sampling {index}"
         );
     }
@@ -194,9 +197,7 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
     assert!(manim.starts_with(include_str!("../../../docs/performance/presentation-critical-moments-ex14/baseline/source/skills/presentation/references/manim.md").trim()));
     assert!(manim.contains("limited initial screening"));
     for (index, plan) in plans.iter().enumerate() {
-        let selected = plan.ordered_messages().into_iter().filter_map(|m| m.content)
-            .filter(|s| s.starts_with("sampling_guidance.v1\n")).last().unwrap_or_default();
-        assert_eq!(selected.contains(manim), index == 6);
+        assert_eq!(active_definition_contains(plan, "resident-agent.presentation.reference.manim", manim), index == 6);
         for wire in [crate::native_chat_request_projection("ex14-controlled", plan).0,
                      crate::react_chat_request_projection("ex14-controlled", plan)] {
             let contents: Vec<_> = wire["messages"].as_array().unwrap().iter()
@@ -232,9 +233,8 @@ fn ex14_manim_review_guidance_is_selected_once_and_survives_compaction() {
     }
     assert_eq!(guidance_count(&plans[2]), guidance_count(&plans[3]));
     phase(&plans[4], "review", &[]);
-    let selected = plans[4].ordered_messages().into_iter().filter_map(|m| m.content)
-        .filter(|s| s.starts_with("sampling_guidance.v1\n")).last().unwrap();
-    assert!(!selected.contains("limited initial screening"));
+    assert!(!active_guidance_assets(&plans[4]).iter()
+        .any(|asset| asset == "resident-agent.presentation.reference.manim"));
     drop(plans);
     check_framework_survives_mid_turn_compaction("review", json!(["manim"]));
 }

@@ -46,7 +46,7 @@ test('actual media frames, paused recovery and follow-up across Reader viewports
     expect(restored.time).toBeCloseTo(1.5,2);expect(restored.paused).toBe(true);
     expect(restored.state.active_demo).toBe('b');
     expect(await frame.locator('#b').evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeCloseTo(1,2);
-    await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('Explain this paused frame');
+    await page.getByRole('textbox',{name:'针对当前演示追问'}).fill('Explain this paused frame');
     await page.getByRole('button',{name:'发送追问',exact:true}).click();
     await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
     const requests=await page.request.get('http://127.0.0.1:4175/requests').then(r=>r.json());

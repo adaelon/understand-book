@@ -1194,7 +1194,7 @@ mod tests {
         }
         let final_plan =
             AgentRequestPlan::for_agent_turn_with_modules(profile, &messages, &tools(), &modules);
-        let outcome = OuterOutcome {
+        let outcome = OuterOutcome { teaching_delivery_move_refs: Vec::new(),
             answer: Some("PRIVATE ANSWER BODY".into()),
             answer_view: None,
             incomplete: false,

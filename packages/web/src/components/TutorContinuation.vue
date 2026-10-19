@@ -42,7 +42,7 @@ async function load() {
     emit('available', !!view.value);
     await nextTick();
     root.value?.querySelectorAll('[data-option-id]').forEach(node => observer?.observe(node));
-  } catch (failure) { if (current === generation) error.value = `建议读取未完成：${String(failure)}`; }
+  } catch (failure) { if (current === generation) error.value = `建议读取未完成：${failure instanceof Error ? failure.message : String(failure)}`; }
   finally { if (current === generation) loading.value = false; }
 }
 async function writeDisplayed() {
@@ -77,7 +77,7 @@ async function choose(optionId: string) {
     if (current !== generation || props.busy || !props.enabled || props.head !== original.expected_chat_head) return;
     emit('choose', original, optionId, receipt);
     await nextTick();
-  } catch (failure) { error.value = `现场未保存，选择未发送：${String(failure)}`; }
+  } catch (failure) { error.value = `演示状态未保存，选择未发送：${failure instanceof Error ? failure.message : String(failure)}`; }
   finally { choosing.value = false; }
 }
 async function retry() { error.value = ''; await writeDisplayed(); await load(); }

@@ -185,12 +185,14 @@ impl AdminStore {
         let today_start = (now + 28800).div_euclid(86400) * 86400 - 28800;
         let today = summary(&tx, owner, today_start, today_start + 86400)?;
         let selected = summary(&tx, owner, range.start, range.end)?;
-        let grouping = "user_id,CASE WHEN run_ref IS NOT NULL THEN 'run' ELSE 'task' END,coalesce(run_ref,task_ref)";
+        let grouping = "user_id,CASE WHEN cost_owner='platform' THEN 'operator_task' WHEN run_ref IS NOT NULL THEN 'run' ELSE 'task' END,coalesce(run_ref,task_ref)";
         let mut stmt = tx.prepare(&format!("SELECT {grouping},{METRICS} FROM model_call_charges WHERE {FILTER} GROUP BY {grouping} ORDER BY confirmed_cost_micro_cny DESC,account_debit_micro_cny DESC,user_id,2,3 LIMIT ?4 OFFSET ?5")).map_err(api_storage)?;
         let items = stmt
             .query_map(params![owner, range.start, range.end, limit, offset], |r| {
                 let mut value = metrics(r, 3)?;
-                value["user_id"] = json!(r.get::<_, String>(0)?);
+                let owner = r.get::<_, Option<String>>(0)?;
+                value["cost_owner"] = json!(if owner.is_some() { "account" } else { "platform" });
+                value["user_id"] = json!(owner);
                 value["reference_kind"] = json!(r.get::<_, String>(1)?);
                 value["reference"] = json!(r.get::<_, String>(2)?);
                 Ok(value)

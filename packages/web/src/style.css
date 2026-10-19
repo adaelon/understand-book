@@ -1,5 +1,6 @@
 @import './brand.css';
 @import './reader-typography.css';
+@import './video-workspace.css';
 
 :root {
   --motion-fast: 120ms;
@@ -1702,6 +1703,11 @@ input:focus {
   .workspace-shell[data-foreground="assistant"]:has(.right-rail.conversation-mobile) > :is(.workspace-mobile-top, .workspace-mobile-nav, .workspace-reader-surface-switch) { display: none; }
 }
 .workspace-mobile-nav .workspace-more-items button { max-width: none; text-align: left; }
+.workspace-shell[data-focus-reading="true"] {
+  --canvas-parchment: #fff;
+  --reader-canvas: #fff;
+  background: #fff;
+}
 .workspace-shell[data-focus-reading="true"] .workspace-grid {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "main";

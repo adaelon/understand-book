@@ -13,6 +13,14 @@ use std::sync::{
 
 #[path = "cache_observation_tests.rs"]
 mod cache_observation_tests;
+#[path = "w4_workspace_goal_tests.rs"]
+mod w4_workspace_goal_tests;
+#[path = "w5_browser_host.rs"]
+mod w5_browser_host;
+#[path = "w6_learning_records_tests.rs"]
+mod w6_learning_records_tests;
+#[path = "e1_workspace_integration_tests.rs"]
+mod e1_workspace_integration_tests;
 
 #[derive(Clone, Default)]
 struct Probe {
@@ -22,6 +30,7 @@ struct Probe {
     note: bool,
     finish_note: bool,
     tokens_per_call: u32,
+    primary_quote: Option<String>,
 }
 impl ModelAdapter for Probe {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
@@ -36,6 +45,33 @@ impl ModelAdapter for Probe {
             .lock()
             .unwrap()
             .push(request.ordered_messages());
+        if let Some(quote) = &self.primary_quote {
+            let result = |id: &str| {
+                request.ordered_messages().iter().rev().find(|m|m.tool_call_id.as_deref() == Some(id))
+                    .and_then(|m|m.content.as_deref()).and_then(|s|serde_json::from_str::<Value>(s).ok())
+                    .map(|value|value.get("model_body").cloned().unwrap_or(value)).unwrap_or(Value::Null)
+            };
+            let call = match n {
+                0 => Some(("w2-locate", "book.search_text", json!({"query":quote,"page_size":1}))),
+                1 => {
+                    let located = result("w2-locate");
+                    let lid = located["occurrences"][0]["start_lid"].as_str()
+                        .unwrap_or_else(||panic!("lexical search must return a real locator: {located}"));
+                    assert_eq!(lid, "1.1");
+                    Some(("w2-read", "book.text", json!({"lid":lid})))
+                },
+                2 => Some(("w2-present", "source.present", json!({"quote":quote}))),
+                _ => None,
+            };
+            if let Some((id,name,arguments)) = call {
+                return Ok(AssistantTurn { provider_continuation:None,text:None,
+                    tool_calls:vec![runtime::ToolCall { id:id.into(),name:name.into(),arguments:arguments.to_string() }],usage_total_tokens:Some(1) });
+            }
+            let source = result("w2-present");
+            let id = source["source_ref_id"].as_str().unwrap_or_else(|| panic!("source.present must return a source: {source}; tool results: {}",
+                json!(request.ordered_messages().iter().filter(|m|m.role == runtime::Role::Tool).collect::<Vec<_>>())));
+            return Ok(AssistantTurn { provider_continuation:None,text:Some(format!("这本书中的原文说明了这一点。[[source:{id}]]")),tool_calls:vec![],usage_total_tokens:Some(1) });
+        }
         if self.note && n == 0 {
             return Ok(AssistantTurn {
                 provider_continuation: None,
@@ -98,6 +134,109 @@ fn setup() -> (Fixture, Value, Value, Probe) {
     input["client_request_id"] = json!("key");
     input["message"] = json!("你好");
     (f, w, input, probe)
+}
+
+#[test]
+fn w2_workspace_chat_crosses_books_and_reopens_with_original_turn_scope() {
+    let f = Fixture::new();
+    let probe = Probe::default();
+    configure(&f, &probe);
+    let a = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"学习深度学习"},"members":[f.x,f.y]}));
+    let b = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"期末考试冲刺"},"members":[f.x]}));
+    let a_id = a["learning_workspace_id"].as_str().unwrap().to_owned();
+    let b_id = b["learning_workspace_id"].as_str().unwrap().to_owned();
+    let w = f.ok(&f.a,"POST","/api/workspaces",json!({"published_book_ref":f.x,"attachment_id":"page","learning_workspace_id":a_id}));
+    let w = f.action(&f.a,&w,"page","chat/new",json!({}));
+    let chat = w["selected_chat"].clone();
+    let mut input = Fixture::stamp(&w,"page");
+    input["session_id"] = chat.clone(); input["client_request_id"] = json!("w2-first"); input["message"] = json!("你好");
+    assert_eq!(admit(&f,&w,&input).0,202);
+    let w = f.action(&f.a,&w,"page","book/open",json!({"published_book_ref":f.y}));
+    assert_eq!(w["selected_chat"],chat);
+    let w = f.action(&f.a,&w,"page","chat/new",json!({}));
+    let alternate_chat = w["selected_chat"].clone();
+    let w = f.action(&f.a,&w,"page","chat/select",json!({"session_id":chat}));
+    let w = f.action(&f.a,&w,"page","book/open",json!({"published_book_ref":f.x,"learning_workspace_id":b_id}));
+    let w = f.action(&f.a,&w,"page","chat/new",json!({}));
+    let b_chat = w["selected_chat"].clone();
+    assert_ne!(chat,b_chat);
+    f.access.runs.run_one(&f.access).unwrap();
+    assert_eq!(f.get(&f.a,&w)["selected_chat"],b_chat);
+    let w = f.action(&f.a,&w,"page","book/open",json!({"published_book_ref":f.y,"learning_workspace_id":a_id}));
+    assert_eq!(w["selected_chat"],chat);
+    let quote = f.access.library.lock().unwrap().load("A",&f.y).unwrap().book.text("1.1",None).unwrap();
+    configure(&f,&Probe { primary_quote:Some(quote.clone()), ..Default::default() });
+    let mut input = Fixture::stamp(&w,"page");
+    input["session_id"] = chat.clone(); input["client_request_id"] = json!("w2-second"); input["message"] = json!("接着学习这本书");
+    let (status, second) = admit(&f,&w,&input);
+    assert_eq!(status,202);
+    let account = context(&f,&f.a);
+    let turn = second["turn_id"].as_str().unwrap();
+    let stream = f.access.runs.stream(&account,turn).unwrap();
+    let permit = f.access.observation(&account,turn).unwrap();
+    assert_eq!(stream.snapshot().descriptor.book_id,f.y.book_id);
+    assert!(permit.allows(&stream.snapshot().descriptor), "cross-book chat observation must bind the turn's publication, not the chat's first book");
+    drop(permit);
+    drop(account);
+    f.access.runs.run_one(&f.access).unwrap();
+    let history = f.action(&f.a,&f.get(&f.a,&w),"page","chat/history",json!({}));
+    assert_eq!(history["result"]["current"]["turns"].as_array().unwrap().len(),2);
+    assert_eq!(history["result"]["sessions"].as_array().unwrap().len(),2);
+    assert!(history["result"]["sessions"].as_array().unwrap().iter().any(|s|s["id"] == alternate_chat));
+    let (source_id, source_turn) = {
+        let handle = f.access.users.lock().unwrap().get("A","now").unwrap();
+        let user = handle.lock().unwrap();
+        let saved = user.agent_history.sessions.iter().find(|s|s.id == chat).unwrap();
+        assert_eq!(saved.learning_workspace_id.as_deref(),Some(a_id.as_str()));
+        assert_eq!(saved.turns[0].published_book_ref.as_ref(),Some(&f.x));
+        assert_eq!(saved.turns[1].published_book_ref.as_ref(),Some(&f.y));
+        assert_eq!(saved.turns[1].source_bindings[0].publication_id.as_deref(),Some(f.y.publication_id.as_str()));
+        assert!(saved.turns[1].source_bindings[0].source_revision.is_some());
+        assert_eq!(saved.turns[0].domain.scene.as_ref().unwrap().workspace_goal.as_ref().unwrap().revision,1);
+        assert_eq!(saved.turns[0].status,AgentAssistantStatus::Completed);
+        assert_eq!(user.agent_history.sessions.iter().find(|s|s.id == b_chat).unwrap().turns.len(),0);
+        (saved.turns[1].source_bindings[0].source_ref_id.clone(),saved.turns[1].turn_id.clone())
+    };
+    f.ok(&f.a,"DELETE",&format!("/api/learning-workspaces/{a_id}/members"),json!({"published_book_ref":f.y}));
+    let w = f.action(&f.a,&f.get(&f.a,&w),"page","book/open",json!({"published_book_ref":f.x}));
+    let source = f.action(&f.a,&w,"page","agent/source.resolve",json!({"turn_id":source_turn,"source_ref_id":source_id}));
+    assert_eq!(source["result"]["highlighted_quote"],quote);
+    assert!(source["result"]["source_url"].as_str().unwrap().contains(&f.y.publication_id));
+    let f = reopen(f,&probe);
+    let restored = f.get(&f.a,&w);
+    assert_eq!(restored["learning_workspace_id"],a_id);
+    assert_eq!(restored["selected_chat"],chat);
+    assert_eq!(restored["published_book_ref"],json!(f.x));
+}
+
+#[test]
+fn w2_new_runs_refresh_members_and_goal_while_accepted_input_stays_frozen() {
+    let f = Fixture::new();
+    configure(&f,&Probe::default());
+    let learning = f.ok(&f.a,"POST","/api/learning-workspaces",json!({"goal":{"text":"学习深度学习"},"members":[f.x,f.y]}));
+    let scope = learning["learning_workspace_id"].as_str().unwrap();
+    let w = f.ok(&f.a,"POST","/api/workspaces",json!({"published_book_ref":f.x,"attachment_id":"page","learning_workspace_id":scope}));
+    let w = f.action(&f.a,&w,"page","chat/new",json!({}));
+    let mut input = Fixture::stamp(&w,"page"); input["session_id"] = w["selected_chat"].clone();
+    input["client_request_id"] = json!("w2-old"); input["message"] = json!("你好");
+    assert_eq!(admit(&f,&w,&input).0,202);
+    f.ok(&f.a,"DELETE",&format!("/api/learning-workspaces/{scope}/members"),json!({"published_book_ref":f.y}));
+    f.ok(&f.a,"POST",&format!("/api/learning-workspaces/{scope}/goal"),json!({"goal":{"text":"期末考试冲刺"}}));
+    f.access.runs.run_one(&f.access).unwrap();
+    let w = f.get(&f.a,&w);
+    input = Fixture::stamp(&w,"page"); input["session_id"] = w["selected_chat"].clone();
+    input["client_request_id"] = json!("w2-new"); input["message"] = json!("你好，再来一次");
+    assert_eq!(admit(&f,&w,&input).0,202);
+    let handle = f.access.users.lock().unwrap().get("A","now").unwrap();
+    let user = handle.lock().unwrap();
+    let log = &user.session_store.as_ref().unwrap().logs[w["selected_chat"].as_str().unwrap()];
+    let inputs = &log.projection.inputs;
+    let old = &inputs[row(&f,"w2-old")["turn"].as_str().unwrap()];
+    let new = &inputs[row(&f,"w2-new")["turn"].as_str().unwrap()];
+    assert_eq!(old.learning_workspace_goal.as_ref().unwrap().revision,1);
+    assert_eq!(old.learning_workspace_members.as_ref().unwrap().len(),2);
+    assert_eq!(new.learning_workspace_goal.as_ref().unwrap().revision,2);
+    assert_eq!(new.learning_workspace_members.as_ref().unwrap(),&vec![f.x.clone()]);
 }
 fn jsonl_path(f: &Fixture) -> PathBuf {
     let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
@@ -978,7 +1117,7 @@ fn teaching_partial_receipt(jsonl: bool) {
         let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
         let user = handle.lock().unwrap();
         let publication = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
-        let private = PrivateBookContext {
+        let private = PrivateBookContext { learning_workspace_id:None,
             user: &user,
             book: &publication.book,
             book_dir: publication.directory(),
@@ -1173,7 +1312,12 @@ fn queued_original_snapshot(jsonl: bool) {
     assert!(!notes.is_empty());
     let saved = &user.agent_history.sessions[0].turns[0];
     assert_eq!(saved.published_book_ref.as_ref(), Some(&f.x));
-    assert_eq!(saved.status, AgentAssistantStatus::Failed);
+    assert_eq!(saved.status, AgentAssistantStatus::Completed);
+    let outcome = saved.outcome.as_ref().unwrap();
+    assert!(outcome.incomplete);
+    assert_eq!(outcome.warning.as_deref(), Some("PROVIDER_ERROR"));
+    assert!(saved.delivery_diagnostics.as_ref().unwrap().fallback.is_some());
+    assert_eq!(probe.calls.load(Ordering::SeqCst), 3);
     if jsonl {
         assert!(!probe.messages.lock().unwrap().iter().flatten().any(|m| m.content.as_deref().unwrap_or("").contains("LATER_MESSAGE_MUST_NOT_ENTER_FROZEN_INPUT")));
     }
@@ -1992,8 +2136,9 @@ fn jl8_network_recap_keeps_private_owner_and_original_publication_without_execut
         let session = &user.agent_history.sessions[0];
         let turn = &session.turns[0];
         let reference = AgentTurnRef { session_id: session.id.clone(), turn_id: turn.turn_id.clone(), user_turn_ordinal: turn.user_turn_ordinal };
-        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding {
-            source_ref_id: "original-source".into(), book_id: f.x.book_id.clone(), evidence_range: range,
+        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+            media: None,
+            source_ref_id: "original-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview,
         }] }).unwrap();
     }
@@ -2113,11 +2258,11 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     assert_eq!(session.compaction_checkpoint, Some(checkpoint));
     assert_eq!(session.turns[1].status, AgentAssistantStatus::Failed);
     assert_eq!(session.turns[0].published_book_ref.as_ref(), Some(&x));
-    let private = PrivateBookContext { user: &user, book: &publication.book, book_dir: publication.directory(), messages: &session.messages, selected_chat: Some(&turn.session_id) };
+    let private = PrivateBookContext { learning_workspace_id:None, user: &user, book: &publication.book, book_dir: publication.directory(), messages: &session.messages, selected_chat: Some(&turn.session_id) };
     assert_eq!(private.read_presentation(&turn.session_id, &reference).unwrap().content, candidate.content);
     assert!(!session.turns[0].source_bindings.is_empty());
     for source in &session.turns[0].source_bindings {
-        assert_eq!(publication.book.resolve_source(&source.evidence_range, "zh-CN", None).unwrap().evidence_text_digest, source.evidence_text_digest);
+        assert_eq!(publication.book.resolve_source(source.evidence_range.as_ref().unwrap(), "zh-CN", None).unwrap().evidence_text_digest, source.evidence_text_digest);
     }
     assert_eq!(user.store.recall(&RecallQuery { layer: Some("long_term".into()), ..Default::default() })[0].mem_id, note.mem_id);
     let learning = user.learning_store().unwrap();
@@ -2128,3 +2273,6 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     }
     assert_eq!(probe.calls.load(Ordering::SeqCst), 0);
 }
+
+#[path = "s2_workspace_instance_tests.rs"]
+mod s2_workspace_instance_tests;

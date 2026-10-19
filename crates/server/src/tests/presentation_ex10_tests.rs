@@ -39,6 +39,8 @@ fn ex10_preflight() {
     std::fs::write(root.join("assembled.html"), &html).unwrap();
     let cancellation = CancellationToken::default();
     let written = port.author_presentation(AuthorRequest::Write {
+        teaching_binding: None,
+        method_refs: None,
         new_object: false,
         libraries: vec![],
         based_on: None, title: "拖动点与线段".into(), html,
@@ -61,6 +63,7 @@ fn ex10_preflight() {
     let reference = result.delivered.unwrap();
     app.with_app(|state| {
         let outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer:Some("拖动点与线段".into()),answer_view:Some(AgentAnswerView {parts:vec![AgentAnswerPart::Presentation {presentation_id:reference.presentation_id.clone(),revision:reference.revision}],sources:vec![]}),
             incomplete:false,warning:None,turns:1,tokens_spent:0,effects:vec![],trace:vec![],profile_usage:Default::default(),memory_updates:vec![],source_bindings:vec![],delivery_diagnostics:None,request_audit:Default::default(),
         };

@@ -2,4 +2,4 @@
 import type { TutorMaterial } from "./TutorMaterial";
 import type { TutorSessionMode } from "./TutorSessionMode";
 
-export type TutorAction = { "kind": "set_enabled", enabled: boolean, } | { "kind": "start", user_intent: string, explicit_constraints: Array<string>, material_scope: Array<TutorMaterial>, default_teaching_intent: TutorSessionMode | null, } | { "kind": "pause", session_id: string, } | { "kind": "resume", session_id: string, } | { "kind": "end", session_id: string, } | { "kind": "set_mode", session_id: string, mode: TutorSessionMode | null, };
+export type TutorAction = { "kind": "sync_workspace_goal", revision: number, } | { "kind": "set_enabled", enabled: boolean, } | { "kind": "start", user_intent: string, explicit_constraints: Array<string>, material_scope: Array<TutorMaterial>, default_teaching_intent: TutorSessionMode | null, } | { "kind": "pause", session_id: string, } | { "kind": "resume", session_id: string, } | { "kind": "end", session_id: string, } | { "kind": "set_mode", session_id: string, mode: TutorSessionMode | null, };

@@ -28,7 +28,11 @@ fn captured_fixture() -> (tempfile::TempDir, AppState, Value) {
         })).unwrap();
         store.append_teaching(&event).unwrap();
     }
-    store.append_evidence(&evidence).unwrap();
+    // Restore the captured historical row as stored. New writes deliberately
+    // reject its mixed learner-expression and assistant-delivery fact_refs.
+    let db=rusqlite::Connection::open(root.path().join("learning.db")).unwrap();
+    db.execute("INSERT INTO learning_evidence(learning_workspace_id,evidence_id,source_id,evidence) VALUES ('',?,?,?)",
+        rusqlite::params![evidence.evidence_id,evidence.source_id,serde_json::to_string(&evidence).unwrap()]).unwrap();
     store.rebuild_learner_projection(&evidence.source_id).unwrap();
     (root, state, result["evidence"].clone())
 }
@@ -55,9 +59,12 @@ fn tutor_tb5_captured_hypothesis_keeps_conditions_and_correction_without_perform
     let corrected = response(&mut state, "/tutor/evidence", saved.clone());
     assert_eq!(corrected["nature"], "hypothesis");
     assert_eq!(corrected["status"], "unassessed");
-    for field in ["prompt", "learner_quote", "fact_refs", "assistance_count"] {
+    for field in ["prompt", "learner_quote", "assistance_count"] {
         assert_eq!(corrected[field], detail[field], "{field}");
     }
+    assert_eq!(corrected["fact_refs"], json!([original["action_ref"]]), "new corrections keep original words as their basis, with delivered help separate");
+    assert_eq!(response(&mut state, "/tutor/evidence", json!({"evidence_ref":original["evidence_id"]})),detail,
+        "the historical record stays unchanged");
     let view = response(&mut state, "/tutor/understanding", json!({}));
     assert_eq!(view["interpretations"].as_array().unwrap().len(), 1);
     assert_eq!(view["interpretations"][0]["evidence_id"], saved["evidence_ref"]);

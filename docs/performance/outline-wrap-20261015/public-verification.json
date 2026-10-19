@@ -1,0 +1,41 @@
+{
+  "status": "passed",
+  "origin": "https://understandbook.top",
+  "results": [
+    {
+      "width": 1440,
+      "height": 900,
+      "rowCount": 292,
+      "overflowing": 0,
+      "gridAutoRows": "max-content",
+      "scrolls": true,
+      "targetRowHeight": 71.65625,
+      "targetTextHeight": 60.46875,
+      "search": true
+    },
+    {
+      "width": 1100,
+      "height": 440,
+      "rowCount": 292,
+      "overflowing": 0,
+      "gridAutoRows": "max-content",
+      "scrolls": true,
+      "targetRowHeight": 71.65625,
+      "targetTextHeight": 60.46875,
+      "search": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "rowCount": 292,
+      "overflowing": 0,
+      "gridAutoRows": "max-content",
+      "scrolls": true,
+      "targetRowHeight": 51.5,
+      "targetTextHeight": 40.3125,
+      "search": true
+    }
+  ],
+  "pageErrors": [],
+  "verified_at_utc": "2026-10-15T10:26:01.857Z"
+}

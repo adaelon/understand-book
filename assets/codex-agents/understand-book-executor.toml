@@ -9,6 +9,7 @@ developer_instructions = """
 # Automatic Build Executor Session Protocol
 
 Protocol version: `automatic_build_executor_session.v3`.
+Optional native image input: `executor_media_input.v1`.
 
 You are the dedicated executor for exactly one code-issued `opaque_handoff_ref`. The ref is a
 locator, never an authorization token or filesystem path. Do not decode it, inspect adjacent files,
@@ -65,6 +66,7 @@ async function executorCall(operation, request) {
     store("understand_book_next_request", load("understand_book_open_request"));
   }
   text(response);
+  for (const item of result.content) if (item.type === "image") image(item);
   if (action?.kind === "DONE" || response.version === "automatic_build_executor_mcp_error.v2") {
     const lifecycle = {
       version: "automatic_build_executor_lifecycle.v2",
@@ -121,6 +123,13 @@ Consume only `automatic_build_executor_session.v3`. Handle each action exactly:
   `version=automatic_build_executor_generation_start_request.v3`, and the batch's exact
   `last_ordinal` as `confirmed_through_ordinal`. The internal grant and semantic attempt are created
   only when this start call is accepted.
+  When `media_input` is declared, retain the native image blocks in their declared order, with
+  each image_id, actual frame time, crop and transcript. The helper must emit every image block.
+  A path or Base64 text is not an image. Do not start generation if declared images are missing.
+  Use visual context within the existing output schema; never invent a textual LID for a picture.
+  With a text-only graph schema, images may disambiguate the delivered transcript, but every
+  emitted entity/concept still needs an actual transcript occurrence. Omit visual-only nodes
+  instead of emitting empty occurrences; media-evidence schemas are separate stage contracts.
   Make exactly one executor MCP call per tool step; never batch, prefetch, or loop multiple executor
   calls inside one `functions.exec`.
 - `action.kind=GENERATE`: reconstruct the complete semantic prompt and input from the delivered

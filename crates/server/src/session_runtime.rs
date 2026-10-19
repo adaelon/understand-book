@@ -321,8 +321,13 @@ pub(crate) fn deliver_effects(user: &mut user_runtime::UserRuntime, reference: &
 pub(crate) fn link_teaching(user: &mut user_runtime::UserRuntime, reference: &AgentTurnRef, at: &str) -> Result<(), ToolError> {
     if user.session_store.is_none() { return Ok(()); }
     user.session_store.as_mut().unwrap().settle(&mut user.agent_history, &reference.session_id)?;
-    let learning = user.learning_store()?;
+    let learning_workspace_id = user.agent_history.sessions.iter().find(|s| s.id == reference.session_id)
+        .and_then(|s| s.learning_workspace_id.as_deref());
+    let learning = user.learning_store_for_workspace(learning_workspace_id)?;
     let mut sessions = BTreeSet::new();
+    for source in &current_turn(user, reference)?.source_bindings {
+        if source.publication_id.is_some() { sessions.insert(format!("observation:{}",source.book_id)); }
+    }
     for prefix in ["binding", "response", "chosen"] {
         match learning.teaching_event(&format!("{prefix}:{}", reference.turn_id)) {
             Ok(event) => { sessions.insert(event.binding.tutor_session_id); }

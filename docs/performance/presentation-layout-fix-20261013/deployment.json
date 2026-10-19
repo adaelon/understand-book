@@ -1,0 +1,24 @@
+{
+  "source_commit": "66129325f04d4ffcfa6a2e630f13f10b658099c6",
+  "source_base": "66129325f04d4ffcfa6a2e630f13f10b658099c6",
+  "source_state": "working-tree",
+  "release": "/opt/understand-book/releases/tutor-response-fit-20261013",
+  "web_root": "/opt/understand-book/releases/tutor-response-fit-20261013/packages/web/dist-multi",
+  "service_before": "MainPID=8915\nWorkingDirectory=/opt/understand-book/releases/tutor-response-fit-20261013\nActiveState=active\n",
+  "base_files_compared": 487,
+  "published_at_utc": "2026-10-13T13:46:44.501734+00:00",
+  "backup": "/opt/understand-book/backups/presentation-layout-20261013T134637Z",
+  "assets_uploaded": [
+    "assets/reader-BpRNSPKW.css",
+    "assets/reader-CfJ2PVJy.js"
+  ],
+  "assets_reused": 284,
+  "source_files_updated": [
+    "packages/web/src/components/AgentPresentation.vue",
+    "packages/web/src/components/RightRail.vue",
+    "packages/web/playwright/presentation-workspace-layout.spec.ts"
+  ],
+  "backend_restarted": false,
+  "old_assets_retained": true,
+  "service_after": "MainPID=8915\nWorkingDirectory=/opt/understand-book/releases/tutor-response-fit-20261013\nActiveState=active\n"
+}

@@ -18,7 +18,9 @@ beforeEach(() => {
     calls.push(url);
     if (url === '/api/auth/me') return signedIn ? Response.json(identity) : Response.json({}, { status: 401 });
     if (url === '/api/auth/login') { signedIn = true; return Response.json(identity); }
+    if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return Response.json({ books: [] });
+    if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
     if (url === '/api/workspaces') {
       expect(JSON.parse(String(init.body)).published_book_ref).toEqual(publication);
       if (!authorized) return Response.json({ error_code: 'NOT_FOUND' }, { status: 404 });

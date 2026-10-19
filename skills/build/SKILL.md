@@ -77,22 +77,22 @@ of planning: do not parse, edit, duplicate, or replace the plan in chat.
 
 ### Explicit standard deep build
 
-Before authoring a `standard_deep` plan, ask whether Pass2 long-range relation extraction is enabled
-or disabled. Enabling Pass2 adds cross-section semantic links and model cost; disabling it still
-builds BookStructure from Pass1 and profile sidecars. Record the answer exactly as
-`pass2=enabled|disabled`; do not infer it from “full build,” old conversations, existing artifacts,
-or the workspace profile. Also ask for any budget limit that changes authorization.
+New `standard_deep` plans default to Pass2 disabled. Enable long-range relation extraction only
+when the user explicitly selects it; do not ask a separate Pass2 question for the default path.
+Enabling Pass2 adds cross-section semantic links and model cost; disabling it still builds
+BookStructure from Pass1 and profile sidecars. Record `pass2=enabled|disabled` in the plan, using
+`disabled` when omitted. Ask for any budget limit that changes authorization.
 
 For a new standard plan, call the installed code-owned surface directly:
 
 ```text
-<build-exe> legacy-plan <target> --root <root> --pass2 <enabled|disabled> [budget flags]
+<build-exe> legacy-plan <target> --root <root> [--pass2 <enabled|disabled>] [budget flags]
 ```
 
 Consume only `explicit_legacy_build_plan.v1`. Show its exact stage closure,
 reuse/create/excluded work, token and wall-clock estimate, budget, `plan_id`, and `plan_digest`.
 Require explicit confirmation of that exact projection before accepting its `build_plan_path`.
-Never infer Pass2, budget approval, or plan confirmation from “full build,” old conversations, or
+Never infer Pass2 enablement, budget approval, or plan confirmation from “full build,” old conversations, or
 existing artifacts. Keep the returned path opaque and reuse it for interruption recovery; never
 create another standard plan merely to resume. If no unique confirmed plan path is available, stop as
 `needs_user(plan_confirmation_required)`.

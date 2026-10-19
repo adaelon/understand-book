@@ -1,5 +1,5 @@
 import { network } from './network-context';
-import { networkRequest, publishedUrl } from './network-client';
+import { networkFetch, networkRequest, publishedUrl } from './network-client';
 import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
@@ -1135,7 +1135,9 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
-  domain?: { teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
+  published_book_ref?: import('./network-context').PublishedBookRef | null;
+  domain?: { workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
@@ -1172,6 +1174,7 @@ export interface AgentChatTurnSummary {
 }
 export interface AgentChatSessionSummary {
   id: string;
+  learning_workspace_id?: string | null;
   title: string;
   created_at: string;
   updated_at: string;
@@ -1180,6 +1183,7 @@ export interface AgentChatSessionSummary {
 }
 export interface AgentChatSession {
   id: string;
+  learning_workspace_id?: string | null;
   book_id: string;
   title: string;
   created_at: string;
@@ -1194,15 +1198,25 @@ export interface AgentHistoryResponse {
 }
 export interface TutorActivity {
   continuation?: import('./generated/TutorContinuationView').TutorContinuationView | null;
-  delivery_ref: string; move: { move_id: string; prompt: string; actions: string[] }; status: string; attempted: boolean; help_seen: unknown[];
+  delivery_ref: string; move: { move_id: string; prompt: string; actions: string[];
+    presentation?: import('./generated/PresentationRef').PresentationRef | null;
+    response_expectation?: { public_prompt: string; block_refs: string[] } | null;
+    block_refs?: string[];
+  }; status: string; attempted: boolean; help_seen: unknown[];
+  response_invitation_status?: 'open' | 'addressed' | 'deferred' | null;
   assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
+}
+export interface TeachingResponseOrigin {
+  kind: 'user_text' | 'interface_request' | 'presentation_prefill';
+  prefill_text?: string;
+  presentation?: import('./generated/PresentationRef').PresentationRef;
 }
 export interface UnderstandingRow {
   object_id: string; object_revision: number; label: string; capability: string; state: string; historical: boolean;
   independent_support: number; assisted_support: number; revised_support: number; partial: number; difficulty: number; uncertain: number;
   evidence_refs: string[]; evidence_count: number;
 }
-export interface UnderstandingView { rows: UnderstandingRow[]; interpretations?: LearningEvidenceView[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
+export interface UnderstandingView { rows: UnderstandingRow[]; interpretations?: LearningEvidenceView[]; imported_records?: import('./learning-records').ImportedLearningRecord[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
 export interface LearningEvidenceView {
   evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
   correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
@@ -1214,16 +1228,20 @@ export interface LearningEvidenceView {
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
+  video_window_id?: string;
+  video_draft_id?: string;
   session_id?: string;
   client_request_id?: string;
   source_id?: string;
   source_revision?: string;
   entry_action?: import("./generated/EntryAction").EntryAction;
+  chapter_lid?: string;
   answer_ref?: import("./generated/AnswerRef").AnswerRef;
   teaching_choice?: import("./generated/TeachingChoice").TeachingChoice;
   expected_chat_head?: string | null;
   note_mem_id?: string;
   teaching_ref?: string;
+  teaching_response_origin?: TeachingResponseOrigin;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
   presentation_follow_up?: import("./generated/PresentationFollowUp").PresentationFollowUp;
@@ -1231,7 +1249,33 @@ export interface AgentChatMeta {
   question_anchor_lid?: string | null;
   question_quote?: AskQuote | null;
 }
+export interface AudioReviewSnapshot {
+  review_result_ref: string;
+  location: import('../../core/src/generated/MediaLocation').MediaLocation;
+  question: string;
+  reviewed_text: string;
+  uncertainties: string[];
+}
+export interface MediaSourceSnapshot {
+  audio_reviews?: AudioReviewSnapshot[];
+  target: import('../../core/src/generated/EvidenceTarget').EvidenceTarget;
+  publication: import('../../core/src/generated/PublishedBookRef').PublishedBookRef;
+  duration_ms: number;
+  transcript: import('../../core/src/generated/TranscriptSegment').TranscriptSegment[];
+  translations: import('../../core/src/generated/TranscriptTranslation').TranscriptTranslation[];
+}
+export function mediaSourceStart(media: MediaSourceSnapshot): number {
+  const targets = media.target.kind === 'joint' ? media.target.members.map(m => m.target) : [media.target];
+  const starts = targets.flatMap(t => t.kind === 'visual' ? [...t.frames, ...t.regions.map(r => r.frame)].map(f => f.actual_pts_ms)
+    : t.kind === 'audio' ? [t.location.start_ms] : t.kind === 'text' ? media.transcript.filter(s => s.text_range.lid === t.text_range.lid).map(s => s.location.start_ms) : []);
+  return Math.min(...starts);
+}
 export interface SourcePopupView {
+  source_url?: string;
+  media?: MediaSourceSnapshot;
+  media_url?: string | null;
+  unavailable_reason?: string;
+  frames?: { frame: import('../../core/src/generated/FrameLocation').FrameLocation; region?: import('../../core/src/generated/FrameRegion').FrameRegion | null; url: string }[];
   source_ref_id: string;
   label: string;
   material_title?: string | null;
@@ -1244,6 +1288,7 @@ export interface SourcePopupView {
   heading_path?: string[];
 }
 export interface SourceOpenView {
+  source_url?: string;
   source_ref_id: string;
   opened: boolean;
 }
@@ -1292,11 +1337,16 @@ function qs(params: Record<string, string | undefined>): string {
 }
 
 export const api = {
+  videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
+  adoptVideoPublication: (publication_id: string) => http<import('./video-adoption').VideoAdoption>('POST', '/reader/adopt_same_source_publication', { publication_id }),
+  videoDraft: (input: import("./video-question").DraftCommand) => http<{ draft: import("./video-question").VideoDraft | null }>("POST", "/reader/video_draft", input),
   desktopStatus: () => http<DesktopStatus>("GET", "/desktop/status"),
   // ── book.*(只读 GET)──
   manifest: () => http<Manifest>("GET", "/book/manifest"),
   bookLibrary: () => http<BookLibraryResponse>("GET", "/book/library"),
-  assetManifest: () => http<AssetManifest>("GET", "/book/asset_manifest"),
+  assetManifest: (reference?: import('./network-context').PublishedBookRef) => reference
+    ? networkFetch<AssetManifest>('GET', `/books/${encodeURIComponent(reference.book_id)}/publications/${encodeURIComponent(reference.publication_id)}/asset_manifest`)
+    : http<AssetManifest>("GET", "/book/asset_manifest"),
   buildWorkbench: () => http<BuildWorkbenchSnapshot>("GET", "/book/build_workbench"),
   sourceManifest: async () => parseSourceManifestV2(
     await http<unknown>("GET", "/book/source_manifest"),
@@ -1416,7 +1466,7 @@ export const api = {
     http<BuildWorkbenchSnapshot>("POST", "/build_workbench/sidecar_plan.confirm", { fields }),
 
   // ── reader.*(可变 POST,返 effect)──
-  goto: (lid: string) => http<ViewportEffect>("POST", "/reader/goto", { lid }),
+  goto: (lid: string, includeText = false) => http<ViewportEffect & { texts?: BookText[] }>("POST", "/reader/goto", { lid, ...(includeText ? { include_text: true } : {}) }),
   confirmReadingPosition: (position: VisibleReadingPosition) => http<ViewportEffect>("POST", "/reader/position", position),
   scroll: (delta: number) => http<ViewportEffect>("POST", "/reader/scroll", { delta }),
   // range?:段内自由高亮 {start,end}(UTF-16 偏移);缺省=整段高亮 `[ADR-0031]`。
@@ -1508,7 +1558,8 @@ export const api = {
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
   tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
-  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
+  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
+  tutorPageHelp: (request: { delivery_ref: string; kind: 'hint' | 'explanation'; text: string; presentation_follow_up: import('./generated/PresentationFollowUp').PresentationFollowUp }) => http<{ event_id: string }>('POST', '/tutor/page-help', request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
     teaching_assets: { status: 'preparing' | 'ready' | 'stale'; teaching_map_revision: string | null; limitations: string[]; reason: string } }>('GET', '/tutor/readiness'),
@@ -1519,6 +1570,14 @@ export const api = {
     http<{ accepted: boolean }>("POST", "/memory/presentation.observe", { mem_id, text, source_ref_ids }),
   presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),
+  presentationFeedbackRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef) =>
+    http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.read", { session_id, turn_id, reference }),
+  presentationFeedbackSet: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, selection: import("./generated/PresentationFeedbackSelection").PresentationFeedbackSelection) =>
+    http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.set", { session_id, turn_id, reference, selection }),
+  presentationFeedbackClear: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef) =>
+    http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.clear", { session_id, turn_id, reference }),
+  presentationFeedbackAttachState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, feedback_revision: number, saved_state: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
+    http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.attach_state", { session_id, turn_id, reference, feedback_revision, saved_state }),
   presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState) =>
     http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state }),
   presentationObserve: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, text: string, source_ref_ids: string[]) =>

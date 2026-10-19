@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { date, money } from '@/lib/format';
 import { hongKongDay, usageQuery, taskChargesPath } from '@/lib/usage';
 import type { Activity, Charge, Page, UsageReport, UsageSummary, UsageTask } from '@/lib/types';
+import { CostSummaryPanel } from './cost-summary';
+import { queryClient } from '@/lib/api';
 
 export function ActivitySummary({ activity }: { activity: Activity }) {
   return <section className="space-y-3 rounded-lg border p-5">
@@ -47,8 +49,13 @@ export function UsagePage({ userId }: { userId?: string }) {
   const path = userId ? `/admin/users/${encodeURIComponent(userId)}/usage` : '/admin/usage';
   const query = useData<UsageReport>(`${path}?${usageQuery(filter.from, filter.to, offset, userId ? '' : filter.user)}`);
   const result = query.data;
+  function refreshReports() {
+    setTask(null);
+    void queryClient.invalidateQueries({ predicate: ({ queryKey }) => typeof queryKey[1] === 'string' &&
+      (queryKey[1].startsWith(`${path}?`) || queryKey[1].startsWith('/admin/cost-summary?') || queryKey[1].startsWith('/admin/charges?')) });
+  }
   return <section className="space-y-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1>{userId ? '账号用量汇总' : '全站用量'}</h1><Button variant="outline" onClick={() => { setTask(null); void query.refetch(); }}>刷新汇总</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h1>{userId ? '账号用量汇总' : '全站用量'}</h1><Button variant="outline" onClick={refreshReports}>刷新汇总</Button></div>
     <p className="text-sm text-muted-foreground">日期按香港时间，包含起止两日。金额分别记账；预留与待核算占用不是最终费用。</p>
     <form className="flex flex-wrap items-end gap-3" key={`${filter.from}-${filter.to}-${filter.user}`} onSubmit={(e) => {
       e.preventDefault(); const data = new FormData(e.currentTarget);
@@ -62,6 +69,7 @@ export function UsagePage({ userId }: { userId?: string }) {
       <Button type="button" variant="ghost" className="mb-2" onClick={() => {setFilter({from:hongKongDay(),to:hongKongDay(),user:filter.user});setOffset(0);setTask(null);setError('');}}>今天</Button>
     </form>
     {error && <p role="alert">{error}</p>}
+    <CostSummaryPanel key={`costs-${filter.from}-${filter.to}-${filter.user}`} from={filter.from} to={filter.to} userId={filter.user} onRefresh={refreshReports} />
     <DataState query={query} />
     {result && <>
       <Summary title={`今日 · ${result.today_date}${filter.user ? ` · ${filter.user}` : ''}`} value={result.today} />
@@ -70,8 +78,8 @@ export function UsagePage({ userId }: { userId?: string }) {
       <section className="space-y-3 rounded-lg border p-5"><h2>任务费用 · 按已确认成本排序</h2>
         <p className="text-sm text-muted-foreground">每个任务可包含多次调用；点击调用明细核对各笔费用。</p>
         <DataTable rows={result.tasks.items} columns={[
-          { header: '账号', cell: ({row}) => <Link to="/users/$userId" params={{userId:row.original.user_id}} className="underline">{row.original.user_id}</Link> },
-          { header: '任务', cell: ({row}) => <span className="block min-w-48 max-w-64 break-all whitespace-normal">{row.original.reference_kind === 'run' ? '运行' : '后台任务'} · {row.original.reference}</span> },
+          { header: '账号', cell: ({row}) => row.original.cost_owner === 'platform' ? '平台' : <Link to="/users/$userId" params={{userId:row.original.user_id}} className="underline">{row.original.user_id}</Link> },
+          { header: '任务', cell: ({row}) => <span className="block min-w-48 max-w-64 break-all whitespace-normal">{row.original.reference_kind === 'run' ? '运行' : row.original.reference_kind === 'operator_task' ? '平台任务' : '后台任务'} · {row.original.reference}</span> },
           { header: '调用数', accessorKey: 'request_count' },
           { header: '已确认成本（元）', cell: ({row}) => money(row.original.confirmed_cost_micro_cny) },
           { header: '账号扣减（元）', cell: ({row}) => money(row.original.account_debit_micro_cny) },
@@ -100,6 +108,6 @@ function TaskCharges({ task, from, to, close }: { task: UsageTask; from: string;
       { header:'账号扣减（元）',cell:({row})=>money(row.original.account_debit_micro_cny) },
       { header:'当前占用（元）',cell:({row})=>money(['reserved','sent','pending'].includes(row.original.state)?row.original.reserved_micro_cny:0) },
     ]} /><Pagination offset={offset} total={query.data.total} change={setOffset} /></>}
-    <Link to="/users/$userId" params={{userId:task.user_id}} className="text-sm underline">前往账号详情核算费用</Link>
+    {task.cost_owner === 'account' && <Link to="/users/$userId" params={{userId:task.user_id}} className="text-sm underline">前往账号详情核算费用</Link>}
   </section>;
 }

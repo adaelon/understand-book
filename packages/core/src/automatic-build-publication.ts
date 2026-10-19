@@ -10,7 +10,7 @@ import {
 import path from "node:path";
 import type { AutomaticBuildStage } from "./build-orchestrator";
 
-export type AutomaticBuildPublicationStage = Exclude<AutomaticBuildStage, "paper_reading_guide">;
+export type AutomaticBuildPublicationStage = Exclude<AutomaticBuildStage, "paper_reading_guide"> | "video_transcript" | "video_enrichment";
 
 const AUTOMATIC_BUILD_PUBLICATION_VERSION = "automatic_build_publication.v1" as const;
 const AUTOMATIC_BUILD_PUBLICATION_ROOT_REF = ".build/automatic-build/v2/publication";
@@ -60,6 +60,8 @@ function assertTransactionId(transactionId: string): string {
 
 function isPublicationStage(value: unknown): value is AutomaticBuildPublicationStage {
   return [
+    "video_transcript",
+    "video_enrichment",
     "pass1",
     "paper_metadata",
     "paper_lexicon",

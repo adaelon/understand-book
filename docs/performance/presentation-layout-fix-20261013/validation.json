@@ -1,0 +1,38 @@
+{
+  "component_tests": {
+    "passed": 69,
+    "files": [
+      "AgentPresentation.test.ts",
+      "RightRail.test.ts",
+      "TutorActivities.test.ts"
+    ]
+  },
+  "browser_tests": {
+    "passed": 3,
+    "file": "presentation-workspace-layout.spec.ts",
+    "desktop_viewport": [
+      1536,
+      700
+    ],
+    "mobile_viewport": [
+      390,
+      844
+    ],
+    "covered": [
+      "full-height presentation with long teaching and failed display request",
+      "teaching draft and iframe state across expand/collapse",
+      "fullscreen split width and width slider",
+      "restore fullscreen and composer draft",
+      "mobile discussion teaching controls"
+    ]
+  },
+  "regression_before": {
+    "desktop_iframe_height": 160,
+    "fullscreen_panel_width": 1536,
+    "expected_fullscreen_panel_width": 544.32,
+    "mobile_iframe_height": 160
+  },
+  "production_build": "VITE_MULTI_USER=1 pnpm build --outDir dist-multi",
+  "typecheck": "passed",
+  "build": "passed"
+}

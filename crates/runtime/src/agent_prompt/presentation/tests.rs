@@ -33,6 +33,15 @@ fn reference_names(plan: &AgentRequestPlan) -> Vec<&str> {
         .collect()
 }
 
+#[test]
+fn spatial_three_is_opt_in_and_composes_with_state_and_timeline() {
+    let plan = request(PresentationPhase::Local, &[PresentationNeed::Three, PresentationNeed::ContinuousScene]);
+    assert_eq!(reference_names(&plan), ["state", "continuous-scene", "three"]);
+    assert!(plan.instructions.contains("preserveDrawingBuffer:true"));
+    assert!(plan.instructions.contains("spatial-linked-views@1"));
+    assert_eq!(reference_names(&request(PresentationPhase::Local, &[PresentationNeed::Three])), ["three"]);
+}
+
 fn assert_shared_contract(plan: &AgentRequestPlan, phase: &str) {
     let text = &plan.instructions;
     // Each normative paragraph is supplied once, not copied by phase or policy.
@@ -82,7 +91,7 @@ fn assert_shared_contract(plan: &AgentRequestPlan, phase: &str) {
     for asset in plan
         .instruction_assets
         .iter()
-        .filter(|a| a.asset_id.contains("presentation"))
+        .filter(|a| a.asset_id.contains("presentation") && a.asset_id != "resident-agent.presentation.methods")
     {
         assert_eq!(asset.revision, REVISION);
     }
@@ -121,6 +130,17 @@ fn ordinary_answer_never_loads_presentation_even_with_supplied_context() {
             .instruction_assets
             .iter()
             .any(|a| a.asset_id.contains("presentation")));
+    }
+}
+
+#[test]
+fn se2_author_gets_only_method_directory_until_read() {
+    for phase in [PresentationPhase::Global, PresentationPhase::Local, PresentationPhase::Review] {
+        let plan = request(phase, &[]);
+        assert!(plan.instructions.contains(&crate::presentation_methods::directory().text));
+        assert_eq!(plan.instruction_assets.iter().filter(|a| a.asset_id == "resident-agent.presentation.methods").count(), 1);
+        assert!(!plan.instructions.contains("function renderAt"));
+        assert!(!plan.instructions.contains("## 表达配方"));
     }
 }
 

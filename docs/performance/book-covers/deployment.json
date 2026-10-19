@@ -1,0 +1,18 @@
+{
+  "operation": "book-covers-20261001-151852",
+  "release": "/opt/understand-book/releases/mu12-20261001",
+  "backup": "/opt/understand-book/backups/book-covers-20261001-151852",
+  "deployed_at_utc": "2026-10-01T07:22:52.230775+00:00",
+  "active_or_unsaved_runs_before": 0,
+  "backend_anonymous_status": 401,
+  "state": "active",
+  "previous_web_assets_retained": true,
+  "data_migrated": false,
+  "uploaded_assets": [
+    "index-9Fqe_DrL.js",
+    "index-CngeK4K5.css",
+    "index-D3vWmZaS.js"
+  ],
+  "range_cleanup_fixed": true,
+  "web_updated_at_utc": "2026-10-01T07:29:37.401004+00:00"
+}

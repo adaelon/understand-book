@@ -419,7 +419,7 @@ fn book_text_batch_scripted_run_compares_sequential_single_sampling_and_batch_re
         assert_eq!(outcome.source_bindings.len(), 3);
         for (index, binding) in outcome.source_bindings.iter().enumerate() {
             assert_eq!(
-                book.resolve_source(&binding.evidence_range, SOURCE_PRESENTATION_LOCALE, None)
+                book.resolve_source(binding.evidence_range.as_ref().unwrap(), SOURCE_PRESENTATION_LOCALE, None)
                     .unwrap()
                     .highlighted_quote,
                 pieces[index]

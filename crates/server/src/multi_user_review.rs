@@ -8,7 +8,7 @@ use crate::{
 };
 use memory::ReviewJobStatus;
 use read_tools::ToolError;
-use runtime::{model_spend::ChargeScope, run_context::CancellationToken};
+use runtime::{model_spend::{ChargeAttribution, ChargeScope}, run_context::CancellationToken};
 use std::sync::{Arc, Mutex};
 
 /// Keep newly queued work discoverable after its resident user is evicted.
@@ -87,12 +87,14 @@ fn run_one(
             .map(|s| millis(&s.updated_at))
             .max()
             .unwrap_or(0);
-        let Some(job) = user
+        let owner = user.user_id().expect("service user has owner").to_string();
+        let mut selected = None;
+        for job in user
             .store
             .review_state()
             .review_jobs
             .iter()
-            .find(|job| match job.status {
+            .filter(|job| match job.status {
                 ReviewJobStatus::Queued => {
                     job.to_turn_inclusive
                         .saturating_sub(job.from_turn_exclusive)
@@ -107,10 +109,14 @@ fn run_one(
                     .is_none_or(|at| at <= now_ms),
                 _ => false,
             })
-            .cloned()
-        else {
-            return Ok(false);
-        };
+        {
+            if let Some(workspace) = job.learning_workspace_id.as_deref() {
+                if !access.learning_workspace_active(&owner, workspace)? { continue; }
+            }
+            selected = Some(job.clone());
+            break;
+        }
+        let Some(job) = selected else { return Ok(false); };
         let publication = user
             .agent_history
             .sessions
@@ -123,7 +129,6 @@ fn run_one(
                     .find(|t| t.user_turn_ordinal <= job.to_turn_inclusive)
             })
             .and_then(|t| t.published_book_ref.clone());
-        let owner = user.user_id().expect("service user has owner").to_string();
         let claimed = user.store.claim_review_job(&job.job_id, &now)?;
         (owner, claimed, publication)
     };
@@ -146,12 +151,19 @@ fn run_one(
             user_id: owner.clone(),
             task_ref: format!("memory-review:{}:{}", job.job_id, job.attempts),
         };
+        // Attempts belong to one durable review job. It aggregates account-level
+        // profile evidence and must not inherit the currently open Reader scene.
+        let attribution = ChargeAttribution {
+            parent_task_ref: format!("memory-review:{}", job.job_id),
+            learning_workspace_id: None,
+            related_learning_workspace_ids: job.learning_workspace_id.iter().cloned().collect(),
+        };
         adapter.set_spend_context(
             scope.clone(),
             Some(
                 access
                     .spend
-                    .port(scope, publication.clone(), cancel.clone()),
+                    .port_with_attribution(scope, publication.clone(), attribution, cancel.clone()),
             ),
         );
         adapter.set_model_purpose("memory_review");

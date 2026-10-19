@@ -74,6 +74,56 @@ test('recorder preserves non-JSON provider errors and reports missing usage', as
   }
 });
 
+test('recorder retains public SSE output, fragmented tool calls, usage and completion without reasoning', async () => {
+  const events = [
+    { id: 'chat-stream', model: 'test-model', choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: 'PRIVATE_REASONING' } }] },
+    { choices: [{ index: 0, delta: { content: '公开', tool_calls: [{ index: 0, id: 'call-1', type: 'function', function: { name: 'book.text', arguments: '{"lid":' } }] } }] },
+    { choices: [{ index: 0, delta: { content: '回答', tool_calls: [{ index: 0, function: { arguments: '"10.9.7.2"}' } }] }, finish_reason: 'tool_calls' }] },
+    { choices: [], usage: { prompt_tokens: 11, completion_tokens: 6, total_tokens: 17 } },
+  ];
+  const returned = events.map(event => `data: ${JSON.stringify(event)}\r\n\r\n`).join('') + 'data: [DONE]\r\n\r\n';
+  let received;
+  const upstream = http.createServer(async (req, res) => {
+    const parts = []; for await (const bytes of req) parts.push(bytes);
+    received = Buffer.concat(parts).toString();
+    res.writeHead(200, { 'content-type': 'text/event-stream; charset=utf-8' });
+    res.end(returned);
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const recorder = await startProviderRecorder(`http://127.0.0.1:${upstream.address().port}`);
+  const body = JSON.stringify({ stream: true, messages: [{ role: 'assistant', content: '', reasoning_content: 'PRIVATE_PRIOR_REASONING' }] });
+  try {
+    const response = await fetch(recorder.url + '/chat/completions', { method: 'POST', body,
+      headers: { authorization: 'Bearer PRIVATE_KEY' } });
+    assert.equal(await response.text(), returned);
+    assert.equal(received, body);
+    const record = recorder.records[0];
+    assert.deepEqual(record.response, { id: 'chat-stream', model: 'test-model', choices: [{ index: 0,
+      finish_reason: 'tool_calls', message: { role: 'assistant', content: '公开回答',
+        tool_calls: [{ id: 'call-1', type: 'function', function: { name: 'book.text', arguments: '{"lid":"10.9.7.2"}' } }] } }] });
+    assert.equal(record.response_complete, true);
+    assert.equal(record.stream_done, true);
+    assert.equal(record.non_json_response, undefined);
+    assert.deepEqual(measuredUsage(recorder.records), { requests: 1, total_tokens: 17, missing_usage: 0 });
+    assert(!JSON.stringify(record).includes('PRIVATE_'));
+  } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('recorder keeps partial public SSE output without claiming a completed response', async () => {
+  const returned = 'data: {"choices":[{"index":0,"delta":{"content":"partial"}}]}\n\n';
+  const upstream = http.createServer((_req, res) => { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end(returned); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const recorder = await startProviderRecorder(`http://127.0.0.1:${upstream.address().port}`);
+  try {
+    const response = await fetch(recorder.url + '/chat/completions', { method: 'POST', body: '{}' });
+    assert.equal(await response.text(), returned);
+    assert.equal(recorder.records[0].response.choices[0].message.content, 'partial');
+    assert.equal(recorder.records[0].response_complete, false);
+    assert.equal(recorder.records[0].stream_done, false);
+    assert.equal(measuredUsage(recorder.records).total_tokens, null);
+  } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
 test('recorder can drain an already issued request before closing', async () => {
   let entered;
   const ready = new Promise(resolve => { entered = resolve; });

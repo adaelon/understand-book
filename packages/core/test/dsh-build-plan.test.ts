@@ -44,6 +44,10 @@ describe("DSH standard plan boundaries", () => {
     const root = mkdtempSync(path.join(tmpdir(), "dsh-plan-"));
     const target = kind === "paper" ? paperWorkspace(root) : path.join(root, "book.md");
     if (kind !== "paper") writeFileSync(target, "# Transactions\n\nAtomic operations.\n");
+    const defaultPlan = runAutomaticBuildDriverCommand({ version: "dsh_build_prepare.v2", target_input: target, root_dir: root,
+      max_parallel: 1 }) as { plan: BuildPlanV1; review_markdown: string };
+    expect(defaultPlan.plan.public_stage_closure).not.toContain("pass2");
+    expect(defaultPlan.review_markdown).toContain("Pass2：关闭");
     const prepared = runAutomaticBuildDriverCommand({ version: "dsh_build_prepare.v1", target_input: target, root_dir: root,
       pass2: "enabled", budget: { on_exceed: "needs_user", max_total_tokens: 0 } }) as { plan: BuildPlanV1; build_plan_path: string; review_markdown: string };
     expect(prepared.plan.content_profile.id).toBe(kind);

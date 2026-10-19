@@ -2,6 +2,8 @@
 //! mixed implicitly. Signed micro_cny also represents adjustments and deficits.
 use rusqlite::types::{FromSql, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 use serde::{Deserialize, Serialize};
+use rusqlite::OptionalExtension;
+use serde_json::{json, Value};
 
 /// One millionth of a CNY yuan. Provider-specific pricing belongs to ADM4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -83,6 +85,65 @@ pub struct AllowanceBalance {
     pub active_reserved_micro_cny: MicroCny,
     pub pending_micro_cny: MicroCny,
     pub available_micro_cny: MicroCny,
+    pub allowance_basis: Option<AllowanceBasis>,
+    pub percentages: Option<Value>,
+}
+
+/// The explicit, immutable denominator for one allowance period. No price is
+/// implied: receipts remain in fen and this is the internal allowance unit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AllowanceBasis {
+    pub version: String,
+    pub basis_micro_cny: MicroCny,
+}
+
+impl AllowanceBasis {
+    pub(crate) fn validate(&self) -> Result<(), read_tools::ToolError> {
+        if self.version.trim().is_empty() || self.basis_micro_cny.value() <= 0 {
+            return Err(crate::admin_store::invalid());
+        }
+        Ok(())
+    }
+
+    /// Sales amounts use thousandths of one percent (50% = 50_000). Reject a
+    /// fraction of the smallest internal unit instead of silently rounding it.
+    pub(crate) fn grant(&self, milli_percent: i64) -> Result<MicroCny, read_tools::ToolError> {
+        self.validate()?;
+        let numerator = i128::from(self.basis_micro_cny.value()) * i128::from(milli_percent);
+        if numerator % 100_000 != 0 {
+            return Err(crate::user_storage_paths::error("ALLOWANCE_PERCENT_NOT_REPRESENTABLE", "validation", "Percentage does not convert to an exact allowance unit for this basis"));
+        }
+        i64::try_from(numerator / 100_000).map(MicroCny::new).map_err(|_| crate::admin_store::invalid())
+    }
+
+    /// Display only. All sums and debits have already used exact micro_cny.
+    pub(crate) fn percentage(&self, amount: i64) -> Value {
+        let scaled = i128::from(amount) * 100_000_000;
+        let denominator = i128::from(self.basis_micro_cny.value());
+        let absolute = scaled.abs();
+        let rounded = (absolute + denominator / 2) / denominator;
+        let whole = rounded / 1_000_000;
+        let fraction = format!("{:06}", rounded % 1_000_000);
+        let fraction = fraction.trim_end_matches('0');
+        let sign = if amount < 0 && rounded != 0 { "-" } else { "" };
+        let value = if fraction.is_empty() { format!("{sign}{whole}") } else { format!("{sign}{whole}.{fraction}") };
+        json!({"value":value,"nonzero":amount != 0,"below_tenth":amount != 0 && i128::from(amount).abs() * 1000 < denominator})
+    }
+}
+
+pub(crate) fn basis(db: &rusqlite::Connection, period: &str) -> Result<Option<AllowanceBasis>, read_tools::ToolError> {
+    db.query_row("SELECT b.version,b.basis_micro_cny FROM allowance_period_bases p JOIN allowance_bases b ON b.version=p.basis_version WHERE p.period_id=?", [period], |r| Ok(AllowanceBasis { version:r.get(0)?,basis_micro_cny:r.get(1)? })).optional().map_err(crate::allowance_admin::storage)
+}
+
+pub(crate) fn project_charge(db: &rusqlite::Connection, value: &mut Value) -> Result<(), read_tools::ToolError> {
+    let basis = value["period_id"].as_str().map(|period| self::basis(db, period)).transpose()?.flatten();
+    value["allowance_percentages"] = basis.as_ref().map(|basis| json!({
+        "reserved":value["reserved_micro_cny"].as_i64().map(|v|basis.percentage(v)),
+        "debited":value["account_debit_micro_cny"].as_i64().map(|v|basis.percentage(v))
+    })).unwrap_or(Value::Null);
+    value["allowance_basis"] = json!(basis);
+    Ok(())
 }
 pub(crate) fn balance(
     db: &rusqlite::Connection,
@@ -101,12 +162,21 @@ pub(crate) fn balance(
         .and_then(|v| v.checked_sub(active))
         .and_then(|v| v.checked_sub(pending))
         .ok_or_else(crate::admin_store::invalid)?;
+    let basis = self::basis(db, period)?;
+    let percentages = basis.as_ref().map(|basis| json!({
+        "granted":basis.percentage(granted),"debited":basis.percentage(debit),
+        "active_reserved":basis.percentage(active),"pending":basis.percentage(pending),
+        "available":basis.percentage(available.max(0)),
+        "deficit":basis.percentage(if available < 0 { available.saturating_neg() } else { 0 })
+    }));
     Ok(AllowanceBalance {
         granted_micro_cny: MicroCny(granted),
         debited_micro_cny: MicroCny(debit),
         active_reserved_micro_cny: MicroCny(active),
         pending_micro_cny: MicroCny(pending),
         available_micro_cny: MicroCny(available),
+        allowance_basis: basis,
+        percentages,
     })
 }
 

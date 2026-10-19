@@ -116,6 +116,7 @@ impl Headers {
     }
 }
 pub(crate) struct HttpReply {
+    media: Option<PathBuf>,
     pub status: u16,
     pub body: Vec<u8>,
     pub content_type: String,
@@ -131,6 +132,7 @@ pub(crate) struct HttpReply {
 impl HttpReply {
     pub(crate) fn json(value: Value) -> Self {
         Self {
+            media: None,
             status: 200,
             body: value.to_string().into_bytes(),
             content_type: "application/json; charset=utf-8".into(),
@@ -149,6 +151,7 @@ impl HttpReply {
             result
         } else {
             Self {
+                media: None,
                 status: reply.status,
                 body: reply.body.into_bytes(),
                 content_type: "application/json; charset=utf-8".into(),
@@ -239,6 +242,10 @@ pub(crate) fn start_with_access(
     );
     let stop = Arc::new(AtomicBool::new(false));
     let mut handles = Vec::new();
+    #[cfg(unix)]
+    handles.push(crate::online_publication::start(
+        access.users.lock().unwrap().writer(), stop.clone(),
+    )?);
     let waiters = Arc::new(Mutex::new(Vec::<thread::JoinHandle<()>>::new()));
     {
         let (access, stop) = (access.clone(), stop.clone());
@@ -378,6 +385,7 @@ pub(crate) fn start_with_access(
 }
 
 fn respond(request: tiny_http::Request, reply: HttpReply) {
+    if let Some(path) = reply.media { crate::video_media::serve(request, &path); return; }
     let remote_mcp = request.url().split('?').next() == Some("/mcp");
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
     if remote_mcp && reply.status == 405 {
@@ -443,6 +451,7 @@ pub(crate) fn dispatch(
             };
             if let Some((body, content_type)) = public {
                 return Ok(HttpReply {
+                    media: None,
                     status: 200,
                     body: body.as_bytes().to_vec(),
                     content_type: content_type.into(),
@@ -543,6 +552,63 @@ pub(crate) fn dispatch(
         let capability = authorization::capability(path)?;
         // Account management does not load private Reader state.
         match capability {
+            Capability::WorkspaceReleaseUse(ref id,version) => {
+                expect_method(method,"POST")?;
+                if !query.is_empty(){return Err(invalid());}
+                return access.admin.control.lock().unwrap().use_workspace_release(principal.user_id(),id,version,
+                    serde_json::from_value(input).map_err(|_|invalid())?,now).map(HttpReply::json);
+            }
+            Capability::WorkspaceInstance(ref workspace,action) => {
+                let mut control=access.admin.control.lock().unwrap();
+                let result=match (method,action) {
+                    ("GET","") if query.is_empty() => control.workspace_release_instance(principal.user_id(),workspace),
+                    ("GET","preview") if query.len()==1 => {
+                        let version=query.get("version").ok_or_else(invalid)?.parse().map_err(|_|invalid())?;
+                        control.preview_workspace_release_update(principal.user_id(),workspace,version)
+                    },
+                    ("POST","update") if query.is_empty() => control.update_workspace_release_instance(principal.user_id(),workspace,serde_json::from_value(input).map_err(|_|invalid())?,now),
+                    _=>Err(invalid()),
+                };
+                return result.map(HttpReply::json);
+            }
+            Capability::WorkspaceRelease(ref reference, export) => {
+                expect_method(method, "GET")?;
+                if !(input.is_null() || input.as_object().is_some_and(|value|value.is_empty())) { return Err(invalid()); }
+                let result = if let Some((id, version)) = reference {
+                    if !query.is_empty() { return Err(invalid()); }
+                    access.admin.workspace_release(Some(principal.user_id()),id,*version,export)
+                } else {
+                    let (limit,offset) = crate::admin_api::page(&query)?;
+                    access.admin.workspace_releases(Some(principal.user_id()),limit,offset)
+                };
+                return result.map(HttpReply::json);
+            }
+            Capability::CostSummary => {
+                expect_method(method, "GET")?;
+                if input.as_object().is_some_and(|v|!v.is_empty()) { return Err(invalid()); }
+                let mut pagination = query.clone();
+                let range = if pagination.contains_key("from") || pagination.contains_key("to") {
+                    Some(crate::admin_usage::range(&mut pagination,now)?)
+                } else { None };
+                let (limit,offset) = crate::admin_api::page(&pagination)?;
+                return access.spend.cost_summary(Some(principal.user_id()),range.as_ref(),limit,offset,true,now).map(HttpReply::json);
+            }
+            Capability::LearningWorkspace(ref id, action) => {
+                if !query.is_empty() || (method == "GET" && !input.is_null()) {
+                    return Err(invalid());
+                }
+                if action == "preparations" {
+                    access.learning_workspace_metadata(principal.user_id(), id.as_deref().ok_or_else(invalid)?)?;
+                    return crate::personal_preparations::request(access, principal.user_id(), id.as_deref().ok_or_else(invalid)?, method, input, now).map(HttpReply::json);
+                }
+                if action == "records" {
+                    let context = access.context(principal, now)?;
+                    return crate::learning_record_api::linked_request(access, &context, method,
+                        id.as_deref().ok_or_else(invalid)?, input, now).map(HttpReply::json);
+                }
+                return access.learning_workspace_request(&principal, method, id.as_deref(), action, input, now)
+                    .map(HttpReply::json);
+            }
             Capability::McpList => {
                 expect_method(method, "GET")?;
                 if !query.is_empty() || !matches!(input, Value::Null) { return Err(invalid()); }
@@ -599,8 +665,13 @@ pub(crate) fn dispatch(
             Capability::AccountUsage => {
                 expect_method(method, "GET")?;
                 if input.as_object().is_some_and(|v|!v.is_empty()) { return Err(invalid()); }
-                let (limit,offset) = crate::admin_api::page(&query)?;
-                return access.spend.charges(Some(principal.user_id()),false,limit,offset,true,None,None).map(HttpReply::json);
+                let mut pagination = query.clone();
+                let reference = crate::admin_api::charge_reference(&mut pagination,true)?;
+                let range = if pagination.contains_key("from") || pagination.contains_key("to") {
+                    Some(crate::admin_usage::range(&mut pagination,now)?)
+                } else { None };
+                let (limit,offset) = crate::admin_api::page(&pagination)?;
+                return access.spend.charges(Some(principal.user_id()),false,limit,offset,true,range.as_ref(),reference.as_ref().map(|(kind,value)|(*kind,value.as_str())),Some("account")).map(HttpReply::json);
             }
             Capability::Me => {
                 expect_method(method, "GET")?;
@@ -619,6 +690,30 @@ pub(crate) fn dispatch(
         }
         let context = access.context(principal, now)?;
         match capability {
+            Capability::Videos => {
+                expect_method(method, "GET")?;
+                let root = access.users.lock().unwrap().writer().root().to_path_buf();
+                Ok(HttpReply::json(json!({"videos":crate::video_media::catalog(&root, context.user_id())})))
+            }
+            Capability::Video(reference, leaf) => {
+                let root = access.users.lock().unwrap().writer().root().to_path_buf();
+                let dir = crate::video_media::authorized_dir(&root, context.user_id(), &reference)?;
+                match (leaf.as_str(), method) {
+                    ("status", "GET") => Ok(HttpReply::json(crate::video_media::projection(&dir)?)),
+                    ("transcript", "GET") => {
+                        let (publication, _) = crate::video_media::linked_publication(&dir)?;
+                        access.library.lock().unwrap().authorize(context.user_id(), &publication)?;
+                        Ok(HttpReply::json(crate::video_media::transcript(&dir)?))
+                    },
+                    ("media", "GET" | "HEAD") => {
+                        let mut reply = HttpReply::json(json!({}));
+                        reply.media = Some(crate::video_media::media_path(&dir)?);
+                        Ok(reply)
+                    }
+                    ("ask", "POST") => Err(crate::user_storage_paths::error("VIDEO_TRANSCRIPT_NOT_READY", "conflict", "全片转写与首个发布尚未就绪")),
+                    _ => Err(authorization::missing()),
+                }
+            }
             Capability::Library => {
                 expect_method(method, "GET")?;
                 Ok(HttpReply::json(
@@ -638,6 +733,13 @@ pub(crate) fn dispatch(
                 if !matches!(method, "GET" | "HEAD") {
                     return Err(method_error());
                 }
+                if leaf == "video/media" {
+                    let publication = library.load(context.user_id(), &reference)?;
+                    let (manifest, _) = publication.book.load_video_source(publication.directory())?;
+                    let mut reply = HttpReply::json(json!({}));
+                    reply.media = Some(publication.directory().join(manifest.source.imported_path));
+                    return Ok(reply);
+                }
                 if matches!(leaf.as_str(), "pdf/original" | "original.pdf") {
                     // No validators are emitted, so an If-Range request gets the full representation.
                     let range = if method == "GET" && headers.get("If-Range").is_none() {
@@ -653,7 +755,7 @@ pub(crate) fn dispatch(
                     }
                     return Ok(HttpReply {
                         status: pdf.status, body: pdf.body, content_type: "application/pdf".into(),
-                        cookie: None, extra_headers, observation: None, waiting: None,
+                        cookie: None, extra_headers, observation: None, waiting: None, media: None,
                     });
                 }
                 let reply = if leaf.starts_with("assets/")
@@ -671,6 +773,7 @@ pub(crate) fn dispatch(
                         )
                         .map_err(|_| authorization::missing())?;
                     HttpReply {
+                        media: None,
                         status: asset.status,
                         body: asset.body,
                         content_type: asset.content_type,
@@ -700,6 +803,11 @@ pub(crate) fn dispatch(
                 Ok(HttpReply::json(
                     context.history(query.get("session_id").map(String::as_str))?,
                 ))
+            }
+            Capability::LearningRecords(id) => {
+                expect_method(method, "GET")?;
+                if !input.is_null() { return Err(invalid()); }
+                crate::learning_record_api::read(access, &context, id.as_deref(), &query, now).map(HttpReply::json)
             }
             Capability::Chat(id) => {
                 if method == "DELETE" {
@@ -799,9 +907,23 @@ pub(crate) fn dispatch(
             Capability::Tutor(mutate) => {
                 expect_method(method, if mutate { "POST" } else { "GET" })?;
                 let user = context.user.lock().unwrap();
-                let mut learning = user.learning_store()?;
+                let scope = query.get("learning_workspace_id").map(String::as_str);
+                if let Some(id) = scope {
+                    access.learning_workspace_request(&context.principal, "GET", Some(id), "", Value::Null, now)?;
+                    access.sync_learning_goal(&user, id, &now.to_string())?;
+                }
+                let mut learning = user.learning_store_for_workspace(scope)?;
                 let value = if mutate {
-                    let request = serde_json::from_value(input).map_err(|_| invalid())?;
+                    let request: memory::learning::TutorMutation = serde_json::from_value(input).map_err(|_| invalid())?;
+                    if matches!(request.action, memory::learning::TutorAction::SyncWorkspaceGoal { .. }) {
+                        return Err(invalid());
+                    }
+                    if let Some(id) = scope.filter(|_| matches!(request.action,
+                        memory::learning::TutorAction::Start { .. } | memory::learning::TutorAction::Resume { .. })) {
+                        if !access.learning_workspace_active(context.user_id(), id)? {
+                            return Err(crate::user_storage_paths::error("LEARNING_WORKSPACE_ARCHIVED", "conflict", "Restore the learning workspace before starting a teaching stage"));
+                        }
+                    }
                     learning.mutate(&request, &now.to_string())?
                 } else {
                     learning.state()?
@@ -886,6 +1008,7 @@ pub(crate) fn dispatch(
                             .or_else(|| query.get("after").map(String::as_str)),
                     )?;
                     return Ok(HttpReply {
+                        media: None,
                         status: 200,
                         body: vec![],
                         content_type: "text/event-stream".into(),
@@ -897,7 +1020,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::json(value))
             }
-            Capability::Presentation(observe) => {
+            Capability::Presentation(_) | Capability::PresentationFeedback(_) => {
                 expect_method(method, "POST")?;
                 let session_id = input["session_id"].as_str().ok_or_else(invalid)?;
                 let turn_id = input["turn_id"].as_str().ok_or_else(invalid)?;
@@ -924,19 +1047,23 @@ pub(crate) fn dispatch(
                     .load(context.user_id(), reference)
                     .map_err(|_| authorization::missing())?;
                 let private = crate::PrivateBookContext {
+                    learning_workspace_id: session.learning_workspace_id.as_deref(),
                     user: &user,
                     book: &publication.book,
                     book_dir: publication.directory(),
                     messages: &session.messages,
                     selected_chat: Some(session_id),
                 };
-                let reply = crate::presentation_api::route(&private, body, observe);
+                if let Capability::PresentationFeedback(operation) = capability {
+                    return Ok(HttpReply::from_reply(crate::presentation_api::feedback_route(&private, body, operation, &now.to_string())));
+                }
+                let reply = crate::presentation_api::route(&private, body, matches!(capability, Capability::Presentation(true)));
                 if reply.status != 200 {
                     return Err(authorization::missing());
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) => unreachable!(),
+            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::CostSummary | Capability::WorkspaceRelease(_, _) | Capability::WorkspaceReleaseUse(_,_) | Capability::WorkspaceInstance(_,_) | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) | Capability::LearningWorkspace(_, _) => unreachable!(),
         }
     })();
     match result {

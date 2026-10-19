@@ -272,6 +272,71 @@ fn http(
 }
 
 #[test]
+fn w1_learning_workspace_http_keeps_goal_history_exact_members_and_account_ownership() {
+    let f = Fixture::unseeded();
+    let input = tempfile::tempdir().unwrap();
+    super::mu3_tests::material(input.path(), "w1-second", b"image");
+    let second = f.access.library.lock().unwrap().publish(input.path()).unwrap().reference;
+    f.access.library.lock().unwrap().grant("A", &second).unwrap();
+    // A newer publication of the same material is a distinct authorization.
+    let ungranted = f.access.library.lock().unwrap().publish(input.path()).unwrap().reference;
+    let server = f.start();
+    let a = f.login("A");
+    let b = f.login("B");
+    let request = |token: &str, method: &str, path: &str, payload: Option<Value>| {
+        let reply = http(&server.url, method, path, Some(token), Some(&crate::auth::csrf(token)), payload);
+        let status = reply.status();
+        let value: Value = reply.into_json().unwrap();
+        (status, value)
+    };
+    let (status, error) = request(&a, "POST", "/api/learning-workspaces", Some(json!({"goal":{"text":"  "}})));
+    assert_eq!(status, 400);
+    assert_eq!(error["error_code"], "WORKSPACE_GOAL_REQUIRED");
+    let (status, created) = request(&a, "POST", "/api/learning-workspaces", Some(json!({
+        "goal":{"text":"学习深度学习","constraints":["先掌握基础"]},
+        "members":[f.reference,second]
+    })));
+    assert_eq!(status, 200, "{created}");
+    assert_eq!(created["members"].as_array().unwrap().len(), 2);
+    assert_eq!(created["goal"]["revision"], 1);
+    let id = created["learning_workspace_id"].as_str().unwrap();
+    let path = format!("/api/learning-workspaces/{id}");
+    let (status, revised) = request(&a, "POST", &format!("{path}/goal"), Some(json!({"goal":{"text":"三天期末冲刺"}})));
+    assert_eq!(status, 200, "{revised}");
+    assert_eq!(revised["goal"]["revision"], 2);
+    assert_eq!(revised["goal_history"][0], created["goal"]);
+    assert_eq!(request(&a, "POST", &format!("{path}/members"), Some(json!({"published_book_ref":ungranted}))).0, 403);
+    let removed = request(&a, "DELETE", &format!("{path}/members"), Some(json!({"published_book_ref":second})));
+    assert_eq!(removed.0, 200);
+    assert_eq!(removed.1["members"].as_array().unwrap().len(), 1);
+    assert_eq!(request(&a, "POST", &format!("{path}/members"), Some(json!({"published_book_ref":second}))).0, 200);
+    for (method, suffix, payload) in [
+        ("GET", "", None),
+        ("POST", "/goal", Some(json!({"goal":{"text":"other"}}))),
+        ("POST", "/members", Some(json!({"published_book_ref":second}))),
+        ("DELETE", "/members", Some(json!({"published_book_ref":second}))),
+        ("POST", "/archive", Some(json!({"archived":true}))),
+    ] {
+        let response = request(&b, method, &format!("{path}{suffix}"), payload);
+        assert_eq!(response.0, 404, "{method} {suffix}: {}", response.1);
+    }
+    let (_, list) = request(&b, "GET", "/api/learning-workspaces", None);
+    assert_eq!(list["workspaces"], json!([]));
+    let (status, archived) = request(&a, "POST", &format!("{path}/archive"), Some(json!({"archived":true})));
+    assert_eq!(status, 200);
+    assert_eq!(archived["archived"], true);
+    assert_eq!(request(&a, "POST", &format!("{path}/goal"), Some(json!({"goal":{"text":"new"}}))).0, 409);
+    f.access.library.lock().unwrap().revoke("A", &second).unwrap();
+    let (_, loaded) = request(&a, "GET", &path, None);
+    assert!(loaded["members"].as_array().unwrap().iter().any(|m| m["published_book_ref"] == json!(second) && m["readable"] == false));
+    let reopened = ControlStore::open(f.access.users.lock().unwrap().writer()).unwrap();
+    assert_eq!(json!(reopened.learning_workspace("A", id).unwrap()), loaded);
+    assert_eq!(reopened.connection.query_row("SELECT count(*) FROM reader_workspaces", [], |r| r.get::<_, i64>(0)).unwrap(), 0,
+        "learning metadata must not create or repurpose reading scenes");
+    server.shutdown();
+}
+
+#[test]
 fn mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback() {
     let f = Fixture::new();
     let server = f.start();
@@ -838,6 +903,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
         session.turns[0].status = AgentAssistantStatus::Completed;
         session.turns[0].error = None;
         session.turns[0].outcome = Some(OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some(format!("{id}-private-answer")),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {
@@ -870,7 +936,8 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
             },
             created_by_turn_id: "turn-same".into(),
             based_on: None,
-            content: PresentationContent {
+            content: PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: format!("{id}-private-title"),
                 content_files: BTreeMap::from([(

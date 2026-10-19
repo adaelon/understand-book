@@ -51,6 +51,10 @@ pub(crate) enum Command {
     Grant(PublishedBookRef),
     Revoke(PublishedBookRef),
     Allowance(crate::allowance_admin::Mutation),
+    AllowanceOffer(crate::allowance_offers::Offer),
+    WorkspaceRelease(crate::workspace_publication::Publish),
+    OperatorBuild(crate::operator_builds::Mutation),
+    WorkspaceReleaseArchive(crate::workspace_publication::Archive),
     Mcp(crate::mcp_pack::Mutation),
     Reconcile(String, crate::charge_admin::Reconcile),
 }
@@ -64,6 +68,10 @@ impl Command {
             Self::Grant(_) => "book-grants",
             Self::Revoke(_) => "book-revocations",
             Self::Allowance(m) => m.kind(),
+            Self::AllowanceOffer(_) => "allowance-offers",
+            Self::WorkspaceRelease(_) => "workspace-releases",
+            Self::OperatorBuild(_) => "operator-builds",
+            Self::WorkspaceReleaseArchive(_) => "workspace-release-archive",
             Self::Mcp(m) => m.kind(),
             Self::Reconcile(..) => "charge-reconcile",
         }
@@ -71,6 +79,10 @@ impl Command {
     fn parameters(&self) -> Value {
         match self {
             Self::Allowance(m) => m.parameters(),
+            Self::AllowanceOffer(offer) => json!(offer),
+            Self::WorkspaceRelease(release) => json!(release),
+            Self::OperatorBuild(build) => json!(build),
+            Self::WorkspaceReleaseArchive(archive) => json!(archive),
             Self::Mcp(m) => m.parameters(),
             Self::Reconcile(call, r) => json!({"call_id":call,"reconciliation":r}),
             Self::Status(disabled) => json!({"disabled":disabled}),
@@ -125,6 +137,9 @@ impl AdminStore {
             m.normalize()?;
         }
         if let Command::Mcp(m) = &mut command { m.normalize()?; }
+        if let Command::AllowanceOffer(offer) = &mut command { offer.normalize()?; }
+        if let Command::WorkspaceRelease(release) = &mut command { release.normalize()?; }
+        if let Command::OperatorBuild(build) = &mut command { build.normalize()?; }
         if let Command::Reconcile(_, r) = &mut command { r.normalize()?; }
         let kind = command.kind();
         let parameters = command.parameters();
@@ -171,7 +186,7 @@ impl AdminStore {
         let mut cancelled = 0;
         // Allowance rows reference the operation. Save its final result below in
         // the same transaction, so no placeholder is externally observable.
-        if matches!(command, Command::Allowance(_) | Command::Mcp(_) | Command::Reconcile(..)) {
+        if matches!(command, Command::Allowance(_) | Command::AllowanceOffer(_) | Command::WorkspaceRelease(_) | Command::OperatorBuild(_) | Command::WorkspaceReleaseArchive(_) | Command::Mcp(_) | Command::Reconcile(..)) {
             tx.execute(
                 "INSERT INTO admin_operations VALUES(?,?,?,?,?,'{}',?)",
                 params![actor, id, owner, kind, parameters.to_string(), now],
@@ -181,6 +196,10 @@ impl AdminStore {
         let mut allowance_result = None;
         match &command {
             Command::Allowance(m) => allowance_result = Some(m.apply(&tx, actor, id, owner, now)?),
+            Command::AllowanceOffer(offer) => allowance_result = Some(offer.apply(&tx, now)?),
+            Command::WorkspaceRelease(release) => allowance_result = Some(release.apply(&tx, actor, id, now)?),
+            Command::OperatorBuild(build) => allowance_result = Some(build.apply(&tx, actor, id, now)?),
+            Command::WorkspaceReleaseArchive(archive) => allowance_result = Some(archive.apply(&tx, actor, id, now)?),
             Command::Mcp(m) => allowance_result = Some(m.apply(&tx, actor, id, owner, now)?),
             Command::Reconcile(call, r) => allowance_result = Some(r.apply(&tx, actor, id, owner, call, now)?),
             Command::Create(_) | Command::Password(_) => auth::write_password(
@@ -314,8 +333,8 @@ impl AdminStore {
 
     pub(crate) fn books(&self, limit: u32, offset: u32) -> Result<Value, ToolError> {
         let control = self.control.lock().unwrap();
-        let mut query = control.connection.prepare("SELECT p.book_id,p.publication_id,COALESCE(d.publication_id=p.publication_id,0) FROM book_publications p LEFT JOIN book_defaults d USING(book_id) ORDER BY p.book_id,p.publication_id LIMIT ? OFFSET ?").map_err(|_| storage())?;
-        let books = query.query_map(params![limit,offset], |r| Ok(json!({"published_book_ref":{"book_id":r.get::<_,String>(0)?,"publication_id":r.get::<_,String>(1)?},"is_default":r.get::<_,bool>(2)?}))).map_err(|_| storage())?.collect::<Result<Vec<_>,_>>().map_err(|_| storage())?;
+        let mut query = control.connection.prepare("SELECT p.book_id,p.publication_id,COALESCE(d.publication_id=p.publication_id,0),COALESCE(json_extract(p.manifest,'$.capabilities.video'),0) FROM book_publications p LEFT JOIN book_defaults d USING(book_id) ORDER BY p.book_id,p.publication_id LIMIT ? OFFSET ?").map_err(|_| storage())?;
+        let books = query.query_map(params![limit,offset], |r| Ok(json!({"published_book_ref":{"book_id":r.get::<_,String>(0)?,"publication_id":r.get::<_,String>(1)?},"is_default":r.get::<_,bool>(2)?,"material_kind":if r.get::<_,bool>(3)? {"video"} else {"book"}}))).map_err(|_| storage())?.collect::<Result<Vec<_>,_>>().map_err(|_| storage())?;
         let total: i64 = control
             .connection
             .query_row("SELECT count(*) FROM book_publications", [], |r| r.get(0))

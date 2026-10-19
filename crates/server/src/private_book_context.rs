@@ -6,6 +6,7 @@ use std::path::Path;
 
 pub struct PrivateBookContext<'a> {
     pub user: &'a UserRuntime,
+    pub learning_workspace_id: Option<&'a str>,
     pub book: &'a Book,
     pub book_dir: &'a Path,
     pub messages: &'a [Message],
@@ -16,6 +17,7 @@ impl AppState {
     pub fn private_context(&self) -> PrivateBookContext<'_> {
         PrivateBookContext {
             user: &self.user,
+            learning_workspace_id: self.workspace.learning_workspace_id.as_deref(),
             book: &self.workspace.book,
             book_dir: &self.workspace.book_dir,
             messages: &self.workspace.messages,

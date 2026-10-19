@@ -1,0 +1,558 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>齿轮的约定</title><style>:root{color-scheme:light;--paper:var(--presentation-bg,#f5f3ed);--ink:var(--presentation-fg,#203b3e);--muted:#657572;--line:#d6ded6;--gold:#b78535;--teal:#32858c}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.75 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:48px 36px 60px}.eyebrow{font-size:11px;letter-spacing:.2em;color:var(--teal);font-weight:750}h1{font:650 clamp(32px,5vw,58px)/1.22 Georgia,"Noto Serif SC",serif;letter-spacing:-.035em;margin:18px 0}header>p{max-width:660px;color:var(--muted);margin:0 0 28px}figure{margin:0}h2{font-size:17px;margin:0;font-weight:650}.figure-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 22px 0}.figure-head span{font-size:11px;letter-spacing:.12em;color:var(--muted)}.stage{position:relative;border-top:1px solid var(--line);background:radial-gradient(ellipse at 50% 45%,#fff9 0%,#dce6df55 75%,transparent);border-radius:4px}#spatial{display:block;width:100%;height:clamp(300px,48vw,470px);touch-action:none;cursor:grab}#spatial:active{cursor:grabbing}.stage-note{font-size:12px;color:var(--muted);text-align:center;padding:0 14px 12px;margin:0}.view-tools{display:flex;gap:8px;align-items:center;padding:0 22px 18px;flex-wrap:wrap}.view-tools label{flex:1;min-width:130px;display:flex;align-items:center;gap:12px;font-size:13px}.view-tools input{width:100%;min-width:60px}button,input,select{font:inherit;min-height:44px}button{padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;cursor:pointer}button:hover{background:#dfe9df}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible{outline:3px solid #b78535;outline-offset:3px}#play{color:#fff;background:#286a70;border-color:#286a70;min-width:90px}input[type=range]{accent-color:var(--teal);margin:0}select{background:#fff8;border:1px solid var(--line);color:inherit;border-radius:6px;padding:4px 8px;width:100%}.controls{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 0;margin-bottom:28px}.timeline{display:grid;grid-template-columns:auto auto 1fr;gap:12px;align-items:center}.timeline label{grid-column:1/-1;font-size:13px;display:flex;justify-content:space-between}.parameters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}.parameters label{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px}.parameters input{width:100%}output{font-variant-numeric:tabular-nums;color:var(--teal)}.diagrams{display:grid;grid-template-columns:1fr 1fr;gap:28px}.diagrams figure{min-width:0;border-bottom:1px solid var(--line)}.diagrams h2{font-size:18px}.diagrams .index{font:italic 22px Georgia,serif;color:var(--gold);margin-right:8px}.diagrams canvas{display:block;width:100%;height:256px}#diagram{touch-action:none}.diagrams p{color:var(--muted);font-size:13px;line-height:1.7;margin:0 0 18px;min-height:44px}.readout{margin:24px 0;border-left:3px solid var(--teal);padding:5px 20px}.readout strong{font-size:clamp(18px,2.6vw,26px);font-weight:550;font-variant-numeric:tabular-nums}.readout p{margin:7px 0 0;color:var(--muted);font-size:14px}.explanation{max-width:730px;margin:34px auto 0}.explanation h2{font:600 26px/1.5 Georgia,"Noto Serif SC",serif}.explanation p{color:var(--muted);font-size:15px}.formula{font:24px/1.8 Georgia,serif;color:var(--teal);padding:15px 0}.assumption{border-top:1px solid var(--line);margin:26px 0 0;padding-top:20px;font-size:12px;color:var(--muted)}#fallback{padding:50px 24px;color:var(--muted)}[hidden]{display:none!important}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin:12px 0}.gold{color:var(--gold)}.teal{color:var(--teal)}
+body{padding:0}button{min-width:44px;white-space:nowrap}input[type=range]{min-width:0;width:100%}.timeline{grid-template-columns:auto auto minmax(44px,1fr)}
+.view-tools label,.view-tools output{white-space:nowrap}.view-tools input{flex:1;width:auto}.view-tools output{min-width:34px;text-align:right}
+@media(max-width:650px){main{padding:28px 20px 40px}.diagrams{grid-template-columns:1fr;gap:24px}.parameters{gap:12px}.figure-head{padding:16px 12px 0}.view-tools{padding:0 12px 16px}.view-tools label{flex-basis:100%}.diagrams p{min-height:0}.timeline{gap:8px}.parameters label{font-size:12px}.readout{padding-left:14px}}
+@media(max-width:360px){main{padding:24px 12px}.parameters{grid-template-columns:1fr}.parameters label{display:grid;grid-template-columns:1fr auto}.parameters input,.parameters select{grid-column:1/-1}.figure-head span{display:none}.timeline button{padding:8px 12px}}
+</style></head><body><main>
+<header><div class="eyebrow">SPATIAL STUDY / 01</div><h1>齿轮的约定</h1><p>两只齿轮并没有约定谁应该快、谁应该慢。齿的接触，替它们约定了一切。转动视角，再改变齿数，看同一件事怎样出现在三维结构、平面图和数字里。</p></header>
+<div id="experiment"><figure class="stage"><div class="figure-head"><h2>从结构看见传动</h2><span>DRAG TO EXPLORE</span></div><canvas id="spatial" tabindex="0" aria-label="三维模型，拖动或使用方向键改变观察角度"></canvas><p id="fallback" hidden>当前环境无法显示三维模型。下方图解和参数仍可操作。</p><p class="stage-note">拖动旋转 · 方向键微调 · 拆开看结构</p><div class="view-tools"><button id="front">正视</button><button id="view-reset">恢复视角</button><label for="explode">拆解 <input id="explode" type="range" min="0" max="1" step="0.01" value="0"><output id="explode-value">0%</output></label></div></figure>
+<section class="controls" aria-label="实验控制"><div class="timeline"><button id="play" aria-pressed="false">播放</button><button id="reset">回到起点</button><input id="position" aria-label="周期位置" type="range" min="0" max="4" step="0.001" value="0"><label for="position">沿过程观察<output id="position-value"></output></label></div><div class="parameters"><label for="teeth">输出齿数<select id="teeth" data-param="teeth"><option value="20">20 齿</option><option value="30">30 齿</option><option value="40" selected>40 齿</option><option value="60">60 齿</option></select></label><label for="rpm">输入转速<output id="rpm-value"></output><input id="rpm" data-param="rpm" type="range" min="0" max="24" step="1"></label><label for="torque">输入扭矩<output id="torque-value"></output><input id="torque" data-param="torque" type="range" min="0" max="2" step="0.1"></label></div></section>
+<div class="legend"><span class="gold">● 金色：输入轮</span><span class="teal">● 青色：输出轮</span></div><div class="diagrams"><figure><h2><span class="index">01</span>同一点，同一速度</h2><canvas id="diagram" tabindex="0" aria-label="同一点，同一速度"></canvas><p>白点追踪同一颗齿的位置。拖动金色齿轮，或用方向键微调，三维结构随之转动。虚线表示节圆。</p></figure><figure><h2><span class="index">02</span>更长的力臂，更大的扭矩</h2><canvas id="detail" aria-label="更长的力臂，更大的扭矩"></canvas><p>两轮接触处传递相同大小的切向力。输出轮的半径越大，这个力产生的扭矩就越大；两根箭头使用同一尺度。</p></figure></div><section id="readout" class="readout" aria-live="off"></section></div>
+<section class="explanation"><h2>为什么变慢，却变得更有力？</h2><p>接触的齿不能互相穿过。两个节圆相切处的线速度相同，而更大的圆每转一圈，要走更长的距离。所以大轮转得更慢。同一个力作用在更长的力臂上，又会产生更大的扭矩。</p><div class="formula">ω₂ / ω₁ = − z₁ / z₂　　τ₂ / τ₁ = z₂ / z₁</div><p>改变输出齿数，只改变速度与扭矩的交换比例。理想条件下，输入与输出功率相等。把输入转速或扭矩设为零，观察哪些关系仍然成立。</p></section><p class="assumption">模型：20° 标准渐开线直齿轮，模数 2 mm，输入 20 齿；忽略摩擦、弹性与惯性，所示扭矩为理想传递值。根部过渡作几何简化。拆解不代表可运行装配。</p>
+</main><script data-presentation-library="three" src="libraries/three-0.180.0.min.js"></script><script>"use strict";
+(() => {
+  // skills/presentation/methods/spatial-linked-views/v1/runtime.js
+  var clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  var $ = (id) => document.getElementById(id);
+  var fmt = (x, digits = 2) => Number(x.toFixed(digits)).toString();
+  function canvas2D(canvas) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(devicePixelRatio, 2);
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.font = "13px system-ui";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 1.5;
+    return { ctx, w, h };
+  }
+  function createStage(canvas) {
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-100, 100, 80, -80, 1, 1500);
+    scene.add(new THREE.HemisphereLight(16777215, 7832695, 2.7));
+    const key = new THREE.DirectionalLight(16775400, 3.5);
+    key.position.set(-80, 90, 160);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    Object.assign(key.shadow.camera, { left: -160, right: 160, top: 150, bottom: -150, near: 1, far: 500 });
+    key.shadow.bias = -4e-4;
+    key.shadow.normalBias = 0.1;
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(15069941, 2);
+    rim.position.set(100, -30, 70);
+    scene.add(rim);
+    const environment = new THREE.Scene();
+    environment.add(new THREE.Mesh(new THREE.BoxGeometry(1e3, 1e3, 1e3), new THREE.MeshBasicMaterial({ color: 10991542, side: THREE.BackSide })));
+    for (const [x, y, z, w, h, color, intensity] of [[-200, 150, 150, 180, 400, 16777215, 5], [100, 100, -100, 150, 500, 15786695, 3], [200, -200, 250, 300, 180, 16777215, 4]]) {
+      const light = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+      light.material.color.multiplyScalar(intensity);
+      light.position.set(x, y, z);
+      light.lookAt(0, 0, 0);
+      environment.add(light);
+    }
+    const pmrem = new THREE.PMREMGenerator(renderer), env = pmrem.fromScene(environment, 0.05);
+    scene.environment = env.texture;
+    pmrem.dispose();
+    disposeObject(environment);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.ShadowMaterial({ opacity: 0.14, color: 3886404 }));
+    floor.position.z = -19;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    let width = 0, height = 0;
+    return {
+      scene,
+      renderer,
+      camera,
+      draw(s, bounds) {
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) return;
+        if (w !== width || h !== height) {
+          width = w;
+          height = h;
+          renderer.setSize(w, h, false);
+        }
+        camera.position.set(300 * Math.sin(s.yaw) * Math.sin(s.tilt), -300 * Math.cos(s.yaw) * Math.sin(s.tilt), 300 * Math.cos(s.tilt));
+        camera.lookAt(0, 0, 0);
+        camera.updateMatrixWorld();
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const box of bounds) for (const x of [box[0], box[3]]) for (const y of [box[1], box[4]]) for (const z of [box[2], box[5]]) {
+          const p = new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse);
+          x0 = Math.min(x0, p.x);
+          x1 = Math.max(x1, p.x);
+          y0 = Math.min(y0, p.y);
+          y1 = Math.max(y1, p.y);
+        }
+        const span = Math.max((y1 - y0) * h / (h - 56), (x1 - x0) * h / (w - 48), 20);
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        camera.left = cx - span * w / h / 2;
+        camera.right = cx + span * w / h / 2;
+        camera.top = cy + span / 2;
+        camera.bottom = cy - span / 2;
+        camera.updateProjectionMatrix();
+        renderer.render(scene, camera);
+      },
+      dispose() {
+        disposeObject(scene);
+        env.dispose();
+        renderer.dispose();
+      }
+    };
+  }
+  function disposeObject(root) {
+    const geometries = /* @__PURE__ */ new Set(), materials = /* @__PURE__ */ new Set();
+    root.traverse((o) => {
+      if (o.geometry) geometries.add(o.geometry);
+      for (const m of o.material ? Array.isArray(o.material) ? o.material : [o.material] : []) materials.add(m);
+    });
+    geometries.forEach((g) => g.dispose());
+    materials.forEach((m) => m.dispose());
+  }
+  function createLinkedDemo(topic2) {
+    const defaults = { ...topic2.defaults, yaw: -0.28, tilt: 0.62, explode: 0, semantic_state: 0, transition_progress: 0 };
+    const initial = window.presentation?.initialState ?? {};
+    const state = { ...defaults, playing: false };
+    for (const key of Object.keys(defaults)) if (initial[key] !== void 0) state[key] = initial[key];
+    let stage, objects, derived, frame = 0, previous = 0, visible = true, drag2;
+    const canvas = $("spatial");
+    try {
+      stage = createStage(canvas);
+      objects = topic2.createObjects(stage.scene);
+    } catch {
+      $("fallback").hidden = false;
+      canvas.hidden = true;
+      $("front").disabled = true;
+      $("view-reset").disabled = true;
+      $("explode").disabled = true;
+    }
+    const values = () => Object.fromEntries(Object.keys(defaults).map((k) => [k, state[k]]));
+    const snapshot = () => ({ ...values(), playing: state.playing });
+    const commit = () => window.presentation?.commitState();
+    function position(q) {
+      q = clamp(q, 0, 4);
+      state.semantic_state = Math.floor(q);
+      state.transition_progress = q - state.semantic_state;
+    }
+    function render() {
+      derived = topic2.derive(state);
+      if (stage) {
+        topic2.updateObjects(objects, derived, state);
+        stage.draw(state, topic2.bounds(derived, state));
+      }
+      if ($("diagram").clientWidth && $("detail").clientWidth) topic2.drawDiagrams(derived, state);
+      $("readout").innerHTML = topic2.describe(derived, state);
+      for (const control of document.querySelectorAll("[data-param]")) {
+        const key = control.dataset.param;
+        control.value = state[key];
+        const output = $(key + "-value");
+        if (output) output.textContent = topic2.label?.(key, state[key]) ?? fmt(state[key]);
+      }
+      $("position").value = state.semantic_state + state.transition_progress;
+      $("position-value").textContent = `${fmt(state.semantic_state + state.transition_progress, 3)} \u5468\u671F`;
+      $("explode").value = state.explode;
+      $("explode-value").textContent = `${Math.round(state.explode * 100)}%`;
+      $("play").textContent = state.playing ? "\u6682\u505C" : "\u64AD\u653E";
+      $("play").setAttribute("aria-pressed", String(state.playing));
+      $("play").disabled = state.explode > 0 || !Number.isFinite(topic2.period(state));
+    }
+    function pause() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      state.playing = false;
+    }
+    function seek({ semantic_state, transition_progress = 0 }) {
+      pause();
+      position(semantic_state + transition_progress);
+      render();
+      return snapshot();
+    }
+    function schedule() {
+      if (state.playing && visible && !document.hidden && !frame) {
+        previous = performance.now();
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    function tick(now) {
+      frame = 0;
+      position(state.semantic_state + state.transition_progress + Math.min((now - previous) / 1e3, 0.08) / topic2.period(state));
+      previous = now;
+      if (state.semantic_state === 4) state.playing = false;
+      render();
+      if (state.playing && visible && !document.hidden) frame = requestAnimationFrame(tick);
+      else if (!state.playing) commit();
+    }
+    $("play").onclick = () => {
+      if (state.playing) pause();
+      else {
+        if (state.semantic_state === 4) position(0);
+        state.playing = true;
+        schedule();
+      }
+      render();
+      commit();
+    };
+    $("reset").onclick = () => {
+      seek({ semantic_state: 0 });
+      commit();
+    };
+    $("position").oninput = (e) => seek({ semantic_state: 0, transition_progress: Number(e.target.value) });
+    $("position").onchange = commit;
+    for (const control of document.querySelectorAll("[data-param]")) {
+      control.addEventListener("input", () => {
+        state[control.dataset.param] = Number(control.value);
+        seek({ semantic_state: 0 });
+      });
+      control.addEventListener("change", commit);
+    }
+    $("explode").oninput = (e) => {
+      pause();
+      state.explode = Number(e.target.value);
+      if (state.explode > 0 && state.tilt < 0.35) state.tilt = 0.75;
+      render();
+    };
+    $("explode").onchange = commit;
+    $("front").onclick = () => {
+      state.yaw = 0;
+      state.tilt = 0;
+      render();
+      commit();
+    };
+    $("view-reset").onclick = () => {
+      state.yaw = defaults.yaw;
+      state.tilt = defaults.tilt;
+      render();
+      commit();
+    };
+    canvas.addEventListener("pointerdown", (e) => {
+      drag2 = { x: e.clientX, y: e.clientY, yaw: state.yaw, tilt: state.tilt };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!drag2) return;
+      state.yaw = drag2.yaw + (e.clientX - drag2.x) * 9e-3;
+      state.tilt = clamp(drag2.tilt + (e.clientY - drag2.y) * 6e-3, 0, 1.22);
+      render();
+    });
+    const release = () => {
+      if (drag2) {
+        drag2 = null;
+        commit();
+      }
+    };
+    canvas.addEventListener("pointerup", release);
+    canvas.addEventListener("pointercancel", release);
+    canvas.addEventListener("keydown", (e) => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+      e.preventDefault();
+      state.yaw += e.key === "ArrowLeft" ? -0.12 : e.key === "ArrowRight" ? 0.12 : 0;
+      state.tilt = clamp(state.tilt + (e.key === "ArrowUp" ? -0.1 : e.key === "ArrowDown" ? 0.1 : 0), 0, 1.22);
+      render();
+      commit();
+    });
+    const resize = new ResizeObserver(render);
+    for (const c of document.querySelectorAll("canvas")) resize.observe(c);
+    const visibility = new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (visible) {
+        render();
+        schedule();
+      } else {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    });
+    visibility.observe($("experiment"));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      } else {
+        render();
+        schedule();
+      }
+    });
+    window.addEventListener("pagehide", () => {
+      pause();
+      resize.disconnect();
+      visibility.disconnect();
+      stage?.dispose();
+    }, { once: true });
+    window.presentationScene = { seek, snapshot };
+    window.presentation?.registerStateReader(() => {
+      render();
+      return { values: values(), visible_step: `${topic2.name} \xB7 ${fmt(state.semantic_state + state.transition_progress, 3)} \u5468\u671F` };
+    });
+    window.presentation?.registerStateRestorer((saved) => {
+      const restored = saved.values.page;
+      for (const key of Object.keys(defaults)) if (restored?.[key] !== void 0) state[key] = restored[key];
+      seek(state);
+    });
+    window.linkedDemo = { inspect: () => ({ model: { ...derived }, geometry: stage ? topic2.inspect(objects) : null, webgl: !!stage }) };
+    seek(state);
+    return { seek, commit, snapshot };
+  }
+
+  // skills/presentation/methods/spatial-linked-views/v1/gear-model.js
+  var TAU = 2 * Math.PI;
+  var PRESSURE = 20 * Math.PI / 180;
+  var MODULE = 2;
+  var INPUT_TEETH = 20;
+  function gearSpec(teeth, module = MODULE) {
+    const pitch = teeth * module / 2;
+    return {
+      teeth,
+      module,
+      pitch,
+      base: pitch * Math.cos(PRESSURE),
+      tip: pitch + module,
+      root: pitch - 1.25 * module,
+      halfTooth: Math.PI / (2 * teeth),
+      invPitch: Math.tan(PRESSURE) - PRESSURE
+    };
+  }
+  function involuteAngle(radius, base) {
+    const t = Math.sqrt(Math.max(0, (radius / base) ** 2 - 1));
+    return t - Math.atan(t);
+  }
+  function gearOutline(teeth, samples = 9) {
+    const g = gearSpec(teeth), points = [], step = TAU / teeth;
+    const polar = (r, a) => points.push([r * Math.cos(a), r * Math.sin(a)]);
+    const half = (r) => g.halfTooth + g.invPitch - involuteAngle(r, g.base);
+    const start = Math.max(g.base, g.root);
+    for (let k = 0; k < teeth; k++) {
+      const a = k * step, h0 = half(start), ht = half(g.tip);
+      polar(g.root, a - h0);
+      for (let j = 0; j <= samples; j++) {
+        const r = start + (g.tip - start) * j / samples;
+        polar(r, a - half(r));
+      }
+      for (let j = 1; j <= 4; j++) polar(g.tip, a - ht + 2 * ht * j / 4);
+      for (let j = samples; j >= 0; j--) {
+        const r = start + (g.tip - start) * j / samples;
+        polar(r, a + half(r));
+      }
+      polar(g.root, a + h0);
+      for (let j = 1; j <= 4; j++) polar(g.root, a + h0 + (step - 2 * h0) * j / 4);
+    }
+    return points;
+  }
+  function transmission(teeth, rpm, torque) {
+    const a = gearSpec(INPUT_TEETH), b = gearSpec(teeth);
+    return {
+      ratio: teeth / INPUT_TEETH,
+      inputRpm: rpm,
+      outputRpm: -rpm * INPUT_TEETH / teeth,
+      outputTorque: torque * teeth / INPUT_TEETH,
+      inputPower: torque * rpm * TAU / 60,
+      tangentForce: torque / (a.pitch / 1e3),
+      pitchSpeed: rpm * TAU / 60 * a.pitch / 1e3,
+      center: a.pitch + b.pitch,
+      a,
+      b
+    };
+  }
+  var drivenAngle = (angle, teeth) => Math.PI - Math.PI / teeth - angle * INPUT_TEETH / teeth;
+
+  // skills/presentation/methods/spatial-linked-views/v1/gear.js
+  var derive = (s) => ({
+    ...transmission(s.teeth, s.rpm, s.torque),
+    angle: TAU * (s.semantic_state + s.transition_progress),
+    outputAngle: drivenAngle(TAU * (s.semantic_state + s.transition_progress), s.teeth)
+  });
+  function cylinder(radius, length, material) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 48), material);
+    m.rotation.x = Math.PI / 2;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+  function makeGear(teeth, color, x) {
+    const spec = gearSpec(teeth), carrier = new THREE.Group(), rotor = new THREE.Group();
+    carrier.position.x = x;
+    carrier.add(rotor);
+    const shape = new THREE.Shape(gearOutline(teeth, 12).map((p) => new THREE.Vector2(...p)));
+    const bore = new THREE.Path();
+    bore.absarc(0, 0, 3.3, 0, TAU, true);
+    shape.holes.push(bore);
+    for (let i = 0; i < 6; i++) {
+      const a = i * TAU / 6, hole = new THREE.Path();
+      hole.absarc(Math.cos(a) * spec.pitch * 0.53, Math.sin(a) * spec.pitch * 0.53, spec.pitch * 0.13, 0, TAU, true);
+      shape.holes.push(hole);
+    }
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: 6, bevelEnabled: true, bevelSize: 0.16, bevelOffset: -0.16, bevelThickness: 0.2, bevelSegments: 2, steps: 1, curveSegments: 20 });
+    geometry.translate(0, 0, -3);
+    const wheel = new THREE.Mesh(geometry, [new THREE.MeshStandardMaterial({ color, metalness: 0.65, roughness: 0.32, envMapIntensity: 0.65 }), new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.4, envMapIntensity: 0.5 })]);
+    wheel.castShadow = true;
+    wheel.receiveShadow = true;
+    rotor.add(wheel);
+    const metal = new THREE.MeshStandardMaterial({ color: 11976890, metalness: 0.85, roughness: 0.26, envMapIntensity: 0.8 });
+    const hub = cylinder(spec.pitch * 0.235, 9, metal);
+    hub.position.z = 1;
+    rotor.add(hub);
+    const shaft = cylinder(2.9, 32, metal);
+    shaft.position.z = -3;
+    carrier.add(shaft);
+    const cap = cylinder(spec.pitch * 0.15, 0.6, new THREE.MeshStandardMaterial({ color: 6912374, metalness: 0.8, roughness: 0.4 }));
+    cap.position.z = 5.8;
+    rotor.add(cap);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(spec.pitch * 0.19, 0.65, 0.2), new THREE.MeshStandardMaterial({ color: 2571583, roughness: 0.8 }));
+    slot.position.z = 6.2;
+    rotor.add(slot);
+    const marker = cylinder(1.1, 0.35, new THREE.MeshStandardMaterial({ color: 16775653, roughness: 0.5 }));
+    marker.position.set(spec.pitch * 0.8, 0, 3.35);
+    rotor.add(marker);
+    const guide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, -19), new THREE.Vector3(0, 0, 62)]), new THREE.LineDashedMaterial({ color: 7899776, dashSize: 1.3, gapSize: 1.3, transparent: true, opacity: 0.5 }));
+    guide.computeLineDistances();
+    carrier.add(guide);
+    return { carrier, rotor, hub, cap, slot, spec, guide };
+  }
+  var outlines = /* @__PURE__ */ new Map();
+  function outline(n) {
+    if (!outlines.has(n)) {
+      const p = new Path2D(), pts = gearOutline(n);
+      pts.forEach(([x, y], i) => i ? p.lineTo(x, y) : p.moveTo(x, y));
+      p.closePath();
+      for (let i = 0; i < 6; i++) {
+        const a = i * TAU / 6, r = gearSpec(n).pitch;
+        p.moveTo(Math.cos(a) * r * 0.53 + r * 0.13, Math.sin(a) * r * 0.53);
+        p.arc(Math.cos(a) * r * 0.53, Math.sin(a) * r * 0.53, r * 0.13, 0, TAU);
+      }
+      p.moveTo(3.3, 0);
+      p.arc(0, 0, 3.3, 0, TAU);
+      outlines.set(n, p);
+    }
+    return outlines.get(n);
+  }
+  function arrow(ctx, x, y, dx, dy, color) {
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + dx, y + dy);
+    ctx.stroke();
+    if (Math.hypot(dx, dy) < 0.01) return;
+    const a = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(x + dx, y + dy);
+    ctx.lineTo(x + dx - 8 * Math.cos(a - 0.45), y + dy - 8 * Math.sin(a - 0.45));
+    ctx.lineTo(x + dx - 8 * Math.cos(a + 0.45), y + dy - 8 * Math.sin(a + 0.45));
+    ctx.fill();
+  }
+  var topic = {
+    name: "\u9F7F\u8F6E\u4F20\u52A8",
+    defaults: { teeth: 40, rpm: 12, torque: 2 },
+    derive,
+    period: (s) => s.rpm > 0 ? 60 / s.rpm : Infinity,
+    createObjects(scene) {
+      const group = new THREE.Group();
+      scene.add(group);
+      return { group, teeth: 0, gears: [] };
+    },
+    updateObjects(o, m, s) {
+      if (o.teeth !== s.teeth) {
+        disposeObject(o.group);
+        o.group.clear();
+        o.gears = [makeGear(20, 13738060, -m.b.pitch), makeGear(s.teeth, 5214872, m.a.pitch)];
+        o.gears.forEach((g) => o.group.add(g.carrier));
+        o.teeth = s.teeth;
+      }
+      o.gears[0].rotor.rotation.z = m.angle;
+      o.gears[1].rotor.rotation.z = m.outputAngle;
+      o.gears.forEach((g, i) => {
+        g.rotor.position.z = s.explode * (i === 0 ? 15 : 32);
+        g.hub.position.z = 1 + s.explode * 9;
+        g.cap.position.z = 5.8 + s.explode * 16;
+        g.slot.position.z = 6.2 + s.explode * 16;
+        g.guide.visible = s.explode > 0;
+      });
+    },
+    bounds: (m, s) => [[-m.b.pitch - m.a.tip, -m.a.tip, -19, -m.b.pitch + m.a.tip, m.a.tip, Math.max(13, 6.5 + s.explode * 31)], [m.a.pitch - m.b.tip, -m.b.tip, -19, m.a.pitch + m.b.tip, m.b.tip, Math.max(13, 6.5 + s.explode * 48)]],
+    inspect: (o) => ({ angles: o.gears.map((g) => g.rotor.rotation.z), centers: o.gears.map((g) => g.carrier.position.x), separation: o.gears.map((g) => g.rotor.position.z) }),
+    drawDiagrams(m, s) {
+      const { ctx, w, h } = canvas2D($("diagram")), scale = Math.min((w - 44) / (2 * (m.a.pitch + m.b.pitch) + 4), (h - 65) / (2 * m.b.tip));
+      const cy = (h - 35) / 2, centers = [w / 2 - m.b.pitch * scale, w / 2 + m.a.pitch * scale];
+      for (const [i, n, a, color] of [[0, 20, m.angle, "#b78535"], [1, s.teeth, m.outputAngle, "#32858c"]]) {
+        ctx.save();
+        ctx.translate(centers[i], cy);
+        ctx.scale(scale, -scale);
+        ctx.rotate(a);
+        ctx.fillStyle = color;
+        ctx.fill(outline(n), "evenodd");
+        ctx.restore();
+        const radius = gearSpec(n).pitch * scale;
+        ctx.strokeStyle = "#e2e8df";
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.arc(centers[i], cy, radius, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#fff5d5";
+        ctx.beginPath();
+        ctx.arc(centers[i] + Math.cos(a) * radius * 0.8, cy - Math.sin(a) * radius * 0.8, 3, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(`${n} \u9F7F`, centers[i], h - 24);
+      }
+      const d = canvas2D($("detail")), c = d.ctx, left = 42, right = d.w - 30, length = right - left;
+      c.strokeStyle = "#d4ded6";
+      c.beginPath();
+      c.moveTo(left, 55);
+      c.lineTo(right, 55);
+      c.moveTo(left, 155);
+      c.lineTo(right, 155);
+      c.stroke();
+      const unit = length / 6;
+      for (const [y, value, color, name] of [[55, s.torque, "#b78535", "\u8F93\u5165"], [155, m.outputTorque, "#32858c", "\u8F93\u51FA"]]) {
+        arrow(c, left, y, value * unit, 0, color);
+        c.fillStyle = color;
+        c.textAlign = "left";
+        c.fillText(name, left, y - 24);
+        c.fillText(`${fmt(value)} N\xB7m`, left, y + 27);
+      }
+      c.fillStyle = "#657572";
+      c.fillText(`\u540C\u4E00\u5207\u5411\u529B ${fmt(m.tangentForce)} N`, left, d.h - 20);
+    },
+    label: (k, v) => k === "teeth" ? `${v} \u9F7F` : k === "rpm" ? `${v} rpm` : `${fmt(v)} N\xB7m`,
+    describe: (m, s) => `<strong>${m.ratio === 1 ? "\u540C\u6837\u5FEB\uFF0C\u65B9\u5411\u76F8\u53CD" : `\u8F6C\u901F\u53D8\u4E3A 1/${fmt(m.ratio)}\uFF0C\u626D\u77E9\u53D8\u4E3A ${fmt(m.ratio)} \u500D`}</strong><p>\u8F93\u5165 <output>${fmt(s.rpm)} rpm</output> \u2192 \u8F93\u51FA <output>${fmt(m.outputRpm)} rpm</output>\uFF1B\u8F93\u51FA\u626D\u77E9 <output>${fmt(m.outputTorque)} N\xB7m</output>\u3002\u8D1F\u53F7\u8868\u793A\u53CD\u5411\u3002</p><p>\u540C\u4E00\u8282\u5706\u7EBF\u901F\u5EA6 ${fmt(m.pitchSpeed, 3)} m/s \xB7 \u7406\u60F3\u4F20\u9012\u529F\u7387 ${fmt(m.inputPower)} W\u3002${s.explode > 0 ? "\u62C6\u89E3\u72B6\u6001\u6682\u505C\u8FD0\u52A8\uFF0C\u6CBF\u8F74\u5206\u79BB\u53EA\u7528\u4E8E\u89C2\u5BDF\u3002" : "\u4E24\u53EA\u8F6E\u7684\u6807\u8BB0\u4E0E\u4E09\u7EF4\u6A21\u578B\u4FDD\u6301\u540C\u4E00\u8F6C\u89D2\u3002"}</p>`
+  };
+  var demo = createLinkedDemo(topic);
+  var dragging = false;
+  function drag(e) {
+    const s = demo.snapshot(), m = derive(s), r = $("diagram").getBoundingClientRect(), scale = Math.min((r.width - 44) / (2 * (m.a.pitch + m.b.pitch) + 4), (r.height - 65) / (2 * m.b.tip));
+    const cx = r.width / 2 - m.b.pitch * scale, cy = (r.height - 35) / 2;
+    let a = Math.atan2(cy - (e.clientY - r.top), e.clientX - r.left - cx);
+    const current = TAU * (s.semantic_state + s.transition_progress);
+    a += TAU * Math.round((current - a) / TAU);
+    demo.seek({ semantic_state: 0, transition_progress: clamp(a / TAU, 0, 4) });
+  }
+  $("diagram").addEventListener("pointerdown", (e) => {
+    dragging = true;
+    $("diagram").setPointerCapture(e.pointerId);
+    drag(e);
+  });
+  $("diagram").addEventListener("pointermove", (e) => {
+    if (dragging) drag(e);
+  });
+  for (const type of ["pointerup", "pointercancel"]) $("diagram").addEventListener(type, () => {
+    dragging = false;
+    demo.commit();
+  });
+  $("diagram").addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const s = demo.snapshot();
+    demo.seek({ semantic_state: 0, transition_progress: s.semantic_state + s.transition_progress + (e.key === "ArrowRight" ? 0.02 : -0.02) });
+    demo.commit();
+  });
+})();
+</script></body></html>

@@ -40,7 +40,15 @@ export interface Balance {
   active_reserved_micro_cny: number;
   pending_micro_cny: number;
   available_micro_cny: number;
+  allowance_basis?: AllowanceBasis | null;
+  percentages?: AllowancePercentages | null;
 }
+export interface Percentage { value: string; nonzero: boolean; below_tenth: boolean }
+export interface AllowanceBasis { version: string; basis_micro_cny: number }
+export interface AllowancePercentages {
+  granted: Percentage; debited: Percentage; active_reserved: Percentage; pending: Percentage; available: Percentage; deficit: Percentage;
+}
+export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; delta_milli_percent: number; basis_version: string; instructions: string; enabled: boolean }
 export interface Period {
   period_id: string;
   starts_at: number;
@@ -83,11 +91,17 @@ export interface UsageSummary extends UsageMetrics {
   returning_users: number;
   completed_runs: number;
 }
-export interface UsageTask extends UsageMetrics {
+export type UsageTask = UsageMetrics & ({
   user_id: string;
+  cost_owner: 'account';
   reference_kind: 'run' | 'task';
+} | {
+  user_id: null;
+  cost_owner: 'platform';
+  reference_kind: 'operator_task';
+}) & {
   reference: string;
-}
+};
 export interface UsageReport {
   from: string;
   to: string;
@@ -99,7 +113,8 @@ export interface UsageReport {
 }
 export interface Charge {
   call_id: string;
-  user_id: string;
+  user_id: string | null;
+  cost_owner: 'account' | 'platform';
   revision: number;
   state: string;
   model: string;

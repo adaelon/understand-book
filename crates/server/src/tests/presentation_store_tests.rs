@@ -5,10 +5,14 @@ use runtime::presentation::*;
 #[path = "presentation_ex13_tests.rs"]
 mod ex13;
 
+#[path = "presentation_se4_tests.rs"]
+mod se4;
+
 fn fixture() -> (tempfile::TempDir, AppState, AgentTurnRef) {
     let root = tempfile::tempdir().unwrap();
     let name = format!("rp2-presentation-{}", root.path().file_name().unwrap().to_string_lossy());
     let mut state = state_named(&name);
+    state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     state.user.history_path = Some(root.path().join("agent-history.json"));
     let turn = next_turn(&mut state);
     (root, state, turn)
@@ -237,7 +241,8 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
     let source = state.workspace.book
         .resolve_source(&evidence_range, "zh-CN", None)
         .unwrap();
-    PresentationContent {
+    PresentationContent { teaching_binding: None,
+        method_refs: None, method_observations: Default::default(),
         animation_assets: Default::default(),
         title: title.into(),
         content_files: BTreeMap::from([(
@@ -246,10 +251,11 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
         )]),
         entrypoint: "index.html".into(),
         readable_content: format!("{title}: two of three pieces of evidence"),
-        source_bindings: vec![SourceBinding {
+        source_bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+            media: None,
             source_ref_id: "source-rp2".into(),
             book_id: state.workspace.book.base.book_id.clone(),
-            evidence_range,
+            evidence_range: Some(evidence_range),
             evidence_text_digest: source.evidence_text_digest,
             label_snapshot: source.label,
             preview_snapshot: source.preview,
@@ -279,6 +285,7 @@ pub(super) fn persist(
 }
 fn outcome(reference: &PresentationRef) -> OuterOutcome {
     OuterOutcome {
+        teaching_delivery_move_refs: vec![],
         answer: Some("Recall example".into()),
         answer_view: Some(AgentAnswerView {
             parts: vec![AgentAnswerPart::Presentation {
@@ -313,6 +320,74 @@ fn finish(
         &messages,
         "2026-09-16T16:01:00Z",
     )
+}
+
+#[test]
+fn fallback_presentation_survives_incomplete_delivery_reload_and_public_read() {
+    let (_root, mut state, turn) = fixture();
+    let candidate = create(&mut state, &turn, None, "Preserved interactive page");
+    let reference = persist(&mut state, &turn, &candidate);
+    let mut delivered = outcome(&reference);
+    delivered.answer = Some("已保留生成的演示，配套讲解仍需修订。".into());
+    delivered.incomplete = true;
+    delivered.warning = Some("TEACHING_INVALID".into());
+    let messages = state.workspace.messages.clone();
+    finalize_agent_turn_completed(&mut state, &turn, &delivered, &messages,
+        "2026-10-18T09:00:00Z").unwrap();
+
+    let mut reopened = state_named("fallback-presentation-reopen");
+    reopened.user.history_path = state.user.history_path.clone();
+    reopened.user.agent_history = load_agent_history(&reopened.user.history_path).unwrap();
+    let saved = reopened.user.agent_history.sessions[0].turns[0].outcome.as_ref().unwrap();
+    assert!(saved.incomplete);
+    assert!(saved.teaching_delivery_move_refs.is_empty());
+    assert_eq!(saved.answer_view, delivered.answer_view);
+    let public = post(&mut reopened, "/agent/presentation.read", &json!({
+        "session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,
+    }).to_string());
+    assert_eq!(public.status, 200, "{}", public.body);
+    let public: Value = serde_json::from_str(&public.body).unwrap();
+    assert_eq!(public["title"], "Preserved interactive page");
+    assert!(public.to_string().contains("window.count=2"));
+}
+
+#[test]
+fn cross_book_presentation_sources_survive_delivery_note_reuse_and_learning() {
+    let (root, mut state, turn) = fixture();
+    state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
+    let mut draft = content(&state, "Rust 借用补讲");
+    let source = &mut draft.source_bindings[0];
+    source.book_id = "reference-rust".into();
+    source.publication_id = Some("rust-edition-1".into());
+    source.source_revision = Some("rust-source-revision".into());
+    source.label_snapshot = "《Rust》 · 借用".into();
+    let sources = draft.source_bindings.clone();
+    let candidate = state.private_context().create_presentation_candidate(&turn.session_id, &turn.turn_id, None, draft).unwrap();
+    let reference = persist(&mut state, &turn, &candidate);
+    finish(&mut state, &turn, &reference).unwrap();
+    assert_eq!(state.user.agent_history.sessions[0].turns[0].source_bindings, sources);
+    crate::teaching::record_user_delivery(&state.user, &turn, "now").unwrap();
+    crate::teaching::record_user_delivery(&state.user, &turn, "retry").unwrap();
+    assert_eq!(state.user.learning_store().unwrap().teaching_recent("observation:reference-rust", 10).unwrap().len(), 1);
+    let request = json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference});
+    let public = post(&mut state, "/agent/presentation.read", &request.to_string());
+    assert_eq!(public.status, 200, "{}", public.body);
+    let public: Value = serde_json::from_str(&public.body).unwrap();
+    assert_eq!(public["sources"][0]["label"], sources[0].label_snapshot);
+    let receipt = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference,
+        PresentationState {values:json!({"count":2}),visible_step:None,observed_result:"补讲".into(),source_ref_ids:vec!["source-rp2".into()]}).unwrap();
+    let note = workspace_client::memory(&mut state.user, &state.workspace, "memory/save",
+        &json!({"type":"note","content":"借用时仍有所有者","note":{"association":{"kind":"presentation","receipt":receipt}}}), "saved").unwrap();
+    assert_eq!(note["record"]["note"]["source_bindings"], json!(sources));
+    let next = next_turn(&mut state);
+    finish(&mut state, &next, &reference).unwrap();
+    crate::teaching::record_user_delivery(&state.user, &next, "later").unwrap();
+    assert_eq!(state.user.agent_history.sessions[0].turns[1].source_bindings, sources);
+    let facts = state.user.learning_store().unwrap().teaching_recent("observation:reference-rust", 10).unwrap();
+    assert_eq!(facts.len(), 2);
+    assert!(facts.iter().all(|f| f.binding.source_revision == "rust-source-revision"));
+    let history = load_agent_history(&state.user.history_path).unwrap();
+    assert_eq!(history.sessions[0].turns[1].source_bindings, sources);
 }
 
 #[test]
@@ -1053,6 +1128,8 @@ fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
             .unwrap();
         assert_eq!(read.body["title"], "Original");
         let write = port.author_presentation(AuthorRequest::Write {
+            teaching_binding: None,
+            method_refs: None,
             new_object: false,
             libraries: vec![],
             based_on:Some(reference.clone()), state_contract:draft.state_contract.clone(), initial_state:json!({"count":2}),
@@ -1199,6 +1276,8 @@ fn presentation_rp6_author_reads_old_code_and_inherits_only_compatible_frozen_pa
         }
         assert_eq!(restored, draft.content_files["details.txt"]);
         let written = port.author_presentation(AuthorRequest::Write {
+            teaching_binding: None,
+            method_refs: None,
             new_object: false,
             libraries: vec![],
             based_on:Some(reference.clone()), title:"Added example".into(), html:"<p>New example</p>".into(), readable_content:"New example".into(),

@@ -1855,6 +1855,7 @@ dependencies = [
 name = "memory"
 version = "0.0.0"
 dependencies = [
+ "base-schema",
  "read-tools",
  "rusqlite",
  "schemars 0.8.22",

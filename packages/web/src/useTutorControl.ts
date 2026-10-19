@@ -14,12 +14,17 @@ export function useTutorControl() {
   const readiness = ref<Awaited<ReturnType<typeof api.tutorReadiness>> | null>(null);
   const readinessError = ref('');
   let readinessRequest = 0;
+  let stateRequest = 0;
   async function loadReadiness() {
     const request = ++readinessRequest;
     readiness.value = null;
     readinessError.value = '';
     try { const result = await api.tutorReadiness(); if (request === readinessRequest) readiness.value = result; }
-    catch { if (request === readinessRequest) readinessError.value = '学习就绪状态读取失败，请重试'; }
+    catch (failure) {
+      if (request === readinessRequest && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) {
+        readinessError.value = '学习状态暂时无法读取，请重试。';
+      }
+    }
   }
   const current = computed(() => state.value?.sessions[state.value.control.current_tutor_session_id ?? ''] ?? null);
   const currentForSource = computed(() => current.value?.material_scope.some(material => material.source_id === readiness.value?.source_id) ? current.value : null);
@@ -33,20 +38,31 @@ export function useTutorControl() {
     : !current.value && readiness.value.status === 'ready' ? '输入第一个问题即可开始'
     : readiness.value.status === 'ready' ? '可以开始或继续学习' : '学习基础准备中');
   async function load() {
+    const request = ++stateRequest;
     void loadReadiness();
     busy.value = true;
-    try { state.value = await api.tutorState(); error.value = ''; }
-    catch (failure) { error.value = `教学状态读取失败：${failure instanceof Error ? failure.message : String(failure)}`; }
-    finally { busy.value = false; }
+    try {
+      const result = await api.tutorState();
+      if (request === stateRequest) { state.value = result; if (!pending.value) error.value = ''; }
+    } catch (failure) {
+      if (request === stateRequest && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) {
+        error.value = `学习状态读取失败：${failure instanceof Error ? failure.message : String(failure)}`;
+      }
+    } finally { if (request === stateRequest) busy.value = false; }
   }
   async function submit(request: TutorMutation) {
+    stateRequest++;
     busy.value = true; error.value = ''; pending.value = request;
     try {
       state.value = await api.tutorMutate(request);
       pending.value = null;
     } catch (failure) {
-      error.value = `教学设置未确认保存：${failure instanceof Error ? failure.message : String(failure)}`;
-      if (failure instanceof ApiError && failure.status < 500) pending.value = null;
+      if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') {
+        error.value = '学习设置的保存结果待确认，请重试。';
+      } else {
+        error.value = `学习设置未确认保存：${failure instanceof Error ? failure.message : String(failure)}`;
+        if (failure instanceof ApiError && failure.status < 500) pending.value = null;
+      }
     } finally { busy.value = false; }
   }
   async function act(action: TutorAction) {

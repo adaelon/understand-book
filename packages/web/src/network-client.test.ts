@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { network, installIdentity, installWorkspace, forgetNetwork, bindSceneApi, readerKey, type NetworkWorkspace } from './network-context';
 import { networkFetch, recoverSubmissions, pendingSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
 import { readReaderSurfacePreference, writeReaderSurfacePreference } from './reader-surface';
@@ -9,6 +9,29 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it.each([false, true])('SE5 routes all feedback operations with the current attachment (linked=%s)', async linked => {
+    installWorkspace(scene, linked ? 'linked-attachment' : 'parent-attachment', linked);
+    const reference = { presentation_id: 'p', revision: 2 };
+    const selection = { choice: 'like' as const, reasons: [], comment: '' };
+    const receipt = { session_id: 'chat', turn_id: 't', reference, state_revision: 3, saved_state_ref: 'saved' };
+    const feedback = { session_id: 'chat', turn_id: 't', reference, feedback_revision: 4, selection, saved_state: receipt, created_at: 'now', updated_at: 'now' };
+    const fetch = vi.fn(async (url: string, options: RequestInit) => json(options.method === 'GET' ? scene : { ...scene, result: feedback }));
+    vi.stubGlobal('fetch', fetch);
+    expect(await api.presentationFeedbackRead('chat', 't', reference)).toEqual(feedback);
+    expect(await api.presentationFeedbackSet('chat', 't', reference, selection)).toEqual(feedback);
+    expect(await api.presentationFeedbackClear('chat', 't', reference)).toEqual(feedback);
+    expect(await api.presentationFeedbackAttachState('chat', 't', reference, 4, receipt)).toEqual(feedback);
+    const posts = fetch.mock.calls.filter(([, options]) => options.method === 'POST');
+    expect(posts.map(([url]) => url)).toEqual(['read', 'set', 'clear', 'attach_state'].map(op => `/api/workspaces/w/presentation/feedback/${op}`));
+    for (const [, options] of posts) {
+      expect(JSON.parse(String(options.body))).toMatchObject({ session_id: 'chat', turn_id: 't', reference,
+        attachment_id: linked ? 'linked-attachment' : 'parent-attachment', generation: 2, expected_revision: 3 });
+      expect(options.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-A' });
+    }
+    expect(JSON.parse(String(posts[1][1].body)).selection).toEqual(selection);
+    expect(JSON.parse(String(posts[3][1].body))).toMatchObject({ feedback_revision: 4, saved_state: receipt });
+    expect(network.value.workspace).toMatchObject(scene);
+  });
   it('keeps the original choice head and key on lost-response recovery', async () => {
     const input = { session_id:'chat', client_request_id:'tc5-choice', expected_chat_head:'original', teaching_choice:{delivery_ref:'delivery',option_id:'compare'} };
     let saved: any;
@@ -59,6 +82,7 @@ describe('MU8 authorized browser context', () => {
     expect(readerKey()).toBe(initialReader);
     release(json({ stale: true })); await rejected;
     expect(() => chat.recall()).toThrow('阅读现场已切换');
+    expect(() => chat.recall()).toThrow(ApiError);
     expect(await reader.recall()).toEqual([]);
     // Revision-only updates must not undo the preserved Reader identity.
     installWorkspace({ ...network.value.workspace!, revision: 6 });
@@ -131,10 +155,10 @@ describe('MU8 authorized browser context', () => {
     vi.stubGlobal('fetch', vi.fn((url: string) => {
       calls.push(url);
       if (url.endsWith('/memory/recall')) return new Promise<Response>(resolve => { releaseRead = resolve; });
-      if (url.endsWith('/reader/goto')) return Promise.resolve(json({ ...scene, revision: 5 }));
+      if (url.endsWith('/checkpoint')) return Promise.resolve(json({ ...scene, revision: 5 }));
       return new Promise<Response>(resolve => { releaseWrite = resolve; });
     }));
-    const write = workspaceAction('reader/goto', { lid: '1.1' });
+    const write = workspaceAction('checkpoint');
     await new Promise(resolve => setTimeout(resolve, 0));
     const read = api.recall();
     expect(calls).toEqual(['/api/workspaces/w', '/api/workspaces/w/memory/recall']);
@@ -208,11 +232,11 @@ describe('MU8 authorized browser context', () => {
       expect(JSON.parse(String(options.body)).expected_revision).toBe(revision);
       return json({ ...scene, revision: ++revision, result: { ok: true } });
     }));
-    await Promise.all([workspaceAction('reader/goto', { lid: '1.1' }), workspaceAction('reader/goto', { lid: '1.2' })]);
+    await Promise.all([workspaceAction('reader/scroll', { delta: 1 }), workspaceAction('reader/scroll', { delta: 1 })]);
     expect(network.value.workspace?.revision).toBe(5);
   });
   it('rejects commands after generation change without replaying navigation', async () => {
-    const fetch = vi.fn(async () => json({ ...scene, generation: 4 })); vi.stubGlobal('fetch', fetch);
+    const fetch = vi.fn(async () => json({ error_code: 'WORKSPACE_STALE' }, 409)); vi.stubGlobal('fetch', fetch);
     await expect(workspaceAction('reader/goto', { lid: '1.1' })).rejects.toMatchObject({ errorCode: 'WORKSPACE_STALE' });
     expect(fetch).toHaveBeenCalledTimes(1);
   });

@@ -31,6 +31,7 @@ const result = spawnSync(
     "--loader=.md:text",
     "--loader=.toml:text",
     "--loader=.cmd:text",
+    "--loader=.py:text",
     `--outfile=${output}`,
   ],
   { cwd: repoRoot, stdio: "inherit" },

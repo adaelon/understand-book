@@ -20,6 +20,12 @@ pub enum ReviewJobStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReviewJob {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub turn_book_ids: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning_workspace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub goal_revisions: Vec<u32>,
     pub job_id: String,
     pub session_id: String,
     pub book_id: String,
@@ -185,7 +191,17 @@ impl ReviewState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewTurnOrigin {
+    pub turn_id: String,
+    pub user_turn_ordinal: u64,
+    pub book_id: String,
+    pub goal_revision: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReviewSessionCursor {
+    pub learning_workspace_id: Option<String>,
+    pub turns: Vec<ReviewTurnOrigin>,
     pub session_id: String,
     pub book_id: String,
     pub latest_user_turn_ordinal: u64,
@@ -417,22 +433,34 @@ impl MemoryStore {
             )?;
             if matches!(
                 &candidate.fact.scope,
-                ProfileScope::Book { book_id } if book_id != &current.book_id
+                ProfileScope::Book { book_id } | ProfileScope::Workspace { book_id, .. }
+                    if !candidate.fact.evidence.iter().all(|e| match e { EvidenceRef::Turn { turn_id, .. } => current.turn_book_ids.get(turn_id).unwrap_or(&current.book_id) == book_id, _ => false })
             ) {
                 return Err(invalid_review_result(
                     "review fact book scope does not match the review job",
                 ));
             }
             reject_excluded_evidence(&self.document.exclusions, &candidate.fact.evidence)?;
+            let mut fact = candidate.fact.clone();
+            match (&current.learning_workspace_id, &fact.scope) {
+                (Some(learning_workspace_id), ProfileScope::Book { book_id }) => {
+                    fact.scope = ProfileScope::Workspace { learning_workspace_id: learning_workspace_id.clone(), book_id: book_id.clone() };
+                }
+                (owner, ProfileScope::Workspace { learning_workspace_id, .. })
+                    if owner.as_ref() != Some(learning_workspace_id) => {
+                        return Err(invalid_review_result("review fact workspace scope does not match the review job"));
+                    }
+                _ => {}
+            }
             if collection_rules_block(
                 self.collection_rules(),
-                &candidate.fact.scope,
-                &candidate.fact.applicability,
-                &candidate.fact.payload,
+                &fact.scope,
+                &fact.applicability,
+                &fact.payload,
             ) {
                 continue;
             }
-            facts.push(build_profile_fact(candidate.fact.clone(), Vec::new(), now)?);
+            facts.push(build_profile_fact(fact, Vec::new(), now)?);
         }
         facts.sort_by(|left, right| left.fact_id.cmp(&right.fact_id));
 
@@ -865,7 +893,7 @@ fn reconcile_session(
     if let Some(job) = state
         .review_jobs
         .iter()
-        .find(|job| job.session_id == cursor.session_id && job.book_id != cursor.book_id)
+        .find(|job| job.session_id == cursor.session_id && (job.book_id != cursor.book_id || job.learning_workspace_id != cursor.learning_workspace_id))
     {
         return Err(invalid_review_state(format!(
             "review cursor book {} conflicts with job {} book {}",
@@ -905,7 +933,7 @@ fn reconcile_session(
             && previous.to_turn_inclusive == covered_through
         {
             let previous = state.review_jobs.remove(index);
-            let merged = new_review_job(
+            let mut merged = new_review_job(
                 &cursor.session_id,
                 &cursor.book_id,
                 previous.from_turn_exclusive,
@@ -914,13 +942,14 @@ fn reconcile_session(
                 &previous.created_at,
                 now,
             );
+            bind_review_origin(&mut merged, cursor);
             outcome.created_job_ids.push(merged.job_id.clone());
             state.review_jobs.push(merged);
             return Ok(());
         }
     }
 
-    let job = new_review_job(
+    let mut job = new_review_job(
         &cursor.session_id,
         &cursor.book_id,
         covered_through,
@@ -929,9 +958,17 @@ fn reconcile_session(
         now,
         now,
     );
+    bind_review_origin(&mut job, cursor);
     outcome.created_job_ids.push(job.job_id.clone());
     state.review_jobs.push(job);
     Ok(())
+}
+
+fn bind_review_origin(job: &mut ReviewJob, cursor: &ReviewSessionCursor) {
+    job.learning_workspace_id = cursor.learning_workspace_id.clone();
+    let turns: Vec<_> = cursor.turns.iter().filter(|turn| turn.user_turn_ordinal > job.from_turn_exclusive && turn.user_turn_ordinal <= job.to_turn_inclusive).collect();
+    job.goal_revisions = turns.iter().filter_map(|turn|turn.goal_revision).collect::<BTreeSet<_>>().into_iter().collect();
+    job.turn_book_ids = turns.iter().map(|turn|(turn.turn_id.clone(),turn.book_id.clone())).collect();
 }
 
 fn new_review_job(
@@ -944,6 +981,9 @@ fn new_review_job(
     updated_at: &str,
 ) -> ReviewJob {
     ReviewJob {
+        turn_book_ids: BTreeMap::new(),
+        learning_workspace_id: None,
+        goal_revisions: Vec::new(),
         job_id: ReviewJob::stable_id(session_id, book_id, from_turn_exclusive, to_turn_inclusive),
         session_id: session_id.into(),
         book_id: book_id.into(),
@@ -1143,6 +1183,8 @@ mod tests {
 
     fn cursor(latest: u64) -> ReviewSessionCursor {
         ReviewSessionCursor {
+            turns: Vec::new(),
+            learning_workspace_id: None,
             session_id: "session-a".into(),
             book_id: "book-a".into(),
             latest_user_turn_ordinal: latest,
@@ -1736,4 +1778,45 @@ mod tests {
         assert_eq!(store.document_revision(), before_revision);
         assert_eq!(std::fs::read_to_string(path).unwrap(), before_disk);
     }
+    #[test]
+    fn w3_review_retry_and_restart_preserve_original_workspace_and_goal() {
+        let (path, mut store) = store("w3-review-workspace");
+        let mut origin = cursor(1);
+        origin.learning_workspace_id = Some("a".into());
+        origin.turns = vec![ReviewTurnOrigin { turn_id: "turn-1".into(), user_turn_ordinal: 1, book_id: "book-b".into(), goal_revision: Some(2) }];
+        store.reconcile_review_jobs(&[origin.clone()], "1").unwrap();
+        let original = only_job(&store);
+        store.claim_review_job(&original.job_id, "2").unwrap();
+        store.mark_review_job_retryable(&original.job_id, "4", ReviewErrorState {
+            error_code: "RETRY".into(), message: "retry".into(), occurred_at: "3".into(),
+        }, "3").unwrap();
+        drop(store);
+        let mut store = MemoryStore::open(path).unwrap();
+        let mut other = origin.clone(); other.session_id = "session-b".into();
+        other.learning_workspace_id = Some("b".into()); other.turns[0].goal_revision = Some(1);
+        store.resume_review_jobs(&[origin, other], "4").unwrap();
+        let retried = store.claim_review_job(&original.job_id, "5").unwrap();
+        assert_eq!(retried.learning_workspace_id.as_deref(), Some("a"));
+        assert_eq!(retried.goal_revisions, [2]);
+        assert_eq!(retried.attempts, 2);
+        let candidate = fact_candidate("session-a", "turn-1", FactSource::UserStated,
+            ProfileScope::Book { book_id: "book-b".into() });
+        let result = store.commit_review_result(&original.job_id, &["turn-1".into()], &[candidate], &[], "6").unwrap();
+        assert_eq!(result.added_fact_ids.len(), 1);
+        assert_eq!(store.profile_facts()[0].scope, ProfileScope::Workspace { learning_workspace_id: "a".into(), book_id: "book-b".into() });
+        assert!(store.resolve_profile_facts(&crate::ProfileResolutionContext {
+            learning_workspace_id: Some("b".into()), book_id: Some("book-b".into()), ..Default::default()
+        }).is_empty());
+        let mut continuation = cursor(2);
+        continuation.learning_workspace_id = Some("a".into());
+        continuation.turns = vec![
+            ReviewTurnOrigin { turn_id: "turn-1".into(), user_turn_ordinal: 1, book_id: "book-b".into(), goal_revision: Some(2) },
+            ReviewTurnOrigin { turn_id: "turn-2".into(), user_turn_ordinal: 2, book_id: "book-c".into(), goal_revision: Some(3) },
+        ];
+        store.reconcile_review_jobs(&[continuation], "7").unwrap();
+        let next = store.review_state().review_jobs.iter().find(|job| job.session_id == "session-a" && job.status == ReviewJobStatus::Queued).unwrap();
+        assert_eq!(next.goal_revisions, [3]);
+        assert_eq!(next.turn_book_ids, BTreeMap::from([("turn-2".into(), "book-c".into())]));
+    }
+
 }

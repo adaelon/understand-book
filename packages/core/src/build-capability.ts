@@ -165,14 +165,15 @@ function closureFromRegistry(
 
 export function standardDeepStageClosure(
   contentProfileInput: BuildContentProfile,
-  options: { pass2?: Pass2PlanChoice } = {},
+  options: { pass2?: Pass2PlanChoice; build_tutor?: boolean } = {},
   registry: BuildCapabilityRegistry = BUILD_CAPABILITY_REGISTRY,
 ): AutomaticBuildStage[] {
   const contentProfile = validateBuildContentProfile(contentProfileInput);
-  const pass2 = options.pass2 ?? "enabled";
+  const pass2 = options.pass2 ?? "disabled";
   if (pass2 !== "enabled" && pass2 !== "disabled") throw new Error(`unsupported Pass2 plan choice: ${String(pass2)}`);
   const closure = closureFromRegistry(contentProfile, registry);
-  return pass2 === "enabled" ? closure : closure.filter((stage) => stage !== "pass2");
+  return closure.filter(stage=>(pass2 === 'enabled' || stage !== 'pass2')
+    && (options.build_tutor !== false || !['formal_objects','cognitive_materials','teaching_publish'].includes(stage)));
 }
 
 export function validateBuildCapabilityRegistry(input: unknown): BuildCapabilityRegistry {
@@ -422,7 +423,7 @@ export function compileBuildMode(
   let intent: BuildIntentV1 | undefined;
   let privateCapabilityIds: PrivateBuildCapabilityId[] = [];
   let publicStages: AutomaticBuildStage[] = [];
-  const pass2Choice = input.pass2 ?? "enabled";
+  const pass2Choice = input.pass2 ?? "disabled";
   if (input.mode === "standard_deep") {
     if (input.intent !== undefined || input.requested_capability_ids?.length) {
       throw new Error("standard_deep cannot carry a private intent or capability selection");
@@ -611,7 +612,7 @@ export function compileBuildModeV2(input: CompileBuildModeV2Input): BuildModeCom
   let intent: BuildIntentV2 | undefined;
   let selectedBlueprints: ArtifactBlueprintResolutionV1[] = [];
   let publicStages: AutomaticBuildStage[] = [];
-  const pass2Choice = input.pass2 ?? "enabled";
+  const pass2Choice = input.pass2 ?? "disabled";
   if (input.mode === "standard_deep") {
     if (input.intent !== undefined || input.selected_blueprints?.length) {
       throw new Error("standard_deep cannot carry a private intent or ArtifactBlueprint selection");
@@ -795,7 +796,7 @@ export function compileBuildModeV3(input: CompileBuildModeV3Input): BuildModeCom
   let intent: BuildIntentV3 | undefined;
   let selectedBlueprints: ArtifactBlueprintResolutionV2[] = [];
   let publicStages: AutomaticBuildStage[] = [];
-  const pass2Choice = input.pass2 ?? "enabled";
+  const pass2Choice = input.pass2 ?? "disabled";
   if (input.mode === "standard_deep") {
     if (input.intent !== undefined || input.selected_blueprints?.length) {
       throw new Error("standard_deep cannot carry a private intent or ArtifactBlueprint selection");

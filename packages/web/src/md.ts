@@ -169,6 +169,35 @@ export function renderTableSource(src: string): string {
   return `<pre class="table-source-fallback">${escapeHtml(src)}</pre>`;
 }
 
+// Source excerpts also contain EPUB's canonical pipe rows and HTML tables.
+// Keep this rule local to source rendering; code fences and ordinary answers
+// continue through the existing Markdown rules.
+md.block.ruler.before('paragraph', 'source_table', (state, startLine, endLine, silent) => {
+  if (!state.env?.sourceExcerpt || state.sCount[startLine] - state.blkIndent >= 4) return false;
+  const line = (index: number) => state.src.slice(state.bMarks[index] + state.tShift[index], state.eMarks[index]);
+  const first = line(startLine);
+  let next = startLine;
+  const lines: string[] = [];
+  if (/^<table(?:\s|>)/i.test(first)) {
+    do { lines.push(line(next++)); } while (next < endLine && !/<\/table>\s*$/i.test(lines[lines.length - 1]));
+    if (!/<\/table>\s*$/i.test(lines[lines.length - 1])) return false;
+  } else {
+    while (next < endLine && /^\|.+\|\s*$/.test(line(next))) lines.push(line(next++));
+    if (lines.length < 2) return false;
+  }
+  if (silent) return true;
+  const token = state.push('html_block', '', 0);
+  token.content = renderTableSource(lines.join('\n')) + '\n';
+  token.map = [startLine, next];
+  state.line = next;
+  return true;
+}, { alt: ['paragraph'] });
+
+export function renderSourceMarkdown(src: string): string {
+  const extracted = extractInlineSuperscripts(normalizeDisplayMath(src));
+  return restoreInlineSuperscripts(md.render(normalizeInlineMath(extracted.src), { sourceExcerpt: true }), extracted.superscripts);
+}
+
 /** Formula LID 可来自段内 $...$，也可来自独占块的 $$...$$ 或多行 $...$。 */
 export function isDisplayFormulaSource(src: string): boolean {
   const text = src.trim();

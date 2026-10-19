@@ -1,0 +1,20 @@
+{
+  "title": "固定条件，只改变一个因素",
+  "initial_state": {
+    "speed": 2,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "speed": "lane B constant speed in meters per second, 0..3",
+    "semantic_state": "completed explanation steps, integer 0..1",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 1"
+  },
+  "readable_content": "两条轨道从同一起点出发，经过同样的 10 秒。A 固定为 1 m/s，只改变 B 的速度。 两条轨道共用 0–30 m 的尺子和同一个时钟；移动点表示当前实际距离。 显式匀速模型 d=v·t。轨道高度仅用来分组，不表示距离或速度。改变 B 的速度后，时钟回到 0。",
+  "assumptions": [
+    "显式匀速模型 d=v·t。轨道高度仅用来分组，不表示距离或速度。改变 B 的速度后，时钟回到 0。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

@@ -1,0 +1,11 @@
+Three-dimensional scene contract:
+
+Select needs:["three","state"] for spatial interaction; add continuous_scene when time is explained. Pass libraries:["three"] on EVERY write, including based_on. The host freezes Three.js 0.180.0 and its MIT license in that version and supplies global THREE before business scripts. Do not use imports, CDN scripts, external textures or copy the library into html. Preserve the short host-managed script tag returned by read; write rebuilds it. Library reads return metadata only.
+
+For a reusable starting point, read spatial-linked-views@1 card.md, example/index.html, example/README.md and example/author.json. Its second topic is adaptations/spring.html. Adapt the mathematical model, geometry and explanatory diagram together. One derived model must drive all views and readable results; a camera change affects observation, never the model. Color keeps object identity across 3D, diagrams and prose.
+
+Use THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true}) so the host can freeze visible WebGL pixels for static export. Render synchronously before the state reader returns, without advancing time or pausing a running scene. A canvas with a discarded WebGL buffer cannot be exported reliably; the host reports this explicitly. Keep a readable diagram and result when WebGL is unavailable.
+
+Create geometry/materials once and update transforms; rebuild only when topology changes and dispose replaced resources. Fit conservative motion bounds to the actual canvas aspect ratio instead of fitting the current rotating mesh each frame. Support pointer and keyboard orbit, a front view, and touch targets of at least 44 px. Cap device pixel ratio, resize from actual canvas dimensions, stop frame work while hidden, and redraw on re-entry. Store camera angles and separation as scalar state values alongside parameters and semantic position; restore paused through the same render path. Use the host state bridge, not localStorage in its opaque-origin iframe.
+
+Validate the model independently, the actual 3D/diagram geometry, orbit/parameter changes, repeated fractional seeks, save/reopen and populated static export at the required preview sizes. A successful library load or a correct numeric label alone is insufficient.

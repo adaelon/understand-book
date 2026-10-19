@@ -110,6 +110,7 @@ fn ex11_library_write_read_revision_and_size_contract() {
     // Link the version to completed history so subsequent reads use the actual ownership path.
     app.with_app(|s| {
         let outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("point".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {
@@ -241,6 +242,8 @@ fn ex11_preflight() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                teaching_binding: None,
+                method_refs: None,
                 new_object: false,
                 libraries: vec![PresentationLibrary::Konva],
                 based_on: None,
@@ -297,6 +300,7 @@ fn ex11_preflight() {
     let reference = result.delivered.unwrap();
     app.with_app(|state| {
         let outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("拖动点与线段".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {

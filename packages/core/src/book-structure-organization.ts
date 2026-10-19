@@ -10,7 +10,7 @@ import type { BuildExecutionProfileV1 } from "./build-execution-profile";
 import type { BuildRetrievalSelection } from "./build-intent";
 import { retrievalScopeIncludes } from "./build-intent";
 import { automaticBuildGenerationArtifactPath } from "./semantic-artifact";
-import { createBookStructureGenerationTask, readBookStructureGenerationArtifact, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
+import { createBookStructureGenerationTask, readBookStructureOrganizationState, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
 import { acceptStructureOutline, newStructureChapterWork, structureChapterInput, applyStructureChapterAction,
   reviseStructureChapterWork, structureChapterRevisionRequestSchema, type StructureChapterRevisionRequest,
   continueStructureChapterSelection, structureChapterSelectionContinuationSchema, type StructureChapterSelectionContinuation,
@@ -167,8 +167,7 @@ export function routeStructureOrganization(input: {
     let result: StructureOrganizationState | undefined;
     for (;;) {
       try {
-        const artifact = readBookStructureGenerationArtifact(input.target, task);
-        if (artifact) result = applyStructureOrganizationAction(packet, (artifact.payload as StructureOrganizationAcceptance).accepted_action);
+        result = readBookStructureOrganizationState(input.target, task);
       } catch { /* The old receipt remains; a failed current gate needs a replacement action. */ }
       if (result || !existsSync(automaticBuildGenerationArtifactPath(input.target, "book_structure", task.policy_generation_id, descriptor.work_unit_id))) break;
       descriptor.work_unit_id += "-replay";
@@ -251,7 +250,9 @@ export function routeStructureOrganization(input: {
           }
         }
         const next = step("structure_theme", `structure:theme:${directory.works.findIndex(w => w.plan.ref === ref)}:${ordinal}`, {
-          ...packet, phase: "theme", context: structuredClone(themeContext), directory, ref,
+          // Catalog, chapters and source excerpts are immutable during this route.
+          // Only the prepared retrieval changes between actions.
+          ...packet, phase: "theme", context: { ...themeContext }, directory, ref,
           body: structureThemeInput(directory, ref, themeContext),
         }) as StructureThemeDirectory | undefined;
         if (!next) return { tasks, pending, progress };
@@ -283,7 +284,7 @@ export function routeStructureOrganization(input: {
           }
         }
         const next = step("structure_theme", `structure:theme:revision:${request.id}:${ordinal}`, {
-          ...packet, phase: "theme", context: structuredClone(themeContext), directory, ref: request.theme_ref,
+          ...packet, phase: "theme", context: { ...themeContext }, directory, ref: request.theme_ref,
           revision_request: request, body: structureThemeInput(directory, request.theme_ref, themeContext),
         }) as StructureThemeDirectory | undefined;
         if (!next) return { tasks, pending, progress };

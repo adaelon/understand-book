@@ -1,0 +1,44 @@
+{
+  "origin": "https://understandbook.top",
+  "public_tls_verification": true,
+  "via": "cloudflare",
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "via": "cloudflare"
+    },
+    {
+      "path": "/admin/",
+      "status": 200,
+      "via": "cloudflare"
+    },
+    {
+      "path": "/admin/usage",
+      "status": 200,
+      "via": "cloudflare"
+    },
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "via": "cloudflare"
+    },
+    {
+      "check": "public_existing_admin_login",
+      "status": 200
+    },
+    {
+      "check": "public_authenticated /api/auth/me",
+      "status": 200
+    },
+    {
+      "check": "public_authenticated /api/admin/usage",
+      "status": 200
+    },
+    {
+      "check": "public_logout",
+      "status": 200
+    }
+  ],
+  "model_requests": 0
+}

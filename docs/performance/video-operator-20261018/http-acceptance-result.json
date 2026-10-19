@@ -1,0 +1,404 @@
+{
+  "status": "passed",
+  "task_id": "video-http-01987c7b-b32d-42da-afc9-df6f3497ff86",
+  "source": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\.tmpjOt8Bg\\video-http-01987c7b-b32d-42da-afc9-df6f3497ff86\\tensor.mp4",
+  "root": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\.tmpjOt8Bg\\video-http-01987c7b-b32d-42da-afc9-df6f3497ff86",
+  "workspace": "C:\\Users\\Lenovo\\AppData\\Local\\Temp\\.tmpjOt8Bg\\video-http-01987c7b-b32d-42da-afc9-df6f3497ff86\\video-video",
+  "invocation": "video:video-http-01987c7b-b32d-42da-afc9-df6f3497ff86:video",
+  "reference": {
+    "book_id": "0922c99a-d7f0-468f-9e1d-20ae85b654ca",
+    "publication_id": "01a14ddd-7bb4-7eb3-91e3-cfbb0319e23b"
+  },
+  "release_id": "video-course-b875bb23-1f00-4e4f-b62a-2f200feeeb38",
+  "actual_executions": 4,
+  "cost_budget": {
+    "confirmation": "d4092ccd-2ff7-4b0f-a6eb-4c3fa9f08651",
+    "cost_owner": "platform",
+    "debited_micro_cny": 0,
+    "learning_workspace_id": null,
+    "max_micro_cny": 10000,
+    "pending_micro_cny": 400,
+    "planning_allowance": null,
+    "platform_covered_micro_cny": 0,
+    "provider_cost_micro_cny": 0,
+    "remaining_micro_cny": 9600,
+    "reserved_micro_cny": 0,
+    "revision": 1,
+    "task_ref": "video-http-01987c7b-b32d-42da-afc9-df6f3497ff86",
+    "unknown_count": 4,
+    "user_id": null
+  },
+  "progress": [
+    {
+      "stage": "preparing",
+      "completed": 0,
+      "total": 0,
+      "unit": "项",
+      "message": "正在读取已完成的构建进度"
+    },
+    {
+      "stage": "import",
+      "completed": 0,
+      "total": 0,
+      "unit": "bytes",
+      "message": "导入视频并检查媒体",
+      "status": "running"
+    },
+    {
+      "stage": "import",
+      "completed": 0,
+      "total": 1121898,
+      "unit": "bytes",
+      "status": "running",
+      "message": "导入视频并检查媒体"
+    },
+    {
+      "stage": "import",
+      "completed": 1121898,
+      "total": 1121898,
+      "unit": "bytes",
+      "status": "running",
+      "message": "导入视频并检查媒体"
+    },
+    {
+      "stage": "transcript",
+      "completed": 0,
+      "total": 0,
+      "unit": "chunks",
+      "message": "逐段转写视频原文",
+      "status": "running"
+    },
+    {
+      "stage": "transcript",
+      "completed": 0,
+      "total": 1,
+      "unit": "chunks",
+      "status": "running",
+      "message": "逐段转写视频原文"
+    },
+    {
+      "stage": "transcript",
+      "completed": 1,
+      "total": 1,
+      "unit": "chunks",
+      "status": "running",
+      "message": "逐段转写视频原文"
+    },
+    {
+      "stage": "translation",
+      "completed": 0,
+      "total": 0,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "translation",
+      "completed": 0,
+      "total": 1,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "translation",
+      "completed": 1,
+      "total": 1,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "preparing",
+      "completed": 0,
+      "total": 0,
+      "unit": "项",
+      "message": "正在读取已完成的构建进度"
+    },
+    {
+      "stage": "translation",
+      "completed": 0,
+      "total": 0,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "translation",
+      "completed": 1,
+      "total": 1,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 0,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "visual_scan",
+      "completed": 0,
+      "total": 8000,
+      "unit": "milliseconds",
+      "message": "分析视频画面并准备关键帧",
+      "status": "running"
+    },
+    {
+      "stage": "visual_scan",
+      "completed": 0,
+      "total": 8000,
+      "unit": "milliseconds",
+      "status": "running",
+      "message": "分析视频画面并准备关键帧"
+    },
+    {
+      "stage": "visual_scan",
+      "completed": 8000,
+      "total": 8000,
+      "unit": "milliseconds",
+      "status": "running",
+      "message": "分析视频画面并准备关键帧"
+    },
+    {
+      "stage": "visual_frames",
+      "completed": 1,
+      "total": 5,
+      "unit": "frames",
+      "status": "running",
+      "message": "分析视频画面并准备关键帧"
+    },
+    {
+      "stage": "visual_frames",
+      "completed": 5,
+      "total": 5,
+      "unit": "frames",
+      "status": "running",
+      "message": "分析视频画面并准备关键帧"
+    },
+    {
+      "stage": "visual",
+      "completed": 0,
+      "total": 0,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 0,
+      "total": 2,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 0,
+      "total": 2,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "failed",
+      "failure": "external_build_cost_http_409"
+    },
+    {
+      "stage": "preparing",
+      "completed": 0,
+      "total": 0,
+      "unit": "项",
+      "message": "正在读取已完成的构建进度"
+    },
+    {
+      "stage": "translation",
+      "completed": 0,
+      "total": 0,
+      "unit": "tasks",
+      "message": "生成双语字幕",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 0,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "visual_scan",
+      "completed": 0,
+      "total": 8000,
+      "unit": "milliseconds",
+      "message": "分析视频画面并准备关键帧",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 0,
+      "total": 0,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 0,
+      "total": 2,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 1,
+      "total": 2,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "visual",
+      "completed": 2,
+      "total": 2,
+      "unit": "tasks",
+      "message": "理解画面、代码和公式",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 0,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "graph",
+      "completed": 0,
+      "total": 1,
+      "unit": "batches",
+      "message": "整理视频中的概念与关系",
+      "status": "running"
+    },
+    {
+      "stage": "graph",
+      "completed": 1,
+      "total": 1,
+      "unit": "batches",
+      "message": "整理视频中的概念与关系",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 0,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "discourse",
+      "completed": 0,
+      "total": 1,
+      "unit": "batches",
+      "message": "梳理原讲解的组织与推导",
+      "status": "running"
+    },
+    {
+      "stage": "discourse",
+      "completed": 1,
+      "total": 1,
+      "unit": "batches",
+      "message": "梳理原讲解的组织与推导",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 0,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "publishing",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "message": "保存已完成的视频理解成果",
+      "status": "running"
+    },
+    {
+      "stage": "ready",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "status": "completed",
+      "message": "视频预构建完成，可发布共享工作区"
+    },
+    {
+      "stage": "ready",
+      "completed": 1,
+      "total": 1,
+      "unit": "publications",
+      "status": "completed",
+      "message": "视频预构建完成，可发布共享工作区"
+    }
+  ],
+  "checks": {
+    "one_click": true,
+    "pause_after_accepted_translation": true,
+    "restart_reuses_accepted": true,
+    "exhausted_budget_blocks_before_spawn": true,
+    "default_no_tutor": true,
+    "platform_receipts": true,
+    "shared_release_ready": true,
+    "final_publication_independent_of_staging": true,
+    "final_compiled_replay_no_extra_calls": true
+  },
+  "final_reader": {
+    "transcript_segments": 2,
+    "translations": 2,
+    "media_bytes": 32,
+    "media_status": 206
+  },
+  "final_compiled_replay": {
+    "progress_updates": 8,
+    "additional_executions": 0
+  }
+}

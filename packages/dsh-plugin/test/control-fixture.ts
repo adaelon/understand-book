@@ -14,6 +14,30 @@ export function candidateFor(contract: any, semantic: string): unknown {
   if (contract.stage === "profile_sidecar") return { discourse_items: JSON.parse(semantic.match(/visible_lids: (\[[^\n]+\])/u)![1]).map((lid: string) => ({ lid, mode: "informative", relations: [] })) };
   if (contract.stage === "pass2") return { edges: [] };
   const input = JSON.parse(semantic.slice(semantic.indexOf("{"), semantic.lastIndexOf("}") + 1));
+  if (contract.stage === "book_structure") {
+    if (input.phase === "outline") return { chapters: input.input.chapters.map((c: any) => ({ unit_lid: c.unit_lid,
+      question: c.overview, progression: c.overview })), themes: [] };
+    if (input.phase === "plan") return { themes: [] };
+    if (input.phase === "reconcile") return { edits: [], merges: [], unresolved: [] };
+    if (input.phase === "chapter") {
+      const c = input.input;
+      if (!c.inspected.length) return c.index.items.length ? { kind: "inspect", refs: [c.index.items[0].ref] }
+        : c.excerpts.length ? { kind: "select", selection: { unit_lid: c.unit_lid, role: "foundation",
+          summary: { text: "Atomic transaction boundary.", evidence_lids: c.excerpts[0].lids }, accepted_stop_refs: [], macro_stop_refs: [] } }
+          : { kind: "read", indices: [c.source_index[0].index] };
+      return { kind: "select", selection: { unit_lid: c.unit_lid, role: "foundation", summary: c.inspected[0].reason,
+        accepted_stop_refs: c.seen_refs, macro_stop_refs: [c.inspected[0].ref] } };
+    }
+    if (contract.work_unit_kind === "structure_fragment") {
+      const lid = input.parent_unit_lid, evidence = input.reference_scope.evidence_by_unit[lid];
+      return { version: "book_structure_fragment_observation.v1", parent_unit_lid: lid,
+        summary_fragments: evidence.length ? [{ text: "Transactions group operations atomically.", evidence_lids: [evidence[0]] }] : [],
+        candidate_key_stops: evidence.slice(0, 1).map((e: string) => ({ id: "atomic", lid: e, type: "definition",
+          meaning: "Transactions group operations into one atomic change.", conditions: [],
+          reason: { text: "Defines an atomic transaction.", evidence_lids: [e] } })),
+        role_hints: ["foundation"], dependency_hints: [], evidence_lids: evidence };
+    }
+  }
   if (contract.stage === "formal_objects") {
     const binding = (lid: string) => ({ source_id: input.source.source_id, source_revision: input.source.source_revision, lid });
     const passage = input.source.passages.find((p: any) => p.text.includes("Transactions group"));

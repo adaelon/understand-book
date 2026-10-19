@@ -25,7 +25,7 @@ test("drag stays local, steps save, follow-up sends one exact saved scene", asyn
   expect(saves).toHaveLength(0);
   expect(await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json())).toHaveLength(before.length);
   await frame.locator("#evidence-count").dispatchEvent("change");
-  await expect(page.getByText("现场已保存", { exact: true })).toBeVisible();
+  await expect(page.getByText("演示状态已保存", { exact: true })).toBeVisible();
   await frame.locator("#next-step").click();
   await expect.poll(() => saves.length).toBe(2);
   // Delay the explicit save, then change the running page: the question must keep its captured scene.
@@ -62,11 +62,11 @@ test("save failure shows the actual error and does not send a model request; ret
   await expect(page.frameLocator("iframe").locator("#result")).toBeVisible();
   const before = await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json());
   await page.request.post("http://127.0.0.1:4175/fail-next-state");
-  await page.getByRole("textbox", { name: "针对当前现场追问" }).fill("为什么是这个结果？");
+  await page.getByRole("textbox", { name: "针对当前演示追问" }).fill("为什么是这个结果？");
   await page.getByRole("button", { name: "发送追问", exact: true }).click();
   await expect(page.getByText(/追问未发送：.*现场写入失败/)).toBeVisible();
   expect(await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json())).toHaveLength(before.length);
-  await expect(page.getByRole("textbox", { name: "针对当前现场追问" })).toHaveValue("为什么是这个结果？");
+  await expect(page.getByRole("textbox", { name: "针对当前演示追问" })).toHaveValue("为什么是这个结果？");
   await page.getByRole("button", { name: "发送追问", exact: true }).click();
   await expect(page.getByTestId("follow-up-status")).toHaveText("追问已完成");
 });

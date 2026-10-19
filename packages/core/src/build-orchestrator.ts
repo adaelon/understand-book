@@ -208,6 +208,11 @@ export type AutomaticBuildStage =
   | "teaching_publish"
   | "paper_reading_guide";
 
+// Media preparation precedes semantic stages; it owns its durable per-chunk plan and uses
+// the same artifact publication transaction before a transcript-backed Book is exposed.
+export { buildVideoTranscript, readVideoBuild } from "./video-transcript";
+export { prepareVideoTranslation, acceptVideoTranslation, publishVideoTranslationGroup } from "./video-translation";
+
 import { routeTeachingBuildStages, type TeachingGenerationTask, type TeachingBuildInput } from "./teaching-build";
 import { prepareBuildRetrieval, readBuildRetrievalState, retrievalConfigurationMatches, type BuildRetrievalRuntime, type TeachingRetrievalRequest } from "./automatic-build-retrieval";
 import { readAutomaticBuildStageUsage } from "./automatic-build-metrics";
@@ -3185,11 +3190,13 @@ function validateExecutionClosure(plan: BuildPlanV1): AutomaticBuildStage[] | Au
   if (plan.recipe_id === "standard_deep") {
     const expectedSelected = standardDeepStageClosure(plan.content_profile, {
       pass2: selected.includes("pass2") ? "enabled" : "disabled",
+      build_tutor: !['formal_objects','cognitive_materials','teaching_publish'].every(stage=>
+        plan.excluded.some(item=>item.artifact === `public.${stage}`)),
     });
     if (canonicalBuildJson(selected) !== canonicalBuildJson(expectedSelected)) {
       return planGateAction(
         "build_plan_closure_drift",
-        "standard_deep must use an exact current profile stage closure with its confirmed Pass2 choice",
+        "standard_deep must use an exact current profile stage closure with its confirmed Pass2 and Tutor choices",
         plan,
       );
     }

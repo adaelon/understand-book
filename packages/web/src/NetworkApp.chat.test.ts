@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import NetworkApp from './NetworkApp.vue';
 import { api } from './api';
@@ -7,7 +8,7 @@ import { installIdentity, installWorkspace, network, type NetworkWorkspace } fro
 import { workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
-  'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
+  'videoContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
   'recall', 'save', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
 ].map(name => [name, vi.fn()])));
 vi.mock('./api', async original => {
@@ -20,7 +21,7 @@ let workspace: NetworkWorkspace;
 let requests: string[];
 let wrapper: ReturnType<typeof mount>;
 const history = () => ({ active_session_id: workspace.selected_chat ?? '', sessions: [], current: {
-  id: workspace.selected_chat ?? '', book_id: 'book', goals: [], turns: workspace.selected_chat === 'old' ? [{
+  id: workspace.selected_chat ?? '', learning_workspace_id: workspace.learning_workspace_id, book_id: 'book', goals: [], turns: workspace.selected_chat === 'old' ? [{
     turn_id: 'old-turn', user: '原对话', status: 'completed', answer: '旧回答', effect_labels: [],
   }] : [],
 } });
@@ -38,6 +39,7 @@ beforeEach(() => {
   reads.assetManifest.mockResolvedValue({ images: [] });
   reads.sourceFingerprint.mockResolvedValue({ book_id: 'book', source_fingerprint: 'book' });
   reads.sourceManifest.mockResolvedValue(null);
+  reads.videoContext.mockResolvedValue(null);
   reads.profileManifest.mockResolvedValue({ profile_id: 'technical_learning', slots: [] });
   reads.text.mockResolvedValue({ lid: '1', text: '当前正文' });
   reads.recall.mockResolvedValue([]); reads.profileMemory.mockResolvedValue({});
@@ -70,6 +72,31 @@ async function start() {
 }
 function rail() { return wrapper.getComponent({ name: 'RightRail' }); }
 
+it('restores a workspace chat while reading a different material from its first turn', async () => {
+  workspace = { ...workspace, reader: { ...workspace.reader, book_id: 'second-book' }, learning_workspace_id: 'learning-A', published_book_ref: { book_id: 'second-book', publication_id: 'p2' } };
+  reads.sourceFingerprint.mockResolvedValue({ book_id: 'second-book', source_fingerprint: 'second-book' });
+  installWorkspace(workspace); await start();
+  expect(rail().props('historyError')).toBeNull();
+  expect(rail().props('chat')[0].user).toBe('原对话');
+  rail().vm.$emit('update:agentInput', '联系第二本资料继续解释'); rail().vm.$emit('send-agent'); await flushPromises();
+  expect(reads.agentRunCreate).toHaveBeenCalledWith('联系第二本资料继续解释', expect.anything());
+});
+
+it('keeps the visible chat and reading context when a same-source publication is adopted', async () => {
+  await start();
+  const reader = wrapper.getComponent({ name: 'ReaderPane' }).vm;
+  const before = rail().props('chat');
+  workspace = { ...workspace, revision: workspace.revision + 1, published_book_ref: { book_id: 'book', publication_id: 'enriched' } };
+  installWorkspace(workspace, network.value.attachment, false, 'enrichment');
+  // Check before a later recovery read can refill an incorrectly cleared chat.
+  await nextTick();
+  expect(rail().props('chat')).toEqual(before);
+  expect(rail().props('chat')[0].user).toBe('原对话');
+  expect(rail().props('activeChatSessionId')).toBe('old');
+  expect(wrapper.getComponent({ name: 'ReaderPane' }).vm).toBe(reader);
+  expect(reads.manifest).toHaveBeenCalledTimes(1);
+});
+
 it('creates and selects chats without replacing the reader, reloading book data or resetting its layout', async () => {
   await start();
   const reader = wrapper.getComponent({ name: 'ReaderPane' });
@@ -99,6 +126,28 @@ it('creates and selects chats without replacing the reader, reloading book data 
   expect(rail().props('chat')[0].user).toBe('原对话');
   expect(reads.manifest).toHaveBeenCalledTimes(1);
   expect(wrapper.find('.banner').exists()).toBe(false);
+});
+
+it.each(['stale', 'unavailable'] as const)('only displays actionable failures from background connection checks (%s)', async outcome => {
+  await start();
+  const reader = wrapper.getComponent({ name: 'ReaderPane' }).vm;
+  let finish!: (response: Response) => void;
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input) === '/api/auth/me'
+    ? new Promise<Response>(resolve => { finish = resolve; }) : original(input, init));
+  window.dispatchEvent(new Event('focus')); await flushPromises();
+  if (outcome === 'stale') {
+    rail().vm.$emit('new-chat'); await flushPromises();
+    expect(rail().props('activeChatSessionId')).toBe('new');
+  }
+  rail().vm.$emit('update:agentInput', '继续阅读时的草稿');
+  finish(outcome === 'stale' ? Response.json(network.value.identity)
+    : Response.json({ error_code: 'UNAVAILABLE', message: '连接暂时不可用，请重试。' }, { status: 503 }));
+  await flushPromises();
+  expect(wrapper.getComponent({ name: 'ReaderPane' }).vm).toBe(reader);
+  expect(rail().props('agentInput')).toBe('继续阅读时的草稿');
+  if (outcome === 'stale') expect(wrapper.find('.network-notices').exists()).toBe(false);
+  else expect(wrapper.get('.network-notices [role="alert"]').text()).toBe('连接暂时不可用，请重试。');
 });
 
 it('ignores a late submission result after switching to a new chat', async () => {
@@ -145,7 +194,7 @@ it('keeps the current chat and reader when creating a chat fails', async () => {
   expect(rail().props('activeChatSessionId')).toBe('old');
   expect(rail().props('agentInput')).toBe('保留草稿');
   expect(rail().props('historyLoading')).toBe(false);
-  expect(wrapper.get('.banner').text()).toContain('创建失败');
+  expect(wrapper.get('.banner').text()).toBe('创建失败');
 });
 
 it('offers a local history retry if chat creation succeeds but its history cannot be read', async () => {
@@ -157,7 +206,7 @@ it('offers a local history retry if chat creation succeeds but its history canno
     : originalFetch(url, init)));
   rail().vm.$emit('new-chat'); await flushPromises();
   expect(rail().props('activeChatSessionId')).toBe('new');
-  expect(rail().props('historyError')).toContain('历史读取失败');
+  expect(rail().props('historyError')).toBe('历史读取失败');
   expect(rail().props('historyLoading')).toBe(false);
   vi.stubGlobal('fetch', originalFetch);
   rail().vm.$emit('retry-history'); await flushPromises();

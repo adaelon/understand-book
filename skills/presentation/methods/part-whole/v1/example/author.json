@@ -1,0 +1,20 @@
+{
+  "title": "整体与部分保持对应",
+  "initial_state": {
+    "share": 40,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "share": "part A percentage of a fixed total 100, 0..100; remainder split B:C=3:2",
+    "semantic_state": "completed explanation steps, integer 0..1",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 1"
+  },
+  "readable_content": "把总量 100 拆成 A、B、C 三部分。展开前后，每一块的长度、颜色和数值都保持对应。 A 可调；剩余量按 B:C=3:2 分配。每块都按同一比例尺绘制。 展开只是换位置，三块本身的宽度不会变化。A=0 或 100 时，零份额以读数表示。",
+  "assumptions": [
+    "展开只是换位置，三块本身的宽度不会变化。A=0 或 100 时，零份额以读数表示。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

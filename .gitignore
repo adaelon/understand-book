@@ -18,6 +18,7 @@ packages/web/dist-multi/
 .pnpm-store/
 apps/desktop/src-tauri/resources/web-dist/*
 !apps/desktop/src-tauri/resources/web-dist/.gitkeep
+apps/desktop/src-tauri/resources/video/
 apps/desktop/src-tauri/binaries/*
 !apps/desktop/src-tauri/binaries/.gitkeep
 apps/desktop/src-tauri/gen/schemas/

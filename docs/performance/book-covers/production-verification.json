@@ -1,0 +1,21 @@
+{
+  "url": "https://115.190.121.150",
+  "checked_at": "2026-10-01T07:30:42.742Z",
+  "library_count": 9,
+  "cover_counts": {
+    "image": 1,
+    "pdf": 3,
+    "fallback": 5
+  },
+  "anonymous_library_status": 401,
+  "pdf_range_status": 206,
+  "pdf_cover_canvas": {
+    "width": 360,
+    "height": 466
+  },
+  "desktop_and_mobile": true,
+  "entered_reader": true,
+  "pdf_text_visible": true,
+  "logout": true,
+  "page_errors": []
+}

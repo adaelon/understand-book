@@ -1,0 +1,27 @@
+{
+  "release": "/opt/understand-book/releases/ex13-jl-20261002",
+  "previous_release": "/opt/understand-book/releases/chat-recovery-20261002",
+  "backup": "/opt/understand-book/backups/ex13-jl-20261002",
+  "checks": [
+    "rust-build",
+    "jl-tests",
+    "ex-tests",
+    "ex13-server-tests",
+    "dependencies",
+    "session-log-tests",
+    "presentation-runtime-tests",
+    "linux-web-build",
+    "node-helper",
+    "renderer-tests",
+    "network-scroll-tests"
+  ],
+  "active_runs_before": 0,
+  "state": "active",
+  "service": "active",
+  "publication": {
+    "presentation_id": "presentation-1790920818511542500-6",
+    "revision": 2
+  },
+  "user": "adaelon",
+  "chat": "chat-ex13-release-20261002"
+}

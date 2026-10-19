@@ -1,0 +1,1013 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 0.2,
+        "steps": 8
+      },
+      "eta": 0.2,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.80",
+          "actual": 0.8,
+          "expected": 0.8,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−1.20",
+          "actual": -1.2,
+          "expected": -1.2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.28",
+          "actual": 1.28,
+          "expected": 1.28,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.72",
+          "actual": -0.72,
+          "expected": -0.72,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.57",
+          "actual": 1.57,
+          "expected": 1.568,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.43",
+          "actual": -0.43,
+          "expected": -0.43199999999999994,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.74",
+          "actual": 1.74,
+          "expected": 1.7408000000000001,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.26",
+          "actual": -0.26,
+          "expected": -0.2592,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.97",
+          "actual": 1.97,
+          "expected": 1.96640768,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.03",
+          "actual": -0.03,
+          "expected": -0.03359231999999999,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 0.8,
+        "steps": 8
+      },
+      "eta": 0.8,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "3.20",
+          "actual": 3.2,
+          "expected": 3.2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "1.20",
+          "actual": 1.2,
+          "expected": 1.2000000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.28",
+          "actual": 1.28,
+          "expected": 1.2799999999999998,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.72",
+          "actual": -0.72,
+          "expected": -0.7200000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.43",
+          "actual": 2.43,
+          "expected": 2.4320000000000004,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.43",
+          "actual": 0.43,
+          "expected": 0.4320000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.74",
+          "actual": 1.74,
+          "expected": 1.7408,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.26",
+          "actual": -0.26,
+          "expected": -0.25920000000000015,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.97",
+          "actual": 1.97,
+          "expected": 1.9664076799999999,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.03",
+          "actual": -0.03,
+          "expected": -0.03359232000000004,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 1.1,
+        "steps": 8
+      },
+      "eta": 1.1,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "4.40",
+          "actual": 4.4,
+          "expected": 4.4,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "2.40",
+          "actual": 2.4,
+          "expected": 2.4000000000000004,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−0.88",
+          "actual": -0.88,
+          "expected": -0.8800000000000008,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.88",
+          "actual": -2.88,
+          "expected": -2.880000000000001,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "5.46",
+          "actual": 5.46,
+          "expected": 5.456000000000001,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "3.46",
+          "actual": 3.46,
+          "expected": 3.4560000000000017,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−2.15",
+          "actual": -2.15,
+          "expected": -2.1472000000000024,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−4.15",
+          "actual": -4.15,
+          "expected": -4.147200000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−6.60",
+          "actual": -6.6,
+          "expected": -6.599633920000009,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−8.60",
+          "actual": -8.6,
+          "expected": -8.59963392000001,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 0.5,
+        "steps": 8
+      },
+      "eta": 0.5,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 1,
+        "steps": 8
+      },
+      "eta": 1,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "4.00",
+          "actual": 4,
+          "expected": 4,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "4.00",
+          "actual": 4,
+          "expected": 4,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "2.00",
+          "actual": 2,
+          "expected": 2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 0.9,
+        "steps": 8
+      },
+      "eta": 0.9,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "3.60",
+          "actual": 3.6,
+          "expected": 3.6,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "1.60",
+          "actual": 1.6,
+          "expected": 1.6,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.72",
+          "actual": 0.72,
+          "expected": 0.7199999999999998,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−1.28",
+          "actual": -1.28,
+          "expected": -1.2800000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "3.02",
+          "actual": 3.02,
+          "expected": 3.024,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "1.02",
+          "actual": 1.02,
+          "expected": 1.0240000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.18",
+          "actual": 1.18,
+          "expected": 1.1807999999999998,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.82",
+          "actual": -0.82,
+          "expected": -0.8192000000000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "1.66",
+          "actual": 1.66,
+          "expected": 1.6644556799999999,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−0.34",
+          "actual": -0.34,
+          "expected": -0.3355443200000002,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    },
+    {
+      "directory": "v4-B1-learning-rate",
+      "state": {
+        "eta": 1.2,
+        "steps": 8
+      },
+      "eta": 1.2,
+      "reads": [
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(2)",
+          "step": 0,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "0.00",
+          "actual": 0,
+          "expected": 0,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(2) > span:nth-child(3)",
+          "step": 0,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−2.00",
+          "actual": -2,
+          "expected": -2,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(2)",
+          "step": 1,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "4.80",
+          "actual": 4.8,
+          "expected": 4.8,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(3) > span:nth-child(3)",
+          "step": 1,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "2.80",
+          "actual": 2.8,
+          "expected": 2.8,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(2)",
+          "step": 2,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−1.92",
+          "actual": -1.92,
+          "expected": -1.9199999999999995,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(4) > span:nth-child(3)",
+          "step": 2,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−3.92",
+          "actual": -3.92,
+          "expected": -3.9199999999999995,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(2)",
+          "step": 3,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "7.49",
+          "actual": 7.49,
+          "expected": 7.487999999999999,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(5) > span:nth-child(3)",
+          "step": 3,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "5.49",
+          "actual": 5.49,
+          "expected": 5.487999999999999,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(2)",
+          "step": 4,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−5.68",
+          "actual": -5.68,
+          "expected": -5.6831999999999985,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(6) > span:nth-child(3)",
+          "step": 4,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−7.68",
+          "actual": -7.68,
+          "expected": -7.6831999999999985,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(2)",
+          "step": 8,
+          "quantity": "w",
+          "decimals": 2,
+          "text": "−27.52",
+          "actual": -27.52,
+          "expected": -27.515781119999986,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        },
+        {
+          "selector": "#tbl .tr:nth-child(10) > span:nth-child(3)",
+          "step": 8,
+          "quantity": "e",
+          "decimals": 2,
+          "text": "−29.52",
+          "actual": -29.52,
+          "expected": -29.515781119999986,
+          "tolerance": 0.0050000010000000004,
+          "pass": true
+        }
+      ],
+      "errors": [],
+      "pass": true
+    }
+  ]
+}

@@ -172,7 +172,7 @@ pub(crate) fn project(projection: &SessionProjection, generated_at: &str) -> Rec
                 source_ref_id: binding.source_ref_id.clone(),
                 label: binding.label_snapshot.clone(),
                 quote: binding.preview_snapshot.clone(),
-                published_book_ref: turn.published_book_ref.clone(),
+                published_book_ref: source_publication(turn, binding),
                 evidence: vec![evidence(&turn.turn_id, seq)],
                 unavailable_reason: None,
             });
@@ -289,39 +289,46 @@ pub(crate) fn project(projection: &SessionProjection, generated_at: &str) -> Rec
     recap
 }
 
+pub(crate) fn source_publication(turn: &AgentChatTurn, binding: &SourceBinding) -> Option<published_library::PublishedBookRef> {
+    binding.publication_id.as_ref().map(|publication_id| published_library::PublishedBookRef {
+        book_id: binding.book_id.clone(), publication_id: publication_id.clone(),
+    }).or_else(|| turn.published_book_ref.as_ref().filter(|reference| reference.book_id == binding.book_id).cloned())
+}
+
 pub(crate) fn resolve(
     recap: &mut Recap,
     projection: &SessionProjection,
     user: &user_runtime::UserRuntime,
-    mut material: impl FnMut(&AgentChatTurn) -> Option<(Arc<Book>, PathBuf)>,
+    mut material: impl FnMut(&AgentChatTurn, Option<&published_library::PublishedBookRef>) -> Option<(Arc<Book>, PathBuf)>,
 ) {
     let session = projection.session.as_ref().unwrap();
-    let records = user.store.recall(&RecallQuery {
-        book_id: Some(session.book_id.clone()),
-        ..Default::default()
-    });
     for turn in &session.turns {
-        let book = material(turn);
+        let turn_book = turn.published_book_ref.as_ref().map_or(session.book_id.as_str(), |r| r.book_id.as_str());
+        let records = user.store.recall(&RecallQuery { book_id: Some(turn_book.to_owned()), ..Default::default() });
+        let book = material(turn, turn.published_book_ref.as_ref());
         for source in recap
             .sources
             .iter_mut()
             .filter(|s| s.evidence[0].turn_id == turn.turn_id)
         {
-            source.unavailable_reason = match &book {
+            let source_book = material(turn, source.published_book_ref.as_ref());
+            source.unavailable_reason = match &source_book {
                 None => Some("原发布当前不可用".into()),
-                Some((book, _)) => {
+                Some((book, directory)) => {
                     let binding = turn
                         .source_bindings
                         .iter()
                         .find(|b| b.source_ref_id == source.source_ref_id)
                         .unwrap();
-                    book.resolve_source(
-                        &binding.evidence_range,
+                    if let Some(media) = &binding.media {
+                        crate::video_source::snapshot(book, directory, media.target.clone()).err().map(|_| "原媒体当前不可用".into())
+                    } else { book.resolve_source(
+                        binding.evidence_range.as_ref().expect("text binding"),
                         "zh-CN",
                         Some(&binding.evidence_text_digest),
                     )
                     .err()
-                    .map(|_| "原文当前不可用".into())
+                    .map(|_| "原文当前不可用".into()) }
                 }
             };
         }
@@ -335,6 +342,7 @@ pub(crate) fn resolve(
                     DeliveredEffect::Presentation { reference } => {
                         let private = PrivateBookContext {
                             user,
+                            learning_workspace_id: session.learning_workspace_id.as_deref(),
                             book,
                             book_dir: directory,
                             messages: &[],
@@ -350,7 +358,7 @@ pub(crate) fn resolve(
                     } => {
                         if let Some(record) = effect.object_id.as_deref()
                             .and_then(|id| user.store.current_note_record(id))
-                            .filter(|record| record.book_id == session.book_id)
+                            .filter(|record| record.book_id == turn_book)
                         {
                             effect.object_id = Some(record.mem_id.clone());
                         }
@@ -381,9 +389,9 @@ pub(crate) fn local(
     let (id, through) = request(query)?;
     let projection = snapshot(&state.user, id, through)?;
     let mut recap = project(&projection, now);
-    resolve(&mut recap, &projection, &state.user, |turn| {
+    resolve(&mut recap, &projection, &state.user, |_, reference| {
         (projection.session.as_ref().unwrap().book_id == state.workspace.book.base.book_id
-            && turn.published_book_ref.as_ref()
+            && reference
                 == state.workspace.publication.as_ref().map(|p| &p.reference))
         .then(|| {
             (
@@ -408,8 +416,8 @@ pub(crate) fn network(
     let mut recap = project(&projection, now);
     let mut library = access.library.lock().unwrap();
     let mut materials = BTreeMap::new();
-    resolve(&mut recap, &projection, &user, |turn| {
-        let reference = turn.published_book_ref.as_ref()?;
+    resolve(&mut recap, &projection, &user, |_, reference| {
+        let reference = reference?;
         materials
             .entry(reference.clone())
             .or_insert_with(|| {

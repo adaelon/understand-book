@@ -29,7 +29,8 @@ async function mountWorkspace(page: Page) {
           sending:false,selectedLid:null,selectedFormula:null,contextNotes:[],contextHighlights:[],renderMarkdown,
           effLabel:()=>'',effState:()=>undefined,isGoto:()=>false,showEffectPrimary:()=>false,showEffectSecondary:()=>false,
           effectPrimaryLabel:()=>'',effectSecondaryLabel:()=>'',gotoBack:()=>'',askDraft:null},
-          {'learning-goal':()=>h('div',{class:'conversation-learning-goal'},'本次学习：理解模型架构')})]);
+          {'learning-goal':()=>h('div',{class:'conversation-learning-goal'},'本次学习：理解模型架构'),
+           'learning-details':()=>h('button',{},'学习详情')})]);
     }})).mount('#app');
     </script></body></html>` }));
   await page.route('**/api/**', async route => {
@@ -37,7 +38,7 @@ async function mountWorkspace(page: Page) {
     const body = route.request().postDataJSON() ?? {};
     let result: unknown = {};
     if (path.endsWith('/agent/presentation.read')) result = {
-      reference, title: '模型架构演示', entrypoint: 'index.html',
+      reference, title: '第 6 章 全书结构与语义候选的两条命运', entrypoint: 'index.html',
       content_files: { 'index.html': `<!doctype html><html><body><h1>模型架构演示</h1><label>参数 <input id="parameter" value="5"></label>${Array.from({ length: 10 }, () => `<p>${prompt}</p>`).join('')}<button id="last-control">最后一个操作</button></body></html>` },
       sources: [], initial_state: {}, restored_state: null, restored_state_revision: null,
       readable_view: { parts: [], sources: [] }, animation_assets: {}, assumptions: [],
@@ -80,6 +81,43 @@ test('long teaching and a failed display receipt leave the expanded page its ful
   await expect(frame.locator('#parameter')).toHaveValue('7');
   await expect(page.locator('.agent-presentation iframe')).toHaveAttribute('data-load-count', '1');
   await expect(page.locator('.workspace-teaching').getByRole('textbox', { name: '活动回答' })).toHaveValue('在演示中继续补充的草稿');
+});
+
+for (const width of [390, 320]) test(`mobile ${width}: compact tools keep the canvas still and preserve zoom and state`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 844 });
+  await mountWorkspace(page);
+  await page.getByRole('button', { name: '展开', exact: true }).click();
+  const frame = page.frameLocator('.agent-presentation iframe');
+  await frame.locator('#parameter').fill('7');
+  const iframe = page.locator('.agent-presentation iframe');
+  const before = (await iframe.boundingBox())!;
+  const toolbar = (await page.locator('.workspace-tools').boundingBox())!;
+  expect(toolbar.height).toBeLessThanOrEqual(96);
+  expect(before.height).toBeGreaterThan(720);
+  await expect(page.getByRole('button', { name: '导出长图', exact: true })).toBeHidden();
+  await page.screenshot({ path: info.outputPath('mobile-presentation.png') });
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
+  const panel = page.locator('.presentation-tools.is-open');
+  await expect(panel).toBeVisible();
+  const panelBounds = (await panel.boundingBox())!;
+  expect(panelBounds.x).toBeGreaterThanOrEqual(0);
+  expect(panelBounds.x + panelBounds.width).toBeLessThanOrEqual(width);
+  await page.getByRole('button', { name: '缩小演示', exact: true }).click();
+  await expect(frame.locator('html')).toHaveCSS('zoom', '0.9');
+  expect(await iframe.boundingBox()).toEqual(before);
+  await page.screenshot({ path: info.outputPath('mobile-presentation-tools.png') });
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator('.agent-presentation')).toHaveClass(/expanded/);
+  await page.getByRole('button', { name: '展开讨论', exact: true }).click();
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
+  await page.getByRole('button', { name: '文字说明与来源', exact: true }).click();
+  await expect(page.getByRole('button', { name: '演示工具', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', { name: '收起讨论', exact: true }).click();
+  await page.getByRole('button', { name: '关闭文字说明与来源', exact: true }).click();
+  await expect(frame.locator('#parameter')).toHaveValue('7');
+  await expect(iframe).toHaveAttribute('data-load-count', '1');
+  await info.attach('mobile-layout.json', { contentType: 'application/json', body: JSON.stringify({ width, toolbarHeight: toolbar.height, canvasHeight: before.height }) });
 });
 
 test('opening a presentation from fullscreen uses the split and restores fullscreen on collapse', async ({ page }, info) => {

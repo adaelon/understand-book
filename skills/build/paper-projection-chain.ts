@@ -46,7 +46,7 @@ for (let i = 0; i < args.length; i++) {
 
 const bookDir = positional[0];
 const paperSubtype = opts["--paper-subtype"] ?? "research_article";
-const pass2 = opts["--pass2"] ?? "enabled";
+const pass2 = opts["--pass2"] ?? "disabled";
 if (!bookDir
   || (paperSubtype !== "research_article" && paperSubtype !== "survey")
   || (pass2 !== "enabled" && pass2 !== "disabled")) {

@@ -9,6 +9,12 @@ use std::{
 };
 
 pub struct ReaderWorkspace {
+    pub learning_chat_selections: std::collections::BTreeMap<String, String>,
+    pub learning_reading_positions: Vec<LearningReadingPosition>,
+    pub learning_workspace_id: Option<String>,
+    pub learning_goal: Option<base_schema::WorkspaceGoal>,
+    pub learning_members: Option<Vec<crate::published_library::PublishedBookRef>>,
+    pub(crate) video_drafts: crate::video_draft::Drafts,
     pub publication: Option<Arc<crate::published_library::PublishedBook>>,
     pub id: String,
     pub generation: u64,
@@ -22,6 +28,13 @@ pub struct ReaderWorkspace {
     pub active_agent_stream: Option<Weak<RunStream>>,
 }
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct LearningReadingPosition {
+    pub learning_workspace_id: String,
+    pub published_book_ref: crate::published_library::PublishedBookRef,
+    pub reader: reader::ReaderCheckpoint,
+}
+
 impl ReaderWorkspace {
     pub fn local(
         book_dir: PathBuf,
@@ -31,6 +44,12 @@ impl ReaderWorkspace {
         session_path: Option<PathBuf>,
     ) -> Self {
         Self {
+            learning_chat_selections: Default::default(),
+            learning_reading_positions: Vec::new(),
+            learning_workspace_id: None,
+            learning_goal: None,
+            learning_members: None,
+            video_drafts: crate::video_draft::load(&session_path),
             publication: None,
             id: "local".into(),
             generation: 0,
@@ -54,6 +73,23 @@ impl ReaderWorkspace {
         self.selected_chat = None;
         self.messages.clear();
         self.workbench_loaded_revision = None;
+    }
+
+    /// Same-source enrichment changes resources, never the Reader or chat selection.
+    pub(crate) fn adopt_same_source_publication(&mut self, publication: Arc<crate::published_library::PublishedBook>) -> Result<(), read_tools::ToolError> {
+        let before = self.book.load_video_source(&self.book_dir)?.0;
+        let after = publication.book.load_video_source(publication.directory())?.0;
+        if before.material != after.material { return Err(crate::published_library::invalid()); }
+        self.book = publication.book.clone();
+        self.book_dir = publication.directory.clone();
+        self.publication = Some(publication);
+        Ok(())
+    }
+
+    pub(crate) fn video_adoption_busy(&self, user: &crate::user_runtime::UserRuntime) -> bool {
+        self.video_drafts.values().any(|d| d.context.material.book_id == self.book.base.book_id && !crate::video_draft::consumed(user, &d.context.draft_id))
+            || user.agent_history.sessions.iter().filter(|s| self.selected_chat.as_ref() == Some(&s.id))
+                .flat_map(|s| &s.turns).any(|t| t.status == crate::AgentAssistantStatus::PendingAssistant)
     }
 
     pub fn localization_cache_path(&self) -> Option<PathBuf> {

@@ -122,7 +122,7 @@ test('EX11 transfer: real controls, exact saved scene and follow-up', async ({br
       await expect.poll(snapshot).toEqual(record.savedSnapshot);
       record.restoredSnapshot = await snapshot();
       expect(await frame.locator(selectors.result).innerText()).toBe(record.savedText);
-      await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('解释我保存的这一步和当前参数');
+      await page.getByRole('textbox',{name:'针对当前演示追问'}).fill('解释我保存的这一步和当前参数');
       await page.getByRole('button',{name:'发送追问',exact:true}).click();
       await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
       const requests = await page.request.get(host+'/requests').then(r=>r.json());

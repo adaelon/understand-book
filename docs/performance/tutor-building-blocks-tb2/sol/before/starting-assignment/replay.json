@@ -82,7 +82,7 @@
           "constraints": [],
           "current_request": "我只会整数变量和赋值，能跟着执行 println；还没学过所有权，也不知道 &Foo 是什么。\n原文里 let bar = &foo; 后面为什么还能分别打印 foo 和 bar？帮我从这一步弄懂借用，再让我判断去掉 & 后会怎样。",
           "current_target": null,
-          "details": "tutor.step understanding with object_id and after",
+          "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
           "entries": [],
           "evidence_watermark": 0,
           "interpretations": [],
@@ -235,7 +235,7 @@
       ],
       "event_id": "move:turn_ab532cab6797fd00:explain-borrow-from-assignment",
       "kind": "move_selected",
-      "occurred_at": "2026-10-12T07:24:13.4594103Z",
+      "occurred_at": "2026-10-16T07:56:13.9233876Z",
       "payload": {
         "help_policy": "preserve_exposure",
         "move": {
@@ -824,7 +824,7 @@
       "injected_fact_ids": [],
       "snapshot_revision": 0
     },
-    "tokens_spent": 36657,
+    "tokens_spent": 47212,
     "trace": [
       {
         "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",

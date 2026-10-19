@@ -91,6 +91,12 @@ fn multi_user_review_real_transport_is_billed_and_durable() {
     server.shutdown();
     let charges: i64 = control.connection.query_row("SELECT count(*) FROM model_call_charges WHERE user_id='A' AND purpose='memory_review' AND task_ref IS NOT NULL AND state='settled'",[],|r|r.get(0)).unwrap();
     assert_eq!(charges,2);
+    let (parents, scopes): (i64, i64) = control.connection.query_row(
+        "SELECT count(DISTINCT parent_task_ref),count(learning_workspace_id) FROM model_call_charges WHERE user_id='A' AND purpose='memory_review'",
+        [], |r| Ok((r.get(0)?, r.get(1)?)),
+    ).unwrap();
+    assert_eq!(parents, 1, "review retries remain under the original durable job");
+    assert_eq!(scopes, 0, "account-wide profile extraction does not inherit an open reading scene");
     assert!(access.users.lock().unwrap().pending_review_owners().unwrap().is_empty());
     let persisted: Value = serde_json::from_slice(&std::fs::read(paths.memory).unwrap()).unwrap();
     assert_eq!(persisted["review_state"]["review_jobs"][0]["status"],"completed");
@@ -324,4 +330,63 @@ fn adm6_real_admission_denials_are_saved_without_http() {
         assert!(fake.try_recv().unwrap().is_none());
         assert!(!f.get(&f.a, &w).is_null());
     }
+}
+
+
+#[test]
+fn w3_background_review_real_transport_keeps_origin_after_switch_and_archive() {
+    let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", fake.server_addr().to_ip().unwrap());
+    let mut f = Fixture::new();
+    super::adm5_tests::seed(&mut f, &url, 10_000_000);
+    f.access.runs.configure(ProviderConfig::from_values("native", "fixture-key", url, "fixture-model").unwrap()).unwrap();
+    let a = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"Learn source A"},"members":[f.x]}));
+    let b = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"Study for exam B"},"members":[f.x]}));
+    let a_id = a["learning_workspace_id"].as_str().unwrap();
+    let scene = f.ok(&f.a, "POST", "/api/workspaces", json!({"published_book_ref":f.x,"attachment_id":"original","learning_workspace_id":a_id}));
+    let scene = f.action(&f.a, &scene, "original", "chat/new", json!({}));
+    let mut input = Fixture::stamp(&scene, "original");
+    input["client_request_id"] = json!("w3-review-origin"); input["session_id"] = scene["selected_chat"].clone();
+    input["message"] = json!("I prefer worked examples.");
+    admit(&f, &scene, &input);
+    let access = f.access.clone();
+    let run = std::thread::spawn(move || access.runs.run_one(&access));
+    respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(), json!({"role":"assistant","content":"We will use worked examples."}), 10);
+    run.join().unwrap().unwrap();
+    let (front_scope, parent, run_ref): (String, String, String) = f.control.connection.query_row(
+        "SELECT learning_workspace_id,parent_task_ref,run_ref FROM model_call_charges WHERE run_ref IS NOT NULL AND user_id='A'",
+        [], |row|Ok((row.get(0)?,row.get(1)?,row.get(2)?))).unwrap();
+    assert_eq!(front_scope, a_id);
+    assert_eq!(parent, run_ref);
+    let now_ms = (crate::multi_user_host::now() as u64) * 1000 + 61_000;
+    let cancel = runtime::run_context::CancellationToken::default();
+    f.ok(&f.a, "POST", &format!("/api/learning-workspaces/{a_id}/archive"), json!({"archived":true}));
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, now_ms), 0);
+    assert!(fake.recv_timeout(Duration::from_millis(20)).unwrap().is_none(), "archived work must not dispatch a paid background send");
+    let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+    assert_eq!(handle.lock().unwrap().store.review_state().review_jobs[0].attempts, 0);
+    f.ok(&f.a, "POST", &format!("/api/learning-workspaces/{a_id}/archive"), json!({"archived":false}));
+    let access = f.access.clone();
+    let review = std::thread::spawn(move || crate::multi_user_review::tick(&access, &Default::default(), now_ms));
+    let request = fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap();
+    let other = f.ok(&f.a, "POST", "/api/workspaces", json!({"published_book_ref":f.x,"attachment_id":"other","learning_workspace_id":b["learning_workspace_id"]}));
+    f.action(&f.a, &other, "other", "chat/new", json!({}));
+    let turn_id = input["session_id"].as_str().and_then(|session_id| {
+        let user = handle.lock().unwrap();
+        user.agent_history.sessions.iter().find(|s|s.id==session_id).and_then(|s|s.turns.last().map(|t|t.turn_id.clone()))
+    }).unwrap();
+    respond(request, json!({"role":"assistant","content":json!({"candidate_facts":[{"source":"user_stated","scope":"book",
+        "payload":{"kind":"explanation_preference","key":"examples","value":"worked examples"},
+        "evidence":[{"turn_id":turn_id,"user_quote":"I prefer worked examples."}]}],"intent_observations":[]}).to_string()}), 10);
+    assert_eq!(review.join().unwrap(), 1);
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, now_ms + 1000), 0);
+    let (count, primary, related, debit): (i64, Option<String>, String, i64) = f.control.connection.query_row(
+        "SELECT count(*),learning_workspace_id,related_learning_workspace_ids,sum(account_debit_micro_cny) FROM model_call_charges WHERE purpose='memory_review' AND user_id='A'",
+        [], |r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).unwrap();
+    assert_eq!(count, 1); assert!(primary.is_none()); assert_eq!(serde_json::from_str::<Value>(&related).unwrap(), json!([a_id])); assert_eq!(debit, 11);
+    let user = handle.lock().unwrap();
+    let job = &user.store.review_state().review_jobs[0];
+    assert_eq!(job.learning_workspace_id.as_deref(), Some(a_id)); assert_eq!(job.goal_revisions, [1]);
+    assert_eq!(user.store.profile_facts().len(), 1);
+    assert!(matches!(&user.store.profile_facts()[0].scope, memory::ProfileScope::Workspace { learning_workspace_id, .. } if learning_workspace_id==a_id));
 }

@@ -85,6 +85,29 @@ pub(crate) fn page(query: &HashMap<String, String>) -> Result<(u32, u32), ToolEr
     Ok((limit, number("offset", 0)?))
 }
 
+pub(crate) fn charge_reference(query: &mut HashMap<String, String>, reader: bool) -> Result<Option<(&'static str, String)>, ToolError> {
+    let mut scopes = Vec::new();
+    for (key, kind) in [("parent_task_ref", "parent_task"), ("learning_workspace_id", "workspace")] {
+        if let Some(value) = query.remove(key) { scopes.push((kind, value)); }
+    }
+    if let Some(value) = query.remove("account_level") {
+        match value.as_str() {
+            "true" => scopes.push(("account_level", String::new())),
+            "false" => {},
+            _ => return Err(admin_store::invalid()),
+        }
+    }
+    if !reader {
+        for (key, kind) in [("run_ref", "run"), ("task_ref", "task"), ("operator_task_ref", "operator_task")] {
+            if let Some(value) = query.remove(key) { scopes.push((kind, value)); }
+        }
+    }
+    if scopes.len() > 1 || scopes.iter().any(|(kind,value)| *kind != "account_level" && value.trim().is_empty()) {
+        return Err(admin_store::invalid());
+    }
+    Ok(scopes.pop())
+}
+
 pub(crate) fn dispatch(
     access: &Arc<Authorization>,
     principal: &Principal,
@@ -95,6 +118,69 @@ pub(crate) fn dispatch(
     now: i64,
 ) -> Result<Value, ToolError> {
     let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if matches!(parts.as_slice(),["admin","operator-builds",..]) {
+        return crate::operator_builds::dispatch(access,principal.user_id(),method,&parts[2..],query,input,now);
+    }
+    if matches!(parts.as_slice(), ["admin", "workspace-releases", ..]) {
+        if let ("POST",["admin","workspace-releases",release_id,"archive"])=(method,parts.as_slice()) {
+            #[derive(Deserialize)] #[serde(deny_unknown_fields)] struct Archive {operation_id:String,archived:bool}
+            if !query.is_empty(){return Err(admin_store::invalid());}
+            let body:Archive=parse(input)?;
+            return access.admin.apply(principal.user_id(),&body.operation_id,principal.user_id(),Command::WorkspaceReleaseArchive(crate::workspace_publication::Archive{release_id:(*release_id).into(),archived:body.archived}),now).map(|(value,_)|value);
+        }
+        if method == "POST" && parts.len() == 2 && query.is_empty() {
+            let mut input = input;
+            let id = input.as_object_mut().and_then(|value|value.remove("operation_id"))
+                .and_then(|value|value.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
+            return access.admin.apply(principal.user_id(), &id, principal.user_id(),
+                Command::WorkspaceRelease(parse(input)?), now).map(|(receipt,_)|receipt);
+        }
+        if method != "GET" { return Err(admin_store::invalid()); }
+        return match parts.as_slice() {
+            ["admin", "workspace-releases"] => {
+                let (limit,offset) = page(query)?;
+                access.admin.workspace_releases(None,limit,offset)
+            },
+            ["admin", "workspace-releases", id, "versions", version] if query.is_empty() =>
+                access.admin.workspace_release(None,id,version.parse().map_err(|_|admin_store::invalid())?,false),
+            ["admin", "workspace-releases", id, "versions", version, "export"] if query.is_empty() =>
+                access.admin.workspace_release(None,id,version.parse().map_err(|_|admin_store::invalid())?,true),
+            _ => Err(crate::authorization::missing()),
+        };
+    }
+    if method == "GET" && parts.as_slice() == ["admin", "cost-summary"] {
+        let mut pagination = query.clone();
+        let owner = pagination.remove("user_id");
+        if let Some(owner) = &owner { crate::user_storage_paths::validate_user_id(owner)?; }
+        let range = if pagination.contains_key("from") || pagination.contains_key("to") {
+            Some(crate::admin_usage::range(&mut pagination,now)?)
+        } else { None };
+        let (limit,offset) = page(&pagination)?;
+        return access.spend.cost_summary(owner.as_deref(),range.as_ref(),limit,offset,false,now);
+    }
+    if parts.as_slice() == ["admin", "allowance-offers"] {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        if method == "GET" { return access.admin.allowance_offers(); }
+        if method != "POST" { return Err(admin_store::invalid()); }
+        let mut input = input;
+        let id = input.as_object_mut().and_then(|value|value.remove("operation_id"))
+            .and_then(|value|value.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
+        return access.admin.apply(principal.user_id(), &id, principal.user_id(),
+            Command::AllowanceOffer(parse(input)?), now).map(|(receipt,_)|receipt);
+    }
+    if matches!(parts.as_slice(), ["admin", "build-tasks", _, ..]) {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        return match (method, parts.as_slice()) {
+            ("GET", ["admin", "build-tasks", task]) => access.spend.build_status(task, None),
+            ("GET", ["admin", "build-tasks", task, "charges", call]) => access.spend.build_status(task, Some(call)),
+            ("POST", ["admin", "build-tasks", task, "budget"]) => access.spend.build_budget(principal.user_id(), task, parse(input)?, now),
+            ("POST", ["admin", "build-tasks", task, "metered-admit"]) => access.spend.build_metered_admit(task, input, now),
+            ("POST", ["admin", "build-tasks", task, "metered-receipts"]) => access.spend.build_metered_receipt(task, parse(input)?, now),
+            ("POST", ["admin", "build-tasks", task, "admit"]) => access.spend.build_admit(task, parse(input)?, now),
+            ("POST", ["admin", "build-tasks", task, "receipts"]) => access.spend.build_receipt(task, parse(input)?, now),
+            _ => Err(crate::authorization::missing()),
+        };
+    }
     if method == "GET" && matches!(parts.as_slice(), ["admin", "users", _, "mcp"]) {
         if !query.is_empty() { return Err(admin_store::invalid()); }
         return serde_json::to_value(access.mcp_usage.status(parts[2])?).map_err(|_|admin_store::invalid());
@@ -136,12 +222,11 @@ pub(crate) fn dispatch(
         let range = if pagination.contains_key("from") || pagination.contains_key("to") {
             Some(crate::admin_usage::range(&mut pagination,now)?)
         } else { None };
-        let run = pagination.remove("run_ref");
-        let task = pagination.remove("task_ref");
-        if run.is_some() && task.is_some() { return Err(admin_store::invalid()); }
-        let reference = run.as_deref().map(|v|("run",v)).or_else(||task.as_deref().map(|v|("task",v)));
+        let reference = charge_reference(&mut pagination, false)?;
+        let cost_owner = pagination.remove("cost_owner");
+        if cost_owner.as_deref().is_some_and(|value| !matches!(value,"account"|"platform")) { return Err(admin_store::invalid()); }
         let (limit,offset)=page(&pagination)?;
-        return access.spend.charges(owner.as_deref(),pending,limit,offset,false,range.as_ref(),reference);
+        return access.spend.charges(owner.as_deref(),pending,limit,offset,false,range.as_ref(),reference.as_ref().map(|(kind,value)|(*kind,value.as_str())),cost_owner.as_deref());
     }
     if method == "GET" {
         let (limit, offset) = page(query)?;
@@ -196,7 +281,8 @@ pub(crate) fn dispatch(
                 .and_then(|v|v.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
             let reconcile = parse(input)?;
             let detail = access.spend.charge_detail(call,1,0)?;
-            (detail["user_id"].as_str().unwrap().to_owned(),id,Command::Reconcile((*call).into(),reconcile))
+            let owner = detail["user_id"].as_str().ok_or_else(||crate::user_storage_paths::error("CHARGE_ACCOUNT_REQUIRED","conflict","Account reconciliation requires an account-owned charge"))?;
+            (owner.to_owned(),id,Command::Reconcile((*call).into(),reconcile))
         }
         ["admin", "users"] => {
             let body: Create = parse(input)?;
@@ -236,6 +322,10 @@ pub(crate) fn dispatch(
                     )
                 }
                 "allowance-periods"
+                | "allowance-basis"
+                | "allowance-percentage-adjustments"
+                | "percentage-receipts"
+                | "percentage-receipt-corrections"
                 | "allowance-adjustments"
                 | "allowance-validity"
                 | "receipts"
@@ -249,6 +339,10 @@ pub(crate) fn dispatch(
                         .ok_or_else(admin_store::invalid)?;
                     let mutation = match *action {
                         "allowance-periods" => Mutation::Period(parse(input)?),
+                        "allowance-basis" => Mutation::Basis(parse(input)?),
+                        "allowance-percentage-adjustments" => Mutation::PercentageAdjustment(parse(input)?),
+                        "percentage-receipts" => Mutation::PercentageReceipt(parse(input)?),
+                        "percentage-receipt-corrections" => Mutation::PercentageCorrection(parse(input)?),
                         "allowance-adjustments" => Mutation::Adjustment(parse(input)?),
                         "allowance-validity" => Mutation::Validity(parse(input)?),
                         "receipts" => Mutation::Receipt(parse(input)?),

@@ -40,13 +40,13 @@
     },
     {
       "category": "verified_spoken_words_and_silence",
-      "status": "pending_listening",
+      "status": "partially_listened",
       "samples": [
         "V04",
         "V05",
         "V07"
       ],
-      "note": "2026-10-08 用户授权先完成可验证部分；不使用烧录字幕冒充原声真值。"
+      "note": "2026-10-10 用户听核确认 V05 两个词均出现、V04 的 hidden gets summed out；V07 只给出不确定语义，完整原话与精确停顿边界仍待核。详见 results/vi0b-20261010/listening-review.json。"
     }
   ],
   "frames": [
@@ -354,7 +354,15 @@
             "text": "And anything that is not mentioned here, the hidden gets summed out."
           }
         ],
-        "review_focus": "听核 hidden 与 summed out；标注句段起止。通过后才能用于音频+画面联合评测。",
+        "review_focus": "关键短语已由用户听核确认；完整句子与逐词边界仍待人工标注。",
+        "listening_review": {
+          "date": "2026-10-10",
+          "reviewer": "user",
+          "status": "key_phrase_confirmed",
+          "confirmed_phrase": "hidden gets summed out",
+          "source_range_ms": [1205000, 1215000],
+          "record": "results/vi0b-20261010/listening-review.json"
+        },
         "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
       }
     },
@@ -373,8 +381,8 @@
       ],
       "question": "讲者在这一段说的是 underflow 还是 overflow？能用画面直接替他说话吗？",
       "expected": {
-        "answer": "画面有 Underflow! 注释；585s 字幕却是 You'll get overflow. 这只是待复核疑点，不能据此判定字幕错，也不能把代码注释当成讲者原话。",
-        "support": "unresolved_audio"
+        "answer": "用户听核确认 578–586 秒内 underflow 与 overflow 都出现了，独立短音频转写也返回两词。代码注释和字幕说到不同词并不直接构成错误；完整原话及逐词时刻仍保留机器候选属性。",
+        "support": "user_listened_key_terms_and_machine_audio_review"
       },
       "acceptable_locations": [
         {
@@ -401,7 +409,15 @@
             "text": "You'll get overflow."
           }
         ],
-        "review_focus": "回听完整 36 秒，区分讲者转换讨论 overflow、字幕误写、或听不清；不要预设是转写错误。",
+        "review_focus": "用户已确认 578–586 秒两词均出现；完整 36 秒逐字真值尚未标注。",
+        "listening_review": {
+          "date": "2026-10-10",
+          "reviewer": "user",
+          "status": "key_terms_confirmed",
+          "confirmed_terms": ["underflow", "overflow"],
+          "source_range_ms": [578000, 586000],
+          "record": "results/vi0b-20261010/listening-review.json"
+        },
         "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
       }
     },
@@ -455,8 +471,8 @@
       ],
       "question": "648–656 秒是否静音？具体讲者原话是什么？",
       "expected": {
-        "answer": "当前只能确认 650s 抽帧无烧录字幕；这不能证明静音。保存短音频供 VI0b 或人工听核。",
-        "support": "pending_listening"
+        "answer": "原声机器识别返回 Okay, so let me actually skip over this this part；用户听核给出不确定的转入下一部分语义。因此不能将这 8 秒整体标成静音。具体原话与停顿边界仍待核。",
+        "support": "machine_audio_review_with_uncertain_user_listening"
       },
       "acceptable_locations": [
         {
@@ -478,6 +494,14 @@
         "correct_words": null,
         "candidates_from_burned_subtitles": [],
         "review_focus": "标记实际语音/停顿区间；若有语音填正确原话，不能以无字幕代替静音标注。",
+        "listening_review": {
+          "date": "2026-10-10",
+          "reviewer": "user",
+          "status": "uncertain",
+          "response": "好像说了要接着下一个part",
+          "source_range_ms": [648000, 656000],
+          "record": "results/vi0b-20261010/listening-review.json"
+        },
         "approval": "2026-10-08 用户允许保留待听核项，先完成可验证部分。"
       }
     },

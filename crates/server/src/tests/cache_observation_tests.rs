@@ -41,13 +41,13 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         }).unwrap();
         let wire = std::thread::spawn(move || {
             let mut bodies = Vec::new();
-            for index in 0..2 {
+            for index in 0..if failure == "provider" { 3 } else { 2 } {
                 let mut request = provider.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
                 let body: Value = serde_json::from_reader(request.as_reader()).unwrap();
                 bodies.push(body);
-                if failure == "provider" && index == 1 {
+                if failure == "provider" && index >= 1 {
                     request.respond(tiny_http::Response::from_string("fixture failure").with_status_code(400)).unwrap();
-                    break;
+                    continue;
                 }
                 let message = if index == 0 {
                     json!({"role":"assistant","content":null,"tool_calls":[{
@@ -82,7 +82,16 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         }
         assert!(f.access.runs.run_one(&f.access).unwrap());
         let bodies = wire.join().unwrap();
-        assert_eq!(bodies.len(), 2);
+        assert_eq!(bodies.len(), if failure == "provider" { 3 } else { 2 });
+        if failure == "provider" {
+            let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+            let user = handle.lock().unwrap();
+            let saved = user.agent_history.sessions.iter().find(|s|s.id == input["session_id"]).unwrap().turns.last().unwrap();
+            assert_eq!(saved.status, AgentAssistantStatus::Completed);
+            assert!(saved.outcome.as_ref().unwrap().incomplete);
+            assert_eq!(saved.outcome.as_ref().unwrap().warning.as_deref(),Some("PROVIDER_ERROR"));
+            assert!(saved.delivery_diagnostics.as_ref().unwrap().fallback.as_ref().unwrap().issues.is_empty());
+        }
         observation.shutdown();
         let sent = sent.lock().unwrap();
         let roots = sent.iter().filter(|item| item.parent_run_id.is_none()).collect::<Vec<_>>();
@@ -90,7 +99,9 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         assert_eq!(roots[0].operation, ExportOperation::Create);
         assert_eq!(roots[1].operation, ExportOperation::Update);
         let root = &roots[1].payload["extra"]["metadata"]["ub_observation"];
-        assert_eq!(root["execution_state"], if failure == "provider" { "failed" } else { "completed" });
+        assert_eq!(root["execution_state"], "completed");
+        assert_eq!(root["delivery_state"], "delivered");
+        assert_eq!(root["metadata"]["incomplete"], failure == "provider");
         assert_eq!(root["persistence_state"], if failure == "save" { "failed" } else { "saved" });
         if failure == "provider" { assert_eq!(root["metadata"]["error_code"], "PROVIDER_ERROR"); }
         assert!(sent.iter().any(|item| {
@@ -102,10 +113,18 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         let models = sent.iter().filter(|item| item.operation == ExportOperation::Update
             && item.payload["extra"]["metadata"]["ub_observation"]["kind"] == "model")
             .collect::<Vec<_>>();
-        assert_eq!(models.len(), 2);
+        assert_eq!(models.len(), if failure == "provider" { 3 } else { 2 });
         for (index, item) in models.iter().enumerate() {
             let metadata = &item.payload["extra"]["metadata"];
             let detail = &metadata["ub_observation"];
+            assert_eq!(detail["execution_state"], if failure == "provider" && index >= 1 { "failed" } else { "completed" });
+            if failure == "provider" && index == 2 {
+                // The observation export uses its existing purpose allowlist;
+                // verify the actual reduced-answer request independently.
+                assert_eq!(detail["metadata"]["purpose"], "unknown");
+                assert!(bodies[index]["messages"][0]["content"].as_str().unwrap().starts_with("available_answer.v2"));
+                assert!(bodies[index].get("tools").is_none_or(|tools|tools.as_array().is_some_and(Vec::is_empty)));
+            }
             let diagnostics = &detail["metadata"]["request_diagnostics"];
             assert_eq!(diagnostics["request_index"], index + 1);
             assert_eq!(diagnostics["message_count"], bodies[index]["messages"].as_array().unwrap().len());
@@ -122,7 +141,12 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
             if failure != "provider" {
                 assert_eq!(roots[1].payload["outputs"]["answer"], "你好！");
             } else {
-                assert_eq!(roots[1].payload["outputs"]["error_code"], "PROVIDER_ERROR");
+                assert_eq!(roots[1].payload["outputs"]["warning"], "PROVIDER_ERROR");
+                assert_eq!(roots[1].payload["outputs"]["incomplete"], true);
+                // Private diagnostics are verified in the saved turn above;
+                // OuterOutcome deliberately omits them from serialized output.
+                assert!(roots[1].payload["outputs"].get("delivery_diagnostics").is_none());
+                assert!(roots[1].payload["outputs"]["answer"].as_str().is_some_and(|s| !s.is_empty()));
             }
             for (index, item) in models.iter().enumerate() {
                 assert_eq!(item.payload["inputs"], bodies[index], "export actual provider request");

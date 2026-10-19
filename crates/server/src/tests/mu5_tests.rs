@@ -20,6 +20,37 @@ pub(super) struct Fixture {
 }
 
 #[test]
+fn mu5_directory_navigation_returns_exact_confirmed_window_and_preserves_cas() {
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "navigation");
+    let moved = f.action(&f.a, &w, "navigation", "reader/goto", json!({"lid":"1.30","include_text":true}));
+    let result = &moved["result"];
+    assert_eq!(result["viewport"], moved["reader"]["viewport"]);
+    assert_eq!(moved["reader"]["selection"], "1.30");
+    let lids = result["viewport"]["visible_lids"].as_array().unwrap();
+    let texts = result["texts"].as_array().unwrap();
+    assert_eq!(lids.len(), texts.len());
+    assert_eq!(lids.last().unwrap(), "1.30");
+    for (lid, text) in lids.iter().zip(texts) {
+        assert_eq!(&text["lid"], lid);
+        let canonical = f.ok(&f.a, "GET", &format!("{}?lid={}", f.x.url("text"), lid.as_str().unwrap()), json!({}));
+        assert_eq!(text["text"], canonical["text"]);
+    }
+    let mut stale = Fixture::stamp(&w, "navigation");
+    stale["lid"] = json!("1.1"); stale["include_text"] = json!(true);
+    let path = format!("/api/workspaces/{}/reader/goto", w["workspace_id"].as_str().unwrap());
+    let (status, error) = f.call(&f.a, "POST", &path, stale);
+    assert_eq!(status, 409);
+    assert_eq!(error["error_code"], "WORKSPACE_REVISION_CONFLICT");
+    assert_eq!(f.get(&f.a, &moved)["reader"]["selection"], "1.30");
+    let warm = f.action(&f.a, &moved, "navigation", "reader/goto", json!({"lid":"1.1"}));
+    assert!(warm["result"].get("texts").is_none());
+    let mut foreign = Fixture::stamp(&warm, "navigation");
+    foreign["lid"] = json!("1.1"); foreign["include_text"] = json!(true);
+    assert_eq!(f.call(&f.b, "POST", &path, foreign).0, 404);
+}
+
+#[test]
 fn tutor_t18_published_readiness_requires_the_exact_reader_grant() {
     let f = Fixture::new();
     // Model an already published book from before tutor_readiness was introduced.
@@ -715,6 +746,7 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
             .unwrap().clone();
         session.turns[0].status = AgentAssistantStatus::Completed;
         session.turns[0].outcome = Some(OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("A simple scene".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {
@@ -744,7 +776,8 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent {
+            content: PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),
                 content_files: BTreeMap::from([("index.html".into(), "<p>Scene</p>".into())]),
@@ -1033,6 +1066,7 @@ fn rn2_network_notes_keep_private_access_after_chat_deletion_and_restart() {
             .unwrap().clone();
         session.turns[0].status = AgentAssistantStatus::Completed;
         session.turns[0].outcome = Some(OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("A simple scene".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {
@@ -1062,7 +1096,8 @@ fn rn2_network_notes_keep_private_access_after_chat_deletion_and_restart() {
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent {
+            content: PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),
                 content_files: BTreeMap::from([("index.html".into(), "<p>Scene</p>".into())]),

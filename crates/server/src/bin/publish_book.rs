@@ -1,4 +1,4 @@
-//! Trusted offline publication tool. Never exposed as a reader HTTP endpoint.
+//! Trusted publication tool: local service channel or exclusive offline writer.
 use server::{
     control_store::{ControlStore, ServiceWriter},
     published_library::{PublishedBookRef, PublishedLibrary},
@@ -9,7 +9,27 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = (|| -> Result<serde_json::Value, String> {
         if args.len() < 3 {
-            return Err("usage: publish_book <absolute-service-root> import <book-directory> | default|grant-all <book-id> <publication-id> | grant|revoke <user-id> <book-id> <publication-id>".into());
+            return Err("usage: publish_book <absolute-service-root> online-import <book-directory> --operation-id <id> --grant <user> [--grant <user> ...] | import <book-directory> | default|grant-all <book-id> <publication-id> | grant|revoke <user-id> <book-id> <publication-id>".into());
+        }
+        if args[1] == "online-import" {
+            let mut operation_id = None;
+            let mut grant_users = Vec::new();
+            let mut options = args[3..].chunks_exact(2);
+            for option in &mut options {
+                match option[0].as_str() {
+                    "--operation-id" if operation_id.is_none() => operation_id = Some(option[1].clone()),
+                    "--grant" => grant_users.push(option[1].clone()),
+                    _ => return Err("Expected --operation-id <id> and --grant <user>".into()),
+                }
+            }
+            if !options.remainder().is_empty() { return Err("Missing option value".into()); }
+            grant_users.sort();
+            let request = server::online_publication::PublicationRequest {
+                operation_id: operation_id.ok_or("--operation-id is required; retain it when retrying")?,
+                input_directory: std::path::absolute(&args[2]).map_err(|e| e.to_string())?,
+                grant_users,
+            };
+            return server::online_publication::submit(Path::new(&args[0]), &request).map(|m| serde_json::json!(m));
         }
         let writer = ServiceWriter::acquire(Path::new(&args[0])).map_err(|e| e.message)?;
         let mut library = PublishedLibrary::new(ControlStore::open(writer).map_err(|e| e.message)?);

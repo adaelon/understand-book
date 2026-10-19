@@ -153,7 +153,7 @@ pub fn tool_definitions() -> Vec<Value> {
 
 pub struct McpRead<'a> {
     library: &'a Mutex<PublishedLibrary>,
-    origin: url::Url,
+    origin: Option<url::Url>,
 }
 pub(crate) struct PreparedRead {
     pub(crate) reference: PublishedBookRef,
@@ -172,7 +172,12 @@ impl<'a> McpRead<'a> {
         {
             return Err(invalid("Use the configured site Origin"));
         }
-        Ok(Self { library, origin })
+        Ok(Self { library, origin: Some(origin) })
+    }
+
+    /// In-process Reader access uses the Run owner and relative source links.
+    pub(crate) fn resident(library: &'a Mutex<PublishedLibrary>) -> Self {
+        Self { library, origin: None }
     }
 
     /// `identity` must be freshly authenticated for this request by McpAccess.
@@ -182,17 +187,21 @@ impl<'a> McpRead<'a> {
         name: &str,
         arguments: Value,
     ) -> Result<Value, ToolError> {
+        self.call_for_user(identity.user_id(), name, arguments)
+    }
+
+    pub(crate) fn call_for_user(&self, owner: &str, name: &str, arguments: Value) -> Result<Value, ToolError> {
         if name == "book_list" {
-            return self.list(identity, arguments);
+            return self.list(owner, arguments);
         }
-        let prepared = self.prepare(identity, name, arguments)?;
-        self.read_prepared(identity, prepared)
+        let prepared = self.prepare(owner, name, arguments)?;
+        self.read_prepared(owner, prepared)
     }
 
     /// Validate and authorize without loading or computing content, before the quota check.
     pub(crate) fn prepare(
         &self,
-        identity: &McpIdentity,
+        owner: &str,
         name: &str,
         arguments: Value,
     ) -> Result<PreparedRead, ToolError> {
@@ -233,7 +242,7 @@ impl<'a> McpRead<'a> {
         self.library
             .lock()
             .unwrap()
-            .authorize(identity.user_id(), &reference)
+            .authorize(owner, &reference)
             .map_err(material_error)?;
         Ok(PreparedRead {
             reference,
@@ -247,7 +256,7 @@ impl<'a> McpRead<'a> {
 
     pub(crate) fn read_prepared(
         &self,
-        identity: &McpIdentity,
+        owner: &str,
         prepared: PreparedRead,
     ) -> Result<Value, ToolError> {
         let PreparedRead {
@@ -263,7 +272,7 @@ impl<'a> McpRead<'a> {
             .library
             .lock()
             .unwrap()
-            .load(identity.user_id(), &reference)
+            .load(owner, &reference)
             .map_err(material_error)?;
         let book = &publication.book;
         let mut next_calls = Vec::new();
@@ -388,14 +397,18 @@ impl<'a> McpRead<'a> {
         )
     }
 
-    fn list(&self, identity: &McpIdentity, arguments: Value) -> Result<Value, ToolError> {
+    fn list(&self, owner: &str, arguments: Value) -> Result<Value, ToolError> {
+        self.list_for_workspace(owner, None, arguments)
+    }
+
+    pub(crate) fn list_for_workspace(&self, owner: &str, members: Option<&[PublishedBookRef]>, arguments: Value) -> Result<Value, ToolError> {
         let input: ListInput = serde_json::from_value(arguments)
             .map_err(|_| invalid("Use after and limit for book_list"))?;
         valid_limit(input.limit)?;
         let after = input.after.map(reference).transpose()?;
         let library = self.library.lock().unwrap();
         let refs = library
-            .list_manifests_page(identity.user_id(), after.as_ref(), input.limit + 1)
+            .list_manifests_page(owner, members, after.as_ref(), input.limit + 1)
             .map_err(material_error)?;
         let complete = refs.len() <= input.limit;
         let mut items = Vec::new();
@@ -422,17 +435,20 @@ impl<'a> McpRead<'a> {
         end_lid: &str,
         range: &base_schema::Span,
     ) -> Value {
-        let mut url = self.origin.clone();
-        url.set_path("/");
-        url.query_pairs_mut()
+        let mut query = url::form_urlencoded::Serializer::new(String::new());
+        query
             .append_pair("book_id", &reference.book_id)
             .append_pair("publication_id", &reference.publication_id)
             .append_pair("start_lid", lid)
             .append_pair("end_lid", end_lid)
             .append_pair("start_utf16", &range.start.to_string())
             .append_pair("end_utf16", &range.end.to_string());
+        let relative = format!("/?{}", query.finish());
+        let source_url = self.origin.as_ref().map_or(relative.clone(), |origin| {
+            origin.join(&relative).expect("canonical relative source URL").to_string()
+        });
         json!({"published_book_ref":reference,"start_lid":lid,"end_lid":end_lid,
-            "source_range":range,"source_url":url.as_str()})
+            "source_range":range,"source_url":source_url})
     }
 }
 

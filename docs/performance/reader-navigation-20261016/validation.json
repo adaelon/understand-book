@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "unit_tests": {
+    "files": 4,
+    "passed": 37
+  },
+  "server_tests": {
+    "passed": 1,
+    "test": "mu5_directory_navigation_returns_exact_confirmed_window_and_preserves_cas"
+  },
+  "browser_scenarios": [
+    "bundled cold body, cached return, older goto result cannot replace newest target",
+    "1800ms old position save does not block focus directory clicks, persisted position and reload agree",
+    "900ms old edge load cannot insert old paragraphs after navigation (failed before fix, passed after)"
+  ],
+  "visual": "desktop and 390px mobile white page, no top-right menu, bottom tools and exit available",
+  "typescript_and_multi_user_build": "passed",
+  "linux_release_build": "passed",
+  "model_calls": 0,
+  "deployment": "passed",
+  "production_browser": {
+    "baseline_samples": 6,
+    "candidate_samples": 16,
+    "candidate_warm_samples": 14,
+    "candidate_warm_median_ms": 857.25,
+    "reduction_pct": 51.8,
+    "script_errors": 0
+  },
+  "paired_http": {
+    "baseline_median_ms": 1438.717,
+    "bundled_median_ms": 583.756,
+    "cached_median_ms": 519.439,
+    "canonical_text_equal": true
+  }
+}

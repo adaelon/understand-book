@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { acceptsPresentationMessage, resolvePresentationEditingMessage } from "./presentation-host";
 
 describe("MU7 frame channel", () => {
+  it('accepts bridge teaching help and region results only from the current frame and channel', () => {
+    const source = {} as Window;
+    for (const data of [
+      { kind: 'teaching-help', request_id: 1, move_id: 'observe-candidate', help_kind: 'hint', region_id: 'candidate-help', text: '乙仍在候选里。' },
+      { kind: 'teaching-help', request_id: 2, move_id: 'observe-candidate', help_kind: 'explanation', region_id: 'candidate-help', text: '主干只是一种选择结果。' },
+      { kind: 'region-located', region_id: 'candidate-help', located: false },
+    ]) {
+      const event = { source, origin: 'null', data: { channel: 'current', ...data } } as MessageEvent;
+      expect(acceptsPresentationMessage(event, source, 'current')).toBe(true);
+      expect(acceptsPresentationMessage(event, {} as Window, 'current')).toBe(false);
+      expect(acceptsPresentationMessage(event, source, 'old')).toBe(false);
+    }
+  });
+
+  it('requires the bridge help receipt and region result fields', () => {
+    const source = {} as Window;
+    const help = { kind: 'teaching-help', request_id: 1, move_id: 'observe-candidate', help_kind: 'hint', region_id: 'candidate-help', text: '乙仍在候选里。' };
+    for (const data of [{ ...help, request_id: undefined }, { ...help, help_kind: 'answer' }, { ...help, region_id: undefined },
+      { ...help, text: undefined }, { kind: 'region-located', region_id: 'candidate-help', located: 'false' }]) {
+      expect(acceptsPresentationMessage({ source, origin: 'null', data: { channel: 'current', ...data } } as MessageEvent, source, 'current')).toBe(false);
+    }
+  });
+
   it("rejects another window, an old channel, a nonopaque origin and invalid actions", () => {
     const source = {} as Window;
     const event = { source, origin: "null", data: { channel: "current", kind: "source", source_ref_id: "source-1" } } as MessageEvent;

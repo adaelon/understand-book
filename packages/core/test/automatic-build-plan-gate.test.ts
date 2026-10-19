@@ -158,7 +158,7 @@ describe("IP4 confirmed BuildPlan execution gate", () => {
       1,
     )).toMatchObject({ kind: "needs_user", reason: "build_plan_profile_drift" });
 
-    const valid = confirmedStandardPlan(current);
+    const valid = confirmedStandardPlan(current, { pass2: "enabled" });
     const malformedDraft = attachBuildPlanDigest({
       ...valid,
       status: "draft",

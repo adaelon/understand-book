@@ -120,13 +120,17 @@ describe("BSR5 current-input preparation and action recovery", () => {
     f.submit(tasks(f.get())[0]); // Source outline precedes discovery.
     const unitTasks = tasks(f.get());
     const first = unitTasks[0], ordinary = structureProductionResponse(first) as any;
-    ordinary.candidate_key_stops = Array.from({ length: 26 }, (_, i) => ({ ...ordinary.candidate_key_stops[0], id: `c${String(i).padStart(2, "0")}`,
+    // The production router delivers 64 index entries per page. Keep the
+    // changed candidate beyond that page so this exercises unshown input.
+    ordinary.candidate_key_stops = Array.from({ length: 66 }, (_, i) => ({ ...ordinary.candidate_key_stops[0], id: `c${String(i).padStart(2, "0")}`,
       meaning: `Distinct mechanism ${i}`, reason: { ...ordinary.candidate_key_stops[0].reason, text: `Distinct mechanism ${i}` } }));
     f.submit(first, ordinary); f.submit(unitTasks[1]);
     let state = f.get(), firstChapter = tasks(state)[0];
     if (!("phase" in firstChapter.input) || firstChapter.input.phase !== "chapter") throw Error("chapter expected");
     const firstInput = firstChapter.input;
     const firstRef = firstInput.context.catalog.candidates.find(c => c.unit_lid === firstInput.work.unit_lid)!.ref;
+    const unshownRef = firstInput.context.catalog.candidates.find(c => c.local_id === "c65")!.ref;
+    expect((firstInput.body as { index: { items: { ref: string }[] } }).index.items.map(c => c.ref)).not.toContain(unshownRef);
     f.submit(firstChapter, { kind: "inspect", refs: [firstRef] });
     // Finish the independent second chapter while the first is still browsing.
     const second = tasks(state)[1]; f.submit(second);
@@ -136,21 +140,21 @@ describe("BSR5 current-input preparation and action recovery", () => {
     const receiptFile = automaticBuildGenerationArtifactPath(f.target, "book_structure", firstChapter.policy_generation_id, firstChapter.descriptor.work_unit_id);
     const receiptBytes = readFileSync(receiptFile, "utf8");
     const unitArtifact = readBookStructureGenerationArtifact(f.target, first)!;
-    (unitArtifact.payload as any).candidate_key_stops[25].meaning = "Changed unshown mechanism";
+    (unitArtifact.payload as any).candidate_key_stops[65].meaning = "Changed unshown mechanism";
     writeFileSync(automaticBuildGenerationArtifactPath(f.target, "book_structure", first.policy_generation_id, first.descriptor.work_unit_id), JSON.stringify(buildSemanticArtifactEnvelopeV3(unitArtifact)));
     state = f.get();
     expect(state.book_structure_progress!.organization!.chapters.done).toBe(1);
     expect(state.work_units!.map(t => t.work_unit_id)).toContain(firstChapter.descriptor.work_unit_id);
     const current = tasks(state)[0];
     if (!("phase" in current.input) || current.input.phase !== "chapter") throw Error("chapter expected");
-    expect(current.input.context.catalog.candidates.find(c => c.local_id === "c25")!.meaning).toBe("Changed unshown mechanism");
+    expect(current.input.context.catalog.candidates.find(c => c.local_id === "c65")!.meaning).toBe("Changed unshown mechanism");
     expect(current.input.work.inspecting).toEqual([firstRef]);
     expect(readFileSync(receiptFile, "utf8")).toBe(receiptBytes);
     expect(() => f.submit(current, { kind: "select", selection: { unit_lid: ordinary.parent_unit_lid, role: "foundation",
       summary: ordinary.summary_fragments[0], accepted_stop_refs: [firstRef], macro_stop_refs: [firstRef] } })).toThrow(/complete chapter index/);
     // Source mutation invalidates the current path; no stale writer acceptance.
     writeFileSync(f.target.source_path, readFileSync(f.target.source_path, "utf8") + "\nNew source paragraph.\n");
-    expect(() => f.submit(current, { kind: "browse", offset: 24 })).toThrow(/changed/);
+    expect(() => f.submit(current, { kind: "browse", offset: 64 })).toThrow(/changed/);
     expect(readFileSync(receiptFile, "utf8")).toBe(receiptBytes);
   }, 120000);
 });

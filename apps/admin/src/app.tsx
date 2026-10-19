@@ -153,6 +153,8 @@ export function App() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/usage'}><Link to="/usage"><ChartColumn /><span>全站用量</span></Link></SidebarMenuButton></SidebarMenuItem>
+            <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/workspace-releases'}><Link to="/workspace-releases"><BookOpen /><span>共享工作区</span></Link></SidebarMenuButton></SidebarMenuItem>
+            <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/operator-builds'}><Link to="/operator-builds"><BookOpen /><span>运营资料构建</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/invites'}><Link to="/invites"><Ticket /><span>内测码</span></Link></SidebarMenuButton></SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>

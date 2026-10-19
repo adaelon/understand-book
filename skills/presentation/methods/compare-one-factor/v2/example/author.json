@@ -1,0 +1,20 @@
+{
+  "title": "快一倍，会远一倍吗？",
+  "initial_state": {
+    "speed": 2,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "speed": "lane B constant speed in meters per second, 0..3",
+    "semantic_state": "已完成的解释区间，整数0至1；见适配说明中的时间定义",
+    "transition_progress": "当前区间的视觉进度，[0,1)；终点1时为0"
+  },
+  "readable_content": "两辆小车同时从同一处出发。只改变 B 的速度，共用同一只时钟，再把车的位置与距离曲线放在一起看。 A 固定1 m/s，B为0–3 m/s，同时从距离零点出发。观察位置q对应t=10q秒，距离为速度乘时间，B−A=(speed−1)t米。两条跑道和两条曲线使用同一时刻与固定尺度；t=0时不计算距离比。 做对照时先锁住共同条件，再只改变一个因素。观察到的差距可以用同一个公式从两条路线算出来。",
+  "assumptions": [
+    "构造的匀速运动，A 固定 1 m/s，B 为 0–3 m/s，无加速、摩擦或碰撞，观察 0–10 s。这个模型中的单因素关系不代表现实观察数据自动具有因果解释。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

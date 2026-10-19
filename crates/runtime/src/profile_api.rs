@@ -290,11 +290,12 @@ pub fn build_profile_memory_state(
     snapshot: &ReaderProfileSnapshot,
     current_book_id: &str,
     pending_sensitive_confirmation: bool,
+    learning_workspace_id: Option<&str>,
 ) -> ProfileMemoryState {
     let relevant_facts: Vec<_> = store
         .profile_facts()
         .iter()
-        .filter(|fact| fact_is_relevant(fact, current_book_id))
+        .filter(|fact| fact_is_relevant(fact, current_book_id, learning_workspace_id))
         .collect();
     let mut facts: Vec<_> = relevant_facts
         .iter()
@@ -324,7 +325,7 @@ pub fn build_profile_memory_state(
     let mut collection_rules: Vec<_> = store
         .collection_rules()
         .iter()
-        .filter(|rule| collection_rule_is_relevant(rule, current_book_id))
+        .filter(|rule| collection_rule_is_relevant(rule, current_book_id, learning_workspace_id))
         .map(collection_rule_view)
         .collect();
     collection_rules.sort_by(|left, right| left.rule_id.cmp(&right.rule_id));
@@ -413,16 +414,18 @@ pub fn historical_backfill_job_view(job: &HistoricalBackfillJob) -> HistoricalBa
     }
 }
 
-fn fact_is_relevant(fact: &memory::ProfileFact, current_book_id: &str) -> bool {
-    matches!(fact.scope, ProfileScope::Global)
-        || matches!(&fact.scope, ProfileScope::Book { book_id } if book_id == current_book_id)
+fn scope_is_relevant(scope: &ProfileScope, current_book_id: &str, learning_workspace_id: Option<&str>) -> bool {
+    match scope {
+        ProfileScope::Global => true,
+        ProfileScope::Book { book_id } => learning_workspace_id.is_none() && book_id == current_book_id,
+        ProfileScope::Workspace { learning_workspace_id: owner, book_id } => learning_workspace_id == Some(owner.as_str()) && book_id == current_book_id,
+    }
 }
-
-fn collection_rule_is_relevant(rule: &CollectionRule, current_book_id: &str) -> bool {
-    rule.matcher.scope.as_ref().is_none_or(|scope| {
-        matches!(scope, ProfileScope::Global)
-            || matches!(scope, ProfileScope::Book { book_id } if book_id == current_book_id)
-    })
+fn fact_is_relevant(fact: &memory::ProfileFact, current_book_id: &str, learning_workspace_id: Option<&str>) -> bool {
+    scope_is_relevant(&fact.scope, current_book_id, learning_workspace_id)
+}
+fn collection_rule_is_relevant(rule: &CollectionRule, current_book_id: &str, learning_workspace_id: Option<&str>) -> bool {
+    rule.matcher.scope.as_ref().is_none_or(|scope| scope_is_relevant(scope, current_book_id, learning_workspace_id))
 }
 
 fn collection_rule_view(rule: &CollectionRule) -> ProfileCollectionRuleView {
@@ -454,6 +457,7 @@ fn scope_view(scope: &ProfileScope) -> (Option<String>, Option<String>) {
     match scope {
         ProfileScope::Global => (Some("global".into()), None),
         ProfileScope::Book { book_id } => (Some("book".into()), Some(book_id.clone())),
+        ProfileScope::Workspace { book_id, .. } => (Some("book".into()), Some(book_id.clone())),
     }
 }
 
@@ -523,6 +527,7 @@ fn fact_view(fact: &memory::ProfileFact) -> ProfileFactView {
     let (scope_kind, scope_value) = match &fact.scope {
         ProfileScope::Global => ("global", None),
         ProfileScope::Book { book_id } => ("book", Some(book_id.clone())),
+        ProfileScope::Workspace { book_id, .. } => ("book", Some(book_id.clone())),
     };
     let (applicability_kind, applicability_value) = match &fact.applicability {
         Applicability::Any => ("any", None),

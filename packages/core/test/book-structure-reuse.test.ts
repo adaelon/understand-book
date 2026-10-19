@@ -87,6 +87,24 @@ it("removes a partial frozen task after disk exhaustion so the same task can be 
   expect(freezeBookStructureGenerationTask(f.target, task)).toBe(file);
 });
 
+it("keeps task identity validation independent of key order and rejects noncanonical headers", () => {
+  const f = fixture(), task = f.task(29);
+  // Frozen task JSON may arrive with a different key order. Its normalized fields
+  // must still match, even though the source input is already the same object.
+  const reordered = Object.fromEntries(Object.entries(task).reverse()) as typeof task;
+  expect(freezeBookStructureGenerationTask(f.target, reordered))
+    .toBe(bookStructureGenerationTaskPath(f.target, task.policy_generation_id, task.descriptor.work_unit_id));
+  for (const changed of [
+    { ...task, version: "book_structure_generation_task.invalid" },
+    { ...task, unexpected_header: true },
+    { ...task, allowed_evidence_lids: [...task.allowed_evidence_lids].reverse() },
+    { ...task, source_range: { ...task.source_range, unexpected_range_field: 1 } },
+  ]) {
+    expect(() => freezeBookStructureGenerationTask(f.target, changed as typeof task))
+      .toThrow("BookStructure generation task identity is invalid");
+  }
+});
+
 it("admits 29 v4 local results after adding only post-stitch policies and reconstructs the same selection plan", () => {
   const f = fixture();
   const relation = bookStructureRelationContracts(f.contracts.stitch_fragment);

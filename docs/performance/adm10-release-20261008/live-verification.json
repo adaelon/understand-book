@@ -1,0 +1,12 @@
+{
+  "short_status": "completed",
+  "presentation_status": "completed",
+  "calls": 21,
+  "confirmed_cost_micro_cny": 721157,
+  "pending_calls": 0,
+  "pricing_check": "integer per-call usage conversion passed",
+  "provider_balance_delta_cny": "0.20",
+  "billing_evidence": "usage conversion; account balance change cannot uniquely identify each request",
+  "budget_cny": "3.00",
+  "within_budget": true
+}

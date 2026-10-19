@@ -45,6 +45,7 @@ new MutationObserver(records => {
   performance.mark(`${active.name}-end`); active = null;
 }).observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-turn-phase'] });
 Object.assign(window, { fp4: {
+  ready: () => !(app.$ as any).setupState.agentHistoryLoading,
   available: () => !!reader(), snapshot: () => reader()?.focusSnapshot(), longTasks: () => longTasks,
   arm: (name: string) => { armed = name; }, samples: () => samples,
 } });

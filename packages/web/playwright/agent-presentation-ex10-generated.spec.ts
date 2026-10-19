@@ -51,7 +51,7 @@ test('EX10 generated artifact: actual drag, playback and Reader scene contract',
     await expect(frame.locator(selectors.result)).toBeVisible();
     const restored=await frame.locator('body').evaluate(()=>(window as any).presentationScene.snapshot());
     const restoredText=await frame.locator(selectors.result).innerText();
-    await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('解释暂停时这一段运动');await page.getByRole('button',{name:'发送追问',exact:true}).click();
+    await page.getByRole('textbox',{name:'针对当前演示追问'}).fill('解释暂停时这一段运动');await page.getByRole('button',{name:'发送追问',exact:true}).click();
     await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
     const requests=await page.request.get('http://127.0.0.1:4175/requests').then(r=>r.json());
     const message=requests.at(-1).filter((m:any)=>m.role==='User').at(-1).content;

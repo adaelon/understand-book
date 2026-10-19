@@ -13,4 +13,7 @@ test('explicit Engine and registry paths remain authoritative; invalid installat
   assert.throws(() => resolvePluginConfig({ executable: path.join(driverRoot, 'missing.exe') }), /build_engine_missing/);
   assert.throws(() => resolvePluginConfig({ executable: process.execPath, driverRoot: 'relative' }), /configuration_invalid/);
   assert.throws(() => resolvePluginConfig({ executable: process.execPath, maxOutputTokens: 0 }), /configuration_invalid/);
+  assert.throws(() => resolvePluginConfig({executable:process.execPath,operatorBuild:{rootSessionId:'root',
+    connection:{base_url:'http://localhost',cookie:'cookie',csrf_token:'csrf',origin:'http://localhost'},
+    video:{codexExecutable:'relative',publisherExecutable:process.execPath,publicationServiceRoot:driverRoot}}}),/operator_video_configuration_invalid/);
 });

@@ -4,7 +4,7 @@ use serde_json::json;
 
 pub(crate) fn route(state: &mut AppState, req: Req) -> Reply {
     let result = (|| {
-        let mut learning = state.user.learning_store()?;
+        let mut learning = state.user.learning_store_for_workspace(state.workspace.learning_workspace_id.as_deref())?;
         if req.url == "/tutor/state" && req.method == "GET" {
             return learning.state();
         }
@@ -14,6 +14,9 @@ pub(crate) fn route(state: &mut AppState, req: Req) -> Reply {
                 category: "validation".into(),
                 message: error.to_string(),
             })?;
+        if matches!(request.action, memory::learning::TutorAction::SyncWorkspaceGoal { .. }) {
+            return Err(read_tools::ToolError { error_code:"TUTOR_ACTION_INVALID".into(), category:"validation".into(), message:"工作区目标由目标栏或明确改向请求修改。".into() });
+        }
         learning.mutate(&request, req.now)
     })();
     match result {
@@ -208,7 +211,9 @@ fn tutor_prerequisites(book: &read_tools::Book, root: &std::path::Path) -> serde
     if read_json(&root.join("publication.json"))
         .is_some_and(|p| p["source_fingerprint"] != book.source_fingerprint())
         || read_json(&root.join("source_manifest.json")).is_some_and(|m|
-            m["book_id"] != book.base.book_id || m["canonical_source"]["sha256"] != book.source_fingerprint()) {
+            m["book_id"] != book.base.book_id
+                || (!crate::published_library::canonical_source_v1(&m)
+                    && m["canonical_source"]["sha256"] != book.source_fingerprint())) {
         return unavailable("hybrid_foundation", "当前来源与已加载的书籍版本不一致");
     }
     let valid_discourse = read_json(&root.join("discourse_index.json"))

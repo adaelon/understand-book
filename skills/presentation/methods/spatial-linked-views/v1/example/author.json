@@ -1,0 +1,32 @@
+{
+  "title": "齿轮的约定",
+  "initial_state": {
+    "teeth": 40,
+    "rpm": 12,
+    "torque": 2,
+    "yaw": -0.28,
+    "tilt": 0.62,
+    "explode": 0,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "teeth": "输出齿数；20、30、40、60；输入固定20齿",
+    "rpm": "输入转速；rpm；0至24",
+    "torque": "输入扭矩；N·m；0至2",
+    "yaw": "观察方位角；弧度；不改变物理模型",
+    "tilt": "观察倾角；弧度；0至1.22",
+    "explode": "沿轴拆解比例；0至1；不改变物理参数",
+    "semantic_state": "已完成的周期数；整数0至4",
+    "transition_progress": "当前周期分数；0至1，不含1；终点归入下一周期"
+  },
+  "readable_content": "标准直齿轮的节圆相切处线速度相同。输出转速等于输入转速乘以负的输入齿数/输出齿数。理想输出扭矩等于输入扭矩乘以输出齿数/输入齿数，功率守恒。三维模型、可拖动的节圆图和扭矩图由同一模型状态驱动。",
+  "assumptions": [
+    "模型：20° 标准渐开线直齿轮，模数 2 mm，输入 20 齿；忽略摩擦、弹性与惯性，所示扭矩为理想传递值。根部过渡作几何简化。拆解不代表可运行装配。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [
+    "three"
+  ],
+  "asset_refs": []
+}

@@ -1,29 +1,37 @@
-# SESSION_CHECKPOINT — 调用成本与 DeepSeek 适配 — 2026-09-28
+# SESSION_CHECKPOINT — 上下文缓存稳定性 — 2026-10-15
 
-## 新鲜度自检
-- 写入时最新 commit：`c2ff3e1 feat: ship reader, agent, viewport, and observability updates`。
-- 本任务成果纳入 2026-09-29 集成提交；当前提交身份见主 SESSION_CHECKPOINT.md 与 git log。
+## 当前状态
 
-## 当前在做什么
-已完成用户确认的四项源码修正：DeepSeek 模型/用量、消息续接持久化、逐采样状态尾部追加、压缩独立预算。
+用户确认按 CC1 → CC2 → CC3 改动，并保留权限、来源验证，小切片验证实际效果。三个实现切片和 CC4 验收已完成；用户随后明确要求上线，2026-10-16 00:14 HKT 已部署 `context-cache-20261015`，PID14712，schema14。源码与报告在当前工作区，尚未提交。开始时基线为 `402d9be`，工作区存在其他任务改动，未回退或纳入本任务。
 
-## 下一步（可直接接手）
-1. 阅读 `docs/计划-调用成本与DeepSeek适配.md` 的验证结果与已知问题。
-2. 原 EX11 Goal 分类测试失败已解决；2026-09-29 集成验证 Runtime 402 项通过、3 项忽略。
-3. 如准备实际费用对照，使用更新后的应用重跑同一阅读任务，记录 Provider 输入、缓存命中、输出与思考子项，并比较交付结果；本轮未发起付费调用。
+## 本次交付
 
-## 未提交 / 未完成
-- 本次源码及文档已纳入集成提交；本地原始运行产物按 docs/performance/ARTIFACTS.md 保留。
-- Runtime 399 通过、1 已有失败、3 忽略；Server 定向 2 + 历史 6 通过；Observability 19 通过；Web/Observability 类型检查通过。
-- 未重新打包或重启正在运行的桌面应用；实际缓存命中、费用与规划质量对照尚未测量。
+- CC1：冻结基础 system；sampling ledger 发布完整有效资产清单与新增/变化正文；source.present 独立合法名额；Open PresentationDelivery Goal 只预启用 author，不恢复旧来源/Reader 权限。
+- CC2：48 KiB 只限制新鲜结果批；低于整体高水位不改旧正文，软压力达到一批或硬预算不足时整批退休已采样正文；候选估价用 ledger 副本。
+- CC3：完整 checkpoint 先验证，模型仅消费九组语义的 text/evidence_refs 与 pending_effects；can_reduce 使用同一精简 helper。持久格式、来源覆盖、window identity 与 Server 恢复不变。
 
-## 冷启动读序
-1. `docs/计划-调用成本与DeepSeek适配.md` — 范围、实现规则、验证与限制。
-2. `docs/架构.md` 的“调用成本与模型续接” — 请求和私有状态数据流。
-3. `docs/代码链路.md` 的两条“2026-09-28 调用成本” — 文件、符号与测试索引。
-4. `CONTEXT.md` 的“Provider 续接状态与采样状态快照” — 术语边界。
+## 验证证据
 
-## 本会话决策摘要
-- 动态状态每次采样完整提供，旧快照不改写，最后快照权威；仅在当前运行内保留。
-- 私有续接绑定原模型与 assistant 消息；旧字段缺失时保留全文为历史上下文，不伪造推理。
-- DeepSeek Flash 档案识别 1M 容量，应用压缩阈值保持 96K；压缩上限 16,384，DeepSeek 使用 low 思考强度。
+- Runtime 最终全量：590 通过、0 失败、4 忽略。原始日志：`tmp/context-cache-cc-20261015/runtime-final-fixed-fixtures.log`。
+- 真实 checkpoint 手动 Rust 投影单独通过：86,934 → 14,524 B，减少83.29%；41项正文、引用、顺序逐项一致。完整检查点仍保留208项coverage和151项receipt。
+- 探针本地4项通过；8次固定记录真实调用完成，非思考模式、输出1 token。输入50,373→52,213，未命中22,213→23,541，缓存率55.90%→54.91%。该短样本没有测出缓存改善，不能声称正式长会话已达到80%。
+- 五处既有测试场景不一致已仅修改fixture：策略版本、导航能力前提、中文页面示例、工具激活预热、搜索结果分页。没有放宽生产门禁。
+
+## 可直接接手
+
+1. 阅读 `docs/performance/context-cache-cc-20261015/README.md`：完整结果、限制、原始请求及复现命令。
+2. 阅读 `docs/切片方案-上下文缓存稳定性.md` 与架构/代码链路新增章节；本轮没有剩余实现工作。
+3. 上线完成：Linux 正式构建五个程序、Runtime 590/0/4、公网读者与管理员验收通过；停服至本机恢复验收16秒。完整备份及恢复边界见 `docs/performance/context-cache-cc-20261015/deployment/README.md`。旧 release 被资源链接引用，须保留。
+4. 线上长会话总体缓存率尚未测量；对真实长任务应同时比较输入、未命中、缓存、输出与交付质量，不单追命中率。本次部署验收模型调用0。
+
+## 关键路径
+
+- `crates/runtime/src/orchestrator.rs`：统一请求builder、Goal预启用、候选估价副本。
+- `crates/runtime/src/context_fragment.rs`：差量指导manifest及历史定义。
+- `crates/runtime/src/tool_exposure.rs`：来源呈现独立slot。
+- `crates/runtime/src/tool_result.rs`、`cache_pressure_tests.rs`：新鲜批与整体压力回收。
+- `crates/runtime/src/compaction.rs`：验证后消费投影、相同预算下限、真实样本手动记录。
+
+## 历史沿革
+
+2026-09-28 的 DeepSeek 用量、续接持久化、尾部采样状态和压缩独立预算工作已在此前集成；原记录详见 `docs/计划-调用成本与DeepSeek适配.md`、CONTEXT.md 和架构中的“调用成本与模型续接”。本次保留这些既有合同。

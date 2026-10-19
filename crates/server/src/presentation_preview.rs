@@ -192,6 +192,60 @@ impl Cdp<'_> {
         serde_json::from_value(value).map_err(|error| format!("scene snapshot: {error}"))
     }
 
+    fn open_document(&mut self, html: &str, environment: PreviewViewport) -> Result<(), String> {
+        let target = self.call("Target.createTarget", json!({"url":"about:blank"}))?;
+        let session = self.call("Target.attachToTarget", json!({"targetId":target["targetId"],"flatten":true}))?;
+        self.session = Some(session["sessionId"].as_str().ok_or("missing browser session")?.into());
+        for method in ["Page.enable", "Runtime.enable", "Network.enable"] {
+            self.call(method, json!({}))?;
+        }
+        self.call("Network.setBlockedURLs", json!({"urls":["http://*","https://*","ws://*","wss://*","file://*"]}))?;
+        self.call("Emulation.setDeviceMetricsOverride", json!({"width":environment.width,"height":environment.height,"deviceScaleFactor":1,"mobile":false}))?;
+        self.call("Emulation.setTouchEmulationEnabled", json!({"enabled":matches!(environment.input, PreviewInput::Touch),"maxTouchPoints":if matches!(environment.input, PreviewInput::Touch) {5} else {1}}))?;
+        let frame = self.call("Page.getFrameTree", json!({}))?;
+        self.call("Page.setDocumentContent", json!({"frameId":frame["frameTree"]["frame"]["id"],"html":html}))?;
+        Ok(())
+    }
+
+    fn check_state_restoration(&mut self, html: &str, environment: PreviewViewport) -> Result<Option<PreviewIssue>, String> {
+        let saved = self.evaluate("window.__presentationPreviewSnapshot?.() ?? null")?;
+        if saved.is_null() { return Ok(None); }
+        // A fresh realm catches missing restorers as well as incorrect field paths.
+        // Re-running the callback on the live page can accidentally retain its state.
+        self.session = None;
+        self.open_document(html, environment)?;
+        self.evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))")?;
+        let result = self.evaluate(&format!("window.__presentationPreviewRestore({saved})"));
+        let actual = match result {
+            Ok(actual) => actual,
+            Err(error) => return Ok(Some(PreviewIssue { kind: "state_restore_failed".into(), message: format!("Saved page restoration failed: {error}. Register the reader as registerStateReader(() => ({{values: state}})); returning state directly does not save it as custom page state. registerStateRestorer receives the full scene: restore saved.values.page and saved.visible_step, then recompute the page.") })),
+        };
+        let mut expected_page = saved["values"]["page"].clone();
+        // Reopening a continuous scene intentionally stops playback.
+        if expected_page.get("playing") == Some(&Value::Bool(true)) {
+            expected_page["playing"] = Value::Bool(false);
+        }
+        if actual["values"]["page"] != expected_page || actual["visible_step"] != saved["visible_step"] {
+            return Ok(Some(PreviewIssue { kind: "state_restore_mismatch".into(), message: format!(
+                "Reopening this page did not restore its saved state: expected values.page={} and visible_step={}, got values.page={} and visible_step={}. Register the reader as registerStateReader(() => ({{values: state}})); returning state directly does not save it as custom page state. registerStateRestorer receives the full scene: read saved.values.page and saved.visible_step, then recompute the page.",
+                expected_page, saved["visible_step"], actual["values"]["page"], actual["visible_step"]
+            ) }));
+        }
+        // With no custom state, controls may be enough to recompute the page.
+        // Verify that result instead of treating two null page values as proof.
+        if expected_page.is_null() && actual["observed_result"] != saved["observed_result"] {
+            let before = saved["observed_result"].as_str().unwrap_or_default();
+            let after = actual["observed_result"].as_str().unwrap_or_default();
+            let common = before.chars().zip(after.chars()).take_while(|(a, b)| a == b).count();
+            let excerpt = |text: &str| text.chars().skip(common.saturating_sub(80)).take(400).collect::<String>();
+            return Ok(Some(PreviewIssue { kind: "state_restore_mismatch".into(), message: format!(
+                "Reopening restored the controls but changed the rendered result. Before: {:?}; after: {:?}. Persist the state behind this result with registerStateReader(() => ({{values: state}})) and restore it from saved.values.page with registerStateRestorer, or recompute the same result from restored controls. Returning state directly does not save it as custom page state; reading.page_state shows the raw callback return, not the saved values.page.",
+                excerpt(before), excerpt(after)
+            ) }));
+        }
+        Ok(None)
+    }
+
     fn observe(
         &mut self,
         step: usize,
@@ -511,39 +565,8 @@ impl PresentationPreviewPort for BrowserPreview {
                     deadline,
                 };
                 let version = cdp.call("Browser.getVersion", json!({}))?;
-                let target = cdp.call("Target.createTarget", json!({"url":"about:blank"}))?;
-                let session = cdp.call(
-                    "Target.attachToTarget",
-                    json!({"targetId":target["targetId"],"flatten":true}),
-                )?;
-                cdp.session = Some(
-                    session["sessionId"]
-                        .as_str()
-                        .ok_or("missing browser session")?
-                        .into(),
-                );
-                for method in ["Page.enable", "Runtime.enable", "Network.enable"] {
-                    cdp.call(method, json!({}))?;
-                }
-                // Candidates are self-contained; do not let generated code reach Reader localhost or external services.
-                cdp.call(
-                    "Network.setBlockedURLs",
-                    json!({"urls":["http://*","https://*","ws://*","wss://*","file://*"]}),
-                )?;
-                cdp.call(
-                    "Emulation.setDeviceMetricsOverride",
-                    json!({"width":environment.width,"height":environment.height,"deviceScaleFactor":1,"mobile":false}),
-                )?;
-                cdp.call(
-                    "Emulation.setTouchEmulationEnabled",
-                    json!({"enabled":matches!(environment.input, PreviewInput::Touch),"maxTouchPoints":if matches!(environment.input, PreviewInput::Touch) {5} else {1}}),
-                )?;
                 phase = "load".into();
-                let frame = cdp.call("Page.getFrameTree", json!({}))?;
-                cdp.call(
-                    "Page.setDocumentContent",
-                    json!({"frameId":frame["frameTree"]["frame"]["id"],"html":request.html}),
-                )?;
+                cdp.open_document(&request.html, environment)?;
                 phase = "inspect:0".into();
                 let mut observations = vec![cdp.observe(0, environment, None, request.read_selector.as_deref().filter(|_| request.actions.is_empty()))?];
                 for (index, action) in request.actions.iter().enumerate() {
@@ -551,6 +574,10 @@ impl PresentationPreviewPort for BrowserPreview {
                     cdp.interact(action, environment.input)?;
                     phase = format!("inspect:{}", index + 1);
                     observations.push(cdp.observe(index + 1, environment, Some(action), request.read_selector.as_deref().filter(|_| index + 1 == request.actions.len()))?);
+                }
+                phase = "restore".into();
+                if let Some(issue) = cdp.check_state_restoration(&request.html, environment)? {
+                    observations.last_mut().unwrap().issues.push(issue);
                 }
                 Ok(PreviewReport {
                     candidate_id: request.candidate_id.clone(),

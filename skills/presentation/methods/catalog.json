@@ -1,0 +1,198 @@
+{
+  "revision": 4,
+  "methods": [
+    {
+      "id": "discrete-update",
+      "revision": 3,
+      "name": "追踪一次离散更新",
+      "status": "adopted",
+      "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+      "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/discrete-update/v3",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "object-transform",
+      "revision": 2,
+      "name": "保持身份的对象变换",
+      "status": "adopted",
+      "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+      "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/object-transform/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "compare-one-factor",
+      "revision": 2,
+      "name": "固定条件，只改变一个因素",
+      "status": "adopted",
+      "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+      "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/compare-one-factor/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "part-whole",
+      "revision": 2,
+      "name": "整体与部分保持对应",
+      "status": "adopted",
+      "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+      "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/part-whole/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "process-reveal",
+      "revision": 2,
+      "name": "沿关系逐步展开过程",
+      "status": "adopted",
+      "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+      "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/process-reveal/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "evidence-chain",
+      "revision": 2,
+      "name": "从证据走到有边界的结论",
+      "status": "adopted",
+      "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+      "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/evidence-chain/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "chart-reveal",
+      "revision": 2,
+      "name": "先建立尺度，再揭示数据",
+      "status": "adopted",
+      "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+      "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/chart-reveal/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "scale-zoom",
+      "revision": 2,
+      "name": "保留定位的尺度缩放",
+      "status": "adopted",
+      "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+      "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/scale-zoom/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "spatial-linked-views",
+      "revision": 1,
+      "name": "三维结构与图解共用一个模型",
+      "status": "adopted",
+      "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+      "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+      "needs": [
+        "three",
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/spatial-linked-views/v1",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md",
+        "runtime.js",
+        "adaptations/spring.html",
+        "adaptations/spring-author.json"
+      ]
+    }
+  ]
+}

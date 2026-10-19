@@ -1,0 +1,20 @@
+{
+  "title": "保持身份的对象变换",
+  "initial_state": {
+    "shear": 1,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "shear": "dimensionless horizontal shear coefficient in -1..1",
+    "semantic_state": "completed explanation steps, integer 0..1",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 1"
+  },
+  "readable_content": "把单位正方形剪切成平行四边形。追踪同一个角点，观察面积为什么始终为 1。 灰色虚线保留原形；青色是同一对象的当前位置，橙点始终对应右上角。 显式模型：x′=x+s·y，y′=y。过程参数 u 从 0 到 1，当前剪切系数为 u·s；每一帧都是这个明确映射。",
+  "assumptions": [
+    "显式模型：x′=x+s·y，y′=y。过程参数 u 从 0 到 1，当前剪切系数为 u·s；每一帧都是这个明确映射。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

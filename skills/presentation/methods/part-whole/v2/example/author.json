@@ -1,0 +1,20 @@
+{
+  "title": "拆开以后，还是一百。",
+  "initial_state": {
+    "share": 40,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "share": "part A percentage of a fixed total 100, 0..100; remainder split B:C=3:2",
+    "semantic_state": "已完成的解释区间，整数0至1；见适配说明中的时间定义",
+    "transition_progress": "当前区间的视觉进度，[0,1)；终点1时为0"
+  },
+  "readable_content": "把一个整体分成三份，再把它们摊开。改变青色部分，观察另外两份如何一起调整，以及总量为什么始终没有多出或丢失。 总量为100。A=share，B=0.6(100−A)，C=0.4(100−A)。拆开只改变位置；条形长度与百格中的颜色份额保持对应。A=100时B=C=0，此时B/C无定义。 先说清“占谁的比例”，再读百分数。拆解改变位置，不改变任何一份的数量。",
+  "assumptions": [
+    "非负、互不重叠且穷尽整体的三部分，整体固定 100 个无量纲单位；B∶C=3∶2。重叠集合和负贡献不能直接用此表示。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

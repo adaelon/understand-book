@@ -47,6 +47,46 @@ export async function engineCommand(config: EngineConfig, args: string[], reques
   } finally { signal?.removeEventListener("abort", abort); }
 }
 
+/** Video builds remain in the installed Engine so native media tools and Python assets resolve there. */
+export async function videoOperatorCommand(config: EngineConfig, request: unknown,
+  onProgress: (progress: unknown) => Promise<void>, signal: AbortSignal): Promise<any> {
+  if (signal.aborted) throw new Error('build_cancelled');
+  const child = start(config, ['video-operator']);
+  const exit = closed(child);
+  let buffer = '', result: unknown, failure: Error | undefined;
+  let updates = Promise.resolve();
+  const cancel = () => { if (!child.stdin.destroyed) child.stdin.write('{"cancel":true}\n'); };
+  child.on('error', error => { failure = error; });
+  child.stdin.on('error', () => undefined);
+  child.stderr.resume();
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', text => {
+    buffer += text;
+    for (;;) {
+      const end = buffer.indexOf('\n'); if (end < 0) break;
+      const line = buffer.slice(0,end); buffer = buffer.slice(end+1);
+      let event: any; try { event = JSON.parse(line); } catch { continue; }
+      if (event.version !== 'operator_video_event.v1') continue;
+      if (event.progress) updates = updates.then(async()=>{
+        await onProgress(event.progress);
+        if (!child.stdin.destroyed) child.stdin.write(JSON.stringify({ack:event.sequence})+'\n');
+      }).catch(error=>{failure=error;cancel();});
+      if (event.result) result=event.result;
+      if (event.error) failure=new Error(event.error);
+    }
+  });
+  signal.addEventListener('abort',cancel,{once:true});
+  child.stdin.write(JSON.stringify(request)+'\n');
+  if (signal.aborted) cancel();
+  try {
+    await exit; await updates;
+    if (signal.aborted) throw new Error('build_cancelled');
+    if (failure) throw failure;
+    if (child.exitCode !== 0 || !result) throw new Error('operator_video_engine_failed');
+    return result;
+  } finally { signal.removeEventListener('abort',cancel); }
+}
+
 export interface ExecutorConnection {
   call(name: string, args: unknown, signal?: AbortSignal): Promise<unknown>;
   dispose(): Promise<void>;

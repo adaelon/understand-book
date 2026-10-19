@@ -225,8 +225,8 @@ impl LearningStore {
         let saved: Option<String> = self
             .connection
             .query_row(
-                "SELECT assessment FROM teaching_assessments WHERE action_ref=?",
-                [action],
+                "SELECT assessment FROM teaching_assessments WHERE learning_workspace_id=? AND action_ref=?",
+                params![self.workspace_scope,action],
                 |r| r.get(0),
             )
             .optional()
@@ -249,8 +249,9 @@ impl LearningStore {
         self.teaching_event(&assessment.contract_ref)?;
         self.connection
             .execute(
-                "INSERT INTO teaching_assessments(action_ref,assessment) VALUES (?,?)",
+                "INSERT INTO teaching_assessments(learning_workspace_id,action_ref,assessment) VALUES (?,?,?)",
                 params![
+                    self.workspace_scope,
                     assessment.action_ref,
                     serde_json::to_string(assessment).map_err(storage)?
                 ],

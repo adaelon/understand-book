@@ -2,7 +2,7 @@
 import { nextTick, ref, watch } from 'vue';
 import { Target } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
-const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string }>();
+const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string; workspaceScoped?: boolean }>();
 const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void }>();
 const editing = ref(false);
 const draft = ref('');
@@ -35,19 +35,20 @@ function save() {
     <template v-if="session">
       <div class="goal-heading">
         <span class="goal-icon" aria-hidden="true"><Target :size="18" /></span>
-        <span class="goal-label">本次学习</span>
+        <span class="goal-label">{{ workspaceScoped ? '当前阶段' : '本次学习' }}</span>
         <p class="goal-text">{{ session.user_intent }}</p>
-        <div class="goal-actions"><button ref="editButton" type="button" aria-label="调整目标" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">调整目标</span><span class="mobile-adjust">调整</span></button><button class="goal-manage" type="button" @click="emit('manage')">详情</button></div>
+        <div class="goal-actions"><button ref="editButton" type="button" :aria-label="workspaceScoped ? '调整阶段' : '调整目标'" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">{{ workspaceScoped ? '调整阶段' : '调整目标' }}</span><span class="mobile-adjust">调整</span></button><button class="goal-manage" type="button" @click="emit('manage')">详情</button></div>
       </div>
-      <div v-if="session.status !== 'active'" class="goal-resume"><span>{{ session.status === 'ended' ? '这次学习已结束' : '连续教学已暂停' }}</span><button type="button" :disabled="busy || !available || !ready" @click="emit('resume')">{{ enabled ? '继续这次学习' : '开启并继续这次学习' }} <span aria-hidden="true">→</span></button></div>
+      <p v-if="workspaceScoped && otherSession">当前阶段聚焦另一份资料，可回到原资料继续，或从这里提问。</p>
+      <div v-else-if="session.status !== 'active'" class="goal-resume"><span>{{ session.status === 'ended' ? '这次学习已结束' : '连续教学已暂停' }}</span><button type="button" :disabled="busy || !available || !ready" @click="emit('resume')">{{ enabled ? '继续这次学习' : '开启并继续这次学习' }} <span aria-hidden="true">→</span></button></div>
     </template>
     <template v-else-if="otherSession">
-      <p>当前学习属于其他书籍。</p><button ref="editButton" type="button" :disabled="busy || !available" @click="edit">为这本书设定目标</button>
+      <p>{{ workspaceScoped ? '当前阶段聚焦另一份资料，可回到原资料继续，或从这里提问。' : '当前学习属于其他书籍。' }}</p><button ref="editButton" type="button" :disabled="busy || !available" @click="edit">{{ workspaceScoped ? '调整阶段焦点' : '为这本书设定目标' }}</button>
     </template>
     <div v-if="editing" class="goal-editor-overlay" @click.self="cancelEdit">
     <form role="dialog" aria-modal="true" aria-label="调整目标" @submit.prevent="save" @keydown="onEditorKeydown">
-      <h3>调整目标</h3>
-      <label>学习目标<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
+      <h3>{{ workspaceScoped ? '调整当前阶段' : '调整目标' }}</h3>
+      <label>{{ workspaceScoped ? '阶段焦点' : '学习目标' }}<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
       <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">保存目标</button><button type="button" :disabled="busy" @click="cancelEdit">取消</button></div>
       <p v-if="error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">重试</button></p>
     </form>

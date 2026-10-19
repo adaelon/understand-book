@@ -1,0 +1,42 @@
+{
+  "math": "Run model.test.mjs separately",
+  "browser": "Edge / Chromium",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1080,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "height": 844,
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "height": 844,
+      "overflow": false
+    }
+  ],
+  "checks": [
+    "reduced-motion preference starts paused",
+    "all four gear selections update rendered model and readings",
+    "parameter changes update speed, force and torque immediately",
+    "play advances the model; pause holds the angle",
+    "pointer orbit, front view and keyboard orbit",
+    "exploded assembly pauses and prevents impossible running contact",
+    "single turn ends at 2π; keyboard and direct gear dragging change phase",
+    "contact slider endpoints and involute replay",
+    "save, browser reload and explicit restore preserve the complete scene",
+    "PNG export includes a populated 1600 × 1040 image",
+    "final high-resolution export at mobile width restores the renderer size; no errors or overflow"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "result": "passed"
+}

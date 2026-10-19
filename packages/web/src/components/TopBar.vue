@@ -4,11 +4,15 @@ import { ref, watch } from "vue";
 import brandLogo from '../assets/brand/understand-book-logo.svg';
 
 const props = defineProps<{
+  videoMode?: boolean;
   typographyAvailable?: boolean;
   focusAvailable?: boolean;
   focusReading?: boolean;
   chatUnavailable?: boolean;
   chapterTitle: string;
+  guideChapterTitle?: string;
+  guideChapterEnabled?: boolean;
+  guideChapterBusy?: boolean;
   progressPct: number;
   anchorLid: string | null;
   debugOpen: boolean;
@@ -24,6 +28,7 @@ const collapsed = ref(false);
 watch(() => props.focusReading, value => { collapsed.value = !!value; });
 const emit = defineEmits<{
   (e: "open-typography"): void;
+  (e: "guide-chapter"): void;
   (e: "toggle-focus"): void;
   (e: "new-chat"): void;
   (e: "open-book"): void;
@@ -41,7 +46,7 @@ function closeMobileAfterAction(event: MouseEvent) {
 </script>
 
 <template>
-  <button v-if="collapsed" class="topbar-expand ghost-pill" aria-label="展开工具栏" @click="collapsed = false">菜单</button>
+  <button v-if="collapsed && !focusReading" class="topbar-expand ghost-pill" aria-label="展开工具栏" @click="collapsed = false">菜单</button>
   <button
     v-if="mobileCollapsible && mobileOpen"
     type="button"
@@ -51,7 +56,7 @@ function closeMobileAfterAction(event: MouseEvent) {
   ></button>
   <header
     class="topbar"
-    :class="{ 'mobile-collapsible': mobileCollapsible, 'mobile-open': mobileOpen, 'desktop-collapsed': collapsed }"
+    :class="{ 'mobile-collapsible': mobileCollapsible, 'mobile-open': mobileOpen, 'desktop-collapsed': collapsed, 'video-topbar': videoMode }"
     @click="closeMobileAfterAction"
     @keydown.esc="emit('close-mobile')"
   >
@@ -60,10 +65,11 @@ function closeMobileAfterAction(event: MouseEvent) {
       <span class="breadcrumb">{{ chapterTitle || "阅读工作区" }}</span>
     </div>
     <div class="topbar-actions">
-      <span class="progress">{{ progressPct }}%</span>
-      <button v-if="focusAvailable" class="ghost-pill topbar-focus" :aria-pressed="!!focusReading" @click="emit('toggle-focus')">{{ focusReading ? '退出专注' : '专注阅读' }}</button>
+      <span v-if="!videoMode" class="progress">{{ progressPct }}%</span>
+      <button v-if="guideChapterTitle" class="ghost-pill guide-chapter-button" :disabled="guideChapterBusy || chatUnavailable" @click="emit('guide-chapter')">{{ guideChapterEnabled ? '带我读这一章' : '开启学习并带我读这一章' }}：{{ guideChapterTitle }}</button>
+      <button v-if="focusAvailable" class="ghost-pill topbar-focus" :aria-pressed="!!focusReading" @click="emit('toggle-focus')">{{ focusReading ? '退出专注' : videoMode ? '专注观看' : '专注阅读' }}</button>
       <button v-if="typographyAvailable" data-typography-trigger class="ghost-pill" @click="emit('open-typography')">阅读设置</button>
-      <button class="ghost-pill" :class="{ active: leftRailOpen }" @click="emit('toggle-left-rail')">目录</button>
+      <button v-if="!videoMode" class="ghost-pill" :class="{ active: leftRailOpen }" @click="emit('toggle-left-rail')">目录</button>
       <button class="ghost-pill" :disabled="chatUnavailable" @click="emit('new-chat')">新对话</button>
       <button
         v-if="buildIntentAvailable"
@@ -76,7 +82,7 @@ function closeMobileAfterAction(event: MouseEvent) {
         <ListChecks :size="17" :stroke-width="1.8" aria-hidden="true" />
       </button>
       <button v-if="workbenchAvailable" class="ghost-pill" @click="emit('open-workbench')">高级构建</button>
-      <button class="ghost-pill" @click="emit('open-book')">打开书</button>
+      <button class="ghost-pill" @click="emit('open-book')">{{ videoMode ? '切换材料' : '打开书' }}</button>
       <button
         v-if="desktopHost"
         class="topbar-icon-button"
@@ -92,3 +98,14 @@ function closeMobileAfterAction(event: MouseEvent) {
     </div>
   </header>
 </template>
+
+<style scoped>
+@media (max-width: 1023px) {
+  .topbar-actions .guide-chapter-button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+}
+</style>

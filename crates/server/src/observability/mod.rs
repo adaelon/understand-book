@@ -1208,6 +1208,7 @@ mod tests {
         let mut request_audit = runtime::agent_request_audit::AgentRequestAudit::default();
         request_audit.begin_request(&[runtime::Message::user("CANARY_PRIVATE_REQUEST")], &[], 0);
         let outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("CANARY_PRIVATE_ANSWER".into()),
             answer_view: None,
             incomplete: true,
@@ -1218,19 +1219,21 @@ mod tests {
             trace: Vec::new(),
             profile_usage: Default::default(),
             memory_updates: Vec::new(),
-            source_bindings: vec![SourceBinding {
+            source_bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+            media: None,
                 source_ref_id: "source_ref_safe".into(),
                 book_id: "CANARY_PRIVATE_BOOK".into(),
-                evidence_range: read_tools::EvidenceRange {
+                evidence_range: Some(read_tools::EvidenceRange {
                     start_lid: "1.1".into(),
                     end_lid: "1.1".into(),
                     ranges: Vec::new(),
-                },
+                }),
                 evidence_text_digest: "CANARY_PRIVATE_DIGEST".into(),
                 label_snapshot: "CANARY_PRIVATE_LABEL".into(),
                 preview_snapshot: "CANARY_PRIVATE_PREVIEW".into(),
             }],
             delivery_diagnostics: Some(AnswerDeliveryDiagnostics {
+                        fallback: None,
                 initial: AnswerDeliveryAttemptDiagnostics {
                     issues: vec![AnswerDeliveryIssue {
                         error_code: "SOURCE_INVALID".into(),

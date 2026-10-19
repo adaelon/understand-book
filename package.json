@@ -13,6 +13,8 @@
     "gen-schema": "cargo test -p base-schema export_bindings",
     "demo:prepare": "node --import tsx examples/quickstart/create.ts",
     "eval:semantic:test": "node --test evals/semantic/core.test.mjs evals/semantic/report.test.mjs evals/semantic/provider-recorder.test.mjs evals/semantic/agent-core.test.mjs evals/semantic/agent-report.test.mjs evals/semantic/ablation-report.test.mjs evals/semantic/eval-timing.test.mjs evals/semantic/diagnostic-core.test.mjs",
+    "eval:case": "node evals/semantic/explanation-case.mjs",
+    "eval:case:test": "node --test evals/semantic/explanation-case.test.mjs",
     "eval:semantic": "node evals/semantic/run.mjs",
     "eval:agent": "node evals/semantic/agent-run.mjs",
     "eval:tools:test": "node --test evals/tool-usability/report.test.mjs",

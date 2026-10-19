@@ -1,6 +1,7 @@
 //! 模块 E 自建最小运行时。`book.query` 使用 referent-first typed mini-loop；
 //! `book.synthesize` 与其他工具保留各自明确的证据所有权。
 pub mod book_output_schema;
+pub mod library;
 mod book_text_batch;
 use base_schema::{GraphNodeType, LidNode, NodeKind};
 pub use book_tool_contracts::{BookQueryIntent, BookQueryRequest, QueryObligation};
@@ -24,6 +25,8 @@ pub mod experiment;
 pub mod goldset;
 pub mod guided_read_replay;
 pub mod goal;
+pub mod workspace_goal;
+pub mod workspace_records;
 pub mod tutor;
 pub mod tutor_continuation;
 #[cfg(test)]
@@ -37,6 +40,9 @@ pub mod observation;
 pub mod orchestrator;
 pub mod presentation;
 pub mod presentation_author;
+pub mod presentation_methods;
+pub mod video;
+pub mod video_audio;
 pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
@@ -2949,11 +2955,19 @@ fn extract_json_object(s: &str) -> Option<&str> {
 }
 
 fn response_message_content(v: &serde_json::Value) -> Result<&str, AdapterError> {
+    if v["choices"][0]["finish_reason"] == "length" {
+        return Err(AdapterError {
+            spend_stop: None,
+            message: format!("模型达到单次输出上限，未完成结果（finish_reason=length，completion_tokens={}，reasoning_tokens={}）",
+                v["usage"]["completion_tokens"], v["usage"]["completion_tokens_details"]["reasoning_tokens"]),
+        });
+    }
     v["choices"][0]["message"]["content"]
         .as_str()
         .ok_or_else(|| AdapterError {
             spend_stop: None,
-            message: format!("响应缺 choices[0].message.content: {v}"),
+            message: format!("模型未返回正文（finish_reason={}，completion_tokens={}）",
+                v["choices"][0]["finish_reason"], v["usage"]["completion_tokens"]),
         })
 }
 
@@ -3361,13 +3375,22 @@ fn apply_completion_limits(body: &mut serde_json::Value, request: &CompletionReq
 }
 
 fn append_preview_images(messages: &mut Vec<serde_json::Value>, request: &AgentRequestPlan) {
-    if request.preview_images.is_empty() {
+    if request.preview_images.is_empty() && request.video_images.is_empty() && request.question_image.is_none() {
         return;
     }
     let mut content = Vec::new();
+    if let Some(image) = &request.question_image {
+        content.push(serde_json::json!({"type":"text", "text":
+            "Image attached by the user to the current question. Inspect these pixels directly when answering. It remains attached throughout this turn. This user input is not a video.read_frames receipt or proof that the full source frame was observed."}));
+        content.push(serde_json::json!({"type":"image_url", "image_url":{"url":format!("data:image/png;base64,{}",image.png_base64),"detail":"high"}}));
+    }
     for image in &request.preview_images {
         content.push(serde_json::json!({"type":"text", "text":image.caption}));
         content.push(serde_json::json!({"type":"image_url", "image_url":{"url":format!("data:image/png;base64,{}",image.png_base64),"detail":"high"}}));
+    }
+    for input in &request.video_images {
+        content.push(serde_json::json!({"type":"text","text":input.caption()}));
+        content.push(serde_json::json!({"type":"image_url","image_url":{"url":format!("data:image/png;base64,{}",input.image.png_base64),"detail":"high"}}));
     }
     messages.push(serde_json::json!({"role":"user", "content":content}));
 }
@@ -3801,6 +3824,8 @@ mod tests {
             ],
             graph_nodes: vec![
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:a".into(),
                     node_type: GraphNodeType::Entity,
                     name: "A".into(),
@@ -3808,6 +3833,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:p1".into(),
                     node_type: GraphNodeType::Entity,
                     name: "P1".into(),
@@ -3815,6 +3842,8 @@ mod tests {
                     source_lid: None,
                 },
                 GraphNode {
+                    identity: None,
+                    evidence: vec![],
                     id: "entity:p2".into(),
                     node_type: GraphNodeType::Entity,
                     name: "P2".into(),
@@ -3824,6 +3853,7 @@ mod tests {
             ],
             graph_edges: vec![
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:a".into(),
                     target: "entity:p1".into(),
                     edge_type: "depends_on".into(),
@@ -3832,6 +3862,7 @@ mod tests {
                     weight: 0.9,
                 },
                 GraphEdge {
+                    evidence: vec![],
                     source: "entity:a".into(),
                     target: "entity:p2".into(),
                     edge_type: "depends_on".into(),
@@ -4009,6 +4040,8 @@ mod tests {
                 lid_nodes,
                 graph_nodes: vec![
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:eta".into(),
                         node_type: GraphNodeType::Concept,
                         name: "eta".into(),
@@ -4016,6 +4049,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:mu".into(),
                         node_type: GraphNodeType::Concept,
                         name: "mu".into(),
@@ -4023,6 +4058,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:sigma".into(),
                         node_type: GraphNodeType::Concept,
                         name: "sigma".into(),
@@ -4030,6 +4067,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:trend_strategy".into(),
                         node_type: GraphNodeType::Concept,
                         name: "trend_strategy".into(),
@@ -4037,6 +4076,8 @@ mod tests {
                         source_lid: None,
                     },
                     GraphNode {
+                        identity: None,
+                        evidence: vec![],
                         id: "concept:drift_mu".into(),
                         node_type: GraphNodeType::Concept,
                         name: "drift_mu".into(),
@@ -4045,6 +4086,7 @@ mod tests {
                     },
                 ],
                 graph_edges: vec![GraphEdge {
+                    evidence: vec![],
                     source: "concept:eta".into(),
                     target: "concept:trend_strategy".into(),
                     edge_type: "related_fixture".into(),
@@ -5146,7 +5188,7 @@ mod tests {
     }
 
     #[test]
-    fn flash_authoring_reserves_explicit_output_without_lowering_input_budget() {
+    fn flash_authoring_reserves_explicit_output_within_the_window_watermark() {
         use crate::auto_compaction::ActiveContextBudget;
         let catalog = ModelRuntimeCatalog::default();
         let tools = [crate::presentation_author::spec()];
@@ -5161,7 +5203,10 @@ mod tests {
             assert_eq!(react_chat_request_projection(model, &author)["max_tokens"], 131_072);
             let budget = ActiveContextBudget::from_plan(&author);
             let old = ActiveContextBudget::from_plan(&ordinary);
-            assert!(budget.target_input_tokens.abs_diff(old.target_input_tokens) <= 1);
+            assert_eq!(budget.high_watermark_tokens, 750_000);
+            assert_eq!(budget.high_watermark_tokens, old.high_watermark_tokens);
+            assert_eq!(budget.target_input_tokens, 750_000 - 131_072 - 4_000);
+            assert_eq!(old.target_input_tokens - budget.target_input_tokens, 131_072 - 32_768);
             assert!(!budget.over_high_watermark);
             assert!(budget.fits);
             assert_eq!(author.active_context.remaining_tokens, ordinary.active_context.remaining_tokens
@@ -5286,7 +5331,7 @@ mod tests {
             ProviderToolProtocol::Native,
             None,
         );
-        let tools = vec![ToolSpec {
+        let mut tools = vec![ToolSpec {
             name: "book.text".into(),
             description: "Read text".into(),
             parameters: serde_json::json!({
@@ -5295,6 +5340,12 @@ mod tests {
                 "required": ["lid"],
             }),
         }];
+        tools.push(
+            orchestrator::tool_specs()
+                .into_iter()
+                .find(|tool| tool.name == "book.guide_path")
+                .expect("navigation workflow requires an exposed route tool"),
+        );
         let modules = agent_prompt::policy_modules_for_tools(&tools);
         let plan = AgentRequestPlan::for_agent_turn_with_modules(
             profile,
@@ -5318,7 +5369,7 @@ mod tests {
                 .iter()
                 .find(|asset| asset.asset_id == "resident-agent.policy.navigation")
                 .map(|asset| asset.revision.as_str()),
-            Some("v5")
+            Some("v6")
         );
         assert!(plan
             .instructions
@@ -5924,3 +5975,5 @@ mod tests {
         assert!(err.message.contains("缺 name"));
     }
 }
+
+pub mod video_source;

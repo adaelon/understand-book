@@ -100,8 +100,8 @@ test("gold sample survives three viewports, saves a middle scene, reopens and fo
   await page.reload();
   await expect(frame.locator("#time-label")).toHaveText("真实第 2 步，过渡 50%");
   await expect(frame.locator("#prediction-result")).toContainText("下一步 w=2.432");
-  await expect(page.getByText("已恢复上次保存的现场")).toBeVisible();
-  await page.getByRole("textbox", { name: "针对当前现场追问" }).fill("请解释现在的跨越过程");
+  await expect(page.getByText("已恢复上次保存的演示状态")).toBeVisible();
+  await page.getByRole("textbox", { name: "针对当前演示追问" }).fill("请解释现在的跨越过程");
   await page.getByRole("button", { name: "发送追问", exact: true }).click();
   await expect(page.getByTestId("follow-up-status")).toHaveText("追问已完成");
   const requests = await page.request.get("http://127.0.0.1:4175/requests").then(r => r.json());

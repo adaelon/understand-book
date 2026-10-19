@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>先有一把尺，再看差多少。</title><style>
+:root{color-scheme:light;--paper:#f5f4ed;--ink:#233e40;--muted:#697d79;--teal:#18857e;--line:#d4ded7;--gold:#c38a35}*{box-sizing:border-box}body{margin:0;padding:0;background:var(--paper);color:var(--ink);font:16px/1.7 "Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:45px 44px 28px}header{padding:0 0 30px;max-width:850px}.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:650;color:var(--teal);display:flex;justify-content:space-between;gap:16px}.method-name{font-size:13px;color:var(--muted);margin:27px 0 10px}h1{font-family:Georgia,"Songti SC","SimSun",serif;font-weight:500;font-size:clamp(38px,6.5vw,64px);line-height:1.16;letter-spacing:-.045em;margin:0 0 22px}h2{font-family:Georgia,"Songti SC","SimSun",serif;font-size:clamp(24px,3.5vw,32px);font-weight:500;line-height:1.4;margin:16px 0}.lead{font-size:17px;line-height:1.9;max-width:680px;color:#566e68;margin:0}p{margin:12px 0}button,input,select{font:inherit;min-height:44px;min-width:44px}button{border:1px solid var(--line);border-radius:7px;background:#fcfcf7;color:var(--ink);padding:8px 14px;cursor:pointer;white-space:nowrap}button:hover{background:#e8eee6;border-color:#9cb7ac}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,svg:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}select{max-width:100%;background:#fcfcf7;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 10px}input[type=range]{min-width:0;width:100%;margin:0;accent-color:var(--teal);cursor:ew-resize}input[type=checkbox]{accent-color:var(--teal);width:44px;margin:0;justify-self:end}.experiment{border:1px solid var(--line);border-radius:14px;background:linear-gradient(160deg,#fafaf4,#ecefe6);overflow:hidden}.figure-heading{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:19px 24px 0;color:var(--muted);font-size:12px}.live-tag{font-size:11px;white-space:nowrap;background:#e5ede2;color:#477163;border-radius:20px;padding:3px 10px}svg{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif;touch-action:none;user-select:none;overflow:hidden}#scene{max-height:450px;margin:4px auto 0;cursor:ew-resize}#detail{cursor:ew-resize}svg text{font-variant-numeric:tabular-nums}svg .hit{cursor:pointer}.gesture{font-size:12px;color:var(--muted);margin:0;padding:4px 24px 18px}#readout{border-top:1px solid var(--line);padding:18px 24px 16px;background:#ffffff70}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.metrics>div>span{display:block;font-size:12px;color:var(--muted)}.metrics output{display:block;font:500 28px/1.6 Georgia,"Segoe UI",serif;color:var(--ink);font-variant-numeric:tabular-nums}.metrics output small{font:12px "Segoe UI",sans-serif;margin-left:6px;color:var(--muted)}#reading{font-size:13px;color:#526e66;margin:10px 0 0;min-height:22px}.controls{padding:20px 4px 28px}.transport{display:grid;grid-template-columns:auto 44px minmax(44px,1fr) 44px auto;gap:8px;align-items:center}#play{background:var(--teal);color:#fff;border-color:var(--teal);min-width:72px}.transport #back,.transport #next{padding:0;font-size:20px}.position-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:16px;margin:5px 0 18px}output{font-variant-numeric:tabular-nums}.parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 28px}.parameter{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;font-size:13px;gap:2px 10px}.parameter input[type=range],.parameter select{grid-column:1/-1}.parameter output{color:var(--teal)}.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.presets button{font-size:12px;background:transparent;padding:7px 12px}.linked{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:32px;border-top:1px solid var(--line);padding:38px 0}.essay p{font-size:14px}.formula{white-space:pre-line;background:#e6ece2;border-left:3px solid var(--teal);padding:16px;margin:20px 0;font:17px/1.7 Georgia,"Segoe UI",serif;overflow-wrap:anywhere}.small{font-size:12px!important;color:var(--muted);line-height:1.8}.detail-figure{align-self:center;min-width:0}.detail-figure>p{padding:0 12px}.walkthrough{border-top:1px solid var(--line);padding-top:24px}.chapters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 32px}.chapters button{display:flex;flex-direction:column;gap:10px;padding:20px;text-align:left;white-space:normal;background:#fafbf5;line-height:1.7}.chapter-number{color:var(--gold);font:22px Georgia,serif}.chapters strong{font-weight:600;font-size:15px}.chapters button>span:not(.chapter-number){font-size:12px;color:var(--muted)}.chapters em{font-size:11px;color:var(--teal);font-style:normal;margin-top:auto}footer{border-top:1px solid var(--line);font-size:13px;padding-top:14px}footer>p{max-width:760px}details{margin-top:22px;color:var(--muted);font-size:12px}summary{cursor:pointer;min-height:44px;padding:8px 0}details p{margin-top:0}@media(max-width:760px){main{padding:30px 24px 22px}.linked{grid-template-columns:1fr;gap:12px}.detail-figure{max-width:660px;width:100%}.chapters{gap:8px}.chapters button{padding:14px}h1{font-size:46px}}@media(max-width:440px){main{padding:24px 14px 18px}h1{font-size:38px}.lead{font-size:15px}.figure-heading{padding:15px 12px 0;font-size:11px}.live-tag{display:none}.gesture{padding:3px 12px 13px;font-size:11px}#readout{padding:13px 12px}.metrics{gap:8px}.metrics output{font-size:23px}.metrics>div>span{font-size:11px}.metrics output small{display:block;margin:0;font-size:10px}.transport{grid-template-columns:auto 44px minmax(44px,1fr) 44px;gap:5px}#reset{grid-column:4;grid-row:2}.position-row{margin-top:-44px;margin-right:56px;min-height:44px;align-items:center;font-size:11px}.parameters{grid-template-columns:1fr}.chapters{grid-template-columns:1fr}.chapters button{padding:16px;display:grid;grid-template-columns:25px 1fr;gap:5px 12px}.chapter-number{grid-row:1/4}.chapters em,.chapters button>span:not(.chapter-number){grid-column:2}.linked{padding:28px 0}.controls{padding-left:0;padding-right:0}}
+
+</style></head><body><script>
+"use strict";
+(() => {
+  // skills/presentation/methods/_shared/linked-v1.js
+  var $ = (id) => document.getElementById(id);
+  var clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  var fmt = (x, d = 3) => Number(x.toFixed(d)).toString();
+  var C = { ink: "#233e40", muted: "#768683", teal: "#18857e", gold: "#c38a35", coral: "#cf6851", blue: "#5b83ae", line: "#d4ded7", paper: "#f5f4ed" };
+  var line = (x1, y1, x2, y2, color = C.line, width = 1, extra = "") => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" ${extra}/>`;
+  var rect = (x, y, w, h, fill, extra = "") => `<rect x="${x}" y="${y}" width="${Math.max(0, w)}" height="${Math.max(0, h)}" fill="${fill}" ${extra}/>`;
+  var text = (x, y, value, color = C.muted, size = 20, extra = "") => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${extra}>${value}</text>`;
+  var label = (x, y, v, c = C.ink) => text(x, y, v, c, 22, 'text-anchor="middle"');
+  function createDemo(topic) {
+    const defaults = { ...topic.defaults, semantic_state: 0, transition_progress: 0 };
+    const state = { ...defaults, ...window.presentation?.initialState, playing: false };
+    const fields = Object.keys(topic.defaults);
+    const control = (p) => `<label class="parameter" for="${p.id}"><span>${p.label}</span><output id="${p.id}-value"></output>${p.options ? `<select id="${p.id}" data-param="${p.id}">${p.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>` : p.type === "checkbox" ? `<input id="${p.id}" data-param="${p.id}" type="checkbox">` : `<input id="${p.id}" data-param="${p.id}" type="range" min="${p.min}" max="${p.max}" step="${p.step}">`}</label>`;
+    document.body.innerHTML = `<main><header><div class="eyebrow">EXPLORABLE EXPLANATIONS <span>${topic.number} / 09</span></div><p class="method-name">${topic.method}</p><h1>${topic.title}</h1><p class="lead">${topic.lead}</p></header>
+  <section class="experiment" aria-label="${topic.mainLabel}"><div class="figure-heading"><span>01 / ${topic.mainLabel}</span><span class="live-tag" id="status">\u53EF\u64CD\u4F5C</span></div><svg id="scene" viewBox="0 0 720 380" role="img" tabindex="0" aria-label="${topic.directHint}"></svg><p class="gesture">\u2194 ${topic.directHint}</p><div id="readout" aria-live="off"><div id="metrics" class="metrics"></div><p id="reading"></p></div></section>
+  <section class="controls" aria-label="\u89C2\u5BDF\u63A7\u5236"><div class="transport"><button id="play" aria-pressed="false">\u64AD\u653E</button><button id="back" aria-label="\u524D\u4E00\u6B65">\u2190</button><input id="position" aria-label="\u89C2\u5BDF\u4F4D\u7F6E" type="range" min="0" max="${topic.max}" step="0.001"><button id="next" aria-label="\u540E\u4E00\u6B65">\u2192</button><button id="reset">\u91CD\u7F6E</button></div><p class="position-row"><span>${topic.timelineLabel}</span><output id="position-label"></output></p><div class="parameters">${topic.parameters.map(control).join("")}</div><div class="presets">${topic.presets.map((p, i) => `<button data-preset="${i}">${p.label}</button>`).join("")}</div></section>
+  <section class="linked"><div class="essay"><p class="eyebrow">02 / ${topic.detailLabel}</p><h2>${topic.question}</h2><p>${topic.answer}</p><div class="formula">${topic.formula}</div><p class="small">${topic.detailCaption}</p></div><div class="detail-figure"><svg id="detail" viewBox="0 0 640 300" role="img" tabindex="0" aria-label="${topic.detailHint || "\u8054\u52A8\u7EC6\u8282\u56FE\uFF1B\u5DE6\u53F3\u65B9\u5411\u952E\u79FB\u52A8\u89C2\u5BDF\u4F4D\u7F6E"}"></svg><p id="detail-reading" class="small"></p></div></section>
+  <section class="walkthrough"><p class="eyebrow">03 / \u4EB2\u624B\u8BD5\u4E00\u8BD5</p><div class="chapters">${topic.chapters.map((c, i) => `<button data-chapter="${i}"><span class="chapter-number">0${i + 1}</span><strong>${c.title}</strong><span>${c.body}</span><em>\u89C2\u5BDF\u8FD9\u4E00\u523B \u2197</em></button>`).join("")}</div></section><footer><p>${topic.takeaway}</p><details><summary>\u6A21\u578B\u4E0E\u9002\u7528\u8303\u56F4</summary><p>${topic.limits}</p></details></footer></main>`;
+    let frame = 0, last = 0, visible = true, disposed = false;
+    const snapshot = () => ({ ...state });
+    const commit = () => window.presentation?.commitState();
+    function position(q) {
+      q = clamp(q, 0, topic.max);
+      state.semantic_state = Math.floor(q);
+      state.transition_progress = q - state.semantic_state;
+    }
+    function pause() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      state.playing = false;
+      last = 0;
+    }
+    function render() {
+      const m = topic.derive(state);
+      $("scene").innerHTML = topic.drawMain(m, state);
+      $("detail").innerHTML = topic.drawDetail(m, state);
+      $("metrics").innerHTML = topic.metrics(m, state).map(([label2, value, unit = ""]) => `<div><span>${label2}</span><output>${value}<small>${unit}</small></output></div>`).join("");
+      $("reading").textContent = topic.explain(m, state);
+      $("detail-reading").textContent = topic.detailReading(m, state);
+      $("position").value = state.semantic_state + state.transition_progress;
+      $("position-label").textContent = topic.positionLabel(m, state);
+      for (const p of topic.parameters) {
+        const el = $(p.id);
+        if (p.type === "checkbox") el.checked = state[p.id];
+        else el.value = state[p.id];
+        $(p.id + "-value").textContent = p.options ? "" : p.format ? p.format(state[p.id]) : fmt(state[p.id]);
+      }
+      $("play").textContent = state.playing ? "\u6682\u505C" : "\u64AD\u653E";
+      $("play").setAttribute("aria-pressed", String(state.playing));
+      $("status").textContent = state.playing ? "\u6B63\u5728\u6F14\u793A" : "\u505C\u4E0B\u6765\uFF0C\u89C2\u5BDF";
+      $("play").disabled = state.semantic_state === topic.max;
+      $("back").disabled = state.semantic_state === 0 && state.transition_progress === 0;
+      $("next").disabled = state.semantic_state === topic.max;
+      return m;
+    }
+    function seek({ semantic_state, transition_progress = 0 }) {
+      pause();
+      position(semantic_state + transition_progress);
+      render();
+      return snapshot();
+    }
+    function apply({ values = {}, q = 0 } = {}) {
+      pause();
+      for (const key of fields) if (key in values) state[key] = values[key];
+      position(q);
+      render();
+    }
+    const current = () => state.semantic_state + state.transition_progress;
+    function tick(t) {
+      frame = 0;
+      if (!state.playing || !visible || document.hidden || disposed) {
+        last = 0;
+        return;
+      }
+      if (last) position(current() + Math.min((t - last) / 1e3, 0.06) / (topic.secondsPerStep || 2));
+      last = t;
+      if (current() === topic.max) pause();
+      render();
+      if (state.playing) frame = requestAnimationFrame(tick);
+    }
+    function resume() {
+      if (state.playing && !frame && !document.hidden && visible && !disposed) {
+        last = 0;
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    $("play").onclick = () => {
+      if (state.playing) pause();
+      else {
+        state.playing = true;
+        resume();
+      }
+      render();
+      commit();
+    };
+    $("back").onclick = () => {
+      seek({ semantic_state: state.transition_progress > 0 ? state.semantic_state : state.semantic_state - 1 });
+      commit();
+    };
+    $("next").onclick = () => {
+      seek({ semantic_state: state.semantic_state + 1 });
+      commit();
+    };
+    $("reset").onclick = () => {
+      seek({ semantic_state: 0 });
+      commit();
+    };
+    $("position").oninput = (e) => seek({ semantic_state: Number(e.target.value) });
+    $("position").onchange = commit;
+    for (const p of topic.parameters) {
+      $(p.id).oninput = (e) => apply({ values: { [p.id]: p.type === "checkbox" ? e.target.checked : typeof defaults[p.id] === "number" ? Number(e.target.value) : e.target.value } });
+      $(p.id).onchange = commit;
+    }
+    document.querySelectorAll("[data-preset]").forEach((b) => b.onclick = () => {
+      apply(topic.presets[Number(b.dataset.preset)]);
+      commit();
+    });
+    document.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => {
+      apply(topic.chapters[Number(b.dataset.chapter)]);
+      commit();
+    });
+    function direct(id, handler) {
+      const el = $(id);
+      let down = false;
+      const update = (e) => {
+        const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(el.getScreenCTM().inverse());
+        const change = handler?.(p, state, e);
+        if (change) apply(change);
+      };
+      el.onpointerdown = (e) => {
+        if (e.button !== 0) return;
+        down = true;
+        el.setPointerCapture(e.pointerId);
+        update(e);
+      };
+      el.onpointermove = (e) => {
+        if (down) update(e);
+      };
+      el.onpointerup = el.onpointercancel = () => {
+        if (down) {
+          down = false;
+          commit();
+        }
+      };
+      el.onkeydown = (e) => {
+        if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+        e.preventDefault();
+        const change = topic.key?.(id, e.key, state);
+        if (change) apply(change);
+        else seek({ semantic_state: e.key === "Home" ? 0 : e.key === "End" ? topic.max : current() + (e.key === "ArrowRight" ? 0.05 : -0.05) });
+        commit();
+      };
+    }
+    direct("scene", topic.pointer);
+    direct("detail", topic.detailPointer);
+    const visibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    const observer = new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (!visible) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    });
+    observer.observe(document.querySelector("main"));
+    window.addEventListener("pagehide", () => {
+      disposed = true;
+      pause();
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+    }, { once: true });
+    window.presentationScene = { seek, snapshot };
+    window.explanationDemo = { inspect: () => structuredClone(topic.derive(state)) };
+    window.presentation?.registerStateReader(() => ({ values: Object.fromEntries([...fields, "semantic_state", "transition_progress"].map((k) => [k, state[k]])), visible_step: topic.positionLabel(topic.derive(state), state) }));
+    window.presentation?.registerStateRestorer((saved) => {
+      const values = saved.values.page;
+      apply({ values, q: (values.semantic_state ?? 0) + (values.transition_progress ?? 0) });
+    });
+    position(state.semantic_state + state.transition_progress);
+    render();
+  }
+
+  // skills/presentation/methods/chart-reveal/v2/topic.js
+  var datasets = { positive: [12, 18, 15, 24], signed: [-6, 0, 12, 24], zero: [0, 6, 12, 24] };
+  function derive(s) {
+    const q = s.semantic_state + s.transition_progress, values = datasets[s.dataset], base = values[0], value = values[s.selected];
+    return { q, k: s.semantic_state, p: s.transition_progress, values, base, value, selected: s.selected, difference: value - base, ratio: base > 0 ? value / base : null, growth: base > 0 ? (value / base - 1) * 100 : null, reveal: clamp(q, 0, 1) };
+  }
+  createDemo({
+    id: "chart-reveal",
+    method: "\u5148\u5EFA\u7ACB\u5C3A\u5EA6\uFF0C\u518D\u63ED\u793A\u6570\u636E",
+    number: "07",
+    title: "\u5148\u6709\u4E00\u628A\u5C3A\uFF0C\u518D\u770B\u5DEE\u591A\u5C11\u3002",
+    lead: "\u770B\u89C1\u4E00\u6839\u66F4\u9AD8\u7684\u67F1\u5B50\u4E4B\u524D\uFF0C\u5148\u627E\u5230\u96F6\u70B9\u3001\u5355\u4F4D\u4E0E\u523B\u5EA6\u3002\u9009\u4E00\u7EC4\u6570\u636E\uFF0C\u518D\u70B9\u9009\u4E00\u4E2A\u7C7B\u522B\uFF0C\u628A\u5F62\u72B6\u3001\u539F\u59CB\u6570\u503C\u548C\u6BD4\u8F83\u7ED3\u8BBA\u9010\u4E00\u5BF9\u4E0A\u3002",
+    mainLabel: "\u540C\u4E00\u57FA\u7EBF\u4E0A\u7684\u56DB\u4E2A\u6570",
+    directHint: "\u70B9\u51FB\u67F1\u5B50\u9009\u62E9\u7C7B\u522B\uFF1B\u5DE6\u53F3\u952E\u5207\u6362\u3002\u65F6\u95F4\u8F74\u5148\u663E\u73B0\u6570\u636E\uFF0C\u518D\u5C55\u5F00\u6BD4\u8F83\u3002",
+    detailLabel: "\u5F62\u72B6\uFF0C\u8981\u80FD\u56DE\u5230\u6570\u5B57",
+    question: "\u5DEE\u5341\u4E8C\uFF0C\u4E0E\u589E\u957F\u4E00\u500D\uFF0C\u662F\u4E00\u56DE\u4E8B\u5417\uFF1F",
+    answer: "\u7EDD\u5BF9\u5DEE\u53EA\u8981\u76F8\u51CF\uFF0C\u500D\u6570\u5219\u9700\u8981\u4E00\u4E2A\u5408\u9002\u7684\u5206\u6BCD\u3002\u4EE5\u6B63\u6570 12 \u4E3A\u8D77\u70B9\uFF0C24 \u662F\u5B83\u7684 2 \u500D\uFF0C\u4E5F\u5C31\u662F\u589E\u52A0 100%\uFF1B\u8D77\u70B9\u4E3A\u96F6\u6216\u8D1F\u6570\u65F6\uFF0C\u8FD9\u79CD\u589E\u957F\u53D9\u8FF0\u4E0D\u518D\u9002\u7528\u3002",
+    formula: "\u5DEE\u503C = \u5F53\u524D\u503C \u2212 A\n\u4EC5\u5F53 A > 0\uFF1A\u500D\u6570 = \u5F53\u524D\u503C / A",
+    detailCaption: "\u56DB\u6839\u67F1\u5171\u7528\u96F6\u57FA\u7EBF\u4E0E \u22126 \u5230 30 \u7684\u56FA\u5B9A\u7EB5\u8F74\u3002\u5C55\u5F00\u671F\u95F4\u67F1\u957F\u662F\u663E\u73B0\u8FDB\u5EA6\uFF0C\u5B8C\u6210\u540E\u624D\u662F\u51C6\u786E\u6570\u636E\uFF1B\u8D1F\u503C\u59CB\u7EC8\u5411\u96F6\u7EBF\u4E0B\u65B9\u5EF6\u4F38\u3002",
+    takeaway: "\u8BA9\u8BFB\u8005\u5148\u5EFA\u7ACB\u5C3A\u5EA6\uFF0C\u518D\u63ED\u793A\u6570\u636E\uFF0C\u6700\u540E\u6BD4\u8F83\u3002\u523B\u5EA6\u3001\u57FA\u7EBF\u4E0E\u5355\u4F4D\u5171\u540C\u51B3\u5B9A\u56FE\u5F62\u80FD\u5426\u8BDA\u5B9E\u5730\u8868\u793A\u5DEE\u5F02\u3002",
+    limits: "\u5168\u90E8\u4E3A\u6784\u9020\u6570\u636E\uFF0C\u5355\u4F4D\u201C\u4EF6\u201D\uFF1B\u5305\u542B\u6709\u7B26\u53F7\u51C0\u53D8\u5316\u548C\u96F6\u8D77\u70B9\u3002\u52A8\u753B\u8FDB\u5EA6\u4E0D\u662F\u989D\u5916\u89C2\u6D4B\u503C\u3002\u672C\u4F8B\u4EC5\u5BF9\u6B63\u57FA\u6570\u8BA1\u7B97\u589E\u957F\u500D\u6570\u4E0E\u767E\u5206\u6BD4\u3002",
+    defaults: { dataset: "positive", selected: 3 },
+    max: 3,
+    secondsPerStep: 2,
+    timelineLabel: "\u5EFA\u7ACB\u5C3A\u5EA6 \u2192 \u6570\u636E \u2192 \u6BD4\u8F83 \u2192 \u7ED3\u8BBA",
+    parameters: [{ id: "dataset", label: "\u6570\u636E\u7EC4", options: [["positive", "\u6B63\u503C \xB7 A \u4ECE 12 \u5F00\u59CB"], ["signed", "\u6709\u7B26\u53F7 \xB7 A \u4ECE \u22126 \u5F00\u59CB"], ["zero", "\u96F6\u8D77\u70B9 \xB7 A \u4ECE 0 \u5F00\u59CB"]] }],
+    presets: [{ label: "12 \u5230 24", values: { dataset: "positive", selected: 3 }, q: 3 }, { label: "\u22126 \u5230 24", values: { dataset: "signed", selected: 3 }, q: 3 }, { label: "0 \u5230 24", values: { dataset: "zero", selected: 3 }, q: 3 }],
+    chapters: [{ title: "\u627E\u96F6\u7EBF", body: "\u5148\u770B\u5355\u4F4D\u548C\u56FA\u5B9A\u523B\u5EA6\uFF0C\u4E0D\u731C\u67F1\u9AD8\u3002", values: { dataset: "signed", selected: 3 }, q: 0 }, { title: "\u6838\u5BF9\u539F\u6570", body: "\u8D1F\u6570\u5411\u4E0B\uFF0C\u96F6\u503C\u7559\u5728\u57FA\u7EBF\u4E0A\u3002", values: { dataset: "signed", selected: 1 }, q: 1 }, { title: "\u518D\u505A\u6BD4\u8F83", body: "12 \u5230 24\uFF1A\u5DEE 12\u30012 \u500D\u3001\u589E\u52A0 100%\u3002", values: { dataset: "positive", selected: 3 }, q: 3 }],
+    derive,
+    drawMain(m) {
+      let h = text(68, 33, "\u6570\u91CF\u6216\u51C0\u53D8\u5316 / \u4EF6", C.muted, 22);
+      for (let v = -6; v <= 30; v += 6) {
+        const y = 272 - v * 7;
+        h += line(68, y, 665, y, v === 0 ? C.ink : C.line, v === 0 ? 2 : 1) + text(50, y + 6, v, C.muted, 19, 'text-anchor="end"');
+      }
+      m.values.forEach((v, i) => {
+        const x = 108 + i * 145, w = 70, height = Math.abs(v) * 7 * m.reveal, y = v >= 0 ? 272 - height : 272;
+        h += rect(x - 14, 49, 98, 275, i === m.selected ? "#dee9de" : "transparent", 'rx="8"') + rect(x, y, w, height, i === m.selected ? C.teal : C.gold, `id="bar-${i}" rx="2"`);
+        if (v === 0 && m.q >= 1) h += line(x, 272, x + w, 272, i === m.selected ? C.teal : C.gold, 4);
+        h += label(x + w / 2, 374, "ABCD"[i], i === m.selected ? C.teal : C.muted);
+        if (m.q >= 1) h += label(x + w / 2, v >= 0 ? y - 12 : y + height + 23, v, i === m.selected ? C.teal : C.gold);
+      });
+      h += line(68, 272, 665, 272, C.ink, 2);
+      return h;
+    },
+    drawDetail(m) {
+      let h = text(35, 32, "\u539F\u59CB\u6570\u636E \u2192 \u4E0E A \u6BD4\u8F83", C.muted, 22);
+      m.values.forEach((v, i) => {
+        const y = 78 + i * 53, active = i === m.selected;
+        h += rect(26, y - 27, 590, 47, active ? "#e0e9dc" : "transparent", 'rx="7"') + text(42, y + 5, "ABCD"[i], active ? C.teal : C.muted, 22) + text(125, y + 5, m.q >= 1 ? v : "\u2014", C.ink, 22) + line(267, y, 267 + (m.q >= 2 ? (v - m.base) * 10 : 0), y, active ? C.teal : C.line, 10);
+        if (m.q >= 2) h += text(595, y + 6, (v - m.base > 0 ? "+" : "") + fmt(v - m.base), active ? C.teal : C.muted, 20, 'text-anchor="end"');
+      });
+      h += line(267, 44, 267, 271, C.muted, 1, 'stroke-dasharray="4 4"');
+      return h;
+    },
+    metrics: (m) => [["\u6240\u9009 " + "ABCD"[m.selected], m.q >= 1 ? m.value : "\u2014", "\u4EF6"], ["\u4E0E A \u7684\u5DEE", m.q >= 2 ? m.difference : "\u2014", "\u4EF6"], ["\u662F A \u7684\u51E0\u500D", m.q >= 2 ? m.ratio === null ? "\u4E0D\u9002\u7528" : fmt(m.ratio) : "\u2014"]],
+    explain: (m) => m.q < 1 ? `\u6B63\u5728\u663E\u73B0 ${fmt(m.reveal * 100, 1)}%\u3002\u67F1\u957F\u6682\u4E0D\u4EE3\u8868\u5B8C\u6210\u540E\u7684\u6570\u636E\u3002` : m.q < 2 ? `\u539F\u59CB\u6570\u636E [${m.values.join(", ")}]\uFF1B\u9009\u4E2D ${"ABCD"[m.selected]}=${m.value} \u4EF6\u3002` : m.ratio === null ? `${m.value} \u2212 (${m.base}) = ${m.difference} \u4EF6\u3002A ${m.base === 0 ? "\u4E3A\u96F6" : "\u4E3A\u8D1F\u6570"}\uFF0C\u4E0D\u8BA1\u7B97\u589E\u957F\u500D\u6570\u3002` : `${m.value} \u2212 ${m.base} = ${m.difference} \u4EF6\uFF1B${fmt(m.ratio)} \u500D\uFF0C${m.growth >= 0 ? "\u589E\u52A0" : "\u51CF\u5C11"} ${fmt(Math.abs(m.growth), 1)}%\u3002`,
+    detailReading: (m) => m.q < 2 ? "\u8868\u4E2D\u7684\u503C\u4E0E\u67F1\u5F62\u6765\u81EA\u540C\u4E00\u7EC4\u6570\u636E\u3002\u5C55\u5F00\u5230\u7B2C\u4E8C\u6B65\u624D\u663E\u793A\u5DEE\u503C\u3002" : `\u53F3\u4FA7\u7EBF\u6BB5\u4ECE\u5DEE\u503C\u96F6\u70B9\u51FA\u53D1\uFF0C\u957F\u5EA6\u5BF9\u5E94\u4E0E A \u7684\u7EDD\u5BF9\u5DEE\u3002\u5F53\u524D\u6BD4\u8F83\uFF1A${"ABCD"[m.selected]} \u5BF9 A\u3002`,
+    positionLabel: (m) => `${m.k} / 3 \xB7 ${fmt(m.p * 100, 0)}%`,
+    pointer: (p, s) => ({ values: { selected: clamp(Math.round((p.x - 143) / 145), 0, 3) }, q: Math.max(1, s.semantic_state + s.transition_progress) }),
+    detailPointer: (p, s) => ({ values: { selected: clamp(Math.round((p.y - 78) / 53), 0, 3) }, q: Math.max(1, s.semantic_state + s.transition_progress) }),
+    key: (id, k, s) => ({ values: { selected: k === "Home" ? 0 : k === "End" ? 3 : clamp(s.selected + (k === "ArrowRight" ? 1 : -1), 0, 3) }, q: Math.max(1, s.semantic_state + s.transition_progress) })
+  });
+})();
+
+</script></body></html>

@@ -28,20 +28,22 @@ for (const approve of [false, true]) test(`SR5 shows local retrieval identity an
   const remove = h.ctx.on("user-questions/request", async request => {
     questions++;
     const detail = request.questions[0].detail!;
+    assert.ok(detail.includes("Pass2：关闭"));
     for (const text of ["semantic_required", "local", "MiniLM", "queries=4", "一跳", "0 USD"]) assert.ok(detail.includes(text), text);
     assert.equal(detail.includes("候选召回：既有本地词法检索。"), false);
     assert.equal(existsSync(path.join(registry, "invocations")), false);
     return { answers: [{ id: request.questions[0].id, selected: [approve ? "批准" : "拒绝"] }] };
   });
   try {
-    const result = control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, pass2: "disabled",
+    const result = control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, build_tutor: true,
       retrieval: { retrieval_mode: "semantic_required", budget: { max_documents: 12, max_queries: 4, max_calls: 12 } } });
     if (approve) {
       assert.match((await result as any).invocation_ref, /^abinv1_/u);
       const saved = JSON.parse(readFileSync(path.join(registry, "invocations", readdirSync(path.join(registry, "invocations"))[0]), "utf8"));
       const plan = JSON.parse(readFileSync(saved.input.build_plan_path, "utf8"));
       assert.equal(plan.status, "confirmed"); assert.equal(plan.retrieval.selection.retrieval_mode, "semantic_required");
-    } else { await assert.rejects(result); assert.equal(existsSync(path.join(registry, "invocations")), false); }
+      assert.equal(plan.public_stage_closure.includes("pass2"), false);
+    } else { await assert.rejects(result, /build_plan_not_approved/); assert.equal(existsSync(path.join(registry, "invocations")), false); }
     assert.equal(questions, 1); assert.equal(h.model.requests.length, 0);
   } finally {
     remove(); await control.dispose(); await h.dispose();

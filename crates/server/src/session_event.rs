@@ -56,6 +56,7 @@ impl<'de> Deserialize<'de> for SessionEvent {
                 "goal.updated" => fields!(GoalUpdated {
                     goal: runtime::goal::ResidentGoal
                 }),
+                "workspace_goal.updated" => fields!(WorkspaceGoalUpdated { goal: base_schema::WorkspaceGoal }),
                 "teaching.linked" => EventBody::TeachingLinked(serde_json::from_value(w.payload)?),
                 "sources.bound" => fields!(SourcesBound { bindings: Vec<SourceBinding> }),
                 "effect.delivered" => fields!(EffectDelivered {
@@ -96,6 +97,8 @@ pub(crate) enum HistoryPosition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SessionCreated {
     pub session_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning_workspace_id: Option<String>,
     pub book_id: String,
     pub title: String,
     pub created_at: String,
@@ -179,6 +182,8 @@ pub struct DispositionReceipt {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnDomain {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_goal_update: Option<base_schema::WorkspaceGoal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub choice_event: Option<memory::teaching::TeachingEvent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) local_preparation: Option<teaching::FrozenTeachingPreparation>,
@@ -200,6 +205,12 @@ pub struct LocalActionInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReadingScene {
     pub workspace_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learning_workspace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_goal: Option<base_schema::WorkspaceGoal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_members: Option<Vec<crate::published_library::PublishedBookRef>>,
     pub generation: u64,
     pub anchor_lid: String,
     pub selection: Option<String>,
@@ -208,6 +219,8 @@ impl ReadingScene {
     pub(crate) fn capture(workspace: &reader_workspace::ReaderWorkspace) -> Self {
         let state = workspace.reader.state();
         Self { workspace_id: workspace.id.clone(), generation: workspace.generation,
+            learning_workspace_id: workspace.learning_workspace_id.clone(),
+            workspace_goal: workspace.learning_goal.clone(), workspace_members: workspace.learning_members.clone(),
             anchor_lid: state.viewport.anchor_lid, selection: state.selection }
     }
 }
@@ -262,6 +275,8 @@ pub(crate) enum EventBody {
     CheckpointInstalled { checkpoint: CompactionCheckpoint },
     #[serde(rename = "goal.updated")]
     GoalUpdated { goal: runtime::goal::ResidentGoal },
+    #[serde(rename = "workspace_goal.updated")]
+    WorkspaceGoalUpdated { goal: base_schema::WorkspaceGoal },
     #[serde(rename = "teaching.linked")]
     TeachingLinked(TeachingLink),
     #[serde(rename = "sources.bound")]

@@ -71,7 +71,7 @@ fn tutor_action_intent_preserves_request_default_and_preference_precedence() {
 
 #[test]
 fn tutor_projection_pure_click_owns_intent_and_accepts_optional_continuation() {
-    for action in ["explain_selection", "continue_answer"] {
+    for action in ["explain_selection", "continue_answer", "guide_chapter"] {
         let context = action_context(action);
         let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
         let registration = registry.registration("tutor.step").unwrap();
@@ -95,7 +95,9 @@ fn continuation() -> Value {
         {"option_id":"example","label":"算一次总路程除以总时间","purpose":"看清分母的含义","move_kind":"explain"}]})
 }
 fn movement() -> Value {
-    json!({"move_id":"explain","object_ids":[],"capability":"explanation","kind":"explain",
+    json!({"move_id":"explain","design_ref":"design:fixture","block_refs":["total-time"],"object_ids":[],"capability":"explanation","kind":"explain",
+        "participation":{"choice":"support","reason":"Supply the total-time connection requested by the learner.","support":"Whole-trip time includes the stopped interval.","learner_inference":null},
+        "delivery_text":"整段行程的时间包含中途停下的时间。",
         "interaction_intent":"neutral","intent_origin":"neutral","prompt":"平均速度"})
 }
 fn accepts(value: &Value) -> bool {
@@ -147,9 +149,14 @@ fn continuation_contract_runtime_and_schema_reject_invalid_options() {
 
 #[test]
 fn continuation_contract_legacy_move_and_public_allowlist() {
-    let old = movement();
+    let mut old = movement();
+    old.as_object_mut().unwrap().remove("design_ref");
+    old.as_object_mut().unwrap().remove("block_refs");
+    old.as_object_mut().unwrap().remove("participation");
+    old.as_object_mut().unwrap().remove("delivery_text");
     let parsed: crate::tutor::TeachingMove = serde_json::from_value(old).unwrap();
     assert!(parsed.continuation.is_none());
+    assert!(parsed.participation.is_none());
     assert!(serde_json::to_value(parsed).unwrap().get("continuation").is_none());
     let mut input = movement(); input["continuation"] = continuation();
     input["assessment"] = json!({"private":"secret"}); input["hint"] = json!("secret help");
@@ -189,18 +196,27 @@ fn continuation_contract_action_origins_and_direction_are_distinct() {
         "answer_text":"平均速度","source_excerpt":null,"source_bindings":[],"target":null,
         "expected_chat_head":"current","presentation_follow_up":null})).unwrap();
     assert!(snapshot.validates_current_action("direct_explanation","explain"));
-    assert!(!snapshot.validates_current_action("guided_inquiry","question"));
+    assert!(snapshot.validates_current_action("guided_inquiry","question"));
+    assert_eq!(crate::tutor::action_intent(&json!({"current_action":snapshot})), None);
     let mut continuation = snapshot.clone();
     continuation.action = InteractionAction::UiEntry { entry_action:EntryAction::ContinueAnswer };
     assert!(continuation.validates_current_action("neutral","explain"));
     assert!(!continuation.validates_current_action("direct_explanation","explain"));
+    let mut chapter = action_context("guide_chapter");
+    chapter["default_teaching_intent"] = json!("guided_inquiry");
+    assert_eq!(crate::tutor::action_intent(&chapter), Some(("neutral", "current_action")));
+    let chapter_action: ResolvedInteraction = serde_json::from_value(chapter["current_action"].clone()).unwrap();
+    assert!(chapter_action.validates_current_action("neutral", "question"));
+    assert!(!chapter_action.validates_current_action("guided_inquiry", "question"));
+    chapter["current_action"]["user_supplement"] = json!("Please explain it completely.");
+    assert_eq!(crate::tutor::action_intent(&chapter), None);
     for (kind, intent, name) in [(ContinuationMoveKind::Explain,"direct_explanation","explain"),
         (ContinuationMoveKind::Compare,"neutral","compare"), (ContinuationMoveKind::Observe,"neutral","observe")] {
         let mut choice = snapshot.clone();
         choice.action = InteractionAction::UiChoice { teaching_choice:TeachingChoice { delivery_ref:"original".into(),option_id:name.into() }, move_kind:kind };
         assert!(choice.validates_current_action(intent,name));
-        assert!(!choice.validates_current_action("guided_inquiry","question"));
-        assert_eq!(crate::tutor::action_intent(&json!({"current_action":choice})),Some((intent,"current_action")));
+        assert!(choice.validates_current_action("guided_inquiry","question"));
+        assert_eq!(crate::tutor::action_intent(&json!({"current_action":choice})),None);
         choice.user_supplement = "Use my revised request".into();
         assert_eq!(crate::tutor::action_intent(&json!({"current_action":choice})),None);
     }

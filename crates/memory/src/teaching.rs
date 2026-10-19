@@ -27,6 +27,11 @@ pub struct TeachingTarget {
     pub expected_performance: String,
     pub capability: String,
     pub source_bindings: Vec<TeachingSourceBinding>,
+    // Runtime-bound observations from source references, not model-authored input.
+    #[schemars(skip)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub media_bindings: Option<Vec<TeachingMediaBinding>>,
     #[serde(default)]
     pub object_refs: Vec<TeachingObjectRevision>,
 }
@@ -39,6 +44,25 @@ pub struct TeachingSourceBinding {
     pub source_revision: String,
     pub start_lid: String,
     pub end_lid: String,
+}
+
+/// Exact observed media, independent of transcript availability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+#[serde(deny_unknown_fields)]
+pub struct TeachingMediaBinding {
+    pub source_id: String,
+    pub source_revision: String,
+    pub target: base_schema::EvidenceTarget,
+}
+
+fn media_identity_matches(target: &base_schema::EvidenceTarget, source: &str) -> bool {
+    use base_schema::EvidenceTarget;
+    match target {
+        EvidenceTarget::Text { publication, .. } | EvidenceTarget::Visual { publication, .. }
+            | EvidenceTarget::Audio { publication, .. } => publication.book_id == source && !publication.publication_id.trim().is_empty(),
+        EvidenceTarget::Joint { members } => !members.is_empty() && members.iter().all(|member|media_identity_matches(&member.target,source)),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
@@ -55,12 +79,15 @@ impl TeachingTarget {
     /// Storage validates identity. The turn owner checks these ranges against actual reads.
     pub fn validate(&self, binding: &TeachingBinding) -> Result<(), ToolError> {
         if [&self.learning_focus, &self.expected_performance, &self.capability]
-            .iter().any(|s| s.trim().is_empty()) || self.source_bindings.is_empty()
+            .iter().any(|s| s.trim().is_empty()) || (self.source_bindings.is_empty() && self.media_bindings.as_ref().is_none_or(Vec::is_empty))
             || self.source_bindings.iter().any(|source| {
                 source.source_id.trim().is_empty() || source.source_revision.trim().is_empty()
                     || source.source_id != binding.source_id || source.source_revision != binding.source_revision
                     || source.start_lid.trim().is_empty() || source.end_lid.trim().is_empty()
             })
+            || self.media_bindings.iter().flatten().any(|source| source.source_id != binding.source_id
+                || source.source_revision != binding.source_revision || source.source_revision.trim().is_empty()
+                || !media_identity_matches(&source.target, &binding.source_id))
             || self.object_refs.iter().any(|object| object.source_id != binding.source_id
                 || object.object_id.trim().is_empty() || object.object_revision == 0)
         {
@@ -74,6 +101,9 @@ impl TeachingTarget {
 #[serde(rename_all = "snake_case")]
 pub enum TeachingFact {
     TurnBound,
+    /// The teacher's reviewed work and corrections, never learner evidence.
+    AgentWorkReviewed,
+    DesignRevised,
     MoveSelected,
     MessageDelivered,
     Displayed,
@@ -125,7 +155,10 @@ impl TeachingEvent {
             TeachingFact::LearnerAction => self.payload["response"].as_str(),
             _ => None,
         };
-        text.filter(|s| !s.trim().is_empty())
+        text.filter(|s| !s.trim().is_empty()
+            && self.payload["response_origin"]["kind"] != "interface_request"
+            && !(self.payload["response_origin"]["kind"] == "presentation_prefill"
+                && self.payload["response_origin"]["prefill_text"].as_str() == Some(*s)))
     }
 }
 
@@ -138,19 +171,143 @@ pub fn invalid(message: impl Into<String>) -> ToolError {
 }
 
 impl LearningStore {
+    /// A learner claim must resolve to an expression from this source and session.
+    /// Delivered help and interface choices remain context, even when they carry text.
+    pub fn learner_expression_fact(
+        &self,
+        binding: &TeachingBinding,
+        id: &str,
+    ) -> Result<TeachingEvent, ToolError> {
+        let fact = self.teaching_event(id)?;
+        if fact.binding.source_id != binding.source_id
+            || fact.binding.source_revision != binding.source_revision
+            || fact.binding.tutor_session_id != binding.tutor_session_id
+        {
+            return Err(invalid("理解依据不属于当前来源、版本或会话"));
+        }
+        if fact.learner_expression().is_none() {
+            return Err(invalid("理解依据需要真实用户表达；交付、展示、点击或未修改的预填内容仅是帮助背景。理解未知时继续讲清当前问题，无需创建理解假设"));
+        }
+        Ok(fact)
+    }
+
+    pub fn current_teaching_design(&self, session: &str, source: &str, revision: &str) -> Result<Option<TeachingEvent>, ToolError> {
+        let event: Option<String> = self.connection.query_row(
+            "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind')='design_revised' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.binding.source_revision')=? ORDER BY seq DESC LIMIT 1",
+            params![self.workspace_scope, session,source,revision], |r|r.get(0)).optional().map_err(storage)?;
+        event.map(|event|serde_json::from_str(&event).map_err(storage)).transpose()
+    }
+
+    /// Only delivered moves resolve or replace an invitation. Candidate selections do not.
+    pub fn pending_response_invitation(&self, session: &str, source: &str, revision: &str) -> Result<Option<TeachingEvent>, ToolError> {
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.binding.source_revision')=? ORDER BY seq DESC").map_err(storage)?;
+        let rows = query.query_map(params![self.workspace_scope, session,source,revision], |r|r.get::<_,String>(0)).map_err(storage)?;
+        let mut closed = std::collections::BTreeSet::new();
+        for row in rows {
+            let event: TeachingEvent = serde_json::from_str(&row.map_err(storage)?).map_err(storage)?;
+            if let Some(id) = event.payload["move"]["responds_to"]["invitation_ref"].as_str() {
+                if matches!(event.payload["move"]["responds_to"]["disposition"].as_str(), Some("addressed" | "deferred")) { closed.insert(id.to_owned()); }
+            }
+            if event.payload["move"]["response_expectation"].is_object() && !closed.contains(&event.event_id) { return Ok(Some(event)); }
+        }
+        Ok(None)
+    }
+
     pub fn latest_teaching_focus(&self, session: &str, source: &str) -> Result<Option<TeachingEvent>, ToolError> {
         let event: Option<String> = self.connection.query_row(
-            "SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.payload.assistance_for') IS NULL ORDER BY seq DESC LIMIT 1",
-            params![session,source], |r|r.get(0)).optional().map_err(storage)?;
+            "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.payload.assistance_for') IS NULL ORDER BY seq DESC LIMIT 1",
+            params![self.workspace_scope, session,source], |r|r.get(0)).optional().map_err(storage)?;
         event.map(|event|serde_json::from_str(&event).map_err(storage)).transpose()
+    }
+
+    /// Evidence for deciding whether to offer support or invite an attempt.
+    /// Restrict both sides to this design lineage and the current relationships;
+    /// selected or abandoned moves never count as something the reader saw.
+    pub fn teaching_learning_opportunity(&self, session: &str, source: &str, revision: &str, design_ref: Option<&str>, blocks: &[String]) -> Result<(Vec<TeachingEvent>, Vec<String>), ToolError> {
+        let blocks=serde_json::to_string(blocks).map_err(storage)?;
+        let lineage="WITH RECURSIVE lineage(id) AS (
+            SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
+            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?6 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)";
+        let mut delivered=self.connection.prepare(&format!("{lineage}
+            SELECT t.event FROM teaching_trace t WHERE t.learning_workspace_id=?6 AND t.session_id=?2
+            AND json_extract(t.event,'$.kind')='message_delivered'
+            AND json_extract(t.event,'$.binding.source_id')=?3 AND json_extract(t.event,'$.binding.source_revision')=?4
+            AND json_extract(t.event,'$.payload.move.design_ref') IN (SELECT id FROM lineage)
+            AND EXISTS (SELECT 1 FROM json_each(t.event,'$.payload.move.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
+            ORDER BY t.seq DESC LIMIT 3")).map_err(storage)?;
+        let deliveries=delivered.query_map(params![design_ref,session,source,revision,blocks,self.workspace_scope],|r|r.get::<_,String>(0)).map_err(storage)?
+            .map(|r|serde_json::from_str(&r.map_err(storage)?).map_err(storage)).collect::<Result<Vec<_>,_>>()?;
+        let mut interpreted=self.connection.prepare(&format!("{lineage}
+            SELECT e.evidence_id FROM learning_evidence e WHERE e.learning_workspace_id=?6 AND json_extract(e.evidence,'$.session_id')=?2
+            AND e.source_id=?3 AND json_extract(e.evidence,'$.source_revision')=?4
+            AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM lineage)
+            AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
+            AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
+            ORDER BY e.seq DESC LIMIT 12")).map_err(storage)?;
+        let interpretations=interpreted.query_map(params![design_ref,session,source,revision,blocks,self.workspace_scope],|r|r.get::<_,String>(0)).map_err(storage)?
+            .map(|r|r.map_err(storage)).collect::<Result<Vec<_>,_>>()?;
+        Ok((deliveries,interpretations))
+    }
+
+    /// A focus revision does not erase the support already provided within this
+    /// design. Keep its original relationship identity when presenting history.
+    pub fn teaching_lineage_support(&self, session: &str, source: &str, revision: &str, design_ref: Option<&str>) -> Result<Vec<TeachingEvent>, ToolError> {
+        let mut query=self.connection.prepare("WITH RECURSIVE lineage(id) AS (
+            SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
+            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?5 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)
+            SELECT event FROM teaching_trace WHERE learning_workspace_id=?5 AND session_id=?2 AND json_extract(event,'$.kind')='message_delivered'
+            AND json_extract(event,'$.binding.source_id')=?3 AND json_extract(event,'$.binding.source_revision')=?4
+            AND json_extract(event,'$.payload.move.design_ref') IN (SELECT id FROM lineage)
+            ORDER BY seq DESC LIMIT 6").map_err(storage)?;
+        let rows=query.query_map(params![design_ref,session,source,revision,self.workspace_scope],|row|row.get::<_,String>(0)).map_err(storage)?;
+        rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
+    }
+
+    /// Freeze the last actual answer in this chat before accepting the next
+    /// input. Selections and answers from another chat are not received support.
+    pub fn latest_chat_teaching_support(&self, session: &str, source: &str, revision: &str, chat: &str) -> Result<Vec<TeachingEvent>, ToolError> {
+        let turn:Option<String>=self.connection.query_row("SELECT json_extract(event,'$.binding.turn_id') FROM teaching_trace
+            WHERE learning_workspace_id=?5 AND session_id=?1 AND json_extract(event,'$.kind')='message_delivered'
+            AND json_extract(event,'$.binding.source_id')=?2 AND json_extract(event,'$.binding.source_revision')=?3
+            AND json_extract(event,'$.binding.chat_session_id')=?4 ORDER BY seq DESC LIMIT 1",
+            params![session,source,revision,chat,self.workspace_scope],|row|row.get(0)).optional().map_err(storage)?;
+        let Some(turn)=turn else { return Ok(vec![]); };
+        Ok(self.teaching_deliveries(chat,&turn)?.into_iter().filter(|event|
+            event.binding.tutor_session_id==session && event.binding.source_id==source && event.binding.source_revision==revision).collect())
+    }
+
+    /// Expressions retain the support frozen at input acceptance, even after
+    /// later help or a different design focus. This does not classify attempts.
+    pub fn teaching_supported_expressions(&self, delivery: &str) -> Result<Vec<TeachingEvent>, ToolError> {
+        let mut query=self.connection.prepare("SELECT event FROM teaching_trace t
+            WHERE t.learning_workspace_id=?2 AND EXISTS(SELECT 1 FROM json_each(t.event,'$.payload.support_delivery_refs') s WHERE s.value=?1)
+            AND json_extract(event,'$.kind') IN ('usage_observed','learner_action')
+            ORDER BY seq DESC LIMIT 4").map_err(storage)?;
+        let rows=query.query_map(params![delivery,self.workspace_scope],|row|row.get::<_,String>(0)).map_err(storage)?;
+        let events=rows.map(|row|serde_json::from_str::<TeachingEvent>(&row.map_err(storage)?).map_err(storage)).collect::<Result<Vec<_>,_>>()?;
+        Ok(events.into_iter().filter(|event|event.learner_expression().is_some()).collect())
+    }
+
+    pub fn teaching_expression_interpretations(&self, fact: &str) -> Result<Vec<crate::learning_evidence::LearningEvidence>, ToolError> {
+        let mut query=self.connection.prepare("SELECT evidence FROM learning_evidence e
+            WHERE e.learning_workspace_id=?2 AND EXISTS(SELECT 1 FROM json_each(e.evidence,'$.fact_refs') f WHERE f.value=?1)
+            AND NOT EXISTS(SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
+            ORDER BY seq DESC LIMIT 4").map_err(storage)?;
+        let rows=query.query_map(params![fact,self.workspace_scope],|row|row.get::<_,String>(0)).map_err(storage)?;
+        rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
     }
     pub fn teaching_activity_events(
         &self,
         delivery: &str,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE json_extract(event,'$.payload.delivery_ref')=? ORDER BY seq").map_err(storage)?;
+        // Activity responses/help carry delivery_ref; delivered conversational
+        // support uses the existing ordinary-invitation or activity-help link.
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=?2 AND (json_extract(event,'$.payload.delivery_ref')=?1
+            OR (json_extract(event,'$.kind')='message_delivered' AND
+                (json_extract(event,'$.payload.move.responds_to.invitation_ref')=?1 OR json_extract(event,'$.payload.assistance_for')=?1)))
+            ORDER BY seq").map_err(storage)?;
         let rows = query
-            .query_map([delivery], |r| r.get::<_, String>(0))
+            .query_map(params![delivery,self.workspace_scope], |r| r.get::<_, String>(0))
             .map_err(storage)?;
         rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
             .collect()
@@ -160,9 +317,9 @@ impl LearningStore {
         session: &str,
         limit: u32,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed','usage_observed','continuation_displayed','continuation_chosen') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind') IN ('message_delivered','learner_action','help_displayed','usage_observed','continuation_displayed','continuation_chosen') ORDER BY seq DESC LIMIT ?").map_err(storage)?;
         let rows = query
-            .query_map(params![session, limit.min(20)], |r| r.get::<_, String>(0))
+            .query_map(params![self.workspace_scope, session, limit.min(20)], |r| r.get::<_, String>(0))
             .map_err(storage)?;
         rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
             .collect()
@@ -172,9 +329,9 @@ impl LearningStore {
         chat: &str,
         turn: &str,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE json_extract(event,'$.binding.chat_session_id')=? AND json_extract(event,'$.binding.turn_id')=? AND json_extract(event,'$.kind')='message_delivered' ORDER BY seq").map_err(storage)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.binding.chat_session_id')=? AND json_extract(event,'$.binding.turn_id')=? AND json_extract(event,'$.kind')='message_delivered' ORDER BY seq").map_err(storage)?;
         let rows = query
-            .query_map(params![chat, turn], |r| r.get::<_, String>(0))
+            .query_map(params![self.workspace_scope, chat, turn], |r| r.get::<_, String>(0))
             .map_err(storage)?;
         rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
             .collect()
@@ -183,8 +340,8 @@ impl LearningStore {
         let json: Option<String> = self
             .connection
             .query_row(
-                "SELECT event FROM teaching_trace WHERE event_id=?",
-                [id],
+                "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
+                params![self.workspace_scope,id],
                 |r| r.get(0),
             )
             .optional()
@@ -200,10 +357,10 @@ impl LearningStore {
         limit: u32,
     ) -> Result<Vec<(u64, TeachingEvent)>, ToolError> {
         let mut query = self.connection.prepare(
-            "SELECT seq,event FROM teaching_trace WHERE session_id=? AND seq>? ORDER BY seq LIMIT ?"
+            "SELECT seq,event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND seq>? ORDER BY seq LIMIT ?"
         ).map_err(storage)?;
         let rows = query
-            .query_map(params![session, after, limit.min(100)], |r| {
+            .query_map(params![self.workspace_scope, session, after, limit.min(100)], |r| {
                 Ok((r.get::<_, u64>(0)?, r.get::<_, String>(1)?))
             })
             .map_err(storage)?;
@@ -219,9 +376,9 @@ impl LearningStore {
         session: &str,
         turn: &str,
     ) -> Result<Vec<TeachingEvent>, ToolError> {
-        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE session_id=? AND json_extract(event,'$.binding.turn_id')=? ORDER BY seq").map_err(storage)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.binding.turn_id')=? ORDER BY seq").map_err(storage)?;
         let rows = query
-            .query_map(params![session, turn], |r| r.get::<_, String>(0))
+            .query_map(params![self.workspace_scope, session, turn], |r| r.get::<_, String>(0))
             .map_err(storage)?;
         rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
             .collect()
@@ -233,6 +390,10 @@ impl LearningStore {
         }
         if event.binding.map_revision.as_ref().is_some_and(|s| s.trim().is_empty()) {
             return Err(invalid("缺少地图应省略引用，不能保存空地图版本"));
+        }
+        if event.kind == TeachingFact::DesignRevised {
+            let design: crate::teaching_design::TeachingDesign = serde_json::from_value(event.payload["design"].clone()).map_err(|e|invalid(e.to_string()))?;
+            design.validate(&event.binding)?;
         }
         if let Some(target) = event.payload.get("move").and_then(|m| m.get("target")).filter(|t| !t.is_null()) {
             let target: TeachingTarget = serde_json::from_value(target.clone()).map_err(|e| invalid(e.to_string()))?;
@@ -247,8 +408,8 @@ impl LearningStore {
             .map_err(storage)?;
         let previous: Option<String> = transaction
             .query_row(
-                "SELECT event FROM teaching_trace WHERE event_id=?",
-                [&event.event_id],
+                "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
+                params![self.workspace_scope,event.event_id],
                 |r| r.get(0),
             )
             .optional()
@@ -266,8 +427,8 @@ impl LearningStore {
         for id in &event.causal_refs {
             let owner: Option<String> = transaction
                 .query_row(
-                    "SELECT session_id FROM teaching_trace WHERE event_id=?",
-                    [id],
+                    "SELECT session_id FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
+                    params![self.workspace_scope,id],
                     |r| r.get(0),
                 )
                 .optional()
@@ -278,8 +439,9 @@ impl LearningStore {
         }
         transaction
             .execute(
-                "INSERT INTO teaching_trace(event_id,session_id,event) VALUES (?,?,?)",
+                "INSERT INTO teaching_trace(learning_workspace_id,event_id,session_id,event) VALUES (?,?,?,?)",
                 params![
+                    self.workspace_scope,
                     event.event_id,
                     event.binding.tutor_session_id,
                     serde_json::to_string(event).map_err(storage)?
@@ -294,6 +456,19 @@ impl LearningStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn media_target_preserves_exact_visual_audio_identity_without_text_positions() {
+        let binding=TeachingBinding {tutor_session_id:"s".into(),session_revision:0,control_revision:0,source_id:"video".into(),source_revision:"original".into(),map_revision:None,chat_session_id:"chat".into(),turn_id:"turn".into()};
+        let visual=serde_json::json!({"kind":"visual","publication":{"book_id":"video","publication_id":"v1"},"frames":[{"video":{"media_id":"clip","media_revision":"1"},"actual_pts_ms":1000.0,"width":1280,"height":720}],"regions":[]});
+        let audio=serde_json::json!({"kind":"audio","publication":{"book_id":"video","publication_id":"v1"},"location":{"video":{"media_id":"clip","media_revision":"1"},"start_ms":0.0,"end_ms":2000.0},"review_result_ref":"original-review"});
+        for media in [visual,audio] {
+            let mut target:TeachingTarget=serde_json::from_value(serde_json::json!({"learning_focus":"画面或原声","expected_performance":"解释原资料","capability":"explanation","source_bindings":[],"media_bindings":[{"source_id":"video","source_revision":"original","target":media}]})).unwrap();
+            target.validate(&binding).unwrap();assert!(target.source_bindings.is_empty());
+            assert_eq!(serde_json::to_value(&target.media_bindings.as_ref().unwrap()[0].target).unwrap(),media);
+            target.media_bindings.as_mut().unwrap()[0].source_revision="other".into();assert!(target.validate(&binding).is_err());
+            target.media_bindings=None;assert!(target.validate(&binding).is_err());
+        }
+    }
     #[test]
     fn continuation_events_roundtrip_without_becoming_performance() {
         use ts_rs::TS;
@@ -339,8 +514,8 @@ mod tests {
             })).unwrap();
             let error = store.append_evidence(&evidence).unwrap_err();
             assert_eq!(error.error_code,"TEACHING_INVALID");
-            if fact == "reading-action" { assert!(error.message.contains("无需创建理解假设")); }
-            else { assert_eq!(error.message,"理解依据不属于当前来源、会话或实际使用事实"); }
+            assert!(error.message.contains("真实用户表达"));
+            assert!(error.message.contains("无需创建理解假设"));
         }
         let raw:String=store.connection.query_row("SELECT event FROM teaching_trace WHERE event_id='old'",[],|r|r.get(0)).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(),old);

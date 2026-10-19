@@ -26,7 +26,7 @@ test('Reader short viewport supports actual mouse/touch slider, last controls an
     records.push({touch,old,current,geometry,innerHit,events});fs.writeFileSync(path.join(output,'geometry.json'),JSON.stringify(records,null,2));
     expect(current).not.toBe(old);
     const last=frame.locator('button[data-eta]').last();await last.click();await expect(frame.locator('#eta')).toHaveValue('1.1');
-    await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('Explain this short screen');await page.getByRole('button',{name:'发送追问',exact:true}).click();
+    await page.getByRole('textbox',{name:'针对当前演示追问'}).fill('Explain this short screen');await page.getByRole('button',{name:'发送追问',exact:true}).click();
     await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
     records.at(-1).lastControlAndQuestion=true;fs.writeFileSync(path.join(output,'geometry.json'),JSON.stringify(records,null,2));
     await page.unrouteAll({behavior:'ignoreErrors'});await context.close();

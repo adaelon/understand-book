@@ -1,0 +1,22 @@
+{
+  "title": "沿关系逐步展开过程",
+  "initial_state": {
+    "increment": 1,
+    "threshold": 4,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "increment": "integer added to each input, 0..3",
+    "threshold": "inclusive integer filter threshold, 2..8",
+    "semantic_state": "completed explanation steps, integer 0..3",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 3"
+  },
+  "readable_content": "从 [2,3,4] 出发，逐项加数、按阈值筛选，再求和。每一步保留前面的结果，沿箭头追踪数据。 箭头绘制进度只表示讲解展开；节点里的数组是该步骤完成后的准确结果。 显式流程：map(x→x+增量) → filter(x≥阈值) → sum。空数组的和约定为 0。",
+  "assumptions": [
+    "显式流程：map(x→x+增量) → filter(x≥阈值) → sum。空数组的和约定为 0。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

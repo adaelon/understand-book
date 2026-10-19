@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { flushPromises, mount } from "@vue/test-utils";
+import { flushPromises, mount, enableAutoUnmount } from "@vue/test-utils";
 import { nextTick, reactive } from 'vue';
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,8 @@ import { api } from '../api';
 import { renderMarkdown } from '../md';
 import { network, installIdentity, installWorkspace } from '../network-context';
 import type { RecapTarget, SessionRecap } from '../session-recap';
+
+enableAutoUnmount(afterEach);
 
 const baseProps = {
   chat: [],
@@ -33,6 +35,20 @@ const baseProps = {
   effectSecondaryLabel: () => "undo",
   gotoBack: () => "1.1",
 };
+
+it('allows sending an image-only video question and locks sending while an upload is in progress', async () => {
+  const video = { media_id: 'v', media_revision: '1' };
+  const question = { draft_id: 'image-question', publication: { book_id: 'b', publication_id: 'p' },
+    material: { book_id: 'b', video, transcript: { transcript_id: 't', transcript_revision: '1', video } },
+    frame: { video, actual_pts_ms: 15466.6875, width: 1920, height: 1080 }, region: null, range: null,
+    image: { png_base64: 'pixels', width: 100, height: 80, origin: 'upload' as const } };
+  const wrapper = mount(RightRail, { props: { ...baseProps, videoImagesEnabled: true, videoQuestion: question }, shallow: true });
+  expect(wrapper.get('.send-agent').attributes('disabled')).toBeUndefined();
+  await wrapper.get('.send-agent').trigger('click'); expect(wrapper.emitted('send-agent')).toHaveLength(1);
+  wrapper.findComponent({ name: 'QuestionImageInput' }).vm.$emit('loading', true); await nextTick();
+  expect(wrapper.get('.send-agent').attributes('disabled')).toBeDefined();
+  wrapper.unmount();
+});
 
 it('requests formula details when the panel opens, selection changes or a read is retried', async () => {
   const wrapper = mount(RightRail, { props: { ...baseProps, formulaSelected: true }, shallow: true });
@@ -190,6 +206,21 @@ describe("RightRail history visibility", () => {
       await wrapper.findAll('button').find(button => button.text() === '查看使用额度')!.trigger('click');
       expect(wrapper.emitted('show-allowance')).toHaveLength(1);
     } finally { wrapper.unmount(); network.value = { ...network.value, identity: null, enabled: false }; }
+  });
+  it.each(['TEACHING_INVALID', 'MODEL_PROVIDER_ERROR'])('keeps the fallback answer visible without exposing %s', warning => {
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [{ turnId: 'fallback', user: 'Embedding 用在哪里？给我一个演示页。', pending: false,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      outcome: { answer: 'Embedding 把文本表示为向量，检索时通过向量比较找到相关片段。演示页尚未完成。', warning,
+        effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: true,
+        profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } },
+    }] }, shallow: true });
+    try {
+      expect(wrapper.get('.a-msg .ans-text').text()).toContain('Embedding 把文本表示为向量');
+      expect(wrapper.get('.a-msg .ans-text').text()).toContain('演示页尚未完成');
+      expect(wrapper.get('.incomplete').text()).toContain('已提供当前可用内容');
+      expect(wrapper.text()).not.toContain(warning);
+      expect(wrapper.text()).not.toContain('请重试');
+    } finally { wrapper.unmount(); }
   });
   const emptySession = (id: string) => ({
     id, title: "New chat", created_at: "t0", updated_at: "t0", turn_count: 0, turns: [],
@@ -403,6 +434,26 @@ describe('JL9 recap jumps', () => {
       await (wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> }).openRecapTarget(target);
       expect(wrapper.emitted('recap-publication')).toEqual([[target]]);
       expect(resolve).not.toHaveBeenCalled();
+    } finally { wrapper.unmount(); }
+  });
+  it('offers a reference-book link in a new tab without navigating the current reader', async () => {
+    vi.spyOn(api, 'sessionRecap').mockResolvedValue(recap);
+    const sourceUrl = '/?book_id=rust&publication_id=edition-1&start_lid=1.1&end_lid=1.1&start_utf16=0&end_utf16=20';
+    vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source-1', label: 'Rust · 借用',
+      material_title: 'Rust', highlighted_quote: '共享借用', context_before: '', context_after: '', stale: false,
+      can_open_in_reader: true, source_url: sourceUrl });
+    const open = vi.spyOn(api, 'agentSourceOpen');
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat }, global: { stubs: { AgentPresentation: true } } });
+    try {
+      await (wrapper.vm as unknown as { openRecapTarget: (t: RecapTarget) => Promise<void> }).openRecapTarget({ ...base, kind: 'source', source });
+      await flushPromises();
+      const link = document.body.querySelector<HTMLAnchorElement>('a.source-open-reader');
+      expect(link?.getAttribute('href')).toBe(sourceUrl);
+      expect(link?.target).toBe('_blank');
+      expect(link?.textContent).toContain('查看参考书原文');
+      expect(open).not.toHaveBeenCalled();
+      expect(wrapper.emitted('agent-source-will-open')).toBeUndefined();
+      expect(wrapper.emitted('agent-source-opened')).toBeUndefined();
     } finally { wrapper.unmount(); }
   });
 });
@@ -670,7 +721,7 @@ describe("RightRail agent sources", () => {
     } finally { wrapper.unmount(); }
   });
 
-  it("shows context shortage only for an actual context-budget warning", () => {
+  it("explains long content only for an actual context-budget warning", () => {
     const deliveryFailure = {
       ...sourceOutcome(),
       answer: "这次回答生成失败，请重试。",
@@ -718,14 +769,14 @@ describe("RightRail agent sources", () => {
     expect(wrapper.text()).toContain("这次回答生成失败，请重试。");
     const notices = wrapper.findAll(".incomplete");
     expect(notices).toHaveLength(1);
-    expect(notices[0].text()).toBe("未完成: 上下文不足");
+    expect(notices[0].text()).toBe("这次内容较长，先提供当前可用的回答；其余部分可以继续补充。");
   });
 
-  it("distinguishes compaction, physical capacity, and tool-turn stop reasons", () => {
+  it("explains incomplete delivery without exposing internal stop reasons", () => {
     const warnings = [
-      ["COMPACTION_FAILED", "上下文整理失败，请重试"],
-      ["ACTIVE_CONTEXT_EXHAUSTED", "当前内容超过模型可处理范围"],
-      ["TURN_LIMIT_EXCEEDED", "本轮模型—工具循环次数已达上限"],
+      ["COMPACTION_FAILED", "已提供当前可用的回答；剩余内容暂未完成，可以继续补充。"],
+      ["ACTIVE_CONTEXT_EXHAUSTED", "这次内容较长，先提供当前可用的回答；其余部分可以继续补充。"],
+      ["TURN_LIMIT_EXCEEDED", "已提供当前可用内容；未完成的讲解、演示或其他操作可以接着完善。"],
     ] as const;
     const wrapper = mount(RightRail, {
       attachTo: document.body,
@@ -751,9 +802,10 @@ describe("RightRail agent sources", () => {
     });
 
     expect(wrapper.findAll(".incomplete").map((notice) => notice.text())).toEqual(
-      warnings.map(([, label]) => `未完成: ${label}`),
+      warnings.map(([, label]) => label),
     );
-    expect(wrapper.text()).not.toContain("上下文不足");
+    for (const [warning] of warnings) expect(wrapper.text()).not.toContain(warning);
+    expect(wrapper.text()).not.toContain("请重试");
   });
 
   it("renders inline single and grouped source buttons without visible LIDs", () => {
@@ -1154,7 +1206,9 @@ describe("RightRail AskQuote", () => {
 
     expect(wrapper.get(".memory-update-row").text()).toContain("画像已记住");
     expect(wrapper.get(".profile-usage").attributes()).not.toHaveProperty("open");
-    expect(wrapper.get(".profile-usage summary").text()).toContain("画像依据 · 1");
+    expect(wrapper.get(".profile-usage summary").text()).toContain("学习偏好与背景 · 1 条");
+    expect(wrapper.get('.profile-usage').text()).not.toContain('快照');
+    expect(wrapper.get('.profile-usage').text()).not.toContain('fact-1');
     await wrapper.get('.memory-update-row button[aria-label="撤销画像更新"]').trigger("click");
     expect(wrapper.emitted("undo-profile-update")?.[0]).toEqual([0, 0, memoryUpdate]);
 
@@ -1352,7 +1406,7 @@ describe("RightRail Resident task controls", () => {
         result_refs: [], status: "open" as const, last_stop_reason: null }] } });
     try {
       expect(wrapper.findAll(".agent-compose-row > button")).toHaveLength(1);
-      expect(wrapper.get(".agent-compose-row > button").text()).toBe("停止");
+      expect(wrapper.get(".agent-compose-row > button").attributes('aria-label')).toBe("停止");
       expect(wrapper.find(".goal-card").exists()).toBe(false);
       expect(wrapper.get(".task-summary-toggle").text()).toContain("正在执行");
       expect(wrapper.text()).not.toContain("等待继续");
@@ -1436,6 +1490,22 @@ describe("mobile input continuity", () => {
   });
 });
 
+
+it('opens media beside the answer and enters the main video only after the explicit action', async () => {
+  const media = { publication: { book_id: 'book', publication_id: 'old' }, duration_ms: 600000,
+    target: { kind: 'visual' as const, publication: { book_id: 'book', publication_id: 'old' }, frames: [{ video: { media_id: 'v', media_revision: '1' }, actual_pts_ms: 492000, width: 1920, height: 1080 }], regions: [] }, transcript: [], translations: [] };
+  vi.spyOn(api, 'agentSourceResolve').mockResolvedValue({ source_ref_id: 'source_ref_a', label: '视频画面', highlighted_quote: '', context_before: '', context_after: '', stale: false, can_open_in_reader: true, media, media_url: '/original/media' });
+  const open = vi.spyOn(api, 'agentSourceOpen');
+  const wrapper = mount(RightRail, { props: { ...baseProps, chat: [{ turnId: 'turn-a', user: 'question', outcome: sourceOutcome(), pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }] } });
+  await wrapper.findAll('.agent-source-button')[0].trigger('click'); await flushPromises();
+  expect(document.body.querySelector('.media-source-preview video')).not.toBeNull();
+  expect(wrapper.emitted('media-source-enter')).toBeUndefined(); expect(open).not.toHaveBeenCalled();
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises();
+  expect(document.body.querySelector('.media-source-preview')).toBeNull();
+  await wrapper.findAll('.agent-source-button')[0].trigger('click'); await flushPromises();
+  (document.body.querySelector('.source-open-reader') as HTMLButtonElement).click(); await flushPromises();
+  expect(wrapper.emitted('media-source-enter')).toEqual([[media]]); expect(open).not.toHaveBeenCalled(); wrapper.unmount();
+});
 
 
 describe('RN4 note retrieval', () => {

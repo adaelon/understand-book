@@ -103,3 +103,29 @@ export function runStatusText(snapshot: RunSnapshot, connection: string): string
   if (connection === "reconnecting") return "连接中断，正在恢复活动";
   return "正在运行";
 }
+
+/** Explain the failed delivery without exposing the model's internal tool contract. */
+export function agentFailureMessage(error: AgentChatTurn['error'], summary?: AgentChatTurn['run_summary']): string | undefined {
+  if (!error) return;
+  const trace = summary?.trace ?? [];
+  const reviewFailed = error.error_code === 'TEACHING_REVIEW_FAILED'
+    || (error.error_code === 'TEACHING_INVALID' && summary?.activities?.some(activity => activity.name === 'tutor_delivery_review' && activity.status === 'failed'));
+  const pageSaved = trace.some(step => {
+    if (step.tool !== 'presentation.author' || step.result_digest.includes('"error_code"')) return false;
+    try { return JSON.parse(step.args).operation === 'deliver'; } catch { return false; }
+  });
+  if (reviewFailed || (error.error_code === 'TEACHING_INVALID' && pageSaved)) {
+    return pageSaved
+      ? '演示页已生成，但回答检查未完成。请重试。'
+      : '回答检查未完成。请重试。';
+  }
+  const lastTool = trace.at(-1)?.tool;
+  if (error.error_code.startsWith('PRESENTATION_')
+    || (error.error_code === 'TEACHING_INVALID' && lastTool === 'presentation.author')) {
+    return '演示页制作未完成。请重试。';
+  }
+  if (error.error_code === 'TEACHING_INVALID' || error.error_code === 'TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING') {
+    return '这次讲解尚未准备完成，请重试。';
+  }
+  return error.message;
+}

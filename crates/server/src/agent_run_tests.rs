@@ -839,7 +839,7 @@ fn resident_nested_synthesis_and_local_source_repair_release_state() {
 }
 
 #[test]
-fn resident_failure_retains_already_completed_actions() {
+fn resident_fallback_retains_already_completed_actions() {
     let provider = Provider::new();
     let (running, _) = fixture("failed-note");
     running.set_provider_config(provider.config.clone());
@@ -849,14 +849,25 @@ fn resident_failure_retains_already_completed_actions() {
         json!({"lid":"1.1","text":"kept after failure"}),
     );
     provider.next().answer("");
-    assert_eq!(
-        worker.join().unwrap().1["error_code"],
-        "PROVIDER_EMPTY_RESPONSE"
-    );
+    let fallback = provider.next();
+    assert!(fallback.request.get("tools").is_none_or(|tools| tools.as_array().is_some_and(Vec::is_empty)),
+        "fallback must not expose any tools: {:?}", fallback.request.get("tools"));
+    let answer = "本轮已完成的笔记操作保留，解释暂未补全。";
+    fallback.answer(answer);
+    let reply = worker.join().unwrap();
+    assert_eq!(reply.0, 200, "{reply:?}");
+    assert_eq!(reply.1["answer"], answer);
+    assert_eq!(reply.1["incomplete"], true);
+    assert_eq!(reply.1["warning"], "PROVIDER_EMPTY_RESPONSE");
     let state = running.state.lock().unwrap();
     let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
     let turn = &history.sessions[0].turns[0];
-    assert_eq!(turn.status, AgentAssistantStatus::Failed);
+    assert_eq!(turn.status, AgentAssistantStatus::Completed);
+    assert!(turn.error.is_none());
+    let outcome = turn.outcome.as_ref().unwrap();
+    assert_eq!(outcome.answer.as_deref(), Some(answer));
+    assert!(outcome.incomplete);
+    assert_eq!(outcome.warning.as_deref(), Some("PROVIDER_EMPTY_RESPONSE"));
     assert_eq!(turn.run_summary.as_ref().unwrap().effects.len(), 1);
     assert_eq!(crate::turn_view(&state.workspace.book, turn).effect_labels.len(), 1);
     assert!(!state
@@ -867,6 +878,77 @@ fn resident_failure_retains_already_completed_actions() {
         })
         .is_empty());
     drop(state);
+    running.shutdown();
+}
+
+#[test]
+fn resident_fallback_answer_survives_failed_repair_finalization_and_reload() {
+    use runtime::Message;
+    use runtime::orchestrator::{
+        AgentAnswerPart, AgentAnswerView, AnswerDeliveryAttemptDiagnostics,
+        AnswerDeliveryDiagnostics, AnswerDeliveryIssue, OuterOutcome,
+    };
+
+    let (running, _) = fixture("fallback-finalization");
+    let answer = "这里先给出可用解释，完整交互演示仍待补全。";
+    let failure = |code: &str| AnswerDeliveryAttemptDiagnostics {
+        issues: vec![AnswerDeliveryIssue {
+            error_code: code.into(), start: None, end: None, trigger_value: None,
+            match_form: "test".into(), source_channels: Vec::new(),
+        }],
+    };
+    let diagnostics = AnswerDeliveryDiagnostics {
+        initial: failure("RAW_LID_LEAK"),
+        repair: Some(failure("REPAIR_SCOPE_VIOLATION")),
+        fallback: Some(AnswerDeliveryAttemptDiagnostics::default()),
+    };
+    let outcome = OuterOutcome {
+        answer: Some(answer.into()),
+        answer_view: Some(AgentAnswerView {
+            parts: vec![AgentAnswerPart::Markdown { text: answer.into() }], sources: Vec::new(),
+        }),
+        incomplete: true, warning: Some("ANSWER_DELIVERY_INCOMPLETE".into()),
+        turns: 3, tokens_spent: 4, effects: Vec::new(), trace: Vec::new(),
+        profile_usage: Default::default(), memory_updates: Vec::new(),
+        source_bindings: Vec::new(), teaching_delivery_move_refs: Vec::new(),
+        delivery_diagnostics: Some(diagnostics.clone()), request_audit: Default::default(),
+    };
+    let history_path = {
+        let mut state = running.state.lock().unwrap();
+        let book_id = state.workspace.book.base.book_id.clone();
+        let turn_ref = crate::precommit_agent_turn(
+            &mut state, &book_id, "解释这段并给我交互演示".into(), None, None, None,
+            "2026-10-18T00:00:00Z",
+        ).unwrap();
+        let mut messages = state.workspace.messages.clone();
+        messages.push(Message::user("解释这段并给我交互演示"));
+        messages.push(Message {
+            role: runtime::Role::Assistant, content: Some(answer.into()),
+            tool_calls: Vec::new(), tool_call_id: None, provider_continuation: None,
+        });
+        crate::finalize_agent_turn_completed(
+            &mut state, &turn_ref, &outcome, &messages, "2026-10-18T00:00:01Z",
+        ).unwrap();
+        state.user.history_path.clone()
+    };
+    let history = crate::session_store::load_chat_storage(&history_path).unwrap().0;
+    let turn = &history.sessions[0].turns[0];
+    assert_eq!(turn.status, AgentAssistantStatus::Completed);
+    assert!(turn.error.is_none());
+    assert_eq!(turn.delivery_diagnostics.as_ref(), Some(&diagnostics));
+    let saved = turn.outcome.as_ref().unwrap();
+    assert_eq!(saved.answer.as_deref(), Some(answer));
+    assert!(saved.incomplete);
+    assert_eq!(saved.warning.as_deref(), Some("ANSWER_DELIVERY_INCOMPLETE"));
+    assert_eq!(saved.answer_view, outcome.answer_view);
+    assert_eq!(history.sessions[0].messages.last().unwrap().content.as_deref(), Some(answer));
+
+    let public = http(&running.url, "GET", "/agent/history", Value::Null);
+    assert_eq!(public.0, 200);
+    let public_turn = &public.1["current"]["turns"][0];
+    assert_eq!(public_turn["outcome"]["answer"], answer);
+    assert_eq!(public_turn["outcome"]["warning"], "ANSWER_DELIVERY_INCOMPLETE");
+    assert!(public_turn.get("delivery_diagnostics").is_none());
     running.shutdown();
 }
 
@@ -940,7 +1022,7 @@ fn resident_stream_can_finish_after_sixty_seconds() {
 }
 
 #[test]
-fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_retry() {
+fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
     let provider = Provider::new();
     let (running, _) = fixture("failed-tool-transcript");
     running.set_provider_config(provider.config.clone());
@@ -958,10 +1040,16 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
         }),
     );
     provider.next().answer("");
-    assert_eq!(
-        first.join().unwrap().1["error_code"],
-        "PROVIDER_EMPTY_RESPONSE"
-    );
+    let fallback = provider.next();
+    assert!(fallback.request.get("tools").is_none_or(|tools| tools.as_array().is_some_and(Vec::is_empty)),
+        "fallback must not expose any tools: {:?}", fallback.request.get("tools"));
+    let answer = "当前交互页面还未完成，先保留你的问题和本轮已有进展。";
+    fallback.answer(answer);
+    let reply = first.join().unwrap();
+    assert_eq!(reply.0, 200, "{reply:?}");
+    assert_eq!(reply.1["answer"], answer);
+    assert_eq!(reply.1["incomplete"], true);
+    assert_eq!(reply.1["warning"], "PROVIDER_EMPTY_RESPONSE");
 
     {
         let state = running.state.lock().unwrap();
@@ -969,14 +1057,19 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
             .iter()
             .any(|message| message.role == runtime::Role::User
                 && message.content.as_deref() == Some("请制作一个交互页面")));
-        assert!(state.workspace.messages.iter().all(|message| {
-            message.role != runtime::Role::Assistant && message.role != runtime::Role::Tool
+        assert!(state.workspace.messages.iter().any(|message| {
+            message.role == runtime::Role::Tool && message.tool_call_id.as_deref() == Some("call-test")
         }));
+        assert_eq!(state.workspace.messages.last().unwrap().content.as_deref(), Some(answer));
         let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
         assert_eq!(
             history.sessions[0].turns[0].status,
-            AgentAssistantStatus::Failed
+            AgentAssistantStatus::Completed
         );
+        let saved = history.sessions[0].turns[0].outcome.as_ref().unwrap();
+        assert_eq!(saved.answer.as_deref(), Some(answer));
+        assert!(saved.incomplete);
+        assert_eq!(saved.warning.as_deref(), Some("PROVIDER_EMPTY_RESPONSE"));
         assert!(history.sessions[0].turns[0]
             .run_summary
             .as_ref()
@@ -992,7 +1085,19 @@ fn resident_failure_keeps_question_but_drops_run_local_tool_transcript_before_re
     assert!(projected.contains("请制作一个交互页面"));
     assert!(projected.contains("重试"));
     assert!(!projected.contains("tool_search_result.v2"));
-    assert!(!projected.contains("call-test"));
+    let mut pending = std::collections::BTreeSet::new();
+    for message in request.request["messages"].as_array().unwrap() {
+        if message["role"] == "assistant" {
+            for call in message["tool_calls"].as_array().into_iter().flatten() {
+                pending.insert(call["id"].as_str().unwrap());
+            }
+        } else if message["role"] == "tool" {
+            assert!(pending.remove(message["tool_call_id"].as_str().unwrap()));
+        } else if message["role"] == "user" {
+            assert!(pending.is_empty(), "next user must not inherit an open tool batch");
+        }
+    }
+    assert!(pending.is_empty());
     request.answer("已重新开始。");
     provider.next().answer("页面尚未交付。");
     let reply = retry.join().unwrap();

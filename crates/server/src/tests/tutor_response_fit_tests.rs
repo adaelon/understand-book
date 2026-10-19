@@ -112,6 +112,7 @@ fn seed(case: &Value) -> (tempfile::TempDir, AppState, agent_run::PreparedAgentC
 struct Replay {
     output: Value,
     sources: Vec<Value>,
+    previous_design_ref: Option<String>,
     stage: std::cell::Cell<usize>,
 }
 
@@ -140,6 +141,11 @@ impl Replay {
 impl ModelAdapter for Replay {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         unreachable!("frozen local replay never calls a helper model")
+    }
+
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
+        unreachable!("frozen local replay never calls another helper model")
     }
 
     fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
@@ -184,13 +190,33 @@ impl ModelAdapter for Replay {
             ),
             n if n == 2 + usize::from(has_evidence) => (
                 None,
+                vec![call("design","tutor.step",{
+                    let output=self.output(plan);
+                    let target=&output["select"]["move"]["target"];
+                    json!({"operation":"design","operation_id":"work-allocation","design":{
+                        "target":target,"organizing_model":"Track application work separately from packet processing before deciding which work moves to another component.",
+                        "representation":{"kind":"text","reason":"This local work-allocation distinction can be established in the existing example."},
+                        "blocks":[{"block_id":"work-allocation","relation":"Moving packet processing to the NIC does not remove application work.",
+                            "purpose":target["expected_performance"],"source_bindings":target["source_bindings"]}],
+                        "connections":[],"focus_block_refs":["work-allocation"],"basis_refs":output["select"]["move"].get("interpretation_refs").cloned().unwrap_or(json!([])),
+                        "open_question_refs":[],"previous_ref":self.previous_design_ref,"revision_reason":"Preserve the learner's assisted distinction and examine what remains."}})
+                })],
+            ),
+            n if n == 3 + usize::from(has_evidence) => (
+                None,
                 vec![call(
                     "select",
                     "tutor.step",
-                    self.output(plan)["select"].clone(),
+                    {
+                        let mut request=self.output(plan)["select"].clone();
+                        request["move"]["design_ref"]=super::tutor_continuation_tests::accepted_design(plan,"design")["design_ref"].clone();
+                        request["move"]["block_refs"]=json!(["work-allocation"]);
+                        super::tutor_loop_tests::fixture_participation(&mut request["move"]);
+                        request
+                    },
                 )],
             ),
-            n if n == 3 + usize::from(has_evidence) => (
+            n if n == 4 + usize::from(has_evidence) => (
                 Some(self.output(plan)["answer"].as_str().unwrap().into()),
                 vec![],
             ),
@@ -227,6 +253,7 @@ fn replay(case: &Value, output: &Value) -> Value {
         inner: Box::new(Replay {
             output,
             sources: case["presented_sources"].as_array().unwrap().clone(),
+            previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),
             stage: Default::default(),
         }),
     };

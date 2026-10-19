@@ -1207,7 +1207,7 @@ mod tests {
     }
 
     fn outcome(trace: Vec<TraceStep>, effects: Vec<AgentEffect>) -> OuterOutcome {
-        OuterOutcome {
+        OuterOutcome { teaching_delivery_move_refs: Vec::new(),
             answer: Some("PRIVATE ANSWER TEXT".into()),
             answer_view: None,
             incomplete: false,

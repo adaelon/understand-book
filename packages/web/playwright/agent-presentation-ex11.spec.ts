@@ -49,8 +49,8 @@ test('EX11 formal supply: real point drag, save, reopen and follow-up in three v
     await page.screenshot({path:path.join(evidence,`reader-${viewport.width}.png`)});
     await page.request.post('http://127.0.0.1:4175/reopen');await page.reload();
     await expect(frame.locator('#readout')).toContainText(geometry.x.toFixed(2));
-    await expect(page.getByText('已恢复上次保存的现场')).toBeVisible();
-    await page.getByRole('textbox',{name:'针对当前现场追问'}).fill('解释当前点的位置');
+    await expect(page.getByText('已恢复上次保存的演示状态')).toBeVisible();
+    await page.getByRole('textbox',{name:'针对当前演示追问'}).fill('解释当前点的位置');
     await page.getByRole('button',{name:'发送追问',exact:true}).click();
     await expect(page.getByTestId('follow-up-status')).toHaveText('追问已完成');
     const requests=await page.request.get('http://127.0.0.1:4175/requests').then(r=>r.json());

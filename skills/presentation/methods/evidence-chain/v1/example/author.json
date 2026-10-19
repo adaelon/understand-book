@@ -1,0 +1,20 @@
+{
+  "title": "从证据走到有边界的结论",
+  "initial_state": {
+    "controlled": true,
+    "semantic_state": 0,
+    "transition_progress": 0
+  },
+  "state_contract": {
+    "controlled": "whether the illustrative paired measurements share hardware, workload and timing method; boolean",
+    "semantic_state": "completed explanation steps, integer 0..3",
+    "transition_progress": "visual progress toward next explanation step in [0,1); zero at step 3"
+  },
+  "readable_content": "用三组构造的耗时记录练习核对结论：先看记录，再算均值，最后检查比较条件。 构造数据，用于展示证据结构。连接线表示支持关系，不代表因果已被证明。 实际书籍任务须将记录替换为可回到原文的来源。三次示例测量只能支持这三次记录的描述，不建立总体优势。",
+  "assumptions": [
+    "实际书籍任务须将记录替换为可回到原文的来源。三次示例测量只能支持这三次记录的描述，不建立总体优势。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

@@ -1,5 +1,51 @@
 # CONTEXT —— 术语表
 
+## 学习工作区（LearningWorkspace）
+用户围绕已接受的大目标组织资料、聊天及私人理解的学习范围；当前打开的资料是其阅读焦点。同一用户的工作区共用账号额度，聊天、私人理解和局部画像按工作区归属，稳定偏好仍归账号。运行冻结目标版本和确切资料成员，资料读取同时受当前账号授权约束；旧记录经用户选择以原身份关联。状态：BOUNDARY_CHANGE，2026-10-18 W1–W5已完成，W6历史保留与选择承接已实现，验收记录统一见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+
+## 带入的学习记录（LinkedLearningRecords）
+用户确认当前大目标后，选定旧聊天或另一工作区聊天的已提交范围，并以原工作区、原聊天和原回合引用关联到当前工作区。聊天前缀固定，后续新回合需再次明确选择；必要因果事实、证据修订和来源保留原身份供回看和Agent读取。带入记录不直接计为当前掌握，新解释写入当前工作区，原记录保持原归属。状态：NEW，W6引用存储、保留入口与只读承接已实现（[ADR-0170 §4](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md#4-历史承接)）。
+
+## 工作区大目标（WorkspaceGoal）
+创建学习工作区时由用户填写或接受的一句话目标及明确约束，保留用户原话和修订关系。每次Agent规划及普通问答携带大目标，阶段焦点和聊天交付计划分别引用它。用户通过目标栏或对话明确改向形成新版本，临时插问保留目标；旧阶段停止主动推进，原运行快照和学习事实保留原版本。状态：BOUNDARY_CHANGE，W1目标历史及W4规划上下文、改向与阶段版本已实现（[目标工作区方案](docs/设计方案-目标工作区与统一Agent额度.md)）。
+
+## 阅读现场（ReaderWorkspace）
+当前一份材料的阅读或观看位置、选区、聊天选择和展示状态，现有运行中的 workspace_id 指此现场。现场通过独立 learning_workspace_id 关联学习范围；同工作区切资料继续原聊天，读位按工作区与确切资料版本保存，切工作区恢复各自最近资料、读位和聊天，在途运行保留接纳时的归属。普通输入草稿随工作区聊天保存，带选区的草稿继续绑定原资料。状态：BOUNDARY_CHANGE，W2运行归属和W5连续阅读交互已实现（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+
+## 共享工作区发布（WorkspaceRelease）
+发布者公开编排的目标、适用范围、确切资料版本、主题联系和建议路线的版本化成果。用户接受目标后创建个人学习工作区并引用公共成果，私人学习状态分别保存；共享归档停止新使用，已有实例继续沿原资料授权访问。状态：NEW，S1公共发布及S2个人使用与选择更新已实现，验收状态见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+
+## 共享工作区个人实例（WorkspaceReleaseInstance）
+用户确认个人目标后创建的学习工作区与确切公共发布版本的关联。用户明确选择更新，保留目标历史、私人资料身份和旧学习来源；两人的版本选择互不影响。私人材料曾与公共版本重叠也不抹除其个人添加意图。状态：NEW，S2已实现（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+
+## 运营构建任务（OperatorBuild）
+运营者选择已有成果与缺失资料、确认实际构建计划及平台预算后执行的准备任务。原DSH宿主调用原Build Engine，多个材料执行归同一父预算；暂停/继续保留原构建引用和已完成单元，成果沿PublishedLibrary导入并经S1发布。部分费用保留待核算；任务记录不替代执行器或另记一份成本。状态：NEW，B1已实现，验收与宿主配置见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)。
+
+视频扩展：纯视频新资料在一次提交中确认范围和平台预算后直接排队；真实进度按原片字节、音频块和已接纳语义单元表达。默认构建来源理解成果，额外 Tutor 教学资产另行选择；视频的原讲解结构属于来源理解。视频外部执行沿同一父预算准入与回执，完整金额缺失保持待核算。实施与验收见[视频后台预构建](docs/视频后台预构建-20261018.md)。
+
+## 个人资料准备（PersonalPreparation）
+用户从学习工作区上传资料或引用已有成果，沿原构建队列生成计划、确认百分比上限和额度期，准备完成后接回发起工作区。任务固定账号、工作区与来源；暂停、切换和目标修改不改变归属，已有成果复用不增加构建费。个人书籍使用DSH逐次调用计量；个人视频使用本地转写与原文阅读，完整语义预构建由平台提供。状态：NEW，B2已实现，范围及验收见[实施记录](docs/个人资料准备与跨资料媒体-20261018.md)。
+
+## 构建逐次模型计量（ProviderCallMetering）
+DSH在每次真实模型请求前准入，服务端冻结费率并预占账号及父任务额度；返回完整用量后结算，缺项保留待核算。每次传输重试具有独立实际调用身份，同次执行不另结算一份总额，历史消耗按原额度期基准显示。状态：NEW，`provider_calls_v1`已接B2；旧粗粒度执行器能力不变（[ADR-0171 §6](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md#6-个人准备的逐次模型计量)）。
+
+## 工作区跨资料媒体
+Agent在工作区冻结成员和当前授权范围内，以确切发布引用检索、取帧和复核另一份视频的原声。当前阅读焦点不变，文本和媒体观察分别归原资料证据；音频复核候选不覆盖保存的转写。状态：BOUNDARY_CHANGE，V1跨资料接入已完成（[实施记录](docs/个人资料准备与跨资料媒体-20261018.md)）。
+
+私人理解通过本轮已绑定的媒体来源保存确切发布、画面位置和原声范围；纯媒体来源不要求文字行号。`TeachingTarget.media_bindings`由运行时派生，旧文字记录保持原读取方式，普通Tutor目标输入继续使用原文字合同（[E1联合验收](docs/联合验收-工作区与统一额度-20261018.md)）。
+
+## 标准额度基准（AllowanceBasis）
+将一份固定内部额度表达为100%的换算基准，按版本绑定额度期；补充额度只加量，余额可以超过100%，历史使用原期基准。状态：EXISTING，Q1固定绑定、百分比授额及余额/历史接口已实现，Q4销售配置与百分比收款更正已接入；旧期由管理员明确绑定，商业数值待配置，界面验收状态见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
+
+## 额度补充方案（AllowanceOffer）
+运营者配置的购买选项，包含真实货币价格、增加的百分比、适用基准版本和人工收款说明；只有对应当前有效额度期的启用方案向读者展示。查看或选择方案不授额，运营确认付款后形成收款与授额事实，更正保留原记录。状态：NEW，Q4配置及人工收款承接已实现（[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
+
+## Agent 执行成本
+平台服务中回答、后台记忆、预构建及相关付费执行实际产生的成本，保留承担方、任务、用量依据以及确认、估计或待核算状态。用户扣减、平台成本和实际付款分别记录；运行费用沿原工作区归集，账号级记忆复核沿持久任务保留相关工作区来源，重试归同一父任务。相关工作区只是来源引用，不分摊或复制账号级费用；任务、工作区和账号比例始终按原额度期分组。外部执行使用逐调用或整次执行的一种结算粒度，部分用量不等同于完整成本。状态：BOUNDARY_CHANGE，Q2统一账本、W2/W3运行来源、Q3外部回执及Q5归集接口已接入，验收状态统一见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
+
+## 构建任务预算（BuildTaskBudget）
+用户或运营者明确确认、归属于同一构建任务的内部额度上限；并行子执行共享剩余额度，任务预算本身不形成扣款。个人任务的累计账号扣减以确认上限封顶，真实超出由平台承担；提高上限保留新旧确认，未知费用继续占用预算。状态：NEW，Q3准入、回执和显式增额已实现（[ADR-0171 §3–4](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md#3-额度与任务预算)）。
+
 ## 产品首页（Product home）
 面向自主学习者及希望孩子保留独立思考能力的家长，说明持续阅读与理解的价值、展示尝试和验证如何参与学习并提供开始使用入口的公开介绍页面。页面中的情境示意用于解释产品思路，不构成读者的实际学习记录。状态：EXISTING，定位与互动示例本地改版已实现（2026-10-12）。
 
@@ -58,7 +104,7 @@
 持有内测码的申请者提交注册信息后、完成邮箱验证前的注册申请，尚未成为读者账号。仅成功完成注册时使用内测码，申请失败或过期不消耗注册资格；状态：EXISTING，INV4 已实现（2026-10-09，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
 
 ## 账号使用额度（AccountAllowance）
-授予一个读者、用于承担其托管模型调用成本的使用权限，以人民币成本口径计量。它与用户实际付款、模型 Token 数及账户现金余额分别表达；状态：EXISTING（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)）。
+授予一个读者、用于承担其托管 Agent 服务的使用权限，内部沿用人民币成本口径计量，与实际付款、Token 数和现金余额分别表达。回答、后台整理与个人构建共用账号额度，用户界面按固定标准基准显示百分比；状态：BOUNDARY_CHANGE，统一账本、固定百分比投影及收款更正接口已实现，Q3/Q4验收状态见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)、[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
 
 ## 额度期（AllowancePeriod）
 一个账号使用额度的有效时间范围，同一账号同一时刻只有一个有效额度期。一次调用的费用归属固定到准入时的额度期，过期后仍可核算该次费用；状态：EXISTING，ADM3 建期/有效期编辑已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)）。
@@ -88,7 +134,7 @@
 项目维护者明确开放给代码分析者的源码、测试、设计文档和必要配置。未纳入 Git 不影响其资格；临时运行资料、私有配置、书稿和构建产物不因位于项目目录内而获得资格。状态：NEW（2026-09-18，见 `docs/代码只读MCP.md`）。
 
 ## Resident 运行 (Resident Run)
-一条读者消息触发的完整住户 Agent 工作过程，归属于提问时的书籍与会话，可以包含多次模型请求和工具调用。它以回答交付、失败或取消结束；运行结束与问题得到完整回答是两个判断。状态:EXISTING（见 [ADR-0127](docs/adr/0127-resident-agent-streaming-and-runtime-activity.md)）。
+一条读者消息触发的完整住户 Agent 工作过程，可以包含多次模型请求和工具调用，以回答交付、失败或取消结束。运行绑定提问时的资料、聊天、学习工作区、大目标版本及现场；同一回合明确接受的新目标另留回执，原快照不改写。运行结束与问题完整解决分别判断。状态：BOUNDARY_CHANGE，W2运行归属与W4目标投影已实现（[ADR-0127](docs/adr/0127-resident-agent-streaming-and-runtime-activity.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 ## Resident 运行活动 (Resident Activity)
 住户 Agent 一次运行中已经发生的模型请求、工具执行、阅读动作及其结果的可见记录。活动的先后与包含关系来自实际执行，准备调用、正在执行和执行完成具有不同含义。状态:EXISTING（见 [ADR-0127](docs/adr/0127-resident-agent-streaming-and-runtime-activity.md)）。
@@ -113,10 +159,13 @@
 普通用户在 Agent 对话和来源交互中看到的证据指代。它在系统内部绑定真实 LID,对外只表达可理解的来源标签、内容预览与精确跳转能力;标签必须由真实书树、节点类型与原文确定性派生,不由 LLM 自由命名。Agent 可以不产生来源;一旦产生,普通界面必须只消费 opaque ref 和用户标签。原始 LID 不属于普通用户界面,只可在显式诊断上下文中查看。来源呈现是受强制的边界契约,不依赖 Agent 自觉隐藏 LID。状态:NEW(见 [ADR-0086](docs/adr/0086-runtime-owned-user-visible-source-references.md))。
 
 ## 本轮证据账本 (turn evidence ledger)
-Resident Agent 在当前用户回合内实际观察且通过现有结构闸的连续证据段集合。条目只来自用户已验证选区或证据型读取结果;视口、导航候选、错误恢复提示等仅含 LID 的状态不是证据。用户可见来源引用只能绑定本账本中的条目;账本随回合结束,不构成新的持久真相源。状态:NEW(见 [ADR-0086](docs/adr/0086-runtime-owned-user-visible-source-references.md))。
+Resident Agent 在当前用户回合内实际观察且通过现有结构闸的连续证据段集合。条目按来源材料及版本区分，只来自用户已验证选区或证据型读取结果；视口、导航候选、错误恢复提示等仅含位置的状态不是证据。用户可见来源引用只能绑定本账本中的条目；账本随回合结束，不构成新的持久真相源。状态：BOUNDARY_CHANGE，跨书扩展设计已接受（[ADR-0169](docs/adr/0169-cross-book-reading-and-private-understanding.md)，承 ADR-0086）。
+
+## 跨书补讲
+围绕当前阅读任务，结合已有理解，从工作区内获授权材料取得来源支持的局部帮助；实际交互与可修订理解进入同一用户的 LearningMemory，保留原任务和材料出处，讲解完成不等于掌握。资料访问与当前理解查询共同限定于该工作区，明确带入的历史以原归属单独回读。状态：BOUNDARY_CHANGE，跨书链路及W3工作区范围、W6历史引用已实现（[ADR-0169](docs/adr/0169-cross-book-reading-and-private-understanding.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 ## 回答来源属性 (answer provenance)
-普通 Agent 回答中某段信息来自公开文本还是内部结构通道的类型化属性。用户可见对话文本与已验证规范证据正文属于公开文本来源,可跨回合沿用;`lid/start_lid/end_lid/anchor_lid/citation_candidate_lids` 等结构字段属于内部位置来源,即使自然化为章节措辞也不改变属性。明示 `LID`/节点号的措辞始终属于内部位置;仅字面相同且有公开文本来源时不构成 LID 泄露。状态:NEW(见 [ADR-0087](docs/adr/0087-provenance-aware-answer-delivery-and-compact-provider-history.md))。
+普通 Agent 回答中某段信息来自公开文本还是内部结构通道的类型化属性。用户可见对话文本与已验证规范证据正文属于公开文本来源,可跨回合沿用;`lid/start_lid/end_lid/anchor_lid/citation_candidate_lids` 等结构字段属于内部位置来源,即使自然化为章节措辞也不改变属性。明示 `LID`/节点号的措辞始终属于内部位置;仅字面相同且有公开文本来源时不构成 LID 泄露。普通整数章节、段落序号与内部根编号同形,不足以判定其来自内部位置。状态:NEW(见 [ADR-0087](docs/adr/0087-provenance-aware-answer-delivery-and-compact-provider-history.md))。
 
 ## 历史 Tool 回执 (historical Tool receipt)
 已完成回合的 Tool 调用在 Provider 上下文中的类型化摘要。它保留工具名、定位型参数、成功状态或错误码、证据账本实际接受的范围、生成的 source ref 与不含正文片段的 opaque result digest,但不包含 Tool result body,不复用轨迹中截断正文的 `result_digest`,也不把结果中出现的所有 LID 当成证据。状态:NEW(见 [ADR-0087](docs/adr/0087-provenance-aware-answer-delivery-and-compact-provider-history.md))。
@@ -144,12 +193,14 @@ Resident Agent 在当前用户回合内实际观察且通过现有结构闸的�
 
 ## 自动上下文压缩 (automatic context compaction)
 活动上下文达到模型高水位时,系统把旧历史转换为一个可验证且带来源覆盖的语义压缩检查点,以该检查点原子替换模型请求中的旧历史并在同一用户回合继续。它保留原始持久消息;当前用户原文、已验证选区和未完成工具链不经摘要。旧消息只有在检查点覆盖后才能退出活动投影,不得通过无语义替代的删除或截断制造空间。状态:NEW(见 [ADR-0091](docs/adr/0091-model-aware-agent-request-tool-exposure-and-active-context-budget.md))。
+2026-10-18 修订：DeepSeek Flash 使用实际窗口的常规 75% 压力水位，输出预留真实扣除；不再沿用 96K 固定压力。PreTurn 可覆盖上一轮遗留的末尾用户单条历史，MidTurn 保留当前问题。生成压缩失败而原请求仍能容纳时继续使用原请求。
 
 ## 压缩检查点 (compaction checkpoint)
 从一段旧活动历史派生的、带来源覆盖的类型化任务交接状态。它保存继续任务所需的当前目标、已完成进展、关键决定、用户约束、未决义务、未解歧义、关键事实、关键示例和下一步,但不保存思维过程,不成为新的事实源,也不包含由运行时账本重新注入的敏感上下文。检查点中的语义条目只能引用输入中已存在的历史 item 和证据 ref;未通过来源覆盖与引用校验时不得替代旧活动历史。状态:NEW(见 [ADR-0091](docs/adr/0091-model-aware-agent-request-tool-exposure-and-active-context-budget.md))。
 
 ## 回答交付诊断 (answer delivery diagnostic)
 来源边界校验在初次回答和唯一一次修复后产生的服务端结构记录,只含错误码、触发值、匹配形态与来源通道。它不保存回答候选全文或思维链,不进入 Provider 历史、公开历史 View 或轨迹 UI。状态:NEW(见 [ADR-0087](docs/adr/0087-provenance-aware-answer-delivery-and-compact-provider-history.md))。
+2026-10-18 扩展：执行错误也可作为初次失败记录，`fallback` 保存最终兜底是否可交付；最终状态按最后一次交付结果判断，保留此前的错误。普通模型、教学与上下文失败交付当前可用回答或有出处的已读原文，保持 `incomplete`，不生成正式教学完成记录。详见 [ADR-0150](docs/adr/0150-resident-unbounded-tool-loop-and-progress-stops.md)。
 
 ## 锚定 (anchor)
 节点 / 边 / 引用必须绑定到**真实存在的 LID**。基数按类型分裂 `[ADR-0010]`:**实体 / 概念锚定一个或多个 LID**(`occurrences`,贯穿全书的身份),**断言 / 引用锚定单个 LID**(`source_lid`)。未锚定或锚定到不存在 LID 的对象,一律由确定性闸丢弃。`citations[]` 只放真 LID 即此义。
@@ -709,7 +760,7 @@ Build Workbench 背后的服务端控制层:负责把上传的 `paper.md/paper.p
 书籍导入后、第一次昂贵语义模型调用前形成的公共确定性基座。它至少包含可信 canonical source、LID、`book.text` 所需基座与词法检索输入;paper 还要求 source reconciliation 与 Hybrid foundation integrity gate 通过。Reader 是否可进入只依赖此层的信任与完整性,不得等待 Pass1、Pass2、BookStructure 或目标产物。状态:NEW(见 [ADR-0093](docs/adr/0093-intent-confirmed-progressive-prebuild-and-reader-private-goal-artifacts.md))。
 
 ## 标准语义配方 (standard semantic recipe)
-以 `content_profile` 固定规则生成可跨阅读目标复用的公共语义层。`technical_learning` 当前包含 Pass1、profile sidecar 与 BookStructure,并由用户选择是否加入 Pass2 长程边增强;`paper` 另含 paper metadata、paper lexicon 与 PaperReadingGuide。Pass2 的选择必须进入已确认 `BuildPlan` 的依赖闭包,不由对话记忆或执行器临时推断。其配方 id 为 `standard_deep`,是产品提供的默认深读模板,不是导入后的默认执行授权;输入不得包含 `BuildIntent` 或 reader-private memory。状态:BOUNDARY_CHANGE(见 [ADR-0093](docs/adr/0093-intent-confirmed-progressive-prebuild-and-reader-private-goal-artifacts.md)、[ADR-0098](docs/adr/0098-optional-pass2-enrichment-for-book-structure.md))。
+以 `content_profile` 固定规则生成可跨阅读目标复用的公共语义层。`technical_learning` 当前包含 Pass1、profile sidecar 与 BookStructure；新计划默认关闭 Pass2 长程边增强，明确选择才开启；`paper` 另含 paper metadata、paper lexicon 与 PaperReadingGuide。Pass2 的选择必须进入已确认 `BuildPlan` 的依赖闭包，恢复使用原计划，不由对话记忆或执行器临时推断。其配方 id 为 `standard_deep`,是产品提供的默认深读模板,不是导入后的默认执行授权;输入不得包含 `BuildIntent` 或 reader-private memory。状态:BOUNDARY_CHANGE(见 [ADR-0093](docs/adr/0093-intent-confirmed-progressive-prebuild-and-reader-private-goal-artifacts.md)、[ADR-0098](docs/adr/0098-optional-pass2-enrichment-for-book-structure.md))。
 
 ## BuildIntent
 用户围绕当前书显式陈述并确认的版本化构建目标,记录目标、作用范围、期望输出、使用期限、来源 fingerprint 与隐私级别。自然语言原文只能作为 reader-private draft 输入,不得直接改变 source/LID/content profile、公共 Pass1/Pass2 prompt、BookStructure 或标准语义 artifact freshness;未确认、已取代或来源过期的 intent 不得授权模型构建。它属于 reader-private 状态,不是 Book truth、ReaderProfile 推断或 memory 自动结论;Codex 入口由当前 Codex 基于 `BuildPlanningContext` 形成 `BuildPlanningCandidate`,Reader UI 可由 fallback planner 形成同形候选,两者均须经 Core 编译后才成为 intent/plan draft。状态:BOUNDARY_CHANGE(见 [ADR-0093](docs/adr/0093-intent-confirmed-progressive-prebuild-and-reader-private-goal-artifacts.md)、[ADR-0094](docs/adr/0094-codex-designed-artifact-blueprints-and-versioned-registry.md)、[ADR-0096](docs/adr/0096-codex-authored-build-planning-reader-deterministic-authority.md))。
@@ -855,16 +906,16 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 `TeachingMap` 内注明目标对象及能力、所需前置对象及能力、适用条件和依据的公共依赖关系，描述完成相应目标所需的内容条件。读时 Agent 结合当前目标、私人学习证据与可提供的帮助决定实际教学顺序；关系本身不表示某个用户已具备或欠缺前置能力，也不等同材料的出现顺序。状态:NEW(见 `grill.md` Q100)。
 
 ## LearningMemory
-统一拥有读者私人稳定上下文、全局 Tutor 控制、教学会话、相关使用事实与动态学习解释的逻辑边界，持续记住用户如何提问、回应，以及系统讲过什么和提供过哪些帮助。`ProfileFact` 表达稳定背景与偏好，`TutorControl` 表达显式教学开关，独立 `TutorSession` 表达本次学习意图、焦点、材料范围与默认教法；有依据的理解假设和表现证据支持后续教学，满足能力证据条件且有正式对象关联的解释形成对象级投影，理解空间及路径进度保持可重建。状态:BOUNDARY_CHANGE（[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 持续观察、理解修订和反馈适配已实现）。
+统一拥有读者私人稳定上下文、全局 Tutor 控制、教学会话、相关使用事实与动态学习解释的逻辑边界，持续记住用户如何提问、回应，以及系统讲过什么和提供过哪些帮助。`ProfileFact` 表达稳定背景与偏好，`TutorControl` 表达显式教学开关，`TutorSession` 表达阶段意图、焦点、材料与教法；局部事实、解释和投影按学习工作区归属，稳定偏好仍归用户，正式对象投影继续要求适用的表现证据。带入历史以原事实引用单独读取。状态：BOUNDARY_CHANGE，T16/T17及W3工作区归属、W6历史引用已实现（[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 ## 全局 Tutor 模式（TutorControl）
 用户对整个应用是否启用持续教学的显式控制，跨阅读、聊天、演示页与应用重启延续；关闭会暂停当前教学并保留学习进展，开启后依据有效会话、当前材料与 Tutor 可用就绪状态继续或开始教学。它由 LearningMemory 拥有，与会话默认教法、结束某次学习及本回合直接讲解分别表达。状态:BOUNDARY_CHANGE（[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 Server 准入与 T18 界面接入已实现）。
 
 ## User Understanding Space（用户理解空间）
-`LearningMemory` 内围绕学习目标与原文的私人理解视图，表达当前理解、仍在处理的困难、适用的理解假设和已观察到的教学反馈，有正式对象关联时补充对象及关系视图。它由 `InteractionTrace`、`LearningEvidence` 和可用的 `LearnerKnowledgeState` 投影，保留用户原话与系统推断的区别，按新表现和用户纠正修订当前视图，不独立拥有可编辑学习状态或改写公共 `TeachingMap`。状态:BOUNDARY_CHANGE（见 `grill.md` Q97、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 来源教学与 T17 持续观察、理解修订和反馈适配已实现）。
+`LearningMemory` 内围绕学习目标与来源的私人理解视图，表达当前理解、困难、适用假设和真实教学反馈，由 `InteractionTrace`、`LearningEvidence` 及可用的 `LearnerKnowledgeState` 投影。查询、修订与重建按学习工作区及来源组织，保留用户原话和系统推断的区别；明确带入的原记录提供独立回看入口，不并入当前掌握统计。视图不独立拥有可编辑学习状态或改写公共 `TeachingMap`。状态：BOUNDARY_CHANGE，T16/T17及W3工作区范围、W6历史入口已实现（`grill.md` Q97、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 ## 理解假设
-根据相关使用事实，对用户当前如何理解、可能卡在哪里及何种教学支持值得采用形成的可修正解释，保留依据、适用范围和修订关系。它由 LearningMemory 持有并通过用户理解空间参与教学，保持暂定判断身份，不等同已确认画像事实、题目评分或对象级能力证明。状态:NEW（[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T17 已实现）。
+根据用户实际表达，对其当前如何理解、可能卡在哪里及何种教学支持值得采用形成的可修正解释，保留原话、适用范围和修订关系。已交付讲解、显示帮助和页面操作只说明表达发生时的支持条件，不能成为理解判断本身的依据。理解记录、教学设计和交付审阅共用宿主从原始交互解析的 `learner_grounding`；设计不另建用户画像，理解未知时仍正常讲清当前问题。它由 LearningMemory 持有并通过用户理解空间参与教学，保持暂定判断身份，不等同已确认画像事实、题目评分或对象级能力证明。状态:EXISTING（[ADR-0164 §11](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md#11-理解判断的共同依据)）。
 
 普通阅读对话同样可以形成和修订理解假设，不以开启主动教学或创建教学会话为前提；主动教学控制仍决定系统是否选择连续教学动作。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
 
@@ -889,14 +940,17 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 ## ResidentGoal（住户任务目标）
 用户在当前 Resident 聊天内要求完成的一项任务，保留用户意图、范围、明确交付要求以及可修订的工作判断，并关联实际成果与尚未完成的义务；一次运行停止不等于任务完成。它与长期读者目标、构建目标及教学会话学习意图分别表达，完成交付不等于读者掌握。状态:BOUNDARY_CHANGE（任务保存、调整、投影和实际交付检查已实现，见 [ADR-0136](docs/adr/0136-resident-goal-lifecycle-and-delivery-completion.md)；工作计划扩展已实现，见 [ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)）。
 
+## Agent 工作与纠错记忆（AgentWorkingState）
+同一教学会话与来源版本内，教师已有的解释、原文支持的理解、未决工作和审阅修订记录的有界私人视图。权威记录是 `learning.db` 中追加的 `AgentWorkReviewed` 事件，保存原请求、实际待交付稿、本轮已读原文、审阅结论及相邻稿件的实际变化；下一轮与重启恢复时重新读取。`agent_working_state` 与 `learner_context` 并列，教师的错误和解释缺口归于教师工作，不写成用户画像或学习者理解证据。`accepted_by_review` 表示该稿获审阅接纳，实际交付另以 `delivered_refs` 表达。状态：NEW（2026-10-18，见 [Tutor 架构](docs/架构.md#tutor-架构t1t12-已实现)及 `memory::agent_work`）。
+
 ## Goal 工作计划
 ResidentGoal 内由 Agent 维护、随实际观察修订的工作安排，用工作项及待做、进行中、已完成状态表达推进顺序与当前进展。工作项是达成用户要求的方法，可以重排、拆合或放弃；它不自行改变用户要求，不构成独立任务，也不能以全部勾选代替实际交付或内容完整性判断。状态:NEW（[ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)，EX13.3 已实现，2026-10-02）。
 
 ## TutorSession
-`LearningMemory` 独立持有的可回放私人教学会话，分别表达用户学习意图与约束、Agent 当前学习焦点、参考材料范围及默认教法，并引用私人路径与进度。首版仅有一个当前会话，可跨聊天和重启延续，历史会话可显式恢复；生命周期由用户动作决定，翻页、换材料、聊天压缩或一次表现不会自行切换目标或结束学习。状态:BOUNDARY_CHANGE（[ADR-0118](docs/adr/0118-learning-memory-owned-replayable-tutor-session.md)、[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)）。
+`LearningMemory` 独立持有的可回放私人教学会话，按学习工作区保存阶段学习意图、约束、当前焦点、材料范围、默认教法、私人进度及大目标版本。工作区目标修改后旧阶段暂停，不能在新版目标下直接恢复；阶段仍可聚焦某份资料或章节，切到其他成员资料时保留原阶段并允许普通提问。全局教学开关决定主动推进是否开启。状态：BOUNDARY_CHANGE，W3工作区归属及W4目标版本接续已实现（[ADR-0118](docs/adr/0118-learning-memory-owned-replayable-tutor-session.md)、[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 ## 会话学习意图
-用户希望在 TutorSession 中完成的事及其明确约束，允许最初表达模糊，与 Agent 当前采用的暂定学习目标及参考材料范围分别表达。改变最终目标、要求达到的能力深度或新增持续学习任务，由用户表达或接受方向变更；局部教学焦点与参考材料调整不覆写它，也不等同于支配本回合交互方式的 `ResolvedInteractionIntent`。状态:NEW(见 `grill.md` Q93)。
+用户希望在 TutorSession 阶段内完成的事及其明确约束，允许最初表达模糊，与 Agent 的当前焦点和本回合交互方式分别表达。新工作区先由用户确立大目标，会话意图在其内展开；界面使用“当前阶段”与“大目标”区分两层调整，阶段变化不覆写工作区目标。状态：BOUNDARY_CHANGE，W4/W5层级接入已实现（`grill.md` Q93、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 主动教学已开启而尚无当前会话时，用户的首个问题即可作为初始学习意图；目标在对话中可见、可调整，无须先进入会话管理。暂停和结束仍由用户明确恢复。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
 
@@ -967,6 +1021,24 @@ AgentPresentation 用于支持观察、比较、试验、推理或构造理解�
 
 ## 局部动态演示
 AgentPresentation 正文中围绕一个关系、动作或变化过程展开的动态插图，与附近文字共同构成解释。它可由实时图形或预渲染短片段承载，播放、暂停与定位服务于观察该过程；预渲染片段的时间定位不意味着能够实时改变模型参数。现场沿用 PresentationState，观看完成不直接形成学习效果结论。状态:NEW（[ADR-0139 §14](docs/adr/0139-explorable-explanation.md#14-通用制作与局部动态演示)，已接受设计，2026-09-28）。
+
+## 解释能力单元（Explanation method unit）
+以确切版本共同保存语法卡、可运行最小作品、适配说明与预期观察的制作资产，使用和采用证据关联该版本。它由 Agent 按当前理解障碍选择，解释内容及原文依据在实际任务中重新建立。状态：EXISTING，首批正式库已有八类解释关系（[ADR-0168](docs/adr/0168-executable-explanation-methods-and-evidence-based-evolution.md)）。
+
+## 语法卡（Explanation grammar card）
+针对一种解释关系的可组合配方，描述理解障碍、适用条件、对象和变化、交互及需重新核对的边界，并指向同版本的可运行最小作品。它区别于按主题复制的页面模板和工具能力卡。状态：EXISTING，现行目录含八个双图联动升级版和一个三维联动单元，每个版本保存完整作品与适配合同（[模板库](skills/presentation/methods/README.md)）。
+
+## 可运行最小作品（Runnable minimal example）
+围绕一个主要解释关系、带完整执行入口和可观察结果的最小实现，是解释能力单元中可读取、运行和按新内容改写的源码。图示、伪代码和只有文字的回归笔记不具有这一身份。状态：EXISTING，SE1 已实现并验证（[自进化方案 §2](docs/切片方案-解释能力库与Agent自进化.md#2-解释能力单元)）。
+
+## 演示用户反馈（Presentation user feedback）
+读者对确切演示版本的喜欢或不喜欢及可选原因、补充与现场，可修改或撤回；它表达该版本的使用体验，与带读转向的反馈信号、正式作答和学习证据分别持有。状态：EXISTING，SE4 存储与接口、SE5 原对话/工作区/附属窗口入口已实现（[自进化方案 §4](docs/切片方案-解释能力库与Agent自进化.md#4-用户喜欢与不喜欢)）。
+
+## 能力改进案例（Method improvement case）
+从真实任务中保留的可追溯经验，连接理解障碍、确切成果、使用方法、外部反馈、具体观察和修订依据，供判断是否形成跨任务改进。事实、原因解释和待验证假设分别表达。状态：EXISTING，SE6 已实现；缺失或不可用的依据保持原状态，案例不自动成为方法收益或采用结论（[自进化方案 §5](docs/切片方案-解释能力库与Agent自进化.md#5-从案例到采用)）。
+
+## 能力采用（Method adoption）
+依据与用途相称的作品、接入及使用证据，决定某个解释能力版本及适用范围进入后续制作的过程。采用记录关联旧组合和生效版本，支持缩小范围、回退或退役。首批制作资产的登记与跨任务收益结论分别形成依据。状态：EXISTING，首批库已登记，跨任务收益验证后置（[ADR-0168 §8](docs/adr/0168-executable-explanation-methods-and-evidence-based-evolution.md#8-首批模板库登记)）。
 
 ## AssessmentContract
 可判题 `TutorInteraction` 在 Learner 作答前冻结的版本化评分合同，与确切题面、学习目标、来源版本与范围、能力轴、判定方式和版本、答案键或原子 rubric、允许规则、部分正确与不确定策略及反馈/揭示策略绑定，存在正式对象时附加相应引用。Agent 可以在出题时提议该合同，看见回答后不得修改，答案在揭示条件满足前保持隐藏；缺少预构建对象不阻止有充分依据的题目判定。状态:BOUNDARY_CHANGE（见 `grill.md` Q84、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T17C 无对象评分已实现）。
@@ -1063,43 +1135,46 @@ Provider 续接状态是绑定 assistant 消息与原模型的私有协议字段
 一份确定原视频中的实际时刻或区间，表达可回看的来源位置，独立于对画面的语义分组。它是原始媒体的位置，区别于文本 LID 和可重新划分的视觉事件。状态：NEW，已确认设计（[ADR-0145](docs/adr/0145-video-media-locations-and-revisable-visual-units.md)）。
 
 ## 视觉事件单元（Visual Unit，VU）
-根据实际观察画面识别出的、有意义的画面状态或变化单元，关联相应媒体位置及相关转写。它属于可修订的语义组织，同一原视频重新分析后可以拆分或合并。状态：NEW，已确认设计（[视频 Grill VQ05](docs/grill-video.md#vq05-视觉事件单元)、[ADR-0145](docs/adr/0145-video-media-locations-and-revisable-visual-units.md)）。
+根据实际观察画面识别出的、有意义的画面状态或变化单元，关联相应媒体位置及相关转写。它属于可修订的语义组织，同一原视频重新分析后可以拆分或合并。状态：EXISTING，VI11 已实现（[视频 Grill VQ05](docs/grill-video.md#vq05-视觉事件单元)、[ADR-0145](docs/adr/0145-video-media-locations-and-revisable-visual-units.md)）。
 
 ## 视觉索引（visual index）
-以视觉事件及其画面文字、外观或变化线索组织的可检索材料目录，关联候选媒体位置和已处理范围。索引命中表示找到候选位置，区别于实际读取原始媒体取得的观察证据。状态：NEW，已确认设计（[视频 Grill VQ04](docs/grill-video.md#vq04-渐进视觉索引与问题驱动精读)）。
+以视觉事件及其画面文字、外观或变化线索组织的可检索材料目录，关联候选媒体位置和已处理范围。索引命中表示找到候选位置，区别于实际读取原始媒体取得的观察证据。状态：EXISTING，VI12 已实现（[视频 Grill VQ04](docs/grill-video.md#vq04-渐进视觉索引与问题驱动精读)）。
 
 ## 局部联合语义抽取（local joint semantic extraction）
-在一段有界材料内，结合相关转写、真实画面与必要前后文形成知识对象和关系候选的语义理解方式。共同理解保持各来源可分别追溯，纯语言或纯画面内容也可独立形成语义候选。状态：NEW，已确认设计（[视频 Grill VQ09](docs/grill-video.md#vq09-局部联合语义抽取)）。
+在一段有界材料内，结合相关转写、真实画面与必要前后文形成知识对象和关系候选的语义理解方式。共同理解保持各来源可分别追溯，纯语言或纯画面内容也可独立形成语义候选。状态：EXISTING，VI13 已实现（[视频 Grill VQ09](docs/grill-video.md#vq09-局部联合语义抽取)）。
 
 ## 联合证据集合（joint evidence set）
-共同支持某个具体判断的语言证据与视觉证据集合，各部分的来源及其所支持的信息可以分别说明。两类素材仅在时间上接近或同时被读取，不足以构成该判断的联合依据。状态：NEW，已确认设计（[视频 Grill VQ09](docs/grill-video.md#vq09-局部联合语义抽取)）。
+共同支持某个具体判断的语言证据与视觉证据集合，各部分的来源及其所支持的信息可以分别说明。两类素材仅在时间上接近或同时被读取，不足以构成该判断的联合依据。状态：EXISTING，VI13 已实现（[视频 Grill VQ09](docs/grill-video.md#vq09-局部联合语义抽取)）。
 
 ## 视频讲解结构（video discourse structure）
-原视频中定义、解释、示例、反例及条件限定等讲解角色和片段间关系的有来源组织。它描述材料自身的讲解安排，与视觉事件划分可以多对多关联，区别于针对某位用户制定的教学顺序。状态：NEW，已确认设计（[视频 Grill VQ10](docs/grill-video.md#vq10-原材料的讲解结构)）。
+原视频中定义、解释、示例、反例及条件限定等讲解角色和片段间关系的有来源组织。它描述材料自身的讲解安排，与视觉事件划分可以多对多关联，区别于针对某位用户制定的教学顺序。状态：EXISTING，VI14 已实现（[视频 Grill VQ10](docs/grill-video.md#vq10-原材料的讲解结构)）。
 
 ## 忠实转写正文（faithful transcript source）
 保持讲者原意和表达顺序的可读转写文本，可以整理断句、标点并依据材料纠正识别错误，同时保留机器转写的来源属性。画面中的信息、指代解释与补充讲解分别表达其来源。状态：NEW，已确认设计（[视频 Grill VQ14](docs/grill-video.md#vq14-忠实转写正文2026-09-30)）。
 
 ## 视频双语对照（video bilingual transcript）
-与整讲英文转写及其媒体位置对应的中文辅助译文和英文转写的对照内容，供观看时连续参照。英文转写及原视频保留来源身份，中文译文依附于对应的转写版本。状态：NEW，已确认设计（[视频 Grill VQ23](docs/grill-video.md#vq23-整讲中英对照2026-09-30)）。
+与整讲英文转写及其媒体位置对应的中文辅助译文和英文转写的对照内容，供观看时连续参照。英文转写及原视频保留来源身份，中文译文依附于对应的转写版本。状态：EXISTING，VI10 整讲中文与渐进双语对照已实现（[视频 Grill VQ23](docs/grill-video.md#vq23-整讲中英对照2026-09-30)）。
 
 ## 转写校正（transcript correction）
-对机器转写中的识别错误进行的有依据文字修订，可以由用户编辑或外部 Harness 的模型辅助完成。校正以保持讲者原意和表达顺序为目标，区别于整理讲稿或补充知识解释。状态：NEW，已确认设计（[视频 Grill VQ16](docs/grill-video.md#vq16-人工与模型辅助的转写校正2026-09-30)）。
+对机器转写中的识别错误进行的有依据文字修订，可以由用户编辑或外部 Harness 的模型辅助完成。校正以保持讲者原意和表达顺序为目标，区别于整理讲稿或补充知识解释。状态：EXISTING，VI16 构建材料维护已实现（[视频 Grill VQ16](docs/grill-video.md#vq16-人工与模型辅助的转写校正2026-09-30)）。
 
 ## 转写校正草稿（transcript correction draft）
-模型针对现有转写提出的待采纳文字修订，包含修改前后内容及简短理由。用户可以整批或部分采纳，已采纳内容构成正文修订与后续构建的输入。状态：NEW，已确认设计（[视频 Grill VQ17](docs/grill-video.md#vq17-模型校正草稿的采纳方式2026-09-30)）。
+模型针对现有转写提出的待采纳文字修订，包含修改前后内容及简短理由。用户可以整批或部分采纳，已采纳内容构成正文修订与后续构建的输入。状态：EXISTING，VI16 校正草稿与采纳已实现（[视频 Grill VQ17](docs/grill-video.md#vq17-模型校正草稿的采纳方式2026-09-30)）。
 
 ## 原音频复核（source audio verification）
-针对转写疑点重新读取相应原音频片段，并结合语言上下文和相关画面核对讲者实际措辞的活动，可发生在转写校正或日常伴读提问中。复核可为当前回答或校正建议提供依据，无法确定的内容仍保留为疑点，修改已保存转写须经用户采纳校正草稿。状态：NEW，已确认设计（[视频 Grill VQ18](docs/grill-video.md#vq18-按疑点复核原音频2026-09-30)、[视频 Grill VQ29](docs/grill-video.md#vq29-日常伴读按需复核原音频2026-10-01)）。
+针对转写疑点重新读取相应原音频片段，并结合语言上下文和相关画面核对讲者实际措辞的活动，可发生在转写校正或日常伴读提问中。复核可为当前回答或校正建议提供依据，无法确定的内容仍保留为疑点，修改已保存转写须经用户采纳校正草稿。状态：EXISTING，VI15 日常伴读复核已实现（[视频 Grill VQ18](docs/grill-video.md#vq18-按疑点复核原音频2026-09-30)、[视频 Grill VQ29](docs/grill-video.md#vq29-日常伴读按需复核原音频2026-10-01)）。
 
 ## 视频提问现场（video question context）
 一条视频问题所绑定的原视频位置、画面与提问时材料版本，默认在开始输入时绑定，也可包含用户明确选定的帧及关注区域或视频起止范围，后续播放与后台成果变化不改写已绑定内容。它表达问题所指的现场，区别于 Agent 实际读取材料后取得的媒体证据。状态：NEW，已确认设计（[视频 Grill VQ19](docs/grill-video.md#vq19-输入问题时暂停并绑定现场2026-09-30)、[视频 Grill VQ25](docs/grill-video.md#vq25-暂停画面框选提问2026-09-30)、[视频 Grill VQ26](docs/grill-video.md#vq26-指定视频时间范围后提问2026-09-30)、[视频 Grill VQ36](docs/grill-video.md#vq36-同源补齐成果自动接入2026-10-02)）。
+
+## 视频问题图片（video question image）
+读者随视频问题提供的一张可预览图片，来自播放器框选截图或粘贴、上传。它随问题草稿固定并作为用户输入交给模型；上传图片本身不证明其内容来自原视频。状态：EXISTING，2026-10-15 用户要求（[实现记录](docs/视频提问图片-20261015.md)）。
 
 ## 视频引用预览（video source preview）
 用户从回答中的来源引用打开、在回答旁观看的原视频片段，保留主播放器原有观看位置。用户可进一步进入对应原视频位置查看完整上下文。状态：NEW，已确认设计（[视频 Grill VQ20](docs/grill-video.md#vq20-回答旁的视频引用预览2026-09-30)）。
 
 ## 视频渐进成果接入（progressive video enrichment adoption）
-同一原视频与同一忠实转写版本下，当前观看在提问间隙自动采用已完成译文、视觉索引和语义成果的过程。它保持当前提问的材料与历史来源归属，区别于原视频或转写正文的改版。状态：NEW，已确认设计（[视频 Grill VQ36](docs/grill-video.md#vq36-同源补齐成果自动接入2026-10-02)）。
+同一原视频与同一忠实转写版本下，当前观看在提问间隙自动采用已完成译文、视觉索引和语义成果的过程。它保持当前提问的材料与历史来源归属，区别于原视频或转写正文的改版。状态：EXISTING，VI9 发布与接入、VI10 整讲中文、VI11 视觉事件生产、VI12 视觉检索、VI13 共享图谱、VI14 讲解结构已实现（[视频 Grill VQ36](docs/grill-video.md#vq36-同源补齐成果自动接入2026-10-02)）。
 
 ## 学习伙伴形象（learning companion character）
 在阅读、观看视频与提问中呈现用户所交流的学习伙伴身份的角色形象，是日常学习交互的一部分，也可用于品牌展示。其核心气质为安静、机灵、有好奇心，最鲜明的小执念是用户卡住时一定要陪其弄明白，幽默来自有点过头的认真。状态：NEW，已确认设计（[视频 Grill VQ31](docs/grill-video.md#vq31-日常学习伙伴形象2026-10-01)、[视频 Grill VQ32](docs/grill-video.md#vq32-学习伙伴气质与多邻国参考2026-10-01)、[视频 Grill VQ33](docs/grill-video.md#vq33-学习伙伴的鲜明小执念2026-10-01)）。
@@ -1115,7 +1190,7 @@ Resident Run 开始时固定的用户、原聊天、原材料与原现场代次�
 
 
 ## 已发布材料引用（PublishedBookRef）
-一本内容材料的某次不可变发布身份，由 book_id 与 publication_id 共同确定；同内容补齐能力形成新的发布，正文或实际来源附件改版使用新 book_id。运行与历史保存确切发布，普通现场沿用已绑定发布，视频伴读可按渐进成果接入约定采用同源的新发布。状态：BOUNDARY_CHANGE，MU3 已实现，视频扩展已确认设计、待实现（[ADR-0147 §3](docs/adr/0147-linux-multi-reader-service-without-redis.md)、[视频 Grill VQ36](docs/grill-video.md#vq36-同源补齐成果自动接入2026-10-02)）。
+一本内容材料的某次不可变发布身份，由 book_id 与 publication_id 共同确定；同内容补齐能力形成新的发布，正文或实际来源附件改版使用新 book_id。运行与历史保存确切发布，普通现场沿用已绑定发布，视频伴读可按渐进成果接入约定采用同源的新发布。状态：EXISTING，MU3 与 VI9 视频扩展已实现（[ADR-0147 §3](docs/adr/0147-linux-multi-reader-service-without-redis.md)、[视频 Grill VQ36](docs/grill-video.md#vq36-同源补齐成果自动接入2026-10-02)）。
 
 ## 应用身份与登录会话（Principal / AuthSession）
 服务器验证登录会话后确认的读者身份，以及该次登录的有效期与撤销范围。身份不由请求正文、模型参数或代理用户头声明；账号禁用、改密或会话撤销后不再有效。它与私人聊天、Tutor 教学会话和阅读现场分别表达。状态：EXISTING（[ADR-0147 §2](docs/adr/0147-linux-multi-reader-service-without-redis.md)，MU4）。

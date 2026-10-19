@@ -1,0 +1,39 @@
+{
+  "checked_at": "2026-10-09T07:25:27.842Z",
+  "animation": {
+    "duration": "1.85s",
+    "advances": true,
+    "before": 83.31899999991293,
+    "after": 233.3129999999129,
+    "state": "running"
+  },
+  "layouts": [
+    {
+      "viewport": 1440,
+      "overflow": 0,
+      "centerOffsetX": 0,
+      "centerOffsetY": 0
+    },
+    {
+      "viewport": 390,
+      "overflow": 0,
+      "centerOffsetX": 0,
+      "centerOffsetY": 0
+    },
+    {
+      "viewport": 320,
+      "overflow": 0,
+      "centerOffsetX": 0,
+      "centerOffsetY": 0
+    }
+  ],
+  "checks": [
+    "The production HTML animates before external scripts, styles and fonts download.",
+    "The startup animation remains until the production stylesheet is ready; a failed stylesheet does not hang startup.",
+    "The startup placeholder is replaced by the same text-free animation during identity recovery.",
+    "The login form replaces the animation after an unauthenticated response.",
+    "The initial catalog waits with an animation rather than showing a premature empty library.",
+    "Reduced motion uses the static book; desktop and phone remain centered without overflow."
+  ],
+  "errors": []
+}

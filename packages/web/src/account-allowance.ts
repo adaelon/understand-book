@@ -1,15 +1,34 @@
+export interface AllowancePercentage { value: string; nonzero: boolean; below_tenth: boolean }
+export interface AllowanceBasis { version: string; basis_micro_cny: number }
+export interface AllowancePercentages {
+  granted: AllowancePercentage; debited: AllowancePercentage; active_reserved: AllowancePercentage;
+  pending: AllowancePercentage; available: AllowancePercentage; deficit: AllowancePercentage;
+}
 export interface AllowancePeriod {
   period_id: string;
   starts_at: number;
   expires_at: number;
+  basis_status: 'bound' | 'unbound';
+  validity_state: 'active' | 'scheduled' | 'expired' | 'closed';
   balance: {
     granted_micro_cny: number;
     debited_micro_cny: number;
     active_reserved_micro_cny: number;
     pending_micro_cny: number;
     available_micro_cny: number;
+    allowance_basis: AllowanceBasis | null;
+    percentages: AllowancePercentages | null;
   };
 }
+export interface AccountAllowanceSummary {
+  current_allowance: AllowancePeriod | null;
+  latest_allowance: AllowancePeriod | null;
+  status: 'active' | 'scheduled' | 'expired' | 'closed' | 'no_period';
+  replenishment: { offers: AllowanceOffer[]; contact?: string | null };
+}
+export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; delta_milli_percent: number; basis_version: string; instructions: string }
+export function offerPercentage(milli: number): string { return `${milli / 1000}%`; }
+export function paymentAmount(fen: number): string { return `${Math.trunc(fen / 100)}.${String(fen % 100).padStart(2, '0')}`; }
 export interface AccountUsage {
   call_id: string;
   period_id: string;
@@ -20,25 +39,34 @@ export interface AccountUsage {
   state: 'reserved' | 'sent' | 'pending' | 'settled' | 'released';
   reserved_micro_cny: number;
   account_debit_micro_cny: number | null;
+  provider_cost_status?: string;
+  needs_reconciliation?: boolean;
   created_at: number;
   settled_at: number | null;
+  allowance_basis: AllowanceBasis | null;
+  allowance_percentages: { reserved: AllowancePercentage | null; debited: AllowancePercentage | null } | null;
 }
-export interface AccountUsagePage { items: AccountUsage[]; total: number; limit: number; offset: number }
+export interface AccountUsageGroup {
+  period_id: string; allowance_basis: AllowanceBasis | null; unknown_provider_cost_count: number;
+  percentages: Pick<AllowancePercentages, 'debited' | 'active_reserved' | 'pending'> | null;
+}
+export interface AccountUsagePage { items: AccountUsage[]; total: number; limit: number; offset: number; period_groups: AccountUsageGroup[] }
 
-/** Display all six stored decimal places when needed; never round a small charge to zero. */
-export function allowanceAmount(micro: number | null): string {
-  if (micro === null) return '待核算';
-  const value = BigInt(micro), magnitude = value < 0n ? -value : value;
-  const fraction = (magnitude % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '').padEnd(2, '0');
-  return `${value < 0n ? '-' : ''}${magnitude / 1_000_000n}.${fraction}`;
+/** Server projections use the immutable original-period basis; never recompute from current grants. */
+export function allowancePercent(value: AllowancePercentage | null | undefined): string {
+  if (!value) return '待配置比例';
+  if (value.below_tenth && value.nonzero) return value.value.startsWith('-') ? '减少低于 0.1%' : '低于 0.1%';
+  return `${value.value}%`;
 }
 export function allowanceTime(seconds: number): string {
   return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Hong_Kong', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(seconds * 1000));
 }
 export const usageState = { reserved: '正在预留', sent: '调用中', pending: '待核算', settled: '已扣减', released: '已释放（不扣减）' };
-export function usageOccupation(item: AccountUsage): number {
-  return ['reserved', 'sent', 'pending'].includes(item.state) ? item.reserved_micro_cny : 0;
+export function usageOccupation(item: AccountUsage): string {
+  return ['reserved', 'sent', 'pending'].includes(item.state) ? allowancePercent(item.allowance_percentages?.reserved) : '0%';
 }
+const purposes: Record<string, string> = { outer: '学习对话', main: '学习对话', memory: '记忆整理', memory_update: '记忆整理', memory_compaction: '记忆整理', compaction: '对话整理', context_compaction: '对话整理', build: '资料准备', book_build: '资料准备', prebuild: '预构建回答' };
+export function usagePurpose(purpose: string): string { return purposes[purpose] ?? (purpose.includes('memory') ? '记忆整理' : purpose.includes('build') ? '资料准备' : purpose.includes('compact') ? '对话整理' : '学习服务'); }
 
 const spendReasons: Record<string, string> = {
   ALLOWANCE_INSUFFICIENT: '本期可用额度不足以开始下一次 AI 调用。',

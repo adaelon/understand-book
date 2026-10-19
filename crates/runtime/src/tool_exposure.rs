@@ -390,6 +390,8 @@ pub struct ToolExposureEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ToolExposureState {
     activated: BTreeSet<String>,
+    pub(crate) video_available: bool,
+    pub(crate) pending_source_images: bool,
     pub(crate) presentation_unavailable_reason: Option<&'static str>,
     explicit_reader_mutation_intent: bool,
     action_hints: BTreeSet<TurnIntentHint>,
@@ -504,7 +506,15 @@ impl ToolExposurePlan {
             registry.registration("book.text_batch").is_some()
                 && state.is_activated("book.text_batch"),
         );
-        let direct_limit = tutor_slot + batch_read_slot + if registry.registration("goal.update").is_some() {
+        // Showing newly observed evidence must not evict a core read tool.
+        let source_slot = usize::from(
+            registry.registration("source.present").is_some()
+                && context.permissions.allow_source_presentation
+                && (context.evidence_state.has_observed_evidence() || state.pending_source_images),
+        );
+        let workspace_goal_slot = usize::from(registry.registration("workspace.goal.update").is_some());
+        let workspace_records_slot = usize::from(registry.registration("workspace.records.read").is_some());
+        let direct_limit = workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + source_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -521,6 +531,12 @@ impl ToolExposurePlan {
                     && state.presentation_unavailable_reason.is_some()
                 {
                     (ToolExposureDisposition::Hidden, ToolExposureReason::PresentationUnavailable)
+                } else if registration.handler == ToolHandlerId::SourcePresent && state.pending_source_images && context.permissions.allow_source_presentation {
+                    // These images are included in the next request. A source call
+                    // executes only after that request successfully observed them.
+                    (ToolExposureDisposition::Direct, ToolExposureReason::EvidenceAvailable)
+                } else if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio) && !state.video_available {
+                    (ToolExposureDisposition::Hidden, ToolExposureReason::ProfileMismatch)
                 } else { classify(registration.handler, context) };
                 ToolExposureEntry {
                     name: registration.spec.name.clone(),
@@ -968,6 +984,13 @@ pub fn resolve_capabilities(
         let entry = sampled_plan
             .entry(&registration.spec.name)
             .expect("sampled exposure plan must cover every registered tool");
+        // A text publication has no video backend. Its absent media tools must
+        // not change the actionable locator/recovery path for ordinary reading.
+        if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio)
+            && entry.reason == ToolExposureReason::ProfileMismatch
+        {
+            continue;
+        }
         let blocked_by = if !card.scopes.contains(&need.request.scope) {
             Some((CapabilityBlockReason::ScopeUnsupported, None))
         } else if !card.operations.contains(&need.request.operation) {
@@ -1450,10 +1473,12 @@ fn classify(
 
     match handler {
         Handler::BookTextBatch => (Disposition::Hidden, Reason::RuntimeOwned),
-        Handler::PresentationAuthor => (Disposition::Deferred, Reason::CapabilityDeferred),
+        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
-        Handler::GoalUpdate => (Disposition::Direct, Reason::RuntimeOwned),
+        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::WorkspaceRecordsRead => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::TutorStep => (Disposition::Hidden, Reason::RuntimeOwned),
+        Handler::LibraryList | Handler::LibraryRead => (Disposition::Deferred, Reason::CoreRead),
+        Handler::LibraryLearning => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::Artifact(_) if !context.artifact.has_overlay() => {
             (Disposition::Hidden, Reason::ArtifactOverlayUnavailable)
         }
@@ -1545,7 +1570,7 @@ fn classify(
 fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
-        ToolHandlerId::GoalUpdate | ToolHandlerId::TutorStep => 1,
+        ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::TutorStep => 1,
         ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText) => 3,
@@ -1658,7 +1683,22 @@ mod tests {
         }
     }
     use super::*;
-    use crate::orchestrator::resident_tool_registry;
+    // These existing exposure contracts describe runs without a learning workspace.
+    fn resident_tool_registry() -> ToolRegistry {
+        crate::orchestrator::resident_tool_registry().without_workspace_goal_update().without_workspace_records()
+    }
+    #[test]
+    fn w4_workspace_goal_tool_keeps_the_existing_read_surface() {
+        let registry = crate::orchestrator::resident_tool_registry().without_workspace_records();
+        let unscoped = registry.clone().without_workspace_goal_update();
+        let context = context(ContentProfileId::TechnicalLearning);
+        let state = ToolExposureState::default();
+        let old = ToolExposurePlan::build(&unscoped, &model(), &context, &state);
+        let scoped = ToolExposurePlan::build(&registry, &model(), &context, &state);
+        assert!(scoped.is_visible("workspace.goal.update"));
+        assert_eq!(scoped.direct_limit, old.direct_limit + 1);
+        for name in visible_names(&old) { assert!(scoped.is_visible(name), "workspace goal displaced {name}"); }
+    }
     use crate::{
         native_chat_request_projection, react_chat_request_projection, AgentRequestPlan, Message,
         ModelRuntimeCatalog, ProviderToolProtocol,
@@ -2542,7 +2582,78 @@ mod tests {
             ToolExposureReason::EvidenceAvailable
         );
         assert!(after_read.is_visible("source.present"));
-        assert!(after_read.visible_tools.len() <= DEFAULT_DIRECT_TOOL_LIMIT);
+        for name in visible_names(&initial) {
+            assert!(after_read.is_visible(name), "source.present displaced {name}");
+        }
+        assert_eq!(after_read.direct_limit, initial.direct_limit + 1);
+        assert!(after_read.visible_tools.len() <= after_read.direct_limit);
+    }
+
+    #[test]
+    fn tool_exposure_source_slot_requires_registration_permission_and_evidence() {
+        let registry = resident_tool_registry();
+        let without_source = registry
+            .clone()
+            .experimental_subset(|spec| spec.name != "source.present");
+        let runtime_profile = model();
+        let state = ToolExposureState::default();
+
+        for evidence_state in [
+            EvidenceState::Unlocated,
+            EvidenceState::CurrentAnchorOnly,
+            EvidenceState::KnownLids,
+            EvidenceState::UserProvided,
+        ] {
+            for allowed in [false, true] {
+                let mut exposure_context = context(ContentProfileId::TechnicalLearning);
+                exposure_context.permissions.allow_source_presentation = allowed;
+                exposure_context.evidence_state = evidence_state;
+                let without = ToolExposurePlan::build(
+                    &without_source, &runtime_profile, &exposure_context, &state,
+                );
+                let with = ToolExposurePlan::build(
+                    &registry, &runtime_profile, &exposure_context, &state,
+                );
+                let source_available = allowed
+                    && matches!(evidence_state, EvidenceState::KnownLids | EvidenceState::UserProvided);
+
+                assert_eq!(without.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT);
+                assert_eq!(with.direct_limit, without.direct_limit + usize::from(source_available));
+                assert_eq!(with.is_visible("source.present"), source_available);
+                for name in visible_names(&without) {
+                    assert!(with.is_visible(name), "{evidence_state:?}, allowed={allowed} displaced {name}");
+                }
+                if !source_available {
+                    assert_eq!(visible_names(&with), visible_names(&without));
+                    assert_eq!(with.entry("source.present").unwrap().disposition, ToolExposureDisposition::Hidden);
+                    assert_eq!(
+                        with.entry("source.present").unwrap().reason,
+                        if allowed { ToolExposureReason::EvidenceRequired } else { ToolExposureReason::PermissionDenied },
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tool_exposure_source_slot_preserves_hard_schema_budget() {
+        let registry = resident_tool_registry();
+        let mut constrained = model();
+        constrained.tool_schema_budget_bytes = ["tool.search", "book.text"]
+            .iter()
+            .map(|name| tool_schema_bytes(&registry.registration(name).unwrap().spec))
+            .sum::<usize>() + 3;
+        let mut exposure_context = context(ContentProfileId::TechnicalLearning);
+        exposure_context.evidence_state = EvidenceState::KnownLids;
+
+        let plan = ToolExposurePlan::build(
+            &registry, &constrained, &exposure_context, &ToolExposureState::default(),
+        );
+
+        assert_eq!(visible_names(&plan), vec!["book.text", "tool.search"]);
+        assert_eq!(plan.schema_bytes, constrained.tool_schema_budget_bytes);
+        assert_eq!(plan.schema_budget_bytes, constrained.tool_schema_budget_bytes);
+        assert_eq!(plan.entry("source.present").unwrap().reason, ToolExposureReason::SchemaBudget);
     }
 
     #[test]

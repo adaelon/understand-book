@@ -2,6 +2,61 @@ use super::*;
 use serde_json::json;
 
 #[test]
+fn presentation_read_error_explains_the_complete_operation_without_hiding_cause() {
+    let registry = crate::orchestrator::resident_tool_registry();
+    let registration = registry.registration("presentation.author").unwrap();
+    for input in [
+        json!({"operation":"read","candidate_id":"candidate-1","libraries":null,"based_on":null}),
+        json!({"operation":"read","reference":"candidate-1"}),
+        json!({"operation":"read","candidate_id":"candidate-1","based_on":null}),
+    ] {
+        let original = validate_schema(&registration.spec.parameters, &input, "$").unwrap_err();
+        let error = registration.validate_arguments(&input.to_string()).unwrap_err();
+        assert!(error.message.starts_with(&original.message));
+        assert!(error.message.contains("omit unrelated fields even when null"));
+        let selected_schema = error.message.split("Selected operation schema: ").nth(1).unwrap()
+            .split(" Use exactly one target:").next().unwrap();
+        let schema: Value = serde_json::from_str(selected_schema).unwrap();
+        assert_eq!(schema["properties"]["operation"]["enum"], json!(["read"]));
+        assert!(schema["properties"].get("libraries").is_none());
+        assert!(schema["properties"].get("based_on").is_none());
+        assert!(error.message.contains("candidate_id as the string returned by write/patch"));
+    }
+    registration.validate_arguments(&json!({"operation":"read","candidate_id":"candidate-1","offset":0,"length":200}).to_string()).unwrap();
+}
+
+#[test]
+fn video_tool_specs_examples_survive_real_provider_projection() {
+    let registry = crate::orchestrator::resident_tool_registry();
+    let specs: Vec<_> = ["video.read_frames", "video.search", "video.review_audio"]
+        .iter().map(|name| registry.registration(name).unwrap().spec.clone()).collect();
+    let profile = crate::ModelRuntimeCatalog::default().resolve("test", crate::ProviderToolProtocol::Native, None);
+    let plan = crate::AgentRequestPlan::for_agent_turn(profile, &[crate::Message::user("Explain this video frame")], &specs);
+    let (native, _) = crate::native_chat_request_projection("test", &plan);
+    let react = crate::react_chat_request_projection("test", &plan);
+    for (index, spec) in specs.iter().enumerate() {
+        let examples = spec.parameters["examples"].as_array().expect("video input examples");
+        assert!(!examples.is_empty());
+        for example in examples {
+            validate_schema(&spec.parameters, example, "$").unwrap();
+            registry.registration(&spec.name).unwrap().validate_arguments(&example.to_string()).unwrap();
+            match spec.name.as_str() {
+                "video.read_frames" => { serde_json::from_value::<crate::video::ReadFrames>(example.clone()).unwrap(); },
+                "video.search" => { serde_json::from_value::<read_tools::video_search::VideoSearch>(example.clone()).unwrap(); },
+                "video.review_audio" => { serde_json::from_value::<crate::video_audio::ReviewAudio>(example.clone()).unwrap(); },
+                _ => unreachable!(),
+            }
+        }
+        assert_eq!(native["tools"][index]["function"]["parameters"], spec.parameters);
+    }
+    let advertised: Vec<_> = specs.iter().map(|s| json!({"name":s.name,"description":s.description,"parameters":s.parameters})).collect();
+    assert!(react["messages"][0]["content"].as_str().unwrap().contains(&serde_json::to_string_pretty(&advertised).unwrap()));
+    let location = &specs[0].parameters["properties"]["location"];
+    assert!(location["properties"]["end_ms"]["description"].as_str().unwrap().to_ascii_lowercase().contains("exclusive"));
+    assert_eq!(&specs[2].parameters["properties"]["location"], location);
+}
+
+#[test]
 fn to5_examples_follow_final_schema_and_provider_requests() {
     let registry = crate::orchestrator::resident_tool_registry();
     let names = ["goal.update", "reader.note", "reader.highlight", "memory.save"];
@@ -58,7 +113,7 @@ fn presentation_to4_examples_follow_final_schema_parser_and_provider_requests() 
         serde_json::from_value::<crate::presentation_author::AuthorRequest>(input.clone()).unwrap();
         operations.insert(input["operation"].as_str().unwrap());
     }
-    assert_eq!(operations.into_iter().collect::<Vec<_>>(), vec!["deliver", "patch", "prepare", "preview", "read", "render_animation", "render_plot", "search", "write"]);
+    assert_eq!(operations.into_iter().collect::<Vec<_>>(), vec!["deliver", "patch", "prepare", "preview", "read", "read_method", "render_animation", "render_plot", "search", "write"]);
     assert_eq!(native["tools"][0]["function"]["parameters"], spec.parameters);
     assert!(react["messages"][0]["content"].as_str().unwrap().contains(&serde_json::to_string_pretty(&json!([spec])).unwrap()));
     for operation in ["read", "search", "patch"] {
@@ -95,7 +150,8 @@ fn advertised_examples_survive_provider_projection_and_real_validation() {
             count += 1;
         }
     }
-    assert_eq!(count, 47);
+    // Workspace and teaching examples plus five executable video inputs.
+    assert_eq!(count, 60);
 }
 
 #[test]
@@ -117,20 +173,20 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         context
     };
     let cases = [
-        ("active", json!({"status":"active"}), 8),
-        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 10),
+        ("active", json!({"status":"active"}), 10),
+        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 12),
         ("observing", json!({"status":"observing"}), 2),
         ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 3),
         ("reference", json!({"status":"reference"}), 1),
-        ("explain_selection", action("explain_selection"), 6),
-        ("clarify_answer", action("clarify_answer"), 6),
-        ("continue_answer", action("continue_answer"), 8),
-        ("supplement", supplement, 8),
-        ("guided_default", guided, 8),
-        ("confirmed_preference", preferred, 8),
-        ("choice_explain", choice("explain"), 6),
-        ("choice_compare", choice("compare"), 6),
-        ("choice_observe", choice("observe"), 6),
+        ("explain_selection", action("explain_selection"), 8),
+        ("clarify_answer", action("clarify_answer"), 10),
+        ("continue_answer", action("continue_answer"), 10),
+        ("supplement", supplement, 10),
+        ("guided_default", guided, 10),
+        ("confirmed_preference", preferred, 10),
+        ("choice_explain", choice("explain"), 10),
+        ("choice_compare", choice("compare"), 10),
+        ("choice_observe", choice("observe"), 10),
     ];
     let mut snapshots = serde_json::Map::new();
     for (name, context, count) in cases {
@@ -183,6 +239,66 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         states.extend(unavailable);
         std::fs::write(path, serde_json::to_vec_pretty(&states).unwrap()).unwrap();
     }
+}
+
+#[test]
+fn tutor_neutral_request_can_invite_without_rewriting_learner_intent_or_forcing_every_turn() {
+    let context = json!({"status":"active","current_request":"I still mix moving time up with the whole journey."});
+    let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
+    let registration = registry.registration("tutor.step").unwrap();
+    let examples = registration.spec.parameters["examples"].as_array().unwrap();
+    for choice in ["support", "invite", "conclude"] {
+        let request = examples.iter().find(|e| e["move"]["participation"]["choice"]==choice).unwrap();
+        registration.validate_arguments(&request.to_string()).unwrap();
+        let _:crate::tutor::TeachingParticipation=serde_json::from_value(request["move"]["participation"].clone()).unwrap();
+        assert_eq!(request["move"]["interaction_intent"],"neutral","teacher initiative is not learner-requested guided inquiry");
+        assert_eq!(request["move"]["intent_origin"],"neutral");
+        assert_eq!(request["move"]["response_expectation"].is_object(),choice=="invite");
+    }
+    let mut unchosen=examples.iter().find(|e|e["operation"]=="select").unwrap().clone();
+    unchosen["move"].as_object_mut().unwrap().remove("participation");
+    let mut historical=unchosen["move"].clone();
+    historical.as_object_mut().unwrap().remove("target"); // Historical object-only moves predate source targets.
+    assert!(serde_json::from_value::<crate::tutor::TeachingMove>(historical).is_ok(),"old persisted moves remain readable");
+    assert!(registration.validate_arguments(&unchosen.to_string()).is_err(),"a new selection must decide who supplies the next inference");
+}
+
+#[test]
+fn tutor_participation_rationale_stays_private_while_the_invitation_remains_public() {
+    let request=crate::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+        .find(|e|e["move"]["response_expectation"].is_object()).unwrap().clone();
+    let public:Value=serde_json::from_str(&crate::tutor::public_arguments(&request.to_string())).unwrap();
+    assert_eq!(public["move"]["response_expectation"],request["move"]["response_expectation"]);
+    assert_eq!(public["move"]["prompt"],request["move"]["prompt"]);
+    assert!(public["move"].get("participation").is_none());
+    assert!(public["move"].get("delivery_text").is_none(), "a prepared draft is public only when delivered");
+    assert!(!public.to_string().contains(request["move"]["participation"]["reason"].as_str().unwrap()));
+    for malformed in [json!({"operation":"select","participation":request["move"]["participation"]}),
+        json!({"operation":"select","move":request["move"].to_string()})] {
+        assert!(!crate::tutor::public_arguments(&malformed.to_string()).contains("participation"));
+    }
+}
+
+#[test]
+fn tutor_new_support_allocates_help_and_an_optional_remaining_inference() {
+    let context = json!({"status":"active"});
+    let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
+    let registration = registry.registration("tutor.step").unwrap();
+    let mut request = registration.spec.parameters["examples"].as_array().unwrap().iter()
+        .find(|e| e["move"]["participation"]["choice"] == "support").unwrap().clone();
+    registration.validate_arguments(&request.to_string()).unwrap();
+    request["move"]["participation"]["learner_inference"] = Value::Null;
+    registration.validate_arguments(&request.to_string()).unwrap();
+    assert!(request["move"].get("response_expectation").is_none(), "unfinished work is not a forced invitation");
+    for field in ["support", "learner_inference"] {
+        let mut incomplete = request.clone();
+        incomplete["move"]["participation"].as_object_mut().unwrap().remove(field);
+        assert!(registration.validate_arguments(&incomplete.to_string()).is_err());
+    }
+    request["move"].as_object_mut().unwrap().remove("delivery_text");
+    assert!(registration.validate_arguments(&request.to_string()).is_err(), "new teaching delivers prepared content rather than an outline");
+    let historical = json!({"choice":"support", "reason":"The learner needs this premise."});
+    assert!(serde_json::from_value::<crate::tutor::TeachingParticipation>(historical).is_ok(), "existing recorded decisions stay readable");
 }
 
 #[test]

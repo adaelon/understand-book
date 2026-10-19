@@ -103,7 +103,9 @@ impl SessionProjection {
                 validate_agent_turn(&turn)?;
                 if bindings
                     .iter()
-                    .any(|b| b.book_id != self.session.as_ref().unwrap().book_id)
+                    .any(|b| b.book_id != turn.published_book_ref.as_ref().map(|p|p.book_id.as_str()).unwrap_or(&self.session.as_ref().unwrap().book_id)
+                        && (b.publication_id.as_deref().is_none_or(str::is_empty)
+                            || b.source_revision.as_deref().is_none_or(str::is_empty)))
                 {
                     return Err(invalid("source belongs to another book"));
                 }
@@ -113,6 +115,14 @@ impl SessionProjection {
                 std::slice::from_ref(goal),
                 None,
             )?,
+            EventBody::WorkspaceGoalUpdated { goal } => {
+                let turn = self.turn(event)?;
+                if self.session.as_ref().unwrap().learning_workspace_id.is_none()
+                    || goal.text.trim().is_empty() || goal.revision == 0
+                    || turn.domain.workspace_goal_update.as_ref().is_some_and(|old| old.revision >= goal.revision) {
+                    return Err(invalid("invalid accepted workspace goal revision"));
+                }
+            }
             EventBody::EffectDelivered { effect_id, .. } => {
                 let turn = self.turn(event)?;
                 if effect_id.is_empty() || turn.domain.effects.iter().any(|e| e.effect_id == *effect_id && e.disposition.is_some()) {
@@ -138,9 +148,12 @@ impl SessionProjection {
             }
         }
         if let EventBody::TurnFinished(f) = &event.body {
+            let turn = self.turn(event)?;
             if f.source_bindings
                 .iter()
-                .any(|b| b.book_id != self.session.as_ref().unwrap().book_id)
+                .any(|b| b.book_id != turn.published_book_ref.as_ref().map(|p|p.book_id.as_str()).unwrap_or(&self.session.as_ref().unwrap().book_id)
+                    && (b.publication_id.as_deref().is_none_or(str::is_empty)
+                        || b.source_revision.as_deref().is_none_or(str::is_empty)))
             {
                 return Err(invalid("source belongs to another book"));
             }
@@ -186,6 +199,7 @@ impl SessionProjection {
             EventBody::SessionCreated(c) => {
                 self.session = Some(AgentChatSession {
                     id: c.session_id.clone(),
+                    learning_workspace_id: c.learning_workspace_id.clone(),
                     book_id: c.book_id.clone(),
                     title: c.title.clone(),
                     created_at: c.created_at.clone(),
@@ -218,6 +232,11 @@ impl SessionProjection {
                     }
                     EventBody::GoalUpdated { goal } => {
                         upsert_goals(session, std::slice::from_ref(goal))
+                    }
+                    EventBody::WorkspaceGoalUpdated { goal } => {
+                        session.turns.iter_mut().find(|turn| Some(&turn.turn_id) == event.turn_id.as_ref()).unwrap()
+                            .domain.workspace_goal_update = Some(goal.clone());
+                        self.facts.push(event.clone());
                     }
                     EventBody::TurnFinished(f) => {
                         finish(

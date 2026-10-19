@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   BUILD_CAPABILITY_REGISTRY,
   compileBuildMode,
+  compileBuildModeV2,
+  compileBuildModeV3,
   standardDeepStageClosure,
   validateBuildCapabilityRegistry,
   type BuildModeCompilationV1,
@@ -73,7 +75,7 @@ function snapshot(
   profileId: BuildContentProfile["id"],
   closedStages: string[],
 ): AutomaticBuildSnapshot {
-  const stages = standardDeepStageClosure(profile(profileId)).map((stage) => ({
+  const stages = standardDeepStageClosure(profile(profileId), { pass2: "enabled" }).map((stage) => ({
     stage,
     pending_tasks: [],
     closed: closedStages.includes(stage),
@@ -95,6 +97,7 @@ function compilation(
   const closed = profileId === "paper" ? ["pass1", "paper_metadata"] : ["pass1"];
   return compileBuildMode({
     mode,
+    ...(mode === "standard_deep" ? { pass2: "enabled" as const } : {}),
     book_id: `book-${profileId}`,
     source_fingerprint: `source-${profileId}`,
     content_profile: contentProfile,
@@ -165,14 +168,14 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
   });
 
   it("derives stable profile-specific standard closures from the current DAG", () => {
-    expect(standardDeepStageClosure(profile("technical_learning"))).toEqual([
+    expect(standardDeepStageClosure(profile("technical_learning"), { pass2: "enabled" })).toEqual([
       "pass1",
       "profile_sidecar",
       "pass2",
       "book_structure",
       "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
-    expect(standardDeepStageClosure(profile("paper"))).toEqual([
+    expect(standardDeepStageClosure(profile("paper"), { pass2: "enabled" })).toEqual([
       "pass1",
       "paper_metadata",
       "paper_lexicon",
@@ -182,13 +185,13 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "paper_reading_guide",
       "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
-    expect(standardDeepStageClosure(profile("technical_learning"), { pass2: "disabled" })).toEqual([
+    expect(standardDeepStageClosure(profile("technical_learning"))).toEqual([
       "pass1",
       "profile_sidecar",
       "book_structure",
       "formal_objects", "cognitive_materials", "teaching_publish",
     ]);
-    expect(standardDeepStageClosure(profile("paper"), { pass2: "disabled" })).toEqual([
+    expect(standardDeepStageClosure(profile("paper"))).toEqual([
       "pass1",
       "paper_metadata",
       "paper_lexicon",
@@ -203,6 +206,7 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
     ).reverse();
     const compiled = compileBuildMode({
       mode: "standard_deep",
+      pass2: "enabled",
       book_id: "book-paper",
       source_fingerprint: "source-paper",
       content_profile: profile("paper"),
@@ -225,34 +229,36 @@ describe("IP3 capability registry and deterministic BuildPlan compiler", () => {
       "public.formal_objects", "public.cognitive_materials", "public.teaching_publish",
     ]);
 
-    const withoutPass2 = compileBuildMode({
-      mode: "standard_deep",
-      pass2: "disabled",
-      book_id: "book-technical-no-pass2",
-      source_fingerprint: "source-technical-no-pass2",
-      content_profile: profile("technical_learning"),
-      plan_id: "plan-technical-no-pass2",
-      revision: 1,
-      created_at: NOW,
-      budget: { on_exceed: "needs_user" },
-      public_freshness: [],
-    });
-    expect(withoutPass2.plan?.public_stage_closure).toEqual([
-      "pass1",
-      "profile_sidecar",
-      "book_structure",
-      "formal_objects", "cognitive_materials", "teaching_publish",
-    ]);
-    expect(withoutPass2.plan?.create).toEqual([
-      "public.pass1",
-      "public.profile_sidecar",
-      "public.book_structure",
-      "public.formal_objects", "public.cognitive_materials", "public.teaching_publish",
-    ]);
-    expect(withoutPass2.plan?.excluded).toContainEqual({
-      artifact: "public.pass2",
-      reason: "disabled by the confirmed standard_deep plan",
-    });
+    for (const compiler of [compileBuildMode, compileBuildModeV2, compileBuildModeV3]) {
+      const withoutPass2 = compiler({
+        mode: "standard_deep",
+        book_id: "book-technical-no-pass2",
+        source_fingerprint: "source-technical-no-pass2",
+        content_profile: profile("technical_learning"),
+        plan_id: "plan-technical-no-pass2",
+        revision: 1,
+        plan_revision: 1,
+        created_at: NOW,
+        budget: { on_exceed: "needs_user" },
+        public_freshness: [],
+      });
+      expect(withoutPass2.plan?.public_stage_closure).toEqual([
+        "pass1",
+        "profile_sidecar",
+        "book_structure",
+        "formal_objects", "cognitive_materials", "teaching_publish",
+      ]);
+      expect(withoutPass2.plan?.create).toEqual([
+        "public.pass1",
+        "public.profile_sidecar",
+        "public.book_structure",
+        "public.formal_objects", "public.cognitive_materials", "public.teaching_publish",
+      ]);
+      expect(withoutPass2.plan?.excluded).toContainEqual({
+        artifact: "public.pass2",
+        reason: "disabled by the confirmed standard_deep plan",
+      });
+    }
 
     const stalePass2WithFreshStructure = inspectAutomaticBuildStageFreshness(
       snapshot("technical_learning", ["pass1", "profile_sidecar", "book_structure", "formal_objects", "cognitive_materials", "teaching_publish"]),

@@ -1,6 +1,6 @@
 # ADR-0087 Provenance-aware answer delivery and compact provider history
 
-Status: Accepted, amended 2026-07-20.
+Status: Accepted, amended 2026-07-20 and 2026-10-16.
 Extends: ADR-0026 and ADR-0086.
 Change type: 边界重构。
 
@@ -14,6 +14,7 @@ Change type: 边界重构。
 - 依赖 Agent 自觉避免 LID:遗漏仍会把内部定位暴露给普通用户。
 
 **命门**:来自 `lid/start_lid/end_lid/anchor_lid/citation_candidate_lids` 等结构字段的值属于内部位置,即使改写成自然语言仍是内部位置;“LID X”“节点 X”等明示内部措辞始终拒绝。来自用户可见文本或已验证规范证据正文的同形数字属于公开文本来源,可跨回合沿用;发生字面碰撞时,明示内部措辞优先拒绝,否则公开文本来源优先允许。
+整数章节、段落序号（如“第 6 节”“Section 6”）与根 LID 同形不能证明内部来源,按普通文本接受；明确的 LID、节点、位置／编号措辞、括号定位及多级位置仍受原规则约束。
 **何时回头**:Provider 能原生返回逐片段、不可伪造的来源标签时,可用原生结构替代 Runtime 的来源属性账本。
 **展开**:[Agent 对话用户可见来源切片方案](../切片方案-Agent对话用户可见来源.md)。
 

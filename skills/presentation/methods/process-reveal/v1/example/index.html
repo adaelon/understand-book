@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>沿关系逐步展开过程</title><style>
+:root{color-scheme:light;--ink:#193538;--muted:#526669;--paper:#f4f3ee;--line:#cdd8d5;--teal:#087d77;--orange:#bd501e}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,"Microsoft YaHei",sans-serif}
+main{max-width:760px;margin:auto;padding:24px}h1{font-size:clamp(25px,4vw,34px);line-height:1.3;letter-spacing:-.035em;margin:5px 0 12px}p{margin:8px 0}.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--teal);font-weight:750}.intro{color:var(--muted)}
+.figure{margin:22px 0 12px;border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}.scene{display:block;width:100%;height:auto;max-height:420px}.scene text{font:20px system-ui,sans-serif;fill:var(--ink)}.scene .small{font-size:16px}.scene .grid{stroke:#e3e9e6;stroke-width:1}.scene .axis{stroke:#7a9393;stroke-width:1.5}.scene .accent{fill:var(--teal)}
+.caption{padding:0 16px 14px;font-size:14px;color:var(--muted)}.readout{border-left:3px solid var(--teal);padding:4px 14px;margin:16px 0;min-height:72px}.readout strong,output{font-variant-numeric:tabular-nums}.readout strong{font-size:22px}.controls{background:#e9eee9;border-radius:14px;padding:16px}.buttons{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+button,input,select{font:inherit;min-height:44px}button{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:8px 14px;cursor:pointer}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #d6883f;outline-offset:3px}#play{background:var(--teal);color:#fff;border-color:var(--teal)}label{display:block;margin:8px 0 0}input[type=range]{width:100%;margin:0;accent-color:var(--teal)}input[type=checkbox]{width:22px;min-height:22px;vertical-align:middle;accent-color:var(--teal)}select{max-width:100%;padding:4px 8px;background:#fff;border:1px solid var(--line);border-radius:6px}.note{font-size:14px;color:var(--muted);margin-top:14px}.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:14px}.evidence{margin:12px 16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}.evidence p{margin:0}.data-table{border-collapse:collapse;width:100%;font-size:14px}.data-table th,.data-table td{padding:4px 10px;text-align:left;border-bottom:1px solid var(--line)}[hidden]{display:none!important}
+@media(max-width:400px){main{padding:14px 12px}.controls{padding:12px}.scene text{font-size:24px}.scene .small{font-size:21px}.caption{padding:0 12px 10px}}
+</style></head>
+<body><main><div class="eyebrow">EXPLANATION STUDY / 05</div><h1>沿关系逐步展开过程</h1><p class="intro">从 [2,3,4] 出发，逐项加数、按阈值筛选，再求和。每一步保留前面的结果，沿箭头追踪数据。</p>
+<section class="figure" aria-label="解释图形"><svg id="scene" class="scene" viewBox="0 0 480 310" role="img" aria-labelledby="scene-title scene-desc"><title id="scene-title">沿关系逐步展开过程</title><desc id="scene-desc">箭头绘制进度只表示讲解展开；节点里的数组是该步骤完成后的准确结果。</desc><g id="connections" stroke="#bd501e" stroke-width="3" fill="none"></g><g id="nodes"></g><circle id="cursor" r="5" fill="#bd501e"/></svg><p class="caption">箭头绘制进度只表示讲解展开；节点里的数组是该步骤完成后的准确结果。</p></section>
+<section id="readout" class="readout" aria-label="当前结果"><strong id="stage-title"></strong><p id="result-value"></p></section>
+<section class="controls" aria-label="观察控件"><div class="buttons"><button id="back">前一步</button><button id="play" aria-pressed="false">播放</button><button id="next">后一步</button><button id="reset">重置</button></div><label for="position">讲解位置 <output id="position-label"></output></label><input id="position" type="range" min="0" max="3" step="0.001" value="0"><label for="increment">每项加：<output id="increment-value"></output></label><input id="increment" type="range" min="0" max="3" step="1"><label for="threshold">保留值 ≥：<output id="threshold-value"></output></label><input id="threshold" type="range" min="2" max="8" step="1"></section><p class="note">显式流程：map(x→x+增量) → filter(x≥阈值) → sum。空数组的和约定为 0。</p></main>
+<script>(()=>{const TITLE="沿关系逐步展开过程",MAX_STEP=3,DEFAULTS={"increment": 1, "threshold": 4};
+  const $ = id => document.getElementById(id);
+  const fmt = n => Number(n.toFixed(4)).toString();
+  const clamp = (n,lo=0,hi=1) => Math.max(lo,Math.min(hi,n));
+  const attr = (id,key,value) => $(id).setAttribute(key,value);
+  const initial = {...DEFAULTS,...(window.presentation?.initialState ?? {})};
+  const state = {...initial,semantic_state:0,transition_progress:0,playing:false};
+  let frame=0,lastTime=0;
+  const snapshot=()=>({...state});
+  const commit=()=>window.presentation?.commitState();
+  function pause(){cancelAnimationFrame(frame);state.playing=false;}
+  function position(q){q=clamp(q,0,MAX_STEP);state.semantic_state=Math.floor(q);state.transition_progress=q-state.semantic_state;}
+function renderAt(s,k,p){const input=[2,3,4],mapped=input.map(x=>x+s.increment),kept=mapped.filter(x=>x>=s.threshold),total=kept.reduce((a,b)=>a+b,0);const labels=['输入','逐项加 '+s.increment,'保留 ≥ '+s.threshold,'求和'];const values=[JSON.stringify(input),JSON.stringify(mapped),JSON.stringify(kept),String(total)];$('nodes').innerHTML=values.map((value,i)=>`<g data-node="${i}" opacity="${i<=k?1:i===k+1?p:0}"><rect x="30" y="${10+75*i}" width="420" height="48" rx="8" fill="${i===k?'#d7eee6':'#f1f4ee'}" stroke="#b2c6be"/><text x="45" y="${41+75*i}" class="small">${labels[i]}</text><text x="430" y="${41+75*i}" text-anchor="end">${value}</text></g>`).join('');$('connections').innerHTML=Array.from({length:3},(_,i)=>{const amount=clamp(k+p-i);return `<path data-edge="${i}" d="M240 ${58+75*i}V${58+75*i+27*amount}"/>`;}).join('');attr('cursor','cx',240);attr('cursor','cy',58+75*Math.min(k,2)+27*p);$('cursor').style.display=k===3?'none':'';$('stage-title').textContent=labels[k]+' · 已完成 '+k+'/3';$('result-value').textContent='当前结果：'+values[k]; }
+  function render(){
+    renderAt(state,state.semantic_state,state.transition_progress);
+    $('position').value=state.semantic_state+state.transition_progress;
+    $('position-label').textContent=`${state.semantic_state} + ${fmt(state.transition_progress)}`;
+    $('play').textContent=state.playing?'暂停':'播放';$('play').setAttribute('aria-pressed',state.playing);
+    $('play').disabled=state.semantic_state===MAX_STEP;
+    $('back').disabled=state.semantic_state===0&&state.transition_progress===0;
+    $('next').disabled=state.semantic_state===MAX_STEP;
+    for(const key of Object.keys(DEFAULTS)){
+      const control=$(key);if(!control)continue;
+      if(control.type==='checkbox')control.checked=state[key];else control.value=state[key];
+      const output=$(key+'-value');if(output)output.textContent=typeof state[key]==='number'?fmt(state[key]):state[key];
+    }
+  }
+  function seek({semantic_state,transition_progress=0}){pause();position(semantic_state+transition_progress);render();return snapshot();}
+  function tick(now){position(state.semantic_state+state.transition_progress+(now-lastTime)/1500);lastTime=now;if(state.semantic_state===MAX_STEP)state.playing=false;render();if(state.playing)frame=requestAnimationFrame(tick);else commit();}
+  $('play').onclick=()=>{if(state.playing){pause();render();commit();}else{state.playing=true;lastTime=performance.now();render();frame=requestAnimationFrame(tick);}};
+  $('back').onclick=()=>{seek({semantic_state:Math.max(0,state.semantic_state-1)});commit();};
+  $('next').onclick=()=>{seek({semantic_state:Math.min(MAX_STEP,state.semantic_state+1)});commit();};
+  $('reset').onclick=()=>{seek({semantic_state:0});commit();};
+  $('position').oninput=e=>seek({semantic_state:0,transition_progress:Number(e.target.value)});$('position').onchange=commit;
+  for(const [key,value] of Object.entries(DEFAULTS)){
+    const control=$(key);if(!control)continue;
+    control.addEventListener('input',()=>{state[key]=typeof value==='boolean'?control.checked:typeof value==='number'?Number(control.value):control.value;seek({semantic_state:0});});
+    control.addEventListener('change',commit);
+  }
+  window.presentationScene={seek,snapshot};
+  seek({semantic_state:initial.semantic_state??0,transition_progress:initial.transition_progress??0});
+  window.presentation?.registerStateReader(()=>({values:Object.fromEntries([...Object.keys(DEFAULTS),'semantic_state','transition_progress'].map(key=>[key,state[key]])),visible_step:`${TITLE} · ${state.semantic_state} + ${fmt(state.transition_progress)}`}));
+  window.presentation?.registerStateRestorer(saved=>{const values=saved.values.page;for(const key of Object.keys(DEFAULTS))state[key]=values[key];seek({semantic_state:values.semantic_state,transition_progress:values.transition_progress});});
+})();</script></body></html>

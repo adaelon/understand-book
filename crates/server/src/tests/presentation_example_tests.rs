@@ -66,9 +66,9 @@ fn presentation_to4_advertised_edit_chain_preserves_sources_assets_and_versions(
     let range = EvidenceRange { start_lid:"1.1".into(), end_lid:"1.1".into(),
         ranges:vec![read_tools::SourceSelectedRange { lid:"1.1".into(), range:read_tools::SourceTextRange { start:0, end:3 } }] };
     let resolved = state.workspace.book.resolve_source(&range, "zh-CN", None).unwrap();
-    let binding = runtime::orchestrator::SourceBinding {
+    let binding = runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
         source_ref_id:"source-to4-observed".into(), book_id:state.workspace.book.base.book_id.clone(),
-        evidence_range:range, evidence_text_digest:resolved.evidence_text_digest,
+        evidence_range:Some(range), media:None, evidence_text_digest:resolved.evidence_text_digest,
         label_snapshot:resolved.label, preview_snapshot:resolved.preview,
     };
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));

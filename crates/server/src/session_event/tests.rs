@@ -15,6 +15,7 @@ pub(crate) fn sample_events(session: &AgentChatSession) -> Vec<SessionEvent> {
         events.push(SessionEvent::new(events.len() as u64 + 1, &session.updated_at, turn, body));
     };
     push(None, EventBody::SessionCreated(SessionCreated {
+                learning_workspace_id: None,
         session_id: session.id.clone(), book_id: session.book_id.clone(),
         title: session.title.clone(), created_at: session.created_at.clone(), messages: vec![],
     }));
@@ -157,6 +158,7 @@ pub(crate) fn accepted_events() -> Vec<SessionEvent> {
             &s.created_at,
             None,
             EventBody::SessionCreated(SessionCreated {
+                learning_workspace_id: None,
                 session_id: s.id,
                 book_id: s.book_id,
                 title: s.title.clone(),

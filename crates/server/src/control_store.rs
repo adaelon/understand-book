@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 13;
+pub const CONTROL_SCHEMA_VERSION: i64 = 18;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -157,6 +157,22 @@ impl ControlStore {
                 .map_err(|_| storage())?;
             tx.execute_batch(include_str!("default_book_grants.sql"))
                 .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("publication_operations.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("learning_workspaces.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("allowance_basis.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("agent_cost_ownership.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("external_build_costs.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("allowance_offers.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("workspace_publication.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -239,6 +255,45 @@ impl ControlStore {
             tx.pragma_update(None, "user_version", 13).map_err(|_| storage())?;
             tx.commit().map_err(|_| storage())?;
         }
+        if (1..=13).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("publication_operations.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 14).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=14).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("learning_workspaces.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("allowance_basis.sql"))
+                .map_err(|_| storage())?;
+            tx.execute_batch(include_str!("agent_cost_ownership.sql"))
+                .map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 15).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=15).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("external_build_costs.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("allowance_offers.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 16).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=16).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("workspace_publication.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if version == 17 {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None,"user_version",CONTROL_SCHEMA_VERSION).map_err(|_|storage())?;
+            tx.commit().map_err(|_|storage())?;
+        }
         memory::ReaderPrivateStorageGate::secure_file(&writer.root.join("control.sqlite"))?;
         eprintln!("Service SQLite {}: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema={CONTROL_SCHEMA_VERSION}", rusqlite::version());
         Ok(Self { connection, writer })
@@ -289,6 +344,10 @@ mod admin_schema_tests;
 #[cfg(test)]
 #[path = "account_registration_schema_tests.rs"]
 mod account_registration_schema_tests;
+
+#[cfg(test)]
+#[path = "workspace_quota_schema_tests.rs"]
+pub(crate) mod workspace_quota_schema_tests;
 
 #[cfg(test)]
 mod tests {

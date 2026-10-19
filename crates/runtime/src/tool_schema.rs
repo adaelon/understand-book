@@ -82,7 +82,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 &[
                     ("material", &[], &["object_id", "after"]),
                     ("trace", &[], &["event_id", "after"]),
-                    ("select", &["move"], &[]),
+                    ("design", &["operation_id", "design"], &[]),
+                    ("select", &["move"], &["delivery_move_refs"]),
                     ("outside", &[], &[]),
                     ("assess", &["action_ref"], &[]),
                     (
@@ -102,7 +103,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                         ],
                         &["supersedes"],
                     ),
-                    ("evidence", &["nature","operation_id","target","fact_refs","interpretation","teaching_implication"], &["supersedes"]),
+                    ("evidence", &["nature","operation_id","target","fact_refs","interpretation","teaching_implication"], &["supersedes","design_ref","block_refs"]),
                 ],
             );
             schema["anyOf"].as_array_mut().unwrap().last_mut().unwrap()["properties"]["nature"] = json!({"enum":["hypothesis"]});
@@ -119,6 +120,9 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 "hint",
                 "explanation",
                 "assessment",
+                "design_ref",
+                "responds_to",
+                "response_expectation",
             ] {
                 nullable(movement, field);
             }
@@ -133,7 +137,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 schema,
                 "operation",
                 &[
-                    ("prepare", &["phase", "needs"], &["framework", "focus"]),
+                    ("prepare", &["phase", "needs"], &["framework", "focus", "teaching_binding"]),
+                    ("read_method", &["method_id", "revision"], &["file", "offset", "length"]),
                     ("render_plot", &["code"], &["data", "size"]),
                     ("render_animation", &["code"], &["data", "size", "cues"]),
                     (
@@ -150,6 +155,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                         "patch",
                         &["edits"],
                         &[
+                            "teaching_binding",
+                            "method_refs",
                             "reference",
                             "candidate_id",
                             "title",
@@ -162,6 +169,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                         "write",
                         &["title", "html", "readable_content"],
                         &[
+                            "teaching_binding",
+                            "method_refs",
                             "based_on",
                             "new_object",
                             "state_contract",
@@ -212,6 +221,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 "read_selector",
                 "width",
                 "viewport",
+                "teaching_binding",
             ] {
                 nullable(schema, field);
             }

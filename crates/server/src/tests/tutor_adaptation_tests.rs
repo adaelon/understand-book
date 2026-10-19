@@ -18,24 +18,34 @@ fn cases() -> Vec<Value> { read(directory().join("scenarios.json"))["cases"].as_
 struct Replay {
     output: Value,
     sources: Vec<Value>,
+    source_references: RefCell<Vec<(String,String)>>,
     references: Vec<(String, String)>,
+    previous_design_ref: Option<String>,
     stage: std::cell::Cell<usize>,
 }
 impl Replay {
     fn rebound(&self, plan: &AgentRequestPlan) -> Value {
         let mut text = self.output.to_string();
         for (old, new) in &self.references { text = text.replace(old, new); }
-        for (index, source) in self.sources.iter().enumerate() {
-            let id = format!("source-{index}");
-            let result = plan.input.iter().find(|m|m.tool_call_id.as_deref()==Some(&id)).unwrap();
-            let body: Value = serde_json::from_str(result.content.as_deref().unwrap()).unwrap();
-            text = text.replace(source["source_ref_id"].as_str().unwrap(), body["model_body"]["source_ref_id"].as_str().unwrap());
+        if self.source_references.borrow().is_empty() {
+            for (index, source) in self.sources.iter().enumerate() {
+                let id = format!("source-{index}");
+                let result = plan.input.iter().rev().find(|m|m.tool_call_id.as_deref()==Some(&id)).unwrap();
+                let body: Value = serde_json::from_str(result.content.as_deref().unwrap()).unwrap();
+                let actual=body["model_body"]["source_ref_id"].as_str().unwrap_or_else(||panic!("current source was not accepted: {body}"));
+                self.source_references.borrow_mut().push((source["source_ref_id"].as_str().unwrap().into(),actual.into()));
+            }
         }
+        for (old,new) in self.source_references.borrow().iter() { text=text.replace(old,new); }
         serde_json::from_str(&text).unwrap()
     }
 }
 impl ModelAdapter for Replay {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!("local replay has no model helpers") }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
+        unreachable!("local replay has no other model helpers")
+    }
     fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         let stage = self.stage.get(); self.stage.set(stage+1);
         let call = |id: &str, name: &str, arguments: Value| ToolCall { id:id.into(), name:name.into(), arguments:arguments.to_string() };
@@ -44,8 +54,32 @@ impl ModelAdapter for Replay {
             0 => (None, vec![call("read", "book.text", json!({"lid":"1.1","end_lid":"1.1"}))]),
             1 => (None, self.sources.iter().enumerate().map(|(i,s)|call(&format!("source-{i}"), "source.present", json!({"quote":s["quote"]}))).collect()),
             2 if has_evidence => (None, vec![call("interpret", "tutor.step", self.rebound(plan)["evidence"].clone())]),
-            n if n == 2+usize::from(has_evidence) => (None, vec![call("select", "tutor.step", self.rebound(plan)["select"].clone())]),
-            n if n == 3+usize::from(has_evidence) => (Some(self.rebound(plan)["answer"].as_str().unwrap().into()), vec![]),
+            n if n == 2+usize::from(has_evidence) => {
+                let output=self.rebound(plan);
+                let target=&output["select"]["move"]["target"];
+                (None,vec![call("design","tutor.step",json!({"operation":"design","operation_id":"borrowed-access","design":{
+                    "target":target,"organizing_model":"One owned value and a borrowed access path remain distinct; identify the expression's type before tracking ownership.",
+                    "representation":{"kind":"text","reason":"The expression's type and borrowed access can be compared directly in the short code example."},
+                    "blocks":[{"block_id":"borrowed-access","relation":"A shared reference allows reading the owned value without transferring ownership.",
+                        "purpose":target["expected_performance"],"source_bindings":target["source_bindings"]}],
+                    "connections":[],"focus_block_refs":["borrowed-access"],"basis_refs":output["select"]["move"].get("interpretation_refs").cloned().unwrap_or(json!([])),
+                    "open_question_refs":[],"previous_ref":self.previous_design_ref,"revision_reason":"Connect this learner response to the distinction between ownership and access."}}))])
+            },
+            n if n == 3+usize::from(has_evidence) => {
+                let output=self.rebound(plan);
+                let mut request=output["select"].clone();
+                request["move"]["design_ref"]=super::tutor_continuation_tests::accepted_design(plan,"design")["design_ref"].clone();
+                request["move"]["block_refs"]=json!(["borrowed-access"]);
+                request["move"]["delivery_text"]=output["answer"].clone();
+                super::tutor_loop_tests::fixture_participation(&mut request["move"]);
+                (None,vec![call("select","tutor.step",request)])
+            },
+            n if n == 4+usize::from(has_evidence) => {
+                let selected=plan.input.iter().rev().find(|message|message.tool_call_id.as_deref()==Some("select")).unwrap();
+                let receipt:Value=serde_json::from_str(selected.content.as_deref().unwrap()).unwrap();
+                assert!(receipt["model_body"]["selected"].is_string(),"frozen selection was not accepted: {receipt}");
+                (Some(self.rebound(plan)["answer"].as_str().unwrap().into()), vec![])
+            },
             _ => return Err(AdapterError {message:format!("Frozen output requires a repair: {:?}",plan.input.last()),spend_stop:None}),
         };
         Ok(AssistantTurn {provider_continuation:None,text,tool_calls,usage_total_tokens:None})
@@ -62,7 +96,8 @@ pub(super) fn seed(case: &Value) -> (tempfile::TempDir, AppState, Value, Value) 
     let run = prepare_agent_chat(&mut state, &json!({"message":packet["user_request"]}).to_string(), "tb3").unwrap_or_else(|r|panic!("{}",r.body));
     let turn = run.turn_ref.clone();
     let tutor_session = run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_string();
-    let adapter = Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),references:vec![],stage:Default::default()};
+    let adapter = Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references:vec![],
+        previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()};
     let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
     assert_eq!(result.reply.status,200,"{}",result.reply.body);
     let delivery = state.user.learning_store().unwrap().teaching_deliveries(&turn.session_id,&turn.turn_id).unwrap().into_iter().next().unwrap();
@@ -160,7 +195,8 @@ fn tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis() {
     output["select"]["move"]["hint"]=json!("先判断右侧是 Foo 还是 &Foo，再追踪所有者。");
     let run=prepare_agent_chat(&mut state,&json!({"message":packet["user_request"]}).to_string(),"tb3").unwrap_or_else(|r|panic!("{}",r.body));
     let turn=run.turn_ref.clone();
-    let adapter=Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),references:vec![],stage:Default::default()};
+    let adapter=Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references:vec![],
+        previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()};
     let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
     assert_eq!(result.reply.status,200);
     let delivery=state.user.learning_store().unwrap().teaching_deliveries(&turn.session_id,&turn.turn_id).unwrap().remove(0);
@@ -206,14 +242,27 @@ fn references(old: &Value, current: &Value) -> Vec<(String,String)> {
     result
 }
 
-pub(super) fn replay_turn(state: &mut AppState, run: agent_run::PreparedAgentChat, packet: &Value, output: Value, current: &Value, capture_failure: bool) -> Value {
+pub(super) fn replay_turn(state: &mut AppState, run: agent_run::PreparedAgentChat, packet: &Value, mut output: Value, current: &Value, capture_failure: bool) -> Value {
     let turn=run.turn_ref.clone();
     let session=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_string();
     let expected_evidence=output["evidence"]["operation_id"].as_str().map(|id|format!("interpretation:{id}"));
     let expected_refs=output["select"]["move"]["interpretation_refs"].clone();
+    let references=references(packet,current);
+    if let Some(fact_refs)=output.get_mut("evidence").and_then(|evidence|evidence.get_mut("fact_refs")).and_then(Value::as_array_mut) {
+        let store=state.user.learning_store().unwrap();
+        // Older experiment packets mix delivered help into fact_refs. Keep the
+        // original interpretation, but adopt only actual expressions as its basis.
+        fact_refs.retain(|reference| {
+            let original=reference.as_str().unwrap();
+            let actual=references.iter().find(|(old,_)|old==original).map(|(_,new)|new.as_str()).unwrap_or(original);
+            store.teaching_event(actual).unwrap().learner_expression().is_some()
+        });
+        assert!(!fact_refs.is_empty(),"a frozen hypothesis still needs actual learner words");
+    }
     let samples=Arc::new(std::sync::Mutex::new(Vec::new()));
     let adapter=super::tutor_continuation_tests::TutorRequestRecorder {samples:samples.clone(),directory:None,
-        inner:Box::new(Replay {output,sources:packet["presented_sources"].as_array().unwrap().clone(),references:references(packet,current),stage:Default::default()})};
+        inner:Box::new(Replay {output,sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references,
+            previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()})};
     let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(state)),&adapter,run,Default::default());
     if capture_failure {
         let store=state.user.learning_store().unwrap();

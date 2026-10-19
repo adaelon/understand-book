@@ -1,0 +1,38 @@
+[
+  {
+    "scenario": "first-contact",
+    "selected_question": "先回答读者的疑问：既然能做摘要，为什么还存候选？抓住路线变短与内容仍可找回的区别，让保存候选的价值具体可见。",
+    "participation": "support",
+    "model_calls": 12,
+    "resident_calls": 9,
+    "structured_calls": 3,
+    "delivery_reviews": 1,
+    "elapsed_ms": 390450,
+    "host_estimated_tokens": 195332,
+    "provider_tokens": null
+  },
+  {
+    "scenario": "existing-basis",
+    "selected_question": "已有目录和概念图后，全书结构究竟增加什么阅读判断？从读者已区分保留和路线的起点，连接到位置、关系与学习角色的区别，让路线选择有可说明的理由。",
+    "participation": "invite",
+    "model_calls": 8,
+    "resident_calls": 7,
+    "structured_calls": 1,
+    "delivery_reviews": 1,
+    "elapsed_ms": 288744,
+    "host_estimated_tokens": 146678,
+    "provider_tokens": null
+  },
+  {
+    "scenario": "specific-confusion",
+    "selected_question": "主题为什么能从章节未选的候选中补入重点？先区分候选保存、章节选择与主题证据判断，解除把章节选择当成主题资格门槛的困惑。",
+    "participation": "support",
+    "model_calls": 17,
+    "resident_calls": 14,
+    "structured_calls": 3,
+    "delivery_reviews": 1,
+    "elapsed_ms": 382333,
+    "host_estimated_tokens": 369896,
+    "provider_tokens": null
+  }
+]

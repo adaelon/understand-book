@@ -18,6 +18,16 @@ const props = {
 };
 
 describe("TopBar", () => {
+  it('names the chapter and explicitly offers enabling learning when it is off', async () => {
+    const wrapper = mount(TopBar, { props: { ...props, guideChapterTitle: '全书结构与语义候选召回', guideChapterEnabled: false } });
+    const button = wrapper.findAll('button').find(button => button.text().includes('带我读这一章'))!;
+    expect(button.text()).toBe('开启学习并带我读这一章：全书结构与语义候选召回');
+    await button.trigger('click');
+    expect(wrapper.emitted('guide-chapter')).toHaveLength(1);
+    await wrapper.setProps({ guideChapterEnabled: true, guideChapterBusy: true });
+    expect(button.text()).toBe('带我读这一章：全书结构与语义候选召回');
+    expect(button.attributes('disabled')).toBeDefined();
+  });
   it('collapses desktop controls, keeps an expand entry, and follows focus mode', async () => {
     const wrapper = mount(TopBar, { props });
     await wrapper.get('.topbar-collapse').trigger('click');

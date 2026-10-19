@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { type Page, type Period } from "@/lib/types";
+import { type Page, type Period, type Percentage, type AllowanceBasis, type AllowanceOffer } from "@/lib/types";
 import { date, dateInput, money, moneyInput, timestamp } from "@/lib/format";
 import { useData, DataState, DataTable, Pagination } from "@/components/data";
 import { Field, OperationDialog, useOperations } from "@/components/operation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { percentage, percentageInput, milliPercentage } from "@/lib/allowance";
 import { McpCorrectionDialog } from "./mcp";
 
 export function AllowancePanel({
@@ -39,7 +40,11 @@ export function AllowancePanel({
       body = {
         starts_at: timestamp(text("starts_at")),
         expires_at: timestamp(text("expires_at")),
+        basis: { version: text("basis_version"), basis_micro_cny: moneyInput(text("basis_amount")) },
       };
+    } else if (action === "配置百分比基准") {
+      path = "allowance-basis";
+      body = { ...binding, basis: { version: text("basis_version"), basis_micro_cny: moneyInput(text("basis_amount")) } };
     } else if (action === "编辑有效期") {
       path = "allowance-validity";
       body = {
@@ -48,21 +53,23 @@ export function AllowancePanel({
         expires_at: timestamp(text("expires_at")),
       };
     } else if (action === "登记收款") {
-      path = "receipts";
+      path = "percentage-receipts";
       body = {
         ...binding,
         amount_fen: moneyInput(text("amount"), 2),
-        delta_micro_cny: moneyInput(text("delta")),
+        basis_version: selected?.balance.allowance_basis?.version,
+        delta_milli_percent: percentageInput(text("delta")),
         paid_at: timestamp(text("paid_at")),
         channel: text("channel"),
         external_ref: text("external_ref") || null,
         note: text("note"),
       };
     } else {
-      path = "allowance-adjustments";
+      path = "allowance-percentage-adjustments";
       body = {
         ...binding,
-        delta_micro_cny: moneyInput(text("delta")),
+        basis_version: selected?.balance.allowance_basis?.version,
+        delta_milli_percent: percentageInput(text("delta")),
         reason: text("reason"),
       };
     }
@@ -71,7 +78,7 @@ export function AllowancePanel({
   return (
     <section className="space-y-4 rounded-lg border p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2>AI 使用额度（元）</h2>
+        <h2>AI 使用额度</h2>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -81,7 +88,7 @@ export function AllowancePanel({
             新建额度期
           </Button>
           {current &&
-            ["赠送 / 调整", "登记收款", "编辑有效期"].map((label) => (
+            (current.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map((label) => (
               <Button
                 key={label}
                 variant="outline"
@@ -94,24 +101,24 @@ export function AllowancePanel({
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        使用额度用于承担模型调用成本，与实际收款分别记录。新一期不自动结转旧余额。
+        额度按每期固定基准显示百分比，实际收款单独以元记录。补充额度不会改变旧用量比例，新一期不自动结转旧余额。
       </p>
       {current ? (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             {(
               [
-                ["可用", "available_micro_cny"],
-                ["授予 / 调整", "granted_micro_cny"],
-                ["已扣减", "debited_micro_cny"],
-                ["在途预留", "active_reserved_micro_cny"],
-                ["待核算占用", "pending_micro_cny"],
+                ["可用", "available"],
+                ["授予 / 调整", "granted"],
+                ["已扣减", "debited"],
+                ["在途预留", "active_reserved"],
+                ["待核算占用", "pending"],
               ] as const
             ).map(([label, key]) => (
               <div key={key} className="rounded-md bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">{label}</p>
                 <strong className="mt-2 block text-lg tabular-nums">
-                  {money(current.balance[key])}
+                  {percentage(current.balance.percentages?.[key])}
                 </strong>
               </div>
             ))}
@@ -144,15 +151,15 @@ export function AllowancePanel({
                   cell: ({ row }) => date(row.original.expires_at),
                 },
                 {
-                  header: "可用（元）",
+                  header: "可用额度",
                   cell: ({ row }) =>
-                    money(row.original.balance.available_micro_cny),
+                    percentage(row.original.balance.percentages?.available),
                 },
                 {
                   header: "操作",
                   cell: ({ row }) => (
                     <div className="flex gap-1">
-                      {["赠送 / 调整", "登记收款", "编辑有效期"].map(
+                      {(row.original.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map(
                         (label) => (
                           <Button
                             variant="ghost"
@@ -185,8 +192,8 @@ export function AllowancePanel({
             : action === "编辑有效期"
               ? "修改后，该期全部剩余额度使用新的到期时间。"
               : action === "赠送 / 调整"
-                ? "赠送输入正数，下调输入负数；下调不得占用已结算与在途金额。"
-                : "新建一个独立额度期，初始额度为零。时间均为香港时间。"
+                ? "赠送输入正百分比，下调输入负百分比；下调不得占用已结算与在途额度。"
+                : "固定基准一经绑定不能更改。新建额度期初始为零，时间均为香港时间。"
         }
         open={!!action}
         onOpenChange={(open) => {
@@ -196,9 +203,14 @@ export function AllowancePanel({
       >
         {selected && (
           <p className="break-all text-sm text-muted-foreground">
-            额度期 {selected.period_id}
+            额度期 {selected.period_id} · 基准 {selected.balance.allowance_basis?.version ?? "待配置"}
           </p>
         )}
+        {["新建额度期", "配置百分比基准"].includes(action) && <>
+          <Field label="固定基准版本"><Input name="basis_version" required /></Field>
+          <Field label="100% 对应内部成本额度（元）"><Input name="basis_amount" inputMode="decimal" required /></Field>
+          <p className="text-sm text-muted-foreground">按已确定的商业配置填写；该值不表示用户实际付款价格。</p>
+        </>}
         {["新建额度期", "编辑有效期"].includes(action) && (
           <>
             <Field label="开始时间（香港）">
@@ -223,11 +235,11 @@ export function AllowancePanel({
         )}
         {action === "赠送 / 调整" && (
           <>
-            <Field label="额度调整（元）">
+            <Field label="额度调整（%）">
               <Input
                 name="delta"
                 inputMode="decimal"
-                placeholder="例如 10 或 -2"
+                placeholder="例如 50 或 -2.5"
                 required
               />
             </Field>
@@ -242,7 +254,7 @@ export function AllowancePanel({
               <Field label="实际收款（元）">
                 <Input name="amount" inputMode="decimal" required />
               </Field>
-              <Field label="授予 AI 使用额度（元）">
+              <Field label="授予 AI 使用额度（%）">
                 <Input name="delta" inputMode="decimal" required />
               </Field>
             </div>
@@ -266,6 +278,7 @@ export function AllowancePanel({
           </>
         )}
       </OperationDialog>
+      <AllowanceOffers />
     </section>
   );
 }
@@ -279,6 +292,11 @@ const operationNames: Record<string, string> = {
   "book-revocations": "撤销授权",
   "allowance-periods": "新建额度期",
   "allowance-adjustments": "赠送 / 调整",
+  "allowance-percentage-adjustments": "赠送 / 调整",
+  "allowance-basis": "配置百分比基准",
+  "percentage-receipts": "登记收款",
+  "percentage-receipt-corrections": "收款更正",
+  "allowance-offers": "补充方案",
   "allowance-validity": "编辑有效期",
   receipts: "登记收款",
   "receipt-corrections": "收款更正",
@@ -287,7 +305,7 @@ const operationNames: Record<string, string> = {
   "mcp-free-gift": "赠送 MCP 当月次数",
   "mcp-corrections": "更正 MCP 收款 / 次数",
 };
-type Row = Record<string, string | number | null>;
+type Row = { [key: string]: string | number | null | Percentage | AllowanceBasis | undefined; delta_percentage?: Percentage | null; grant_percentage?: Percentage | null; allowance_basis?: AllowanceBasis | null };
 export function HistoryPanel({ userId }: { userId: string }) {
   const [kind, setKind] = useState("receipts"),
     [offset, setOffset] = useState(0),
@@ -329,8 +347,8 @@ export function HistoryPanel({ userId }: { userId: string }) {
                     {
                       header: "收款用途 / 权益",
                       cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack"
-                        ? <span className="break-all">MCP 调用包 · {row.original.pack_id}</span>
-                        : <span className="break-all">模型使用额度 · {row.original.period_id}</span>,
+                        ? <span className="break-all">MCP 调用包 · {String(row.original.pack_id)}</span>
+                        : <span className="break-all">模型使用额度 · {String(row.original.period_id)}</span>,
                     },
                     {
                       header: "付款时间",
@@ -340,6 +358,10 @@ export function HistoryPanel({ userId }: { userId: string }) {
                       header: "实际收款 / 更正后（元）",
                       cell: ({ row }) =>
                         `${money(Number(row.original.amount_fen), 2)} / ${money(Number(row.original.effective_amount_fen), 2)}`,
+                    },
+                    {
+                      header: "原授予额度",
+                      cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${percentage(row.original.grant_percentage)} · 基准 ${row.original.allowance_basis?.version ?? "待配置"}`,
                     },
                     {
                       header: "渠道 / 外部编号",
@@ -380,7 +402,7 @@ export function HistoryPanel({ userId }: { userId: string }) {
                         header: "操作",
                         cell: ({ row }) =>
                           operationNames[String(row.original.kind)] ??
-                          row.original.kind,
+                          String(row.original.kind),
                       },
                     ]
                   : [
@@ -398,13 +420,14 @@ export function HistoryPanel({ userId }: { userId: string }) {
                       {
                         header:
                           kind === "allowance-adjustments"
-                            ? "额度差额（元）"
+                            ? "额度差额（%）"
                             : "收款差额（元）",
                         cell: ({ row }) =>
                           kind === "allowance-adjustments"
-                            ? money(Number(row.original.delta_micro_cny))
+                            ? percentage(row.original.delta_percentage)
                             : money(Number(row.original.delta_fen), 2),
                       },
+                      { header: "原期额度差额 / 基准", cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${percentage(row.original.delta_percentage)} · ${row.original.allowance_basis?.version ?? "待配置"}` },
                       { header: "原因", accessorKey: "reason" },
                     ]
             }
@@ -428,17 +451,19 @@ export function HistoryPanel({ userId }: { userId: string }) {
             (p) => p.period_id === periodId,
           );
           if (!period) throw new Error("请先加载原收款所属额度期。");
-          return ops.submit("追加收款更正", `${base}/receipt-corrections`, {
+          if (!period.balance.allowance_basis) throw new Error("请先为原额度期配置百分比基准。");
+          return ops.submit("追加收款更正", `${base}/percentage-receipt-corrections`, {
             receipt_id: correction!.receipt_id,
             period_id: period.period_id,
             revision: period.revision,
             delta_fen: moneyInput(String(data.get("amount")), 2),
-            delta_micro_cny: moneyInput(String(data.get("delta"))),
+            basis_version: period.balance.allowance_basis.version,
+            delta_milli_percent: percentageInput(String(data.get("delta"))),
             reason: String(data.get("reason")),
           });
         }}
       >
-        <p className="break-all text-sm">收款 {correction?.receipt_id}</p>
+        <p className="break-all text-sm">收款 {String(correction?.receipt_id ?? "")}</p>
         <Field label="原收款额度期">
           <Input readOnly value={periodId} />
         </Field>
@@ -457,7 +482,7 @@ export function HistoryPanel({ userId }: { userId: string }) {
         <Field label="收款差额（元）">
           <Input name="amount" inputMode="decimal" required />
         </Field>
-        <Field label="额度差额（元）">
+        <Field label="额度差额（%）">
           <Input name="delta" inputMode="decimal" defaultValue="0" required />
         </Field>
         <Field label="更正原因">
@@ -467,4 +492,36 @@ export function HistoryPanel({ userId }: { userId: string }) {
       {mcpReceiptId && <McpCorrectionDialog userId={userId} receiptId={mcpReceiptId} close={() => setMcpReceiptId(null)} />}
     </section>
   );
+}
+
+
+function AllowanceOffers() {
+  const ops = useOperations();
+  const offers = useData<{ items: AllowanceOffer[] }>("/admin/allowance-offers");
+  const [editing, setEditing] = useState<AllowanceOffer | null>(null);
+  const [open, setOpen] = useState(false);
+  return <details className="border-t pt-3">
+    <summary className="cursor-pointer text-sm">补充方案（所有账号）</summary>
+    <p className="my-3 text-sm text-muted-foreground">方案展示实际价格和增加比例，仅对相同基准版本的有效额度期可见。修改方案不改写原收款回执。</p>
+    <Button variant="outline" disabled={ops.blocked} onClick={() => { setEditing(null); setOpen(true); }}>新增补充方案</Button>
+    <DataState query={offers} />
+    {offers.data?.items.map(offer => <div key={offer.offer_id} className="my-3 rounded-md border p-3">
+      <p>{offer.title} · {money(offer.amount_fen, 2)} 元 · 增加 {milliPercentage(offer.delta_milli_percent)} · {offer.enabled ? "已启用" : "已停用"}</p>
+      <p className="text-sm text-muted-foreground">基准 {offer.basis_version} · {offer.instructions}</p>
+      <Button variant="ghost" disabled={ops.blocked} onClick={() => { setEditing(offer); setOpen(true); }}>编辑方案</Button>
+    </div>)}
+    <OperationDialog title={editing ? "编辑补充方案" : "新增补充方案"} description="按已确认的销售配置填写；保存方案不会授予额度，实际收款后仍需登记收款。" open={open} onOpenChange={setOpen} onSubmit={data => {
+      const value = (key: string) => String(data.get(key) ?? "").trim();
+      const amount = moneyInput(value("amount"), 2), delta = percentageInput(value("delta"));
+      if (amount <= 0 || delta <= 0) throw new Error("价格和增加比例须大于零。");
+      return ops.submit("保存补充方案", "/admin/allowance-offers", { offer_id: editing?.offer_id ?? crypto.randomUUID(), title: value("title"), amount_fen: amount, delta_milli_percent: delta, basis_version: value("basis_version"), instructions: value("instructions"), enabled: data.get("enabled") === "on" });
+    }}>
+      <Field label="方案名称"><Input name="title" defaultValue={editing?.title ?? ""} required /></Field>
+      <Field label="实际支付价格（元）"><Input name="amount" inputMode="decimal" defaultValue={editing ? money(editing.amount_fen, 2) : ""} required /></Field>
+      <Field label="增加额度（%）"><Input name="delta" inputMode="decimal" defaultValue={editing ? String(editing.delta_milli_percent / 1000) : ""} required /></Field>
+      <Field label="适用基准版本"><Input name="basis_version" defaultValue={editing?.basis_version ?? ""} required /></Field>
+      <Field label="收款联系与说明"><Input name="instructions" defaultValue={editing?.instructions ?? ""} required /></Field>
+      <Field label="启用方案"><input name="enabled" type="checkbox" defaultChecked={editing?.enabled ?? true} /></Field>
+    </OperationDialog>
+  </details>;
 }

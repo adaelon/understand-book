@@ -1,7 +1,7 @@
 //! Pure presentation guidance selection; RunContext owns the current selection.
 use crate::InstructionModule;
 
-pub const REVISION: &str = "ex14.v4";
+pub const REVISION: &str = "spatial.v1";
 const COMMON: &str = include_str!("../../../../skills/presentation/SKILL.md");
 const ENGINEERING: &str = include_str!("../../../../skills/presentation/engineering.md");
 const DIRECTORY: &str = include_str!("../../../../skills/presentation/capabilities.md");
@@ -22,6 +22,7 @@ pub enum PresentationNeed {
     State,
     ContinuousScene,
     Konva,
+    Three,
     Manim,
 }
 
@@ -57,6 +58,11 @@ const REFERENCES: &[(PresentationNeed, &str, &str)] = &[
         PresentationNeed::Konva,
         "konva",
         include_str!("../../../../skills/presentation/references/konva.md"),
+    ),
+    (
+        PresentationNeed::Three,
+        "three",
+        include_str!("../../../../skills/presentation/references/three.md"),
     ),
     (
         PresentationNeed::Manim,
@@ -102,6 +108,7 @@ fn common_modules() -> Vec<InstructionModule> {
             REVISION,
             DIRECTORY.trim(),
         ),
+        crate::presentation_methods::directory(),
     ]
 }
 

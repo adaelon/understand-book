@@ -1,0 +1,20 @@
+{
+  "status": "published",
+  "published_at_utc": "2026-10-15T07:30:19.107939+00:00",
+  "release": "/opt/understand-book/releases/current-20261015",
+  "backup": "/opt/understand-book/acceptance/current-20261015/contact-before-073015",
+  "source_files": [
+    "packages/web/src/components/ProductHome.vue",
+    "packages/web/src/home.css",
+    "packages/web/src/assets/home/beta-group-20261015.png"
+  ],
+  "assets_uploaded": [
+    "assets/beta-group-20261015-CFBidGRF.png",
+    "assets/home-Bc6LcMQt.css",
+    "assets/home-F883Agl4.js"
+  ],
+  "service_unchanged": true,
+  "old_assets_retained": true,
+  "qr_original_unchanged": true,
+  "expiry_notice": "10月22日前有效"
+}

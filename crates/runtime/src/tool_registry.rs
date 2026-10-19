@@ -19,12 +19,20 @@ pub const TOOL_ROUTING_CARD_VERSION: &str = "tool_routing_card.v1";
 pub enum ToolHandlerId {
     Book(BookToolId),
     BookTextBatch,
+    LibraryList,
+    LibraryRead,
+    LibraryLearning,
     Artifact(ArtifactToolId),
     ToolSearch,
     GoalUpdate,
+    WorkspaceGoalUpdate,
+    WorkspaceRecordsRead,
     TutorStep,
     SourcePresent,
     PresentationAuthor,
+    VideoReadFrames,
+    VideoSearch,
+    VideoReviewAudio,
     ProfileManifest,
     ProfileMarkUsed,
     BookRouteFrom,
@@ -43,7 +51,10 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 35] = [
+    pub const ALL: [ToolHandlerId; 43] = [
+        ToolHandlerId::LibraryList,
+        ToolHandlerId::LibraryRead,
+        ToolHandlerId::LibraryLearning,
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
@@ -51,12 +62,17 @@ impl ToolHandlerId {
         ToolHandlerId::BookTextBatch,
         ToolHandlerId::ToolSearch,
         ToolHandlerId::GoalUpdate,
+        ToolHandlerId::WorkspaceGoalUpdate,
+        ToolHandlerId::WorkspaceRecordsRead,
         ToolHandlerId::TutorStep,
         ToolHandlerId::Artifact(ArtifactToolId::List),
         ToolHandlerId::Artifact(ArtifactToolId::Search),
         ToolHandlerId::Artifact(ArtifactToolId::Read),
         ToolHandlerId::SourcePresent,
         ToolHandlerId::PresentationAuthor,
+        ToolHandlerId::VideoReadFrames,
+        ToolHandlerId::VideoSearch,
+        ToolHandlerId::VideoReviewAudio,
         ToolHandlerId::Book(BookToolId::Context),
         ToolHandlerId::Book(BookToolId::Concept),
         ToolHandlerId::Book(BookToolId::Structure),
@@ -89,10 +105,18 @@ impl ToolHandlerId {
                 .expect("registered Book handler must have a Resident alias"),
             ToolHandlerId::Artifact(id) => artifact_aliases(id).resident,
             ToolHandlerId::BookTextBatch => "book.text_batch",
+            ToolHandlerId::LibraryList => "library.list",
+            ToolHandlerId::LibraryRead => "library.read",
+            ToolHandlerId::LibraryLearning => "library.learning",
             ToolHandlerId::ToolSearch => "tool.search",
             ToolHandlerId::GoalUpdate => "goal.update",
+            ToolHandlerId::WorkspaceGoalUpdate => "workspace.goal.update",
+            ToolHandlerId::WorkspaceRecordsRead => "workspace.records.read",
             ToolHandlerId::TutorStep => "tutor.step",
             ToolHandlerId::PresentationAuthor => "presentation.author",
+            ToolHandlerId::VideoReadFrames => "video.read_frames",
+            ToolHandlerId::VideoReviewAudio => "video.review_audio",
+            ToolHandlerId::VideoSearch => "video.search",
             ToolHandlerId::SourcePresent => "source.present",
             ToolHandlerId::ProfileManifest => "profile.manifest",
             ToolHandlerId::ProfileMarkUsed => "profile.mark_used",
@@ -520,9 +544,14 @@ impl ToolRegistration {
             "book.structure" => "查看书籍结构",
             "source.present" => "整理来源",
             "presentation.author" => "制作与预览内容",
+            "video.review_audio" => "复核短原音频",
+            "video.read_frames" => "读取视频画面",
+            "video.search" => "检索视频画面",
             "tool.search" => "查找可用工具",
             "tutor.step" => "选择教学动作",
             "goal.update" => "更新当前任务",
+            "workspace.goal.update" => "修改工作区目标",
+            "workspace.records.read" => "读取带入的学习记录",
             "reader.note" => "保存笔记",
             "reader.highlight" => "添加高亮",
             "reader.gotoLid" | "reader.scroll" => "调整阅读位置",
@@ -557,7 +586,24 @@ impl ToolRegistration {
             ToolValidatorId::SourcePresentation
             | ToolValidatorId::ProfileUsage
             | ToolValidatorId::JsonSchema => {
-                validate_schema(&self.spec.parameters, &value, "$")?;
+                validate_schema(&self.spec.parameters, &value, "$").map_err(|mut error| {
+                    if self.handler == ToolHandlerId::PresentationAuthor {
+                        if let Some(branch) = self.spec.parameters["anyOf"].as_array().and_then(|branches| {
+                            branches.iter().find(|branch| {
+                                branch["properties"]["operation"]["enum"].as_array()
+                                    .is_some_and(|operations| operations.contains(&value["operation"]))
+                            })
+                        }) {
+                            error.message.push_str(&format!(
+                                "\nCorrect the complete call using only this operation's fields; omit unrelated fields even when null. Selected operation schema: {branch}"
+                            ));
+                            if matches!(value["operation"].as_str(), Some("read" | "search" | "patch")) {
+                                error.message.push_str(" Use exactly one target: candidate_id as the string returned by write/patch, or reference as {\"presentation_id\":\"...\",\"revision\":1} from deliver. Omit the unused target field.");
+                            }
+                        }
+                    }
+                    error
+                })?;
                 if self.handler == ToolHandlerId::BookTextBatch {
                     crate::book_text_batch::parse(arguments)
                         .map_err(|message| ToolArgumentError { message })?;
@@ -583,6 +629,11 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn without_library(mut self) -> Self {
+        self.registrations.retain(|r| !matches!(r.handler, ToolHandlerId::LibraryList | ToolHandlerId::LibraryRead | ToolHandlerId::LibraryLearning));
+        self.by_name = self.registrations.iter().enumerate().map(|(i,r)|(r.spec.name.clone(),i)).collect();
+        self
+    }
     pub(crate) fn with_tutor_context(mut self, context: Option<&Value>) -> Self {
         let Some(spec) = context.and_then(crate::tutor::spec_for_context) else {
             return self.without_tutor();
@@ -596,6 +647,16 @@ impl ToolRegistry {
     }
     pub(crate) fn without_tutor(mut self) -> Self {
         self.registrations.retain(|r| r.handler != ToolHandlerId::TutorStep);
+        self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
+        self
+    }
+    pub(crate) fn without_workspace_goal_update(mut self) -> Self {
+        self.registrations.retain(|registration| registration.handler != ToolHandlerId::WorkspaceGoalUpdate);
+        self.by_name = self.registrations.iter().enumerate().map(|(index, registration)| (registration.spec.name.clone(), index)).collect();
+        self
+    }
+    pub(crate) fn without_workspace_records(mut self) -> Self {
+        self.registrations.retain(|r| r.handler != ToolHandlerId::WorkspaceRecordsRead);
         self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
         self
     }
@@ -822,17 +883,25 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::EvidenceProjection,
             Parallelism::ReadOnlyEligible,
         ),
+        Handler::LibraryList | Handler::LibraryRead => (
+            ToolValidatorId::JsonSchema, ResultPolicy::EvidenceProjection, Parallelism::SequentialOnly,
+        ),
         Handler::ToolSearch => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::ToolDiscovery,
             Parallelism::SequentialOnly,
         ),
-        Handler::GoalUpdate | Handler::TutorStep => (
+        Handler::LibraryLearning | Handler::WorkspaceRecordsRead => (
+            ToolValidatorId::JsonSchema,
+            ResultPolicy::MemoryProjection,
+            Parallelism::SequentialOnly,
+        ),
+        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::TutorStep => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::PresentationAuthor => (
+        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::EvidenceProjection,
             Parallelism::SequentialOnly,
@@ -966,9 +1035,14 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
             migration(vec![Legacy::ArtifactRead], vec![Capability::ArtifactRead])
         }
         Handler::BookTextBatch => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
+        Handler::LibraryList | Handler::LibraryRead => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
         Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
-        Handler::GoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
+        Handler::LibraryLearning => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryRead, Capability::MemoryWrite]),
+        Handler::WorkspaceRecordsRead => migration(vec![Legacy::MemoryRead], vec![Capability::MemoryRead]),
+        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
+        Handler::VideoReadFrames | Handler::VideoReviewAudio => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
+        Handler::VideoSearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate]),
         Handler::PresentationAuthor => migration(
             vec![Legacy::SourcePresentation],
             vec![Capability::PresentationAuthoring],
@@ -1214,8 +1288,11 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::LibraryList | Handler::LibraryRead => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::ReadSource, Operation::Compare], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::TutorStep => shape(vec![Scope::Document], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
-        Handler::GoalUpdate => shape(
+        Handler::LibraryLearning => shape(vec![Scope::Corpus], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::WorkspaceRecordsRead => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::Summarize], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => shape(
             vec![Scope::Document],
             vec![Operation::Explain],
             Effect::GoalWrite,
@@ -1260,6 +1337,12 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::VideoReadFrames | Handler::VideoReviewAudio => shape(vec![Scope::Selection, Scope::Passage, Scope::Section],
+            vec![Operation::ReadSource, Operation::Explain, Operation::Compare], Effect::ReadOnly,
+            vec![Precondition::BookAvailable], all_profiles(), Cost::High),
+        Handler::VideoSearch => shape(vec![Scope::Passage, Scope::Section, Scope::Document],
+            vec![Operation::LocateLiteral, Operation::Compare], Effect::ReadOnly,
+            vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::PresentationAuthor => shape(
             vec![
                 Scope::Selection,
@@ -1465,6 +1548,8 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
     use ToolHandlerId as Handler;
 
     match handler {
+        Handler::LibraryList | Handler::LibraryRead => ("Find supplementary source material in the reader's authorized library for a specific knowledge gap.", "Keep the original reading task; do not treat other materials as current-book navigation or infer understanding from a read."),
+        Handler::LibraryLearning => ("Read this learner's reference-book understanding and record source-grounded interpretations of actual user feedback.", "Private learning memory belongs to the current reader. Read, explain, then update only from the user's real expression; no automatic mastery."),
         Handler::BookTextBatch => (
             "Read several already-located source ranges together for comparison or evidence gathering; the runtime enables this tool after multiple source locations are known.",
             "Do not guess LIDs or use batch reads to locate unknown evidence; use book.text for one range.",
@@ -1473,7 +1558,15 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Discover a deferred Resident capability that is absent from the current sampled tool surface.",
             "Do not use when visible tools can complete the task or to execute a matched tool in the same sampling.",
         ),
+        Handler::WorkspaceRecordsRead => (
+            "Read original chats, facts and corrections explicitly linked to this workspace when they matter to the current request.",
+            "Do not treat historical interpretations as current mastery, overwrite original records or infer access to other materials.",
+        ),
         Handler::TutorStep => ("Read teaching materials and learning evidence, assess a formal response against its frozen contract, and select one grounded move.", "Do not invent grades or mastery, alter frozen criteria, or advance a paused learning session."),
+        Handler::WorkspaceGoalUpdate => (
+            "Change the workspace direction using the complete current user message and exact new goal wording.",
+            "Do not rewrite the accepted goal for a side question, prerequisite, or Agent plan. Stop the old stage after a new goal is accepted.",
+        ),
         Handler::GoalUpdate => (
             "Use working for focus/next_move/plan; refine requirements in the origin turn; revise with the current user's exact quote.",
             "Do not mix plan fields into refine/revise, replace user requirements with a method, or claim completion from a Goal update.",
@@ -1490,10 +1583,13 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Read bounded artifact records returned by artifact.search or its continuation.",
             "Do not invent opaque refs or treat artifact records as canonical book evidence.",
         ),
+        Handler::VideoReviewAudio => ("Review short original audio and uncertain spoken words with Whisper. 原音频、听核、复核、讲者措辞、听不清、underflow、overflow。", "Machine recognition with uncertainties; compare saved transcript and actual frames; never edit source text or claim the main model heard audio."),
+        Handler::VideoReadFrames => ("Read actual video frames, crops, original PTS and corresponding English transcript. 视频画面、代码、公式、取帧、裁剪。", "Samples only; paths and descriptions do not establish a visual observation."),
+        Handler::VideoSearch => ("Locate visual units and source-backed teaching roles; follow explanations, examples and limitations to supporting material. 视频视觉检索、讲解结构、解释、示例、反例、条件限定、前文图示、代码、概念、重复画面、覆盖缺口。", "Candidates only; read discourse text_reads with book.text and read_hints with video.read_frames before source.present. Search unindexed current frames directly with the frame reader."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
-            "Pass verbatim observed quote; the tool resolves its location. Do not use source presentation as evidence retrieval.",
+            "Pass verbatim observed quote or a media target copied from successful observations; the tool resolves its location. Do not use source presentation as evidence retrieval.",
         ),
         Handler::ProfileManifest => (
             "Read profile slots, presets, projections, or tool policy needed for the current task.",
@@ -2033,7 +2129,13 @@ mod tests {
             ),
             ("book.search_text", &["book_search"], &["lexical_locate"]),
             ("book.text", &["book_read"], &["source_read"]),
+            ("video.read_frames", &["book_read"], &["source_read"]),
+            ("video.review_audio", &["book_read"], &["source_read"]),
+            ("video.search", &["book_search"], &["lexical_locate"]),
             ("book.text_batch", &["book_read"], &["source_read"]),
+            ("library.list", &["book_read"], &["source_read"]),
+            ("library.read", &["book_read"], &["source_read"]),
+            ("library.learning", &["memory_write"], &["memory_read", "memory_write"]),
             ("tool.search", &["discovery"], &["discovery"]),
             ("artifact.list", &["artifact_read"], &["artifact_read"]),
             ("artifact.search", &["artifact_read"], &["artifact_read"]),
@@ -2111,12 +2213,15 @@ mod tests {
             ),
             ("reader.state", &["reader_read"], &["reader_read"]),
             ("tutor.step", &["memory_write"], &["memory_write"]),
+            ("workspace.records.read", &["memory_read"], &["memory_read"]),
         ];
 
-        assert_eq!(cases.len() + 1, ToolHandlerId::ALL.len());
-        let goal_update = registry.registration("goal.update").unwrap();
-        assert!(goal_update.capabilities.is_empty());
-        assert_eq!(goal_update.routing_card.provides, vec![ToolCapability::GoalManagement]);
+        assert_eq!(cases.len() + 2, ToolHandlerId::ALL.len());
+        for name in ["goal.update", "workspace.goal.update"] {
+            let goal_update = registry.registration(name).unwrap();
+            assert!(goal_update.capabilities.is_empty());
+            assert_eq!(goal_update.routing_card.provides, vec![ToolCapability::GoalManagement]);
+        }
         for (name, legacy, precise) in cases {
             let registration = registry.registration(name).unwrap();
             assert_eq!(

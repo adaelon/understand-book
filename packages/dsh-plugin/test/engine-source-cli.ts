@@ -33,4 +33,5 @@ else if (operation === "build.step") {
   if (trace && result.action) appendFileSync(trace, JSON.stringify({ kind: result.action.kind, request_id: result.action.request_id }) + "\n");
   process.stdout.write(JSON.stringify(result));
 }
+else if (operation === 'video-operator') await (await import('../../../skills/build/video-operator-cli.ts')).runOperatorVideoCli();
 else throw new Error("unsupported source test operation");

@@ -102,6 +102,7 @@ test('RS7 current HTML SVG Canvas and formula export unchanged with live scene c
   await expect(frame.locator('#count')).toHaveValue('3'); await expect(page.getByRole('textbox', { name: '未发送问题' })).toHaveValue('保留的问题');
   expect(requests.some(path => /state.save|chat|memory\/save/.test(path))).toBe(false);
   await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
   await page.getByRole('button',{name:'导出长图'}).click();await expect(panel).toBeVisible();
   await expect(panel.getByRole('button', { name: '下载长图 PNG', exact: true })).toBeEnabled();
   const mobile = await panel.locator('.share-preview img').evaluate(async (img: HTMLImageElement) => { await img.decode(); return { width:img.naturalWidth,height:img.naturalHeight }; });
@@ -232,6 +233,23 @@ test('RS7 missing resources and media report concrete failures, then retry succe
   await page.getByRole('button',{name:'导出长图'}).click();
   await expect(page.getByRole('dialog',{name:'导出演示长图'})).toBeVisible();
   expect((await page.evaluate(()=>(window as any).lastShare)).sources).toEqual(['原材料 · 第 2 页（来源暂不可用）']);
+});
+
+test('mobile export failures stay visible after closing the tools and allow retry', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setup(page, 'source-failed');
+  const frame = page.frameLocator('.agent-presentation iframe');
+  await frame.locator('img').evaluate((img: HTMLImageElement) => img.src = 'data:image/png;base64,broken');
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
+  await page.getByRole('button', { name: '导出长图', exact: true }).click();
+  await expect(page.getByRole('button', { name: '演示工具', exact: true })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('status').filter({ hasText: '图解未导出' })).toContainText('图片资源');
+  await page.getByRole('button', { name: '关闭演示提示', exact: true }).click();
+  await frame.locator('img').evaluate(img => img.remove());
+  await page.getByRole('button', { name: '演示工具', exact: true }).click();
+  await page.getByRole('button', { name: '导出长图', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '导出演示长图' })).toBeVisible();
+  await expect(page.locator('.agent-presentation iframe')).toHaveAttribute('data-load-count', '1');
 });
 
 test('long HTML exports its original layout and both ends in one unchanged PNG', async ({ page }, info) => {

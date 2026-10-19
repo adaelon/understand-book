@@ -39,10 +39,14 @@ describe("AgentActivities disclosure", () => {
   });
 
   it("shows only the latest action, expands the complete ordered history, and collapses again", async () => {
-    const wrapper = mount(AgentActivities, { props: { activities: [activity(1, "处理阅读偏好", "succeeded"), activity(2, "生成回答")] } });
+    const wrapper = mount(AgentActivities, { props: { activities: [
+      activity(1, "处理阅读偏好", "succeeded"),
+      { ...activity(2, "生成回答", "succeeded"), started_ms: 972746.808, duration_ms: 3310.6061 },
+    ] } });
     const summary = wrapper.get("button");
-    expect(summary.text()).toContain("生成回答");
-    expect(summary.text()).toContain("进行中");
+    expect(summary.text()).toContain("最近步骤：生成回答");
+    expect(summary.text()).toContain("已完成");
+    expect(summary.get("small").text()).toBe("本步 3.3 秒");
     expect(wrapper.text()).not.toContain("处理阅读偏好");
     expect(summary.attributes("aria-expanded")).toBe("false");
     await summary.trigger("click");

@@ -12,7 +12,7 @@ fn library(root: &Path, count: usize) -> PublishedLibrary {
     PublishedLibrary::with_budget(control, count, 2 * 1024 * 1024 * 1024)
 }
 
-fn material(path: &Path, id: &str, image: &[u8]) {
+pub(super) fn material(path: &Path, id: &str, image: &[u8]) {
     std::fs::create_dir_all(path.join("assets/images")).unwrap();
     let mut base = sample_base();
     base.book_id = id.into();
@@ -22,6 +22,78 @@ fn material(path: &Path, id: &str, image: &[u8]) {
     std::fs::write(path.join("asset_manifest.json"), json!({"version":"asset_manifest.v1", "book_id":id,
         "images":[{"lid":"1.1","status":"available","stored_path":"assets/images/same.png","url_path":"/book/assets/images/same.png"}]}).to_string()).unwrap();
     std::fs::write(path.join("secret.txt"), "not a runtime dependency").unwrap();
+}
+
+#[test]
+fn mu3_standard_markdown_and_epub_manifests_publish_the_truth_file_without_rewriting_sources() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    let mut library = library(root.path(), 20);
+    for (kind, extension) in [("markdown", "md"), ("epub", "epub")] {
+        let directory = input.path().join(kind);
+        let id = format!("standard-{kind}");
+        material(&directory, &id, b"image");
+        let book = Book::load(directory.to_str().unwrap()).unwrap();
+        super::tutor_tests::t15_foundation(&directory,&book);
+        // Matches packages/core/src/source-manifest.ts::buildSourceManifest.
+        // The original import need not remain available after the Engine has built source.txt.
+        let mut source = json!({"book_id":id,"canonical_source":{
+            "kind":kind,"path":input.path().join(format!("original.{extension}")),
+            "truth_file":"source.txt","participates_in_lid":true,"citation_anchor":"lid"
+        },"attachments":[]});
+        if kind == "epub" { source["canonical_source"]["snapshot_path"] = json!("source.epub"); }
+        let original = serde_json::to_vec(&source).unwrap();
+        std::fs::write(directory.join("source_manifest.json"), &original).unwrap();
+        assert_eq!(crate::tutor_api::tutor_source_readiness(&book,&directory)["status"],"ready");
+        let result = library.publish_online(&crate::online_publication::PublicationRequest {
+            operation_id:format!("standard-{kind}"),input_directory:directory.clone(),grant_users:vec!["A".into()]
+        }).unwrap();
+        let published = library.load("A", &result.reference).unwrap();
+        let manifest = source_manifest_value(published.directory()).unwrap();
+        assert_eq!(manifest["canonical_source"]["kind"],kind);
+        assert_eq!(manifest["canonical_source"]["path"],"source.txt");
+        assert_eq!(manifest["canonical_source"]["truth_file"],"source.txt");
+        assert!(manifest["canonical_source"].get("snapshot_path").is_none());
+        assert!(manifest.get("version").is_none());
+        assert!(manifest.get("capabilities").is_none());
+        assert!(result.capabilities.is_null());
+        assert!(published.book.text("1.1",None).is_ok());
+        assert_eq!(result.tutor_readiness["status"],"ready");
+        assert_eq!(crate::tutor_api::tutor_source_readiness(&published.book,published.directory())["status"],"ready");
+        assert_eq!(std::fs::read(directory.join("source_manifest.json")).unwrap(),original);
+        assert_eq!(std::fs::read(published.directory().join("source.txt")).unwrap(),std::fs::read(directory.join("source.txt")).unwrap());
+    }
+}
+
+#[test]
+fn mu3_v1_support_keeps_v2_canonical_hash_and_original_pdf_checks_required() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    material(input.path(),"v2-hash-contract",b"image");
+    let book = Book::load(input.path().to_str().unwrap()).unwrap();
+    super::tutor_tests::t15_foundation(input.path(),&book);
+    let source = json!({"version":"source_manifest.v2","book_id":"v2-hash-contract",
+        "canonical_source":{"kind":"reconciled_markdown","path":"source.txt","citation_anchor":"lid","sha256":book.source_fingerprint()},
+        "capabilities":{}});
+    let mut library = library(root.path(),20);
+    std::fs::write(input.path().join("source_manifest.json"),source.to_string()).unwrap();
+    assert_eq!(crate::tutor_api::tutor_source_readiness(&book,input.path())["status"],"ready");
+    assert!(library.publish(input.path()).is_ok());
+    let mut invalid = source.clone();
+    invalid["canonical_source"]["sha256"] = json!("wrong-source-hash");
+    std::fs::write(input.path().join("source_manifest.json"),invalid.to_string()).unwrap();
+    assert!(matches!(library.publish(input.path()),Err(e) if e.error_code=="PUBLICATION_INVALID"));
+    assert_eq!(crate::tutor_api::tutor_source_readiness(&book,input.path())["blocked_stage"],"hybrid_foundation");
+    invalid = source.clone();
+    invalid["canonical_source"].as_object_mut().unwrap().remove("sha256");
+    std::fs::write(input.path().join("source_manifest.json"),invalid.to_string()).unwrap();
+    assert!(matches!(library.publish(input.path()),Err(e) if e.error_code=="PUBLICATION_INVALID"));
+    assert_eq!(crate::tutor_api::tutor_source_readiness(&book,input.path())["blocked_stage"],"hybrid_foundation");
+    invalid = source;
+    invalid["original_pdf"] = json!({"path":"input.pdf","sha256":"wrong-pdf-hash","citation_anchor":false});
+    std::fs::write(input.path().join("input.pdf"),b"%PDF-1.7 fixture").unwrap();
+    std::fs::write(input.path().join("source_manifest.json"),invalid.to_string()).unwrap();
+    assert!(matches!(library.publish(input.path()),Err(e) if e.error_code=="PUBLICATION_INVALID"));
 }
 
 #[test]
@@ -66,16 +138,15 @@ fn default_book_grants_upgrade_schema12_preserves_existing_grants() {
     let root = tempfile::tempdir().unwrap();
     let input = tempfile::tempdir().unwrap();
     material(input.path(), "upgrade", b"image");
-    let mut library = library(root.path(), 20);
+    let connection = crate::control_store::workspace_quota_schema_tests::historical_database(root.path(), 12);
+    let mut control = ControlStore { connection, writer: ServiceWriter::acquire(root.path()).unwrap() };
+    for user in ["A", "B", "local"] { control.create_user(user).unwrap(); }
+    let mut library = PublishedLibrary::new(control);
     let reference = library.publish(input.path()).unwrap().reference;
     library.grant("A", &reference).unwrap();
     drop(library);
-    {
-        let control = ControlStore::open(ServiceWriter::acquire(root.path()).unwrap()).unwrap();
-        control.connection.execute_batch("DROP TRIGGER grant_default_books_to_new_user; DROP TABLE default_book_grants; PRAGMA user_version=12;").unwrap();
-    }
     let control = ControlStore::open(ServiceWriter::acquire(root.path()).unwrap()).unwrap();
-    assert_eq!(control.connection.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0)).unwrap(), 13);
+    assert_eq!(control.connection.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0)).unwrap(), crate::control_store::CONTROL_SCHEMA_VERSION);
     let mut library = PublishedLibrary::new(control);
     assert!(library.load("A", &reference).is_ok());
     assert!(library.load("B", &reference).is_err());

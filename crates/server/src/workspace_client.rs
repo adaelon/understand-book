@@ -9,16 +9,38 @@ pub(crate) fn reply(reply: Reply) -> Result<Value, ToolError> {
     }
 }
 
+pub(crate) fn history_with_library(user: &user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace,
+    library: &std::sync::Mutex<published_library::PublishedLibrary>, owner: &str) -> Result<Value, ToolError> {
+    let Some(selected) = workspace.selected_chat.as_deref() else {
+        return read(user, workspace, "chat/history", &Value::Null, "").unwrap();
+    };
+    let session = user.agent_history.sessions.iter().find(|s|s.id==selected
+        && s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
+        .ok_or_else(authorization::missing)?;
+    let mut response = agent_history_response(&user.agent_history, &workspace.book, Some(selected))?;
+    for (saved, view) in session.turns.iter().zip(response.current.turns.iter_mut()) {
+        if let Some(reference) = &saved.published_book_ref {
+            if let Ok(publication) = library.lock().unwrap().load(owner, reference) {
+                *view = turn_view(&publication.book, saved);
+            }
+        }
+    }
+    Ok(json!(response))
+}
+
 pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, action: &str, input: &Value, now: &str) -> Option<Result<Value, ToolError>> {
-    let private = PrivateBookContext { user, book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() };
+    let private = PrivateBookContext { user, learning_workspace_id: workspace.learning_workspace_id.as_deref(), book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() };
     Some(match action {
         "profile/manifest" => reply(route_profile_manifest(&workspace.book, &HashMap::new())),
         "chat/history" => {
             if let Some(selected) = &workspace.selected_chat {
                 agent_history_response(&user.agent_history, &workspace.book, Some(selected)).map(|v| json!(v))
             } else {
-                let sessions = agent_session_summaries(&user.agent_history, &workspace.book);
-                Ok(json!({"active_session_id":"", "sessions":sessions, "current":{"id":"", "book_id":workspace.book.base.book_id,"title":"", "turns":[],"goals":[]}}))
+                let mut sessions: Vec<_> = user.agent_history.sessions.iter()
+                    .filter(|s|s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
+                    .map(|s|session_summary(s, &workspace.book)).collect();
+                sessions.sort_by(|a,b|b.updated_at.cmp(&a.updated_at).then_with(||b.id.cmp(&a.id)));
+                Ok(json!({"active_session_id":"", "sessions":sessions, "current":{"id":"", "book_id":workspace.book.base.book_id,"learning_workspace_id":workspace.learning_workspace_id,"title":"", "turns":[],"goals":[]}}))
             }
         }
         "memory/presentation.read" | "memory/presentation.observe" => note_api::presentation(user, workspace, input, action.ends_with("observe")),
@@ -31,7 +53,7 @@ pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspac
             let binding = workspace_source_binding(user, workspace, &request)?;
             let material_title = answer_source_material_title(workspace, &binding);
             let resolved = if binding.book_id == workspace.book.base.book_id {
-                workspace.book.resolve_source(&binding.evidence_range, "zh-CN", Some(&binding.evidence_text_digest))
+                workspace.book.resolve_source(binding.evidence_range.as_ref().ok_or_else(|| invalid_note_request("MEDIA_SOURCE_NAVIGATION", "Use saved media position"))?, "zh-CN", Some(&binding.evidence_text_digest))
             } else { Err(authorization::missing()) };
             Ok(match resolved {
                 Ok(source) => json!({"source_ref_id":binding.source_ref_id,"label":source.label,"material_title":material_title,"heading_path":source.heading_path,"highlighted_quote":source.highlighted_quote,"context_before":source.context_before,"context_after":source.context_after,"excerpt":source.excerpt,"stale":false,"can_open_in_reader":true}),

@@ -70,7 +70,7 @@ describe("PH8 paper projection chain", () => {
     const dir = tempDir();
     writeTrustedBook(dir);
 
-    const plan = buildPaperProjectionChainPlan(dir, { allow_partial: true, paper_subtype: "survey" });
+    const plan = buildPaperProjectionChainPlan(dir, { allow_partial: true, paper_subtype: "survey", pass2: "enabled" });
 
     expect(plan.version).toBe("paper_projection_chain_plan.v1");
     expect(plan.source_truth_locked).toBe(true);
@@ -99,11 +99,11 @@ describe("PH8 paper projection chain", () => {
     });
   });
 
-  it("can omit Pass2 while retaining BookStructure with no audit input requirement", () => {
+  it("defaults to omitting Pass2 while retaining BookStructure with no audit input requirement", () => {
     const dir = tempDir();
     writeTrustedBook(dir);
 
-    const plan = buildPaperProjectionChainPlan(dir, { pass2: "disabled" });
+    const plan = buildPaperProjectionChainPlan(dir);
 
     expect(plan.stages.map((stage) => stage.stage)).toEqual([
       "paper_metadata",

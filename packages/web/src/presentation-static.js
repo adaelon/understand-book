@@ -36,7 +36,12 @@ function () {
     }
     let target;
     if (node instanceof HTMLCanvasElement) {
-      if (!node.getContext('2d')) throw new Error('此 Canvas 使用 WebGL，当前无法静态输出。');
+      if (!node.getContext('2d')) {
+        const gl = node.getContext('webgl2') || node.getContext('webgl');
+        if (!gl || gl.isContextLost()) throw new Error('三维画布尚未就绪，请重新加载图解。');
+        if (!gl.getContextAttributes().preserveDrawingBuffer)
+          throw new Error('三维画布未保留画面；制作时请开启 preserveDrawingBuffer 后重新导出。');
+      }
       target = document.createElement('img');
       try { target.src = node.toDataURL('image/png'); } catch { throw new Error('Canvas 资源无法读取，请重新加载图解。'); }
     } else {

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>形状变了，面积呢？</title><style>
+:root{color-scheme:light;--paper:#f5f4ed;--ink:#233e40;--muted:#697d79;--teal:#18857e;--line:#d4ded7;--gold:#c38a35}*{box-sizing:border-box}body{margin:0;padding:0;background:var(--paper);color:var(--ink);font:16px/1.7 "Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:45px 44px 28px}header{padding:0 0 30px;max-width:850px}.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:650;color:var(--teal);display:flex;justify-content:space-between;gap:16px}.method-name{font-size:13px;color:var(--muted);margin:27px 0 10px}h1{font-family:Georgia,"Songti SC","SimSun",serif;font-weight:500;font-size:clamp(38px,6.5vw,64px);line-height:1.16;letter-spacing:-.045em;margin:0 0 22px}h2{font-family:Georgia,"Songti SC","SimSun",serif;font-size:clamp(24px,3.5vw,32px);font-weight:500;line-height:1.4;margin:16px 0}.lead{font-size:17px;line-height:1.9;max-width:680px;color:#566e68;margin:0}p{margin:12px 0}button,input,select{font:inherit;min-height:44px;min-width:44px}button{border:1px solid var(--line);border-radius:7px;background:#fcfcf7;color:var(--ink);padding:8px 14px;cursor:pointer;white-space:nowrap}button:hover{background:#e8eee6;border-color:#9cb7ac}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,svg:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}select{max-width:100%;background:#fcfcf7;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 10px}input[type=range]{min-width:0;width:100%;margin:0;accent-color:var(--teal);cursor:ew-resize}input[type=checkbox]{accent-color:var(--teal);width:44px;margin:0;justify-self:end}.experiment{border:1px solid var(--line);border-radius:14px;background:linear-gradient(160deg,#fafaf4,#ecefe6);overflow:hidden}.figure-heading{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:19px 24px 0;color:var(--muted);font-size:12px}.live-tag{font-size:11px;white-space:nowrap;background:#e5ede2;color:#477163;border-radius:20px;padding:3px 10px}svg{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif;touch-action:none;user-select:none;overflow:hidden}#scene{max-height:450px;margin:4px auto 0;cursor:ew-resize}#detail{cursor:ew-resize}svg text{font-variant-numeric:tabular-nums}svg .hit{cursor:pointer}.gesture{font-size:12px;color:var(--muted);margin:0;padding:4px 24px 18px}#readout{border-top:1px solid var(--line);padding:18px 24px 16px;background:#ffffff70}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.metrics>div>span{display:block;font-size:12px;color:var(--muted)}.metrics output{display:block;font:500 28px/1.6 Georgia,"Segoe UI",serif;color:var(--ink);font-variant-numeric:tabular-nums}.metrics output small{font:12px "Segoe UI",sans-serif;margin-left:6px;color:var(--muted)}#reading{font-size:13px;color:#526e66;margin:10px 0 0;min-height:22px}.controls{padding:20px 4px 28px}.transport{display:grid;grid-template-columns:auto 44px minmax(44px,1fr) 44px auto;gap:8px;align-items:center}#play{background:var(--teal);color:#fff;border-color:var(--teal);min-width:72px}.transport #back,.transport #next{padding:0;font-size:20px}.position-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:16px;margin:5px 0 18px}output{font-variant-numeric:tabular-nums}.parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 28px}.parameter{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;font-size:13px;gap:2px 10px}.parameter input[type=range],.parameter select{grid-column:1/-1}.parameter output{color:var(--teal)}.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.presets button{font-size:12px;background:transparent;padding:7px 12px}.linked{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:32px;border-top:1px solid var(--line);padding:38px 0}.essay p{font-size:14px}.formula{white-space:pre-line;background:#e6ece2;border-left:3px solid var(--teal);padding:16px;margin:20px 0;font:17px/1.7 Georgia,"Segoe UI",serif;overflow-wrap:anywhere}.small{font-size:12px!important;color:var(--muted);line-height:1.8}.detail-figure{align-self:center;min-width:0}.detail-figure>p{padding:0 12px}.walkthrough{border-top:1px solid var(--line);padding-top:24px}.chapters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 32px}.chapters button{display:flex;flex-direction:column;gap:10px;padding:20px;text-align:left;white-space:normal;background:#fafbf5;line-height:1.7}.chapter-number{color:var(--gold);font:22px Georgia,serif}.chapters strong{font-weight:600;font-size:15px}.chapters button>span:not(.chapter-number){font-size:12px;color:var(--muted)}.chapters em{font-size:11px;color:var(--teal);font-style:normal;margin-top:auto}footer{border-top:1px solid var(--line);font-size:13px;padding-top:14px}footer>p{max-width:760px}details{margin-top:22px;color:var(--muted);font-size:12px}summary{cursor:pointer;min-height:44px;padding:8px 0}details p{margin-top:0}@media(max-width:760px){main{padding:30px 24px 22px}.linked{grid-template-columns:1fr;gap:12px}.detail-figure{max-width:660px;width:100%}.chapters{gap:8px}.chapters button{padding:14px}h1{font-size:46px}}@media(max-width:440px){main{padding:24px 14px 18px}h1{font-size:38px}.lead{font-size:15px}.figure-heading{padding:15px 12px 0;font-size:11px}.live-tag{display:none}.gesture{padding:3px 12px 13px;font-size:11px}#readout{padding:13px 12px}.metrics{gap:8px}.metrics output{font-size:23px}.metrics>div>span{font-size:11px}.metrics output small{display:block;margin:0;font-size:10px}.transport{grid-template-columns:auto 44px minmax(44px,1fr) 44px;gap:5px}#reset{grid-column:4;grid-row:2}.position-row{margin-top:-44px;margin-right:56px;min-height:44px;align-items:center;font-size:11px}.parameters{grid-template-columns:1fr}.chapters{grid-template-columns:1fr}.chapters button{padding:16px;display:grid;grid-template-columns:25px 1fr;gap:5px 12px}.chapter-number{grid-row:1/4}.chapters em,.chapters button>span:not(.chapter-number){grid-column:2}.linked{padding:28px 0}.controls{padding-left:0;padding-right:0}}
+
+</style></head><body><script>
+"use strict";
+(() => {
+  // skills/presentation/methods/_shared/linked-v1.js
+  var $ = (id) => document.getElementById(id);
+  var clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  var fmt = (x, d = 3) => Number(x.toFixed(d)).toString();
+  var C = { ink: "#233e40", muted: "#768683", teal: "#18857e", gold: "#c38a35", coral: "#cf6851", blue: "#5b83ae", line: "#d4ded7", paper: "#f5f4ed" };
+  var line = (x1, y1, x2, y2, color = C.line, width = 1, extra = "") => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" ${extra}/>`;
+  var rect = (x, y, w, h, fill, extra = "") => `<rect x="${x}" y="${y}" width="${Math.max(0, w)}" height="${Math.max(0, h)}" fill="${fill}" ${extra}/>`;
+  var circle = (x, y, r, fill, extra = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" ${extra}/>`;
+  var text = (x, y, value, color = C.muted, size = 20, extra = "") => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${extra}>${value}</text>`;
+  var points = (pts) => pts.map((p) => p.join(",")).join(" ");
+  var label = (x, y, v, c = C.ink) => text(x, y, v, c, 22, 'text-anchor="middle"');
+  function createDemo(topic) {
+    const defaults = { ...topic.defaults, semantic_state: 0, transition_progress: 0 };
+    const state = { ...defaults, ...window.presentation?.initialState, playing: false };
+    const fields = Object.keys(topic.defaults);
+    const control = (p) => `<label class="parameter" for="${p.id}"><span>${p.label}</span><output id="${p.id}-value"></output>${p.options ? `<select id="${p.id}" data-param="${p.id}">${p.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>` : p.type === "checkbox" ? `<input id="${p.id}" data-param="${p.id}" type="checkbox">` : `<input id="${p.id}" data-param="${p.id}" type="range" min="${p.min}" max="${p.max}" step="${p.step}">`}</label>`;
+    document.body.innerHTML = `<main><header><div class="eyebrow">EXPLORABLE EXPLANATIONS <span>${topic.number} / 09</span></div><p class="method-name">${topic.method}</p><h1>${topic.title}</h1><p class="lead">${topic.lead}</p></header>
+  <section class="experiment" aria-label="${topic.mainLabel}"><div class="figure-heading"><span>01 / ${topic.mainLabel}</span><span class="live-tag" id="status">\u53EF\u64CD\u4F5C</span></div><svg id="scene" viewBox="0 0 720 380" role="img" tabindex="0" aria-label="${topic.directHint}"></svg><p class="gesture">\u2194 ${topic.directHint}</p><div id="readout" aria-live="off"><div id="metrics" class="metrics"></div><p id="reading"></p></div></section>
+  <section class="controls" aria-label="\u89C2\u5BDF\u63A7\u5236"><div class="transport"><button id="play" aria-pressed="false">\u64AD\u653E</button><button id="back" aria-label="\u524D\u4E00\u6B65">\u2190</button><input id="position" aria-label="\u89C2\u5BDF\u4F4D\u7F6E" type="range" min="0" max="${topic.max}" step="0.001"><button id="next" aria-label="\u540E\u4E00\u6B65">\u2192</button><button id="reset">\u91CD\u7F6E</button></div><p class="position-row"><span>${topic.timelineLabel}</span><output id="position-label"></output></p><div class="parameters">${topic.parameters.map(control).join("")}</div><div class="presets">${topic.presets.map((p, i) => `<button data-preset="${i}">${p.label}</button>`).join("")}</div></section>
+  <section class="linked"><div class="essay"><p class="eyebrow">02 / ${topic.detailLabel}</p><h2>${topic.question}</h2><p>${topic.answer}</p><div class="formula">${topic.formula}</div><p class="small">${topic.detailCaption}</p></div><div class="detail-figure"><svg id="detail" viewBox="0 0 640 300" role="img" tabindex="0" aria-label="${topic.detailHint || "\u8054\u52A8\u7EC6\u8282\u56FE\uFF1B\u5DE6\u53F3\u65B9\u5411\u952E\u79FB\u52A8\u89C2\u5BDF\u4F4D\u7F6E"}"></svg><p id="detail-reading" class="small"></p></div></section>
+  <section class="walkthrough"><p class="eyebrow">03 / \u4EB2\u624B\u8BD5\u4E00\u8BD5</p><div class="chapters">${topic.chapters.map((c, i) => `<button data-chapter="${i}"><span class="chapter-number">0${i + 1}</span><strong>${c.title}</strong><span>${c.body}</span><em>\u89C2\u5BDF\u8FD9\u4E00\u523B \u2197</em></button>`).join("")}</div></section><footer><p>${topic.takeaway}</p><details><summary>\u6A21\u578B\u4E0E\u9002\u7528\u8303\u56F4</summary><p>${topic.limits}</p></details></footer></main>`;
+    let frame = 0, last = 0, visible = true, disposed = false;
+    const snapshot = () => ({ ...state });
+    const commit = () => window.presentation?.commitState();
+    function position(q) {
+      q = clamp(q, 0, topic.max);
+      state.semantic_state = Math.floor(q);
+      state.transition_progress = q - state.semantic_state;
+    }
+    function pause() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      state.playing = false;
+      last = 0;
+    }
+    function render() {
+      const m = topic.derive(state);
+      $("scene").innerHTML = topic.drawMain(m, state);
+      $("detail").innerHTML = topic.drawDetail(m, state);
+      $("metrics").innerHTML = topic.metrics(m, state).map(([label2, value, unit = ""]) => `<div><span>${label2}</span><output>${value}<small>${unit}</small></output></div>`).join("");
+      $("reading").textContent = topic.explain(m, state);
+      $("detail-reading").textContent = topic.detailReading(m, state);
+      $("position").value = state.semantic_state + state.transition_progress;
+      $("position-label").textContent = topic.positionLabel(m, state);
+      for (const p of topic.parameters) {
+        const el = $(p.id);
+        if (p.type === "checkbox") el.checked = state[p.id];
+        else el.value = state[p.id];
+        $(p.id + "-value").textContent = p.options ? "" : p.format ? p.format(state[p.id]) : fmt(state[p.id]);
+      }
+      $("play").textContent = state.playing ? "\u6682\u505C" : "\u64AD\u653E";
+      $("play").setAttribute("aria-pressed", String(state.playing));
+      $("status").textContent = state.playing ? "\u6B63\u5728\u6F14\u793A" : "\u505C\u4E0B\u6765\uFF0C\u89C2\u5BDF";
+      $("play").disabled = state.semantic_state === topic.max;
+      $("back").disabled = state.semantic_state === 0 && state.transition_progress === 0;
+      $("next").disabled = state.semantic_state === topic.max;
+      return m;
+    }
+    function seek({ semantic_state, transition_progress = 0 }) {
+      pause();
+      position(semantic_state + transition_progress);
+      render();
+      return snapshot();
+    }
+    function apply({ values = {}, q = 0 } = {}) {
+      pause();
+      for (const key of fields) if (key in values) state[key] = values[key];
+      position(q);
+      render();
+    }
+    const current = () => state.semantic_state + state.transition_progress;
+    function tick(t) {
+      frame = 0;
+      if (!state.playing || !visible || document.hidden || disposed) {
+        last = 0;
+        return;
+      }
+      if (last) position(current() + Math.min((t - last) / 1e3, 0.06) / (topic.secondsPerStep || 2));
+      last = t;
+      if (current() === topic.max) pause();
+      render();
+      if (state.playing) frame = requestAnimationFrame(tick);
+    }
+    function resume() {
+      if (state.playing && !frame && !document.hidden && visible && !disposed) {
+        last = 0;
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    $("play").onclick = () => {
+      if (state.playing) pause();
+      else {
+        state.playing = true;
+        resume();
+      }
+      render();
+      commit();
+    };
+    $("back").onclick = () => {
+      seek({ semantic_state: state.transition_progress > 0 ? state.semantic_state : state.semantic_state - 1 });
+      commit();
+    };
+    $("next").onclick = () => {
+      seek({ semantic_state: state.semantic_state + 1 });
+      commit();
+    };
+    $("reset").onclick = () => {
+      seek({ semantic_state: 0 });
+      commit();
+    };
+    $("position").oninput = (e) => seek({ semantic_state: Number(e.target.value) });
+    $("position").onchange = commit;
+    for (const p of topic.parameters) {
+      $(p.id).oninput = (e) => apply({ values: { [p.id]: p.type === "checkbox" ? e.target.checked : typeof defaults[p.id] === "number" ? Number(e.target.value) : e.target.value } });
+      $(p.id).onchange = commit;
+    }
+    document.querySelectorAll("[data-preset]").forEach((b) => b.onclick = () => {
+      apply(topic.presets[Number(b.dataset.preset)]);
+      commit();
+    });
+    document.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => {
+      apply(topic.chapters[Number(b.dataset.chapter)]);
+      commit();
+    });
+    function direct(id, handler) {
+      const el = $(id);
+      let down = false;
+      const update = (e) => {
+        const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(el.getScreenCTM().inverse());
+        const change = handler?.(p, state, e);
+        if (change) apply(change);
+      };
+      el.onpointerdown = (e) => {
+        if (e.button !== 0) return;
+        down = true;
+        el.setPointerCapture(e.pointerId);
+        update(e);
+      };
+      el.onpointermove = (e) => {
+        if (down) update(e);
+      };
+      el.onpointerup = el.onpointercancel = () => {
+        if (down) {
+          down = false;
+          commit();
+        }
+      };
+      el.onkeydown = (e) => {
+        if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+        e.preventDefault();
+        const change = topic.key?.(id, e.key, state);
+        if (change) apply(change);
+        else seek({ semantic_state: e.key === "Home" ? 0 : e.key === "End" ? topic.max : current() + (e.key === "ArrowRight" ? 0.05 : -0.05) });
+        commit();
+      };
+    }
+    direct("scene", topic.pointer);
+    direct("detail", topic.detailPointer);
+    const visibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    const observer = new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (!visible) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    });
+    observer.observe(document.querySelector("main"));
+    window.addEventListener("pagehide", () => {
+      disposed = true;
+      pause();
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+    }, { once: true });
+    window.presentationScene = { seek, snapshot };
+    window.explanationDemo = { inspect: () => structuredClone(topic.derive(state)) };
+    window.presentation?.registerStateReader(() => ({ values: Object.fromEntries([...fields, "semantic_state", "transition_progress"].map((k) => [k, state[k]])), visible_step: topic.positionLabel(topic.derive(state), state) }));
+    window.presentation?.registerStateRestorer((saved) => {
+      const values = saved.values.page;
+      apply({ values, q: (values.semantic_state ?? 0) + (values.transition_progress ?? 0) });
+    });
+    position(state.semantic_state + state.transition_progress);
+    render();
+  }
+
+  // skills/presentation/methods/object-transform/v2/topic.js
+  function derive(s) {
+    const u = s.semantic_state + s.transition_progress, a = s.shear * u;
+    return { u, a, corners: [[0, 0], [1, 0], [1 + a, 1], [a, 1]], area: 1, perimeter: 2 + 2 * Math.sqrt(1 + a * a) };
+  }
+  var X = (x) => 250 + 150 * x;
+  var Y = (y) => 300 - 150 * y;
+  createDemo({
+    id: "object-transform",
+    method: "\u4FDD\u6301\u8EAB\u4EFD\u7684\u5BF9\u8C61\u53D8\u6362",
+    number: "02",
+    title: "\u5F62\u72B6\u53D8\u4E86\uFF0C\u9762\u79EF\u5462\uFF1F",
+    lead: "\u63E1\u4F4F\u4E0A\u8FB9\uFF0C\u628A\u6B63\u65B9\u5F62\u63A8\u6210\u5E73\u884C\u56DB\u8FB9\u5F62\u3002\u989C\u8272\u4E0D\u53D8\u7684\u89D2\u70B9\u4E00\u76F4\u662F\u540C\u4E00\u4E2A\u70B9\uFF0C\u800C\u6BCF\u4E00\u6761\u6C34\u5E73\u5207\u7247\u4E5F\u4FDD\u7559\u7740\u539F\u6765\u7684\u957F\u5EA6\u3002",
+    mainLabel: "\u63A8\u4E00\u63A8\u4E0A\u8FB9",
+    directHint: "\u6C34\u5E73\u62D6\u52A8\u56FE\u5F62\u6539\u53D8\u526A\u5207\uFF1B\u65B9\u5411\u952E\u5FAE\u8C03\u3002\u865A\u7EBF\u4FDD\u7559\u539F\u6765\u7684\u6B63\u65B9\u5F62\u3002",
+    detailLabel: "\u4E0D\u53D8\u91CF\u6765\u81EA\u54EA\u91CC",
+    question: "\u503E\u659C\uFF0C\u4E3A\u4EC0\u4E48\u6CA1\u6709\u6324\u6389\u9762\u79EF\uFF1F",
+    answer: "\u60F3\u8C61\u628A\u6B63\u65B9\u5F62\u5207\u6210\u5F88\u591A\u6C34\u5E73\u8584\u7247\u3002\u6BCF\u7247\u53EA\u662F\u5DE6\u53F3\u5E73\u79FB\uFF0C\u65E2\u6CA1\u6709\u53D8\u77ED\uFF0C\u4E5F\u6CA1\u6709\u53D8\u539A\u3002\u5E95\u4E0E\u9AD8\u90FD\u6CA1\u6709\u6539\u53D8\uFF0C\u6240\u4EE5\u9762\u79EF\u4ECD\u7136\u662F 1\u3002\u659C\u8FB9\u5374\u53D8\u957F\u4E86\uFF0C\u5468\u957F\u5E76\u4E0D\u4FDD\u6301\u3002",
+    formula: "x\u2032 = x + a\xB7y\u3000 y\u2032 = y\nA\u2032 = \u5E95 \xD7 \u9AD8 = 1",
+    detailCaption: "\u53F3\u56FE\u628A\u53D8\u6362\u5199\u6210\u4E24\u4E2A\u57FA\u5411\u91CF\u3002\u9752\u8272\u5411\u91CF\u4E0D\u53D8\uFF0C\u91D1\u8272\u5411\u91CF\u503E\u659C\uFF1B\u5B83\u4EEC\u56F4\u51FA\u7684\u6709\u5411\u9762\u79EF\u7B49\u4E8E\u884C\u5217\u5F0F 1\u3002",
+    takeaway: "\u8FFD\u8E2A\u5BF9\u8C61\u7684\u8EAB\u4EFD\uFF0C\u518D\u533A\u5206\u54EA\u4E9B\u91CF\u4F1A\u53D8\u3001\u54EA\u4E9B\u91CF\u4E0D\u53D8\u3002\u8FD9\u91CC\u4FDD\u6301\u7684\u662F\u9762\u79EF\u548C\u9AD8\u5EA6\uFF0C\u4E0D\u662F\u6240\u6709\u957F\u5EA6\u548C\u89D2\u5EA6\u3002",
+    limits: "\u5355\u4F4D\u6B63\u65B9\u5F62\u7684\u4E8C\u7EF4\u6C34\u5E73\u526A\u5207\uFF0C\u76EE\u6807\u7CFB\u6570 \u22121\u2264s\u22641\u3002\u52A8\u753B\u4F4D\u7F6E u\u2208[0,1]\uFF0C\u5B9E\u9645\u526A\u5207 a=s\xB7u\u3002\u65E0\u91CF\u7EB2\uFF0C\u4E0D\u5305\u542B\u65CB\u8F6C\u3001\u900F\u89C6\u6216\u975E\u7EBF\u6027\u53D8\u5F62\u3002",
+    defaults: { shear: 0.8 },
+    max: 1,
+    secondsPerStep: 5,
+    timelineLabel: "\u4ECE\u539F\u5F62\u5230\u76EE\u6807\u53D8\u6362",
+    parameters: [{ id: "shear", label: "\u76EE\u6807\u526A\u5207 s", min: -1, max: 1, step: 0.01 }],
+    presets: [{ label: "\u5411\u5DE6\u63A8", values: { shear: -1 }, q: 1 }, { label: "\u6062\u590D\u6B63\u65B9\u5F62", values: { shear: 0 }, q: 1 }, { label: "\u5411\u53F3\u63A8", values: { shear: 1 }, q: 1 }],
+    chapters: [{ title: "\u4FDD\u4F4F\u8EAB\u4EFD", body: "\u5148\u8FFD\u8E2A\u56DB\u4E2A\u989C\u8272\u56FA\u5B9A\u7684\u89D2\u70B9\u3002", values: { shear: 1 }, q: 0.35 }, { title: "\u6A2A\u5207\u4E00\u7247", body: "\u5E95\u548C\u6BCF\u4E00\u5C42\u7684\u957F\u5EA6\u59CB\u7EC8\u4E3A 1\u3002", values: { shear: 1 }, q: 1 }, { title: "\u6362\u4E2A\u65B9\u5411", body: "\u5411\u5DE6\u526A\u5207\uFF0C\u9762\u79EF\u4ECD\u4E0D\u53D8\u3002", values: { shear: -1 }, q: 1 }],
+    derive,
+    drawMain(m) {
+      let h = "";
+      for (let x = -1; x <= 2; x += 0.25) h += line(X(x), Y(-0.25), X(x), Y(1.65), C.line, 1);
+      for (let y = -0.25; y <= 1.5; y += 0.25) h += line(X(-1), Y(y), X(2.2), Y(y), C.line, 1);
+      h += rect(X(0), Y(1), 150, 150, "none", `stroke="${C.muted}" stroke-dasharray="6 6" stroke-width="2"`);
+      h += `<polygon id="shape" points="${points(m.corners.map(([x, y]) => [X(x), Y(y)]))}" fill="${C.teal}" fill-opacity=".17" stroke="${C.teal}" stroke-width="3"/>`;
+      for (let y = 0.1; y < 1; y += 0.1) h += line(X(m.a * y), Y(y), X(1 + m.a * y), Y(y), C.teal, 1.5);
+      const colors = [C.ink, C.teal, C.gold, C.coral];
+      m.corners.forEach(([x, y], i) => {
+        h += circle(X(x), Y(y), 8, colors[i], 'stroke="#f5f4ed" stroke-width="3"') + label(X(x), Y(y) + (i < 2 ? 30 : -20), ["O", "A", "B", "C"][i], colors[i]);
+      });
+      h += line(X(0), 345, X(1), 345, C.ink, 2) + label(X(0.5), 374, "\u5E95 1");
+      h += line(650, Y(0), 650, Y(1), C.gold, 2) + text(663, 230, "\u9AD8 1", C.gold, 21);
+      h += label(360, 37, "\u6BCF\u4E00\u6761\u6C34\u5E73\u5207\u7247\uFF0C\u53EA\u5E73\u79FB\uFF0C\u4E0D\u4F38\u7F29", C.muted);
+      return h;
+    },
+    drawDetail(m) {
+      const ox = 230, oy = 238, u = 140;
+      let h = line(55, oy, 580, oy, C.line) + line(ox, 35, ox, 265, C.line);
+      h += `<polygon points="${points([[ox, oy], [ox + u, oy], [ox + u * (1 + m.a), oy - u], [ox + u * m.a, oy - u]])}" fill="${C.teal}" fill-opacity=".12"/>`;
+      h += line(ox, oy, ox + u, oy, C.teal, 4) + line(ox, oy, ox + u * m.a, oy - u, C.gold, 4);
+      h += circle(ox + u * m.a, oy - u, 7, C.gold, 'id="basis-end"') + label(ox + u * 0.5, oy + 31, "e\u2081 \u2192 (1, 0)", C.teal) + label(ox + u * m.a, oy - u - 20, `e\u2082 \u2192 (${fmt(m.a, 2)}, 1)`, C.gold);
+      return h;
+    },
+    metrics: (m) => [["\u5B9E\u9645\u526A\u5207 a", fmt(m.a)], ["\u9762\u79EF", fmt(m.area), "\u5E73\u65B9\u5355\u4F4D"], ["\u5468\u957F", fmt(m.perimeter), "\u5355\u4F4D"]],
+    explain: (m) => `\u4E0A\u8FB9\u4F4D\u79FB ${fmt(m.a)}\uFF0C\u9AD8\u4ECD\u662F 1\u3002\u70B9 B \u4ECE (1, 1) \u79FB\u5230 (${fmt(1 + m.a)}, 1)\u3002`,
+    detailReading: (m) => `\u884C\u5217\u5F0F 1\xD71 \u2212 ${fmt(m.a)}\xD70 = 1\u3002\u5468\u957F\u4E3A 2 + 2\u221A(1+a\xB2) = ${fmt(m.perimeter)}\u3002`,
+    positionLabel: (m) => `${fmt(m.u * 100, 1)}%`,
+    pointer: (p) => ({ values: { shear: clamp((p.x - X(0.5)) / 150, -1, 1) }, q: 1 }),
+    detailPointer: (p) => ({ values: { shear: clamp((p.x - 230) / 140, -1, 1) }, q: 1 }),
+    key: (id, k, s) => ({ values: { shear: k === "Home" ? -1 : k === "End" ? 1 : clamp(s.shear + (k === "ArrowRight" ? 0.05 : -0.05), -1, 1) }, q: 1 })
+  });
+})();
+
+</script></body></html>

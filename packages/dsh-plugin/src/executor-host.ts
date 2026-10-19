@@ -23,6 +23,8 @@ export interface ExecutorBinding {
   agent?: Agent;
   active: boolean;
   failure?: "model_context_limit" | "model_configuration_changed";
+  modelCost?: {ledger: import("../../core/src/external-build-cost.ts").ExternalBuildCostLedger; executionId:string; logicalId:string; blocked:()=>void};
+  costObservation: { model_calls: number; usages: Record<string, unknown>[] };
   assertCaller(caller: Agent | undefined): void;
 }
 
@@ -65,7 +67,7 @@ export function createExecutorHost(
       throw new Error("executor_handoff_invalid");
     }
     const binding: ExecutorBinding = {
-      launch: input, active: true,
+      launch: input, active: true, costObservation: { model_calls: 0, usages: [] },
       assertCaller(caller) {
         if (!binding.active || !caller || caller !== binding.agent
           || ctx.agents.get(caller.id) !== caller || !ctx.agents.isOwnedBy(caller.id, input.parent)) {

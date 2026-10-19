@@ -953,6 +953,8 @@ mod tests {
         store
             .reconcile_review_jobs(
                 &[ReviewSessionCursor {
+                    turns: Vec::new(),
+                    learning_workspace_id: None,
                     session_id: "review-session".into(),
                     book_id: "book-review".into(),
                     latest_user_turn_ordinal: 1,

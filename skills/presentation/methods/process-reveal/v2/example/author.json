@@ -1,0 +1,24 @@
+{
+  "title": "一个数，走过整条流水线。",
+  "initial_state": {
+    "increment": 1,
+    "threshold": 4,
+    "semantic_state": 0,
+    "transition_progress": 0,
+    "selected": 1
+  },
+  "state_contract": {
+    "increment": "integer added to each input, 0..3",
+    "threshold": "inclusive integer filter threshold, 2..8",
+    "semantic_state": "已完成的解释区间，整数0至3；见适配说明中的时间定义",
+    "transition_progress": "当前区间的视觉进度，[0,1)；终点3时为0",
+    "selected": "被追踪的输入身份，整数0至2；不改变数据或计算结果"
+  },
+  "readable_content": "先加，再筛，最后求和。点选一个输入，沿着颜色追踪它：它在哪一步被改变，又有没有进入最后的结果？ [2,3,4]依次逐项加增量、保留大于等于阈值的项、对保留项求和。整数位置0/1/2/3依次完成输入展示、map、filter、sum；小数位置只展开连接。输入身份按颜色保持，选中身份不改变结果；空数组的和为0。 过程图的关键是保存对象身份和依赖关系。最后的数字必须能够沿流程回溯到实际进入求和的每一个输入。",
+  "assumptions": [
+    "三个固定输入 [2,3,4]；整数增量 0–3；包含边界的筛选 x≥阈值（2–8）；空数组的和为 0。时间是解释展开程度，不是执行耗时。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

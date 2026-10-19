@@ -126,7 +126,8 @@ fn seed_presentation(f: &Fixture) -> Value {
     let book = f.access.library.lock().unwrap().load("A", &f.x).unwrap().book.clone();
     let evidence_range = read_tools::EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = SourceBinding { source_ref_id: "mu8-source".into(), book_id: f.x.book_id.clone(), evidence_range,
+    let binding = SourceBinding { publication_id: None, source_revision: None,
+            media: None, source_ref_id: "mu8-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: "MU8 原文".into(), preview_snapshot: resolved.preview };
     {
         let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
@@ -140,6 +141,7 @@ fn seed_presentation(f: &Fixture) -> Value {
         session.title = "MU8 演示".into();
         session.turns[0].status = AgentAssistantStatus::Completed;
         session.turns[0].outcome = Some(OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("MU8 interactive scene".into()),
             answer_view: Some(AgentAnswerView {
                 parts: vec![AgentAnswerPart::Presentation {
@@ -169,7 +171,8 @@ fn seed_presentation(f: &Fixture) -> Value {
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent {
+            content: PresentationContent { teaching_binding: None,
+                method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),
                 content_files: BTreeMap::from([("index.html".into(), "<p>MU8 interactive scene</p><input id=slider type=range min=0 max=10 value=2>".into())]),

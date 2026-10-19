@@ -1,11 +1,46 @@
 import { ApiError, type AgentHistoryResponse } from './api';
 import { initialRun, type RunDescriptor, type RunSnapshot } from './agent-run-state';
-import { network, sceneKey, installWorkspace, forgetNetwork, workspaceStorageKey, type NetworkWorkspace } from './network-context';
+import { network, sceneKey, installWorkspace, forgetNetwork, workspaceStorageKey, type NetworkWorkspace, type LearningWorkspace, type PublishedBookRef } from './network-context';
+
+export const learningWorkspaces = {
+  list: () => networkFetch<{ workspaces: LearningWorkspace[] }>('GET', '/learning-workspaces'),
+  create: (text: string) => networkFetch<LearningWorkspace>('POST', '/learning-workspaces', { goal: { text, constraints: [] } }),
+  goal: (id: string, text: string, constraints: string[]) => networkFetch<LearningWorkspace>('POST', `/learning-workspaces/${encodeURIComponent(id)}/goal`, { goal: { text, constraints } }),
+  member: (id: string, reference: PublishedBookRef, add: boolean) => networkFetch<LearningWorkspace>(add ? 'POST' : 'DELETE', `/learning-workspaces/${encodeURIComponent(id)}/members`, { published_book_ref: reference }),
+  archive: (id: string, archived: boolean) => networkFetch<LearningWorkspace>('POST', `/learning-workspaces/${encodeURIComponent(id)}/archive`, { archived }),
+};
+
+export const sharedWorkspaces = {
+  list: (offset = 0) => networkFetch<import('./shared-workspaces').SharedReleasePage>('GET', `/workspace-releases?limit=12&offset=${offset}`),
+  read: (id: string, version: number) => networkFetch<import('./shared-workspaces').SharedRelease>('GET', `/workspace-releases/${encodeURIComponent(id)}/versions/${version}`),
+  use: (id: string, version: number, operationId: string, text: string) => networkFetch<import('./shared-workspaces').SharedUseResult>('POST', `/workspace-releases/${encodeURIComponent(id)}/versions/${version}/use`, { operation_id: operationId, goal: { text, constraints: [] } }),
+  instance: (id: string) => networkFetch<{ instance: import('./shared-workspaces').SharedInstance | null }>('GET', `/learning-workspaces/${encodeURIComponent(id)}/shared-release`),
+  preview: (id: string, version: number) => networkFetch<import('./shared-workspaces').SharedUpdatePreview>('GET', `/learning-workspaces/${encodeURIComponent(id)}/shared-release/preview?version=${version}`),
+  update: (id: string, operationId: string, expectedVersion: number, version: number) => networkFetch<import('./shared-workspaces').SharedUseResult>('POST', `/learning-workspaces/${encodeURIComponent(id)}/shared-release/update`, { operation_id: operationId, expected_version: expectedVersion, version }),
+};
+
+export const learningRecords = {
+  list: () => networkFetch<{ records: import('./learning-records').LearningRecordSummary[] }>('GET', '/me/learning-records'),
+  read: (sessionId: string, throughSeq: number) => networkFetch<import('./learning-records').LearningRecordDetail>('GET', `/me/learning-records/${encodeURIComponent(sessionId)}?through_seq=${throughSeq}`),
+  linked: (workspaceId: string) => networkFetch<{ records: import('./learning-records').ImportedLearningRecord[] }>('GET', `/learning-workspaces/${encodeURIComponent(workspaceId)}/records`),
+  link: (workspaceId: string, sessionId: string, throughSeq: number, goalRevision: number) => networkFetch<import('./learning-records').LinkedLearningRecord>('POST', `/learning-workspaces/${encodeURIComponent(workspaceId)}/records`, { session_id: sessionId, through_seq: throughSeq, goal_revision: goalRevision }),
+};
+
+export function openLearningMaterial(reference: PublishedBookRef, learningWorkspaceId: string | null) {
+  return workspaceAction('book/open', { published_book_ref: reference, learning_workspace_id: learningWorkspaceId });
+}
 
 export const accountMcp = {
   read: () => networkFetch<import('./api').AccountMcpState>('GET', '/account/mcp'),
   create: (label: string) => networkFetch<{ credential: import('./api').McpCredential; token: string }>('POST', '/account/mcp/credentials', { label }),
   revoke: (id: string) => networkFetch('POST', `/account/mcp/credentials/${encodeURIComponent(id)}/revoke`, {}),
+};
+
+export const accountAllowance = {
+  read: () => networkFetch<import('./account-allowance').AccountAllowanceSummary>('GET', '/account/allowance'),
+  usage: (limit: number, offset: number) => networkFetch<import('./account-allowance').AccountUsagePage>('GET', `/account/usage?limit=${limit}&offset=${offset}`),
+  costs: (offset = 0) => networkFetch<import('./account-costs').AccountCostReport>('GET', `/account/cost-summary?limit=20&offset=${offset}`),
+  costUsage: (query: string) => networkFetch<import('./account-allowance').AccountUsagePage>('GET', `/account/usage?${query}`),
 };
 
 export async function networkFetch<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -29,9 +64,11 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
 
 // Serialize CAS writes from this page. Each operation captures its scene before joining the queue.
 let writes: Promise<unknown> = Promise.resolve();
+let queuedNavigation: { key: string; superseded: boolean } | null = null;
 let bindingRecovery: { key: string; task: Promise<void> } | null = null;
 export interface ReadingResumption {
   workspace_id: string;
+  learning_workspace_id?: string | null;
   published_book_ref: import('./network-context').PublishedBookRef;
   selected_chat: string | null;
   position_label: string | null;
@@ -61,7 +98,7 @@ export function recoverWorkspaceBinding(expected?: ReadingResumption): Promise<v
       || latest.published_book_ref.book_id !== expected.published_book_ref.book_id
       || latest.published_book_ref.publication_id !== expected.published_book_ref.publication_id
       || latest.selected_chat !== expected.selected_chat)) {
-      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '接续现场已更新，请查看最新记录后继续。');
+      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读记录已更新，请查看最新记录后继续。');
     }
     const attached = await networkFetch<NetworkWorkspace>('POST', `/workspaces/${id}/attach`, {
       attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
@@ -75,22 +112,39 @@ export function recoverWorkspaceBinding(expected?: ReadingResumption): Promise<v
 }
 export function workspaceAction<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
   const key = sceneKey();
+  const optimistic = action === 'reader/goto' || action === 'reader/position';
+  const navigation = action === 'reader/goto' ? { key, superseded: false } : null;
+  if (navigation && queuedNavigation?.key === key) queuedNavigation.superseded = true;
+  // A different command is an ordering barrier: never drop navigation across it.
+  queuedNavigation = navigation;
   const result = writes.catch(() => {}).then(async () => {
+    if (navigation?.superseded) throw new DOMException('Navigation superseded', 'AbortError');
+    if (queuedNavigation === navigation) queuedNavigation = null;
     if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
     const n = network.value, w = n.workspace;
     if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', '请先选择材料');
-    // A Run or linked view can advance revision independently; read it before a new user command.
-    const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
-    if (latest.generation !== w.generation) {
+    const refresh = async () => {
+      const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
+      if (latest.generation !== w.generation) {
+        installWorkspace(latest);
+        throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读内容已更新，请重试当前操作。');
+      }
       installWorkspace(latest);
-      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '现场已更新，请重新执行当前操作');
-    }
-    installWorkspace(latest);
-    const value = await networkFetch<NetworkWorkspace & { result?: T }>('POST', `/workspaces/${w.workspace_id}/${action}`, {
-      ...body, attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
+      return latest;
+    };
+    const post = (stamp: NetworkWorkspace) => networkFetch<NetworkWorkspace & { result?: T }>('POST', `/workspaces/${w.workspace_id}/${action}`, {
+      ...body, attachment_id: n.attachment, generation: stamp.generation, expected_revision: stamp.revision,
     });
+    // Reader commands carry an absolute target. The server rejects a stale CAS
+    // before mutation; only that explicit conflict permits one refresh/retry.
+    let value;
+    try { value = await post(optimistic ? w : await refresh()); }
+    catch (error) {
+      if (!optimistic || !(error instanceof ApiError) || error.errorCode !== 'WORKSPACE_REVISION_CONFLICT') throw error;
+      value = await post(await refresh());
+    }
     if (value.workspace_id) installWorkspace(value, n.attachment, n.linked,
-      action === 'chat/new' || action === 'chat/select' ? 'chat' : undefined);
+      action === 'chat/new' || action === 'chat/select' ? 'chat' : action === 'reader/adopt_same_source_publication' ? 'enrichment' : undefined);
     return value as T;
   });
   writes = result;
@@ -168,7 +222,7 @@ async function createRun(body: Record<string, unknown>) {
     if (pendingSubmissions().some(p => p.body.session_id === w.selected_chat)) throw new ApiError(409, 'SUBMISSION_UNCONFIRMED', 'conflict', '原问题仍待核对，请先核对或重试原提交；不会自动重提');
   }
   const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
-  if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '现场已更新'); }
+  if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读内容已更新，请返回原对话重新发送问题。'); }
   if ((body.entry_action || body.teaching_choice) && (body.session_id !== w.selected_chat || latest.selected_chat !== w.selected_chat)) {
     throw new ApiError(409, 'CHAT_SELECTION_CHANGED', 'conflict', '聊天已切换，请返回原聊天重新发起操作');
   }
@@ -222,8 +276,16 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     const result = await networkFetch<{ books: { published_book_ref: import('./network-context').PublishedBookRef; title?: string | null; cover?: import('./api').BookCoverSource | null }[] }>('GET', '/library');
     value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, title: b.title, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
   } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body, signal);
-  else if (path === '/tutor/state' || path === '/tutor/mutate') value = await networkFetch(method, path, body);
+  else if (path === '/tutor/state' || path === '/tutor/mutate') {
+    const scope = network.value.workspace?.learning_workspace_id;
+    value = await networkFetch(method, scope ? `${path}?learning_workspace_id=${encodeURIComponent(scope)}` : path, body);
+  }
   else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));
+  else if (path.startsWith('/agent/presentation.feedback.')) {
+    const operation = path.slice('/agent/presentation.feedback.'.length);
+    const result = await workspaceAction<{ result: unknown }>(`presentation/feedback/${operation}`, input);
+    value = result.result;
+  }
   else if (path.startsWith('/agent/presentation.read') || path.startsWith('/agent/presentation.observe')) {
     if (input.saved_state) await workspaceAction('presentation/restore', { saved_state: input.saved_state });
     const result = await workspaceAction<{ result: unknown }>(path.endsWith("observe") ? "presentation/observe" : "presentation/read", input);

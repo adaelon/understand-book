@@ -1,0 +1,59 @@
+{
+  "status": "passed",
+  "observations": [
+    {
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "label": "three_steps",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n210 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 3 步\n\n第 3 步：这一步又沿接口读了 70 GB/步，累计读取量 210 GB；驻留量仍是 70 GB——它没有变，因为权重一直放在显存里，只是每一步都要再送一次到计算单元。",
+      "screenshot": "960-08.png"
+    },
+    {
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "label": "reset",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n0 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 0 步\n\n还没有生成任何 token：累计读取量是 0 GB，但驻留量已经是 70 GB。点一次按钮，看第 2 行多一格、第 1 行不动。",
+      "screenshot": "960-09.png"
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 420
+      },
+      "label": "three_steps",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n210 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 3 步\n\n第 3 步：这一步又沿接口读了 70 GB/步，累计读取量 210 GB；驻留量仍是 70 GB——它没有变，因为权重一直放在显存里，只是每一步都要再送一次到计算单元。",
+      "screenshot": "320-08.png"
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 420
+      },
+      "label": "reset",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n0 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 0 步\n\n还没有生成任何 token：累计读取量是 0 GB，但驻留量已经是 70 GB。点一次按钮，看第 2 行多一格、第 1 行不动。",
+      "screenshot": "320-09.png"
+    },
+    {
+      "viewport": {
+        "width": 640,
+        "height": 240
+      },
+      "label": "three_steps",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n210 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 3 步\n\n第 3 步：这一步又沿接口读了 70 GB/步，累计读取量 210 GB；驻留量仍是 70 GB——它没有变，因为权重一直放在显存里，只是每一步都要再送一次到计算单元。",
+      "screenshot": "640-08.png"
+    },
+    {
+      "viewport": {
+        "width": 640,
+        "height": 240
+      },
+      "label": "reset",
+      "reading": "动手看：哪一行在变，哪一行不变\n\n点按钮生成下一个 token。第 1、2 行共用一把尺子：一格 = 70 GB，满格 10 格 = 700 GB。第 3 行是另一个单位（FLOPs/步），单独一把尺子。\n\n驻留量\nM_W · 占用\n70 GB\n不随步数变化\n累计读取量\nR_W · 流量\n0 GB\n每步 +70 GB/步\n运算量\nF · 乘加\n140 GFLOPs/步\n每步同一个数\n生成下一个 token\n重置\n已完成 0 步\n\n还没有生成任何 token：累计读取量是 0 GB，但驻留量已经是 70 GB。点一次按钮，看第 2 行多一格、第 1 行不动。",
+      "screenshot": "640-09.png"
+    }
+  ]
+}

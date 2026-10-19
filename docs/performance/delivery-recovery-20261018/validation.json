@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "scope": "Local behavioral regressions and isolated release frontend validation; Linux build is separately required before switch.",
+  "runtime_orchestrator": {
+    "passed": 264,
+    "ignored": 3
+  },
+  "compaction": {
+    "passed": 20,
+    "ignored": 1
+  },
+  "server_agent_run": {
+    "passed": 27
+  },
+  "server_teaching": {
+    "passed": 21
+  },
+  "server_delivery_lifecycle": {
+    "passed": 2
+  },
+  "web_right_rail": {
+    "passed": 62
+  },
+  "release_frontend": {
+    "typecheck": "passed",
+    "production_build": "passed"
+  },
+  "schema_change": false,
+  "paid_model_calls": 0
+}

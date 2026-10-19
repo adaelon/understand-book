@@ -210,7 +210,7 @@ fn mu10_kill_host_child() {
         let user = handle.lock().unwrap();
         let publication = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
         teaching::start_request(
-            &PrivateBookContext {
+            &PrivateBookContext { learning_workspace_id:None,
                 user: &user,
                 book: &publication.book,
                 book_dir: publication.directory(),

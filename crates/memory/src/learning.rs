@@ -68,6 +68,8 @@ pub struct TutorSession {
     pub default_teaching_intent: Option<TutorSessionMode>,
     pub path_instance_ref: Option<String>,
     pub progress_ref: Option<String>,
+    #[serde(default)]
+    pub workspace_goal_revision: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
@@ -75,12 +77,16 @@ pub struct TutorSession {
 pub struct TutorState {
     pub control: TutorControl,
     pub sessions: BTreeMap<String, TutorSession>,
+    #[serde(default)]
+    pub workspace_goal_revision: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TutorAction {
+    /// Server-owned synchronization with the accepted workspace goal.
+    SyncWorkspaceGoal { revision: u32 },
     SetEnabled {
         enabled: bool,
     },
@@ -154,6 +160,18 @@ impl TutorState {
             ));
         }
         match &request.action {
+            TutorAction::SyncWorkspaceGoal { revision } => {
+                if *revision == 0 || self.workspace_goal_revision.is_some_and(|old| old >= *revision) {
+                    return Err(invalid("工作区目标版本必须向前推进。"));
+                }
+                self.pause_current();
+                self.control.current_tutor_session_id = None;
+                self.workspace_goal_revision = Some(*revision);
+                // Workspace goal revisions are independent of the user's Tutor
+                // control revision. Clearing the current session invalidates
+                // previously bound continuation while preserving control CAS.
+                return Ok(());
+            }
             TutorAction::SetEnabled { enabled } => {
                 // Enabling records intent only. Readiness and scope decide whether a paused
                 // session can run; those gates are integrated by T5/T7, not bypassed here.
@@ -196,6 +214,7 @@ impl TutorState {
                         default_teaching_intent: default_teaching_intent.clone(),
                         path_instance_ref: None,
                         progress_ref: None,
+                        workspace_goal_revision: self.workspace_goal_revision,
                     },
                 );
                 self.control.current_tutor_session_id = Some(id);
@@ -206,6 +225,9 @@ impl TutorState {
                 }
                 if !self.sessions.contains_key(session_id) {
                     return Err(invalid("教学会话不存在。"));
+                }
+                if self.sessions[session_id].workspace_goal_revision != self.workspace_goal_revision {
+                    return Err(failure("TUTOR_WORKSPACE_GOAL_CHANGED", "conflict", "学习目标已修改，请按新目标开始阶段。"));
                 }
                 self.pause_current();
                 let session = self.sessions.get_mut(session_id).unwrap();
@@ -244,9 +266,22 @@ impl TutorState {
     }
 }
 
+const LEGACY_LEARNING_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS tutor_events (
+                revision INTEGER PRIMARY KEY, operation_id TEXT NOT NULL UNIQUE,
+                request TEXT NOT NULL, occurred_at TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS tutor_projection (id INTEGER PRIMARY KEY CHECK(id=1), state TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS teaching_trace (seq INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, event TEXT NOT NULL);
+             CREATE INDEX IF NOT EXISTS teaching_trace_session ON teaching_trace(session_id, seq);
+             CREATE TABLE IF NOT EXISTS teaching_assessments (action_ref TEXT PRIMARY KEY, assessment TEXT NOT NULL);
+             CREATE TABLE IF NOT EXISTS learning_evidence (seq INTEGER PRIMARY KEY AUTOINCREMENT, evidence_id TEXT UNIQUE NOT NULL, source_id TEXT NOT NULL, evidence TEXT NOT NULL);
+             CREATE INDEX IF NOT EXISTS learning_evidence_source ON learning_evidence(source_id,seq);
+             CREATE TABLE IF NOT EXISTS learner_projection (source_id TEXT PRIMARY KEY, projection TEXT NOT NULL);";
+
 pub struct LearningStore {
     pub(crate) connection: Connection,
     pub(crate) writer_lease: Option<std::sync::Arc<dyn Send + Sync>>,
+    pub(crate) workspace_scope: String,
 }
 
 impl LearningStore {
@@ -258,9 +293,9 @@ impl LearningStore {
         let mut connection = Connection::open(path).map_err(storage)?;
         let version: i64 = connection.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(storage)?;
         let application: i64 = connection.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(storage)?;
-        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection')", [], |r| r.get(0)).map_err(storage)?;
-        if !(0..=1).contains(&version) || unknown_tables != 0
-            || (version == 0 && application != 0) || (version == 1 && application != 0x55424c4e) {
+        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records')", [], |r| r.get(0)).map_err(storage)?;
+        if !(0..=3).contains(&version) || unknown_tables != 0
+            || (version == 0 && application != 0) || (version > 0 && application != 0x55424c4e) {
             return Err(failure("LEARNING_SCHEMA_INCOMPATIBLE", "conflict", "Learning schema requires a compatible binary"));
         }
         connection.busy_timeout(std::time::Duration::from_secs(5)).map_err(storage)?;
@@ -271,136 +306,151 @@ impl LearningStore {
         }
         if version == 0 {
         let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
-        tx.execute_batch(
-            "CREATE TABLE IF NOT EXISTS tutor_events (
-                revision INTEGER PRIMARY KEY, operation_id TEXT NOT NULL UNIQUE,
-                request TEXT NOT NULL, occurred_at TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS tutor_projection (id INTEGER PRIMARY KEY CHECK(id=1), state TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS teaching_trace (seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_id TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, event TEXT NOT NULL);
-             CREATE INDEX IF NOT EXISTS teaching_trace_session ON teaching_trace(session_id, seq);
-             CREATE TABLE IF NOT EXISTS teaching_assessments (action_ref TEXT PRIMARY KEY, assessment TEXT NOT NULL);
-             CREATE TABLE IF NOT EXISTS learning_evidence (seq INTEGER PRIMARY KEY AUTOINCREMENT, evidence_id TEXT UNIQUE NOT NULL, source_id TEXT NOT NULL, evidence TEXT NOT NULL);
-             CREATE INDEX IF NOT EXISTS learning_evidence_source ON learning_evidence(source_id,seq);
-             CREATE TABLE IF NOT EXISTS learner_projection (source_id TEXT PRIMARY KEY, projection TEXT NOT NULL);"
-        ).map_err(storage)?;
+        tx.execute_batch(LEGACY_LEARNING_SCHEMA).map_err(storage)?;
         tx.pragma_update(None, "user_version", 1).map_err(storage)?;
         tx.pragma_update(None, "application_id", 0x55424c4e).map_err(storage)?;
         tx.commit().map_err(storage)?;
         }
-        Ok(Self { connection, writer_lease: None })
+        if version < 2 {
+            let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+            tx.execute_batch(include_str!("learning_workspace_scope.sql")).map_err(storage)?;
+            tx.pragma_update(None, "user_version", 2).map_err(storage)?;
+            tx.commit().map_err(storage)?;
+        }
+        if version < 3 {
+            let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+            tx.execute_batch(include_str!("learning_records.sql")).map_err(storage)?;
+            tx.pragma_update(None, "user_version", 3).map_err(storage)?;
+            tx.commit().map_err(storage)?;
+        }
+        Ok(Self { connection, writer_lease: None, workspace_scope: String::new() })
+    }
+
+    /// Select an immutable learning boundary for this handle. Legacy records stay
+    /// in the absent-workspace scope until the user explicitly imports them.
+    pub fn with_workspace(mut self, learning_workspace_id: Option<&str>) -> Self {
+        self.workspace_scope = learning_workspace_id.unwrap_or_default().to_owned();
+        self
+    }
+
+    pub fn learning_workspace_id(&self) -> Option<&str> {
+        (!self.workspace_scope.is_empty()).then_some(self.workspace_scope.as_str())
+    }
+
+    /// The authoritative goal is kept by the workspace store; the learning log
+    /// only records its revision to bind stages and stop stale continuation.
+    pub fn sync_workspace_goal(&mut self, revision: u32, now: &str) -> Result<TutorState, ToolError> {
+        if self.workspace_scope.is_empty() { return Err(invalid("目标关联需要学习工作区。")); }
+        let state = self.state()?;
+        if state.workspace_goal_revision.is_some_and(|current| current >= revision) { return Ok(state); }
+        self.mutate(&TutorMutation {
+            operation_id: format!("workspace-goal:{revision}"),
+            expected_revision: state.control.revision,
+            action: TutorAction::SyncWorkspaceGoal { revision },
+        }, now)
     }
 
     pub fn state(&self) -> Result<TutorState, ToolError> {
-        let json: Option<String> = self
-            .connection
-            .query_row("SELECT state FROM tutor_projection WHERE id=1", [], |row| {
-                row.get(0)
-            })
-            .optional()
-            .map_err(storage)?;
-        match json {
-            Some(json) => serde_json::from_str(&json).map_err(storage),
-            None => self.replay(None),
+        let saved: Option<(String,u32)> = self.connection.query_row(
+            "SELECT state,event_watermark FROM tutor_projection WHERE id=1 AND learning_workspace_id=?",
+            [&self.workspace_scope], |row| Ok((row.get(0)?,row.get(1)?))).optional().map_err(storage)?;
+        let revision: u32 = self.connection.query_row(
+            "SELECT coalesce(max(revision),0) FROM tutor_events", [], |row|row.get(0)).map_err(storage)?;
+        if let Some((json,watermark)) = saved {
+            if watermark == revision { return serde_json::from_str(&json).map_err(storage); }
         }
+        self.replay(None)
     }
 
     fn replay(&self, until: Option<u32>) -> Result<TutorState, ToolError> {
-        let mut statement = self
-            .connection
-            .prepare("SELECT request FROM tutor_events WHERE revision <= ? ORDER BY revision")
-            .map_err(storage)?;
-        let rows = statement
-            .query_map([until.unwrap_or(u32::MAX)], |row| row.get::<_, String>(0))
-            .map_err(storage)?;
-        let mut state = TutorState::default();
-        for row in rows {
-            state.apply(
-                &serde_json::from_str::<TutorMutation>(&row.map_err(storage)?).map_err(storage)?,
-            )?;
-        }
-        Ok(state)
+        replay_workspace(&self.connection, &self.workspace_scope, until)
     }
 
     pub fn mutate(&mut self, request: &TutorMutation, now: &str) -> Result<TutorState, ToolError> {
-        // A write transaction covers both revision selection and the event/projection commit.
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(storage)?;
-        let previous: Option<(u32, String)> = transaction
-            .query_row(
-                "SELECT revision, request FROM tutor_events WHERE operation_id=?",
-                [&request.operation_id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )
-            .optional()
-            .map_err(storage)?;
+        let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+        let previous: Option<(u32, String)> = transaction.query_row(
+            "SELECT revision, request FROM tutor_events WHERE learning_workspace_id=? AND operation_id=?",
+            params![self.workspace_scope,request.operation_id], |row|Ok((row.get(0)?,row.get(1)?)))
+            .optional().map_err(storage)?;
         if let Some((revision, json)) = previous {
             if serde_json::from_str::<TutorMutation>(&json).map_err(storage)? != *request {
                 return Err(invalid("同一操作身份不能用于不同请求。"));
             }
-            drop(transaction);
-            return self.replay(Some(revision));
+            return replay_workspace(&transaction, &self.workspace_scope, Some(revision));
         }
-        let json: Option<String> = transaction
-            .query_row("SELECT state FROM tutor_projection WHERE id=1", [], |row| {
-                row.get(0)
-            })
-            .optional()
-            .map_err(storage)?;
-        let mut state: TutorState = if let Some(json) = json {
-            serde_json::from_str(&json).map_err(storage)?
-        } else {
-            let mut statement = transaction
-                .prepare("SELECT request FROM tutor_events ORDER BY revision")
-                .map_err(storage)?;
-            let rows = statement
-                .query_map([], |row| row.get::<_, String>(0))
-                .map_err(storage)?;
-            let mut state = TutorState::default();
-            for row in rows {
-                state.apply(
-                    &serde_json::from_str::<TutorMutation>(&row.map_err(storage)?)
-                        .map_err(storage)?,
-                )?;
-            }
-            state
-        };
+        let mut state = replay_workspace(&transaction, &self.workspace_scope, None)?;
         state.apply(request)?;
-        transaction
-            .execute(
-                "INSERT INTO tutor_events VALUES (?, ?, ?, ?)",
-                params![
-                    state.control.revision,
-                    request.operation_id,
-                    serde_json::to_string(request).map_err(storage)?,
-                    now
-                ],
-            )
-            .map_err(storage)?;
-        transaction.execute("INSERT INTO tutor_projection VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET state=excluded.state", [serde_json::to_string(&state).map_err(storage)?]).map_err(storage)?;
+        let event_revision: u32 = transaction.query_row(
+            "SELECT coalesce(max(revision),0)+1 FROM tutor_events", [], |row|row.get(0)).map_err(storage)?;
+        transaction.execute(
+            "INSERT INTO tutor_events(revision,operation_id,request,occurred_at,learning_workspace_id) VALUES (?,?,?,?,?)",
+            params![event_revision,request.operation_id,serde_json::to_string(request).map_err(storage)?,now,self.workspace_scope]).map_err(storage)?;
+        transaction.execute(
+            "INSERT INTO tutor_projection(id,state,event_watermark,learning_workspace_id) VALUES (1,?,?,?) ON CONFLICT(learning_workspace_id,id) DO UPDATE SET state=excluded.state,event_watermark=excluded.event_watermark",
+            params![serde_json::to_string(&state).map_err(storage)?,event_revision,self.workspace_scope]).map_err(storage)?;
         transaction.commit().map_err(storage)?;
         Ok(state)
     }
 
     pub fn rebuild(&mut self) -> Result<TutorState, ToolError> {
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(storage)?;
-        transaction
-            .execute("DELETE FROM tutor_projection", [])
-            .map_err(storage)?;
-        transaction.commit().map_err(storage)?;
-        // Missing projection is read directly from events; the next mutation materializes it.
+        self.connection.execute("DELETE FROM tutor_projection WHERE learning_workspace_id=?",[&self.workspace_scope]).map_err(storage)?;
         self.replay(None)
     }
+}
+
+/// The teaching switch is account-wide. A workspace's control revision changes
+/// for its own actions and global switch changes, never for another workspace's
+/// stage changes. The event log revision separately preserves total replay order.
+fn replay_workspace(connection: &Connection, scope: &str, until: Option<u32>) -> Result<TutorState, ToolError> {
+    let mut statement = connection.prepare(
+        "SELECT learning_workspace_id,request FROM tutor_events WHERE revision<=? ORDER BY revision").map_err(storage)?;
+    let rows=statement.query_map([until.unwrap_or(u32::MAX)],|row|Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?))).map_err(storage)?;
+    let mut state=TutorState::default();
+    for row in rows {
+        let (event_scope,json)=row.map_err(storage)?;
+        let mut request: TutorMutation=serde_json::from_str(&json).map_err(storage)?;
+        if event_scope == scope {
+            state.apply(&request)?;
+        } else if matches!(request.action,TutorAction::SetEnabled{..}) {
+            request.expected_revision=state.control.revision;
+            state.apply(&request)?;
+        }
+    }
+    Ok(state)
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn w4_goal_revision_stops_old_stage_and_replays_without_changing_teaching_switch() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("learning.db");
+        let mut store = LearningStore::open(&path, true).unwrap().with_workspace(Some("study"));
+        store.sync_workspace_goal(1, "100").unwrap();
+        change(&mut store, "on", TutorAction::SetEnabled { enabled: true });
+        let original = change(&mut store, "original", start("学习深度学习"));
+        let original_id = original.control.current_tutor_session_id.clone().unwrap();
+        assert_eq!(original.sessions[&original_id].workspace_goal_revision, Some(1));
+        let changed = store.sync_workspace_goal(2, "101").unwrap();
+        assert!(changed.control.enabled);
+        assert_eq!(changed.control.revision, original.control.revision);
+        assert!(changed.control.current_tutor_session_id.is_none());
+        assert_eq!(changed.sessions[&original_id].status, TutorSessionStatus::Paused);
+        assert_eq!(changed.sessions[&original_id].workspace_goal_revision, Some(1));
+        let rejected = store.mutate(&TutorMutation { operation_id:"old-continue".into(),
+            expected_revision:changed.control.revision, action:TutorAction::Resume {session_id:original_id.clone()} }, "102").unwrap_err();
+        assert_eq!(rejected.error_code, "TUTOR_WORKSPACE_GOAL_CHANGED");
+        let next = change(&mut store, "exam", start("考前只剩三天，先复习薄弱点"));
+        assert_eq!(next.sessions[next.control.current_tutor_session_id.as_ref().unwrap()].workspace_goal_revision, Some(2));
+        assert_eq!(store.sync_workspace_goal(2, "103").unwrap(), next);
+        assert_eq!(store.sync_workspace_goal(1, "103").unwrap(), next, "an old admitted turn cannot restore the old goal");
+        assert_eq!(store.rebuild().unwrap(), next);
+        drop(store);
+        assert_eq!(LearningStore::open(&path, true).unwrap().with_workspace(Some("study")).state().unwrap(), next);
+        assert!(LearningStore::open(&path, true).unwrap().with_workspace(Some("other")).state().unwrap().workspace_goal_revision.is_none());
+    }
     fn change(store: &mut LearningStore, id: &str, action: TutorAction) -> TutorState {
         let revision = store.state().unwrap().control.revision;
         store
@@ -425,6 +475,37 @@ mod tests {
             }],
             default_teaching_intent: Some(TutorSessionMode::GuidedInquiry),
         }
+    }
+    #[test]
+    fn w3_workspace_stages_restore_independently_with_one_global_teaching_switch() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut a = LearningStore::open(&path, false).unwrap().with_workspace(Some("A"));
+        let mut b = LearningStore::open(&path, false).unwrap().with_workspace(Some("B"));
+        let legacy = LearningStore::open(&path, false).unwrap();
+        change(&mut a, "on", TutorAction::SetEnabled { enabled: true });
+        let original_a = change(&mut a, "stage", start("推导梯度"));
+        let original_b = change(&mut b, "stage", start("考试练习"));
+        assert_eq!(a.state().unwrap().control.revision, original_a.control.revision);
+        assert_eq!(original_a.sessions["tutor-stage"].user_intent, "推导梯度");
+        assert_eq!(original_b.sessions["tutor-stage"].user_intent, "考试练习");
+        assert_eq!(a.state().unwrap().sessions["tutor-stage"].user_intent, "推导梯度");
+        assert!(legacy.state().unwrap().sessions.is_empty());
+        change(&mut b, "off", TutorAction::SetEnabled { enabled: false });
+        for store in [&a, &b, &legacy] {
+            let state = store.state().unwrap();
+            assert!(!state.control.enabled);
+            assert!(state.sessions.values().all(|session| session.status != TutorSessionStatus::Active));
+        }
+        change(&mut a, "on-again", TutorAction::SetEnabled { enabled: true });
+        let resumed = change(&mut a, "resume", TutorAction::Resume { session_id: "tutor-stage".into() });
+        assert_eq!(resumed.sessions["tutor-stage"].status, TutorSessionStatus::Active);
+        assert_eq!(b.state().unwrap().sessions["tutor-stage"].status, TutorSessionStatus::Paused);
+        assert_eq!(a.rebuild().unwrap(), resumed);
+        drop(a);
+        let reopened = LearningStore::open(&path, false).unwrap().with_workspace(Some("A"));
+        assert_eq!(reopened.state().unwrap(), resumed);
+        assert_eq!(b.rebuild().unwrap().sessions["tutor-stage"].user_intent, "考试练习");
     }
     #[test]
     fn lifecycle_survives_restart_and_replays_one_current_session() {
@@ -555,20 +636,64 @@ mod tests {
 
     #[test]
     fn mu2_learning_versions_preserve_legacy_events_and_reject_foreign_databases() {
-        let directory = tempfile::tempdir().unwrap(); let path = directory.path().join("learning.db");
-        let mut store = LearningStore::open(&path, false).unwrap();
-        let expected = change(&mut store, "original", TutorAction::SetEnabled { enabled: true });
-        store.connection.pragma_update(None, "user_version", 0).unwrap();
-        store.connection.pragma_update(None, "application_id", 0).unwrap(); drop(store);
-        let store = LearningStore::open(&path, false).unwrap();
-        assert_eq!(store.state().unwrap(), expected);
-        assert_eq!(store.replay(None).unwrap(), expected);
-        assert_eq!(store.connection.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0)).unwrap(), 1);
-        assert_eq!(store.connection.pragma_query_value(None, "journal_mode", |r| r.get::<_, String>(0)).unwrap(), "delete");
-        store.connection.pragma_update(None, "application_id", 12345).unwrap(); drop(store);
-        let before = std::fs::read(&path).unwrap();
-        assert!(matches!(LearningStore::open(&path, false), Err(e) if e.error_code == "LEARNING_SCHEMA_INCOMPATIBLE"));
-        assert_eq!(std::fs::read(path).unwrap(), before);
+        for version in [0, 1] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("learning.db");
+            let connection = Connection::open(&path).unwrap();
+            connection.execute_batch(LEGACY_LEARNING_SCHEMA).unwrap();
+            let request=TutorMutation { operation_id:"original".into(), expected_revision:0,
+                action:TutorAction::SetEnabled{enabled:true} };
+            connection.execute("INSERT INTO tutor_events VALUES(1,'original',?,'now')",
+                [serde_json::to_string(&request).unwrap()]).unwrap();
+            connection.pragma_update(None,"user_version",version).unwrap();
+            if version == 1 { connection.pragma_update(None,"application_id",0x55424c4e).unwrap(); }
+            drop(connection);
+            let store=LearningStore::open(&path,false).unwrap();
+            assert!(store.state().unwrap().control.enabled);
+            assert_eq!(store.state().unwrap(),store.replay(None).unwrap());
+            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),3);
+            assert_eq!(store.connection.pragma_query_value(None,"journal_mode",|r|r.get::<_,String>(0)).unwrap(),"delete");
+            store.connection.pragma_update(None,"application_id",12345).unwrap();
+            drop(store);
+            let before=std::fs::read(&path).unwrap();
+            assert!(matches!(LearningStore::open(&path,false),Err(e) if e.error_code == "LEARNING_SCHEMA_INCOMPATIBLE"));
+            assert_eq!(std::fs::read(path).unwrap(),before);
+        }
+    }
+
+    #[test]
+    fn w3_schema_upgrade_preserves_legacy_fact_bytes_and_sequence_without_adopting_them() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let connection = Connection::open(&path).unwrap();
+        connection.execute_batch(LEGACY_LEARNING_SCHEMA).unwrap();
+        connection.pragma_update(None, "user_version", 1).unwrap();
+        connection.pragma_update(None, "application_id", 0x55424c4e).unwrap();
+        let event = serde_json::json!({"event_id":"old","binding":{"tutor_session_id":"old-session","session_revision":1,
+            "control_revision":0,"source_id":"book","source_revision":"v1","map_revision":null,"chat_session_id":"chat","turn_id":"turn"},
+            "kind":"usage_observed","causal_refs":[],"payload":{"response":"原始表达"},"occurred_at":"then"}).to_string();
+        connection.execute("INSERT INTO teaching_trace(seq,event_id,session_id,event) VALUES(41,'old','old-session',?)", [&event]).unwrap();
+        connection.execute("INSERT INTO teaching_assessments VALUES('old','{\"status\":\"uncertain\"}')", []).unwrap();
+        connection.execute("INSERT INTO learning_evidence(seq,evidence_id,source_id,evidence) VALUES(73,'old-evidence','book','{\"old\":true}')", []).unwrap();
+        connection.execute("INSERT INTO learner_projection VALUES('book','{\"old_projection\":true}')", []).unwrap();
+        drop(connection);
+        for _ in 0..2 {
+            let store = LearningStore::open(&path, false).unwrap();
+            assert_eq!(store.teaching_event("old").unwrap().occurred_at, "then");
+            let trace: (u64, String, String) = store.connection.query_row("SELECT seq,event,learning_workspace_id FROM teaching_trace", [], |r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+            assert_eq!(trace, (41, event.clone(), String::new()));
+            let evidence: (u64, String, String) = store.connection.query_row("SELECT seq,evidence,learning_workspace_id FROM learning_evidence", [], |r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).unwrap();
+            assert_eq!(evidence, (73, "{\"old\":true}".into(), String::new()));
+            let assessment: String = store.connection.query_row("SELECT assessment FROM teaching_assessments WHERE learning_workspace_id=''", [], |r|r.get(0)).unwrap();
+            assert_eq!(assessment, "{\"status\":\"uncertain\"}");
+            let projection: String = store.connection.query_row("SELECT projection FROM learner_projection WHERE learning_workspace_id=''", [], |r|r.get(0)).unwrap();
+            assert_eq!(projection, "{\"old_projection\":true}");
+            let scoped = store.with_workspace(Some("new"));
+            assert!(scoped.teaching_event("old").is_err());
+            assert!(scoped.evidence_page("book",0,100).unwrap().is_empty());
+            assert!(scoped.assessment("old").unwrap().is_none());
+            assert!(scoped.learner_projection("book").unwrap().0.is_none());
+        }
     }
 
     #[test]

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { MessageCircle } from '@lucide/vue';
-import { api as sharedApi, ApiError, type TutorActivity } from '../api';
+import { api as sharedApi, ApiError, type TutorActivity, type TeachingResponseOrigin } from '../api';
 import { answerDisplayParts, sourceMarkedParts } from '../answer-markdown';
 import type { AgentAnswerSource } from '../generated/AgentAnswerSource';
 import { bindSceneApi } from '../network-context';
@@ -10,34 +10,59 @@ import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
   snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean; sources?: AgentAnswerSource[];
-  answerText?: string; answerTarget?: () => HTMLElement | undefined; responseActionsTarget?: HTMLElement | null }>(), { ready: true, sources: () => [] });
-const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void; (e: 'editing-response', editing: boolean): void }>();
+  answerText?: string; answerTarget?: () => HTMLElement | undefined; responseActionsTarget?: HTMLElement | null;
+  presentationTarget?: () => HTMLElement | undefined;
+  hostedPresentations?: PresentationRef[]; busy?: boolean; beforeResponse?: () => Promise<void> }>(), { ready: true, sources: () => [], hostedPresentations: () => [] });
+const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void; (e: 'editing-response', editing: boolean): void;
+  (e: 'locate-presentation', reference: PresentationRef): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
-// A delivered follow-up may repeat the answer verbatim. Observe that answer instead of rendering it twice.
+// Actionless moves are delivered through this turn's final answer. The saved
+// candidate can differ in wording or formatting; observe the answer's exposure.
 function usesAnswer(activity: TutorActivity) {
-  const withoutSources = activity.move.prompt.replace(/\[\[source:([^\]]*)\]\]/g, (marker, id: string) =>
-    props.sources.some(source => source.source_ref_id === id.trim()) ? '' : marker).replace(/[ \t]+$/gm, '').trim();
-  return !!props.answerTarget && !!props.answerText?.trim() && activity.move.actions.length === 0
-    && withoutSources === props.answerText.replace(/[ \t]+$/gm, '').trim();
+  return !activity.move.response_expectation && !!props.answerTarget && !!props.answerText?.trim() && activity.move.actions.length === 0;
 }
-const visibleActivities = computed(() => activities.value.filter(activity => !usesAnswer(activity)));
+function usesPresentation(activity: TutorActivity) {
+  return !activity.move.response_expectation && activity.move.actions.length === 0 && !!props.presentationTarget
+    && !!props.reference && activity.move.presentation?.presentation_id === props.reference.presentation_id
+    && activity.move.presentation.revision === props.reference.revision;
+}
+const visibleActivities = computed(() => activities.value.filter(activity => !usesAnswer(activity)
+  && !usesPresentation(activity)
+  && !(!props.reference && activity.move.presentation && props.hostedPresentations.some(reference =>
+    reference.presentation_id === activity.move.presentation!.presentation_id && reference.revision === activity.move.presentation!.revision))));
+function invitationOpen(activity: TutorActivity) {
+  return !!activity.move.response_expectation && (!activity.response_invitation_status || activity.response_invitation_status === 'open');
+}
 const responseActivity = computed(() => visibleActivities.value.find(activity => activity.status === 'active'
-  && activity.move.actions.some(action => action === 'self_report' || action === (activity.attempted ? 'revise' : 'submit'))));
+  && (invitationOpen(activity) || activity.move.actions.some(action => action === 'self_report' || action === (activity.attempted ? 'revise' : 'submit')))));
 watch(responseActivity, activity => emit('response-available', !!activity), { immediate: true });
 function focusResponse() {
   const activity = responseActivity.value;
-  if (!activity) return;
+  if (!activity) return false;
   const article = Array.from(root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref]') ?? [])
     .find(node => node.dataset.deliveryRef === activity.delivery_ref);
   const input = article?.querySelector('textarea');
   input?.scrollIntoView({ block: 'center' });
   input?.focus({ preventScroll: true });
+  return !!input;
 }
 const answerDeliveries = new Map<Element, string[]>();
+const answerEnd = ref<HTMLElement>();
 function renderText(text: string) {
   return answerDisplayParts(sourceMarkedParts(text, props.sources), props.sources)
     .map(part => part.kind === 'html' ? part.html : '').join('');
+}
+function invitationAnswerHost(activity: TutorActivity): HTMLElement | undefined {
+  if (!activity.move.response_expectation || props.reference || activity.move.presentation || !props.answerText?.trim()) return;
+  const answer = props.answerTarget?.();
+  // The final answer is the delivered wording, even when it revises the saved
+  // invitation. Do not try to recover semantic identity by matching strings.
+  // A target container alone is not evidence that its answer has rendered.
+  return answer?.textContent?.trim() ? answer : undefined;
+}
+function answerInvitationHost(): HTMLElement | undefined {
+  return visibleActivities.value.map(invitationAnswerHost).find(Boolean);
 }
 function openSource(text: string, event: MouseEvent) {
   const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button[data-answer-source-index]') : null;
@@ -48,6 +73,9 @@ function openSource(text: string, event: MouseEvent) {
   emit('source', part.source_ref_ids[0], button);
 }
 const responses = ref<Record<string, string>>({});
+// Keep supplied wording even if the user edits it. Editing is not evidence that
+// the learner independently constructed an explanation they were already shown.
+const responseOrigins = ref<Record<string, TeachingResponseOrigin>>({});
 const editingDelivery = ref<string | null>(null);
 function beginResponseEditing(deliveryRef: string) { editingDelivery.value = deliveryRef; emit('editing-response', true); }
 function endResponseEditing() {
@@ -64,6 +92,8 @@ let observer: IntersectionObserver | undefined;
 let generation = 0;
 let marking: Promise<void> | undefined;
 const displayed = new Set<string>();
+const pendingPageHelp: Array<Omit<Parameters<typeof api.tutorPageHelp>[0], 'presentation_follow_up'> & { presentation_follow_up?: PresentationFollowUp }> = [];
+let savingPageHelp: Promise<void> | undefined;
 let pending: Parameters<typeof api.tutorAction>[0] | null = null;
 const labels: Record<string, string> = { submit: '提交回答', revise: '改答', request_hint: '提示', reveal: '直接讲解', skip: '跳过', self_report: '记录自评' };
 const assessmentLabels: Record<string,string> = { correct: '本次回答符合标准', partial: '本次回答部分符合标准', incorrect: '本次回答未符合标准', uncertain: '目前依据不足，暂不能判断', unassessed: '回答已记录，尚未评分。' };
@@ -75,7 +105,7 @@ async function load() {
     activities.value = result.activities;
     await observeVisibleContent();
     await markDisplayed();
-  } catch (failure) { error.value = `教学活动读取失败：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = `学习内容读取失败：${failure instanceof Error ? failure.message : String(failure)}`; }
 }
 async function markDisplayed() {
   if (props.ready === false || !activities.value.length) return;
@@ -88,19 +118,64 @@ async function markDisplayed() {
       await api.tutorDisplay(activity.delivery_ref, scene);
       displayed.add(activity.delivery_ref);
     }
-  } catch (failure) { error.value = `教学展示记录未保存：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = `学习进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; }
   })();
   try { await marking; } finally { marking = undefined; }
 }
 function focusActivity(moveId: string, response?: string) {
   const activity = activities.value.find(a => a.move.move_id === moveId);
   if (!activity) return;
-  if (typeof response === 'string') responses.value[activity.delivery_ref] = response;
+  if (typeof response === 'string') {
+    responses.value[activity.delivery_ref] = response;
+    responseOrigins.value[activity.delivery_ref] = { kind: 'presentation_prefill', prefill_text: response,
+      ...(props.reference ? { presentation: props.reference } : {}) };
+  }
   root.value?.scrollIntoView({ block: 'nearest' });
+  void nextTick(focusResponse);
 }
-defineExpose({ focusActivity, focusResponse, endResponseEditing });
-function continueLearning(eventId: string, text: string) {
-  root.value?.dispatchEvent(new CustomEvent('tutor-response', { bubbles: true, detail: { eventId, text } }));
+async function reportPageHelp(moveId: string, kind: 'hint' | 'explanation', text: string) {
+  const activity = activities.value.find(item => item.move.move_id === moveId);
+  if (!activity || !props.snapshot || !text.trim()) throw new Error('当前演示没有可关联的教学邀请。');
+  pendingPageHelp.push({ delivery_ref: activity.delivery_ref, kind, text });
+  try {
+    await waitForHelp();
+  } catch (failure) { error.value = `提示与讲解的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; throw failure; }
+}
+async function waitForHelp() {
+  if (savingPageHelp) return savingPageHelp;
+  savingPageHelp = (async () => {
+    while (pendingPageHelp.length) {
+      const help = pendingPageHelp[0];
+      help.presentation_follow_up ??= await props.snapshot?.();
+      if (!help.presentation_follow_up) throw new Error('暂时无法保存提示对应的演示状态，请重试。');
+      await api.tutorPageHelp({ ...help, presentation_follow_up: help.presentation_follow_up });
+      pendingPageHelp.shift();
+    }
+  })();
+  try { await savingPageHelp; } finally { savingPageHelp = undefined; }
+}
+defineExpose({ focusActivity, focusResponse, endResponseEditing, reportPageHelp, waitForHelp });
+function continueLearning(eventId: string, text: string, scene?: PresentationFollowUp, responseOrigin?: TeachingResponseOrigin) {
+  root.value?.dispatchEvent(new CustomEvent('tutor-response', { bubbles: true, detail: { eventId, text, scene, responseOrigin } }));
+}
+async function respond(activity: TutorActivity, request?: 'help' | 'explain' | 'defer') {
+  if (busy.value || props.busy || activity.status !== 'active' || !invitationOpen(activity)) return;
+  const requests = { help: '我不知道从哪里开始想，请帮我找一个起点。', explain: '请先完整讲解这一步。', defer: '这次先暂缓这个问题，我想继续阅读。' };
+  const text = request ? requests[request] : responses.value[activity.delivery_ref] ?? '';
+  if (!text.trim()) return;
+  busy.value = true; error.value = '';
+  try {
+    await props.beforeResponse?.();
+    await waitForHelp();
+    const scene = await props.snapshot?.();
+    const origin: TeachingResponseOrigin = request ? { kind: 'interface_request' }
+      : responseOrigins.value[activity.delivery_ref] ?? { kind: 'user_text' };
+    endResponseEditing();
+    // This enters the ordinary chat admission path. Only the learner's actual
+    // text is a possible understanding expression; requests retain their origin.
+    continueLearning(activity.delivery_ref, text, scene, origin);
+  } catch (failure) { error.value = `消息未发送：${failure instanceof Error ? failure.message : String(failure)}`; }
+  finally { busy.value = false; }
 }
 async function acknowledgeHelp(id: string) {
   const help = helps.value[id];
@@ -109,12 +184,15 @@ async function acknowledgeHelp(id: string) {
   await api.tutorHelpDisplayed(help.event_id);
 }
 async function act(activity: TutorActivity, action: string) {
-  if (busy.value || pending) return;
+  if (busy.value || props.busy || pending) return;
   busy.value = true; error.value = '';
   try {
+    await props.beforeResponse?.();
+    await waitForHelp();
     const scene = await props.snapshot?.();
     pending = { operation_id: crypto.randomUUID(), delivery_ref: activity.delivery_ref, action,
-      response: ['submit', 'revise', 'self_report'].includes(action) ? responses.value[activity.delivery_ref] ?? '' : null, scene };
+      response: ['submit', 'revise', 'self_report'].includes(action) ? responses.value[activity.delivery_ref] ?? '' : null,
+      response_origin: responseOrigins.value[activity.delivery_ref], scene };
     await send();
   } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = `操作未确认：${failure instanceof Error ? failure.message : String(failure)}`; }
   finally { busy.value = false; }
@@ -130,13 +208,14 @@ async function send() {
     await acknowledgeHelp(request.delivery_ref);
   } else {
     endResponseEditing();
-    continueLearning(result.event_id, request.response || '我跳过了这个活动，请调整接下来的讲法。');
+    continueLearning(result.event_id, request.response || '我跳过了这个活动，请调整接下来的讲法。', request.scene, request.response_origin);
   }
   await load();
 }
 async function retry() {
   busy.value = true; error.value = '';
   try {
+    await waitForHelp();
     for (const id of failedFeedback) { await api.tutorFeedbackDisplayed(id); failedFeedback.delete(id); feedbackSeen.add(id); }
     if (pending) await send();
     else { for (const id of Object.keys(helps.value)) await acknowledgeHelp(id); await load(); }
@@ -145,15 +224,29 @@ async function retry() {
 }
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
   visible.clear(); visibleHelp.clear(); displayed.clear(); answerDeliveries.clear(); observer?.disconnect();
-  pending = null; activities.value = []; helps.value = {}; responses.value = {}; void load();
+  pending = null; activities.value = []; helps.value = {}; responses.value = {}; responseOrigins.value = {}; void load();
 }, { immediate: true });
 watch(() => props.ready, () => { void markDisplayed(); });
+watch(visibleActivities, () => { void observeVisibleContent(); });
+watch(() => props.answerText, () => { void observeVisibleContent(); });
 async function observeVisibleContent() {
   await nextTick();
   answerDeliveries.clear();
   const answer = props.answerTarget?.();
   const ids = activities.value.filter(usesAnswer).map(activity => activity.delivery_ref);
   if (answer && ids.length) { answerDeliveries.set(answer, ids); observer?.observe(answer); }
+  // An actionless page is the delivery itself; its private move prompt is not
+  // another explanation. Record exposure against the actual rendered frame.
+  const presentation = props.presentationTarget?.();
+  const pageIds = activities.value.filter(usesPresentation).map(activity => activity.delivery_ref);
+  if (presentation && pageIds.length) { answerDeliveries.set(presentation, pageIds); observer?.observe(presentation); }
+  const invitations = visibleActivities.value.filter(invitationAnswerHost).map(activity => activity.delivery_ref);
+  if (answerEnd.value && invitations.length) {
+    // This marks reaching the delivered answer's end, not reading a particular
+    // sentence or understanding it. The opening and response controls do not count.
+    answerDeliveries.set(answerEnd.value, invitations);
+    observer?.observe(answerEnd.value);
+  }
   root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref], [data-help-for], [data-feedback-ref]').forEach(node => observer?.observe(node));
 }
 onMounted(() => {
@@ -168,26 +261,51 @@ onMounted(() => {
       const feedback = node.dataset.feedbackRef;
       if (feedback && entry.isIntersecting && !feedbackSeen.has(feedback)) {
         feedbackSeen.add(feedback);
-        void api.tutorFeedbackDisplayed(feedback).catch(failure => { feedbackSeen.delete(feedback); failedFeedback.add(feedback); error.value = `反馈展示记录未保存：${String(failure)}`; });
+        void api.tutorFeedbackDisplayed(feedback).catch(failure => { feedbackSeen.delete(feedback); failedFeedback.add(feedback); error.value = `学习反馈的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; });
       }
       const helpFor = node.dataset.helpFor;
       const id = helpFor ?? node.dataset.deliveryRef;
       if (!id) continue;
+      if (!helpFor && activities.value.some(activity => activity.delivery_ref === id && invitationAnswerHost(activity))) continue;
       const targets = helpFor ? visibleHelp : visible;
       if (entry.isIntersecting) targets.add(id); else targets.delete(id);
-      if (helpFor && entry.isIntersecting) void acknowledgeHelp(id).catch(failure => { error.value = `帮助展示记录未保存：${String(failure)}`; });
+      if (helpFor && entry.isIntersecting) void acknowledgeHelp(id).catch(failure => { error.value = `提示与讲解的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; });
     }
     void markDisplayed();
   });
   void observeVisibleContent();
   window.addEventListener('tutor-state-changed', load);
 });
-onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); });
+onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); emit('response-available', false); });
 </script>
 <template>
   <section ref="root" class="tutor-activities" aria-label="教学活动">
+    <Teleport v-if="answerInvitationHost()" :to="answerInvitationHost()!">
+      <span ref="answerEnd" class="answer-delivery-end" aria-hidden="true"></span>
+    </Teleport>
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">重试</button></p>
-    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length }">
+    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length && !activity.move.response_expectation, invitation: !!activity.move.response_expectation }">
+      <template v-if="activity.move.response_expectation">
+        <div v-if="!invitationAnswerHost(activity)" class="activity-text md" v-html="renderText(activity.move.response_expectation.public_prompt)" @click="openSource(activity.move.response_expectation.public_prompt, $event)"></div>
+        <button v-if="activity.move.presentation && !reference" class="scene-link" @click="emit('locate-presentation', activity.move.presentation)">回到这个演示</button>
+        <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，仍可回看这个问题。' : '原教学来源不可用，仍可回看这个问题。' }}</p>
+        <template v-else-if="invitationOpen(activity)">
+          <textarea v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" aria-label="说说你的理解" placeholder="说说你的理解，或者还没想通的地方…" rows="2" :disabled="busy || props.busy" @focus="beginResponseEditing(activity.delivery_ref)" />
+          <small v-if="responseOrigins[activity.delivery_ref]?.kind === 'presentation_prefill'">演示已提供一段文字，你可以修改或说明自己的想法。</small>
+          <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
+            <div class="activity-actions">
+              <button class="primary" :disabled="busy || props.busy || !responses[activity.delivery_ref]?.trim()" @click="respond(activity)">发送</button>
+              <details class="invitation-help"><summary>换一种继续方式</summary><div class="activity-actions">
+                <button :disabled="busy || props.busy" @click="respond(activity, 'help')">帮我找个起点</button>
+                <button :disabled="busy || props.busy" @click="respond(activity, 'explain')">先完整讲给我</button>
+                <button :disabled="busy || props.busy" @click="respond(activity, 'defer')">暂缓这个问题</button>
+              </div></details>
+            </div>
+          </Teleport>
+        </template>
+        <small v-else-if="activity.response_invitation_status === 'deferred'">这个问题先留在这里。</small>
+      </template>
+      <template v-else>
       <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? '继续完善你的回答' : '轮到你了' }}</span><small>用自己的话试一试</small></header>
       <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
       <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，可查看已交付内容和帮助。' : '原教学来源不可用，暂不能提交。' }}</p>
@@ -208,13 +326,21 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
       <small v-if="activity.assessment?.assistance_count">本次回答前已展示帮助。</small>
       <small v-if="(activity.assessment?.attempt ?? 0) > 1">这是第 {{ activity.assessment?.attempt }} 次作答。</small>
       <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id"><div class="activity-text md" v-html="renderText(item.reason)" @click="openSource(item.reason, $event)"></div></li></ul>
+      </template>
     </article>
   </section>
 </template>
 <style scoped>
 .tutor-activities:empty { display: none; }
+.answer-delivery-end { display: block; width: 1px; height: 1px; pointer-events: none; }
 article { margin-top: 24px; min-width: 0; scroll-margin-block: 20px; }
 article.interactive { padding: 22px; border: 1px solid color-mix(in srgb, var(--brand-green) 28%, var(--line)); border-radius: 16px; background: var(--surface-soft); }
+article.invitation { padding-block: 8px; }
+.invitation textarea { min-height: 78px; }
+.invitation-help { align-self: center; }
+.invitation-help summary { padding: 8px; color: var(--steel); cursor: pointer; font-size: .82rem; }
+.invitation-help .activity-actions { margin-top: 8px; }
+.scene-link { margin-top: 8px; }
 .activity-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; color: var(--brand-green-deep); font-size: .85rem; font-weight: 600; }
 .activity-heading small { margin: 0 0 0 auto; font-weight: 400; }
 textarea { display: block; width: 100%; box-sizing: border-box; min-height: 100px; margin: 18px 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.65; resize: vertical; }

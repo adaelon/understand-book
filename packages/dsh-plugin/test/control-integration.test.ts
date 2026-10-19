@@ -46,8 +46,8 @@ for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and re
       if (a.retry_feedback) sawRetry = true;
       writeFileSync(path.join(root, "last-fixture-input.txt"), state.input);
       const candidate = candidateFor(a.output_contract, state.input) as any;
-      if (rejectCandidateOnce && a.output_contract.work_unit_kind === "structure_unit") {
-        candidate.unit_card.candidate_key_stops[0].type = "application";
+      if (rejectCandidateOnce && a.output_contract.work_unit_kind === "structure_fragment") {
+        candidate.candidate_key_stops[0].type = "application";
         rejectCandidateOnce = false;
       }
       name = "ub_executor_submit_candidate"; args = { version: "automatic_build_executor_candidate_submit.v3", opaque_session_ref: a.opaque_session_ref,
@@ -58,7 +58,8 @@ for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and re
     }
     yield* toolResponse(`call-${h.model.requests.length}`, name, args);
   }));
-  const control = createBuildControl(h.ctx, { executable: process.env.UNDERSTAND_BOOK_TEST_NODE!, prefixArgs: ["--import", "tsx", fileURLToPath(new URL("engine-source-cli.ts", import.meta.url))],
+  const control = createBuildControl(h.ctx, { executable: process.env.UNDERSTAND_BOOK_TEST_ENGINE ?? process.env.UNDERSTAND_BOOK_TEST_NODE!,
+    ...(process.env.UNDERSTAND_BOOK_TEST_ENGINE ? {} : {prefixArgs: ["--import", "tsx", fileURLToPath(new URL("engine-source-cli.ts", import.meta.url))]}),
     driverRoot: path.join(root, "registry"), maxOutputTokens: 4096, safetyMarginTokens: 4096, handoffsPerCall: 1 }, "understand-book-executor");
   const remove = h.ctx.on("user-questions/request", async request => {
     assert.ok(request.questions[0].detail!.includes(`Pass2：${pass2 === "enabled" ? "启用" : "关闭"}`));
@@ -66,7 +67,7 @@ for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and re
     return { answers: [{ id: request.questions[0].id, selected: ["批准"] }] };
   });
   try {
-    const invocation = await control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, pass2 }) as any;
+    const invocation = await control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, pass2,build_tutor:true }) as any;
     assert.match(invocation.invocation_ref, /^abinv1_/u); assert.equal(h.model.requests.length, 0);
     if (pass2 === "enabled") {
       const cancelled = await control.run(h.parent, cancellation.signal, invocation.invocation_ref) as any;

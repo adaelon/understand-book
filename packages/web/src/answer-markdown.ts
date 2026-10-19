@@ -3,7 +3,7 @@ import type { AgentAnswerSource } from './generated/AgentAnswerSource';
 import { renderMarkdown } from './md';
 import { sourceChipLabel } from './source-chip.js';
 
-export type AnswerDisplayPart = { kind: "html"; html: string; blocks?: string[] } | Extract<AgentAnswerPart, { kind: "presentation" }>;
+export type AnswerDisplayPart = { kind: "html"; html: string; markdown: string[]; blocks?: string[] } | Extract<AgentAnswerPart, { kind: "presentation" }>;
 
 /** Bind raw teaching citations only to sources already published with this answer. */
 export function sourceMarkedParts(text: string, sources: AgentAnswerSource[]): AgentAnswerPart[] {
@@ -60,6 +60,7 @@ function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>,
   button.type = "button";
   button.className = draft ? "agent-source-button draft-source" : "agent-source-button";
   button.dataset.answerSourceIndex = String(index);
+  button.setAttribute('data-reader-selection-ignore', '');
   button.disabled = !draft && !canOpen;
   if (!draft) {
     const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -88,12 +89,14 @@ function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>,
 export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft = false, canOpen = true, render: (source: string) => string = renderMarkdown): AnswerDisplayPart[] {
   const display: AnswerDisplayPart[] = [];
   let markdown = "";
+  let markdownParts: string[] = [];
   const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" }>>();
   const flush = () => {
     if (!markdown) return;
     if (inlineSources.size === 0) {
-      display.push({ kind: "html", html: render(markdown) });
+      display.push({ kind: "html", html: render(markdown), markdown: markdownParts });
       markdown = "";
+      markdownParts = [];
       return;
     }
     const template = document.createElement("template");
@@ -119,12 +122,13 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
       replacement.append(document.createTextNode(content.slice(cursor)));
       node.replaceWith(replacement);
     }
-    display.push({ kind: "html", html: template.innerHTML });
+    display.push({ kind: "html", html: template.innerHTML, markdown: markdownParts });
     markdown = "";
+    markdownParts = [];
     inlineSources.clear();
   };
   parts.forEach((part, index) => {
-    if (part.kind === "markdown") markdown += part.text;
+    if (part.kind === "markdown") { markdown += part.text; markdownParts.push(part.text); }
     else if (part.kind === "sources") {
       markdown += `\uE000UB_SOURCE_${index}\uE001`;
       inlineSources.set(index, part);

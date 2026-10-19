@@ -162,7 +162,7 @@ export function buildPaperProjectionChainPlan(
   const trusted = assertTrustedPaperProjectionSource(bookDir);
   const paperSubtype = options.paper_subtype ?? "research_article";
   const allowPartial = options.allow_partial ?? false;
-  const pass2 = options.pass2 ?? "enabled";
+  const pass2 = options.pass2 ?? "disabled";
   const sourcePath = trusted.trusted_source_path;
   const bookRoot = trusted.book_dir;
   const buildRoot = path.join(bookRoot, ".build");

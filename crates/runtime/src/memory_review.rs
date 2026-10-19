@@ -39,6 +39,8 @@ Rules:
 - Assistant text may clarify context but is never evidence and must never create a candidate by itself.
 - user contains only authored words or the real supplement to input_action. Empty user means a UI-only request: keep its turn position, but infer no profile trait or permanent preference from that action, repeated choices, or assistant text.
 - Use user_stated only for a trait the cited user text directly states. Otherwise use agent_inferred.
+- A book-scoped candidate must cite turns from one book; split evidence from different books into separate candidates.
+- When review_input.turns contains multiple distinct book_id values, the input has no single content profile. Use applicability_kind "any", never a content_profile restriction.
 - Ambiguous reading-context traits use book scope. Global requires an explicit across-books/always statement.
 - Use confidence only for agent_inferred candidates.
 - Do not emit secrets, sensitive personal data, one-off task instructions, objective book facts, or tool actions.
@@ -55,6 +57,8 @@ pub enum ReviewTurnStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReviewTurnInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub book_id: Option<String>,
     pub turn_id: String,
     pub user_turn_ordinal: u64,
     pub user: String,
@@ -286,12 +290,18 @@ fn parse_review_output(
         };
         let scope = match raw_candidate.scope {
             RawScope::Global if has_explicit_global_scope(&evidence_text) => ProfileScope::Global,
-            RawScope::Global | RawScope::Book => ProfileScope::Book {
-                book_id: input.book_id.clone(),
+            RawScope::Global | RawScope::Book => {
+                let books: BTreeSet<_> = raw_candidate.evidence.iter().filter_map(|e| input.turns.iter().find(|t| t.turn_id == e.turn_id))
+                    .map(|t| t.book_id.as_deref().unwrap_or(&input.book_id)).collect();
+                if books.len() != 1 { return Err(invalid_output("book-scoped candidates must cite turns from one original book")); }
+                ProfileScope::Book { book_id: books.into_iter().next().unwrap().to_owned() }
             },
         };
+        let mixed_materials = input.turns.iter().map(|turn| turn.book_id.as_deref().unwrap_or(&input.book_id))
+            .collect::<BTreeSet<_>>().len() > 1;
         let applicability = match raw_candidate.applicability_kind {
             RawApplicabilityKind::Any => Applicability::Any,
+            RawApplicabilityKind::ContentProfile if mixed_materials => Applicability::Any,
             RawApplicabilityKind::ContentProfile => {
                 let requested = raw_candidate
                     .applicability_value
@@ -508,6 +518,7 @@ mod tests {
             from_turn_exclusive: 0,
             to_turn_inclusive: 1,
             turns: vec![ReviewTurnInput {
+                book_id: None,
                 turn_id: "turn-a".into(),
                 user_turn_ordinal: 1,
                 user: user.into(),
@@ -699,4 +710,23 @@ mod tests {
         invalid.turn.user_turn_ordinal = 0;
         assert!(invalid.review_input().is_err());
     }
+    #[test]
+    fn w3_review_book_scope_follows_original_evidence_turn_after_material_switch() {
+        let mut input = input("I prefer worked examples first.");
+        input.turns[0].book_id = Some("book-b".into());
+        let output = parse_review_output(candidate("user_stated", "book", "I prefer worked examples first."), &input).unwrap();
+        assert_eq!(output.fact_candidates[0].fact.scope, ProfileScope::Book { book_id: "book-b".into() });
+        let mut other = input.turns[0].clone(); other.turn_id = "turn-b".into(); other.user_turn_ordinal = 2; other.book_id = Some("book-c".into());
+        input.turns.push(other); input.to_turn_inclusive = 2;
+        let mut restricted = candidate("user_stated", "book", "I prefer worked examples first.");
+        restricted["candidate_facts"][0]["applicability_kind"] = serde_json::json!("content_profile");
+        restricted["candidate_facts"][0]["applicability_value"] = serde_json::json!("paper");
+        let output = parse_review_output(restricted, &input).unwrap();
+        assert_eq!(output.fact_candidates[0].fact.applicability, Applicability::Any,
+            "mixed materials have no single content profile to assign to extracted preferences");
+        let mut mixed = candidate("user_stated", "book", "I prefer worked examples first.");
+        mixed["candidate_facts"][0]["evidence"].as_array_mut().unwrap().push(serde_json::json!({"turn_id":"turn-b","user_quote":"I prefer worked examples first."}));
+        assert!(parse_review_output(mixed, &input).is_err(), "one book-local candidate cannot relabel evidence from another source");
+    }
+
 }

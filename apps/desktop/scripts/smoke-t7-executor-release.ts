@@ -868,7 +868,15 @@ async function main(): Promise<void> {
       capabilities: {},
       clientInfo: { name: "understand-book-t7-smoke", version: "1" },
     });
-    assert.deepEqual((initialized.result as JsonObject).capabilities, { tools: { listChanged: false } });
+    assert.deepEqual((initialized.result as JsonObject).capabilities, {
+      tools: { listChanged: false },
+      experimental: { understand_book_executor_media: {
+        version: 'executor_media_input.v1', native_images: true, mime_type: 'image/png',
+        max_images: 8, max_png_bytes: 4_194_304, max_pixels: 16_588_800,
+        max_mcp_result_bytes: 8_388_608, max_jsonrpc_line_bytes: 8_389_632,
+        image_token_reserve: { base: 256, tile_size: 512, per_tile: 256 },
+      } },
+    });
     const listed = await client.request("tools/list");
     const tools = ((listed.result as { tools: Array<{ name: string; inputSchema: JsonObject }> }).tools);
     assert.deepEqual(tools.map((tool) => tool.name), expectedTools);

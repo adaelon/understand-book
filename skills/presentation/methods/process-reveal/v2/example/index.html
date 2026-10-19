@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>一个数，走过整条流水线。</title><style>
+:root{color-scheme:light;--paper:#f5f4ed;--ink:#233e40;--muted:#697d79;--teal:#18857e;--line:#d4ded7;--gold:#c38a35}*{box-sizing:border-box}body{margin:0;padding:0;background:var(--paper);color:var(--ink);font:16px/1.7 "Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1080px;margin:auto;padding:45px 44px 28px}header{padding:0 0 30px;max-width:850px}.eyebrow{font-size:11px;letter-spacing:.16em;font-weight:650;color:var(--teal);display:flex;justify-content:space-between;gap:16px}.method-name{font-size:13px;color:var(--muted);margin:27px 0 10px}h1{font-family:Georgia,"Songti SC","SimSun",serif;font-weight:500;font-size:clamp(38px,6.5vw,64px);line-height:1.16;letter-spacing:-.045em;margin:0 0 22px}h2{font-family:Georgia,"Songti SC","SimSun",serif;font-size:clamp(24px,3.5vw,32px);font-weight:500;line-height:1.4;margin:16px 0}.lead{font-size:17px;line-height:1.9;max-width:680px;color:#566e68;margin:0}p{margin:12px 0}button,input,select{font:inherit;min-height:44px;min-width:44px}button{border:1px solid var(--line);border-radius:7px;background:#fcfcf7;color:var(--ink);padding:8px 14px;cursor:pointer;white-space:nowrap}button:hover{background:#e8eee6;border-color:#9cb7ac}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,svg:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}select{max-width:100%;background:#fcfcf7;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 10px}input[type=range]{min-width:0;width:100%;margin:0;accent-color:var(--teal);cursor:ew-resize}input[type=checkbox]{accent-color:var(--teal);width:44px;margin:0;justify-self:end}.experiment{border:1px solid var(--line);border-radius:14px;background:linear-gradient(160deg,#fafaf4,#ecefe6);overflow:hidden}.figure-heading{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:19px 24px 0;color:var(--muted);font-size:12px}.live-tag{font-size:11px;white-space:nowrap;background:#e5ede2;color:#477163;border-radius:20px;padding:3px 10px}svg{display:block;width:100%;height:auto;font-family:"Segoe UI","Microsoft YaHei",sans-serif;touch-action:none;user-select:none;overflow:hidden}#scene{max-height:450px;margin:4px auto 0;cursor:ew-resize}#detail{cursor:ew-resize}svg text{font-variant-numeric:tabular-nums}svg .hit{cursor:pointer}.gesture{font-size:12px;color:var(--muted);margin:0;padding:4px 24px 18px}#readout{border-top:1px solid var(--line);padding:18px 24px 16px;background:#ffffff70}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.metrics>div>span{display:block;font-size:12px;color:var(--muted)}.metrics output{display:block;font:500 28px/1.6 Georgia,"Segoe UI",serif;color:var(--ink);font-variant-numeric:tabular-nums}.metrics output small{font:12px "Segoe UI",sans-serif;margin-left:6px;color:var(--muted)}#reading{font-size:13px;color:#526e66;margin:10px 0 0;min-height:22px}.controls{padding:20px 4px 28px}.transport{display:grid;grid-template-columns:auto 44px minmax(44px,1fr) 44px auto;gap:8px;align-items:center}#play{background:var(--teal);color:#fff;border-color:var(--teal);min-width:72px}.transport #back,.transport #next{padding:0;font-size:20px}.position-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:16px;margin:5px 0 18px}output{font-variant-numeric:tabular-nums}.parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 28px}.parameter{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;font-size:13px;gap:2px 10px}.parameter input[type=range],.parameter select{grid-column:1/-1}.parameter output{color:var(--teal)}.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.presets button{font-size:12px;background:transparent;padding:7px 12px}.linked{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:32px;border-top:1px solid var(--line);padding:38px 0}.essay p{font-size:14px}.formula{white-space:pre-line;background:#e6ece2;border-left:3px solid var(--teal);padding:16px;margin:20px 0;font:17px/1.7 Georgia,"Segoe UI",serif;overflow-wrap:anywhere}.small{font-size:12px!important;color:var(--muted);line-height:1.8}.detail-figure{align-self:center;min-width:0}.detail-figure>p{padding:0 12px}.walkthrough{border-top:1px solid var(--line);padding-top:24px}.chapters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 32px}.chapters button{display:flex;flex-direction:column;gap:10px;padding:20px;text-align:left;white-space:normal;background:#fafbf5;line-height:1.7}.chapter-number{color:var(--gold);font:22px Georgia,serif}.chapters strong{font-weight:600;font-size:15px}.chapters button>span:not(.chapter-number){font-size:12px;color:var(--muted)}.chapters em{font-size:11px;color:var(--teal);font-style:normal;margin-top:auto}footer{border-top:1px solid var(--line);font-size:13px;padding-top:14px}footer>p{max-width:760px}details{margin-top:22px;color:var(--muted);font-size:12px}summary{cursor:pointer;min-height:44px;padding:8px 0}details p{margin-top:0}@media(max-width:760px){main{padding:30px 24px 22px}.linked{grid-template-columns:1fr;gap:12px}.detail-figure{max-width:660px;width:100%}.chapters{gap:8px}.chapters button{padding:14px}h1{font-size:46px}}@media(max-width:440px){main{padding:24px 14px 18px}h1{font-size:38px}.lead{font-size:15px}.figure-heading{padding:15px 12px 0;font-size:11px}.live-tag{display:none}.gesture{padding:3px 12px 13px;font-size:11px}#readout{padding:13px 12px}.metrics{gap:8px}.metrics output{font-size:23px}.metrics>div>span{font-size:11px}.metrics output small{display:block;margin:0;font-size:10px}.transport{grid-template-columns:auto 44px minmax(44px,1fr) 44px;gap:5px}#reset{grid-column:4;grid-row:2}.position-row{margin-top:-44px;margin-right:56px;min-height:44px;align-items:center;font-size:11px}.parameters{grid-template-columns:1fr}.chapters{grid-template-columns:1fr}.chapters button{padding:16px;display:grid;grid-template-columns:25px 1fr;gap:5px 12px}.chapter-number{grid-row:1/4}.chapters em,.chapters button>span:not(.chapter-number){grid-column:2}.linked{padding:28px 0}.controls{padding-left:0;padding-right:0}}
+
+</style></head><body><script>
+"use strict";
+(() => {
+  // skills/presentation/methods/_shared/linked-v1.js
+  var $ = (id) => document.getElementById(id);
+  var clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  var mix = (a, b, u) => a + (b - a) * u;
+  var fmt = (x, d = 3) => Number(x.toFixed(d)).toString();
+  var C = { ink: "#233e40", muted: "#768683", teal: "#18857e", gold: "#c38a35", coral: "#cf6851", blue: "#5b83ae", line: "#d4ded7", paper: "#f5f4ed" };
+  var line = (x1, y1, x2, y2, color = C.line, width = 1, extra = "") => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" ${extra}/>`;
+  var rect = (x, y, w, h, fill, extra = "") => `<rect x="${x}" y="${y}" width="${Math.max(0, w)}" height="${Math.max(0, h)}" fill="${fill}" ${extra}/>`;
+  var circle = (x, y, r, fill, extra = "") => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" ${extra}/>`;
+  var text = (x, y, value, color = C.muted, size = 20, extra = "") => `<text x="${x}" y="${y}" fill="${color}" font-size="${size}" ${extra}>${value}</text>`;
+  var path = (d, color = C.teal, width = 3, extra = "") => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+  var plot = (pts) => pts.map((p, i) => (i ? "L" : "M") + p.join(",")).join(" ");
+  var label = (x, y, v, c = C.ink) => text(x, y, v, c, 22, 'text-anchor="middle"');
+  function createDemo(topic) {
+    const defaults = { ...topic.defaults, semantic_state: 0, transition_progress: 0 };
+    const state = { ...defaults, ...window.presentation?.initialState, playing: false };
+    const fields = Object.keys(topic.defaults);
+    const control = (p) => `<label class="parameter" for="${p.id}"><span>${p.label}</span><output id="${p.id}-value"></output>${p.options ? `<select id="${p.id}" data-param="${p.id}">${p.options.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>` : p.type === "checkbox" ? `<input id="${p.id}" data-param="${p.id}" type="checkbox">` : `<input id="${p.id}" data-param="${p.id}" type="range" min="${p.min}" max="${p.max}" step="${p.step}">`}</label>`;
+    document.body.innerHTML = `<main><header><div class="eyebrow">EXPLORABLE EXPLANATIONS <span>${topic.number} / 09</span></div><p class="method-name">${topic.method}</p><h1>${topic.title}</h1><p class="lead">${topic.lead}</p></header>
+  <section class="experiment" aria-label="${topic.mainLabel}"><div class="figure-heading"><span>01 / ${topic.mainLabel}</span><span class="live-tag" id="status">\u53EF\u64CD\u4F5C</span></div><svg id="scene" viewBox="0 0 720 380" role="img" tabindex="0" aria-label="${topic.directHint}"></svg><p class="gesture">\u2194 ${topic.directHint}</p><div id="readout" aria-live="off"><div id="metrics" class="metrics"></div><p id="reading"></p></div></section>
+  <section class="controls" aria-label="\u89C2\u5BDF\u63A7\u5236"><div class="transport"><button id="play" aria-pressed="false">\u64AD\u653E</button><button id="back" aria-label="\u524D\u4E00\u6B65">\u2190</button><input id="position" aria-label="\u89C2\u5BDF\u4F4D\u7F6E" type="range" min="0" max="${topic.max}" step="0.001"><button id="next" aria-label="\u540E\u4E00\u6B65">\u2192</button><button id="reset">\u91CD\u7F6E</button></div><p class="position-row"><span>${topic.timelineLabel}</span><output id="position-label"></output></p><div class="parameters">${topic.parameters.map(control).join("")}</div><div class="presets">${topic.presets.map((p, i) => `<button data-preset="${i}">${p.label}</button>`).join("")}</div></section>
+  <section class="linked"><div class="essay"><p class="eyebrow">02 / ${topic.detailLabel}</p><h2>${topic.question}</h2><p>${topic.answer}</p><div class="formula">${topic.formula}</div><p class="small">${topic.detailCaption}</p></div><div class="detail-figure"><svg id="detail" viewBox="0 0 640 300" role="img" tabindex="0" aria-label="${topic.detailHint || "\u8054\u52A8\u7EC6\u8282\u56FE\uFF1B\u5DE6\u53F3\u65B9\u5411\u952E\u79FB\u52A8\u89C2\u5BDF\u4F4D\u7F6E"}"></svg><p id="detail-reading" class="small"></p></div></section>
+  <section class="walkthrough"><p class="eyebrow">03 / \u4EB2\u624B\u8BD5\u4E00\u8BD5</p><div class="chapters">${topic.chapters.map((c, i) => `<button data-chapter="${i}"><span class="chapter-number">0${i + 1}</span><strong>${c.title}</strong><span>${c.body}</span><em>\u89C2\u5BDF\u8FD9\u4E00\u523B \u2197</em></button>`).join("")}</div></section><footer><p>${topic.takeaway}</p><details><summary>\u6A21\u578B\u4E0E\u9002\u7528\u8303\u56F4</summary><p>${topic.limits}</p></details></footer></main>`;
+    let frame = 0, last = 0, visible = true, disposed = false;
+    const snapshot = () => ({ ...state });
+    const commit = () => window.presentation?.commitState();
+    function position(q) {
+      q = clamp(q, 0, topic.max);
+      state.semantic_state = Math.floor(q);
+      state.transition_progress = q - state.semantic_state;
+    }
+    function pause() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      state.playing = false;
+      last = 0;
+    }
+    function render() {
+      const m = topic.derive(state);
+      $("scene").innerHTML = topic.drawMain(m, state);
+      $("detail").innerHTML = topic.drawDetail(m, state);
+      $("metrics").innerHTML = topic.metrics(m, state).map(([label2, value, unit = ""]) => `<div><span>${label2}</span><output>${value}<small>${unit}</small></output></div>`).join("");
+      $("reading").textContent = topic.explain(m, state);
+      $("detail-reading").textContent = topic.detailReading(m, state);
+      $("position").value = state.semantic_state + state.transition_progress;
+      $("position-label").textContent = topic.positionLabel(m, state);
+      for (const p of topic.parameters) {
+        const el = $(p.id);
+        if (p.type === "checkbox") el.checked = state[p.id];
+        else el.value = state[p.id];
+        $(p.id + "-value").textContent = p.options ? "" : p.format ? p.format(state[p.id]) : fmt(state[p.id]);
+      }
+      $("play").textContent = state.playing ? "\u6682\u505C" : "\u64AD\u653E";
+      $("play").setAttribute("aria-pressed", String(state.playing));
+      $("status").textContent = state.playing ? "\u6B63\u5728\u6F14\u793A" : "\u505C\u4E0B\u6765\uFF0C\u89C2\u5BDF";
+      $("play").disabled = state.semantic_state === topic.max;
+      $("back").disabled = state.semantic_state === 0 && state.transition_progress === 0;
+      $("next").disabled = state.semantic_state === topic.max;
+      return m;
+    }
+    function seek({ semantic_state, transition_progress = 0 }) {
+      pause();
+      position(semantic_state + transition_progress);
+      render();
+      return snapshot();
+    }
+    function apply({ values = {}, q = 0 } = {}) {
+      pause();
+      for (const key of fields) if (key in values) state[key] = values[key];
+      position(q);
+      render();
+    }
+    const current = () => state.semantic_state + state.transition_progress;
+    function tick(t) {
+      frame = 0;
+      if (!state.playing || !visible || document.hidden || disposed) {
+        last = 0;
+        return;
+      }
+      if (last) position(current() + Math.min((t - last) / 1e3, 0.06) / (topic.secondsPerStep || 2));
+      last = t;
+      if (current() === topic.max) pause();
+      render();
+      if (state.playing) frame = requestAnimationFrame(tick);
+    }
+    function resume() {
+      if (state.playing && !frame && !document.hidden && visible && !disposed) {
+        last = 0;
+        frame = requestAnimationFrame(tick);
+      }
+    }
+    $("play").onclick = () => {
+      if (state.playing) pause();
+      else {
+        state.playing = true;
+        resume();
+      }
+      render();
+      commit();
+    };
+    $("back").onclick = () => {
+      seek({ semantic_state: state.transition_progress > 0 ? state.semantic_state : state.semantic_state - 1 });
+      commit();
+    };
+    $("next").onclick = () => {
+      seek({ semantic_state: state.semantic_state + 1 });
+      commit();
+    };
+    $("reset").onclick = () => {
+      seek({ semantic_state: 0 });
+      commit();
+    };
+    $("position").oninput = (e) => seek({ semantic_state: Number(e.target.value) });
+    $("position").onchange = commit;
+    for (const p of topic.parameters) {
+      $(p.id).oninput = (e) => apply({ values: { [p.id]: p.type === "checkbox" ? e.target.checked : typeof defaults[p.id] === "number" ? Number(e.target.value) : e.target.value } });
+      $(p.id).onchange = commit;
+    }
+    document.querySelectorAll("[data-preset]").forEach((b) => b.onclick = () => {
+      apply(topic.presets[Number(b.dataset.preset)]);
+      commit();
+    });
+    document.querySelectorAll("[data-chapter]").forEach((b) => b.onclick = () => {
+      apply(topic.chapters[Number(b.dataset.chapter)]);
+      commit();
+    });
+    function direct(id, handler) {
+      const el = $(id);
+      let down = false;
+      const update = (e) => {
+        const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(el.getScreenCTM().inverse());
+        const change = handler?.(p, state, e);
+        if (change) apply(change);
+      };
+      el.onpointerdown = (e) => {
+        if (e.button !== 0) return;
+        down = true;
+        el.setPointerCapture(e.pointerId);
+        update(e);
+      };
+      el.onpointermove = (e) => {
+        if (down) update(e);
+      };
+      el.onpointerup = el.onpointercancel = () => {
+        if (down) {
+          down = false;
+          commit();
+        }
+      };
+      el.onkeydown = (e) => {
+        if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+        e.preventDefault();
+        const change = topic.key?.(id, e.key, state);
+        if (change) apply(change);
+        else seek({ semantic_state: e.key === "Home" ? 0 : e.key === "End" ? topic.max : current() + (e.key === "ArrowRight" ? 0.05 : -0.05) });
+        commit();
+      };
+    }
+    direct("scene", topic.pointer);
+    direct("detail", topic.detailPointer);
+    const visibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    const observer = new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      if (!visible) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        last = 0;
+      } else resume();
+    });
+    observer.observe(document.querySelector("main"));
+    window.addEventListener("pagehide", () => {
+      disposed = true;
+      pause();
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", visibility);
+    }, { once: true });
+    window.presentationScene = { seek, snapshot };
+    window.explanationDemo = { inspect: () => structuredClone(topic.derive(state)) };
+    window.presentation?.registerStateReader(() => ({ values: Object.fromEntries([...fields, "semantic_state", "transition_progress"].map((k) => [k, state[k]])), visible_step: topic.positionLabel(topic.derive(state), state) }));
+    window.presentation?.registerStateRestorer((saved) => {
+      const values = saved.values.page;
+      apply({ values, q: (values.semantic_state ?? 0) + (values.transition_progress ?? 0) });
+    });
+    position(state.semantic_state + state.transition_progress);
+    render();
+  }
+
+  // skills/presentation/methods/process-reveal/v2/topic.js
+  var colors = [C.teal, C.gold, C.coral];
+  var input = [2, 3, 4];
+  var xs = [72, 264, 456, 648];
+  function derive(s) {
+    const mapped = input.map((x) => x + s.increment), kept = mapped.map((x) => x >= s.threshold), filtered = mapped.filter((_, i) => kept[i]), sum = filtered.reduce((a, b) => a + b, 0);
+    return { q: s.semantic_state + s.transition_progress, k: s.semantic_state, p: s.transition_progress, mapped, kept, filtered, sum, selected: s.selected };
+  }
+  function token(x, y, v, i, active, removed = false) {
+    return `<g opacity="${active ? 1 : 0.78}">${circle(x, y, 25, removed ? "#e9e9e0" : colors[i])}${label(x, y + 8, v, removed ? C.muted : "#fff")}${removed ? line(x - 15, y - 15, x + 15, y + 15, C.coral, 2) : ""}</g>`;
+  }
+  createDemo({
+    id: "process-reveal",
+    method: "\u6CBF\u5173\u7CFB\u9010\u6B65\u5C55\u5F00\u8FC7\u7A0B",
+    number: "05",
+    title: "\u4E00\u4E2A\u6570\uFF0C\u8D70\u8FC7\u6574\u6761\u6D41\u6C34\u7EBF\u3002",
+    lead: "\u5148\u52A0\uFF0C\u518D\u7B5B\uFF0C\u6700\u540E\u6C42\u548C\u3002\u70B9\u9009\u4E00\u4E2A\u8F93\u5165\uFF0C\u6CBF\u7740\u989C\u8272\u8FFD\u8E2A\u5B83\uFF1A\u5B83\u5728\u54EA\u4E00\u6B65\u88AB\u6539\u53D8\uFF0C\u53C8\u6709\u6CA1\u6709\u8FDB\u5165\u6700\u540E\u7684\u7ED3\u679C\uFF1F",
+    mainLabel: "\u6CBF\u7740\u6570\u636E\uFF0C\u800C\u4E0D\u662F\u80CC\u6B65\u9AA4",
+    directHint: "\u70B9\u51FB\u4EFB\u610F\u4E00\u884C\u9009\u62E9\u8F93\u5165\uFF1B\u4E0B\u65B9\u8F68\u8FF9\u56FE\u53EF\u62D6\u52A8\u5C55\u5F00\u8FC7\u7A0B\u3002",
+    detailLabel: "\u8FFD\u8E2A\u4E00\u4E2A\u5BF9\u8C61\u7684\u53BB\u5411",
+    question: "\u7ED3\u679C\u5C11\u4E86\u4E00\u4E2A\u6570\uFF0C\u5B83\u53BB\u4E86\u54EA\u91CC\uFF1F",
+    answer: "map \u6539\u53D8\u6BCF\u4E2A\u6570\u7684\u503C\uFF1Bfilter \u51B3\u5B9A\u54EA\u4E9B\u8EAB\u4EFD\u7EE7\u7EED\u5411\u540E\u4F20\u9012\uFF1Bsum \u624D\u628A\u4FDD\u7559\u4E0B\u6765\u7684\u503C\u5408\u5E76\u3002\u7B5B\u6389\u7684\u5BF9\u8C61\u6CA1\u6709\u795E\u79D8\u6D88\u5931\uFF0C\u5B83\u505C\u5728\u5224\u65AD\u6761\u4EF6\u4E0D\u6EE1\u8DB3\u7684\u5730\u65B9\u3002",
+    formula: "[2, 3, 4] \u2192 \u52A0\u4E0A a \u2192 \u4FDD\u7559 x \u2265 b \u2192 \u6C42\u548C",
+    detailCaption: "\u6BCF\u79CD\u989C\u8272\u4EE3\u8868\u540C\u4E00\u4E2A\u8F93\u5165\u7684\u8EAB\u4EFD\u3002\u8FDE\u63A5\u7EBF\u53EA\u63ED\u793A\u5DF2\u5C55\u5F00\u7684\u8BA1\u7B97\uFF1B\u672A\u5B8C\u6210\u6B65\u9AA4\u7684\u7ED3\u679C\u4E0D\u63D0\u524D\u663E\u793A\u3002",
+    takeaway: "\u8FC7\u7A0B\u56FE\u7684\u5173\u952E\u662F\u4FDD\u5B58\u5BF9\u8C61\u8EAB\u4EFD\u548C\u4F9D\u8D56\u5173\u7CFB\u3002\u6700\u540E\u7684\u6570\u5B57\u5FC5\u987B\u80FD\u591F\u6CBF\u6D41\u7A0B\u56DE\u6EAF\u5230\u5B9E\u9645\u8FDB\u5165\u6C42\u548C\u7684\u6BCF\u4E00\u4E2A\u8F93\u5165\u3002",
+    limits: "\u4E09\u4E2A\u56FA\u5B9A\u8F93\u5165 [2,3,4]\uFF1B\u6574\u6570\u589E\u91CF 0\u20133\uFF1B\u5305\u542B\u8FB9\u754C\u7684\u7B5B\u9009 x\u2265\u9608\u503C\uFF082\u20138\uFF09\uFF1B\u7A7A\u6570\u7EC4\u7684\u548C\u4E3A 0\u3002\u65F6\u95F4\u662F\u89E3\u91CA\u5C55\u5F00\u7A0B\u5EA6\uFF0C\u4E0D\u662F\u6267\u884C\u8017\u65F6\u3002",
+    defaults: { increment: 1, threshold: 4, selected: 1 },
+    max: 3,
+    secondsPerStep: 2,
+    timelineLabel: "\u8F93\u5165 \u2192 \u52A0\u6570 \u2192 \u7B5B\u9009 \u2192 \u6C42\u548C",
+    parameters: [{ id: "increment", label: "\u6BCF\u9879\u589E\u52A0", min: 0, max: 3, step: 1 }, { id: "threshold", label: "\u7B5B\u9009\u9608\u503C \u2265", min: 2, max: 8, step: 1 }],
+    presets: [{ label: "\u9ED8\u8BA4\uFF1A\u7559\u4E0B\u4E24\u9879", values: { increment: 1, threshold: 4 }, q: 3 }, { label: "\u5168\u90E8\u7559\u4E0B", values: { increment: 3, threshold: 2 }, q: 3 }, { label: "\u7A7A\u96C6\u4E5F\u6709\u7ED3\u679C", values: { increment: 0, threshold: 8 }, q: 3 }],
+    chapters: [{ title: "\u540C\u4E00\u4E2A\u8EAB\u4EFD", body: "\u9009\u4E2D\u7B2C\u4E8C\u4E2A\u8F93\u5165\uFF0C3 \u52A0 1 \u540E\u6210\u4E3A 4\u3002", values: { increment: 1, threshold: 4, selected: 1 }, q: 1 }, { title: "\u68C0\u67E5\u8FB9\u754C", body: "4 \u6070\u597D\u7B49\u4E8E\u9608\u503C\uFF0C\u4F7F\u7528 \u2265\uFF0C\u6240\u4EE5\u7559\u4E0B\u3002", values: { increment: 1, threshold: 4, selected: 1 }, q: 2 }, { title: "\u53EA\u52A0\u7559\u4E0B\u7684", body: "4 \u4E0E 5 \u8FDB\u5165\u6C42\u548C\uFF0C3 \u505C\u5728\u7B5B\u9009\u6B65\u9AA4\u3002", values: { increment: 1, threshold: 4, selected: 0 }, q: 3 }],
+    derive,
+    drawMain(m) {
+      let h = "";
+      ["\u8F93\u5165", "\u52A0\u6570", "\u7B5B\u9009", "\u6C42\u548C"].forEach((v, i) => {
+        h += label(xs[i], 40, v, i <= m.k ? C.ink : C.muted);
+      });
+      for (let i = 0; i < 3; i++) {
+        const y = 112 + i * 85;
+        h += rect(25, y - 36, 670, 72, i === m.selected ? "#e0e9de" : "transparent", 'rx="12"');
+        for (let j = 0; j < 3; j++) {
+          const a = xs[j] + 29, b = xs[j + 1] - 29, progress = clamp(m.q - j, 0, 1);
+          if (j < 2 || m.kept[i]) h += line(a, y, mix(a, b, progress), j === 2 ? 197 : y, colors[i], i === m.selected ? 3 : 1.5);
+        }
+        h += token(xs[0], y, input[i], i, i === m.selected);
+        if (m.q >= 1) h += token(xs[1], y, m.mapped[i], i, i === m.selected);
+        if (m.q >= 2) h += token(xs[2], y, m.mapped[i], i, i === m.selected, !m.kept[i]);
+        h += text(27, y + 56, `#${i + 1}`, colors[i], 17);
+      }
+      if (m.q >= 3) h += circle(xs[3], 197, 34, C.ink) + label(xs[3], 206, m.sum, "white");
+      else h += circle(xs[3], 197, 32, "none", `stroke="${C.line}" stroke-width="2" stroke-dasharray="5 5"`);
+      h += label(360, 366, ["\u539F\u59CB\u8F93\u5165", "\u6BCF\u4E00\u9879\u90FD\u5B8C\u6210\u52A0\u6570", "\u6309 \u2265 \u5224\u65AD\u53BB\u7559", "\u5BF9\u7559\u4E0B\u7684\u6570\u6C42\u548C"][m.k], C.muted);
+      return h;
+    },
+    drawDetail(m) {
+      const i = m.selected, ys = [input[i], m.mapped[i], m.mapped[i]], X = (j) => 66 + j * 168, Y = (v) => 240 - v * 24;
+      let h = "";
+      for (let v = 0; v <= 8; v += 2) h += line(66, Y(v), 570, Y(v), C.line) + text(25, Y(v) + 6, v, C.muted, 18);
+      let pts = [[X(0), Y(ys[0])]];
+      for (let j = 1; j < 3; j++) if (m.q >= j) pts.push([X(j), Y(ys[j])]);
+      h += path(plot(pts), colors[i], 3);
+      pts.forEach(([x, y], j) => {
+        h += circle(x, y, 7, colors[i]);
+      });
+      if (m.q >= 2) h += text(X(2) - 45, 35, m.kept[i] ? "\u8FDB\u5165\u6C42\u548C" : "\u5728\u6B64\u505C\u6B62", m.kept[i] ? C.teal : C.coral, 21);
+      if (m.q >= 3 && m.kept[i]) h += line(X(2), Y(ys[2]), X(3), Y(ys[2]), colors[i], 3) + circle(X(3), Y(ys[2]), 7, colors[i]);
+      ["\u8F93\u5165", "\u52A0\u6570", "\u7B5B\u9009", "\u8D21\u732E"].forEach((v, j) => h += label(X(j), 278, v, C.muted));
+      h += line(66 + m.q * 168, 44, 66 + m.q * 168, 247, C.muted, 1, 'stroke-dasharray="4 6"');
+      return h;
+    },
+    metrics: (m) => [["\u9009\u4E2D\u8F93\u5165", `#${m.selected + 1}`], ["\u7B5B\u9009\u4FDD\u7559", m.q >= 2 ? m.filtered.length : "\u2014", "\u9879"], ["\u5F53\u524D\u7ED3\u679C", m.q >= 3 ? m.sum : "\u2014"]],
+    explain: (m) => m.q < 1 ? `\u8F93\u5165 [2, 3, 4]\uFF0C\u5C1A\u672A\u5B8C\u6210\u7B2C\u4E00\u6B65\u3002` : m.q < 2 ? `\u52A0\u6570\u5B8C\u6210\uFF1A[${m.mapped.join(", ")}]\u3002\u7B5B\u9009\u5C1A\u672A\u5B8C\u6210\u3002` : m.q < 3 ? `\u7B5B\u9009\u5B8C\u6210\uFF1A[${m.filtered.join(", ")}]\u3002\u7070\u8272\u5212\u7EBF\u5BF9\u8C61\u672A\u8FDB\u5165\u6C42\u548C\u3002` : `\u5F53\u524D\u7ED3\u679C\uFF1A${m.filtered.length ? m.filtered.join(" + ") + " = " : ""}${m.sum}\u3002`,
+    detailReading: (m) => `\u9009\u4E2D #${m.selected + 1}\uFF1A${input[m.selected]}${m.q >= 1 ? " \u2192 " + m.mapped[m.selected] : ""}${m.q >= 2 ? m.kept[m.selected] ? " \u2192 \u4FDD\u7559" : " \u2192 \u6392\u9664" : ""}${m.q >= 3 && m.kept[m.selected] ? " \u2192 \u8D21\u732E " + m.mapped[m.selected] : ""}\u3002`,
+    positionLabel: (m) => `${m.k} / 3 \xB7 ${fmt(m.p * 100, 0)}%`,
+    pointer: (p, s) => ({ values: { selected: clamp(Math.round((p.y - 112) / 85), 0, 2) }, q: s.semantic_state + s.transition_progress }),
+    detailPointer: (p) => ({ q: clamp((p.x - 66) / 504 * 3, 0, 3) }),
+    key: (id, k, s) => id === "scene" ? { values: { selected: k === "Home" ? 0 : k === "End" ? 2 : clamp(s.selected + (k === "ArrowRight" ? 1 : -1), 0, 2) }, q: s.semantic_state + s.transition_progress } : null
+  });
+})();
+
+</script></body></html>

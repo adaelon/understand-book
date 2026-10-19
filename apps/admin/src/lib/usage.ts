@@ -11,7 +11,8 @@ export function usageQuery(from: string, to: string, offset = 0, user = ''): str
   return params.toString();
 }
 export function taskChargesPath(task: UsageTask, from: string, to: string, offset: number): string {
-  const params = new URLSearchParams(usageQuery(from, to, offset, task.user_id));
-  params.set(task.reference_kind === 'run' ? 'run_ref' : 'task_ref', task.reference);
+  const params = new URLSearchParams(usageQuery(from, to, offset, task.cost_owner === 'platform' ? '' : task.user_id));
+  const reference = task.reference_kind === 'operator_task' ? 'operator_task_ref' : task.reference_kind === 'run' ? 'run_ref' : 'task_ref';
+  params.set(reference, task.reference);
   return `/admin/charges?${params}`;
 }

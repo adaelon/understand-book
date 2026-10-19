@@ -147,6 +147,10 @@ impl UserRuntime {
         self.store.learning_store()
     }
 
+    pub fn learning_store_for_workspace(&self, learning_workspace_id: Option<&str>) -> Result<LearningStore, ToolError> {
+        Ok(self.store.learning_store()?.with_workspace(learning_workspace_id))
+    }
+
     pub(crate) fn presentation_root(&self) -> Result<PathBuf, ToolError> {
         self.history_path
             .as_ref()

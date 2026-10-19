@@ -47,7 +47,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         let messages = vec![Message::system(crate::tutor::instructions(&tutor)),
             Message::user("Explain this fully; do not ask me to answer first.")];
         let (_, plan) = build_sample_request(&messages, &mut ContextFragmentLedger::default(), &b,
-            &ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
+            &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
             &[], None, false, Some(&tutor)).unwrap();
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
@@ -72,7 +72,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
             usize::from(matches!(status,"active"|"observing")),"{status}");
         // Generation is active-only; interpreting an ordinary answer still needs
         // the evidence boundary when active teaching is disabled.
-        assert_eq!(text.matches("Any question used to judge understanding").count(),
+        assert_eq!(text.matches("To establish independent relationship understanding").count(),
             usize::from(status == "active"), "{status}");
         assert_eq!(text.matches("a correct answer alone cannot distinguish recall from relationship understanding").count(),
             usize::from(matches!(status,"active"|"observing")), "{status}");
@@ -80,7 +80,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
             usize::from(matches!(status,"active"|"observing")), "{status}");
         if matches!(status,"active"|"observing") {
             assert!(text.contains("An empty assistance list does not mean independent performance"));
-            assert!(text.contains("check the interpretation against current evidence before adopting it"));
+            assert!(text.contains("compare earlier and later expressions under their own help conditions before adopting an interpretation"));
             assert!(text.contains("Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans"));
             assert!(text.contains("omission or different wording alone does not establish a misconception"));
         }
@@ -121,9 +121,16 @@ fn tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample() {
     run(&b, &mut store, &mut reader, &adapter, &mut new_session(), "梳理这里的关系", "t0", OuterConfig::default()).unwrap();
     let plans = adapter.seen_plans.borrow();
     assert_eq!(plans.len(), 2);
-    assert!(!plans[0].instructions.contains("When establishing a new explicit guided-reading route"));
-    assert!(plans[0].instructions.contains("navigation_plan"));
-    assert!(plans[1].instructions.contains("When establishing a new explicit guided-reading route"));
+    let guidance = |plan: &AgentRequestPlan| plan.input.iter()
+        .filter_map(|message| message.content.as_deref())
+        .filter(|content| content.starts_with("sampling_guidance.v1\n"))
+        .collect::<Vec<_>>().join("\n");
+    assert_eq!(plans[0].instructions, plans[1].instructions);
+    assert!(!guidance(&plans[0]).contains("When establishing a new explicit guided-reading route"));
+    assert!(guidance(&plans[0]).contains("navigation_plan"));
+    assert!(guidance(&plans[1]).contains("When establishing a new explicit guided-reading route"));
+    assert!(!plans[0].instruction_assets.iter().any(|asset| asset.asset_id == "resident-agent.policy.navigation"));
+    assert!(plans[1].instruction_assets.iter().any(|asset| asset.asset_id == "resident-agent.policy.navigation"));
     assert!(plans[1].tools.iter().any(|tool| tool.name == "book.guide_path"));
 }
 
@@ -135,33 +142,46 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
     let mut exposure = ToolExposureState::default();
     exposure.activate_tutor();
     let profile = ModelRuntimeProfile::fallback("tc2a-presentation", ProviderToolProtocol::Native);
-    let sample = |state: &ToolExposureState, authoring: Option<&crate::presentation_author::PresentationAuthoringContext>, finished| {
+    let sample = |state: &ToolExposureState, authoring: Option<&crate::presentation_author::PresentationAuthoringContext>, finished, context: &serde_json::Value| {
         build_sample_request(&new_session(), &mut ContextFragmentLedger::default(), &b,
-            &ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
+            &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), state, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
-            &[], authoring, finished, Some(&tutor)).unwrap()
+            &[], authoring, finished, Some(context)).unwrap()
     };
-    let (initial_exposure, initial) = sample(&exposure, None, false);
+    let (initial_exposure, initial) = sample(&exposure, None, false, &tutor);
     assert!(!initial.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
     search_and_activate(r#"{"task":"explain with an interactive scene","required_capabilities":["presentation_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":1}"#,
         &ToolExposureContext { content_profile:b.content_profile_id(), permissions:ToolPermissions::default(),
             evidence_state:EvidenceState::UserProvided, artifact:ArtifactExposureContext::no_overlay() },
         &initial_exposure, &registry, &mut exposure).unwrap();
-    for (phase, expected) in [(PresentationPhase::Global,"Teaching presentation planning"),
+    let (_, inspection) = sample(&exposure, None, false, &tutor);
+    let author = inspection.tools.iter().find(|t| t.name == "presentation.author").unwrap();
+    assert_eq!(author.parameters["properties"]["operation"]["enum"], serde_json::json!(["read", "search"]));
+    assert!(!inspection.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
+    let accepted_tutor = serde_json::json!({"status":"active", "learner_context":{"current_request":""},
+        "current_design":{"design_ref":"tb4-design", "design":{
+            "target":"TB4 relationship and learner judgment", "focus_block_refs":["relation"],
+            "blocks":[{"block_id":"relation"}],
+            "representation":{"kind":"presentation", "observation":"TB4 changed condition"}}}});
+    // Accepted teaching design owns planning; authoring begins in construction.
+    for (phase, expected) in [(PresentationPhase::Global,"Teaching presentation construction"),
         (PresentationPhase::Local,"Teaching presentation construction"), (PresentationPhase::Review,"Teaching presentation review")] {
-        let authoring = crate::presentation_author::PresentationAuthoringContext { phase,framework:Some("TB4 relationship and learner judgment".into()),focus:Some("TB4 changed condition".into()),needs:vec![crate::agent_prompt::PresentationNeed::State] };
-        let (_, plan) = sample(&exposure, Some(&authoring), false);
+        let authoring = crate::presentation_author::PresentationAuthoringContext {
+            teaching_binding:Some(crate::presentation::PresentationTeachingBinding {
+                design_ref:"tb4-design".into(),block_refs:vec!["relation".into()],regions:vec![]}),
+            phase,framework:Some("TB4 relationship and learner judgment".into()),focus:Some("TB4 local construction focus".into()),needs:vec![crate::agent_prompt::PresentationNeed::State] };
+        let (_, plan) = sample(&exposure, Some(&authoring), false, &accepted_tutor);
         assert!(plan.tools.iter().any(|t| t.name == "presentation.author"));
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
         assert!(text.contains(expected));
         assert_eq!(text.matches("TB4 relationship and learner judgment").count(), 1);
-        assert_eq!(text.matches("TB4 changed condition").count(), 1);
+        assert_eq!(text.matches("TB4 changed condition").count(), if phase == PresentationPhase::Global { 2 } else { 1 });
         assert_eq!(text.matches("Teaching presentation ").count(), 1);
         for (other, _) in [("planning",PresentationPhase::Global),("construction",PresentationPhase::Local),("review",PresentationPhase::Review)] {
             let marker = format!("Teaching presentation {other}");
             assert_eq!(text.contains(&marker), expected == marker);
         }
-        assert_eq!(text.contains("Saved page state contract:"), phase != PresentationPhase::Global);
+        assert!(text.contains("Saved page state contract:"));
         assert!(plan.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.select"));
         if let Ok(directory) = std::env::var("TB4_REQUEST_SNAPSHOT") {
             std::fs::create_dir_all(&directory).unwrap();
@@ -169,7 +189,7 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
                 serde_json::to_vec_pretty(&serde_json::json!({"tools":plan.tools,"messages":plan.ordered_messages(),"assets":plan.instruction_assets})).unwrap()).unwrap();
         }
     }
-    let (_, delivered) = sample(&exposure, None, true);
+    let (_, delivered) = sample(&exposure, None, true, &accepted_tutor);
     assert!(!delivered.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
     assert!(delivered.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.select"));
     for status in ["observing", "reference", "paused", "inactive"] {

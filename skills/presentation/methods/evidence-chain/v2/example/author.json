@@ -1,0 +1,22 @@
+{
+  "title": "快了两秒，能说明什么？",
+  "initial_state": {
+    "controlled": true,
+    "semantic_state": 0,
+    "transition_progress": 0,
+    "selected": 0
+  },
+  "state_contract": {
+    "controlled": "whether the illustrative paired measurements share hardware, workload and timing method; boolean",
+    "semantic_state": "已完成的解释区间，整数0至3；见适配说明中的时间定义",
+    "transition_progress": "当前区间的视觉进度，[0,1)；终点3时为0",
+    "selected": "高亮的构造记录，整数0至2；不改变样本或算术结果"
+  },
+  "readable_content": "三组耗时记录，足够算出一个差值。要从这个差值走到结论，还需要哪些条件？点开记录，展开推理，再试着拿掉一个前提。 三组构造耗时记录A=[12,10,11]秒、B=[10,8,9]秒，均值分别11和9秒，差2秒。位置依次展开记录、均值、差值与前提、结论。比较条件不同不能归因于方案；即使条件相同也只描述这三次记录，尚不能推出其他负载或总体优势。 可回溯的解释要同时给出记录、计算、比较条件和结论边界。每一层只能说出前一层真正支持的话。",
+  "assumptions": [
+    "本例的三组耗时为构造数据，没有外部测量来源。没有统计显著性、总体推断或因果证明。改写到真实书籍时须用可回到原文的证据替换示例记录和来源。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

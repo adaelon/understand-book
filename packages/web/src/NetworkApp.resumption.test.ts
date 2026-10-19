@@ -21,7 +21,9 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
     calls.push(`${init.method} ${url}`);
     if (url === '/api/auth/me') return Response.json(identity);
+    if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return Response.json({ books: authorized ? books : [books[2]] });
+    if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
     if (!authorized) return Response.json({ error_code: 'NOT_FOUND', message: '材料不可用' }, { status: 404 });
     if (url === '/api/workspaces/this-window/resumption') return Response.json({ workspace_id: workspace.workspace_id,
       published_book_ref: workspace.published_book_ref, selected_chat: workspace.selected_chat,
@@ -93,7 +95,7 @@ it('previews only this window, then restores the exact publication, chat and sav
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('能量守恒与变化 · 版本 2');
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('为什么守恒？');
   expect(wrapper!.find('.reader').exists()).toBe(false);
-  expect(calls).toEqual(['GET /api/auth/me', 'GET /api/library', 'GET /api/workspaces/this-window/resumption']);
+  expect(calls).toEqual(['GET /api/auth/me', 'GET /api/library', 'GET /api/videos', 'GET /api/learning-workspaces', 'GET /api/workspaces/this-window/resumption']);
   await wrapper!.get('.resumption-continue').trigger('click'); await flushPromises();
   expect(network.value.workspace).toEqual(workspace);
   expect(calls.slice(-2)).toEqual(['GET /api/workspaces/this-window', 'POST /api/workspaces/this-window/attach']);
@@ -147,7 +149,7 @@ it('removes an unavailable continuation on recheck and does not attach after acc
   await start(); authorized = false;
   await wrapper!.get('.resumption-continue').trigger('click'); await flushPromises();
   expect(wrapper!.find('.resumption-continue').exists()).toBe(false);
-  expect(wrapper!.text()).toContain('原阅读材料或现场已不可用');
+  expect(wrapper!.text()).toContain('原书籍或阅读记录已不可用');
   expect(calls.some(call => call.includes('/attach'))).toBe(false);
   expect(network.value.workspace).toBeNull();
 });
@@ -166,5 +168,5 @@ it('refreshes a changed publication instead of attaching a different scene behin
   expect(network.value.workspace).toBeNull();
   expect(calls.some(call => call.includes('/attach'))).toBe(false);
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('版本 1');
-  expect(wrapper!.get('[role="alert"]').text()).toContain('接续现场已更新');
+  expect(wrapper!.get('[role="alert"]').text()).toContain('阅读记录已更新');
 });

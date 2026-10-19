@@ -113,7 +113,7 @@ pub(crate) fn reconcile_global_promotions(
                     }
                 }
             }
-            ProfileScope::Book { .. } => {}
+            ProfileScope::Book { .. } | ProfileScope::Workspace { .. } => {}
         }
     }
 
@@ -713,11 +713,15 @@ mod tests {
             .reconcile_review_jobs(
                 &[
                     ReviewSessionCursor {
+                        turns: Vec::new(),
+                        learning_workspace_id: None,
                         session_id: "session-a".into(),
                         book_id: "book-a".into(),
                         latest_user_turn_ordinal: 2,
                     },
                     ReviewSessionCursor {
+                        turns: Vec::new(),
+                        learning_workspace_id: None,
                         session_id: "session-b".into(),
                         book_id: "book-b".into(),
                         latest_user_turn_ordinal: 1,

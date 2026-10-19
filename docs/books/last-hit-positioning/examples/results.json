@@ -1,0 +1,539 @@
+{
+  "units": {
+    "length": "练习格（中心有效距离）",
+    "speed": "格/秒",
+    "time": "秒"
+  },
+  "source_commit": "50db387dd1218f5a0578183bdfd031cdb9375573",
+  "static": {
+    "G1": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 3,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "target_minion": [
+          6,
+          4
+        ],
+        "pressure_range": 7
+      },
+      "Q": [
+        6.5,
+        0.0
+      ],
+      "aa_interval": [
+        1.041960108450192,
+        6.958039891549808
+      ],
+      "cast_interval": [
+        -4.663689526544408,
+        4.663689526544408
+      ],
+      "combined_interval": [
+        1.041960108450192,
+        4.663689526544408
+      ],
+      "skill_interval": null,
+      "near": [
+        6.5,
+        4.0
+      ],
+      "middle": [
+        6.5,
+        2.8528248174973
+      ],
+      "far": [
+        6.5,
+        4.663689526544408
+      ]
+    },
+    "G2": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 3,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "target_minion": [
+          6,
+          9
+        ],
+        "pressure_range": 7
+      },
+      "Q": [
+        6.5,
+        0.0
+      ],
+      "aa_interval": [
+        6.041960108450192,
+        11.958039891549808
+      ],
+      "cast_interval": [
+        -4.663689526544408,
+        4.663689526544408
+      ],
+      "combined_interval": null,
+      "skill_interval": null,
+      "near": [
+        6.5,
+        9.0
+      ],
+      "middle": [
+        6.5,
+        9.0
+      ],
+      "far": [
+        6.5,
+        11.958039891549808
+      ]
+    },
+    "G3": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 3,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "target_minion": [
+          2,
+          4
+        ],
+        "skill_range": 5,
+        "pressure_range": 5
+      },
+      "Q": [
+        6.5,
+        0.0
+      ],
+      "aa_interval": null,
+      "cast_interval": [
+        -4.663689526544408,
+        4.663689526544408
+      ],
+      "combined_interval": null,
+      "skill_interval": [
+        1.820550528229663,
+        6.1794494717703365
+      ],
+      "near": [
+        6.5,
+        4.0
+      ],
+      "middle": [
+        6.5,
+        4.0
+      ],
+      "far": [
+        6.5,
+        6.1794494717703365
+      ]
+    },
+    "G4": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 3,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "target_minion": [
+          0,
+          2
+        ],
+        "skill_range": 5,
+        "pressure_range": 5
+      },
+      "Q": [
+        6.5,
+        0.0
+      ],
+      "aa_interval": null,
+      "cast_interval": [
+        -4.663689526544408,
+        4.663689526544408
+      ],
+      "combined_interval": null,
+      "skill_interval": null,
+      "near": null,
+      "middle": null,
+      "far": null
+    }
+  },
+  "window": {
+    "W1": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 2,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "skill_range": 5,
+        "target_minion": [
+          3,
+          10
+        ],
+        "self_ms": 5,
+        "enemy_ms": 3,
+        "reaction": 0.2,
+        "windup": 0.2,
+        "remaining_cooldown": 1.2,
+        "dt": 0.002
+      },
+      "result": {
+        "ok": true,
+        "reason": "完成估算",
+        "staging": {
+          "x": 6.5,
+          "y": 10.0
+        },
+        "hit": {
+          "x": 5.0,
+          "y": 10.0
+        },
+        "entry_dist": 1.5,
+        "entry_time": 0.3,
+        "period": null,
+        "returned": true,
+        "return_time": 1.0,
+        "dist_ready": 9.337408936024234,
+        "margin": 2.837408936024234,
+        "classification": "可以尝试：来得及A出这一刀并退回，距离余量也够",
+        "attack_completed": true,
+        "attack_time": 0.7,
+        "window_valid": true,
+        "ready_time": 1.2,
+        "danger_margin": 3.337408936024234,
+        "distance_tolerance": 0.0160000096,
+        "reaction_time": 0.2,
+        "windup_time": 0.2
+      },
+      "initial_distance": 11.926860441876563,
+      "planned_return_time": 1.0,
+      "conservative_end_distance": 9.326860441876564
+    },
+    "W2": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 2,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "skill_range": 5,
+        "target_minion": [
+          3,
+          5
+        ],
+        "self_ms": 5,
+        "enemy_ms": 3,
+        "reaction": 0.2,
+        "windup": 0.2,
+        "remaining_cooldown": 1.2,
+        "dt": 0.002
+      },
+      "result": {
+        "ok": true,
+        "reason": "完成估算",
+        "staging": {
+          "x": 6.5,
+          "y": 5.0
+        },
+        "hit": {
+          "x": 5.0,
+          "y": 5.0
+        },
+        "entry_dist": 1.5,
+        "entry_time": 0.3,
+        "period": null,
+        "returned": true,
+        "return_time": 1.0,
+        "dist_ready": 5.617315482194157,
+        "margin": -0.8826845178058429,
+        "classification": "不够安全：虽然退回去了，但对面也追上来了",
+        "attack_completed": true,
+        "attack_time": 0.7,
+        "window_valid": false,
+        "ready_time": 1.2,
+        "danger_margin": -0.3826845178058429,
+        "distance_tolerance": 0.0160000096,
+        "reaction_time": 0.2,
+        "windup_time": 0.2
+      },
+      "initial_distance": 8.200609733428363,
+      "planned_return_time": 1.0,
+      "conservative_end_distance": 5.600609733428364
+    },
+    "W3": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 2,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "skill_range": 5,
+        "target_minion": [
+          3,
+          10
+        ],
+        "self_ms": 2.5,
+        "enemy_ms": 3,
+        "reaction": 0.2,
+        "windup": 0.2,
+        "remaining_cooldown": 1.2,
+        "dt": 0.002
+      },
+      "result": {
+        "ok": true,
+        "reason": "完成估算",
+        "staging": {
+          "x": 6.5,
+          "y": 10.0
+        },
+        "hit": {
+          "x": 5.0,
+          "y": 10.0
+        },
+        "entry_dist": 1.5,
+        "entry_time": 0.6,
+        "period": null,
+        "returned": false,
+        "return_time": null,
+        "dist_ready": 7.817080546916595,
+        "margin": 1.3170805469165954,
+        "classification": "来不及：A出了这一刀，但还没退回等待位置",
+        "attack_completed": true,
+        "attack_time": 1.0,
+        "window_valid": false,
+        "ready_time": 1.2,
+        "danger_margin": 1.8170805469165954,
+        "distance_tolerance": 0.011000006599999999,
+        "reaction_time": 0.2,
+        "windup_time": 0.2
+      },
+      "initial_distance": 11.926860441876563,
+      "planned_return_time": 1.5999999999999999,
+      "conservative_end_distance": null
+    },
+    "W4": {
+      "input": {
+        "enemy": [
+          0,
+          0
+        ],
+        "own_minion": [
+          4,
+          0
+        ],
+        "enemy_aa": 6,
+        "self_aa": 2,
+        "self_cast": 8,
+        "safety_margin": 0.5,
+        "aa_mode": "effective",
+        "skill_range": 5,
+        "target_minion": [
+          3,
+          10
+        ],
+        "self_ms": 2,
+        "enemy_ms": 3,
+        "reaction": 0.4,
+        "windup": 0.3,
+        "remaining_cooldown": 1.2,
+        "dt": 0.002
+      },
+      "result": {
+        "ok": true,
+        "reason": "完成估算",
+        "staging": {
+          "x": 6.5,
+          "y": 10.0
+        },
+        "hit": {
+          "x": 5.0,
+          "y": 10.0
+        },
+        "entry_dist": 1.5,
+        "entry_time": 0.75,
+        "period": null,
+        "returned": false,
+        "return_time": null,
+        "dist_ready": 7.595921028183237,
+        "margin": 1.0959210281832368,
+        "classification": "来不及：对面下一次普攻转好时，你还没A出这一刀",
+        "attack_completed": false,
+        "attack_time": null,
+        "window_valid": false,
+        "ready_time": 1.2,
+        "danger_margin": 1.5959210281832368,
+        "distance_tolerance": 0.0100000065,
+        "reaction_time": 0.4,
+        "windup_time": 0.3
+      },
+      "initial_distance": 11.926860441876563,
+      "planned_return_time": 2.1999999999999997,
+      "conservative_end_distance": null
+    }
+  },
+  "points": {
+    "A": {
+      "position": [
+        6.5,
+        1
+      ],
+      "enemy_distance": 6.576473218982953,
+      "minion_distance": 3.0413812651491097
+    },
+    "B": {
+      "position": [
+        6.5,
+        4
+      ],
+      "enemy_distance": 7.632168761236874,
+      "minion_distance": 0.5
+    },
+    "C": {
+      "position": [
+        6.5,
+        7
+      ],
+      "enemy_distance": 9.5524865872714,
+      "minion_distance": 3.0413812651491097
+    },
+    "D": {
+      "position": [
+        3,
+        4
+      ],
+      "enemy_distance": 5.0,
+      "minion_distance": 3.0
+    },
+    "P": {
+      "position": [
+        3,
+        6.2
+      ],
+      "enemy_distance": 6.887670143089026,
+      "minion_distance": 3.720215047547655
+    }
+  },
+  "skill_example": {
+    "circle": {
+      "cast_center": 4,
+      "radius": 1.5,
+      "target_radius": 0.5,
+      "effective_reach": 6.0
+    },
+    "line": {
+      "length": 4,
+      "full_width": 2,
+      "target_radius": 0.5,
+      "longitudinal_reach": 4.5
+    }
+  },
+  "short_static": {
+    "input": {
+      "enemy": [
+        0,
+        0
+      ],
+      "own_minion": [
+        4,
+        0
+      ],
+      "enemy_aa": 6,
+      "self_aa": 2,
+      "self_cast": 8,
+      "safety_margin": 0.5,
+      "aa_mode": "effective",
+      "target_minion": [
+        6,
+        10
+      ],
+      "skill_range": 5
+    },
+    "aa_interval": [
+      8.063508326896292,
+      11.936491673103708
+    ],
+    "wait": [
+      6.5,
+      10.0
+    ],
+    "target_distance_at_wait": 0.5
+  },
+  "verified_claims": [
+    "G1 普攻端点与勾股手算一致",
+    "G1 施法参考截断位置一致",
+    "B 能补刀与 D 在普攻范围内",
+    "A 和 C 均未进入补兵范围",
+    "G2 保留普攻但超出最大施法参考范围",
+    "G3 候选线上的技能方案存在",
+    "G3 线外 P 点反例证明切线上无解不代表平面无解",
+    "G4 当前候选线上没有直接方案",
+    "W1 手算出手与返回时刻一致",
+    "W1 数值结论有保守距离下界支持",
+    "W2 虽已返回但对手下一次普攻就绪时已够得到",
+    "W3 出手了但没返回",
+    "W4 尚未出手",
+    "技能作用范围与全宽口径一致",
+    "第六章短手静态补刀场景成立",
+    "W1 配图轨迹终点与模拟一致",
+    "W2 配图轨迹终点与模拟一致"
+  ]
+}

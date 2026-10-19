@@ -1,0 +1,21 @@
+{
+  "status": "deployed",
+  "published_at_utc": "2026-10-17T01:21:19.174007+00:00",
+  "url": "https://understandbook.top/index.html",
+  "release": "/opt/understand-book/releases/teaching-scaffold-20261017",
+  "backup": "/opt/understand-book/backups/mobile-presentation-20261017T012105Z",
+  "source_files": [
+    "packages/web/src/md.ts",
+    "packages/web/src/components/SourceExcerpt.vue",
+    "packages/web/src/components/RightRail.vue",
+    "packages/web/src/components/AgentPresentation.vue",
+    "packages/web/src/api.ts"
+  ],
+  "uploaded_assets": [
+    "reader-Dn8YVSQY.js",
+    "reader-WvkzKM4B.css"
+  ],
+  "service_before": "MainPID=110819\nWorkingDirectory=/opt/understand-book/releases/teaching-scaffold-20261017\nActiveState=active",
+  "service_after": "MainPID=110819\nWorkingDirectory=/opt/understand-book/releases/teaching-scaffold-20261017\nActiveState=active",
+  "previous_assets_retained": true
+}

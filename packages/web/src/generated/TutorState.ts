@@ -2,4 +2,4 @@
 import type { TutorControl } from "./TutorControl";
 import type { TutorSession } from "./TutorSession";
 
-export type TutorState = { control: TutorControl, sessions: { [key in string]?: TutorSession }, };
+export type TutorState = { control: TutorControl, sessions: { [key in string]?: TutorSession }, workspace_goal_revision: number | null, };

@@ -99,6 +99,7 @@ impl ProfilePayload {
 pub enum ProfileScope {
     Global,
     Book { book_id: String },
+    Workspace { learning_workspace_id: String, book_id: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -301,6 +302,7 @@ pub struct ForgetProfileFactOutcome {
 
 #[derive(Debug, Clone, Default)]
 pub struct ProfileResolutionContext {
+    pub learning_workspace_id: Option<String>,
     pub book_id: Option<String>,
     pub content_profile: Option<String>,
     pub paper_subtype: Option<String>,
@@ -732,6 +734,9 @@ fn validate_create_input(input: &CreateProfileFact) -> Result<(), ToolError> {
 }
 
 fn validate_scope(scope: &ProfileScope) -> Result<(), ToolError> {
+    if matches!(scope, ProfileScope::Workspace { learning_workspace_id, book_id } if learning_workspace_id.trim().is_empty() || book_id.trim().is_empty()) {
+        return Err(invalid_profile_fact("workspace/book scope 不得为空".into()));
+    }
     if matches!(scope, ProfileScope::Book { book_id } if book_id.trim().is_empty()) {
         return Err(invalid_profile_fact("book scope 需要 book_id".into()));
     }
@@ -807,12 +812,12 @@ fn validate_source_contract(
             (source, scope, status),
             (
                 FactSource::DeterministicBehavior,
-                ProfileScope::Book { .. },
+                ProfileScope::Book { .. } | ProfileScope::Workspace { .. },
                 FactStatus::Confirmed
             ) | (FactSource::UserStated, _, FactStatus::Confirmed)
                 | (
                     FactSource::AgentInferred,
-                    ProfileScope::Book { .. },
+                    ProfileScope::Book { .. } | ProfileScope::Workspace { .. },
                     FactStatus::Provisional
                 )
                 | (
@@ -832,12 +837,12 @@ fn validate_source_contract(
 
 fn initial_status(source: FactSource, scope: &ProfileScope) -> Result<FactStatus, ToolError> {
     match (source, scope) {
-        (FactSource::DeterministicBehavior, ProfileScope::Book { .. }) => Ok(FactStatus::Confirmed),
+        (FactSource::DeterministicBehavior, ProfileScope::Book { .. } | ProfileScope::Workspace { .. }) => Ok(FactStatus::Confirmed),
         (FactSource::DeterministicBehavior, ProfileScope::Global) => Err(invalid_profile_fact(
             "deterministic behavior 只能写 book scope".into(),
         )),
         (FactSource::UserStated, _) => Ok(FactStatus::Confirmed),
-        (FactSource::AgentInferred, ProfileScope::Book { .. }) => Ok(FactStatus::Provisional),
+        (FactSource::AgentInferred, ProfileScope::Book { .. } | ProfileScope::Workspace { .. }) => Ok(FactStatus::Provisional),
         (FactSource::AgentInferred, ProfileScope::Global) => Ok(FactStatus::Pending),
     }
 }
@@ -877,7 +882,8 @@ fn fact_is_resolvable(fact: &ProfileFact, context: &ProfileResolutionContext) ->
     }
     let scope_matches = match &fact.scope {
         ProfileScope::Global => true,
-        ProfileScope::Book { book_id } => context.book_id.as_ref() == Some(book_id),
+        ProfileScope::Book { book_id } => context.learning_workspace_id.is_none() && context.book_id.as_ref() == Some(book_id),
+        ProfileScope::Workspace { learning_workspace_id, book_id } => context.learning_workspace_id.as_ref() == Some(learning_workspace_id) && context.book_id.as_ref() == Some(book_id),
     };
     scope_matches && applicability_matches(&fact.applicability, context)
 }
@@ -915,7 +921,7 @@ fn compare_resolution(
 fn scope_rank(scope: &ProfileScope) -> u8 {
     match scope {
         ProfileScope::Global => 0,
-        ProfileScope::Book { .. } => 1,
+        ProfileScope::Book { .. } | ProfileScope::Workspace { .. } => 1,
     }
 }
 
@@ -1586,4 +1592,29 @@ mod tests {
         let reopened: ProfileFact = serde_json::from_value(persisted).unwrap();
         assert_eq!(reopened.capture, ProfileFactCapture::CurrentInteraction);
     }
+    #[test]
+    fn w3_workspace_profile_isolates_same_book_and_preserves_global_preferences_after_reopen() {
+        let (path, mut store) = store("w3-workspace-profile");
+        for (scope, value) in [
+            (ProfileScope::Book { book_id: "same-book".into() }, "legacy difficulty"),
+            (ProfileScope::Workspace { learning_workspace_id: "a".into(), book_id: "same-book".into() }, "workspace a difficulty"),
+            (ProfileScope::Workspace { learning_workspace_id: "b".into(), book_id: "same-book".into() }, "workspace b difficulty"),
+        ] {
+            store.create_profile_fact(preference_input(scope, Applicability::Any, "difficulty", value,
+                FactSource::UserStated, vec![turn("workspace-profile", value)]), "1").unwrap();
+        }
+        store.create_profile_fact(preference_input(ProfileScope::Global, Applicability::Any, "language", "Chinese",
+            FactSource::UserStated, vec![turn("global-preference", "language")]), "1").unwrap();
+        drop(store);
+        let store = MemoryStore::open(path).unwrap();
+        for (workspace, expected) in [(None, "legacy difficulty"), (Some("a"), "workspace a difficulty"), (Some("b"), "workspace b difficulty")] {
+            let context = ProfileResolutionContext { learning_workspace_id: workspace.map(str::to_owned),
+                book_id: Some("same-book".into()), ..Default::default() };
+            let facts = store.resolve_profile_facts(&context);
+            assert_eq!(facts.len(), 2);
+            assert!(facts.iter().any(|fact| preference_value(fact) == expected));
+            assert!(facts.iter().any(|fact| preference_value(fact) == "Chinese"));
+        }
+    }
+
 }

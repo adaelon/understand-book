@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f8f7f3">
+  <title>齿轮的约定 — 一场关于速度与力量的交互探索</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='17' fill='%23b28338'/%3E%3Ccircle cx='20' cy='20' r='6' fill='%23f8f7f3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="masthead"><a class="wordmark" href="#top"><span class="brand-icon" aria-hidden="true">✳</span> 机械直觉 <span class="edition">交互讲解 / 01</span></a><nav aria-label="章节"><a href="#ratio">转速</a><a href="#torque">力量</a><a href="#contact">接触</a><a href="#involute">齿形</a></nav></header>
+  <main id="top">
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-intro"><p class="eyebrow">GEARS, IN MOTION</p><h1 id="title">齿轮的约定<span>速度与力量，如何交换？</span></h1><p class="dek">一枚齿推着下一枚齿。看似简单的接触，<br class="desktop-break">把转动变成了一场精确的交换。</p></div>
+      <div class="hero-figure" id="hero-figure">
+        <div class="scene-topline"><span><i class="live-dot"></i><span id="motion-label">实时传动</span></span><span class="scene-instruction">拖动旋转视角 · 支持方向键</span></div>
+        <canvas id="assembly" tabindex="0" role="img" aria-label="可旋转的三维齿轮传动。拖动或使用方向键改变视角；下方按钮切换视图。"></canvas>
+        <p id="render-error" class="render-error" hidden>三维画面需要浏览器启用 WebGL。下方的二维交互仍可使用。</p>
+        <div class="gear-label input-label"><span class="dot gold"></span>主动轮 A <strong>20<span>齿</span></strong></div>
+        <div class="gear-label output-label"><span class="dot teal"></span>从动轮 B <strong data-read="teeth">40</strong><span>齿</span></div>
+        <div class="view-tools" role="group" aria-label="观察视角"><button data-view="perspective" aria-pressed="true">立体</button><button data-view="front" aria-pressed="false">正面</button><button id="pitch-toggle" aria-pressed="false">显示节圆</button></div>
+      </div>
+      <div class="lab-controls">
+        <div class="control-block"><span class="control-label">从动轮的齿数</span><div class="segmented" role="group" aria-label="从动轮齿数"><button data-teeth="20">20</button><button data-teeth="30">30</button><button data-teeth="40" aria-pressed="true">40</button><button data-teeth="60">60</button></div></div>
+        <div class="control-block"><label for="speed">主动轮转速 <output id="speed-value">12 rpm</output></label><input id="speed" type="range" min="0" max="24" step="1" value="12"><div class="range-ends"><span>静止</span><span>24 rpm</span></div></div>
+        <div class="control-block"><label for="explode">沿轴拆开 <output id="explode-value">0%</output></label><input id="explode" type="range" min="0" max="1" step="0.01" value="0"><div class="range-ends"><span>啮合</span><span>分解</span></div></div>
+        <button id="play" class="play-button" aria-pressed="true"><span id="play-icon" aria-hidden="true">Ⅱ</span><span id="play-text">暂停</span></button>
+      </div>
+      <div class="hero-caption"><p><span class="gold-text">20 齿</span>推动<span class="teal-text" data-read="teeth-unit">40 齿</span>：从动轮以 <strong data-read="output-rpm">6</strong> rpm 反向转动。</p><a href="#ratio" class="continue-link">往下探索原理 <span aria-hidden="true">↓</span></a></div>
+    </section>
+
+    <section class="chapter" id="ratio" aria-labelledby="ratio-title">
+      <div class="chapter-heading"><span class="chapter-number">01</span><div><p class="eyebrow">ONE TOOTH AT A TIME</p><h2 id="ratio-title">一齿，换一齿。</h2><p>主动轮送出一个齿，从动轮就必须让出一个齿位。<br>两边通过的齿数相同，转过的圈数却可以不同。</p></div></div>
+      <div class="wide-figure">
+        <div class="figure-heading"><span>观察两个标记点</span><span class="hint">直接拖动任一齿轮，慢慢转一圈</span></div>
+        <canvas id="ratio-scene" class="diagram" tabindex="0" role="img" aria-label="两个齿轮的正面图，可拖动齿轮或使用左右方向键控制转角。虚线为节圆，标记点帮助比较圈数。"></canvas>
+        <div class="figure-footer"><span><i class="line-key"></i>节圆：计算传动关系的等效圆</span><button class="quiet-button" id="one-turn">让主动轮转一圈 <span aria-hidden="true">↻</span></button></div>
+      </div>
+      <div class="explanation-row"><p>当 A 的 20 个齿全部经过接触处，B 也只走过 20 个齿位。B 有 <strong data-read="teeth">40</strong> 个齿，所以只转了 <strong data-read="turns">½</strong> 圈。把 B 变大，它就转得更慢。</p><div class="formula"><span>转速的交换</span><div><i>n</i><sub>B</sub> / <i>n</i><sub>A</sub> = <i>z</i><sub>A</sub> / <i>z</i><sub>B</sub> = <b data-read="speed-fraction">1 / 2</b></div><small>这里比较转速大小；外啮合的转向相反。</small></div></div>
+      <div class="try-strip"><span>试着比较</span><button data-teeth="20">一样大 <small>1 : 1</small></button><button data-teeth="40">两倍大 <small>2 : 1</small></button><button data-teeth="60">三倍大 <small>3 : 1</small></button><span class="try-result" id="ratio-observation">大轮转得更慢。</span></div>
+    </section>
+
+    <section class="chapter" id="torque" aria-labelledby="torque-title">
+      <div class="chapter-heading"><span class="chapter-number">02</span><div><p class="eyebrow">THE OTHER SIDE OF SLOW</p><h2 id="torque-title">慢下来的转动，<br>换来更大的力矩。</h2><p>同样大小的切向力，作用在更长的力臂上，<br>就能产生更大的转动作用。齿轮也遵守这个道理。</p></div></div>
+      <div class="force-layout"><div class="wide-figure force-figure"><div class="figure-heading"><span>同一接触，两个力臂</span><span class="hint">理想无损传动</span></div><canvas id="torque-scene" class="diagram" role="img" aria-label="两轮上的力臂与大小相等、方向相反的切向作用力。"></canvas><div class="force-control"><label for="torque-input">输入扭矩 <output id="torque-value">2.0 N·m</output></label><input id="torque-input" type="range" min="0.5" max="5" step="0.1" value="2"></div></div><aside class="balance-panel" aria-label="转速、扭矩和功率的比较"><p class="eyebrow">A → B</p><div class="balance-item"><span>转速 <small>rpm</small></span><div><b data-read="input-rpm">12</b><i>→</i><b class="teal-text" data-read="output-rpm">6</b></div><div class="bars"><i id="speed-a-bar"></i><i id="speed-b-bar"></i></div></div><div class="balance-item"><span>扭矩 <small>N·m</small></span><div><b data-read="input-torque">2.0</b><i>→</i><b class="teal-text" data-read="output-torque">4.0</b></div><div class="bars"><i id="torque-a-bar"></i><i id="torque-b-bar"></i></div></div><div class="power-readout"><span>功率保持相同</span><strong><span data-read="power">2.51</span> <small>W</small></strong><span>输入 = 输出</span></div></aside></div>
+      <div class="explanation-row"><p>从动轮的半径是主动轮的 <strong data-read="ratio">2</strong> 倍，同样大小的切向力就能产生 <strong data-read="ratio">2</strong> 倍的扭矩。它的转速是主动轮的 <strong data-read="turns">½</strong>。转速与扭矩的乘积不变，齿轮没有凭空创造能量。</p><div class="formula"><span>力量的交换</span><div><i>T</i><sub>B</sub> / <i>T</i><sub>A</sub> = <i>z</i><sub>B</sub> / <i>z</i><sub>A</sub> = <b data-read="ratio">2</b></div><small>功率 P = 扭矩 T × 角速度 ω</small></div></div>
+    </section>
+
+    <section class="chapter" id="contact" aria-labelledby="contact-title">
+      <div class="chapter-heading"><span class="chapter-number">03</span><div><p class="eyebrow">A MOVING POINT. A FIXED RULE.</p><h2 id="contact-title">接触点在走，<br>约定始终不变。</h2><p>把两枚齿放大。它们的接触点沿着齿面移动，<br>而接触处的公法线，始终经过同一个节圆切点 P。</p></div></div>
+      <div class="contact-layout"><div class="wide-figure contact-figure"><div class="figure-heading"><span>齿面接触 · 放大观察</span><span class="hint">沿着同一对齿面移动</span></div><canvas id="contact-scene" class="diagram" role="img" aria-label="放大的渐开线齿面。红色点为当前接触点，公法线经过固定节圆切点 P。"></canvas><div class="contact-legend"><span><i class="dot coral"></i>接触点</span><span><i class="line-key coral-line"></i>公法线 / 啮合线</span><span><i class="dot ink-dot"></i>固定点 P</span></div><div class="contact-control"><label for="contact-phase">跟随这一对齿面 <output id="contact-value">42%</output></label><input id="contact-phase" type="range" min="0" max="1" step="0.001" value="0.42"><div class="range-ends"><span>开始接触</span><span>结束接触</span></div></div></div><div class="contact-copy"><span class="callout-number">20°</span><p class="callout-label">压力角</p><p>红线与节圆在 P 处的公共切线夹角保持 20°。沿这条线传递的接触力，把两个轮子的转动约束在一起。</p><p>只要公法线一直穿过 P，两个轮子的瞬时传动比就保持不变。<strong>稳定的转速，来自精确的齿形。</strong></p><div class="contact-stat"><span>这组齿轮的重合度</span><b id="contact-ratio">1.64</b><small>大于 1：前一对齿退出前，后一对已经接上。</small></div></div></div>
+    </section>
+
+    <section class="chapter" id="involute" aria-labelledby="involute-title">
+      <div class="chapter-heading"><span class="chapter-number">04</span><div><p class="eyebrow">THE SHAPE BEHIND THE MOTION</p><h2 id="involute-title">用一根线，画出齿形。</h2><p>把线绕在圆上，保持绷紧，慢慢展开。<br>线端描出的轨迹，就是渐开线。</p></div></div>
+      <div class="involute-layout"><div class="wide-figure"><div class="figure-heading"><span>展开一根绷紧的线</span><button id="unwrap-play" class="quiet-button" aria-pressed="false">自动展开 ↗</button></div><canvas id="involute-scene" class="diagram" role="img" aria-label="绷紧的线从基圆展开，线端留下渐开线轨迹。"></canvas><div class="contact-control"><label for="unwrap">展开角度 <output id="unwrap-value">63°</output></label><input id="unwrap" type="range" min="0" max="2.3" step="0.01" value="1.1"><div class="range-ends"><span>卷在圆上</span><span>逐渐展开</span></div></div></div><div class="involute-copy"><p>绷紧的线始终与基圆相切，也始终垂直于线端画出的曲线。因此，这根线恰好就是渐开线的法线。</p><p>让两枚齿的渐开线共享同一条公切线，接触力就能沿固定的啮合线传递。这正是上一幅图中，红线保持不变的原因。</p><blockquote>齿轮的精巧，<br>藏在每一枚齿的曲线里。</blockquote></div></div>
+    </section>
+
+    <section class="closing"><p class="eyebrow">BACK TO THE WHOLE</p><h2>现在，再看一次转动。</h2><p>每次啮合都在兑现同一个约定：<br>通过相同的齿数，交换速度与力矩。</p><a class="return-link" href="#top">回到三维模型 <span aria-hidden="true">↑</span></a><div class="save-tools"><button id="save">保存当前现场</button><button id="restore" disabled>恢复已存现场</button><button id="export">导出三维画面</button><button id="reset">恢复初始设置</button></div><p id="save-status" role="status" class="save-status">可保存齿数、转速、观察角度与图解位置。</p></section>
+    <footer class="colophon"><div><strong>模型说明</strong><p>相同模数的 20° 标准渐开线直齿轮；主动轮 20 齿。按理想刚性、无摩擦损失的稳态传动解释；齿根过渡简化，不模拟制造误差与负载动力学。沿轴分解用于观察结构，分解时暂停转动。</p></div><div><strong>参考与制作</strong><p>解释方式参考 Bartosz Ciechanowski 的 <a href="https://ciechanow.ski/gears/" target="_blank" rel="noreferrer">Gears ↗</a> 与 <a href="https://ciechanow.ski/mechanical-watch/" target="_blank" rel="noreferrer">Mechanical Watch ↗</a>。齿形依据 <a href="https://khkgears.net/new/gear_knowledge/gear_technical_reference/involute_gear_profile.html" target="_blank" rel="noreferrer">KHK 技术资料 ↗</a>。本文的中文讲解、模型与交互独立制作。</p></div><div class="colophon-bottom"><span>机械直觉 / 01</span><span>观察 · 操作 · 理解</span></div></footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

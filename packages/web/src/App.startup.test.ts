@@ -11,7 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const api = vi.hoisted(() => Object.fromEntries([
-  "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
+  "videoContext", "videoDraft", "adoptVideoPublication", "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
@@ -39,6 +39,8 @@ function start() {
 beforeEach(() => {
   vi.resetAllMocks();
   book = "startup";
+  api.videoContext.mockResolvedValue(null);
+  api.videoDraft.mockResolvedValue({ draft: null });
   api.tutorState.mockResolvedValue({ control: { enabled: true, revision: 0, current_tutor_session_id: null }, sessions: {} });
   api.tutorReadiness.mockResolvedValue({ status: 'ready', source_id: 'startup', source_revision: 's1', limitations: [], reason: '可用',
     teaching_assets: { status: 'stale', teaching_map_revision: null, limitations: [], reason: '教学资料构建失败' } });
@@ -66,6 +68,33 @@ beforeEach(() => {
   api.intentUsageEvent.mockResolvedValue({});
   api.bookLibrary.mockResolvedValue({ root: "books", books: [] });
   api.openBook.mockImplementation(async () => { book = "second"; return { ok: true, book_id: book }; });
+});
+
+it.each(['history', 'submission'])('shows the failure explanation without internal error codes in %s', async source => {
+  const message = '当前服务暂不可用，请稍后重试。';
+  if (source === 'history') api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current,
+    turns: [{ turn_id: 'failed', user: '原问题', status: 'failed', effect_labels: [],
+      error: { category: 'conflict', error_code: 'SERVICE_UNAVAILABLE', message } }] } });
+  else {
+    const { ApiError } = await import('./api');
+    api.agentRunCreate.mockRejectedValueOnce(new ApiError(409, 'SERVICE_UNAVAILABLE', 'conflict', message));
+  }
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.getComponent({ name: 'RightRail' });
+  if (source === 'submission') {
+    rail.vm.$emit('update:agentInput', '原问题');
+    rail.vm.$emit('send-agent'); await flushPromises();
+  }
+  expect(rail.props('chat')[0].error).toBe(message);
+});
+
+it('shows an actionable review failure after loading a failed teaching turn', async () => {
+  api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current,
+    turns: [{ turn_id: 'embedding-review', user: 'Embedding具体会被怎么用呢，给我一个演示页看看', status: 'failed', effect_labels: [],
+      error: { category: 'provider', error_code: 'TEACHING_REVIEW_FAILED', message: 'PROVIDER_ERROR: finish_reason=length' },
+      run_summary: { effects: [], activities: [], trace: [{ tool: 'presentation.author', args: '{"operation":"deliver"}', result_digest: '{"status":"version_saved"}' }] } }] } });
+  const wrapper = start(); await flushPromises();
+  expect(wrapper.getComponent({ name: 'RightRail' }).props('chat')[0].error).toBe('演示页已生成，但回答检查未完成。请重试。');
 });
 
 it('reads prose without formula explanations and keeps the dialog usable while explanations wait or fail', async () => {
@@ -167,6 +196,44 @@ it.each([false,true])('resumes from the goal card only after enabling has been c
   expect(api.tutorMutate.mock.calls.map(([request])=>request.action.kind)).toEqual(failEnable ? ['set_enabled'] : ['set_enabled','resume']);
   expect(api.tutorStart).toHaveBeenCalledTimes(failEnable ? 0 : 1);
   expect(api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it.each(['off', 'active', 'paused', 'other', 'enable-fails', 'start-fails', 'not-started'])(
+  'starts a canonical chapter request once through confirmed tutor lifecycle (%s)', async mode => {
+  const session = { id: 'learning', revision: 1, status: mode === 'paused' ? 'paused' : 'active', user_intent: '学习', explicit_constraints: [],
+    current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
+    material_scope: [{ source_id: 'startup', scope_refs: [mode === 'other' ? '2' : '1'], role: 'primary' }],
+    default_teaching_intent: null, path_instance_ref: null, progress_ref: null };
+  const hasSession = ['active', 'paused', 'other'].includes(mode);
+  const state = { control: { enabled: !['off', 'enable-fails'].includes(mode), revision: 1, current_tutor_session_id: hasSession ? 'learning' : null },
+    sessions: hasSession ? { learning: session } : {} };
+  api.tutorState.mockImplementation(async () => structuredClone(state));
+  api.tutorMutate.mockImplementation(async request => {
+    if (mode === 'enable-fails' || mode === 'start-fails') throw new Error('保存失败');
+    if (request.action.kind === 'set_enabled') state.control.enabled = true;
+    if (request.action.kind === 'resume') session.status = 'active';
+    state.control.revision++; return structuredClone(state);
+  });
+  api.tutorStart.mockResolvedValue(mode === 'not-started' ? { started: false, reason: '尚未就绪' } : { started: true, message: '普通入口首问' });
+  api.agentRunCreate.mockResolvedValue({ answer: '章节导读', answer_view: { parts: [] }, effects: [] });
+  const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+    ReaderWorkspace: defineComponent({ template: '<div><slot /></div>', setup(_props, { expose }) { expose({ showAssistant: () => {} }); } }),
+  } } }); wrappers.push(w); await flushPromises();
+  const bar = w.getComponent({ name: 'TopBar' });
+  expect(bar.props('guideChapterTitle')).toBe('首章');
+  expect(bar.props('guideChapterEnabled')).toBe(state.control.enabled);
+  bar.vm.$emit('guide-chapter'); bar.vm.$emit('guide-chapter'); await flushPromises();
+  const failed = ['enable-fails', 'start-fails', 'not-started'].includes(mode);
+  const actions = api.tutorMutate.mock.calls.map(([request]) => request.action);
+  expect(actions.map(action => action.kind)).toEqual(mode === 'off' ? ['set_enabled', 'start'] : mode === 'enable-fails' ? ['set_enabled']
+    : mode === 'active' ? [] : mode === 'paused' ? ['resume'] : ['start']);
+  const startAction = actions.find(action => action.kind === 'start');
+  if (startAction) expect(startAction).toMatchObject({ user_intent: '带我读《首章》这一章', material_scope: [{ source_id: 'startup', scope_refs: ['1'], role: 'primary' }] });
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(failed ? 0 : 1);
+  if (!failed) expect(api.agentRunCreate).toHaveBeenCalledWith('', expect.objectContaining({
+    entry_action: 'guide_chapter', chapter_lid: '1', source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat',
+    display_user: '带我读《首章》这一章', question_quote: null,
+  }));
 });
 
 it('opens understanding directly from the chat without changing teaching or the draft', async () => {
@@ -539,6 +606,58 @@ describe("JL6 effect receipts in chat", () => {
   });
 });
 
+it('VI6 opens a local published video without interpreting preparation as a build workbench', async () => {
+  api.desktopStatus.mockResolvedValue({ desktop_host:false, reader_only:false, active_book:true });
+  const video = { media_id:'v',media_revision:'1' };
+  const publication = { book_id:book,publication_id:'original' };
+  const material = { book_id:book,video,transcript:{transcript_id:'t',transcript_revision:'1',video} };
+  api.videoContext.mockResolvedValue({ time_base:[1,1000], publication, material, source:{video,original_path:"lesson.mp4",duration_ms:510000,width:1920,height:1080},map:{segments:[]} });
+  api.videoDraft.mockResolvedValue({ draft:{message:'恢复草稿',context:{draft_id:'d',publication,material,frame:{video,actual_pts_ms:492000,width:1920,height:1080},region:null,range:null}} });
+  const wrapper=start(); await flushPromises();
+  expect(api.buildWorkbench).not.toHaveBeenCalled();
+  expect(wrapper.findComponent({name:'VideoReaderPane'}).exists()).toBe(true);
+  expect(wrapper.findComponent({name:'ReaderPane'}).exists()).toBe(false);
+  const rail=wrapper.findComponent({name:'RightRail'});
+  expect(rail.props('agentInput')).toBe('恢复草稿');
+  expect(rail.props('videoQuestion').frame.actual_pts_ms).toBe(492000);
+  expect(rail.props('questionSendBlocked')).toBeUndefined();
+});
+
+
+it.each([false, true])('keeps a plain workspace draft in video, binds it on send and never auto-adopts another publication (range=%s)', async selectedRange => {
+  vi.useFakeTimers();
+  try {
+    installIdentity({ user_id: 'video-learner', csrf_token: 'csrf' });
+    const publication = { book_id: book, publication_id: 'video-v1' };
+    installWorkspace({ workspace_id: 'scene', learning_workspace_id: 'learning-video', generation: 1, revision: 1,
+      selected_chat: `${book}-chat`, published_book_ref: publication, reader: await api.state() } as never);
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, learning_workspace_id: 'learning-video' } });
+    const video = { media_id: 'v', media_revision: '1' };
+    const material = { book_id: book, video, transcript: { transcript_id: 't', transcript_revision: '1', video } };
+    api.videoContext.mockResolvedValue({ time_base: [1, 1000], publication, material, source: { video, original_path: 'lesson.mp4', duration_ms: 510000, width: 1920, height: 1080 }, map: { segments: [] } });
+    const captureQuestion = vi.fn((draft_id: string) => ({ draft_id, publication, material, frame: { video, actual_pts_ms: 95000, width: 1920, height: 1080 }, region: null, range: null }));
+    api.agentRunCreate.mockResolvedValue({ answer: '关联资料回答', effects: [] });
+    const wrapper = mount(App, { props: { chatDraft: { message: '联系书中的内容解释视频', quote: null, goalId: null } }, shallow: true,
+      global: { renderStubDefaultSlot: true, stubs: { VideoReaderPane: { name: 'VideoReaderPane', props: ['owner'], methods: { captureQuestion }, template: '<div />' } } } });
+    wrappers.push(wrapper); await flushPromises();
+    const rail = wrapper.getComponent({ name: 'RightRail' });
+    expect(rail.props('agentInput')).toBe('联系书中的内容解释视频');
+    expect(wrapper.getComponent({ name: 'VideoReaderPane' }).props('owner')).toBe('video-learner:learning-video');
+    expect(wrapper.getComponent({ name: 'TopBar' }).props('guideChapterTitle')).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(6500); await flushPromises();
+    expect(api.adoptVideoPublication).not.toHaveBeenCalled();
+    if (selectedRange) {
+      wrapper.getComponent({ name: 'VideoReaderPane' }).vm.$emit('select-range', { ...captureQuestion('range-draft'), range: { video, start_ms: 1000, end_ms: 2000 } });
+      await flushPromises();
+    }
+    rail.vm.$emit('send-agent'); await flushPromises();
+    expect(captureQuestion).toHaveBeenCalledTimes(1);
+    expect(api.agentRunCreate).toHaveBeenCalledWith('联系书中的内容解释视频', expect.objectContaining({ video_draft_id: expect.any(String), video_window_id: expect.any(String) }));
+    expect(api.videoDraft).toHaveBeenCalledWith(expect.objectContaining({ action: 'save', draft: expect.objectContaining({ message: '联系书中的内容解释视频', context: expect.objectContaining({ publication }) }) }));
+    if (selectedRange) expect(api.videoDraft.mock.calls.at(-1)?.[0].draft.context.range).toMatchObject({ start_ms: 1000, end_ms: 2000 });
+  } finally { vi.useRealTimers(); }
+});
+
 
 describe('RN2 presentation note draft', () => {
   const receipt = { session_id: 'startup-chat', turn_id: 'old-turn', reference: { presentation_id: 'page', revision: 2 }, state_revision: 4, saved_state_ref: 'state-4' };
@@ -582,7 +701,9 @@ describe('RN2 presentation note draft', () => {
 
 
 describe('RN3 unified note draft', () => {
-  const turn = { turnId: 'answer-1', pending: false, outcome: { answer: '__选中的回答__' } };
+  const turn = { turnId: 'answer-1', pending: false, outcome: { answer: '__选中的回答__' },
+    questionSelection: { lid: '1.1', quote: '提问时选择的原文', status: 'resolved', raw_quote: '提问时选择的原文',
+      resolved_quote: '提问时选择的原文', ranges: [{ lid: '1.1', range: { start: 0, end: 9 } }] } };
   const old = { mem_id: 'old', type: 'note', book_id: 'startup', layer: 'long_term', anchor: { lid: '1.1' }, content: '> 原来混排的内容\n\n用户编辑过的文字' };
   const editor = (w: ReturnType<typeof start>) => w.findComponent({ name: 'NoteEditorPanel' });
   async function choose(w: ReturnType<typeof start>, label: string) {
@@ -599,7 +720,8 @@ describe('RN3 unified note draft', () => {
     rail.vm.$emit('new-chat'); await flushPromises();
     expect(editor(w).exists()).toBe(true);
     editor(w).vm.$emit('save'); await flushPromises();
-    expect(api.save).toHaveBeenCalledWith(expect.objectContaining({ content: '', note: { association: { kind: 'answer', session_id: 'startup-chat', turn_id: 'answer-1' }, retained_excerpt: '__选中的回答__' } }));
+    expect(api.save).toHaveBeenCalledWith(expect.objectContaining({ content: '', selection_context: undefined,
+      note: { association: { kind: 'answer', session_id: 'startup-chat', turn_id: 'answer-1' }, retained_excerpt: '__选中的回答__' } }));
     expect(rail.props('selectedLid')).toBe('1.1');
   });
   it('processes another note with continue, failure, save and discard without overwriting the draft', async () => {
@@ -928,12 +1050,12 @@ it('MCP7 opens exact UTF-16 evidence in canonical text without saving a highligh
     published_book_ref: { book_id: 'startup', publication_id: 'original' },
     start_lid: '1', end_lid: '1', start_utf16: 7, end_utf16: 11,
   } }, global: { renderStubDefaultSlot: true, stubs: { ReaderWorkspace: { methods: { showReader() {} }, template: '<div><slot /></div>' }, ReaderPane: {
-    name: 'ReaderPane', props: ['segments', 'renderSeg'], methods: { cancelTypographyRestore() {}, scrollLidIntoView: scroll, scrollSourceIntoView: scroll },
+    name: 'ReaderPane', props: ['segments', 'renderSeg'], methods: { cancelTypographyRestore() {}, captureScrollAnchor: () => null, scrollLidIntoView: scroll, scrollSourceIntoView: scroll },
     template: '<div><div v-for="seg in segments" :key="seg.lid" v-html="renderSeg(seg)" /></div>',
   } } } });
   wrappers.push(wrapper); await flushPromises();
   expect(wrapper.emitted('mcp-source-error')).toBeUndefined();
-  expect(api.goto).toHaveBeenCalledWith('1.1');
+  expect(api.goto).toHaveBeenCalledWith('1.1', false);
   expect(wrapper.get('.source-focus-mark').text()).toBe('即阅读的');
   expect(wrapper.emitted('mcp-source-consumed')).toHaveLength(1);
   expect(scroll).toHaveBeenCalledWith('1.1');

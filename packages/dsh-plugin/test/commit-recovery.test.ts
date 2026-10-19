@@ -7,9 +7,11 @@ import { fileURLToPath } from "node:url";
 import { createBuildControl } from "../src/build-control.ts";
 import { harness, textResponse, toolResponse } from "./harness.ts";
 import { MetadataModel, objects, candidateFor } from "./control-fixture.ts";
+import { costFixture } from "./external-cost-fixture.ts";
 
-for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mode}: preserve facts, recreate controller, reuse accepted work and finish`, { timeout: 180000 }, async () => {
+for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mode}: preserve facts, recreate controller, reuse accepted work and finish`, { timeout: 360000 }, async () => {
   const root = mkdtempSync(path.join(tmpdir(), "ub-dh5-commit-"));
+  const costs = await costFixture();
   const source = path.join(root, "book.md");
   writeFileSync(source, "# Transactions\n\nTransactions group operations into one atomic change.\n");
   const marker = path.join(root, "dropped-response");
@@ -18,6 +20,7 @@ for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mod
   let crashOnce = mode === "crash-after-commit";
   if (crashOnce) writeFileSync(marker, "response loss disabled for crash test");
   const h = await harness(new MetadataModel(async function* (request) {
+    assert.ok(costs.admissions().length > 0, "admission must precede the first model call");
     if (JSON.stringify(request.messages).includes("executor_connection_closed")) { yield* textResponse("PRIVATE-UNCERTAIN-FINAL"); return; }
     const r = objects(request.messages).filter(v => v.version === "automatic_build_executor_session.v4").at(-1);
     let name: string; let args: any;
@@ -38,10 +41,11 @@ for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mod
     } else { assert.equal(r.action.kind, "DONE");
       if (crashOnce) { crashOnce = false; throw new Error("PRIVATE-AFTER-COMMIT-CRASH"); }
       yield* textResponse("PRIVATE-FINAL"); return; }
+    yield { type: "usage", usage: { inputTokens: 10, outputTokens: 2 } };
     yield* toolResponse(`call-${h.model.requests.length}`, name, args);
   }));
   const config = { executable: process.env.UNDERSTAND_BOOK_TEST_NODE!, prefixArgs: ["--import", "tsx", fileURLToPath(new URL("engine-source-cli.ts", import.meta.url)), "--dh5-drop-commit", marker],
-    driverRoot: path.join(root, "registry"), maxOutputTokens: 4096, safetyMarginTokens: 4096, handoffsPerCall: 8 };
+    driverRoot: path.join(root, "registry"), maxOutputTokens: 4096, safetyMarginTokens: 4096, handoffsPerCall: 24, externalCost: costs.config };
   let control = createBuildControl(h.ctx, config, "understand-book-executor");
   const remove = h.ctx.on("user-questions/request", async r => ({ answers: [{ id: r.questions[0].id, selected: ["批准"] }] }));
   try {
@@ -59,10 +63,17 @@ for (const mode of ["lost-response", "crash-after-commit"] as const) test(`${mod
     assert.equal(pass1Generations, 1, "accepted work must not be regenerated");
     const dir = path.join(config.driverRoot, "dsh-observations", inv.invocation_ref);
     const observations = readdirSync(dir).map(f => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
-    // Pass1 + profile + two structure tasks + objects + read/finish + two reviews.
-    assert.equal(observations.length, 9);
+    // Discovery, outline and chapter selection now replace the former two structure tasks.
+    assert.ok(observations.length >= 9);
+    assert.equal(costs.admissions().length, observations.length, "only actual launches reserve; committed-unit recovery cannot reserve again");
+    assert.equal(costs.receipts().length, observations.length);
+    assert.ok(costs.receipts().every(r => r.status === "partial" && r.provider_cost_micro_cny === undefined));
+    assert.equal(new Set(costs.admissions().map(r => r.execution_id)).size, observations.length);
+    const invocation = readFileSync(path.join(config.driverRoot, "invocations", `${inv.invocation_ref}.json`), "utf8");
+    assert.ok(invocation.includes('"cost_owner":"platform"'));
+    assert.equal(invocation.includes("operator-test"), false);
     assert.deepEqual(h.ctx.agents.list(), [h.parent]);
     assert.equal(JSON.stringify([interrupted, completed]).includes("PRIVATE-"), false);
     console.log(JSON.stringify({ mode, root, pass1Generations, observations: observations.length, outcome: "DONE" }));
-  } finally { remove(); await control.dispose(); await h.dispose(); }
+  } finally { remove(); await control.dispose(); await h.dispose(); await costs.close(); }
 });

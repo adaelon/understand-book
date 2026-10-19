@@ -17,7 +17,7 @@ const pack = {
   opened_at: "2026-10-11T10:00:00+08:00", expires_at: "2027-10-11T10:00:00+08:00", revision: 3,
 };
 const period: Period = { period_id: "model-period", starts_at: 1791648000, expires_at: 1891648000, revision: 2,
-  balance: { granted_micro_cny: 1000000, debited_micro_cny: 0, active_reserved_micro_cny: 0, pending_micro_cny: 0, available_micro_cny: 1000000 } };
+  balance: { granted_micro_cny: 1000000, debited_micro_cny: 0, active_reserved_micro_cny: 0, pending_micro_cny: 0, available_micro_cny: 1000000, allowance_basis: { version: "v1", basis_micro_cny: 1000000 }, percentages: { available: { value: "100", nonzero: true, below_tenth: false }, granted: { value: "100", nonzero: true, below_tenth: false }, debited: { value: "0", nonzero: false, below_tenth: false }, active_reserved: { value: "0", nonzero: false, below_tenth: false }, pending: { value: "0", nonzero: false, below_tenth: false }, deficit: { value: "0", nonzero: false, below_tenth: false } } } };
 let usage: McpUsage;
 let root: Root | undefined;
 let host: HTMLDivElement;
@@ -70,6 +70,7 @@ beforeEach(async () => {
     if (url === "/api/auth/me") return Response.json({ user_id: "operator", csrf_token: "csrf", capabilities: { admin: true } });
     if (init?.method === "POST") return mutate(url, JSON.parse(String(init.body)));
     if (url.startsWith("/api/admin/operations/")) return lookup();
+    if (url === "/api/admin/allowance-offers") return Response.json({ items: [] });
     if (url === `${base}/mcp`) return Response.json(usage);
     if (url.startsWith(`${base}/allowance-periods`)) return Response.json(page([period]));
     if (url.startsWith(`${base}/receipts`)) return Response.json(page([
@@ -149,6 +150,7 @@ it("sends only one gift while duplicate form submissions are in flight", async (
 
 it("shows unavailable account errors and prevents writes until usage can be read", async () => {
   fetcher.mockImplementation(async (url: string) => {
+    if (url === "/api/admin/allowance-offers") return Response.json({ items: [] });
     if (url === `${base}/mcp`) return Response.json({ error_code: "USER_UNAVAILABLE" }, { status: 404 });
     throw new Error(`Unexpected request ${url}`);
   });
@@ -226,8 +228,8 @@ it("routes mixed receipts to their own correction forms and preserves model corr
   await click("追加更正", 1);
   expect(document.querySelector('[name="units"]')).toBeNull();
   await fill("amount", "-1"); await fill("delta", "-0.5"); await fill("reason", "模型金额"); await submit();
-  expect(writes()[1][0]).toBe(`${base}/receipt-corrections`);
-  expect(JSON.parse(writes()[1][1].body)).toMatchObject({ receipt_id: "receipt-model", period_id: "model-period", revision: 2, delta_fen: -100, delta_micro_cny: -500000 });
+  expect(writes()[1][0]).toBe(`${base}/percentage-receipt-corrections`);
+  expect(JSON.parse(writes()[1][1].body)).toMatchObject({ receipt_id: "receipt-model", period_id: "model-period", revision: 2, delta_fen: -100, basis_version: "v1", delta_milli_percent: -500 });
 });
 
 it("labels both purposes in appended cash corrections", async () => {
@@ -238,9 +240,9 @@ it("labels both purposes in appended cash corrections", async () => {
   expect(text()).toContain("-5.00"); expect(text()).toContain("-1.00");
 });
 
-it("retains the original model receipt amount and micro-currency grant contract", async () => {
+it("keeps model cash in fen and grants with the original fixed percentage basis", async () => {
   await mount(<AllowancePanel userId="A" current={period} />); await click("登记收款");
-  await fill("amount", "12.50"); await fill("delta", "7.123456"); await fill("note", "已收款"); await submit();
-  expect(writes()[0][0]).toBe(`${base}/receipts`);
-  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: "model-period", revision: 2, amount_fen: 1250, delta_micro_cny: 7123456 });
+  await fill("amount", "12.50"); await fill("delta", "7.125"); await fill("note", "已收款"); await submit();
+  expect(writes()[0][0]).toBe(`${base}/percentage-receipts`);
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: "model-period", revision: 2, amount_fen: 1250, basis_version: "v1", delta_milli_percent: 7125 });
 });

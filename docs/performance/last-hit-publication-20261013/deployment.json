@@ -1,0 +1,17 @@
+{
+  "status": "deployed",
+  "at_utc": "2026-10-13T14:41:16.308816+00:00",
+  "release": "/opt/understand-book/releases/last-hit-default-grants-20261013",
+  "service_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "backup": {
+    "snapshot": "/opt/understand-book/backups/last-hit-publication-20261013",
+    "state": "complete"
+  },
+  "reference": {
+    "book_id": "last-hit-positioning",
+    "publication_id": "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+  },
+  "accounts_granted": 4,
+  "future_accounts": "automatic",
+  "schema": 13
+}

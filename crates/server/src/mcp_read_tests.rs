@@ -14,6 +14,156 @@ use std::{
 const NOW: i64 = 1_790_000_000;
 const PASSWORD: &str = "fixture-only-password";
 
+#[test]
+fn w2_library_scope_filters_before_paging_and_keeps_live_authorization() {
+    let f = Fixture::new();
+    let c = {
+        let mut library = f.library.lock().unwrap();
+        library.grant("alice", &f.b).unwrap();
+        material(&f.input.path().join("c"), "gamma", false);
+        let c = library.publish(&f.input.path().join("c")).unwrap().reference;
+        library.grant("alice", &c).unwrap();
+        c
+    };
+    let members = vec![f.a.clone(), c.clone()];
+    let page = crate::cross_book::read(&f.library, "alice", Some(&members), "library.list", json!({"limit":1})).unwrap().body;
+    assert_eq!(page["items"][0]["published_book_ref"], json!(f.a));
+    let next = &page["next_calls"][0];
+    let last = crate::cross_book::read(&f.library, "alice", Some(&members), "library.list", next["arguments"].clone()).unwrap().body;
+    assert_eq!(last["items"][0]["published_book_ref"], json!(c));
+    assert_eq!(last["complete"], true);
+    let outside = crate::cross_book::read(&f.library, "alice", Some(&members), "library.read", json!({"operation":"text","published_book_ref":f.b,"lid":"1.2"})).err().unwrap();
+    assert_eq!(outside.error_code, "WORKSPACE_MATERIAL_UNAVAILABLE");
+    let args = json!({"operation":"text","published_book_ref":c,"lid":"1.2"});
+    assert!(crate::cross_book::read(&f.library, "alice", Some(&members), "library.read", args.clone()).is_ok());
+    // A later member set excludes gamma; the admitted set keeps it until its grant is revoked.
+    assert!(crate::cross_book::read(&f.library, "alice", Some(&[f.a.clone()]), "library.read", args.clone()).is_err());
+    assert!(crate::cross_book::read(&f.library, "alice", Some(&members), "library.read", args.clone()).is_ok());
+    f.library.lock().unwrap().revoke("alice", &c).unwrap();
+    assert!(crate::cross_book::read(&f.library, "alice", Some(&members), "library.read", args).is_err());
+    let empty = crate::cross_book::read(&f.library, "alice", Some(&[]), "library.list", json!({})).unwrap().body;
+    assert_eq!(empty["items"], json!([]));
+    assert_eq!(empty["complete"], true);
+}
+
+#[test]
+fn resident_library_uses_same_reads_without_mcp_identity_or_usage_and_preserves_versions() {
+    let f = Fixture::new();
+    let catalog = crate::cross_book::read(&f.library, "alice", None, "library.list", json!({})).unwrap();
+    assert_eq!(catalog.body["items"].as_array().unwrap().len(), 1);
+    assert_eq!(catalog.body["items"][0]["published_book_ref"], json!(f.a));
+    assert!(catalog.body["items"][0]["available_operations"].as_array().unwrap().contains(&json!("text")));
+    let args = json!({"operation":"text","published_book_ref":f.a,"lid":"1.1"});
+    let first = crate::cross_book::read(&f.library, "alice", None, "library.read", args).unwrap();
+    assert_eq!(first.source.as_ref().unwrap().reference, f.a);
+    assert_eq!(first.body["data"]["lid"], "1.1");
+    assert!(first.body.get("usage").is_none());
+    assert!(first.body["sources"][0]["source_url"].as_str().unwrap().starts_with("/?book_id="));
+    let next = &first.body["next_calls"][0];
+    assert_eq!(next["name"], "library.read");
+    let second = crate::cross_book::read(&f.library, "alice", None, next["name"].as_str().unwrap(), next["arguments"].clone()).unwrap();
+    assert_eq!(second.body["published_book_ref"], json!(f.a));
+    assert_ne!(first.body["data"]["source_range"], second.body["data"]["source_range"]);
+    assert!(crate::cross_book::read(&f.library, "bob", None, "library.read", next["arguments"].clone()).is_err());
+    f.library.lock().unwrap().revoke("alice", &f.a).unwrap();
+    assert!(crate::cross_book::read(&f.library, "alice", None, "library.read", next["arguments"].clone()).is_err());
+}
+
+#[test]
+fn cross_book_source_preview_and_open_resolve_exact_authorized_publication() {
+    let f=Fixture::new();
+    let publication=f.library.lock().unwrap().load("alice",&f.a).unwrap();
+    let range=read_tools::EvidenceRange {start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]};
+    let resolved=publication.book.resolve_source(&range,"zh-CN",None).unwrap();
+    let binding=runtime::orchestrator::SourceBinding { media: None,source_ref_id:"ref-rust".into(),book_id:f.a.book_id.clone(),
+        publication_id:Some(f.a.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),evidence_range:Some(range),evidence_text_digest:resolved.evidence_text_digest,
+        label_snapshot:"Rust".into(),preview_snapshot:resolved.preview};
+    let view=crate::cross_book::source_view(&f.library,"alice",&binding,false).unwrap();
+    assert!(view["highlighted_quote"].as_str().unwrap().contains("needle 2"));
+    assert!(view["source_url"].as_str().unwrap().contains(&format!("publication_id={}",f.a.publication_id)));
+    let opened=crate::cross_book::source_view(&f.library,"alice",&binding,true).unwrap();
+    assert_eq!(opened["opened"],false);
+    assert_eq!(opened["source_url"],view["source_url"]);
+    assert!(crate::cross_book::source_view(&f.library,"bob",&binding,false).is_err());
+}
+
+#[test]
+fn cross_book_learning_survives_reopen_and_updates_only_from_real_user_feedback() {
+    cross_book_learning_scenario(None);
+}
+
+#[test]
+fn w3_cross_book_understanding_stays_in_original_workspace_with_tutor_off() {
+    cross_book_learning_scenario(Some("workspace-a"));
+}
+
+fn cross_book_learning_scenario(scope: Option<&str>) {
+    let f=Fixture::new();
+    let path=f.root.path().join("alice-memory.json");
+    let mut user=crate::user_runtime::UserRuntime::local(memory::MemoryStore::open(&path).unwrap(),None,Default::default(),None);
+    let mut session=crate::new_agent_session("main-book","now",1);
+    session.learning_workspace_id=scope.map(str::to_owned);
+    session.turns.push(serde_json::from_value(json!({"turn_id":"t1","user":"I do not understand borrowing.","status":"pending_assistant"})).unwrap());
+    let turn=crate::AgentTurnRef {session_id:session.id.clone(),turn_id:"t1".into(),user_turn_ordinal:1};
+    user.agent_history.sessions.push(session);
+    let publication=f.library.lock().unwrap().load("alice",&f.a).unwrap();
+    let range=read_tools::EvidenceRange {start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]};
+    let resolved=publication.book.resolve_source(&range,"zh-CN",None).unwrap();
+    let source=runtime::orchestrator::SourceBinding { media: None,source_ref_id:"rust-source".into(),book_id:f.a.book_id.clone(),publication_id:Some(f.a.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),
+        evidence_range:Some(range),evidence_text_digest:resolved.evidence_text_digest,label_snapshot:"Rust".into(),preview_snapshot:resolved.preview};
+    macro_rules! context { ($user:expr) => {crate::PrivateBookContext {user:$user,learning_workspace_id:scope,book:&publication.book,book_dir:publication.directory(),messages:&[],selected_chat:Some(turn.session_id.as_str())}}; }
+    let mut request=json!({"operation":"observe","operation_id":"difficulty","source_ref_ids":["rust-source"],
+        "learner_quote":"I do not understand borrowing.","learning_focus":"borrowing","expected_performance":"explain a borrow","capability":"explanation",
+        "interpretation":"The learner explicitly asks for help with borrowing.","teaching_implication":"Explain a shared borrow with a concrete example."});
+    assert!(crate::cross_book::learning(&context!(&user),&turn,&f.a,&request,&[],"now").is_err());
+    request["learner_quote"]=json!("I have mastered borrowing.");
+    assert!(crate::cross_book::learning(&context!(&user),&turn,&f.a,&request,&[source.clone()],"now").is_err());
+    request["learner_quote"]=json!("I do not understand borrowing.");
+    let first=crate::cross_book::learning(&context!(&user),&turn,&f.a,&request,&[source.clone()],"now").unwrap();
+    assert_eq!(first["status"],"unassessed");
+    assert_eq!(crate::cross_book::learning(&context!(&user),&turn,&f.a,&request,&[source.clone()],"later").unwrap(),first);
+    user.store=memory::MemoryStore::open(&path).unwrap();
+    let read=crate::cross_book::learning(&context!(&user),&turn,&f.a,&json!({"operation":"read"}),&[],"now").unwrap();
+    assert_eq!(read["interpretations"][0]["evidence_id"],first["evidence_ref"]);
+    if scope.is_some() {
+        let other_scope=crate::PrivateBookContext { learning_workspace_id:Some("workspace-b"), ..context!(&user) };
+        let isolated=crate::cross_book::learning(&other_scope,&turn,&f.a,&json!({"operation":"read"}),&[],"now").unwrap();
+        assert_eq!(isolated["interpretations"],json!([]));
+        assert_eq!(isolated["recent_facts"],json!([]));
+        let legacy=user.learning_store().unwrap();
+        assert!(legacy.current_interpretations(&f.a.book_id,publication.book.source_fingerprint(),0,12).unwrap().is_empty());
+        assert!(!user.learning_store_for_workspace(scope).unwrap().state().unwrap().control.enabled);
+    }
+    assert!(read["rows"].as_array().unwrap().iter().all(|r|r["independent_support"]==0));
+    // Local LearningMemory is scoped to its directory, as in the service's per-user roots.
+    let other_root=tempfile::tempdir().unwrap();
+    let other=crate::user_runtime::UserRuntime::local(memory::MemoryStore::open(other_root.path().join("memory.json")).unwrap(),None,Default::default(),None);
+    let isolated=crate::cross_book::learning(&context!(&other),&turn,&f.a,&json!({"operation":"read"}),&[],"now").unwrap();
+    assert!(isolated["interpretations"].as_array().unwrap().is_empty());
+    let outcome:runtime::orchestrator::OuterOutcome=serde_json::from_value(json!({"answer":"A shared borrow allows reading.","incomplete":false,"turns":1,"tokens_spent":1,"effects":[],"trace":[]})).unwrap();
+    user.agent_history.sessions[0].turns[0].source_bindings=vec![source.clone()];
+    user.agent_history.sessions[0].turns[0].outcome=Some(outcome);
+    crate::teaching::record_user_delivery(&user,&turn,"now").unwrap();
+    let before=crate::cross_book::learning(&context!(&user),&turn,&f.a,&json!({"operation":"read"}),&[],"now").unwrap();
+    assert!(!before["recent_facts"].as_array().unwrap().iter().any(|e|e["payload"]["usage"]["kind"]=="assistant_delivery"));
+    // Completed delivery is persisted once, and becomes assistance for the real follow-up.
+    user.agent_history.sessions[0].turns[0].status=crate::AgentAssistantStatus::Completed;
+    crate::teaching::record_user_delivery(&user,&turn,"now").unwrap();
+    crate::teaching::record_user_delivery(&user,&turn,"retry").unwrap();
+    user.agent_history.sessions[0].turns.push(serde_json::from_value(json!({"turn_id":"t2","user":"A shared borrow reads without taking ownership.","status":"pending_assistant"})).unwrap());
+    let next=crate::AgentTurnRef {session_id:turn.session_id.clone(),turn_id:"t2".into(),user_turn_ordinal:2};
+    request["learner_quote"]=json!("A shared borrow reads without taking ownership.");
+    request["supersedes"]=first["evidence_ref"].clone();
+    request["interpretation"]=json!("The user distinguishes reading from ownership in this example.");
+    let revised=crate::cross_book::learning(&context!(&user),&next,&f.a,&request,&[source],"later").unwrap();
+    let evidence=user.learning_store_for_workspace(scope).unwrap().evidence(revised["evidence_ref"].as_str().unwrap()).unwrap();
+    assert_eq!(evidence.assistance_refs.len(),1);
+    assert_eq!(evidence.supersedes.as_deref(),first["evidence_ref"].as_str());
+    let reopened=crate::teaching::understanding(&context!(&user),&f.a.book_id,None,0).unwrap();
+    assert_eq!(reopened["interpretations"].as_array().unwrap().len(),1);
+    assert_eq!(reopened["interpretations"][0]["evidence_id"],revised["evidence_ref"]);
+}
+
 struct Fixture {
     library: Mutex<PublishedLibrary>,
     access: McpAccess,

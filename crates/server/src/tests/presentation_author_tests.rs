@@ -17,6 +17,16 @@ mod ex14_media;
 mod editing;
 #[path = "presentation_example_tests.rs"]
 mod examples;
+#[path = "presentation_se1_tests.rs"]
+mod se1;
+#[path = "presentation_se2_tests.rs"]
+mod se2;
+#[path = "presentation_method_library_tests.rs"]
+mod method_library;
+#[path = "presentation_se3_tests.rs"]
+mod se3;
+#[path = "presentation_se8_tests.rs"]
+mod se8;
 use crate::agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};
 use runtime::{
     presentation_author::*,
@@ -49,6 +59,8 @@ fn presentation_ex6_model_preview_json_deserializes() {
 }
 fn write(html: &str) -> AuthorRequest {
     AuthorRequest::Write {
+        teaching_binding: None,
+        method_refs: None,
         new_object: false,
         libraries: vec![],
         based_on: None,
@@ -79,12 +91,47 @@ fn working() -> String {
 }
 
 #[test]
+fn presentation_section_ordinal_write_succeeds_after_context_root_locator() {
+    let (_root, mut state, turn) = setup();
+    let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+    let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+    let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
+        previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+    let messages = vec![
+        runtime::Message {
+            role: runtime::Role::Assistant,
+            content: None,
+            tool_calls: vec![runtime::ToolCall {
+                id: "context".into(), name: "book.context".into(), arguments: r#"{"lid":"6.1"}"#.into(),
+            }],
+            tool_call_id: None,
+            provider_continuation: None,
+        },
+        runtime::Message {
+            role: runtime::Role::Tool,
+            content: Some(r#"{"anchor":"6.1","items":[{"lid":"6"}]}"#.into()),
+            tool_calls: vec![],
+            tool_call_id: Some("context".into()),
+            provider_continuation: None,
+        },
+    ];
+    let mut request = write("<h2>6 · 收束</h2><p>分工线、这笔账、看链路。</p>");
+    if let AuthorRequest::Write { readable_content, .. } = &mut request {
+        *readable_content = "第 6 节用三句话收束（分工线、这笔账、看链路），并注明模型之外的部分。".into();
+    }
+    let result = port.author_presentation(request, &[], &messages, &CancellationToken::default()).unwrap();
+    assert_eq!(result.body["status"], "candidate_saved");
+    assert!(result.body["candidate_id"].as_str().is_some());
+}
+
+#[test]
 fn ex12_source_list_error_explains_recovery_without_granting_sources() {
     let (_root, mut state, turn) = setup();
     let evidence_range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = runtime::orchestrator::SourceBinding { source_ref_id: "source-observed".into(),
-        book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+    let binding = runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+            media: None, source_ref_id: "source-observed".into(),
+        book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label,
         preview_snapshot: resolved.preview };
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
@@ -164,7 +211,8 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
             lid: "1.1".into(), range: read_tools::SourceTextRange { start, end: start + 3 },
         }] };
         let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-        runtime::orchestrator::SourceBinding { source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range,
+        runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+            media: None, source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview }
     }).collect();
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
@@ -182,6 +230,154 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
     let labels: Vec<_> = dom["controls"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap()).collect();
     assert_eq!(labels, vec!["正文 [1]", "正文 [2]", "正文 [1]"]);
     assert!(!dom["semantic_text"].as_str().unwrap().contains("正文"));
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn preview_reopens_custom_state_and_rejects_wrong_restore_shape() {
+    for (restorer, expected_status) in [
+        ("saved => { chapter=saved.values.chapter; theme=saved.values.theme; step=saved.visible_step; render(); }", "preview_failed"),
+        ("async saved => { await Promise.resolve(); chapter=saved.values.page.chapter; theme=saved.values.page.theme; step=saved.visible_step; render(); }", "preview_ready_for_inspection"),
+        ("saved => { chapter=saved.values.page.chapter; theme=saved.values.page.theme; render(); }", "preview_failed"),
+    ] {
+        let (_root, mut state, turn) = setup();
+        let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+        let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+        let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
+            previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+        let html = format!(r#"<input id="chapter" type="checkbox"><button id="theme">主题选择</button><p id="result"></p><script>
+let chapter=false,theme=false,step='initial';const checkbox=document.getElementById('chapter');
+function render(){{document.getElementById('result').textContent=JSON.stringify({{chapter,theme,step}})}}
+checkbox.onchange=()=>{{chapter=checkbox.checked;render()}};
+document.getElementById('theme').onclick=()=>{{theme=!theme;step='membership';render()}};
+window.presentation.registerStateReader(()=>({{values:{{chapter,theme}},visible_step:step}}));
+window.presentation.registerStateRestorer({restorer});render();</script>"#);
+        let id = candidate(&mut port, &html);
+        let result = port.author_presentation(AuthorRequest::Preview {
+            candidate_id: id.clone(), read_selector: Some("#result".into()), width: None, viewport: None,
+            actions: vec![PreviewAction::Click { selector: "#chapter".into() }, PreviewAction::Click { selector: "#theme".into() }],
+        }, &[], &[], &CancellationToken::default()).unwrap();
+        assert_eq!(result.body["status"], expected_status, "{}", result.body);
+        assert_eq!(result.body["reading"]["page_state"], json!({"values":{"chapter":true,"theme":true},"visible_step":"membership"}));
+        if expected_status == "preview_failed" {
+            assert_eq!(result.body["errors"][0]["kind"], "state_restore_mismatch", "{}", result.body);
+            assert!(result.body["errors"][0]["message"].as_str().unwrap().contains("saved.values.page"));
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).is_err());
+        } else {
+            assert!(result.body["errors"].as_array().unwrap().is_empty());
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).unwrap().delivered.is_some());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn preview_state_restore_saved_page_regression() {
+    use runtime::presentation_preview::PresentationPreviewPort;
+    let input = std::env::var("PRESENTATION_RESTORE_CASE").expect("PRESENTATION_RESTORE_CASE names the preserved real page JSON");
+    let output = std::path::PathBuf::from(std::env::var("PRESENTATION_RESTORE_OUTPUT").expect("PRESENTATION_RESTORE_OUTPUT names a fresh evidence directory"));
+    std::fs::create_dir(&output).unwrap();
+    let page: serde_json::Value = serde_json::from_slice(&std::fs::read(input).unwrap()).unwrap();
+    let original: runtime::presentation::PresentationContent = serde_json::from_value(page["content"].clone()).unwrap();
+    for corrected in [false, true] {
+        let mut content = original.clone();
+        if corrected {
+            let html = content.content_files.get_mut(&content.entrypoint).unwrap();
+            assert!(html.contains("saved.values.chapter") && html.contains("saved.values.theme"));
+            *html = html.replace("saved.values.chapter", "saved.values.page.chapter").replace("saved.values.theme", "saved.values.page.theme");
+        }
+        let name = if corrected { "corrected" } else { "original" };
+        let report = crate::presentation_preview::BrowserPreview::discover().unwrap().preview(&runtime::presentation_preview::PreviewRequest {
+            candidate_id: name.into(), html: crate::presentation_author::preview_document(&content), actions: vec![], width: None, viewport: None, read_selector: None,
+        }, &CancellationToken::default()).unwrap();
+        let issues = &report.observations.last().unwrap().issues;
+        let mut evidence = serde_json::to_value(&report).unwrap();
+        for observation in evidence["observations"].as_array_mut().unwrap() { observation.as_object_mut().unwrap().remove("screenshot_png_base64"); }
+        std::fs::write(output.join(format!("{name}.json")), serde_json::to_vec_pretty(&evidence).unwrap()).unwrap();
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        if corrected { assert!(issues.is_empty(), "{issues:?}"); }
+        else { assert!(issues.iter().any(|issue| issue.kind == "state_restore_mismatch"), "{issues:?}"); }
+    }
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn preview_state_reader_wrapper_preserves_the_saved_result() {
+    // Reduced from run-4: the callback returned S directly, so its apparently
+    // populated reading.page_state was not saved in scene.values.page.
+    for (reader, wrapped) in [("S", false), ("{values:S}", true)] {
+        let (_root, mut state, turn) = setup();
+        let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));
+        let scope = app.with_app(|state| crate::run_scope::RunScope::capture(state, &turn, "test", None, None));
+        let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
+            previewed: Default::default(), animations: Default::default(), plots: Default::default() };
+        let html = format!(r#"<button id="next">Next result</button><p id="result"></p><script>
+let S={{page:1,mode:'semantic'}};
+function render(){{document.getElementById('result').textContent=S.mode+' page '+S.page;}}
+document.getElementById('next').onclick=()=>{{S.page=2;S.mode='lexical';render();}};
+window.presentation.registerStateReader(()=>({reader}));
+window.presentation.registerStateRestorer(saved=>{{if(saved.values.page)S=saved.values.page;render();}});
+render();</script>"#);
+        let id = candidate(&mut port, &html);
+        let result = port.author_presentation(AuthorRequest::Preview {
+            candidate_id: id.clone(), read_selector: Some("#result".into()), width: None, viewport: None,
+            actions: vec![PreviewAction::Click { selector: "#next".into() }],
+        }, &[], &[], &CancellationToken::default()).unwrap();
+        let raw_state = json!({"page":2,"mode":"lexical"});
+        assert_eq!(result.body["reading"]["text"], "lexical page 2");
+        assert_eq!(result.body["reading"]["page_state"], if wrapped { json!({"values":raw_state}) } else { raw_state });
+        if wrapped {
+            assert_eq!(result.body["status"], "preview_ready_for_inspection", "{}", result.body);
+            assert!(result.body["errors"].as_array().unwrap().is_empty());
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).unwrap().delivered.is_some());
+        } else {
+            assert_eq!(result.body["status"], "preview_failed", "{}", result.body);
+            assert_eq!(result.body["errors"][0]["kind"], "state_restore_mismatch");
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).is_err());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires installed Chromium/Edge"]
+fn preview_restoration_without_state_reader_uses_actual_visible_results() {
+    use runtime::presentation_preview::PresentationPreviewPort;
+    // Reduced from the run-3 page: preparation/query counters live in a closure,
+    // while the query control restores independently of the lost result.
+    let closure_state = r#"<input id="queryText" value="initial query"><button id="btnAll">Prepare</button>
+<button id="btnQuery">Query reused vectors</button><p id="result"></p><script>
+(()=>{var st={inputs:0,calls:0,qCalls:0};
+function render(){document.getElementById('result').textContent=st.inputs+'/18 documents; '+st.calls+' document calls; '+st.qCalls+' query calls; '+(st.qCalls?'Candidates available':'No results')}
+document.getElementById('btnAll').onclick=()=>{st.inputs=18;st.calls=5;render()};
+document.getElementById('btnQuery').onclick=()=>{document.getElementById('queryText').value='reused vectors';if(st.inputs){st.qCalls++;render()}};
+render()})();</script>"#;
+    let input_driven = r#"<input id="choice" type="checkbox"><p id="result">Off</p><script>
+const choice=document.getElementById('choice');
+choice.onchange=()=>{document.getElementById('result').textContent=choice.checked?'On':'Off'};
+</script>"#;
+    for (name, html, actions, mismatch) in [
+        ("closure-state", closure_state, vec![
+            PreviewAction::Click { selector: "#btnAll".into() },
+            PreviewAction::Click { selector: "#btnQuery".into() },
+        ], true),
+        ("static", "<p>A fixed explanation.</p>", vec![], false),
+        ("input-driven", input_driven, vec![PreviewAction::Click { selector: "#choice".into() }], false),
+    ] {
+        assert!(!html.contains("registerStateReader"), "fixture must exercise the no-reader path");
+        let content: runtime::presentation::PresentationContent = serde_json::from_value(json!({
+            "title":name,"entrypoint":"index.html","content_files":{"index.html":html},
+            "readable_content":"Restoration regression", "source_bindings":[],"assumptions":[],
+            "state_contract":null,"initial_state":null,
+        })).unwrap();
+        let report = crate::presentation_preview::BrowserPreview::discover().unwrap().preview(&runtime::presentation_preview::PreviewRequest {
+            candidate_id: name.into(), html: crate::presentation_author::preview_document(&content), actions,
+            width: None, viewport: None, read_selector: None,
+        }, &CancellationToken::default()).unwrap();
+        assert!(report.errors.is_empty(), "{name}: {:?}", report.errors);
+        let issues = &report.observations.last().unwrap().issues;
+        assert_eq!(issues.iter().any(|issue| issue.kind == "state_restore_mismatch"), mismatch, "{name}: {issues:?}");
+        if !mismatch { assert!(issues.is_empty(), "{name}: {issues:?}"); }
+    }
 }
 
 #[test]
@@ -239,6 +435,8 @@ fn presentation_plot_renders_real_image_and_freezes_assets_in_candidate() {
     let saved = port
         .author_presentation(
             AuthorRequest::Write {
+                teaching_binding: None,
+                method_refs: None,
                 new_object: false,
                 libraries: vec![],
                 based_on: None,
@@ -343,6 +541,8 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let candidate_id = port
         .author_presentation(
             AuthorRequest::Write {
+                teaching_binding: None,
+                method_refs: None,
                 new_object: false,
                 libraries: vec![],
                 based_on: None,
@@ -429,6 +629,8 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let next_id = port
         .author_presentation(
             AuthorRequest::Write {
+                teaching_binding: None,
+                method_refs: None,
                 new_object: false,
                 libraries: vec![],
                 based_on: Some(reference.clone()),
@@ -1115,6 +1317,8 @@ fn presentation_ex1_gold_uses_three_real_preview_environments() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                teaching_binding: None,
+                method_refs: None,
                 new_object: false,
                 libraries: vec![],
                 based_on: None,
@@ -1194,6 +1398,8 @@ fn presentation_ex6_seeks_and_observes_the_same_frozen_scene() {
     let cancellation = CancellationToken::default();
     let candidate_id = port.author_presentation(
         AuthorRequest::Write {
+            teaching_binding: None,
+            method_refs: None,
             new_object: false,
             libraries: vec![],
             based_on: None,

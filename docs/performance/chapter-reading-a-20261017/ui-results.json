@@ -1,0 +1,31 @@
+{
+  "command": "pnpm --filter @understand-book/web test:e2e -- chapter-reading-a.spec.ts",
+  "result": "2 passed (17.1s)",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "width": 390,
+      "height": 900
+    }
+  ],
+  "observed": [
+    "实际App.vue在浏览器运行；桌面按钮可见可点，390px菜单中的按钮可见可点",
+    "入口完整显示规范目录章名：全书结构与语义候选召回",
+    "单击依次产生set_enabled、start，随后唯一guide_chapter请求",
+    "请求含chapter_lid=1、固定来源及对话身份、message为空、question_quote=null",
+    "实际对话显示章导读请求；页面无未捕获错误",
+    "四张截图均已实际打开检查，桌面与窄屏入口无裁切或遮挡"
+  ],
+  "screenshots": [
+    "ui-entry-1440.png",
+    "ui-submitted-1440.png",
+    "ui-entry-390.png",
+    "ui-submitted-390.png"
+  ],
+  "limitations": [
+    "使用既有tutor-continuation受控接口fixture，回答为固定测试内容；本验收验证入口与提交，不验证真实模型、Rust服务或章节教学内容。"
+  ]
+}

@@ -1,0 +1,866 @@
+{
+  "model": "gpt-6.1-sol",
+  "learner": "isolated model with disclosed experiment-authored opening and scenario directions; not human learning evidence",
+  "turns": [
+    {
+      "turn": "01",
+      "user_message": "带我读《第 6 章 全书结构与语义候选召回》这一章。我知道导览会把内容缩短，但我还是觉得：一条材料没进导览，后面应该就找不到它了。",
+      "reader_provenance": {
+        "purpose": "state the initial preservation-versus-selection confusion; not human baseline",
+        "visible_deliveries": [],
+        "origin": "experiment-authored simulated reader opening",
+        "help_before_input": []
+      },
+      "http_status": 200,
+      "source_bindings": [
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.5.6",
+            "start_lid": "1.5.6"
+          },
+          "evidence_text_digest": "source-fnv1a64-85c46ec003e5f7e7",
+          "label_snapshot": "正文 · 从概念分布走向阅读路线",
+          "preview_snapshot": "沿用缓存材料，可以先保留“缓存复用已有结果”，再保留“数据变化后应使缓存失效”，随后在批处理一章连接到“也可复用缓存”。概念图帮助读者聚合这些位置；章节重点进一步说明每一处值得学什么；宏观路线可以只突出定义与应用，把失效条件留在完整章节重点中。",
+          "source_ref_id": "source_ref_3c2573408b25ca84"
+        }
+      ],
+      "deliveries": [
+        {
+          "delivery_ref": "delivery:turn_241c40aaf92abf55:route-retention-support",
+          "design_ref": "design:turn_241c40aaf92abf55:route-retention-initial",
+          "block_refs": [
+            "route-retention"
+          ],
+          "responding_to_expressions": [
+            {
+              "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c40aaf92abf55",
+              "turn_id": "turn_241c40aaf92abf55",
+              "kind": "usage_observed",
+              "response": "带我读《第 6 章 全书结构与语义候选召回》这一章。我知道导览会把内容缩短，但我还是觉得：一条材料没进导览，后面应该就找不到它了。",
+              "response_origin": null,
+              "support_delivery_refs": [],
+              "assistance_refs": []
+            }
+          ],
+          "interpretation_refs": [
+            "interpretation:opening-route-loss"
+          ],
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "区分未进入宏观路线与没有保存，说明缓存失效条件在这个例子中的去向。",
+            "learning_focus": "导览选点与完整章节重点保留",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.5.6",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.5.6"
+              }
+            ]
+          },
+          "participation": {
+            "choice": "support",
+            "learner_inference": "在分清展示和保留之后，再判断后续找回需要查看哪一层。",
+            "reason": "读者知道导览缩短却把省略当丢失，先补足两层不同的去向。",
+            "support": "同一失效条件可以不展示于宏观路线而保留在完整章节重点。"
+          },
+          "answer": "我们先抓住你这句话里的一个连接：**没进导览，能不能直接推出后面找不到？**\n\n本章有一个具体的缓存例子：宏观路线可以只突出“缓存复用已有结果”这个定义，以及批处理中“也可复用缓存”这个应用；“数据变化后应使缓存失效”这条条件，仍然留在完整章节重点里。\n\n只跟着这条失效条件看：\n\n| 看哪一层 | 这条失效条件的去向 |\n| --- | --- |\n| 宏观导览路线 | 可以没有展示 |\n| 完整章节重点 | 仍然保留 |\n\n所以，这个例子里的缩短发生在**导览选哪些点展示**这一步。你在导览里看不到它，并不能据此判断完整章节重点也没有它。先把“眼前这条路线没选它”和“它已经没了”分开，后面才好理解怎样把它找回来。"
+        }
+      ],
+      "elapsed_ms": 131193,
+      "cumulative_model_calls": 8,
+      "host_estimated_tokens": 130428,
+      "provider_tokens": null
+    },
+    {
+      "turn": "02",
+      "user_message": "我能分开“导览没展示”和“完整章节重点里还保留着”了。但我还接不上下一步：如果我一直只沿着导览里“缓存复用已有结果”往下读，没有看见“数据变化后应使缓存失效”，后面怎么会碰到这条条件？留着它为什么就有机会再找到它？",
+      "reader_provenance": {
+        "message": "我能分开“导览没展示”和“完整章节重点里还保留着”了。但我还接不上下一步：如果我一直只沿着导览里“缓存复用已有结果”往下读，没有看见“数据变化后应使缓存失效”，后面怎么会碰到这条条件？留着它为什么就有机会再找到它？",
+        "visible_deliveries": [
+          "conversation/answer-01.md"
+        ],
+        "origin": "isolated simulated reader; experiment-directed stuck branch",
+        "reason_for_expression": "按实验要求表达仍卡住的连接：可见回答说明了保留与未展示的区别，但尚未说明未展示的条件如何在后续被找回。",
+        "help_used": "使用回答中的缓存失效例子，以及“宏观导览路线可以没有展示、完整章节重点仍然保留”的两层区别。"
+      },
+      "http_status": 200,
+      "source_bindings": [
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.2",
+            "start_lid": "1.9.2"
+          },
+          "evidence_text_digest": "source-fnv1a64-65363eb27995953f",
+          "label_snapshot": "正文 · 检索怎样帮助发现，又怎样成为判断依据",
+          "preview_snapshot": "全书候选可能很多。跨章主题如果每次都接收全部候选正文，会很快消耗模型输入容量。当前主题计划先使用章节摘要、问题和宏观路线种子，后续通过搜索、完整查看与原文读取补充材料。未进入宏观路线的候选仍留在检索目录中。",
+          "source_ref_id": "source_ref_fcd15b82d1a74667"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.3",
+            "start_lid": "1.9.3"
+          },
+          "evidence_text_digest": "source-fnv1a64-c07899e6017da385",
+          "label_snapshot": "正文 · 检索怎样帮助发现，又怎样成为判断依据",
+          "preview_snapshot": "搜索首先返回位置和预览。模型可以据此决定下一步查看哪里；当它要把某个候选纳入主题，或为一个新解释引用材料时，再取得相应内容。",
+          "source_ref_id": "source_ref_53b124d8aa506f83"
+        }
+      ],
+      "deliveries": [
+        {
+          "delivery_ref": "delivery:turn_241c3daaf92aba3c:retrieval-return-support-final",
+          "design_ref": "design:turn_241c3daaf92aba3c:retrieval-return-design",
+          "block_refs": [
+            "retrieval-return"
+          ],
+          "responding_to_expressions": [
+            {
+              "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3daaf92aba3c",
+              "turn_id": "turn_241c3daaf92aba3c",
+              "kind": "usage_observed",
+              "response": "我能分开“导览没展示”和“完整章节重点里还保留着”了。但我还接不上下一步：如果我一直只沿着导览里“缓存复用已有结果”往下读，没有看见“数据变化后应使缓存失效”，后面怎么会碰到这条条件？留着它为什么就有机会再找到它？",
+              "response_origin": null,
+              "support_delivery_refs": [
+                "delivery:turn_241c40aaf92abf55:route-retention-support"
+              ],
+              "assistance_refs": []
+            }
+          ],
+          "interpretation_refs": [
+            "interpretation:retention-to-return-gap"
+          ],
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "把检索目录保留、按当前问题搜索和展开完整材料连接起来，并区分可找回与沿导览必然遇见。",
+            "learning_focus": "保留的候选如何重新进入查看范围",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.9",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.9"
+              }
+            ]
+          },
+          "participation": {
+            "choice": "support",
+            "learner_inference": null,
+            "reason": "读者能复述展示与保留区别，但明确缺少重新找回的动作入口，尚需提供该前提。",
+            "support": "保留让候选仍在可搜目录，后续问题触发搜索，位置预览引向完整查看；仅沿原导览不构成必遇保证。"
+          },
+          "answer": "你问到的正是中间缺的一步：**“留着”提供了可再查的对象，“再查”这个动作才把它重新带进视野。**如果始终只顺着原来的导览读，不能据此保证一定碰到那条失效条件。\n\n本章说，主题计划开始时先用章节摘要、问题和宏观路线种子；后面再通过搜索、完整查看和原文读取补充材料。没进宏观路线的候选，仍留在检索目录中。也就是说，后续查找的范围可以超过眼前导览选出的那几个点。\n\n沿用你的缓存例子，下面是一条可能发生的查找过程，查询措辞是我举的例子：\n\n1. 导览让你先看到“缓存复用已有结果”。\n2. 接着产生一个问题：“数据变了，旧结果还可以继续用吗？”于是针对这个问题搜索检索目录，而不是只在导览已展示的文字里找。\n3. 如果搜索返回失效条件的位置和预览，就有了一个去看它的入口。再展开相应候选或读取原文，才取得那条条件的实际内容。书中明确区分了搜索先给位置与预览、随后再取得所需内容这两步。\n\n因此，“有机会再找到”不等于它会自动插进你原来的导览。它指的是：**这条材料还在可搜索的目录里，后来的问题可以引出一次新的查找，查找再引向完整材料。**前次我们看清的是“没有被删掉”；现在补上的连接是“可以从另一条查找入口回到它”。"
+        }
+      ],
+      "elapsed_ms": 666560,
+      "cumulative_model_calls": 23,
+      "host_estimated_tokens": 321606,
+      "provider_tokens": null
+    },
+    {
+      "turn": "03",
+      "user_message": "旧路线是丁、己，新路线变成丁、戊、己，仅凭多了戊，不能说它肯定是本次重读原文才发现的。戊可能原来就留在检索目录里，只是没进旧导览；后来的问题引出搜索，才把它带进视野。我会查看戊原来是否已在目录中，以及这次查找的搜索结果和后续取得内容的过程：是只有位置与预览，还是展开了候选，或实际读取了原文。路线变化只说明现在选入了戊，不能单独证明它此前不存在，也不能证明这次读过原文。",
+      "reader_provenance": {
+        "message": "旧路线是丁、己，新路线变成丁、戊、己，仅凭多了戊，不能说它肯定是本次重读原文才发现的。戊可能原来就留在检索目录里，只是没进旧导览；后来的问题引出搜索，才把它带进视野。我会查看戊原来是否已在目录中，以及这次查找的搜索结果和后续取得内容的过程：是只有位置与预览，还是展开了候选，或实际读取了原文。路线变化只说明现在选入了戊，不能单独证明它此前不存在，也不能证明这次读过原文。",
+        "visible_deliveries": [
+          "conversation/answer-01.md",
+          "conversation/answer-02.md"
+        ],
+        "origin": "isolated simulated reader; experiment-side unprovided variant",
+        "task": "旧路线有丁、己，新路线有丁、戊、己。有人说：戊肯定是本次重新读取原文才发现的。仅凭新增路线项能支持这个说法吗？你会查看什么来区分可能发生的情况？请简短说明理由。",
+        "reason_for_expression": "可见帮助已区分路线未选、目录保留、搜索返回入口与后续取得内容；因此新增路线项不能唯一推出重新读取原文，需要看原有目录及实际查找和取内容的过程。",
+        "help_used": "answer-01 的“未展示不等于未保留”；answer-02 的“候选留在检索目录”、搜索返回位置和预览、再展开候选或读取原文取得内容。"
+      },
+      "http_status": 200,
+      "source_bindings": [
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.2",
+            "start_lid": "1.9.2"
+          },
+          "evidence_text_digest": "source-fnv1a64-65363eb27995953f",
+          "label_snapshot": "正文 · 检索怎样帮助发现，又怎样成为判断依据",
+          "preview_snapshot": "全书候选可能很多。跨章主题如果每次都接收全部候选正文，会很快消耗模型输入容量。当前主题计划先使用章节摘要、问题和宏观路线种子，后续通过搜索、完整查看与原文读取补充材料。未进入宏观路线的候选仍留在检索目录中。",
+          "source_ref_id": "source_ref_fcd15b82d1a74667"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.6",
+            "start_lid": "1.9.6"
+          },
+          "evidence_text_digest": "source-fnv1a64-619d31e29a924f47",
+          "label_snapshot": "正文 · 检索怎样帮助发现，又怎样成为判断依据",
+          "preview_snapshot": "缓存教学重放中，直接用索引预览为章节提交摘要，会得到 `chapter explanation cites undelivered evidence`。请求查看定义候选后，完整候选进入下一次输入，随后同一摘要被接受。这里交付的是已经接受、带有来源的子成果；它与再次交付原文字面内容有不同含义。",
+          "source_ref_id": "source_ref_a36e2c3e49435f78"
+        }
+      ],
+      "deliveries": [
+        {
+          "delivery_ref": "delivery:turn_241c3eaaf92abbef:route-change-conclude",
+          "design_ref": "design:turn_241c3daaf92aba3c:retrieval-return-design",
+          "block_refs": [
+            "retrieval-return"
+          ],
+          "responding_to_expressions": [
+            {
+              "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3eaaf92abbef",
+              "turn_id": "turn_241c3eaaf92abbef",
+              "kind": "usage_observed",
+              "response": "旧路线是丁、己，新路线变成丁、戊、己，仅凭多了戊，不能说它肯定是本次重读原文才发现的。戊可能原来就留在检索目录里，只是没进旧导览；后来的问题引出搜索，才把它带进视野。我会查看戊原来是否已在目录中，以及这次查找的搜索结果和后续取得内容的过程：是只有位置与预览，还是展开了候选，或实际读取了原文。路线变化只说明现在选入了戊，不能单独证明它此前不存在，也不能证明这次读过原文。",
+              "response_origin": null,
+              "support_delivery_refs": [
+                "delivery:turn_241c3daaf92aba3c:retrieval-return-support-final"
+              ],
+              "assistance_refs": []
+            }
+          ],
+          "interpretation_refs": [
+            "interpretation:route-change-application"
+          ],
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "把检索目录保留、按当前问题搜索和展开完整材料连接起来，并区分可找回与沿导览必然遇见。",
+            "learning_focus": "保留的候选如何重新进入查看范围",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.9",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.9"
+              }
+            ]
+          },
+          "participation": {
+            "choice": "conclude",
+            "reason": "读者已经针对变化情形给出正确结论、替代过程和所需证据，局部连接足够清楚。"
+          },
+          "answer": "对，你对“丁、己 → 丁、戊、己”的判断成立：**路线多了戊，只能直接说明这次把戊选进来了；它不能单独证明戊是什么时候发现的，更不能证明这次重读过原文。**\n\n你给出的替代过程也说得通：戊原来就保留在检索目录中，后来某个问题触发搜索，才让它重新进入选择范围。这正好用上了本章“宏观路线之外的候选仍可留在目录，后续通过搜索与查看补充”的机制。\n\n你提出的两处查看，各自回答一个不同的问题：旧目录帮助判断“戊此前是否已经保留”；这次实际取得内容的过程帮助判断“这次究竟看到了什么”。尤其是你保留了“展开候选”和“读取原文”的区别——本章明确说，交付一个已经接受、带来源的完整候选，与再次交付原文字面内容，含义不同。\n\n前面你卡在“留着，怎么会再碰到”；现在，在我们已经走过搜索与展开示范的基础上，你能把这条机制用于路线变化，说明一种可能的来源，并主动指出还缺哪些过程证据才能下更强的结论。这个例子里的连接已经接上了，可以停在这里。"
+        }
+      ],
+      "elapsed_ms": 127032,
+      "cumulative_model_calls": 29,
+      "host_estimated_tokens": 198876,
+      "provider_tokens": null
+    },
+    {
+      "turn": "04",
+      "user_message": "我现在想把目的往后推进一步：找到一个候选，甚至展开看到了完整内容之后，怎样判断它能不能用来支持我正在读的主题？你刚才提到“已经接受、带来源的完整候选”，但我还不知道这里的“接受”与用于某个主题之间是什么关系。请把这一段完整、直接地讲清楚，这一轮先不要提问或出题。",
+      "reader_provenance": {
+        "message": "我现在想把目的往后推进一步：找到一个候选，甚至展开看到了完整内容之后，怎样判断它能不能用来支持我正在读的主题？你刚才提到“已经接受、带来源的完整候选”，但我还不知道这里的“接受”与用于某个主题之间是什么关系。请把这一段完整、直接地讲清楚，这一轮先不要提问或出题。",
+        "visible_deliveries": [
+          "conversation/answer-01.md",
+          "conversation/answer-02.md",
+          "conversation/answer-03.md"
+        ],
+        "origin": "isolated simulated reader; experiment-directed purpose change and complete-explanation request",
+        "reason_for_expression": "按实验指定改变阅读目的，从找回材料推进到判断候选是否适用于主题；可见回答提到已经接受且带来源的完整候选，但尚未解释主题使用判断。",
+        "help_used": "answer-02 的搜索与取得完整内容的区别，以及 answer-03 的“已经接受、带来源的完整候选”与再次读取原文的区别。"
+      },
+      "http_status": 200,
+      "source_bindings": [
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.7.7",
+            "ranges": [
+              {
+                "lid": "1.7.7",
+                "range": {
+                  "end": 111,
+                  "start": 0
+                }
+              }
+            ],
+            "start_lid": "1.7.7"
+          },
+          "evidence_text_digest": "source-fnv1a64-225349c53b2d6d51",
+          "label_snapshot": "正文 · 先建立方向，再完整发现正文候选",
+          "preview_snapshot": "发现结果为每个候选分别保留含义 `meaning`、条件 `conditions`、学习理由 `reason` 和来源 `evidence_lids`。同一个 LID 中可以包含多个值得学习的意思，它们使用不同的局部身份。",
+          "source_ref_id": "source_ref_2021accf506c8fee"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.7.10",
+            "start_lid": "1.7.10"
+          },
+          "evidence_text_digest": "source-fnv1a64-5d0a1a76036c44b9",
+          "label_snapshot": "正文 · 先建立方向，再完整发现正文候选",
+          "preview_snapshot": "[readStructureCandidateCatalog](../../../packages/core/src/book-structure-generation.ts) 从当前任务对应的已接受成果收集候选；`collectStructureCandidates` 检查候选引用的位置是否属于该贡献的证据范围。原观...",
+          "source_ref_id": "source_ref_a7d3b781b959f117"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.5",
+            "ranges": [
+              {
+                "lid": "1.9.4",
+                "range": {
+                  "end": 250,
+                  "start": 0
+                }
+              },
+              {
+                "lid": "1.9.5",
+                "range": {
+                  "end": 206,
+                  "start": 0
+                }
+              }
+            ],
+            "start_lid": "1.9.4"
+          },
+          "evidence_text_digest": "source-fnv1a64-61c0e853190d3176",
+          "label_snapshot": "表格 · 检索怎样帮助发现，又怎样成为判断依据",
+          "preview_snapshot": "| 输入或动作 | 模型取得什么 | 证据记录的变化 | | --- | --- | --- | | 候选索引、搜索预览、原文位置目录 | 引用、简短含义和位置 | 不增加可用于新判断的证据范围 | | inspect 的后续输入 | 完整已接受候选，或带来源的章节材料 | 将该材料携带的位置加入交付记录 | | re...",
+          "source_ref_id": "source_ref_383ed3776afb2b07"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.10.5",
+            "ranges": [
+              {
+                "lid": "1.10.4",
+                "range": {
+                  "end": 163,
+                  "start": 0
+                }
+              },
+              {
+                "lid": "1.10.5",
+                "range": {
+                  "end": 101,
+                  "start": 0
+                }
+              }
+            ],
+            "start_lid": "1.10.4"
+          },
+          "evidence_text_digest": "source-fnv1a64-1636e98f176b3a69",
+          "label_snapshot": "正文 · 跨章主题需要说明每一章增加了什么",
+          "preview_snapshot": "[planStructureThemes](../../../packages/core/src/book-structure-themes.ts) 为一个主题问题建立一项工作。工作中可以涉及多个章节，输入同时提供全局主题目录，便于说明它与其他主题的区别。模型随后通过检索扩展候选，以 `stages` 描述各章怎样推进...",
+          "source_ref_id": "source_ref_6672ce8bb13d8cc3"
+        },
+        {
+          "book_id": "project-book-chapter-six-live-a",
+          "evidence_range": {
+            "end_lid": "1.9.7.5",
+            "start_lid": "1.9.7.5"
+          },
+          "evidence_text_digest": "source-fnv1a64-b4793a75cebb6d6e",
+          "label_snapshot": "正文 · 词法与语义候选怎样合并",
+          "preview_snapshot": "这种合并保留了直接名称查询的能力，也为措辞不同但可能相关的材料提供入口。返回的匹配原因用于解释候选为何出现，相似度留在诊断信息中。原文是否支持主题关系，需要后续判断。",
+          "source_ref_id": "source_ref_30a96172cb786c17"
+        }
+      ],
+      "deliveries": [
+        {
+          "delivery_ref": "delivery:turn_241c3baaf92ab6d6:accepted-to-theme-complete",
+          "design_ref": "design:turn_241c3baaf92ab6d6:accepted-to-theme-design",
+          "block_refs": [
+            "candidate-acceptance",
+            "delivery-evidence",
+            "theme-judgment"
+          ],
+          "responding_to_expressions": [
+            {
+              "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3baaf92ab6d6",
+              "turn_id": "turn_241c3baaf92ab6d6",
+              "kind": "usage_observed",
+              "response": "我现在想把目的往后推进一步：找到一个候选，甚至展开看到了完整内容之后，怎样判断它能不能用来支持我正在读的主题？你刚才提到“已经接受、带来源的完整候选”，但我还不知道这里的“接受”与用于某个主题之间是什么关系。请把这一段完整、直接地讲清楚，这一轮先不要提问或出题。",
+              "response_origin": null,
+              "support_delivery_refs": [
+                "delivery:turn_241c3eaaf92abbef:route-change-conclude"
+              ],
+              "assistance_refs": []
+            }
+          ],
+          "interpretation_refs": [
+            "interpretation:acceptance-theme-gap"
+          ],
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "区分已接受候选的可复用身份、本轮实际取得材料的证据范围，以及需要另行说明的主题支持关系。",
+            "learning_focus": "候选已接受、已取得与支持主题的关系",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.7",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.7"
+              },
+              {
+                "end_lid": "1.9",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.9"
+              },
+              {
+                "end_lid": "1.10",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.10"
+              }
+            ]
+          },
+          "participation": {
+            "choice": "conclude",
+            "reason": "读者明确要求这一段完整直接解释、不提问，现提供全部连接和示例，不留待其作答。"
+          },
+          "answer": "**“候选已经接受”，表示已有一份可以继续组织和复用的成果；“它能支持当前主题”，则是针对这个主题还要作出的新判断。**展开看到完整内容，为这个新判断提供材料，并不会自动替你完成判断。\n\n先把三个环节分开：\n\n| 环节 | 已经成立的事实 | 还不能直接推出的结论 |\n| --- | --- | --- |\n| 候选来自已接受成果 | 目录中有一条明确身份、带内容与来源的已有成果 | 它适用于任何主题 |\n| 本轮完整展开候选 | 这条完整材料实际进入了本轮输入，可以据此继续判断 | 它必然支持当前主题的具体解释 |\n| 提交并接纳主题结果 | 已对候选在这个主题中的作用作出说明，并经过相应接纳检查 | 其他主题或更强关系也随之成立 |\n\n本章中的候选不是一个孤立关键词。它保留了**含义、条件、学习理由和来源位置**；目录从当前任务对应的已接受成果中收集候选，并检查它所引用的位置是否属于该成果的证据范围。这解释了“已经接受、带来源”的对象：已有的是这条候选及其来历。它并没有预先替所有未来主题写好支持关系。\n\n接着是你这一轮实际拿到的材料。搜索给的位置与预览主要用于决定去哪里看，不增加用于新判断的证据范围。完整查看候选，或读取指定位置的原文后，**相应材料还必须实际进入后续输入**，其携带的位置才加入交付记录。仅仅提出一个查看请求还没有完成这一步。完整候选可以作为带来源的已有子成果被交付；它也不意味着这一轮重新读过原文字面内容。\n\n有了完整材料后，要把它的实际含义和成立条件，接到**当前主题正在解释的具体问题**上。主题组织要求说明各章怎样推进这个问题，而不是把搜到的相似内容摆在一起。检索匹配说明它为什么值得查看；原文是否支持这个主题关系，还需要后续判断。\n\n举一个我构造的应用例子。假设完整候选明确说：“数据变化后应使缓存失效。”当前主题正在解释“复用旧结果在什么条件下仍然可靠”，那么这条候选可以承担一个具体作用：补出复用的有效性边界，说明数据变化以后不能无条件沿用旧结果。这个支持关系来自候选里的“数据变化”条件与主题里的“可靠复用”问题相接。若你想用同一候选证明“缓存一定会提高性能”，它提供的内容就不足以支持这个更强的结论；“候选已经接受”不能补上缺少的性能依据。\n\n在实际主题结果里，这个连接还要写成各章的发展说明，并引用相应证据。程序接纳时会检查：每个发展阶段使用本章证据，摘要覆盖涉及的每一个章节，主题成员候选已经完整查看，而且同一候选没有重复充当成员。这些是本章列出的内容归属与材料交付检查；“材料已经交付”与“解释的语义确实受到材料支持”仍是要分清的两件事。\n\n因此，你可以把这里的关系连成一句话：**已有接受成果提供可复用的候选，完整查看提供本轮作判断的材料，围绕主题问题的解释说明它具体支持什么，主题结果再按相应规则接纳。**候选的旧接受状态，不能代替这次主题关系的新判断。"
+        }
+      ],
+      "elapsed_ms": 173875,
+      "cumulative_model_calls": 36,
+      "host_estimated_tokens": 283663,
+      "provider_tokens": null
+    },
+    {
+      "turn": "05",
+      "user_message": "我现在能说清这里的区别：候选原来已经接受，说明有一份带来源的成果可复用；完整内容进入这一轮，才有材料判断它具体支持当前主题的什么关系，旧的接受状态不能替代这个新判断。缓存失效条件能说明可靠复用的边界，却不能凭它推出缓存一定提高性能，这个例子我跟上了。不过我目前只是顺着这次解释理解，还没有自己拿另一条候选做过主题判断。今天就先结束在这里，请不要再引入新问题。",
+      "reader_provenance": {
+        "message": "我现在能说清这里的区别：候选原来已经接受，说明有一份带来源的成果可复用；完整内容进入这一轮，才有材料判断它具体支持当前主题的什么关系，旧的接受状态不能替代这个新判断。缓存失效条件能说明可靠复用的边界，却不能凭它推出缓存一定提高性能，这个例子我跟上了。不过我目前只是顺着这次解释理解，还没有自己拿另一条候选做过主题判断。今天就先结束在这里，请不要再引入新问题。",
+        "visible_deliveries": [
+          "conversation/answer-01.md",
+          "conversation/answer-02.md",
+          "conversation/answer-03.md",
+          "conversation/answer-04.md"
+        ],
+        "origin": "isolated simulated reader; experiment-directed local ending",
+        "reason_for_expression": "按实验指定提出局部结束；只表述可见解释所建立的候选旧接受、本轮材料交付和主题新判断之间的区别，并明确未做独立应用。",
+        "help_used": "answer-04 的三个环节区分，以及缓存失效条件支持可靠复用边界、但不足以支持必然提高性能的示例。"
+      },
+      "http_status": 200,
+      "deliveries": [
+        {
+          "delivery_ref": "delivery:turn_241c3caaf92ab889:session-close-confirmed",
+          "design_ref": "design:turn_241c3baaf92ab6d6:accepted-to-theme-design",
+          "block_refs": [
+            "candidate-acceptance",
+            "delivery-evidence",
+            "theme-judgment"
+          ],
+          "responding_to_expressions": [
+            {
+              "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3caaf92ab889",
+              "turn_id": "turn_241c3caaf92ab889",
+              "kind": "usage_observed",
+              "response": "我现在能说清这里的区别：候选原来已经接受，说明有一份带来源的成果可复用；完整内容进入这一轮，才有材料判断它具体支持当前主题的什么关系，旧的接受状态不能替代这个新判断。缓存失效条件能说明可靠复用的边界，却不能凭它推出缓存一定提高性能，这个例子我跟上了。不过我目前只是顺着这次解释理解，还没有自己拿另一条候选做过主题判断。今天就先结束在这里，请不要再引入新问题。",
+              "response_origin": null,
+              "support_delivery_refs": [
+                "delivery:turn_241c3baaf92ab6d6:accepted-to-theme-complete"
+              ],
+              "assistance_refs": []
+            }
+          ],
+          "interpretation_refs": [
+            "interpretation:closing-assisted-restatement"
+          ],
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "确认在刚才解释帮助下的局部复述，保留独立应用未观察的边界。",
+            "learning_focus": "完整交付与主题判断",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.9",
+                "source_id": "project-book-chapter-six-live-a",
+                "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+                "start_lid": "1.9"
+              }
+            ]
+          },
+          "participation": {
+            "choice": "conclude",
+            "reason": "读者准确复述已给解释且明确要求结束，目前只确认在帮助下的理解。"
+          },
+          "answer": "好，今天就停在这里。你这段复述把三件事分清了：已有候选可复用、完整内容进入本轮、针对当前主题作新判断；缓存例子的支持范围也说得准确。\n\n目前可以确认的是，你在刚才的解释和示例帮助下跟上了这条关系。你也明确指出还没有独立用另一条候选做主题判断，这一点就保留为尚未尝试，不把它算成已经会独立应用。"
+        }
+      ],
+      "elapsed_ms": 190054,
+      "cumulative_model_calls": 45,
+      "host_estimated_tokens": 375260,
+      "provider_tokens": null
+    }
+  ],
+  "evidence": [
+    {
+      "sequence": 1,
+      "action_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c40aaf92abf55",
+      "assessment_ref": null,
+      "assistance_refs": [],
+      "attempt": 0,
+      "block_refs": [
+        "route-retention"
+      ],
+      "capability": "explanation",
+      "correction": null,
+      "delivery_ref": null,
+      "design_ref": "design:turn_241c40aaf92abf55:route-retention-initial",
+      "evidence_id": "interpretation:opening-route-loss",
+      "fact_refs": [
+        "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c40aaf92abf55"
+      ],
+      "interpretation": "读者明确说知道导览缩短内容，却仍推断未进入导览的材料后来就找不到。其表达支持尚未区分宏观路线选点与完整章节重点保留的假设。尚未收到本轮帮助，其他召回机制的理解未确认。",
+      "interpreter_version": "resident.hypothesis.v1",
+      "label": "导览选点与完整章节重点保留",
+      "learner_quote": "带我读《第 6 章 全书结构与语义候选召回》这一章。我知道导览会把内容缩短，但我还是觉得：一条材料没进导览，后面应该就找不到它了。",
+      "map_revision": null,
+      "nature": "hypothesis",
+      "object_id": null,
+      "object_revision": null,
+      "session_id": "tutor-chapter:turn_241c40aaf92abf55",
+      "source_id": "project-book-chapter-six-live-a",
+      "source_quotes": [],
+      "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+      "status": "unassessed",
+      "supersedes": null,
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "区分未展示与未保留。",
+        "learning_focus": "导览选点与完整章节重点保留",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.5.6",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.5.6"
+          }
+        ]
+      },
+      "teaching_implication": "先用原文缓存失效条件的去向补上展示与保留的区别，不扩展成整章机制总览。",
+      "facts": [
+        {
+          "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c40aaf92abf55",
+          "turn_id": "turn_241c40aaf92abf55",
+          "kind": "usage_observed",
+          "response": "带我读《第 6 章 全书结构与语义候选召回》这一章。我知道导览会把内容缩短，但我还是觉得：一条材料没进导览，后面应该就找不到它了。",
+          "response_origin": null,
+          "support_delivery_refs": [],
+          "assistance_refs": []
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "action_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3daaf92aba3c",
+      "assessment_ref": null,
+      "assistance_refs": [],
+      "attempt": 0,
+      "capability": "explanation",
+      "correction": null,
+      "delivery_ref": null,
+      "evidence_id": "interpretation:retention-to-return-gap",
+      "fact_refs": [
+        "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3daaf92aba3c"
+      ],
+      "interpretation": "在前次明确展示与保留区别的帮助之后，读者能复述这一区分，同时明确说尚不能连接保留与重新找到。这支持在该帮助下接受区别的局部观察，未证明独立迁移；具体缺口是从目录保留到搜索展开的入口，并非仍把保留当删除。",
+      "interpreter_version": "resident.hypothesis.v1",
+      "label": "保留的候选如何重新进入查看范围",
+      "learner_quote": "我能分开“导览没展示”和“完整章节重点里还保留着”了。但我还接不上下一步：如果我一直只沿着导览里“缓存复用已有结果”往下读，没有看见“数据变化后应使缓存失效”，后面怎么会碰到这条条件？留着它为什么就有机会再找到它？",
+      "map_revision": null,
+      "nature": "hypothesis",
+      "object_id": null,
+      "object_revision": null,
+      "session_id": "tutor-chapter:turn_241c40aaf92abf55",
+      "source_id": "project-book-chapter-six-live-a",
+      "source_quotes": [],
+      "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+      "status": "unassessed",
+      "supersedes": null,
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "把检索目录保留、按当前问题搜索和展开完整材料连接起来，并区分可找回与沿导览必然遇见。",
+        "learning_focus": "保留的候选如何重新进入查看范围",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.9",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.9"
+          }
+        ]
+      },
+      "teaching_implication": "从其假设的一直沿导览开始，说明导览本身不保证重遇，另以当前问题触发目录搜索和展开补上入口。",
+      "facts": [
+        {
+          "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3daaf92aba3c",
+          "turn_id": "turn_241c3daaf92aba3c",
+          "kind": "usage_observed",
+          "response": "我能分开“导览没展示”和“完整章节重点里还保留着”了。但我还接不上下一步：如果我一直只沿着导览里“缓存复用已有结果”往下读，没有看见“数据变化后应使缓存失效”，后面怎么会碰到这条条件？留着它为什么就有机会再找到它？",
+          "response_origin": null,
+          "support_delivery_refs": [
+            "delivery:turn_241c40aaf92abf55:route-retention-support"
+          ],
+          "assistance_refs": []
+        }
+      ]
+    },
+    {
+      "sequence": 3,
+      "action_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3eaaf92abbef",
+      "assessment_ref": null,
+      "assistance_refs": [],
+      "attempt": 0,
+      "block_refs": [
+        "retrieval-return"
+      ],
+      "capability": "explanation",
+      "correction": null,
+      "delivery_ref": null,
+      "design_ref": "design:turn_241c3daaf92aba3c:retrieval-return-design",
+      "evidence_id": "interpretation:route-change-application",
+      "fact_refs": [
+        "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3eaaf92abbef"
+      ],
+      "interpretation": "读者在收到目录搜索展开的完整示范后，自行提出丁己变为丁戊己的路线变化，拒绝由多了戊推出本次重读原文，并提出检查旧目录和搜索/候选展开/原文读取过程。这是将已供机制用于一个未在前次示范中回答的证据判断，支持该局部关系应用；不是无帮助掌握，也不足以推成整章能力。相较先前明确说接不上留存到找回，现在能用留存与新搜索解释新增点的可能来源。",
+      "interpreter_version": "resident.hypothesis.v1",
+      "label": "由路线变化判断候选来源与阅读证据",
+      "learner_quote": "旧路线是丁、己，新路线变成丁、戊、己，仅凭多了戊，不能说它肯定是本次重读原文才发现的。戊可能原来就留在检索目录里，只是没进旧导览；后来的问题引出搜索，才把它带进视野。我会查看戊原来是否已在目录中，以及这次查找的搜索结果和后续取得内容的过程：是只有位置与预览，还是展开了候选，或实际读取了原文。路线变化只说明现在选入了戊，不能单独证明它此前不存在，也不能证明这次读过原文。",
+      "map_revision": null,
+      "nature": "hypothesis",
+      "object_id": null,
+      "object_revision": null,
+      "session_id": "tutor-chapter:turn_241c40aaf92abf55",
+      "source_id": "project-book-chapter-six-live-a",
+      "source_quotes": [],
+      "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+      "status": "unassessed",
+      "supersedes": null,
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "在丁己变为丁戊己的情形中，区分当前选入、此前保留与本次读取原文三种事实。",
+        "learning_focus": "由路线变化判断候选来源与阅读证据",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.9",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.9"
+          }
+        ]
+      },
+      "teaching_implication": "确认其条件与结论对应正确，指出目录历史和实际内容交付记录各自回答不同问题，结束这个局部连接而不再要求同类作答。",
+      "facts": [
+        {
+          "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3eaaf92abbef",
+          "turn_id": "turn_241c3eaaf92abbef",
+          "kind": "usage_observed",
+          "response": "旧路线是丁、己，新路线变成丁、戊、己，仅凭多了戊，不能说它肯定是本次重读原文才发现的。戊可能原来就留在检索目录里，只是没进旧导览；后来的问题引出搜索，才把它带进视野。我会查看戊原来是否已在目录中，以及这次查找的搜索结果和后续取得内容的过程：是只有位置与预览，还是展开了候选，或实际读取了原文。路线变化只说明现在选入了戊，不能单独证明它此前不存在，也不能证明这次读过原文。",
+          "response_origin": null,
+          "support_delivery_refs": [
+            "delivery:turn_241c3daaf92aba3c:retrieval-return-support-final"
+          ],
+          "assistance_refs": []
+        }
+      ]
+    },
+    {
+      "sequence": 4,
+      "action_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3baaf92ab6d6",
+      "assessment_ref": null,
+      "assistance_refs": [],
+      "attempt": 0,
+      "block_refs": [
+        "candidate-acceptance",
+        "delivery-evidence",
+        "theme-judgment"
+      ],
+      "capability": "explanation",
+      "correction": null,
+      "delivery_ref": null,
+      "design_ref": "design:turn_241c3baaf92ab6d6:accepted-to-theme-design",
+      "evidence_id": "interpretation:acceptance-theme-gap",
+      "fact_refs": [
+        "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3baaf92ab6d6"
+      ],
+      "interpretation": "读者明确把问题推进到候选完整查看之后的主题支持关系，并说不知道已接受与用于某个主题的关系。此前已经收到搜索与完整查看机制的帮助；这次表达说明需要解释不同接受对象，未表达已经接受就必然适用的错误断言。当前明确要求完整直接讲解且不提问出题。",
+      "interpreter_version": "resident.hypothesis.v1",
+      "label": "候选已接受与用于具体主题",
+      "learner_quote": "我现在想把目的往后推进一步：找到一个候选，甚至展开看到了完整内容之后，怎样判断它能不能用来支持我正在读的主题？你刚才提到“已经接受、带来源的完整候选”，但我还不知道这里的“接受”与用于某个主题之间是什么关系。请把这一段完整、直接地讲清楚，这一轮先不要提问或出题。",
+      "map_revision": null,
+      "nature": "hypothesis",
+      "object_id": null,
+      "object_revision": null,
+      "session_id": "tutor-chapter:turn_241c40aaf92abf55",
+      "source_id": "project-book-chapter-six-live-a",
+      "source_quotes": [],
+      "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+      "status": "unassessed",
+      "supersedes": null,
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "区分已有成果接受、实际取得材料和主题支持判断。",
+        "learning_focus": "候选已接受与用于具体主题",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.9",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.9"
+          },
+          {
+            "end_lid": "1.10",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.10"
+          }
+        ]
+      },
+      "teaching_implication": "直接完整解释三层区别与主题接纳的实际条件，用一个示例说明已接受候选仍需匹配主题问题，不以练习代替解释。",
+      "facts": [
+        {
+          "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3baaf92ab6d6",
+          "turn_id": "turn_241c3baaf92ab6d6",
+          "kind": "usage_observed",
+          "response": "我现在想把目的往后推进一步：找到一个候选，甚至展开看到了完整内容之后，怎样判断它能不能用来支持我正在读的主题？你刚才提到“已经接受、带来源的完整候选”，但我还不知道这里的“接受”与用于某个主题之间是什么关系。请把这一段完整、直接地讲清楚，这一轮先不要提问或出题。",
+          "response_origin": null,
+          "support_delivery_refs": [
+            "delivery:turn_241c3eaaf92abbef:route-change-conclude"
+          ],
+          "assistance_refs": []
+        }
+      ]
+    },
+    {
+      "sequence": 5,
+      "action_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3caaf92ab889",
+      "assessment_ref": null,
+      "assistance_refs": [],
+      "attempt": 0,
+      "block_refs": [
+        "candidate-acceptance",
+        "delivery-evidence",
+        "theme-judgment"
+      ],
+      "capability": "explanation",
+      "correction": null,
+      "delivery_ref": null,
+      "design_ref": "design:turn_241c3baaf92ab6d6:accepted-to-theme-design",
+      "evidence_id": "interpretation:closing-assisted-restatement",
+      "fact_refs": [
+        "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3caaf92ab889"
+      ],
+      "interpretation": "读者准确复述刚才直接解释的候选旧接受、本轮完整交付与新主题判断三者区别，也复述了已经完整示范的缓存边界对性能结论的反例。该回答在这些帮助下支持跟随解释的局部理解或复述，不能把同一已解例子的复现算独立应用。读者自己明确未拿另一条候选判断，独立迁移保持未确认。此前说不知道接受与主题的关系，如今能借已给解释说清该区别，但不宜据此作更强掌握结论。",
+      "interpreter_version": "resident.hypothesis.v1",
+      "label": "已有接受与主题判断的区分",
+      "learner_quote": "我现在能说清这里的区别：候选原来已经接受，说明有一份带来源的成果可复用；完整内容进入这一轮，才有材料判断它具体支持当前主题的什么关系，旧的接受状态不能替代这个新判断。缓存失效条件能说明可靠复用的边界，却不能凭它推出缓存一定提高性能，这个例子我跟上了。不过我目前只是顺着这次解释理解，还没有自己拿另一条候选做过主题判断。今天就先结束在这里，请不要再引入新问题。",
+      "map_revision": null,
+      "nature": "hypothesis",
+      "object_id": null,
+      "object_revision": null,
+      "session_id": "tutor-chapter:turn_241c40aaf92abf55",
+      "source_id": "project-book-chapter-six-live-a",
+      "source_quotes": [],
+      "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+      "status": "unassessed",
+      "supersedes": null,
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "在刚才解释和缓存示例帮助下复述已有成果、实际内容与新主题判断的区别。",
+        "learning_focus": "已有接受与主题判断的区分",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.9",
+            "source_id": "project-book-chapter-six-live-a",
+            "source_revision": "f00afa7c80e5a3f2257a39d559195a4f669d87a42e650733b62e606f8f1f4560",
+            "start_lid": "1.9"
+          }
+        ]
+      },
+      "teaching_implication": "简短确认这次有帮助下的理解边界，按明确结束请求收束，不引入问题、练习或后续菜单。",
+      "facts": [
+        {
+          "fact_ref": "usage:tutor-chapter:turn_241c40aaf92abf55:user:turn_241c3caaf92ab889",
+          "turn_id": "turn_241c3caaf92ab889",
+          "kind": "usage_observed",
+          "response": "我现在能说清这里的区别：候选原来已经接受，说明有一份带来源的成果可复用；完整内容进入这一轮，才有材料判断它具体支持当前主题的什么关系，旧的接受状态不能替代这个新判断。缓存失效条件能说明可靠复用的边界，却不能凭它推出缓存一定提高性能，这个例子我跟上了。不过我目前只是顺着这次解释理解，还没有自己拿另一条候选做过主题判断。今天就先结束在这里，请不要再引入新问题。",
+          "response_origin": null,
+          "support_delivery_refs": [
+            "delivery:turn_241c3baaf92ab6d6:accepted-to-theme-complete"
+          ],
+          "assistance_refs": []
+        }
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "request_file": "request-0007.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0018.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0020.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0022.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0028.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0035.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0041.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    },
+    {
+      "request_file": "request-0044.json",
+      "verdict": {
+        "decision": "accept",
+        "revision": null
+      }
+    }
+  ],
+  "model_calls": 45,
+  "resident_calls": 34,
+  "structured_calls": 11,
+  "provider_tokens": null,
+  "timing_note": "Wall clock includes file transport and agent polling, not direct provider latency."
+}

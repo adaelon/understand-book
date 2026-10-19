@@ -89,7 +89,7 @@ mod mu2_tests {
             let store = PresentationStore::for_user(&user).unwrap();
             let version = AgentPresentation { reference: reference.clone(), candidate_id: "candidate-legacy".into(),
                 owner: owner.clone(), created_by_turn_id: "turn-legacy".into(), based_on: None,
-                content: PresentationContent { animation_assets: Default::default(), title: id.into(),
+                content: PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets: Default::default(), title: id.into(),
                     content_files: Default::default(), entrypoint: "index.html".into(), readable_content: id.into(),
                     source_bindings: vec![], assumptions: vec![], state_contract: serde_json::json!({}), initial_state: serde_json::json!({}) } };
             PresentationStore::write(&store.version_path(&reference).unwrap(), &version).unwrap();
@@ -111,6 +111,14 @@ impl PresentationStore {
         })
     }
     fn write_private<T: Serialize>(&self, path: &Path, value: &T) -> Result<(), ToolError> {
+        self.check_quota(path, value, false)?;
+        Self::write(path, value)
+    }
+    fn replace_private<T: Serialize>(&self, path: &Path, value: &T) -> Result<(), ToolError> {
+        self.check_quota(path, value, true)?;
+        Self::write_file(path, value, true)
+    }
+    fn check_quota<T: Serialize>(&self, path: &Path, value: &T, replace: bool) -> Result<(), ToolError> {
         if let Some((max_bytes, max_files)) = self.limits {
             let added = serde_json::to_vec(value).map_err(storage)?.len() as u64;
             let quota = || error("PRESENTATION_STORAGE_LIMIT", "rate_limit", "Private presentation storage limit reached");
@@ -124,18 +132,31 @@ impl PresentationStore {
                     let kind = entry.file_type().map_err(storage)?;
                     if kind.is_symlink() { return Err(invalid("Presentation storage contains a symbolic link")); }
                     if kind.is_dir() { dirs.push(entry.path()); }
-                    else if kind.is_file() { bytes = bytes.saturating_add(entry.metadata().map_err(storage)?.len()); count += 1; }
+                    else if kind.is_file() {
+                        if replace && entry.path() == path { continue; }
+                        bytes = bytes.saturating_add(entry.metadata().map_err(storage)?.len()); count += 1;
+                    }
                     else { return Err(invalid("Invalid presentation storage entry")); }
                     if bytes > max_bytes || count > max_files { return Err(quota()); }
                 }
             }
             if bytes > max_bytes || count > max_files { return Err(quota()); }
         }
-        Self::write(path, value)
+        Ok(())
+    }
+    fn feedback_path(&self, reference: &PresentationRef) -> Result<PathBuf, ToolError> {
+        check_id(&reference.presentation_id)?;
+        if reference.revision == 0 { return Err(invalid("Revision must be positive")); }
+        Ok(self.root.join("feedback").join(&reference.presentation_id).join(format!("{}.json", reference.revision)))
     }
     fn candidate_path(&self, id: &str) -> Result<PathBuf, ToolError> {
         check_id(id)?;
         Ok(self.root.join("candidates").join(format!("{id}.json")))
+    }
+    fn method_observation_dir(&self, session_id: &str, turn_id: &str) -> PathBuf {
+        use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+        // Match SessionStore's lossless filename encoding; session IDs can contain ':'.
+        self.root.join("method-observations").join(URL_SAFE_NO_PAD.encode(session_id)).join(URL_SAFE_NO_PAD.encode(turn_id))
     }
     fn versions_dir(&self, id: &str) -> Result<PathBuf, ToolError> {
         check_id(id)?;
@@ -164,13 +185,17 @@ impl PresentationStore {
         serde_json::from_slice(&bytes).map_err(storage)
     }
     fn write<T: Serialize>(path: &Path, value: &T) -> Result<(), ToolError> {
+        Self::write_file(path, value, false)
+    }
+    fn write_file<T: Serialize>(path: &Path, value: &T, replace: bool) -> Result<(), ToolError> {
         let parent = path.parent().expect("presentation path has parent");
         memory::ReaderPrivateStorageGate::create_dir_all(parent).map_err(storage)?;
         let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(storage)?;
         serde_json::to_writer(&mut temporary, value).map_err(storage)?;
         temporary.flush().map_err(storage)?;
         temporary.as_file().sync_all().map_err(storage)?;
-        temporary.persist_noclobber(path).map_err(storage)?;
+        if replace { temporary.persist(path).map_err(storage)?; }
+        else { temporary.persist_noclobber(path).map_err(storage)?; }
         memory::ReaderPrivateStorageGate::sync_parent(path).map_err(storage)?;
         Ok(())
     }
@@ -256,7 +281,7 @@ fn session<'a>(state: &'a PrivateBookContext<'_>, session_id: &str) -> Result<&'
         .user.agent_history
         .sessions
         .iter()
-        .find(|s| s.id == session_id && s.book_id == state.book.base.book_id)
+        .find(|s| s.id == session_id && s.matches_scope(state.learning_workspace_id, &state.book.base.book_id))
         .ok_or_else(owner_error)
 }
 fn owner(state: &PrivateBookContext<'_>, session_id: &str) -> Result<PresentationOwner, ToolError> {
@@ -304,13 +329,15 @@ fn validate_content(
     }
     let mut refs = std::collections::HashSet::new();
     for binding in &content.source_bindings {
-        if binding.book_id != owner.book_id
+        if (binding.book_id != owner.book_id && binding.publication_id.is_none())
+            || (binding.publication_id.is_some() && (binding.publication_id.as_deref().is_none_or(str::is_empty)
+                || binding.source_revision.as_deref().is_none_or(str::is_empty)))
             || binding.source_ref_id.trim().is_empty()
-            || binding.evidence_text_digest.trim().is_empty()
+            || !binding.valid_evidence()
             || !refs.insert(&binding.source_ref_id)
         {
             return Err(invalid(
-                "Content source bindings must be unique bindings for the owning book",
+                "Content sources must be unique bindings for the owning book or an exact reference publication",
             ));
         }
     }
@@ -318,6 +345,95 @@ fn validate_content(
 }
 
 impl PrivateBookContext<'_> {
+    pub(crate) fn read_presentation_feedback(
+        &self, session_id: &str, turn_id: &str, reference: &PresentationRef,
+    ) -> Result<PresentationFeedback, ToolError> {
+        crate::presentation_api::delivered_version(self, session_id, turn_id, reference)?;
+        let store = PresentationStore::for_user(self.user)?;
+        match PresentationStore::read::<PresentationFeedback>(&store.feedback_path(reference)?) {
+            Ok(feedback) => {
+                if feedback.session_id != session_id || feedback.reference != *reference {
+                    return Err(owner_error());
+                }
+                Ok(feedback)
+            }
+            Err(e) if e.error_code == "PRESENTATION_NOT_FOUND" => Ok(PresentationFeedback {
+                session_id: session_id.into(), turn_id: turn_id.into(), reference: reference.clone(),
+                feedback_revision: 0, selection: None, saved_state: None, created_at: None, updated_at: None,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Called under the host's existing user lock. Retries do not add votes or writes.
+    pub(crate) fn set_presentation_feedback(
+        &self, session_id: &str, turn_id: &str, reference: &PresentationRef,
+        selection: Option<PresentationFeedbackSelection>, now: &str,
+    ) -> Result<PresentationFeedback, ToolError> {
+        let mut feedback = self.read_presentation_feedback(session_id, turn_id, reference)?;
+        if feedback.selection == selection { return Ok(feedback); }
+        feedback.feedback_revision = feedback.feedback_revision.checked_add(1)
+            .ok_or_else(|| invalid("Feedback revision overflow"))?;
+        feedback.turn_id = turn_id.into();
+        feedback.selection = selection;
+        feedback.saved_state = None;
+        feedback.created_at.get_or_insert_with(|| now.into());
+        feedback.updated_at = Some(now.into());
+        let store = PresentationStore::for_user(self.user)?;
+        store.replace_private(&store.feedback_path(reference)?, &feedback)?;
+        Ok(feedback)
+    }
+
+    pub(crate) fn attach_presentation_feedback_state(
+        &self, session_id: &str, turn_id: &str, reference: &PresentationRef,
+        feedback_revision: u32, saved_state: PresentationFollowUp, now: &str,
+    ) -> Result<PresentationFeedback, ToolError> {
+        let mut feedback = self.read_presentation_feedback(session_id, turn_id, reference)?;
+        if feedback.selection.is_none() || feedback.feedback_revision != feedback_revision {
+            return Err(error("PRESENTATION_FEEDBACK_STALE", "conflict", "Feedback changed or was withdrawn; read its current state"));
+        }
+        if saved_state.reference != *reference || saved_state.session_id != session_id
+            || saved_state.turn_id != turn_id || feedback.turn_id != turn_id {
+            return Err(invalid("Snapshot must belong to the feedback's exact delivery"));
+        }
+        self.read_presentation_state(&saved_state)?;
+        if let Some(existing) = &feedback.saved_state {
+            if existing == &saved_state { return Ok(feedback); }
+            return Err(error("PRESENTATION_FEEDBACK_STATE_CONFLICT", "conflict", "Feedback already has an exact saved snapshot"));
+        }
+        feedback.saved_state = Some(saved_state);
+        feedback.updated_at = Some(now.into());
+        let store = PresentationStore::for_user(self.user)?;
+        store.replace_private(&store.feedback_path(reference)?, &feedback)?;
+        Ok(feedback)
+    }
+
+    /// Immutable input facts survive runs that read methods without making a page.
+    pub(crate) fn record_presentation_methods(&self, session_id: &str, turn_id: &str, observations: &PresentationMethodObservations) -> Result<(), ToolError> {
+        owner(self, session_id)?;
+        pending_turn(self, session_id, turn_id)?;
+        if observations.is_empty() { return Ok(()); }
+        let store = PresentationStore::for_user(self.user)?;
+        let path = store.method_observation_dir(session_id, turn_id).join(format!("{}.json", new_id("input")));
+        store.write_private(&path, observations)
+    }
+
+    pub(crate) fn presentation_method_observations(&self, session_id: &str, turn_id: &str) -> Result<PresentationMethodObservations, ToolError> {
+        session(self, session_id)?;
+        let store = PresentationStore::for_user(self.user)?;
+        let path = store.method_observation_dir(session_id, turn_id);
+        let entries = match fs::read_dir(path) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Default::default()),
+            Err(e) => return Err(storage(e)),
+        };
+        let mut paths = entries.map(|e| e.map(|e| e.path())).collect::<Result<Vec<_>, _>>().map_err(storage)?;
+        paths.sort();
+        let mut observations = PresentationMethodObservations::default();
+        for path in paths { observations.merge(&PresentationStore::read(&path)?); }
+        Ok(observations)
+    }
+
     /// Latest saved scene of this exact version; never search a newer content revision.
     pub(crate) fn latest_presentation_state(
         &self,
@@ -549,7 +665,7 @@ pub(crate) fn validate_answer_references(
     outcome: &OuterOutcome,
     messages: &[runtime::Message],
     answer_bindings: &[runtime::orchestrator::SourceBinding],
-) -> Result<(), ToolError> {
+) -> Result<Vec<runtime::orchestrator::SourceBinding>, ToolError> {
     let mut bindings = answer_bindings.to_vec();
     if let Some(view) = &outcome.answer_view {
         for part in &view.parts {
@@ -576,10 +692,16 @@ pub(crate) fn validate_answer_references(
                             "Source ref identifies different evidence in this answer",
                         ));
                     }
-                    bindings.push(binding);
+                    if !bindings.iter().any(|old| old.source_ref_id == binding.source_ref_id) {
+                        bindings.push(binding);
+                    }
                 }
             }
         }
     }
-    Ok(())
+    // Current-book presentation sources retain their existing version-owned lifecycle.
+    // Reference sources must also travel with the answer for cross-book follow-ups.
+    bindings.retain(|b| b.publication_id.is_some()
+        || answer_bindings.iter().any(|answer| answer.source_ref_id == b.source_ref_id));
+    Ok(bindings)
 }

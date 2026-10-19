@@ -9,6 +9,7 @@ fn examples(name: &str) -> Vec<Value> {
 fn source_book() -> Book {
     let mut base = book_leaves(1).base;
     base.graph_nodes.push(GraphNode {
+        identity: None, evidence: vec![],
         id: "concept:premise".into(), node_type: GraphNodeType::Concept,
         name: "前提".into(), occurrences: vec!["1.1".into()], source_lid: None,
     });

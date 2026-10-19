@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AskQuote, MemoryRecord, PdfRangesProjectResponse } from "./api";
 import { selectionContextForAgentNote } from "./agent-note-selection";
@@ -65,11 +64,7 @@ describe("Agent answer selection Note provenance", () => {
     });
   });
 
-  it("does not invent ranges for legacy Agent turns and is wired into App saving", () => {
+  it("does not invent ranges for legacy Agent turns", () => {
     expect(selectionContextForAgentNote({ lid: "1.1", quote: "legacy" })).toBeUndefined();
-
-    const app = readFileSync("src/App.vue", "utf8");
-    expect(app).toContain("selectionContextForAgentNote(turn.questionSelection)");
-    expect(app).toContain("selection_context: selectionContext");
   });
 });

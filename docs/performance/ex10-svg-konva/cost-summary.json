@@ -1,0 +1,218 @@
+[
+  {
+    "batch": "batch1",
+    "sample": "B1",
+    "summary": {
+      "condition": "B",
+      "elapsed_ms": 456061,
+      "model": "deepseek-v4-flash",
+      "model_requests": 10,
+      "status": 200,
+      "writes": 3
+    },
+    "delivered": true,
+    "incomplete": null,
+    "warning": null,
+    "tokens": 1051449,
+    "unknown_usage": 0,
+    "operations": {
+      "write": 3,
+      "preview": 5,
+      "deliver": 1
+    },
+    "scene_js_bytes": [
+      24967,
+      24878,
+      24971
+    ],
+    "writes": [
+      {
+        "assembled_bytes": 39663,
+        "assembly_us": 5,
+        "elapsed_ms": 272001,
+        "marker_count": 0,
+        "raw_bytes": 39663
+      },
+      {
+        "assembled_bytes": 39574,
+        "assembly_us": 21,
+        "elapsed_ms": 325273,
+        "marker_count": 0,
+        "raw_bytes": 39574
+      },
+      {
+        "assembled_bytes": 39667,
+        "assembly_us": 2,
+        "elapsed_ms": 390663,
+        "marker_count": 0,
+        "raw_bytes": 39667
+      }
+    ]
+  },
+  {
+    "batch": "batch1",
+    "sample": "C1",
+    "summary": {
+      "condition": "C",
+      "elapsed_ms": 252158,
+      "model": "deepseek-v4-flash",
+      "model_requests": 3,
+      "status": 500,
+      "writes": 2
+    },
+    "delivered": false,
+    "incomplete": null,
+    "warning": null,
+    "tokens": 222139,
+    "unknown_usage": 0,
+    "operations": {
+      "write": 2,
+      "preview": 0,
+      "deliver": 0
+    },
+    "scene_js_bytes": [
+      19427,
+      19286
+    ],
+    "writes": [
+      {
+        "assembled_bytes": 223204,
+        "assembly_us": 907,
+        "elapsed_ms": 215081,
+        "marker_count": 1,
+        "raw_bytes": 30313
+      },
+      {
+        "assembled_bytes": 223063,
+        "assembly_us": 932,
+        "elapsed_ms": 251979,
+        "marker_count": 1,
+        "raw_bytes": 30172
+      }
+    ]
+  },
+  {
+    "batch": "batch2",
+    "sample": "B1",
+    "summary": {
+      "condition": "B",
+      "elapsed_ms": 272410,
+      "model": "deepseek-v4-flash",
+      "model_requests": 3,
+      "status": 502,
+      "writes": 0
+    },
+    "delivered": false,
+    "incomplete": null,
+    "warning": null,
+    "tokens": 20367,
+    "unknown_usage": 1,
+    "operations": {
+      "write": 0,
+      "preview": 0,
+      "deliver": 0
+    },
+    "scene_js_bytes": [],
+    "writes": []
+  },
+  {
+    "batch": "batch3",
+    "sample": "B1",
+    "summary": {
+      "condition": "B",
+      "elapsed_ms": 451101,
+      "model": "deepseek-v4-flash",
+      "model_requests": 8,
+      "status": 200,
+      "writes": 2
+    },
+    "delivered": true,
+    "incomplete": false,
+    "warning": null,
+    "tokens": 705631,
+    "unknown_usage": 0,
+    "operations": {
+      "write": 2,
+      "preview": 7,
+      "deliver": 1
+    },
+    "scene_js_bytes": [
+      20333,
+      20682
+    ],
+    "writes": [
+      {
+        "assembled_bytes": 28973,
+        "assembly_us": 2,
+        "elapsed_ms": 265774,
+        "marker_count": 0,
+        "raw_bytes": 28973
+      },
+      {
+        "assembled_bytes": 29711,
+        "assembly_us": 1,
+        "elapsed_ms": 415666,
+        "marker_count": 0,
+        "raw_bytes": 29711
+      }
+    ]
+  },
+  {
+    "batch": "batch3",
+    "sample": "C1",
+    "summary": {
+      "condition": "C",
+      "elapsed_ms": 514168,
+      "model": "deepseek-v4-flash",
+      "model_requests": 12,
+      "status": 200,
+      "writes": 4
+    },
+    "delivered": true,
+    "incomplete": true,
+    "warning": "TURN_LIMIT_EXCEEDED",
+    "tokens": 1303284,
+    "unknown_usage": 0,
+    "operations": {
+      "write": 4,
+      "preview": 12,
+      "deliver": 1
+    },
+    "scene_js_bytes": [
+      24758,
+      25314,
+      25764,
+      25764
+    ],
+    "writes": [
+      {
+        "assembled_bytes": 229273,
+        "assembly_us": 4815,
+        "elapsed_ms": 264924,
+        "marker_count": 1,
+        "raw_bytes": 36382
+      },
+      {
+        "assembled_bytes": 229845,
+        "assembly_us": 894,
+        "elapsed_ms": 333584,
+        "marker_count": 1,
+        "raw_bytes": 36954
+      },
+      {
+        "assembled_bytes": 230397,
+        "assembly_us": 806,
+        "elapsed_ms": 407988,
+        "marker_count": 1,
+        "raw_bytes": 37506
+      },
+      {
+        "assembled_bytes": 230479,
+        "assembly_us": 874,
+        "elapsed_ms": 470632,
+        "marker_count": 1,
+        "raw_bytes": 37588
+      }
+    ]
+  }
+]

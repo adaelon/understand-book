@@ -1,5 +1,13 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-16 17:16 HKT 已上线目录跳转优化与专注阅读白底：跳转关键路径直接提交并携带正文，最近正文缓存、连续点击合并和旧读位/补载结果隔离；专注模式去掉右上角菜单，保留底部阅读工具。release `reader-navigation-20261016`、schema14、PID69724，前后授权材料与制作能力一致。见[实现、实测与恢复记录](performance/reader-navigation-20261016/README.md)。
+
+2026-10-16 16:02 HKT 已上线新版解释模板、三维制作与导出、演示版本/反馈、跨书补讲与理解接续、当日对话压缩修复。release `current-20261016`、schema14、PID64600；主服务、worker与前端目录一并更新。Linux Runtime611通过；前端127通过；Server795项经并行与逐项复验通过。Linux真实三视口WebGL预览与交付通过，无外部模型调用。reader11项/admin12项授权版本、正文、私有隔离和四项制作能力与切换前一致，停服至恢复本机验收11.88秒。见[上线与恢复记录](performance/current-release-20261016/README.md)。下列旧日期段落保留历史。
+
+2026-10-16 00:14 HKT 已上线上下文缓存稳定性 CC1–CC3，release `context-cache-20261015`、schema14、PID14712。基础 system 与指导差量发布、48 KiB 批量回收及精简 checkpoint 消费投影生效。Linux Runtime 590通过/0失败/4忽略；读者11项、管理员12项授权书籍版本清单与切换前一致，正文读取、私有书籍隔离、四项展示能力和公网入口通过。停服至本机恢复验收16秒，沿用原数据；线上长会话缓存率尚未测量。见[上线与恢复记录](performance/context-cache-cc-20261015/deployment/README.md)。下列旧日期段落保留历史。
+
+2026-10-15 22:44 HKT 已上线命令行书籍热发布，release `online-publication-20261015`、schema14、PID4476。22:48 HKT 真实热发布与同编号重试通过，PID不变；《深入 Understand Book》仅 admin、adaelon 可读。首次升级停启15.06秒，后续发书不需停服。见[上线、验收与恢复记录](performance/online-publication-20261015/README.md)。下列旧日期段落保留历史。
+
 2026-10-15 18:24:16 HKT 已发布目录长标题重叠修复，沿用 `current-20261015`。目录行按内容高度展开；线上《深入理解ai agent》292项在1440×900、1100×440、390×844均无文字越界，搜索及滚动通过。仅更新前端，服务PID 101669保持。刷新页面加载新版；见 [验证与恢复记录](performance/outline-wrap-20261015/README.md)。
 
 2026-10-15 15:15:29 HKT 已发布当前工作区的产品改动，release 为 `current-20261015`，Tutor 指导 `tb4.v5`，服务 PID 101669、active。包含正文/PDF专注分页、精确读位与来源接续、相关阅读器修复及新出题规则。15:30:19 HKT 同版追加首页内测群二维码，支持查看原图与保存，保留10月22日前有效提示；15:53:32 HKT 加入版权页脚、服务条款、隐私说明、联系我们与关于我们入口。两次首页更新均未重启服务。数据根与 schema 13 沿用，账号、材料、聊天及笔记保留。FP7 剩余性能验收按用户明确指令暂停，不宣称完整通过。见 [发布与回退记录](performance/current-release-20261015/README.md)。下列旧日期段落保留历史。
@@ -41,9 +49,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/current-20261015`，Tutor 指导 `tb4.v5`；包括专注阅读、首页内测群二维码与网站信息页脚。Rust `--release`，schema 13。此前 release 保留，恢复位置见[本次发布记录](performance/current-release-20261015/README.md)。
+- release：`/opt/understand-book/releases/context-cache-20261015`，Tutor 指导 `tb4.v5`；包含上下文缓存稳定性与既有命令行书籍热发布，沿用既有前端。Rust `--release`，schema14。旧 release 被资源链接引用，须保留。见[本次发布记录](performance/context-cache-cc-20261015/deployment/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema 13；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema14；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 

@@ -213,8 +213,8 @@ impl Default for ModelRuntimeCatalog {
         gpt.supports_parallel_tools = true;
 
         let mut profiles = vec![glm, gpt];
-        // Official Flash names, including the still-supported V4 aliases. Model capacity
-        // does not expand the application's existing 96K compaction pressure threshold.
+        // Official Flash names, including the still-supported V4 aliases, use
+        // the same proportional compaction watermark as the other profiles.
         for model in [
             "deepseek-flash",
             "deepseek-v4-flash",
@@ -224,7 +224,6 @@ impl Default for ModelRuntimeCatalog {
             flash.profile_id = "resident-agent-deepseek-flash-v1".into();
             flash.model_match = ModelSelector::Exact(model.into());
             flash.context_window_tokens = 1_000_000;
-            flash.compaction.high_watermark_ratio = 96_000.0 / 1_000_000.0;
             profiles.push(flash);
         }
         Self {
@@ -308,6 +307,8 @@ pub struct ActiveContextStatus {
 pub struct AgentRequestPlan {
     /// Ephemeral browser observations; never persisted into conversation history.
     pub preview_images: Vec<crate::presentation_author::PreviewImage>,
+    pub video_images: Vec<crate::video::ModelVideoImage>,
+    pub question_image: Option<base_schema::VideoQuestionImage>,
     pub output_token_limit: Option<u32>,
     pub version: String,
     pub runtime_profile: ModelRuntimeProfile,
@@ -357,16 +358,13 @@ impl AgentRequestPlan {
     ) -> Self {
         // Flash reasoning and the final answer share the completion budget.
         // Page authoring keeps its larger, explicit allowance.
-        // Preserve the application's input compaction threshold while reserving
-        // the same output allowance that is sent to the provider.
+        // Reserve the same output allowance that is sent to the provider;
+        // both input and output count toward the profile's pressure watermark.
         let output_token_limit = if use_profile_instructions
             && runtime_profile.resolution == ModelProfileResolution::CatalogMatch
             && runtime_profile.profile_id == "resident-agent-deepseek-flash-v1"
         {
             let limit = if tools.iter().any(|tool| tool.name == "presentation.author") { 131_072 } else { 32_768 };
-            let extra = i64::from(limit) - i64::from(runtime_profile.output_reserve_tokens);
-            runtime_profile.compaction.high_watermark_ratio +=
-                extra as f32 / runtime_profile.context_window_tokens as f32;
             runtime_profile.output_reserve_tokens = limit;
             Some(limit)
         } else {
@@ -430,6 +428,8 @@ impl AgentRequestPlan {
 
         Self {
             preview_images: Vec::new(),
+            video_images: Vec::new(),
+            question_image: None,
             version: AGENT_REQUEST_PLAN_VERSION.into(),
             active_context: ActiveContextStatus {
                 estimated_input_tokens,
@@ -530,7 +530,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deepseek_flash_aliases_preserve_application_compaction_budget() {
+    fn deepseek_flash_aliases_compact_at_the_actual_window_watermark() {
         for model in [
             "deepseek-flash",
             "deepseek-v4-flash",
@@ -544,7 +544,22 @@ mod tests {
             let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
             assert_eq!(plan.output_token_limit, Some(32_768));
             assert_eq!(plan.active_context.output_reserve_tokens, 32_768);
-            assert!(budget.target_input_tokens.abs_diff(84_000) <= 1);
+            assert_eq!(budget.high_watermark_tokens, 750_000);
+            assert_eq!(budget.target_input_tokens, 750_000 - 32_768 - 4_000);
+
+            // The observed slow turn used about 102K input tokens in a 1M window.
+            let messages = [Message::user("x".repeat(102_477 * 4))];
+            let plan = AgentRequestPlan::for_agent_turn(plan.runtime_profile, &messages, &[]);
+            let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
+            assert!(budget.estimated_input_tokens >= 102_477);
+            assert!(!budget.over_high_watermark);
+            assert!(budget.fits);
+
+            let messages = [Message::user("x".repeat(budget.target_input_tokens as usize * 4))];
+            let plan = AgentRequestPlan::for_agent_turn(plan.runtime_profile, &messages, &[]);
+            let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
+            assert!(budget.over_high_watermark);
+            assert!(budget.fits);
         }
     }
 

@@ -1,0 +1,16 @@
+{
+  "status": "deployed",
+  "published_at_utc": "2026-10-13T15:44:06.134085+00:00",
+  "url": "https://understandbook.top/index.html?account=login",
+  "release": "/opt/understand-book/releases/last-hit-default-grants-20261013",
+  "backup": "/opt/understand-book/backups/presentation-export-quality-20261013T154355Z",
+  "source_files": [
+    "packages/web/src/presentation-share.ts"
+  ],
+  "uploaded_assets": [
+    "reader-CI6pWOjO.js"
+  ],
+  "service_before": "MainPID=3526\nWorkingDirectory=/opt/understand-book/releases/last-hit-default-grants-20261013\nActiveState=active",
+  "service_after": "MainPID=3526\nWorkingDirectory=/opt/understand-book/releases/last-hit-default-grants-20261013\nActiveState=active",
+  "previous_assets_retained": true
+}

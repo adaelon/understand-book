@@ -82,7 +82,7 @@
           "constraints": [],
           "current_request": "我知道变量可以赋值，但对引用的理解是它会复制原值。\n我觉得 let bar = &foo 是把 Foo 复制了一份给 bar，所以两个 println 都能用。这样理解对吗？帮我找出该改哪一步，再让我试着解释。",
           "current_target": null,
-          "details": "tutor.step understanding with object_id and after",
+          "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
           "entries": [],
           "evidence_watermark": 0,
           "interpretations": [],
@@ -235,7 +235,7 @@
       ],
       "event_id": "move:turn_ab532cab6797fd00:repair-borrow-as-copy",
       "kind": "move_selected",
-      "occurred_at": "2026-10-12T07:24:14.480185Z",
+      "occurred_at": "2026-10-16T07:56:17.6603638Z",
       "payload": {
         "help_policy": "preserve_exposure",
         "move": {
@@ -621,7 +621,7 @@
       "injected_fact_ids": [],
       "snapshot_revision": 0
     },
-    "tokens_spent": 36527,
+    "tokens_spent": 47082,
     "trace": [
       {
         "args": "{\"end_lid\":\"1.1\",\"lid\":\"1.1\"}",

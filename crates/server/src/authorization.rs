@@ -34,20 +34,29 @@ pub(crate) enum Capability {
     Logout,
     Allowance,
     AccountUsage,
+    CostSummary,
+    WorkspaceRelease(Option<(String, u32)>, bool),
+    WorkspaceReleaseUse(String, u32),
+    WorkspaceInstance(String, &'static str),
     EmailBinding,
     Password,
     McpList,
     McpCreate,
     McpRevoke(String),
     Library,
+    Videos,
+    Video(base_schema::VideoSourceRef, String),
     Book(PublishedBookRef, String),
     History,
     Recap,
+    LearningRecords(Option<String>),
     Chat(String),
     Run(String, String),
     Workspace(String),
     NewWorkspace,
+    LearningWorkspace(Option<String>, &'static str),
     Presentation(bool),
+    PresentationFeedback(&'static str),
     ChatAction,
     Admission(bool),
     Tutor(bool),
@@ -79,11 +88,16 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/account/mcp/credentials" => Capability::McpCreate,
         "/account/allowance" => Capability::Allowance,
         "/account/usage" => Capability::AccountUsage,
+        "/account/cost-summary" => Capability::CostSummary,
+        "/workspace-releases" => Capability::WorkspaceRelease(None, false),
         "/account/email/start" | "/account/email/resend" | "/account/email/complete" => Capability::EmailBinding,
         "/library" | "/book/library" => Capability::Library,
+        "/videos" => Capability::Videos,
         "/me/chats" | "/agent/history" => Capability::History,
         "/agent/history/recap" => Capability::Recap,
+        "/me/learning-records" => Capability::LearningRecords(None),
         "/workspaces" => Capability::NewWorkspace,
+        "/learning-workspaces" => Capability::LearningWorkspace(None, ""),
         "/agent/runs" => Capability::Admission(false),
         "/agent/chat" => Capability::Admission(true),
         "/me/tutor/state" | "/tutor/state" => Capability::Tutor(false),
@@ -93,7 +107,14 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/agent/presentation.observe" | "/me/presentation.observe" => {
             Capability::Presentation(true)
         }
+        "/agent/presentation.feedback.read" | "/me/presentation.feedback.read" => Capability::PresentationFeedback("read"),
+        "/agent/presentation.feedback.set" | "/me/presentation.feedback.set" => Capability::PresentationFeedback("set"),
+        "/agent/presentation.feedback.clear" | "/me/presentation.feedback.clear" => Capability::PresentationFeedback("clear"),
+        "/agent/presentation.feedback.attach_state" | "/me/presentation.feedback.attach_state" => Capability::PresentationFeedback("attach_state"),
         _ => {
+            if let Some((reference, leaf)) = crate::video_media::route_parts(path) {
+                return Ok(Capability::Video(reference, leaf.into()));
+            }
             let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
             match parts.as_slice() {
                 ["account", "mcp", "credentials", id, "revoke"] => Capability::McpRevoke((*id).into()),
@@ -107,6 +128,19 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
                     )
                 }
                 ["me", "chats", id] => Capability::Chat((*id).into()),
+                ["me", "learning-records", id] => Capability::LearningRecords(Some((*id).into())),
+                ["learning-workspaces", id] => Capability::LearningWorkspace(Some((*id).into()), ""),
+                ["workspace-releases", id, "versions", version] => Capability::WorkspaceRelease(Some(((*id).into(), version.parse().map_err(|_|missing())?)), false),
+                ["workspace-releases", id, "versions", version, "export"] => Capability::WorkspaceRelease(Some(((*id).into(), version.parse().map_err(|_|missing())?)), true),
+                ["workspace-releases", id, "versions", version, "use"] => Capability::WorkspaceReleaseUse((*id).into(),version.parse().map_err(|_|missing())?),
+                ["learning-workspaces", id, "shared-release"] => Capability::WorkspaceInstance((*id).into(),""),
+                ["learning-workspaces", id, "shared-release", "preview"] => Capability::WorkspaceInstance((*id).into(),"preview"),
+                ["learning-workspaces", id, "shared-release", "update"] => Capability::WorkspaceInstance((*id).into(),"update"),
+                ["learning-workspaces", id, "goal"] => Capability::LearningWorkspace(Some((*id).into()), "goal"),
+                ["learning-workspaces", id, "members"] => Capability::LearningWorkspace(Some((*id).into()), "members"),
+                ["learning-workspaces", id, "archive"] => Capability::LearningWorkspace(Some((*id).into()), "archive"),
+                ["learning-workspaces", id, "preparations"] => Capability::LearningWorkspace(Some((*id).into()), "preparations"),
+                ["learning-workspaces", id, "records"] => Capability::LearningWorkspace(Some((*id).into()), "records"),
                 ["workspaces", id, ..] => Capability::Workspace((*id).into()),
                 ["agent", "runs", id] => Capability::Run((*id).into(), String::new()),
                 ["agent", "runs", id, action]
@@ -134,6 +168,9 @@ pub(crate) fn book_leaf_allowed(leaf: &str) -> bool {
             | "paper_reading_guide"
             | "source_fingerprint"
             | "source_manifest"
+            | "video_transcript"
+            | "video_context"
+            | "video/media"
             | "asset_manifest"
             | "formula_semantics"
             | "pdf_source_map"
@@ -244,9 +281,9 @@ impl Authorization {
             _capacity: capacity,
             access: Arc::downgrade(self),
             principal: context.principal.clone(),
-            reference,
+            reference: reference.clone(),
             descriptor: crate::agent_stream::RunDescriptor {
-                book_id: session.book_id.clone(),
+                book_id: reference.book_id,
                 session_id: session.id.clone(),
                 turn_id: turn_id.into(),
             },
@@ -297,6 +334,112 @@ impl Authorization {
             .get(principal.user_id(), &now.to_string())?;
         Ok(AuthorizedContext { principal, user })
     }
+    pub(crate) fn learning_workspace_active(&self, owner: &str, id: &str) -> Result<bool, ToolError> {
+        Ok(!self.control.lock().unwrap().learning_workspace(owner, id)?.archived)
+    }
+
+    pub(crate) fn learning_workspace_metadata(&self, owner: &str, id: &str) -> Result<base_schema::LearningWorkspace, ToolError> {
+        self.control.lock().unwrap().learning_workspace(owner, id)
+    }
+
+    pub(crate) fn sync_learning_goal(&self, user: &crate::user_runtime::UserRuntime, id: &str, now: &str) -> Result<(), ToolError> {
+        let goal = self.control.lock().unwrap().learning_workspace(user.user_id().ok_or_else(missing)?, id)?.goal;
+        user.learning_store_for_workspace(Some(id))?.sync_workspace_goal(goal.revision, now)?;
+        Ok(())
+    }
+
+    pub(crate) fn revise_goal_from_run(
+        &self, user: &mut crate::user_runtime::UserRuntime, scope: &crate::run_scope::RunScope,
+        turn: &crate::AgentTurnRef, update: &runtime::workspace_goal::WorkspaceGoalUpdate,
+        current_user: &str, now: i64,
+    ) -> Result<base_schema::WorkspaceGoal, ToolError> {
+        scope.check_user(user)?;
+        let id = scope.learning_workspace_id.as_deref().ok_or_else(|| error("WORKSPACE_GOAL_UNAVAILABLE", "conflict", "This run has no learning workspace"))?;
+        let accepted = user.agent_history.sessions.iter().find(|session| session.id == turn.session_id)
+            .filter(|session| session.learning_workspace_id.as_deref() == Some(id))
+            .and_then(|session| session.turns.iter().find(|saved| saved.turn_id == turn.turn_id))
+            .ok_or_else(missing)?;
+        if accepted.user_authored_text().trim() != current_user.trim() {
+            return Err(error("WORKSPACE_GOAL_USER_REQUIRED", "validation", "Use the original user request for this turn"));
+        }
+        let mut control = self.control.lock().unwrap();
+        let current = control.learning_workspace(&scope.user_id, id)?;
+        update.validate(&current.goal, accepted.user_authored_text())
+            .map_err(|message| error("WORKSPACE_GOAL_UPDATE_INVALID", "validation", &message))?;
+        let updated = control.revise_learning_workspace_goal(&scope.user_id, id, update.goal.clone(), now)?;
+        drop(control);
+        let receipt = (|| {
+            user.learning_store_for_workspace(Some(id))?.sync_workspace_goal(updated.goal.revision, &now.to_string())?;
+            crate::session_runtime::append(user, turn, &now.to_string(),
+                crate::session_event::EventBody::WorkspaceGoalUpdated { goal: updated.goal.clone() })
+        })();
+        receipt.map_err(|_| error("WORKSPACE_GOAL_COMMIT_INCOMPLETE", "unavailable",
+            "新目标已保存，本次对话的目标记录未完成；已停止本次安排，请在记录恢复后按新目标继续。"))?;
+        Ok(updated.goal)
+    }
+
+    /// Learning metadata is account-owned and does not require opening a Reader scene.
+    pub(crate) fn learning_workspace_request(
+        &self,
+        principal: &Principal,
+        method: &str,
+        id: Option<&str>,
+        action: &str,
+        input: Value,
+        now: i64,
+    ) -> Result<Value, ToolError> {
+        use base_schema::{PublishedBookRef, WorkspaceGoalInput};
+        use serde::Deserialize;
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Create {
+            goal: WorkspaceGoalInput,
+            #[serde(default)]
+            members: Vec<PublishedBookRef>,
+        }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Goal { goal: WorkspaceGoalInput }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Member { published_book_ref: PublishedBookRef }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Archive { archived: bool }
+        let invalid = || error("INVALID_REQUEST", "validation", "Invalid learning workspace request");
+        let owner = principal.user_id();
+        let mut control = self.control.lock().unwrap();
+        match (method, id, action) {
+            ("GET", None, "") => Ok(json!({"workspaces":control.list_learning_workspaces(owner)?})),
+            ("POST", None, "") => {
+                let input: Create = serde_json::from_value(input).map_err(|_| invalid())?;
+                Ok(json!(control.create_learning_workspace(owner, input.goal, input.members, now)?))
+            }
+            ("GET", Some(id), "") => Ok(json!(control.learning_workspace(owner, id)?)),
+            ("POST", Some(id), "goal") => {
+                let input: Goal = serde_json::from_value(input).map_err(|_| invalid())?;
+                let updated = control.revise_learning_workspace_goal(owner, id, input.goal, now)?;
+                drop(control);
+                let user = self.users.lock().unwrap().get(owner, &now.to_string())?;
+                user.lock().unwrap().learning_store_for_workspace(Some(id))?
+                    .sync_workspace_goal(updated.goal.revision, &now.to_string())?;
+                Ok(json!(updated))
+            }
+            ("POST" | "DELETE", Some(id), "members") => {
+                let input: Member = serde_json::from_value(input).map_err(|_| invalid())?;
+                Ok(json!(if method == "POST" {
+                    control.add_learning_workspace_member(owner, id, &input.published_book_ref, now)?
+                } else {
+                    control.remove_learning_workspace_member(owner, id, &input.published_book_ref, now)?
+                }))
+            }
+            ("POST", Some(id), "archive") => {
+                let input: Archive = serde_json::from_value(input).map_err(|_| invalid())?;
+                Ok(json!(control.set_learning_workspace_archived(owner, id, input.archived, now)?))
+            }
+            _ => Err(invalid()),
+        }
+    }
     pub(crate) fn workspace(
         &self,
         context: &AuthorizedContext,
@@ -342,12 +485,12 @@ impl AuthorizedContext {
                 .ok_or_else(missing)?;
             // Public history projection only: provider continuation and raw model messages stay private.
             Ok(
-                json!({"id":session.id,"book_id":session.book_id,"title":session.title,
+                json!({"id":session.id,"learning_workspace_id":session.learning_workspace_id,"book_id":session.book_id,"title":session.title,
                 "turns":session.turns.iter().map(turn_json).collect::<Vec<_>>()}),
             )
         } else {
             Ok(
-                json!({"sessions":user.agent_history.sessions.iter().map(|s| json!({"id":s.id,"book_id":s.book_id,"title":s.title,"updated_at":s.updated_at,"turn_count":s.turns.len()})).collect::<Vec<_>>()}),
+                json!({"sessions":user.agent_history.sessions.iter().map(|s| json!({"id":s.id,"learning_workspace_id":s.learning_workspace_id,"book_id":s.book_id,"title":s.title,"updated_at":s.updated_at,"turn_count":s.turns.len()})).collect::<Vec<_>>()}),
             )
         }
     }
@@ -360,11 +503,11 @@ impl AuthorizedContext {
             .find_map(|s| s.turns.iter().find(|t| t.turn_id == id).map(|t| (s, t)))
             .ok_or_else(missing)?;
         Ok(
-            json!({"book_id":session.book_id,"session_id":session.id,"turn_id":turn.turn_id,"turn":turn_json(turn)}),
+            json!({"book_id":turn.published_book_ref.as_ref().map_or(session.book_id.as_str(), |r|r.book_id.as_str()),"learning_workspace_id":session.learning_workspace_id,"session_id":session.id,"turn_id":turn.turn_id,"turn":turn_json(turn)}),
         )
     }
 }
-fn turn_json(turn: &crate::AgentChatTurn) -> Value {
+pub(crate) fn turn_json(turn: &crate::AgentChatTurn) -> Value {
     json!({"turn_id":turn.turn_id,"user":turn.user,"status":turn.status,"domain":turn.domain,
         "teaching_ref":turn.teaching_ref,"goal_ref":turn.goal_ref,"presentation_follow_up":turn.presentation_follow_up,
         "published_book_ref":turn.published_book_ref,"outcome":turn.outcome,

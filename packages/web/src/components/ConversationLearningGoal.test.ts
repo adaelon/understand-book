@@ -6,6 +6,16 @@ import type { TutorSession } from '../generated/TutorSession';
 
 const defaults = { enabled:true,busy:false,available:true,ready:true,otherSession:false,error:'' };
 
+it('keeps the workspace stage visible after switching materials without resuming outside its material scope', () => {
+  const session = { id:'learning', user_intent:'复习链式法则', status:'paused' } as TutorSession;
+  const w = mount(ConversationLearningGoal, { props: { ...defaults, session, workspaceScoped: true, otherSession: true } });
+  expect(w.text()).toContain('当前阶段'); expect(w.text()).toContain('复习链式法则');
+  expect(w.text()).toContain('当前阶段聚焦另一份资料');
+  expect(w.find('.goal-resume').exists()).toBe(false);
+  expect(w.find('[aria-label="调整阶段"]').exists()).toBe(true);
+  w.unmount();
+});
+
 it('leaves the first question to the chat input without an empty goal card', async () => {
   const w = mount(ConversationLearningGoal,{ props:{ ...defaults,session:null,enabled:false } });
   expect(w.find('section').exists()).toBe(false);

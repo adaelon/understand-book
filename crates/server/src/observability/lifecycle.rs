@@ -123,7 +123,7 @@ pub(crate) fn delivery_failed(outcome: &OuterOutcome) -> bool {
     outcome
         .delivery_diagnostics
         .as_ref()
-        .and_then(|diagnostics| diagnostics.repair.as_ref())
+        .and_then(|diagnostics| diagnostics.fallback.as_ref().or(diagnostics.repair.as_ref()))
         .is_some_and(|repair| !repair.issues.is_empty())
 }
 
@@ -170,6 +170,7 @@ mod tests {
 
     fn outcome(incomplete: bool, repair_issues: usize) -> OuterOutcome {
         let mut outcome = OuterOutcome {
+            teaching_delivery_move_refs: vec![],
             answer: Some("answer".into()),
             answer_view: None,
             incomplete,
@@ -185,6 +186,7 @@ mod tests {
             request_audit: Default::default(),
         };
         outcome.delivery_diagnostics = Some(AnswerDeliveryDiagnostics {
+                        fallback: None,
             initial: AnswerDeliveryAttemptDiagnostics::default(),
             repair: Some(AnswerDeliveryAttemptDiagnostics {
                 issues: (0..repair_issues)
@@ -214,5 +216,14 @@ mod tests {
             business_states(Some(&failed), false, PersistenceState::Saved).1,
             DeliveryState::Failed
         );
+    }
+
+    #[test]
+    fn valid_fallback_delivers_without_erasing_the_failed_repair() {
+        let mut recovered = outcome(true, 1);
+        recovered.delivery_diagnostics.as_mut().unwrap().fallback = Some(AnswerDeliveryAttemptDiagnostics::default());
+        assert_eq!(business_states(Some(&recovered), false, PersistenceState::Saved),
+            (ExecutionState::Completed, DeliveryState::Delivered, true));
+        assert_eq!(recovered.delivery_diagnostics.as_ref().unwrap().repair.as_ref().unwrap().issues.len(), 1);
     }
 }

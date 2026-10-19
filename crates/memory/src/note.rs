@@ -75,10 +75,22 @@ impl NoteExcerpt {
 pub struct NoteSourceBinding {
     pub source_ref_id: String,
     pub book_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub publication_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub source_revision: Option<String>,
     #[ts(
-        type = "{ start_lid: string; end_lid: string; ranges?: Array<{ lid: string; range: { start: number; end: number } }> }"
+        type = "{ start_lid: string; end_lid: string; ranges?: Array<{ lid: string; range: { start: number; end: number } }> } | null"
     )]
-    pub evidence_range: read_tools::EvidenceRange,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub evidence_range: Option<read_tools::EvidenceRange>,
+    // Preserve the admitted media snapshot without depending on the Runtime crate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "unknown", optional)]
+    pub media: Option<serde_json::Value>,
     pub evidence_text_digest: String,
     pub label_snapshot: String,
     pub preview_snapshot: String,

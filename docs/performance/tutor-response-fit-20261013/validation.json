@@ -1,0 +1,94 @@
+{
+  "status": "passed",
+  "guidance_revision": "tb4.v2",
+  "runtime_tests": 29,
+  "self_contained_revision_test": 1,
+  "after_replays": 4,
+  "before_replays": 4,
+  "contract_export_tests": 2,
+  "tool_reference_regenerated": true,
+  "model_comparison": "isolated Codex subagents; inherited model/settings; exact provider model ID not exposed",
+  "first_attempt_deliveries": {
+    "before": 3,
+    "after": 3
+  },
+  "repairs": "each reteach sample repaired only select arguments using actual tool error; original failures retained",
+  "semantic_review": "all four after samples preserve correct relationships, respond to reteaching, revise stale inference, and correct explicit misconception; baseline samples also address these points, so no causal improvement claim",
+  "normalization": "bounded real context; local source and event aliases; older fact envelopes reconstructed from stored words; two real requests and two scripted followups",
+  "provider_calls_during_replay": 0,
+  "production_provider_tested": false,
+  "samples": [
+    {
+      "variant": "before",
+      "case": "natural-paraphrase",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": null
+    },
+    {
+      "variant": "before",
+      "case": "reteach-request",
+      "delivery_count": 1,
+      "initial_tool_repair": true,
+      "text_unchanged_during_repair": true,
+      "evidence_status": null,
+      "superseded": null
+    },
+    {
+      "variant": "before",
+      "case": "stale-hypothesis",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": true
+    },
+    {
+      "variant": "before",
+      "case": "explicit-misconception",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": null
+    },
+    {
+      "variant": "after",
+      "case": "natural-paraphrase",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": true
+    },
+    {
+      "variant": "after",
+      "case": "reteach-request",
+      "delivery_count": 1,
+      "initial_tool_repair": true,
+      "text_unchanged_during_repair": true,
+      "evidence_status": null,
+      "superseded": null
+    },
+    {
+      "variant": "after",
+      "case": "stale-hypothesis",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": true
+    },
+    {
+      "variant": "after",
+      "case": "explicit-misconception",
+      "delivery_count": 1,
+      "initial_tool_repair": false,
+      "text_unchanged_during_repair": null,
+      "evidence_status": "unassessed",
+      "superseded": null
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "base": "https://115.190.121.150",
+  "history_source": "browser-only two-turn fixture; not saved on server",
+  "steps": [
+    {
+      "check": "oldest to newest; latest at bottom",
+      "width": 1440,
+      "turns": 2,
+      "position": {
+        "top": 516,
+        "height": 1024,
+        "viewport": 508
+      }
+    },
+    {
+      "check": "oldest to newest; latest at bottom",
+      "width": 390,
+      "turns": 2,
+      "position": {
+        "top": 621,
+        "height": 1024,
+        "viewport": 403
+      }
+    }
+  ],
+  "script_errors": [],
+  "submitted_questions": 0
+}

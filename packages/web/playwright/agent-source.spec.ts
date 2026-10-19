@@ -6,10 +6,14 @@ const contextAfter = "这些变化随后在独立队列中得到复核，同时�
 
 async function installSourceRoutes(page: Page) {
   const calls: string[] = [];
+  await page.route('**/api/book/asset_manifest', route => route.fulfill({ json: { version: 'asset_manifest.v1', book_id: 'source-book', images: [
+    { original_src: 'images/cache.svg', url_path: '/api/book/assets/cache.svg', status: 'available' },
+  ] } }));
+  await page.route('**/api/book/assets/cache.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="220" viewBox="0 0 800 220"><rect width="800" height="220" rx="20" fill="#f0ede5"/><rect x="50" y="65" width="260" height="90" rx="16" fill="#e0dccf"/><path d="M340 110H450m-18-14 18 14-18 14" stroke="#9a4e22" stroke-width="5" fill="none"/><rect x="490" y="65" width="260" height="90" rx="16" fill="#d8e3d6"/><g font-family="sans-serif" font-size="26" text-anchor="middle" fill="#343a32"><text x="180" y="120">Candidate</text><text x="620" y="120">Selected</text></g></svg>' }));
   await page.route("**/api/agent/source.resolve", async (route) => {
     calls.push("resolve");
     const body = route.request().postDataJSON() as { source_ref_id: string };
-    const text = `## 实验方法\n\n${contextBefore}\n\n${evidence}\n\n${contextAfter}\n\n- 独立队列\n- 功能实验\n\n$$E=mc^2$$\n\n\`\`\`python\ncount = 2\n\`\`\``;
+    const text = `## 实验方法\n\n${contextBefore}\n\n${evidence}\n\n| 教学候选 | 所属单元与来源 | 选入章节 | 进入宏观路线 |\n| 缓存复用已有结果 | 缓存，1.2 | 是 | 是 |\n| 数据变化后使缓存失效 | 缓存，1.3.2 | 是 | 否 |\n\n![候选进入路线的示意图](images/cache.svg)\n\n${contextAfter}\n\n- 独立队列\n- 功能实验\n\n$$E=mc^2$$\n\n\`\`\`python\ncount = 2\n\`\`\``;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -57,7 +61,7 @@ test("desktop source stays inline and opens an anchored popup before reader navi
   await expect(sourceButtons).toHaveCount(2);
   await expect(sourceButtons.nth(0)).toContainText("Materials and … [1]");
   await expect(sourceButtons.nth(1)).toContainText("2 个来源");
-  const paragraphBox = await page.locator(".answer-markdown.before-source p").first().boundingBox();
+  const paragraphBox = await page.locator(".answer-markdown p").first().boundingBox();
   const buttonBox = await sourceButtons.first().boundingBox();
   expect(paragraphBox).not.toBeNull();
   expect(buttonBox).not.toBeNull();
@@ -72,6 +76,8 @@ test("desktop source stays inline and opens an anchored popup before reader navi
   await expect(popup.locator('.katex')).toHaveCount(1);
   await expect(popup.locator('.katex-mathml')).toHaveCSS('position', 'absolute');
   await expect(popup.locator('pre code')).toContainText('count = 2');
+  await expect(popup.locator('table tr')).toHaveCount(3);
+  await expect.poll(() => popup.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(800);
   await expect(page.getByTestId("reader-status")).toHaveText("保持当前阅读位置");
   expect(calls).toEqual(["resolve"]);
   await expectInsideViewport(page, ".agent-source-popup", 1440, 640);
@@ -107,6 +113,8 @@ test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, te
 
   const popup = page.getByRole("dialog", { name: "回答来源" });
   await expect(popup.locator("mark")).toHaveText(evidence);
+  await expect(popup.locator('table tr')).toHaveCount(3);
+  await expect.poll(() => popup.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(800);
   await popup.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
   const box = await popup.boundingBox();
   expect(box).not.toBeNull();
@@ -120,26 +128,33 @@ test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, te
     (nodes) => nodes.some((node) => node.scrollWidth > node.clientWidth + 1),
   );
   expect(textOverflow).toBe(false);
+  const imageBox = (await popup.locator('img').boundingBox())!;
+  expect(imageBox.width).toBeLessThanOrEqual(354);
   await page.screenshot({ path: testInfo.outputPath("agent-source-mobile.png"), fullPage: true });
+  await popup.locator('img').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('agent-source-mobile-image.png'), fullPage: true });
 });
 
-test("answer fullscreen fills the viewport without losing the draft or answer", async ({ page }) => {
+test("desktop fullscreen and mobile conversation fill the viewport without losing the draft or answer", async ({ page }) => {
   for (const size of [{ width: 1440, height: 800 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(size);
     await page.goto("/agent-source-visual.html");
     await page.locator(".agent-input textarea").fill("未发送的问题");
-    if (size.width < 1024) await page.getByRole('button', { name: '问答操作', exact: true }).click();
-    await page.getByRole("button", { name: "问答全屏" }).click();
-    const rail = page.locator(".right-rail.fullscreen");
+    const mobile = size.width < 1024;
+    if (!mobile) await page.getByRole("button", { name: "问答全屏" }).click();
+    const selector = mobile ? '.right-rail.conversation-mobile' : '.right-rail.fullscreen';
+    const rail = page.locator(selector);
     await expect(rail).toBeVisible();
-    await expectInsideViewport(page, ".right-rail.fullscreen", size.width, size.height);
+    await expectInsideViewport(page, selector, size.width, size.height);
     const box = await rail.boundingBox();
     expect(box).toMatchObject({ x: 0, y: 0, width: size.width });
     expect(Math.abs(box!.height - size.height)).toBeLessThan(1);
     await expect(page.locator(".agent-input textarea")).toHaveValue("未发送的问题");
     await expect(page.locator(".transcript")).toContainText("剪接调控会改变心肌细胞");
-    await page.keyboard.press("Escape");
-    await expect(rail).toHaveCount(0);
+    if (!mobile) {
+      await page.keyboard.press("Escape");
+      await expect(rail).toHaveCount(0);
+    }
     await expect(page.locator(".agent-input textarea")).toHaveValue("未发送的问题");
   }
 });

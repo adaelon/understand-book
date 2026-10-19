@@ -46,6 +46,7 @@ describe("IP8 explicit legacy full-build compatibility", () => {
       },
     });
     expect(path.isAbsolute(result.build_plan_path)).toBe(true);
+    expect(result.plan.public_stage_closure).not.toContain("pass2");
     expect(validateBuildPlanV1(JSON.parse(readFileSync(result.build_plan_path, "utf8")))).toEqual(result.plan);
   });
 
@@ -53,7 +54,8 @@ describe("IP8 explicit legacy full-build compatibility", () => {
     const root = mkdtempSync(path.join(tmpdir(), "understand-book-ip8-existing-"));
     const workspace = writeTechnicalLearningWorkspace(root);
 
-    const result = prepareExplicitLegacyBuildPlan(workspace, root, { now: "2026-07-30T12:00:00.000Z" });
+    const result = prepareExplicitLegacyBuildPlan(workspace, root, { now: "2026-07-30T12:00:00.000Z", pass2: "enabled" });
+    expect(result.plan.public_stage_closure).toContain("pass2");
 
     expect(result).toMatchObject({
       version: "explicit_legacy_build_plan.v1",

@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "source": "8-second installation fixture, H.264/AAC",
+  "frame_decoded": true,
+  "audio_bytes": 256554,
+  "engine": "faster-whisper",
+  "engine_version": "1.2.1",
+  "model": "small.en",
+  "segments": 3,
+  "transcribed_characters": 102,
+  "load_ms": 5114,
+  "inference_ms": 4392,
+  "paid_model_calls": 0
+}

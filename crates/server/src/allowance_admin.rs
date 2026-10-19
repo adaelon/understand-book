@@ -1,6 +1,6 @@
 //! ADM3 business operations. The caller owns the immediate transaction and receipt.
 use crate::{
-    account_allowance::{MicroCny, ReceiptFen},
+    account_allowance::{AllowanceBasis, MicroCny, ReceiptFen},
     admin_store::invalid,
     user_storage_paths::error,
 };
@@ -14,6 +14,37 @@ use serde_json::{json, Value};
 pub(crate) struct Period {
     pub starts_at: i64,
     pub expires_at: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub basis: Option<AllowanceBasis>,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct BindBasis {
+    pub period_id: String,
+    pub revision: i64,
+    pub basis: AllowanceBasis,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PercentageAdjustment {
+    pub period_id: String,
+    pub revision: i64,
+    pub basis_version: String,
+    pub delta_milli_percent: i64,
+    pub reason: String,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PercentageReceipt {
+    pub period_id: String,
+    pub revision: i64,
+    pub basis_version: String,
+    pub delta_milli_percent: i64,
+    pub amount_fen: ReceiptFen,
+    pub paid_at: i64,
+    pub channel: String,
+    pub external_ref: Option<String>,
+    pub note: String,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -53,8 +84,23 @@ pub(crate) struct Correction {
     pub delta_micro_cny: MicroCny,
     pub reason: String,
 }
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PercentageCorrection {
+    pub receipt_id: String,
+    pub period_id: String,
+    pub revision: i64,
+    pub basis_version: String,
+    pub delta_milli_percent: i64,
+    pub delta_fen: i64,
+    pub reason: String,
+}
 pub(crate) enum Mutation {
     Period(Period),
+    Basis(BindBasis),
+    PercentageAdjustment(PercentageAdjustment),
+    PercentageReceipt(PercentageReceipt),
+    PercentageCorrection(PercentageCorrection),
     Adjustment(Adjustment),
     Validity(Validity),
     Receipt(Receipt),
@@ -80,6 +126,16 @@ fn normalized(text: &mut String, required: bool) -> Result<(), ToolError> {
 impl Mutation {
     pub fn normalize(&mut self) -> Result<(), ToolError> {
         match self {
+            Self::Period(p) => if let Some(b) = &mut p.basis { normalized(&mut b.version, true)?; b.validate()?; },
+            Self::Basis(b) => { normalized(&mut b.basis.version, true)?; b.basis.validate()?; },
+            Self::PercentageAdjustment(a) => { normalized(&mut a.reason, true)?; normalized(&mut a.basis_version, true)?; },
+            Self::PercentageCorrection(c) => { normalized(&mut c.reason, true)?; normalized(&mut c.basis_version, true)?; },
+            Self::PercentageReceipt(r) => {
+                normalized(&mut r.basis_version, true)?;
+                normalized(&mut r.channel, true)?;
+                normalized(&mut r.note, false)?;
+                if let Some(reference) = &mut r.external_ref { normalized(reference, true)?; }
+            },
             Self::Adjustment(a) => normalized(&mut a.reason, true)?,
             Self::Receipt(r) => {
                 normalized(&mut r.channel, true)?;
@@ -96,6 +152,10 @@ impl Mutation {
     pub fn kind(&self) -> &'static str {
         match self {
             Self::Period(_) => "allowance-periods",
+            Self::Basis(_) => "allowance-basis",
+            Self::PercentageAdjustment(_) => "allowance-percentage-adjustments",
+            Self::PercentageReceipt(_) => "percentage-receipts",
+            Self::PercentageCorrection(_) => "percentage-receipt-corrections",
             Self::Adjustment(_) => "allowance-adjustments",
             Self::Validity(_) => "allowance-validity",
             Self::Receipt(_) => "receipts",
@@ -105,6 +165,10 @@ impl Mutation {
     pub fn parameters(&self) -> Value {
         match self {
             Self::Period(v) => json!(v),
+            Self::Basis(v) => json!(v),
+            Self::PercentageAdjustment(v) => json!(v),
+            Self::PercentageReceipt(v) => json!(v),
+            Self::PercentageCorrection(v) => json!(v),
             Self::Adjustment(v) => json!(v),
             Self::Validity(v) => json!(v),
             Self::Receipt(v) => json!(v),
@@ -126,7 +190,31 @@ impl Mutation {
                 no_overlap(db, owner, "", p.starts_at, p.expires_at)?;
                 let id = uuid::Uuid::now_v7().to_string();
                 db.execute("INSERT INTO allowance_periods(period_id,user_id,starts_at,expires_at) VALUES(?,?,?,?)", params![id,owner,p.starts_at,p.expires_at]).map_err(storage)?;
+                if let Some(basis) = &p.basis { bind_basis(db, &id, basis)?; }
                 id
+            }
+            Self::Basis(b) => {
+                // Legacy and expired/closed periods need the same explicit basis
+                // binding; their money, dates and original charges stay intact.
+                let actual: Option<i64> = db.query_row("SELECT revision FROM allowance_periods WHERE user_id=? AND period_id=?", params![owner,b.period_id], |r|r.get(0)).optional().map_err(storage)?;
+                if actual.ok_or_else(crate::authorization::missing)? != b.revision { return Err(conflict("ALLOWANCE_REVISION_CONFLICT")); }
+                bind_basis(db, &b.period_id, &b.basis)?;
+                let next = b.revision.checked_add(1).ok_or_else(invalid)?;
+                db.execute("UPDATE allowance_periods SET revision=? WHERE period_id=?",params![next,b.period_id]).map_err(storage)?;
+                b.period_id.clone()
+            }
+            Self::PercentageAdjustment(a) => {
+                let amount = percentage_grant(db, owner, &a.period_id, &a.basis_version, a.delta_milli_percent)?;
+                return Self::Adjustment(Adjustment { period_id:a.period_id.clone(),revision:a.revision,delta_micro_cny:amount,reason:a.reason.clone() }).apply(db, actor, op, owner, now);
+            }
+            Self::PercentageReceipt(r) => {
+                let amount = percentage_grant(db, owner, &r.period_id, &r.basis_version, r.delta_milli_percent)?;
+                return Self::Receipt(Receipt { period_id:r.period_id.clone(),revision:r.revision,amount_fen:r.amount_fen,delta_micro_cny:amount,paid_at:r.paid_at,channel:r.channel.clone(),external_ref:r.external_ref.clone(),note:r.note.clone() }).apply(db, actor, op, owner, now);
+            }
+            Self::PercentageCorrection(c) => {
+                let amount = percentage_grant(db, owner, &c.period_id, &c.basis_version, c.delta_milli_percent)?;
+                return Self::Correction(Correction {receipt_id:c.receipt_id.clone(),period_id:c.period_id.clone(),revision:c.revision,
+                    delta_micro_cny:amount,delta_fen:c.delta_fen,reason:c.reason.clone()}).apply(db,actor,op,owner,now);
             }
             Self::Validity(p) => {
                 valid_dates(p.starts_at, p.expires_at)?;
@@ -212,6 +300,27 @@ impl Mutation {
         };
         Ok(json!({"allowance_period": period(db,owner,&period_id)?, "receipt_id":receipt_id}))
     }
+}
+fn bind_basis(db: &Connection, period: &str, basis: &AllowanceBasis) -> Result<(), ToolError> {
+    basis.validate()?;
+    if crate::account_allowance::basis(db, period)?.is_some() {
+        return Err(conflict("ALLOWANCE_BASIS_ALREADY_BOUND"));
+    }
+    let existing: Option<MicroCny> = db.query_row("SELECT basis_micro_cny FROM allowance_bases WHERE version=?", [&basis.version], |r|r.get(0)).optional().map_err(storage)?;
+    if let Some(value) = existing {
+        if value != basis.basis_micro_cny { return Err(conflict("ALLOWANCE_BASIS_VERSION_CONFLICT")); }
+    } else {
+        db.execute("INSERT INTO allowance_bases(version,basis_micro_cny) VALUES(?,?)", params![basis.version,basis.basis_micro_cny]).map_err(storage)?;
+    }
+    db.execute("INSERT INTO allowance_period_bases(period_id,basis_version) VALUES(?,?)", params![period,basis.version]).map_err(storage)?;
+    Ok(())
+}
+fn percentage_grant(db: &Connection, owner: &str, period: &str, version: &str, milli_percent: i64) -> Result<MicroCny, ToolError> {
+    let owns: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM allowance_periods WHERE user_id=? AND period_id=?)", params![owner,period], |r|r.get(0)).map_err(storage)?;
+    if !owns { return Err(crate::authorization::missing()); }
+    let basis = crate::account_allowance::basis(db, period)?.ok_or_else(||conflict("ALLOWANCE_BASIS_UNBOUND"))?;
+    if basis.version != version { return Err(conflict("ALLOWANCE_BASIS_VERSION_CONFLICT")); }
+    basis.grant(milli_percent)
 }
 /// Shared cash correction; the caller checks the corresponding entitlement first.
 pub(crate) fn correct_receipt(db: &Connection, actor: &str, op: &str, owner: &str, receipt: &str, delta: i64, reason: &str, now: i64) -> Result<(), ToolError> {
@@ -303,11 +412,24 @@ fn adjust(
 pub(crate) fn period(db: &Connection, owner: &str, id: &str) -> Result<Value, ToolError> {
     let mut value = db.query_row("SELECT period_id,starts_at,expires_at,closed_at,revision FROM allowance_periods WHERE user_id=? AND period_id=?",params![owner,id],|r|Ok(json!({"period_id":r.get::<_,String>(0)?,"starts_at":r.get::<_,i64>(1)?,"expires_at":r.get::<_,i64>(2)?,"closed_at":r.get::<_,Option<i64>>(3)?,"revision":r.get::<_,i64>(4)?}))).optional().map_err(storage)?.ok_or_else(crate::authorization::missing)?;
     value["balance"] = json!(crate::account_allowance::balance(db, id)?);
+    value["basis_status"] = json!(if value["balance"]["allowance_basis"].is_null() { "unbound" } else { "bound" });
+    value["validity_state"] = json!(validity_state(&value, crate::multi_user_host::now()));
     Ok(value)
+}
+pub(crate) fn validity_state(period: &Value, now: i64) -> &'static str {
+    if !period["closed_at"].is_null() { "closed" }
+    else if period["starts_at"].as_i64().is_some_and(|start|now < start) { "scheduled" }
+    else if period["expires_at"].as_i64().is_some_and(|end|now >= end) { "expired" }
+    else { "active" }
 }
 pub(crate) fn current(db: &Connection, owner: &str, now: i64) -> Result<Value, ToolError> {
     let id: Option<String> = db.query_row("SELECT period_id FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND starts_at<=? AND ?<expires_at",params![owner,now,now],|r|r.get(0)).optional().map_err(storage)?;
-    id.map(|id| period(db, owner, &id))
+    id.map(|id| {
+        let mut value = period(db, owner, &id)?;
+        // The selection already established eligibility at the caller's time.
+        value["validity_state"] = json!("active");
+        Ok(value)
+    })
         .unwrap_or(Ok(Value::Null))
 }
 pub(crate) fn list(
@@ -334,11 +456,29 @@ pub(crate) fn list(
             ("SELECT c.actor,c.operation_id,c.receipt_id,c.delta_fen,c.reason,c.created_at,(SELECT pack_id FROM mcp_call_packs p WHERE p.receipt_id=c.receipt_id) FROM receipt_corrections c WHERE c.user_id=? ORDER BY c.created_at DESC,c.actor,c.operation_id LIMIT ? OFFSET ?", "SELECT count(*) FROM receipt_corrections WHERE user_id=?")
         };
         let mut stmt = db.prepare(sql).map_err(storage)?;
-        let items=stmt.query_map(params![owner,limit,offset],|r|Ok(if kind=="allowance-adjustments" {
+        let mut items=stmt.query_map(params![owner,limit,offset],|r|Ok(if kind=="allowance-adjustments" {
             json!({"actor":r.get::<_,String>(0)?,"operation_id":r.get::<_,String>(1)?,"period_id":r.get::<_,String>(2)?,"delta_micro_cny":r.get::<_,i64>(3)?,"reason":r.get::<_,String>(4)?,"receipt_id":r.get::<_,Option<String>>(5)?,"created_at":r.get::<_,i64>(6)?})
         } else {
             json!({"actor":r.get::<_,String>(0)?,"operation_id":r.get::<_,String>(1)?,"receipt_id":r.get::<_,String>(2)?,"delta_fen":r.get::<_,i64>(3)?,"reason":r.get::<_,String>(4)?,"created_at":r.get::<_,i64>(5)?,"pack_id":r.get::<_,Option<String>>(6)?,"entitlement_kind":if r.get::<_,Option<String>>(6)?.is_some(){"mcp_call_pack"}else{"model_allowance"}})
         })).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+        if kind == "allowance-adjustments" {
+            for item in &mut items {
+                let basis = crate::account_allowance::basis(db, item["period_id"].as_str().unwrap())?;
+                item["delta_percentage"] = basis.as_ref().map(|b|b.percentage(item["delta_micro_cny"].as_i64().unwrap())).unwrap_or(Value::Null);
+                item["allowance_basis"] = json!(basis);
+            }
+        } else {
+            for item in &mut items {
+                if item["entitlement_kind"] != "model_allowance" { continue; }
+                let (period_id, delta): (String,i64) = db.query_row("SELECT original.period_id,COALESCE((SELECT delta_micro_cny FROM allowance_adjustments WHERE actor=? AND operation_id=?),0) FROM manual_receipts r JOIN allowance_adjustments original ON original.actor=r.actor AND original.operation_id=r.operation_id WHERE r.receipt_id=?",
+                    params![item["actor"].as_str(),item["operation_id"].as_str(),item["receipt_id"].as_str()],|r|Ok((r.get(0)?,r.get(1)?))).map_err(storage)?;
+                let basis = crate::account_allowance::basis(db,&period_id)?;
+                item["period_id"] = json!(period_id);
+                item["delta_micro_cny"] = json!(delta);
+                item["delta_percentage"] = basis.as_ref().map(|b|b.percentage(delta)).unwrap_or(Value::Null);
+                item["allowance_basis"] = json!(basis);
+            }
+        }
         let total: i64 = db
             .query_row(count, [owner], |r| r.get(0))
             .map_err(storage)?;
@@ -355,9 +495,19 @@ pub(crate) fn list(
         .map_err(storage)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(storage)?;
-    let items = ids.iter().map(|id| if kind == "allowance-periods" { period(db,owner,id) } else {
+    let mut items = ids.iter().map(|id| if kind == "allowance-periods" { period(db,owner,id) } else {
         db.query_row("SELECT r.receipt_id,r.amount_fen,r.paid_at,r.channel,r.external_ref,r.note,r.amount_fen+COALESCE((SELECT sum(delta_fen) FROM receipt_corrections c WHERE c.receipt_id=r.receipt_id),0),(SELECT a.period_id FROM allowance_adjustments a WHERE a.actor=r.actor AND a.operation_id=r.operation_id),(SELECT p.pack_id FROM mcp_call_packs p WHERE p.receipt_id=r.receipt_id) FROM manual_receipts r WHERE r.receipt_id=?",[id],|r|Ok(json!({"receipt_id":r.get::<_,String>(0)?,"amount_fen":r.get::<_,i64>(1)?,"paid_at":r.get::<_,i64>(2)?,"channel":r.get::<_,String>(3)?,"external_ref":r.get::<_,Option<String>>(4)?,"note":r.get::<_,String>(5)?,"effective_amount_fen":r.get::<_,i64>(6)?,"period_id":r.get::<_,Option<String>>(7)?,"pack_id":r.get::<_,Option<String>>(8)?,"entitlement_kind":if r.get::<_,Option<String>>(8)?.is_some(){"mcp_call_pack"}else{"model_allowance"}}))).map_err(storage)
     }).collect::<Result<Vec<_>,_>>()?;
+    if kind == "receipts" {
+        for item in &mut items {
+            let Some(period_id) = item["period_id"].as_str() else { continue; };
+            let basis = crate::account_allowance::basis(db,period_id)?;
+            let delta: i64 = db.query_row("SELECT a.delta_micro_cny FROM manual_receipts r JOIN allowance_adjustments a ON a.actor=r.actor AND a.operation_id=r.operation_id WHERE r.receipt_id=?",[item["receipt_id"].as_str()],|r|r.get(0)).map_err(storage)?;
+            item["grant_micro_cny"] = json!(delta);
+            item["grant_percentage"] = basis.as_ref().map(|b|b.percentage(delta)).unwrap_or(Value::Null);
+            item["allowance_basis"] = json!(basis);
+        }
+    }
     let total: i64 = db
         .query_row(count, [owner], |r| r.get(0))
         .map_err(storage)?;
