@@ -1,4 +1,6 @@
 use super::*;
+#[path = "presentation_interact_network_tests.rs"]
+mod om4;
 use crate::{
     authorization::Authorization,
     control_store::ControlStore,
@@ -9,13 +11,13 @@ use crate::{
 };
 use runtime::run_context::ResidentStatePort;
 
-pub(super) struct Fixture {
+pub(crate) struct Fixture {
     pub(super) root: tempfile::TempDir,
-    pub(super) access: Arc<Authorization>,
+    pub(crate) access: Arc<Authorization>,
     pub(super) control: ControlStore,
-    pub(super) x: PublishedBookRef,
+    pub(crate) x: PublishedBookRef,
     pub(super) y: PublishedBookRef,
-    pub(super) a: String,
+    pub(crate) a: String,
     pub(super) b: String,
 }
 
@@ -73,7 +75,7 @@ fn tutor_t18_published_readiness_requires_the_exact_reader_grant() {
     assert_ne!(f.call(&f.a, "GET", &path, json!({})).0, 200);
 }
 impl Fixture {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::configured(None)
     }
     pub(super) fn configured(sandbox_config: Option<&std::path::Path>) -> Self {
@@ -126,7 +128,7 @@ impl Fixture {
             b,
         }
     }
-    pub(super) fn call(&self, token: &str, method: &str, path: &str, input: Value) -> (u16, Value) {
+    pub(crate) fn call(&self, token: &str, method: &str, path: &str, input: Value) -> (u16, Value) {
         let reply = multi_user_host::dispatch(
             &self.access,
             &Site::new("https://reader.example").unwrap(),
@@ -148,7 +150,7 @@ impl Fixture {
         assert_eq!(status, 200, "{path}: {value}");
         value
     }
-    pub(super) fn create(&self, token: &str, reference: &PublishedBookRef, attachment: &str) -> Value {
+    pub(crate) fn create(&self, token: &str, reference: &PublishedBookRef, attachment: &str) -> Value {
         self.ok(
             token,
             "POST",
@@ -156,7 +158,7 @@ impl Fixture {
             json!({"published_book_ref":reference,"attachment_id":attachment}),
         )
     }
-    pub(super) fn action(
+    pub(crate) fn action(
         &self,
         token: &str,
         w: &Value,
@@ -177,7 +179,7 @@ impl Fixture {
             input,
         )
     }
-    pub(super) fn get(&self, token: &str, w: &Value) -> Value {
+    pub(crate) fn get(&self, token: &str, w: &Value) -> Value {
         self.ok(
             token,
             "GET",
@@ -649,6 +651,26 @@ fn rs5_resumption_reads_committed_scene_without_warming_or_writing_it() {
 }
 
 #[test]
+fn reading_resumption_finds_the_latest_authorized_account_checkpoint_after_idle_eviction() {
+    let f = Fixture::new();
+    let path = "/api/me/reading-resumption";
+    assert!(f.ok(&f.a, "GET", path, Value::Null).is_null());
+    let first = f.create(&f.a, &f.x, "first");
+    let other = f.create(&f.a, &f.y, "second");
+    assert_eq!(f.ok(&f.a, "GET", path, Value::Null)["workspace_id"], other["workspace_id"]);
+    let first = f.action(&f.a, &first, "first", "checkpoint", json!({"top_lid":"1.16"}));
+    f.create(&f.b, &f.x, "another-user");
+    f.access.workspaces.lock().unwrap().evict_idle(std::time::Instant::now() + WORKSPACE_IDLE_TTL + Duration::from_secs(1)).unwrap();
+    let expected = f.ok(&f.a, "GET", &format!("/api/workspaces/{}/resumption", first["workspace_id"].as_str().unwrap()), Value::Null);
+    assert_eq!(f.ok(&f.a, "GET", path, Value::Null), expected);
+    assert_ne!(f.ok(&f.b, "GET", path, Value::Null)["workspace_id"], first["workspace_id"]);
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    assert_eq!(f.ok(&f.a, "GET", path, Value::Null)["workspace_id"], other["workspace_id"]);
+    f.access.library.lock().unwrap().revoke("A", &f.y).unwrap();
+    assert!(f.ok(&f.a, "GET", path, Value::Null).is_null());
+}
+
+#[test]
 fn rs5_resumption_without_questions_and_after_chat_deletion_keeps_position() {
     let f = Fixture::new();
     let w = f.create(&f.a, &f.x, "original");
@@ -708,6 +730,7 @@ fn mu5_restart_restores_exact_publication_chat_position_and_layout() {
     assert_eq!(summary["published_book_ref"], w["published_book_ref"]);
     assert_eq!(summary["selected_chat"], w["selected_chat"]);
     // The original stamp must still work after a read-only preview across service restart.
+    assert_eq!(f.ok(&f.a, "GET", "/api/me/reading-resumption", Value::Null), summary);
     let restored = f.action(&f.a, &w, "new-page", "attach", json!({}));
     assert_eq!(restored["workspace_id"], w["workspace_id"]);
     assert_eq!(restored["selected_chat"], w["selected_chat"]);
@@ -776,7 +799,7 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent { teaching_binding: None,
+            content: PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),
@@ -803,7 +826,9 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
     assert_eq!(linked["workspace_id"], w["workspace_id"]);
     assert_eq!(linked["selected_chat"], w["selected_chat"]);
     let mut save = request.clone();
-    save["state"] = json!({"values":{"slider":1},"visible_step":null,"observed_result":"One","source_ref_ids":[]});
+    save["state"] = json!({"values":{"slider":2},"visible_step":null,"observed_result":"One","source_ref_ids":[],
+        "observation":{"summary":"Input is two; One is still displayed.","state":{"slider":2},"rendered":{"slider":1}}});
+    let pending_scene = save["state"].clone();
     let saved = f.action(
         &f.a,
         &w,
@@ -813,6 +838,8 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
     );
     let frozen: PresentationFollowUp =
         serde_json::from_value(saved["presentation"].clone()).unwrap();
+    let read = f.action(&f.a, &saved, "parent", "presentation/read", request.clone());
+    assert_eq!(read["result"]["restored_state"], pending_scene);
     // Start another Run with the exact saved state; its old receipt survives later browser changes.
     drop(port);
     let mut port = f.run(&saved, "parent");
@@ -820,6 +847,8 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
     port.restore_presentation(frozen.clone()).unwrap();
     let saved = f.get(&f.a, &saved);
     save["state"]["values"]["slider"] = json!(9);
+    save["state"]["observed_result"] = json!("Nine");
+    save["state"]["observation"] = json!({"summary":"Nine is now displayed.","state":{"slider":9},"rendered":{"slider":9}});
     let current = f.action(&f.a, &saved, "parent", "presentation/save", save);
     assert_eq!(
         port.restore_presentation(frozen.clone())
@@ -839,6 +868,8 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
         json!({"saved_state":frozen}),
     );
     assert_eq!(restored["presentation"], json!(frozen));
+    let read = f.action(&f.a, &restored, "parent", "presentation/read", request);
+    assert_eq!(read["result"]["restored_state"], pending_scene);
     let fork = f.action(&f.a, &restored, "other-window", "fork", json!({}));
     let _ = f.action(
         &f.a,
@@ -1096,7 +1127,7 @@ fn rn2_network_notes_keep_private_access_after_chat_deletion_and_restart() {
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent { teaching_binding: None,
+            content: PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),

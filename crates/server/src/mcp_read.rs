@@ -13,9 +13,10 @@ use serde_json::{json, Value};
 use std::{collections::BTreeSet, sync::Mutex};
 
 pub const MAX_PAGE_ITEMS: usize = 50;
-const READ_TOOLS: [BookToolId; 9] = [
+const READ_TOOLS: [BookToolId; 10] = [
     BookToolId::Text,
     BookToolId::SearchText,
+    BookToolId::Search,
     BookToolId::Context,
     BookToolId::Concept,
     BookToolId::Structure,
@@ -289,12 +290,17 @@ impl<'a> McpRead<'a> {
                 input.end_lid.as_deref().unwrap_or(&input.lid),
                 &page.source_range,
             );
+            let mut data = json!(page);
+            crate::mcp::project_candidate_read_calls(id, &mut data, Some(&reference));
             return Ok(
-                json!({"published_book_ref":reference,"data":page,"sources":[source],
+                json!({"published_book_ref":reference,"data":data,"sources":[source],
                 "complete":next_calls.is_empty(),"next_calls":next_calls}),
             );
         }
         let mut data = match (id, input) {
+            (BookToolId::Search, BookToolInput::Search(input)) => {
+                json!(book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT))?)
+            }
             (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
                 json!(book.search_text(&input)?)
             }
@@ -371,10 +377,15 @@ impl<'a> McpRead<'a> {
             }
         }
         let mut lids = BTreeSet::new();
-        collect_lids(&paged, &data_path, &mut lids);
+        // Ranked previews locate passages but do not establish observed source.
+        // The executable text next_calls return provenance after an actual read.
+        if id != BookToolId::Search {
+            collect_lids(&paged, &data_path, &mut lids);
+        }
         // A nested page such as /references/value still has its enclosing field's provenance.
         let mut parent_path = data_path.as_str();
-        while let Some((parent, _)) = parent_path.rsplit_once('/') {
+        while id != BookToolId::Search {
+            let Some((parent, _)) = parent_path.rsplit_once('/') else { break; };
             if let Some(fields) = data.pointer(parent).and_then(Value::as_object) {
                 for key in ["lid", "evidence_lids", "source_lid", "anchor", "at"] {
                     if let Some(value) = fields.get(key) {

@@ -11,7 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const api = vi.hoisted(() => Object.fromEntries([
-  "videoContext", "videoDraft", "adoptVideoPublication", "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
+  "videoPlayback", "videoContext", "musicContext", "videoDraft", "adoptVideoPublication", "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
@@ -36,10 +36,20 @@ function start() {
   wrappers.push(wrapper);
   return wrapper;
 }
+const learningWorkspaceStub = defineComponent({ template: '<div><slot /></div>',
+  setup(_props, { expose }) { expose({ showAssistant: () => {} }); } });
+function startPurpose(chatDraft?: { message: string; quote: { lid: string; quote: string } | null; goalId: string | null }) {
+  const wrapper = mount(App, { props: { chatDraft }, shallow: true,
+    global: { renderStubDefaultSlot: true, stubs: { ReaderWorkspace: learningWorkspaceStub } } });
+  wrappers.push(wrapper);
+  return wrapper;
+}
 beforeEach(() => {
   vi.resetAllMocks();
   book = "startup";
   api.videoContext.mockResolvedValue(null);
+  api.musicContext.mockResolvedValue(null);
+  api.videoPlayback.mockImplementation(async () => { const video = await api.videoContext(); return video ? { ...video, hls: false } : null; });
   api.videoDraft.mockResolvedValue({ draft: null });
   api.tutorState.mockResolvedValue({ control: { enabled: true, revision: 0, current_tutor_session_id: null }, sessions: {} });
   api.tutorReadiness.mockResolvedValue({ status: 'ready', source_id: 'startup', source_revision: 's1', limitations: [], reason: '可用',
@@ -198,8 +208,8 @@ it.each([false,true])('resumes from the goal card only after enabling has been c
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
 
-it.each(['off', 'active', 'paused', 'other', 'enable-fails', 'start-fails', 'not-started'])(
-  'starts a canonical chapter request once through confirmed tutor lifecycle (%s)', async mode => {
+it.each(['off', 'active', 'paused', 'other', 'enable-fails'])(
+  'submits one canonical chapter purpose request and leaves session admission to the server (%s)', async mode => {
   const session = { id: 'learning', revision: 1, status: mode === 'paused' ? 'paused' : 'active', user_intent: '学习', explicit_constraints: [],
     current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
     material_scope: [{ source_id: 'startup', scope_refs: [mode === 'other' ? '2' : '1'], role: 'primary' }],
@@ -209,12 +219,11 @@ it.each(['off', 'active', 'paused', 'other', 'enable-fails', 'start-fails', 'not
     sessions: hasSession ? { learning: session } : {} };
   api.tutorState.mockImplementation(async () => structuredClone(state));
   api.tutorMutate.mockImplementation(async request => {
-    if (mode === 'enable-fails' || mode === 'start-fails') throw new Error('保存失败');
+    if (mode === 'enable-fails') throw new Error('保存失败');
     if (request.action.kind === 'set_enabled') state.control.enabled = true;
     if (request.action.kind === 'resume') session.status = 'active';
     state.control.revision++; return structuredClone(state);
   });
-  api.tutorStart.mockResolvedValue(mode === 'not-started' ? { started: false, reason: '尚未就绪' } : { started: true, message: '普通入口首问' });
   api.agentRunCreate.mockResolvedValue({ answer: '章节导读', answer_view: { parts: [] }, effects: [] });
   const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     ReaderWorkspace: defineComponent({ template: '<div><slot /></div>', setup(_props, { expose }) { expose({ showAssistant: () => {} }); } }),
@@ -223,17 +232,119 @@ it.each(['off', 'active', 'paused', 'other', 'enable-fails', 'start-fails', 'not
   expect(bar.props('guideChapterTitle')).toBe('首章');
   expect(bar.props('guideChapterEnabled')).toBe(state.control.enabled);
   bar.vm.$emit('guide-chapter'); bar.vm.$emit('guide-chapter'); await flushPromises();
-  const failed = ['enable-fails', 'start-fails', 'not-started'].includes(mode);
+  const failed = mode === 'enable-fails';
   const actions = api.tutorMutate.mock.calls.map(([request]) => request.action);
-  expect(actions.map(action => action.kind)).toEqual(mode === 'off' ? ['set_enabled', 'start'] : mode === 'enable-fails' ? ['set_enabled']
-    : mode === 'active' ? [] : mode === 'paused' ? ['resume'] : ['start']);
-  const startAction = actions.find(action => action.kind === 'start');
-  if (startAction) expect(startAction).toMatchObject({ user_intent: '带我读《首章》这一章', material_scope: [{ source_id: 'startup', scope_refs: ['1'], role: 'primary' }] });
+  expect(actions.map(action => action.kind)).toEqual(['off', 'enable-fails'].includes(mode) ? ['set_enabled'] : []);
+  expect(api.tutorStart).not.toHaveBeenCalled();
   expect(api.agentRunCreate).toHaveBeenCalledTimes(failed ? 0 : 1);
   if (!failed) expect(api.agentRunCreate).toHaveBeenCalledWith('', expect.objectContaining({
-    entry_action: 'guide_chapter', chapter_lid: '1', source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat',
+    entry_action: 'learn_with_purpose', learning_purpose: 'understand', chapter_lid: '1', source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat',
     display_user: '带我读《首章》这一章', question_quote: null,
   }));
+});
+
+it('preserves the current scope, purpose, teaching mode and constraints when editing a stage goal', async () => {
+  const session = { id: 'learning', revision: 2, status: 'active', user_intent: '理解本章条件',
+    explicit_constraints: ['先讲必要前提', '每次只做一道题'],
+    current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
+    material_scope: [{ source_id: 'startup', scope_refs: ['1'], role: 'primary' }],
+    learning_purpose: 'exam', default_teaching_intent: 'guided_inquiry', path_instance_ref: null, progress_ref: null };
+  const state = { control: { enabled: true, revision: 2, current_tutor_session_id: 'learning' }, sessions: { learning: session } };
+  api.tutorState.mockResolvedValue(state);
+  api.tutorMutate.mockResolvedValue(state);
+  const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+    RightRail: defineComponent({ template: '<div><slot name="learning-goal" /></div>' }),
+  } } }); wrappers.push(w); await flushPromises();
+  w.getComponent({ name: 'ConversationLearningGoal' }).vm.$emit('goal', '能解释条件并应用到新题');
+  await flushPromises();
+  expect(api.tutorMutate).toHaveBeenCalledTimes(1);
+  expect(api.tutorMutate.mock.calls[0][0].action).toEqual({
+    kind: 'start', user_intent: '能解释条件并应用到新题', explicit_constraints: session.explicit_constraints,
+    material_scope: session.material_scope, learning_purpose: 'exam', default_teaching_intent: 'guided_inquiry',
+  });
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it.each(['discover', 'understand', 'exam', 'explore'] as const)(
+  'starts %s from the conversation with a captured chapter and one typed request', async purpose => {
+  api.agentRunCreate.mockResolvedValue({ answer: '开始学习', answer_view: { parts: [] }, effects: [] });
+  const w = startPurpose(); await flushPromises();
+  w.getComponent({ name: 'RightRail' }).vm.$emit('learning-purpose', purpose);
+  await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  expect(api.agentRunCreate).toHaveBeenCalledWith('', expect.objectContaining({
+    entry_action: 'learn_with_purpose', learning_purpose: purpose, chapter_lid: '1',
+    source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat',
+    client_request_id: expect.any(String), expected_chat_head: null, question_quote: null,
+  }));
+  expect(JSON.parse(JSON.stringify(api.agentRunCreate.mock.calls[0][1]))).not.toHaveProperty('question_anchor_lid');
+  expect(api.tutorMutate).not.toHaveBeenCalled();
+  expect(api.tutorStart).not.toHaveBeenCalled();
+});
+
+it.each([undefined, 'material'] as const)(
+  'captures the selected or explicit material scope without consuming the draft (scope=%s)', async scope => {
+  const draft = { message: '还在编辑的问题', quote: { lid: '1.1', quote: '可立即阅读的正文' }, goalId: null };
+  api.agentRunCreate.mockResolvedValue({ answer: '开始学习', answer_view: { parts: [] }, effects: [] });
+  const w = startPurpose(draft); await flushPromises();
+  const rail = w.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('learning-purpose', 'understand', scope); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  const meta = api.agentRunCreate.mock.calls[0][1];
+  expect(meta.chapter_lid).toBeUndefined();
+  expect(meta.question_quote).toEqual(scope === 'material' ? null : draft.quote);
+  if (scope === 'material') expect(JSON.parse(JSON.stringify(meta))).not.toHaveProperty('question_anchor_lid');
+  else expect(meta.question_anchor_lid).toBe(draft.quote.lid);
+  expect(meta).toMatchObject({ source_id: 'startup', source_revision: 'startup', learning_purpose: 'understand' });
+  expect(rail.props('agentInput')).toBe(draft.message);
+  expect(rail.props('askDraft')).toEqual(draft.quote);
+});
+
+it('lets discovery start while Tutor readiness is unavailable without enabling teaching', async () => {
+  api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  api.tutorReadiness.mockResolvedValue({ status: 'unavailable', reason: '教学资料尚未就绪', limitations: [] });
+  api.agentRunCreate.mockResolvedValue({ answer: '材料概览', answer_view: { parts: [] }, effects: [] });
+  const w = startPurpose(); await flushPromises();
+  w.getComponent({ name: 'RightRail' }).vm.$emit('learning-purpose', 'discover'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  expect(api.agentRunCreate).toHaveBeenCalledWith('', expect.objectContaining({ learning_purpose: 'discover' }));
+  expect(api.tutorMutate).not.toHaveBeenCalled();
+  expect(api.tutorStart).not.toHaveBeenCalled();
+});
+
+it('retains the question draft when enabling a purpose fails', async () => {
+  const draft = { message: '尚未发送的问题', quote: { lid: '1.1', quote: '可立即阅读的正文' }, goalId: null };
+  api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  api.tutorMutate.mockRejectedValue(new Error('启用学习失败'));
+  const w = mount(App, { props: { chatDraft: draft }, shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+    ReaderWorkspace: learningWorkspaceStub,
+    RightRail: defineComponent({ name: 'RightRail', props: ['agentInput', 'askDraft'], template: '<div><slot name="learning-goal" /></div>' }),
+  } } });
+  wrappers.push(w); await flushPromises();
+  const rail = w.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('learning-purpose', 'exam'); await flushPromises();
+  expect(api.tutorMutate).toHaveBeenCalledTimes(1);
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+  expect(rail.props('agentInput')).toBe(draft.message);
+  expect(rail.props('askDraft')).toEqual(draft.quote);
+  expect(w.getComponent({ name: 'ConversationLearningGoal' }).props('error')).toContain('启用学习失败');
+});
+
+it('locks purpose submission while pending and accepts one changed purpose after completion', async () => {
+  const admission = deferred<unknown>();
+  api.agentRunCreate.mockReturnValueOnce(admission.promise);
+  const w = startPurpose(); await flushPromises();
+  const rail = w.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('learning-purpose', 'understand'); await flushPromises();
+  rail.vm.$emit('learning-purpose', 'understand');
+  rail.vm.$emit('learning-purpose', 'exam'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  admission.resolve({ answer: '已开始读懂', answer_view: { parts: [] }, effects: [] }); await flushPromises();
+  api.agentRunCreate.mockResolvedValueOnce({ answer: '改为备考', answer_view: { parts: [] }, effects: [] });
+  rail.vm.$emit('learning-purpose', 'exam'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(2);
+  expect(api.agentRunCreate.mock.calls.map(([, meta]) => meta.learning_purpose)).toEqual(['understand', 'exam']);
+  expect(api.agentRunCreate.mock.calls[0][1].client_request_id).not.toBe(api.agentRunCreate.mock.calls[1][1].client_request_id);
 });
 
 it('opens understanding directly from the chat without changing teaching or the draft', async () => {
@@ -604,6 +715,86 @@ describe("JL6 effect receipts in chat", () => {
     expect(reloaded.findComponent({ name: "RightRail" }).props("effState")(0, 0)).toBe("已保留");
     expect(api.disposeEffect).toHaveBeenCalledTimes(1);
   });
+});
+
+it.each([false, true])('acknowledges video send before draft persistence and prevents duplicate sends (save fails=%s)', async failed => {
+  const video = { media_id: 'v', media_revision: '1' };
+  const publication = { book_id: book, publication_id: 'original' };
+  const material = { book_id: book, video, transcript: { transcript_id: 't', transcript_revision: '1', video } };
+  const draft = { message: '原草稿', context: { draft_id: 'd', publication, material,
+    frame: { video, actual_pts_ms: 274000, width: 1920, height: 1080 }, region: null, range: null } };
+  api.videoContext.mockResolvedValue({ time_base: [1, 1000], publication, material,
+    source: { video, original_path: 'lesson.mp4', duration_ms: 510000, width: 1920, height: 1080 }, map: { segments: [] } });
+  const save = deferred<{ draft: typeof draft }>(), admission = deferred<unknown>();
+  api.videoDraft.mockImplementation(input => input.action === 'get' ? Promise.resolve({ draft }) : save.promise);
+  api.agentRunCreate.mockReturnValue(admission.promise);
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('update:agentInput', '这里的资源管理和书中一样吗？');
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(rail.props('sending')).toBe(true);
+  expect(rail.props('questionInputBlocked')).toBe(true);
+  expect(rail.props('chat')).toHaveLength(1);
+  expect(rail.props('chat')[0].runStatus).toBe('正在保存视频提问…');
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+  rail.vm.$emit('send-agent'); await flushPromises();
+  if (failed) save.reject(new Error('保存暂不可用'));
+  else save.resolve({ draft });
+  await flushPromises();
+  if (failed) {
+    expect(api.agentRunCreate).not.toHaveBeenCalled();
+    expect(rail.props('sending')).toBe(false);
+    expect(rail.props('agentInput')).toBe('这里的资源管理和书中一样吗？');
+    expect(rail.props('chat')[0]).toMatchObject({ pending: false, error: '保存暂不可用' });
+    expect(rail.props('chat')[0].submissionUnknown).toBeUndefined();
+    api.videoDraft.mockResolvedValue({ draft });
+    rail.vm.$emit('send-agent'); await flushPromises();
+    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+    admission.resolve({ answer: '重试后的回答', effects: [] }); await flushPromises();
+    expect(rail.props('sending')).toBe(false);
+  } else {
+    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+    expect(rail.props('chat')).toHaveLength(1);
+    expect(rail.props('chat')[0].runStatus).toBe('正在提交问题…');
+    admission.resolve({ answer: '回答', effects: [] }); await flushPromises();
+    expect(rail.props('sending')).toBe(false);
+    expect(rail.props('chat')[0].runStatus).toBeUndefined();
+  }
+});
+
+it('shows book submission immediately and removes an activity-help-only placeholder', async () => {
+  const admission = deferred<unknown>(); api.agentRunCreate.mockReturnValue(admission.promise);
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.getComponent({ name: 'RightRail' });
+  (rail.vm as unknown as { focusActivityHelp: () => void }).focusActivityHelp = vi.fn();
+  rail.vm.$emit('update:agentInput', '解释书中的这段内容');
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(rail.props('sending')).toBe(true);
+  expect(rail.props('chat')[0].runStatus).toBe('正在提交问题…');
+  expect(api.videoDraft).not.toHaveBeenCalled();
+  admission.resolve({ kind: 'activity_help', delivery_refs: [] }); await flushPromises();
+  expect(rail.props('chat')).toEqual([]);
+  expect(rail.props('sending')).toBe(false);
+});
+
+it('mounts the video before transcript and draft responses without replacing its component', async () => {
+  const video = { media_id: 'v', media_revision: '1' };
+  const publication = { book_id: book, publication_id: 'original' };
+  const head = { hls: true, time_base: [1, 1000], publication, material: { book_id: book, video },
+    source: { video, original_path: 'lesson.mp4', duration_ms: 510000, width: 1920, height: 1080 } };
+  const details = deferred<unknown>(), draft = deferred<unknown>();
+  api.videoPlayback.mockResolvedValue(head); api.videoContext.mockReturnValue(details.promise); api.videoDraft.mockReturnValue(draft.promise);
+  const wrapper = start(); await flushPromises();
+  const pane = wrapper.getComponent({ name: 'VideoReaderPane' });
+  expect(pane.props('playback')).toEqual(head);
+  expect(pane.props('detailsLoading')).toBe(true);
+  expect(wrapper.getComponent({ name: 'RightRail' }).props('questionInputBlocked')).toBe(true);
+  details.resolve({ ...head, map: { segments: [] } }); await flushPromises();
+  expect(wrapper.getComponent({ name: 'VideoReaderPane' }).vm).toBe(pane.vm);
+  expect(pane.props('detailsLoading')).toBe(true);
+  draft.resolve({ draft: null }); await flushPromises();
+  expect(pane.props('detailsLoading')).toBe(false);
+  expect(wrapper.getComponent({ name: 'VideoReaderPane' }).vm).toBe(pane.vm);
 });
 
 it('VI6 opens a local published video without interpreting preparation as a build workbench', async () => {

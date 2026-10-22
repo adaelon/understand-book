@@ -227,6 +227,7 @@ fn q3_schema15_upgrade_preserves_existing_ledger_and_rolls_back_failed_addition(
     let f = fixture();
     let before = f.ok(&f.a,"GET","/api/account/allowance",json!({}));
     // No external tasks exist yet. Recreate the supported v15 boundary exactly.
+    f.control.connection.execute_batch(include_str!("remove_schema19.sql")).unwrap();
     f.control.connection.execute_batch("DROP TABLE workspace_release_instance_private_materials; DROP TABLE workspace_release_instance_operations; DROP TABLE workspace_release_instance_history; DROP TABLE workspace_release_instances; DROP TABLE workspace_release_archives; DROP TABLE operator_builds; DROP TABLE workspace_releases; DROP TABLE external_build_calls; DROP TABLE external_build_executions; DROP TABLE build_budget_confirmations; DROP TABLE build_task_budgets; DROP TABLE allowance_offers; PRAGMA user_version=15;").unwrap();
     f.control.connection.execute_batch("CREATE TABLE external_build_calls(keep TEXT); INSERT INTO external_build_calls VALUES('original');").unwrap();
     assert!(ControlStore::open(f.control.writer.clone()).is_err());

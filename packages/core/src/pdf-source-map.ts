@@ -8,6 +8,7 @@ export interface PdfRegion extends PdfPageRect {
 }
 
 export interface PdfPageMeta {
+  ocr_lines?: import("./pdf-ocr").PdfOcrLine[];
   pageIndex: number;
   page_label?: string;
   width: number;

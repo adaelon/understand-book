@@ -46,7 +46,7 @@ export async function createControlPlanePerformanceFixture(root: string) {
     freezeProfileSidecarSemanticFastPathTask(target, generation.task);
     writeProfileSidecarSemanticFastPathCandidate({
       target, source, task: generation.task,
-      candidate: { discourse_items: generation.task.packet.visible_lids.map((lid) => ({ lid, mode: "informative", relations: [] })) },
+      candidate: { discourse_items: generation.task.packet.discourse_lids.map((lid) => ({ lid, mode: "informative", relations: [] })) },
       provenance: { executor: "b1-fixture", attempt: 1, generated_at: "2026-09-07T12:00:00.000Z" },
     });
   }

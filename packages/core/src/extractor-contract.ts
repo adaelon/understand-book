@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z, type ZodTypeAny } from "zod";
+import { MathStructureCandidateZ } from "./math-structure";
 import { canonicalAutomaticBuildJson } from "./automatic-build-protocol";
 import { METADATA_SOURCES, type PaperMetadataExtractionOutput } from "./paper-metadata";
 import { PAPER_TERM_TYPES, type PaperLexiconExtractionOutput } from "./paper-lexicon";
@@ -10,7 +11,7 @@ export type ContractedExtractorStage = "paper_metadata" | "paper_lexicon" | "pro
 export const EXTRACTOR_CONTRACT_SCHEMA_VERSIONS = {
   paper_metadata: "paper_metadata_output.v2",
   paper_lexicon: "paper_lexicon_output.v2",
-  profile_sidecar: "profile_sidecar_output.v2",
+  profile_sidecar: "profile_sidecar_output.v3",
 } as const;
 
 export interface ExtractorContractContext {
@@ -957,6 +958,7 @@ const formulaCandidate = z.object({
 const profileSidecarOutput = z.object({
   discourse_items: z.array(discourseItem).optional(),
   formula_semantics: z.array(formulaCandidate).optional(),
+  math_items: z.array(MathStructureCandidateZ).optional(),
 }).strict();
 
 interface ExtractorContractDefinition {
@@ -1052,10 +1054,16 @@ const CONTRACTS: Record<ContractedExtractorStage, ExtractorContractDefinition> =
         composition: { source_lid: "3.2.4", meaning: "表达能量关系。", terms: ["E"], evidence_lids: ["3.2.4"] },
         context_links: [{ target_lid: "3.2.3", relation: "explained_by", description: "上下文解释公式。", evidence_lids: ["3.2.4", "3.2.3"] }],
       }],
+      math_items: [{
+        anchor_lid: "3.2.1", kind: "theorem", label: "定理 1", evidence_lids: ["3.2.1", "3.2.4"],
+        assumptions: [{ quote: "设 f 可微", evidence_lids: ["3.2.1"] }],
+        references: [{ relation: "uses", target_kind: "lemma", target_label: "引理 1", scope: "local", quote: "由引理 1", evidence_lids: ["3.2.1"] }],
+      }],
     },
     constraints: [],
     invariants: [
-      "A profile_sidecar_discourse unit emits only discourse_items; a profile_sidecar_formula unit emits only formula_semantics.",
+      "A profile_sidecar_discourse unit emits discourse_items and may emit math_items for math_anchor_lids; a profile_sidecar_formula unit emits only formula_semantics.",
+      "math_items preserve source labels, exact assumption quotes and explicit reference quotes; proofs use proves, exercises use asks_to_prove. The writer checks anchors and quoted evidence against the source.",
       "All discourse and relation evidence LIDs must be visible; relation evidence includes source lid and target_lid.",
       "formula_lid must be in formula_lids; context_lids must be visible; formula evidence stays inside formula_lid + context_lids.",
       "composition.source_lid must equal formula_lid.",

@@ -31,6 +31,17 @@ pub enum TutorSessionMode {
     GuidedInquiry,
 }
 
+/// The reader's purpose for this stage, independent of its teaching method.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+#[serde(rename_all = "snake_case")]
+pub enum LearningPurpose {
+    Discover,
+    Understand,
+    Exam,
+    Explore,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(rename_all = "snake_case")]
@@ -66,6 +77,9 @@ pub struct TutorSession {
     pub current_focus: TutorFocus,
     pub material_scope: Vec<TutorMaterial>,
     pub default_teaching_intent: Option<TutorSessionMode>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub learning_purpose: Option<LearningPurpose>,
     pub path_instance_ref: Option<String>,
     pub progress_ref: Option<String>,
     #[serde(default)]
@@ -95,6 +109,9 @@ pub enum TutorAction {
         explicit_constraints: Vec<String>,
         material_scope: Vec<TutorMaterial>,
         default_teaching_intent: Option<TutorSessionMode>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        learning_purpose: Option<LearningPurpose>,
     },
     Pause {
         session_id: String,
@@ -185,9 +202,13 @@ impl TutorState {
                 explicit_constraints,
                 material_scope,
                 default_teaching_intent,
+                learning_purpose,
             } => {
                 if user_intent.trim().is_empty() {
                     return Err(invalid("请填写本次学习意图。"));
+                }
+                if *learning_purpose == Some(LearningPurpose::Discover) {
+                    return Err(invalid("快速概览使用普通问答，不建立教学阶段。"));
                 }
                 if material_scope
                     .iter()
@@ -212,6 +233,7 @@ impl TutorState {
                         current_focus: TutorFocus::default(),
                         material_scope: material_scope.clone(),
                         default_teaching_intent: default_teaching_intent.clone(),
+                        learning_purpose: *learning_purpose,
                         path_instance_ref: None,
                         progress_ref: None,
                         workspace_goal_revision: self.workspace_goal_revision,
@@ -293,8 +315,8 @@ impl LearningStore {
         let mut connection = Connection::open(path).map_err(storage)?;
         let version: i64 = connection.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(storage)?;
         let application: i64 = connection.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(storage)?;
-        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records')", [], |r| r.get(0)).map_err(storage)?;
-        if !(0..=3).contains(&version) || unknown_tables != 0
+        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records','teaching_coach_jobs','teaching_coach_turns')", [], |r| r.get(0)).map_err(storage)?;
+        if !(0..=4).contains(&version) || unknown_tables != 0
             || (version == 0 && application != 0) || (version > 0 && application != 0x55424c4e) {
             return Err(failure("LEARNING_SCHEMA_INCOMPATIBLE", "conflict", "Learning schema requires a compatible binary"));
         }
@@ -321,6 +343,12 @@ impl LearningStore {
             let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
             tx.execute_batch(include_str!("learning_records.sql")).map_err(storage)?;
             tx.pragma_update(None, "user_version", 3).map_err(storage)?;
+            tx.commit().map_err(storage)?;
+        }
+        if version < 4 {
+            let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+            tx.execute_batch(crate::tutor_coach::SCHEMA).map_err(storage)?;
+            tx.pragma_update(None, "user_version", 4).map_err(storage)?;
             tx.commit().map_err(storage)?;
         }
         Ok(Self { connection, writer_lease: None, workspace_scope: String::new() })
@@ -474,7 +502,29 @@ mod tests {
                 role: TutorMaterialRole::Primary,
             }],
             default_teaching_intent: Some(TutorSessionMode::GuidedInquiry),
+            learning_purpose: None,
         }
+    }
+    #[test]
+    fn purpose_is_restored_with_its_stage_and_discover_does_not_start_one() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut store = LearningStore::open(&path, false).unwrap();
+        change(&mut store, "on", TutorAction::SetEnabled { enabled:true });
+        let mut action = start("复习这一章");
+        if let TutorAction::Start { learning_purpose, .. } = &mut action { *learning_purpose = Some(LearningPurpose::Exam); }
+        let before = change(&mut store, "exam", action.clone());
+        assert_eq!(before.sessions["tutor-exam"].learning_purpose, Some(LearningPurpose::Exam));
+        assert_eq!(store.rebuild().unwrap(), before);
+        if let TutorAction::Start { learning_purpose, .. } = &mut action { *learning_purpose = Some(LearningPurpose::Discover); }
+        assert_eq!(store.mutate(&TutorMutation { operation_id:"overview".into(), expected_revision:before.control.revision, action }, "now")
+            .unwrap_err().error_code, "TUTOR_ACTION_INVALID");
+        assert_eq!(store.state().unwrap(), before);
+        drop(store);
+        assert_eq!(LearningStore::open(&path, false).unwrap().state().unwrap(), before);
+        let legacy: TutorAction = serde_json::from_value(serde_json::json!({"kind":"start", "user_intent":"legacy",
+            "explicit_constraints":[], "material_scope":[], "default_teaching_intent":null})).unwrap();
+        assert!(matches!(legacy, TutorAction::Start { learning_purpose:None, .. }));
     }
     #[test]
     fn w3_workspace_stages_restore_independently_with_one_global_teaching_switch() {
@@ -651,7 +701,7 @@ mod tests {
             let store=LearningStore::open(&path,false).unwrap();
             assert!(store.state().unwrap().control.enabled);
             assert_eq!(store.state().unwrap(),store.replay(None).unwrap());
-            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),3);
+            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),4);
             assert_eq!(store.connection.pragma_query_value(None,"journal_mode",|r|r.get::<_,String>(0)).unwrap(),"delete");
             store.connection.pragma_update(None,"application_id",12345).unwrap();
             drop(store);

@@ -155,13 +155,8 @@ function parseOutputPath(args) {
 }
 
 function resolveInstalledDesktop() {
-  const result = spawnSync("reg.exe", ["query", "HKCU\\Software\\UnderstandBook", "/v", "InstallDir"], {
-    encoding: "utf8",
-    windowsHide: true,
-  });
-  if (result.status !== 0) return null;
-  const match = result.stdout.match(/InstallDir\s+REG_SZ\s+(.+)$/mu);
-  return match ? path.join(match[1].trim(), "UnderstandBook.exe") : null;
+  const maintained = path.join(repoRoot, "apps", "desktop", "maintenance-host", "target", "debug", "understand-book-maintenance.exe");
+  return existsSync(maintained) ? maintained : null;
 }
 
 function assertTemporaryRoot(root) {

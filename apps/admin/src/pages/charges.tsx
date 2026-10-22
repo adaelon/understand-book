@@ -20,6 +20,12 @@ const states: Record<string, string> = {
   settled: "已结算",
   released: "已释放",
 };
+function chargeService(charge: Charge): string {
+  if (charge.entry_kind === 'web_search') return '搜索';
+  if (charge.entry_kind === 'web_fetch') return '网页读取';
+  if (charge.entry_kind === 'service') return charge.purpose === 'video_audio_review' ? '原声复核' : '视频转写';
+  return charge.model ?? '模型';
+}
 export function ChargesPanel({ userId }: { userId: string }) {
   const [offset, setOffset] = useState(0),
     [pending, setPending] = useState(false),
@@ -30,7 +36,7 @@ export function ChargesPanel({ userId }: { userId: string }) {
   return (
     <section className="space-y-3 rounded-lg border p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2>调用费用与待核算</h2>
+        <h2>服务费用与待核算</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -50,13 +56,13 @@ export function ChargesPanel({ userId }: { userId: string }) {
             rows={query.data.items}
             columns={[
               {
-                header: "时间 / 模型",
+                header: "时间 / 服务",
                 cell: ({ row }) => (
                   <>
                     {date(row.original.created_at)}
                     <br />
                     <span className="text-muted-foreground">
-                      {row.original.model}
+                      {chargeService(row.original)}
                     </span>
                   </>
                 ),
@@ -70,6 +76,7 @@ export function ChargesPanel({ userId }: { userId: string }) {
                     {row.original.provider_cost_status === "pending"
                       ? " · 供应商成本未知"
                       : ""}
+                    {row.original.provider_cost_status === "estimated" ? " · 处理成本为估计" : ""}
                   </>
                 ),
               },
@@ -82,8 +89,8 @@ export function ChargesPanel({ userId }: { userId: string }) {
                 cell: ({ row }) => money(row.original.account_debit_micro_cny),
               },
               {
-                header: "供应商成本（元）",
-                cell: ({ row }) => money(row.original.provider_cost_micro_cny),
+                header: "成本（元）",
+                cell: ({ row }) => `${money(row.original.provider_cost_micro_cny)}${row.original.provider_cost_status === "estimated" ? "（估计）" : ""}`,
               },
               {
                 header: "操作",
@@ -128,37 +135,38 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>调用费用详情</DialogTitle>
+            <DialogTitle>服务费用详情</DialogTitle>
             <DialogDescription className="break-all">{call}</DialogDescription>
           </DialogHeader>
           <DataState query={query} />
           {charge && (
             <>
               <p>
-                {charge.model} · {charge.purpose} · {date(charge.created_at)}
+                {chargeService(charge)} · {charge.purpose} · {date(charge.created_at)}
+                {charge.entry_kind === "service" && <> · 实际处理 {charge.quantity_ms == null ? "待确认" : `${charge.quantity_ms / 1000} 秒`}</>}
               </p>
               <p>
-                {states[charge.state]} · 供应商成本{" "}
+                {states[charge.state]} · {charge.provider_cost_status === "estimated" ? "处理成本估计" : charge.provider_cost_status === "confirmed" ? "已确认成本" : "成本待核算"}{" "}
                 {money(charge.provider_cost_micro_cny)} 元 · 账号扣减{" "}
                 {money(charge.account_debit_micro_cny)} 元
               </p>
               <Button
                 disabled={
-                  ops.blocked || ["reserved", "sent"].includes(charge.state)
+                  ops.blocked || ["reserved", "sent"].includes(charge.state) || charge.entry_kind === "service" && charge.state !== "pending"
                 }
                 onClick={() => {
                   setWaive(false);
                   setReconcile(charge);
                 }}
               >
-                人工核算 / 追加更正
+                {charge.entry_kind === "service" ? "核对实际处理用量" : "人工核算 / 追加更正"}
               </Button>
               <p className="text-sm text-muted-foreground">
-                发送中的调用须等待结束。账号免扣可释放占用，供应商成本未知时仍保留未知。
+                {charge.entry_kind === "service" ? "只根据处理日志确认实际音频时长或确认尚未启动。服务扣减沿原费率计算；没有实际成本凭据时仍保留未知或估计。" : "发送中的调用须等待结束。账号免扣可释放占用，供应商成本未知时仍保留未知。"}
               </p>
               {(
                 [
-                  ["计价用量", charge.provider_usage],
+                  ["计价用量", charge.entry_kind === "service" ? {quantity_ms:charge.quantity_ms,admitted_quantity_ms:charge.admitted_quantity_ms} : charge.provider_usage],
                   ["费率快照", charge.rate_snapshot],
                   ["预占估算依据", charge.reservation_estimate],
                 ] as const
@@ -211,13 +219,22 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
         </DialogContent>
       </Dialog>
       <OperationDialog
-        title="人工核算 / 追加更正"
-        description="按本次供应商账单或其他可核对依据确认费用，保留原记录和更正差额。"
+        title={reconcile?.entry_kind === "service" ? "核对实际处理用量" : "人工核算 / 追加更正"}
+        description={reconcile?.entry_kind === "service" ? "根据执行日志填写实际处理音频时长，或确认该处理没有启动。运营核对不会把估计成本变成供应商账单。" : "按本次供应商账单或其他可核对依据确认费用，保留原记录和更正差额。"}
         open={!!reconcile}
         onOpenChange={(open) => {
           if (!open) setReconcile(null);
         }}
         onSubmit={async (data) => {
+          if (reconcile!.entry_kind === "service") {
+            const quantity = waive ? 0 : Math.round(Number(data.get("seconds")) * 1000);
+            if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > (reconcile!.admitted_quantity_ms ?? 0)) throw new Error("实际处理时长不能超过获准音频范围");
+            const result = await ops.submit("核对处理用量", `/admin/service-usage/${encodeURIComponent(call)}/reconcile`, {
+              revision:reconcile!.revision,status:waive ? "not_started" : "completed",quantity_ms:quantity,
+              reason:String(data.get("reason")),evidence:String(data.get("evidence")),
+            });
+            close();return result;
+          }
           const result = await ops.submit(
             "人工核算费用",
             `/admin/charges/${encodeURIComponent(call)}/reconcile`,
@@ -235,20 +252,18 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
           return result;
         }}
       >
-        <Field label="供应商成本（元）">
-          <Input name="cost" inputMode="decimal" required={!waive} />
-        </Field>
+        {reconcile?.entry_kind === "service" ? <Field label="实际处理音频时长（秒）"><Input name="seconds" type="number" min="0" step="0.001" max={(reconcile.admitted_quantity_ms ?? 0)/1000} required={!waive} /></Field> : <Field label="供应商成本（元）"><Input name="cost" inputMode="decimal" required={!waive} /></Field>}
         <label className="my-3 flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={waive}
             onChange={(e) => setWaive(e.target.checked)}
           />
-          账号免扣（释放占用）
+          {reconcile?.entry_kind === "service" ? "有日志证据确认该处理尚未启动" : "账号免扣（释放占用）"}
         </label>
         {waive && (
           <p className="text-sm text-muted-foreground">
-            不填供应商成本时保留原值；未知成本仍未知。
+            {reconcile?.entry_kind === "service" ? "确认未启动后释放本次预占；用户继续时仅重试未完成的音频段。" : "不填供应商成本时保留原值；未知成本仍未知。"}
           </p>
         )}
         <Field label="处理原因">

@@ -11,13 +11,23 @@ export function videoWindowId() {
 export function createVideoQuestion(windowId: string, command: (input: DraftCommand) => Promise<{ draft: VideoDraft | null }>, capture: (id: string) => VideoQuestionContext) {
   const draft = ref<VideoDraft | null>(null), error = ref(''), restoring = ref(false);
   let writes = Promise.resolve(), revision = 0;
+  let queuedSave: { input: DraftCommand; version: number } | null = null;
   function enqueue(input: DraftCommand) {
-    const version = revision;
+    // Only the latest edit matters while a save is waiting. Release remains an
+    // ordering barrier so cancelling and binding another frame cannot be merged.
+    if (input.action === 'save' && queuedSave) {
+      queuedSave.input = input;
+      queuedSave.version = revision;
+      return;
+    }
+    const queued = { input, version: revision };
+    queuedSave = input.action === 'save' ? queued : null;
     writes = writes.catch(() => {}).then(async () => {
-      await command(input);
-      if (version === revision) error.value = '';
+      if (queuedSave === queued) queuedSave = null;
+      await command(queued.input);
+      if (queued.version === revision) error.value = '';
     }).catch(failure => {
-      if (version === revision) error.value = (failure as Error).message;
+      if (queued.version === revision) error.value = (failure as Error).message;
       throw failure;
     });
     void writes.catch(() => {});
@@ -92,6 +102,8 @@ export function createVideoQuestion(windowId: string, command: (input: DraftComm
     input(draft.value.message);
   }
   async function submission() {
+    // A second click after a failed save is an explicit retry of the same draft.
+    if (error.value && draft.value) input(draft.value.message);
     await writes;
     if (!draft.value) throw new Error('请先绑定当前视频画面');
     return { video_window_id: windowId, video_draft_id: draft.value.context.draft_id };

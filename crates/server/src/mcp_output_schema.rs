@@ -8,8 +8,16 @@ pub(crate) fn reference_schema() -> Value {
 }
 
 fn candidate_calls(id: BookToolId, schema: &mut Value, remote: bool) {
+    if id == BookToolId::Text && schema.get("oneOf").is_some() {
+        for branch in schema["oneOf"].as_array_mut().unwrap() {
+            candidate_calls(id, branch, remote);
+        }
+        return;
+    }
     let collection = match id {
+        BookToolId::Text => "math_context",
         BookToolId::SearchText => "occurrences",
+        BookToolId::Search => "hits",
         BookToolId::Concept => "candidates",
         BookToolId::Context => "items",
         _ => return,

@@ -13,6 +13,7 @@ import type { ReadOnlyBase } from "./generated/ReadOnlyBase";
 import type { TranscriptMap } from "./generated/TranscriptMap";
 import type { VideoSourceRef } from "./generated/VideoSourceRef";
 import type { VideoSourceAsset } from "./generated/VideoSourceAsset";
+import type { TranscriptServiceMeter } from "./service-usage";
 
 const run = promisify(execFile);
 export const VIDEO_BUILD_FILE = "video_build.json";
@@ -147,6 +148,7 @@ export function assembleVideoTranscript(workspace: string, build: VideoBuild, so
   return receipt.transaction_id;
 }
 export async function buildVideoTranscript(workspace: string, options: VideoOperationControl & { python?: string; modelDir?: string;
+  serviceMeter?: TranscriptServiceMeter;
   recognize?: (audio: string, output: string, chunk: VideoChunk) => Promise<void>; chunkMs?: number; contextMs?: number } = {}) {
   options.signal?.throwIfAborted();
   workspace=path.resolve(workspace);
@@ -173,15 +175,19 @@ export async function buildVideoTranscript(workspace: string, options: VideoOper
     if (chunk.status === "completed") continue;
     try {
       // A completed service response survives an interruption before its Engine receipt was saved.
+      const audio=path.join(dir,`${chunk.id}.wav`);
       if (!existsSync(rawPath)) {
         chunk.status="running"; chunk.failure=null; chunk.attempts++; save(file,build);
         report();
-        const audio=path.join(dir,`${chunk.id}.wav`);
         await run(options.ffmpeg ?? videoTool('ffmpeg'),["-v","error","-y","-i",path.join(workspace,source.imported_path),
           "-ss",String(chunk.input_start_ms/1000),"-t",String((chunk.input_end_ms-chunk.input_start_ms)/1000),
           "-map","0:a:0","-ac","1","-ar","16000","-c:a","pcm_s16le",audio],{windowsHide:true, signal: options.signal});
-        if (options.recognize) await options.recognize(audio,rawPath,chunk);
-        else {
+        if (!options.recognize && !(options.modelDir || process.env.VIDEO_WHISPER_MODEL_DIR))
+          throw new Error("Provide --model-dir or VIDEO_WHISPER_MODEL_DIR for the local small.en model; run video-doctor, then repeat video-transcribe to resume");
+      }
+      const transcribe = async () => {
+        if (!existsSync(rawPath) && options.recognize) await options.recognize(audio,rawPath,chunk);
+        else if (!existsSync(rawPath)) {
           const modelDir = options.modelDir || process.env.VIDEO_WHISPER_MODEL_DIR;
           if (!modelDir) throw new Error("Provide --model-dir or VIDEO_WHISPER_MODEL_DIR for the local small.en model; run video-doctor, then repeat video-transcribe to resume");
           const request=path.join(dir,`${chunk.id}.request.json`);
@@ -194,7 +200,10 @@ export async function buildVideoTranscript(workspace: string, options: VideoOper
           }
           await run(options.python || process.env.VIDEO_WHISPER_PYTHON || "python",[script,request,rawPath],{windowsHide:true, signal: options.signal});
         }
-      }
+        rawWords(read(rawPath),chunk,source);
+      };
+      if (options.serviceMeter) await options.serviceMeter.transcribe(chunk,rawPath,transcribe);
+      else await transcribe();
       rawWords(read(rawPath),chunk,source); chunk.status="completed"; chunk.failure=null;
     } catch(error) { chunk.status="failed"; chunk.failure=error instanceof Error?error.message:String(error); }
     save(file,build);

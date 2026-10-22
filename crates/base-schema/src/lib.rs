@@ -8,6 +8,8 @@ use ts_rs::TS;
 
 pub mod video;
 pub use video::*;
+pub mod music;
+pub use music::*;
 
 /// Exact immutable material version, shared by Reader, Runtime and publication storage.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, TS, JsonSchema)]

@@ -66,7 +66,7 @@ fn presentation_to4_advertised_edit_chain_preserves_sources_assets_and_versions(
     let range = EvidenceRange { start_lid:"1.1".into(), end_lid:"1.1".into(),
         ranges:vec![read_tools::SourceSelectedRange { lid:"1.1".into(), range:read_tools::SourceTextRange { start:0, end:3 } }] };
     let resolved = state.workspace.book.resolve_source(&range, "zh-CN", None).unwrap();
-    let binding = runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+    let binding = runtime::orchestrator::SourceBinding { music: None, publication_id: None, source_revision: None,
         source_ref_id:"source-to4-observed".into(), book_id:state.workspace.book.base.book_id.clone(),
         evidence_range:Some(range), media:None, evidence_text_digest:resolved.evidence_text_digest,
         label_snapshot:resolved.label, preview_snapshot:resolved.preview,
@@ -82,7 +82,11 @@ fn presentation_to4_advertised_edit_chain_preserves_sources_assets_and_versions(
     let premature = port.author_presentation(serde_json::from_value(on_candidate("deliver", "", &first)).unwrap(), &[], &[], &CancellationToken::default()).err().unwrap();
     assert!(premature.message.contains("Preview"));
     let inspected = preview(&mut port, on_candidate("preview", "width", &first), &mut calls);
-    assert_eq!(inspected.body["status"], "preview_ready_for_inspection");
+    assert_eq!(inspected.body["status"], "preview_environment_recorded");
+    for (_,viewport) in &REQUIRED_PREVIEW_ENVIRONMENTS[..2] {
+        let mut input=on_candidate("preview","viewport",&first);input["viewport"]=json!(viewport);
+        preview(&mut port,input,&mut calls);
+    }
     let initial = invoke(&mut port, on_candidate("deliver", "", &first), &[], &mut calls).delivered.unwrap();
 
     let plot = invoke(&mut port, example("render_plot", ""), &[], &mut calls);
@@ -96,6 +100,10 @@ fn presentation_to4_advertised_edit_chain_preserves_sources_assets_and_versions(
     write["source_ref_ids"] = json!([binding.source_ref_id]);
     let sourced = candidate_id(&invoke(&mut port, write.clone(), &[binding.clone()], &mut calls));
     preview(&mut port, on_candidate("preview", "width", &sourced), &mut calls);
+    for (_,viewport) in &REQUIRED_PREVIEW_ENVIRONMENTS[..2] {
+        let mut input=on_candidate("preview","viewport",&sourced);input["viewport"]=json!(viewport);
+        preview(&mut port,input,&mut calls);
+    }
     let reference = invoke(&mut port, on_candidate("deliver", "", &sourced), &[], &mut calls).delivered.unwrap();
     assert_eq!(reference.presentation_id, initial.presentation_id);
     assert_eq!(reference.revision, initial.revision + 1);

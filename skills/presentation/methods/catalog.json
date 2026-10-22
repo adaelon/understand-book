@@ -1,5 +1,5 @@
 {
-  "revision": 4,
+  "revision": 5,
   "methods": [
     {
       "id": "discrete-update",
@@ -34,6 +34,27 @@
         "continuous_scene"
       ],
       "root": "skills/presentation/methods/object-transform/v2",
+      "entrypoint": "example/index.html",
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/README.md",
+        "example/author.json",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "compare-one-factor",
+      "revision": 3,
+      "name": "固定条件，只改变一个因素",
+      "status": "adopted",
+      "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+      "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+      "needs": [
+        "state",
+        "continuous_scene"
+      ],
+      "root": "skills/presentation/methods/compare-one-factor/v3",
       "entrypoint": "example/index.html",
       "files": [
         "card.md",

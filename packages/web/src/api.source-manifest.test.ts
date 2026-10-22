@@ -34,12 +34,12 @@ describe("source manifest API compatibility", () => {
     await expect(api.sourceManifest()).resolves.toBeNull();
   });
 
-  it("preserves a valid v2 PDF runtime manifest", async () => {
+  it.each(["reconciled_markdown", "pdf_text"])("preserves a valid v2 PDF runtime manifest from %s", async (kind) => {
     const manifest = {
       version: "source_manifest.v2",
       book_id: "paper-a",
       canonical_source: {
-        kind: "reconciled_markdown",
+        kind,
         path: "source.txt",
         citation_anchor: "lid",
         sha256: "source-hash",

@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { BuildJobState, BuildStageId, BuildWorkbenchSnapshot } from "../api";
 import BuildWorkbenchPane from "./BuildWorkbenchPane.vue";
+import FileDropField from "./FileDropField.vue";
 
 const stages = [
   "source_reconciliation",
@@ -74,6 +75,17 @@ function snapshot(): BuildWorkbenchSnapshot {
 }
 
 describe("BuildWorkbenchPane source review", () => {
+  it("submits a single PDF without requesting Markdown", async () => {
+    const fresh = snapshot(); fresh.source_review.unresolved = []; fresh.jobs = [];
+    const wrapper = mount(BuildWorkbenchPane, { props: { snapshot: fresh, loading: false, error: null, confirming: false, importing: false, actioning: false, pdfUrl: '/book/pdf/original' } });
+    expect(wrapper.findAllComponents(FileDropField)).toHaveLength(1);
+    wrapper.getComponent(FileDropField).vm.$emit('update:modelValue', new File(['%PDF-1.4 fixture'], 'My paper.pdf', { type: 'application/pdf' }));
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll('button').find(button => button.text() === '导入并阅读')!.trigger('click');
+    await vi.waitFor(() => expect(wrapper.emitted('import-input')).toHaveLength(1));
+    expect(wrapper.emitted('import-input')![0][0]).toEqual({ target_dir: undefined, display_title: 'My paper', paper_pdf_base64: btoa('%PDF-1.4 fixture') });
+    wrapper.unmount();
+  });
   it("allows reader entry when artifacts are trusted despite an interrupted job", async () => {
     const trusted = snapshot();
     trusted.readiness.route = "reader";
@@ -383,14 +395,14 @@ describe("BuildWorkbenchPane source review", () => {
       global: { stubs: { SourceReviewPdfPage: true } },
     });
 
-    expect(wrapper.text()).toContain("Paper A · 123B MD · 456B PDF");
+    expect(wrapper.text()).toContain("Paper A · 456B PDF");
     expect(wrapper.text()).toContain("无需重新选择");
     expect(wrapper.findAll(".file-drop-field")).toHaveLength(0);
 
     const replaceButton = wrapper.findAll("button").find((button) => button.text() === "更换输入");
     expect(replaceButton).toBeDefined();
     await replaceButton?.trigger("click");
-    expect(wrapper.findAll(".file-drop-field")).toHaveLength(2);
+    expect(wrapper.findAll(".file-drop-field")).toHaveLength(1);
     expect(wrapper.text()).not.toContain("书籍 ID");
 
     const cancelButton = wrapper.findAll("button").find((button) => button.text() === "取消更换");

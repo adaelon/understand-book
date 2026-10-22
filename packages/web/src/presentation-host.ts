@@ -4,6 +4,10 @@ export function acceptsPresentationMessage(event: MessageEvent, source: Window |
   const data = event.data;
   if (!data || typeof data !== "object" || data.channel !== channel || typeof data.kind !== "string") return false;
   switch (data.kind) {
+    case "interaction-result": return Number.isSafeInteger(data.request_id)
+      && (["observed", "applied", "conflict"].includes(data.status)
+        ? data.state !== null && typeof data.state === "object"
+        : ["failed", "cancelled"].includes(data.status) && typeof data.reason === "string");
     case "static-result": return typeof data.request_id === "string"
       && data.state !== null && typeof data.state === "object"
       && typeof data.image?.svg === "string"

@@ -24,6 +24,24 @@ fn request(capability: &str, scope: &str, operation: &str) -> Value {
         "scope":scope, "operation":operation, "effect_mode":"read_only", "max_results":3})
 }
 
+#[test]
+fn workspace_search_is_discoverable_as_corpus_retrieval_and_article_search_stays_local() {
+    let (registry, model, context) = fixture();
+    let mut state = ToolExposureState::default();
+    let plan = ToolExposurePlan::build(&registry, &model, &context, &state);
+    let input = json!({"task":"Find related source passages across workspace documents and videos", "required_capabilities":["lexical_locate"],
+        "scope":"corpus","operation":"explain","effect_mode":"read_only","max_results":3});
+    let outcome = search_and_activate(&input.to_string(), &context, &plan, &registry, &mut state).unwrap();
+    let output = serde_json::to_value(outcome).unwrap();
+    assert!(output["matches"].as_array().unwrap().iter().any(|item|item["name"]=="library.search"), "{output}");
+    let local = registry.routing_card("book.search").unwrap();
+    assert!(local.provides.contains(&ToolCapability::LexicalLocate));
+    assert!(!local.provides.contains(&ToolCapability::SemanticEvidence));
+    let registration = registry.registration("library.search").unwrap();
+    assert!(registration.validate_arguments(r#"{"query":"related concepts","limit":20}"#).is_ok());
+    assert!(registration.validate_arguments(r#"{"query":"related concepts","limit":21}"#).is_err());
+}
+
 fn scenarios() -> Vec<(&'static str, Value)> {
     let mut intent = request("reader_write", "passage", "mutate_reader");
     intent["effect_mode"] = json!("reader_mutation_explicitly_requested");

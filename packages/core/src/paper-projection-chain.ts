@@ -124,8 +124,8 @@ export function assertTrustedPaperProjectionSource(bookDirInput: string): Truste
   const source = readFileSync(sourcePath, "utf8");
   const sourceSha256 = sha256Text(source);
   const sourceManifest = SourceManifestV2Z.parse(readJson<unknown>(manifestPath)) as SourceManifestV2;
-  if (sourceManifest.canonical_source.kind !== "reconciled_markdown") {
-    throw new Error("paper projection requires source_manifest.v2 canonical_source.kind=reconciled_markdown");
+  if (!["reconciled_markdown", "pdf_text"].includes(sourceManifest.canonical_source.kind)) {
+    throw new Error("paper projection requires canonical PDF or reconciled source text");
   }
   if (sourceManifest.canonical_source.path !== "source.txt") {
     throw new Error("paper projection requires source_manifest.v2 canonical_source.path=source.txt");

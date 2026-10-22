@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTOMATIC_BUILD_EXECUTOR_DISPATCH_PROTOCOL_V1,
   AUTOMATIC_BUILD_RELEASE_V3,
-  PROFILE_SIDECAR_POLICY_V2,
+  PROFILE_SIDECAR_POLICY_V3,
 } from "../src/automatic-build-protocol";
 import { parseAutomaticBuildStageCloseResult } from "../src/automatic-build-close";
 import {
@@ -156,6 +156,7 @@ describe("BR10 automatic build release contract", () => {
     expect(AUTOMATIC_BUILD_RELEASE_V3).toMatchObject({
       version: "automatic_build_release.v3",
       production_default: AUTOMATIC_BUILD_EXECUTOR_DISPATCH_PROTOCOL_V1,
+      max_workers: 8,
       model_work_unit: "automatic_build_work_unit.v3",
       policy_set: "automatic_build_stage_policy_set.v3",
       policy_migration_receipt: "automatic_build_policy_migration_receipt.v2",
@@ -190,9 +191,9 @@ describe("BR10 automatic build release contract", () => {
       .filter((member) => member.prompt_name === "profile-sidecar-extractor.md");
     expect(profileMembers).toHaveLength(2);
     expect(profileMembers.every((member) => (
-      member.stage_policy_version === PROFILE_SIDECAR_POLICY_V2.stage_policy_version
+      member.stage_policy_version === PROFILE_SIDECAR_POLICY_V3.stage_policy_version
       && member.prompt_sha256 === profilePromptSha256
-      && member.schema_version === PROFILE_SIDECAR_POLICY_V2.schema_version
+      && member.schema_version === PROFILE_SIDECAR_POLICY_V3.schema_version
     ))).toBe(true);
     const sidecarEntry = readFileSync(path.join(REPO_ROOT, "skills", "build", "sidecar-entry.ts"), "utf8");
     expect(sidecarEntry).toContain("profile-sidecar-extractor.md");

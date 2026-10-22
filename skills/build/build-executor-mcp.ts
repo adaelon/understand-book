@@ -1,4 +1,5 @@
 import { DSH_BUILD_EXECUTOR_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
+import type { Readable, Writable } from "node:stream";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, DSH_BUILD_EXECUTION_PROFILE_V1 } from "../../packages/core/src/build-execution-profile";
 import { createBuildExecutorConnectionStateV4 } from "../../packages/core/src/build-executor-connection-state";
 import {
@@ -141,6 +142,7 @@ class BuildExecutorSessionCommandError extends Error {
 
 export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOptions): {
   handle_message: (value: unknown) => unknown | undefined;
+  is_terminal: () => boolean;
 } {
   const dsh = options.bootstrap_version === DSH_BUILD_EXECUTOR_CONTRACT_V1.bootstrap_version
     && options.protocol_generation === DSH_BUILD_EXECUTOR_CONTRACT_V1.session_protocol;
@@ -174,6 +176,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
     },
   });
   let connectionCallOrdinal = 0;
+  let terminal = false;
+  let opened = false;
   let initialized = !dsh;
 
   const handleMessage = (value: unknown): unknown | undefined => {
@@ -234,6 +238,7 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       ? request.params.name as BuildExecutorToolNameV1
       : undefined;
     if (!toolName) {
+      terminal = true;
       return boundedToolError(request.id, createAutomaticBuildExecutorProtocolMcpErrorV2("open"));
     }
 
@@ -284,6 +289,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
         throw new Error("Build Executor MCP tool result exceeds its transport profile");
       }
       connection.observe_response(call, response);
+      if (toolName === "executor.open") opened = true;
+      terminal = response.action.kind === "DONE";
       responseActionKind = response.action.kind;
       outcome = response.action.kind === "DONE" && response.action.status !== "committed"
         ? "bounded_error"
@@ -294,6 +301,10 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       }
     } catch (error) {
       const phase = operationPhase(toolName);
+      // Only an unbound, mistyped ref can be corrected on this connection by Root.
+      // Every other MCP error finishes the dedicated child under its lifecycle contract.
+      terminal = !(!opened && phase === "open" && error instanceof BuildExecutorInvalidArgumentsError
+        && error.field === "opaque_handoff_ref");
       rpcResponse = boundedToolError(
         request.id,
         error instanceof BuildExecutorSessionCommandError
@@ -337,7 +348,7 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
     return rpcResponse;
   };
 
-  return Object.freeze({ handle_message: handleMessage });
+  return Object.freeze({ handle_message: handleMessage, is_terminal: () => terminal });
 }
 
 function argumentValue(argv: string[], name: string): string | undefined {
@@ -360,14 +371,20 @@ export function runBuildExecutorMcpServer(argv: string[]): void {
       process.stderr.write(`${JSON.stringify(sample)}\n`);
     },
   });
-  process.stdin.setEncoding("utf8");
+  serveBuildExecutorMcpSession(session, process.stdin, process.stdout);
+}
+
+export function serveBuildExecutorMcpSession(
+  session: ReturnType<typeof createBuildExecutorMcpSession>, input: Readable, output: Writable,
+): void {
+  input.setEncoding("utf8");
   let pending = "";
-  process.stdin.on("data", (chunk: string) => {
+  input.on("data", (chunk: string) => {
     pending += chunk;
     if (Buffer.byteLength(pending, "utf8") > MAX_MCP_LINE_BYTES) {
       process.stderr.write("Build Executor MCP request exceeded its transport limit\n");
       process.exitCode = 2;
-      process.stdin.pause();
+      input.pause();
       return;
     }
     for (;;) {
@@ -382,7 +399,18 @@ export function runBuildExecutorMcpServer(argv: string[]): void {
       } catch {
         response = rpcError(null, -32700, "Parse error");
       }
-      if (response !== undefined) process.stdout.write(`${JSON.stringify(response)}\n`);
+      if (response !== undefined) {
+        const line = `${JSON.stringify(response)}\n`;
+        if (session.is_terminal()) {
+          // A connection owns one handoff. Flush DONE before closing the pipe; the host
+          // may retain the finished child, but it must not retain this service process.
+          pending = "";
+          input.destroy();
+          output.end(line);
+          return;
+        }
+        output.write(line);
+      }
     }
   });
 }

@@ -103,3 +103,48 @@ fn video_operator_rejects_false_tutor_capability_and_keeps_book_plan_review() {
     assert_eq!(created["operator_build"]["materials"][1]["build_tutor"],false);
     assert_eq!(f.call(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/start"),json!({"operation_id":"mixed-early","expected_revision":0})).0,409);
 }
+
+#[test]
+fn music_operator_uses_shared_queue_budget_and_stable_curation_plan_without_transcript() {
+    let f=super::b1_operator_build_tests::fixture(); let id="music-curated";
+    let mut input=create(&f,id);
+    input["materials"][0]["material_kind"]=json!("music");
+    input["materials"][0]["target_input"]=json!(f.root.path().join("schubert.curation.json"));
+    let created=f.ok(&f.b,"POST","/api/admin/operator-builds",input);
+    assert_eq!(created["operator_build"]["materials"][0]["required_capabilities"],json!(["music","music_score","music_events"]));
+    let started=transition(&f,id,"start");
+    assert_eq!(started["state"],"queued");
+    assert_eq!(started["budget"]["cost_owner"],"platform");
+    assert_eq!(transition(&f,id,"pause")["state"],"interrupted");
+    let resumed=transition(&f,id,"continue");
+    assert_eq!(resumed["confirmation"],started["confirmation"]);
+    let active=claim(&f);
+    let workspace=f.root.path().join("builds/music-schubert");
+    let plan=json!({"version":"operator_music_plan.v1","target_input":active["materials"][0]["target_input"],
+        "workspace_dir":workspace,"review_markdown":"录音、谱本、演奏出现与有来源的音乐事件","build_tutor":false});
+    let progress=json!({"host_session_id":"video-host","state":"running","plan":plan,"workspace_dir":workspace,
+        "invocation_ref":"music:music-curated:video","observation":{"progress":{"stage":"music_score","completed":2,"total":3,"unit":"tasks"}}});
+    let saved=f.ok(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/materials/video/progress"),progress.clone());
+    assert_eq!(claim(&f)["materials"],saved["materials"]);
+    let mut changed=progress;changed["plan"]["workspace_dir"]=json!(f.root.path().join("other"));
+    assert_eq!(f.call(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/materials/video/progress"),changed).0,409);
+    assert_eq!(get(&f,id)["budget"]["provider_cost_micro_cny"],0);
+    assert_eq!(f.control.connection.query_row("SELECT count(*) FROM model_call_charges",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+}
+
+#[test]
+fn music_operator_rejects_unimplemented_tutor_prebuild_and_book_plan_substitution() {
+    let f=super::b1_operator_build_tests::fixture();
+    let mut input=create(&f,"music-no-tutor");
+    input["materials"][0]["material_kind"]=json!("music");
+    input["materials"][0]["target_input"]=json!(f.root.path().join("curation.json"));
+    input["materials"][0]["build_tutor"]=json!(true);
+    assert_eq!(f.call(&f.b,"POST","/api/admin/operator-builds",input.clone()).1["error_code"],"OPERATOR_MUSIC_TUTOR_UNSUPPORTED");
+    input["materials"][0]["build_tutor"]=json!(false);
+    f.ok(&f.b,"POST","/api/admin/operator-builds",input);
+    transition(&f,"music-no-tutor","prepare");claim(&f);
+    let workspace=f.root.path().join("builds/music");
+    let wrong_plan=json!({"host_session_id":"video-host","state":"planned","workspace_dir":workspace,
+        "plan":{"build_plan_path":"book-plan.json","workspace_dir":workspace,"plan":{"private_artifacts":[]}}});
+    assert_eq!(f.call(&f.b,"POST","/api/admin/operator-builds/music-no-tutor/materials/video/progress",wrong_plan).0,400);
+}

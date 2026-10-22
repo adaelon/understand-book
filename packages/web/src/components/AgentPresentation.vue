@@ -19,6 +19,8 @@ import type { PresentationFeedback } from "../generated/PresentationFeedback";
 import type { PresentationFeedbackChoice } from "../generated/PresentationFeedbackChoice";
 import type { PresentationFeedbackReason } from "../generated/PresentationFeedbackReason";
 import type { PresentationFeedbackSelection } from "../generated/PresentationFeedbackSelection";
+import { registerPresentationHost, type PageOperationResult } from "../presentation-interaction";
+import type { PresentationCommand } from "../generated/PresentationCommand";
 import { presentationDocument } from "../presentation-document";
 import { acceptsPresentationMessage, resolvePresentationEditingMessage } from "../presentation-host";
 import { renderMarkdown } from "../md";
@@ -118,6 +120,8 @@ let teachingHelpInFlight: Promise<void> = Promise.resolve();
 let saveQueue: Promise<unknown> = Promise.resolve();
 let requestId = 0;
 let pendingSnapshot: { id: number; owner?: 'feedback'; resolve: (state: PresentationState) => void; reject: (error: Error) => void } | undefined;
+let pendingInteraction: { id: number; resolve: (result: PageOperationResult & { state?: PresentationState }) => void; reject: (error: Error) => void } | undefined;
+let unregisterInteraction: (() => void) | undefined;
 let generation = 0;
 let frameChannel = crypto.randomUUID();
 let themeObserver: MutationObserver | undefined;
@@ -232,6 +236,7 @@ function prepareFeedbackQuestion() {
 
 watch([() => props.sessionId, () => props.turnId, () => props.reference.presentation_id, () => props.reference.revision, () => props.noteMemId, sceneKey], async () => {
   setFrameEditing(false);
+  pendingInteraction?.reject(new Error("演示页面已切换，请重新观察。")); pendingInteraction = undefined;
   const current = ++generation;
   cancelFeedbackScene(); feedback.value = undefined; feedbackLoading.value = false; feedbackSaving.value = false;
   feedbackDetails.value = false; feedbackError.value = ''; feedbackSceneNotice.value = ''; failedFeedback.value = undefined;
@@ -283,6 +288,7 @@ async function retry() {
   if (!view.value) return;
   cancelFeedbackScene();
   pendingSnapshot?.reject(new Error('内容正在重新加载。')); pendingSnapshot = undefined;
+  pendingInteraction?.reject(new Error('演示页面正在重新加载。')); pendingInteraction = undefined;
   generation++; frameChannel = crypto.randomUUID(); ready.value = false; error.value = "";
   feedbackSaving.value = false;
   documentText.value = "";
@@ -293,6 +299,12 @@ async function retry() {
 async function receive(event: MessageEvent) {
   if (!acceptsPresentationMessage(event, frame.value?.contentWindow, frameChannel) || error.value) return;
   const message = event.data;
+  if (message.kind === 'interaction-result') {
+    if (pendingInteraction && pendingInteraction.id === message.request_id) {
+      pendingInteraction.resolve(message); pendingInteraction = undefined;
+    }
+    return;
+  }
   if (message.kind === "teaching-action" && ready.value && typeof message.move_id === "string") {
     teachingHost.value?.focusActivity(message.move_id, message.response); return;
   }
@@ -353,6 +365,40 @@ async function receive(event: MessageEvent) {
     if (requestedRegion) { const region = requestedRegion; requestedRegion = undefined; locateRegion(region); }
   }
 }
+async function executeInteraction(command: PresentationCommand, signal: AbortSignal): Promise<PageOperationResult> {
+  if (!ready.value || pendingInteraction || error.value) throw new Error('演示尚未准备好。');
+  const current = generation, channel = frameChannel, target = frame.value?.contentWindow;
+  const id = ++requestId;
+  const result = await new Promise<PageOperationResult & { state?: PresentationState }>((resolve, reject) => {
+    const abort = () => {
+      target?.postMessage({ channel, kind: 'interaction-cancel', request_id: id }, '*');
+      pendingInteraction?.reject(new Error('演示操作已停止；请重新观察当前现场。'));
+    };
+    const timer = setTimeout(() => abort(), 25000);
+    const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', abort); };
+    pendingInteraction = { id, resolve: value => { cleanup(); resolve(value); }, reject: failure => { cleanup(); pendingInteraction = undefined; reject(failure); } };
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) { abort(); return; }
+    target?.postMessage({ channel, kind: 'interaction', request_id: id, request: command.request, expected_values: command.expected_values, expected_edits: command.expected_edits }, '*');
+  });
+  signal.throwIfAborted();
+  if (current !== generation) throw new Error('演示页面已切换。');
+  if (result.state || ['observed', 'applied', 'conflict'].includes(result.status)) {
+    if (!result.state) throw new Error('演示没有返回当前现场。');
+    // Saving the displayed state also records its teaching help. The final tool
+    // completion can be cancelled without erasing help already seen.
+    const saved = saveState(result.state, {
+      command_id: command.command_id, run_turn_id: command.run_turn_id, page_id: channel,
+      status: result.status, support: result.support ?? [],
+    });
+    teachingHelpInFlight = saved.then(() => {}, () => {});
+    const receipt = await saved;
+    signal.throwIfAborted();
+    if (current !== generation) throw new Error('演示页面已切换。');
+    return { status: result.status, receipt, ...(result.reason ? { reason: result.reason } : {}) };
+  }
+  return { status: result.status, reason: result.reason };
+}
 function locateRegion(regionId: string) {
   if (!view.value?.teaching_binding?.regions.some(region => region.region_id === regionId)) return;
   if (!ready.value) { requestedRegion = regionId; return; }
@@ -363,12 +409,14 @@ async function awaitTeachingHelp() {
   await teachingHelpInFlight.catch(() => {});
   await teachingHost.value?.waitForHelp();
 }
-function saveState(state: PresentationState) {
+function saveState(state: PresentationState, teacherInteraction?: Record<string, unknown>) {
   const current = generation;
   const session = props.sessionId, turn = props.turnId, reference = { ...props.reference };
   const operation = saveQueue.catch(() => {}).then(async () => {
     if (current !== generation) throw new Error("内容已切换，请重新追问。");
-    return api.presentationSaveState(session, turn, reference, state);
+    return teacherInteraction
+      ? api.presentationSaveState(session, turn, reference, state, teacherInteraction)
+      : api.presentationSaveState(session, turn, reference, state);
   });
   saveQueue = operation;
   return operation.then(receipt => {
@@ -489,6 +537,14 @@ async function restore(receipt: PresentationFollowUp) {
 }
 defineExpose({ followUp, restore, locateRegion, focusResponse });
 onMounted(() => {
+  unregisterInteraction = registerPresentationHost({
+    pageId: () => frameChannel,
+    accepts: command => !props.noteMemId && ready.value && !error.value && hostIsVisible()
+      && command.session_id === props.sessionId && command.delivery_turn_id === props.turnId
+      && command.request.reference.presentation_id === props.reference.presentation_id
+      && command.request.reference.revision === props.reference.revision,
+    execute: executeInteraction,
+  });
   window.addEventListener("message", receive);
   window.addEventListener("keydown", keydown);
   themeObserver = new MutationObserver(theme);
@@ -500,6 +556,8 @@ onMounted(() => {
   if (root.value) visibilityObserver.observe(root.value);
 });
 onBeforeUnmount(() => {
+  unregisterInteraction?.();
+  pendingInteraction?.reject(new Error('演示页面已关闭。')); pendingInteraction = undefined;
   emit('teaching-host-available', false); emit('response-available', false);
   setFrameEditing(false);
   pendingSnapshot?.reject(new Error("内容已关闭。")); pendingSnapshot = undefined;

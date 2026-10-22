@@ -161,3 +161,24 @@ test('diagnostic interception records scripted calls separately from forwarded p
     assert.equal(measuredUsage(recorder.records.filter(r => !r.scripted)).total_tokens, 9);
   } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
 });
+
+test('request diff observes reasoning before removal and isolates background review traffic', async () => {
+  const recorder = await startProviderRecorder('http://unused.invalid', {
+    intercept: () => ({ choices: [], usage: { total_tokens: 0 } }),
+  });
+  const main = { messages: [
+    { role: 'system', content: 'You are the resident reading agent for the current book.' },
+    { role: 'assistant', content: '', reasoning_content: 'PRIVATE_OLD_REASONING' },
+  ] };
+  try {
+    const send = request => fetch(recorder.url + '/chat/completions', { method: 'POST', body: JSON.stringify(request) });
+    await send(main);
+    await send({ messages: [{ role: 'system', content: 'You extract durable reader-profile candidates from resident user turns.' }] });
+    const changed = structuredClone(main);
+    changed.messages[1].reasoning_content = 'PRIVATE_NEW_REASONING';
+    await send(changed);
+    assert.equal(recorder.records[2].request_diff.previous_ordinal, 1);
+    assert.equal(recorder.records[2].request_diff.messages.first_old_difference.category, 'reasoning');
+    assert(!JSON.stringify(recorder.records).includes('PRIVATE_'));
+  } finally { await recorder.stop(); }
+});

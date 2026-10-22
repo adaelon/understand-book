@@ -31,7 +31,7 @@ target/debug/server --multi-user /srv/understand-book \
 
 使用 [多人 Nginx 模板](../scripts/linux/nginx-multi-reader.conf.example)，填入自己的域名与证书；Origin、固定 Host 和实际 HTTPS 地址须一致。所有资源都反向代理至应用，不设置发布包或用户目录的公共静态 location。模板关闭代理缓存、SSE 缓冲和包含搜索参数的访问日志。代理清除外部身份头；应用不会信任这些头。生产 TLS、SSE 代理和真实设备验证归 MU11，本轮未部署。
 
-访问根页面登录，查看获授权目录并退出。页面由同一服务内置，无需将旧 Reader SPA 当作已接入多人协议。会话 Cookie 为 `__Host-ub_session`，Secure、HttpOnly、SameSite=Lax、Path=/，有效期 12 小时，每账号最多 8 个有效会话。登录轮换当前浏览器的旧会话；数据库只保存令牌摘要。密码使用 RustCrypto Argon2id，参数 m=19456 KiB、t=2、p=1，并独立生成盐，API 依据 [argon2 0.5.3 官方文档](https://docs.rs/argon2/0.5.3/argon2/)。
+访问根页面登录，查看获授权目录并退出。页面由同一服务内置，无需将旧 Reader SPA 当作已接入多人协议。会话 Cookie 为 `__Host-ub_session`，Secure、HttpOnly、SameSite=Lax、Path=/，有效期 30 天（2026-10-19 从 12 小时调整），每账号最多 8 个有效会话。期限从本次登录起计算，既有会话沿用签发时的截止时间，重新登录后采用新期限。登录轮换当前浏览器的旧会话；数据库只保存令牌摘要。密码使用 RustCrypto Argon2id，参数 m=19456 KiB、t=2、p=1，并独立生成盐，API 依据 [argon2 0.5.3 官方文档](https://docs.rs/argon2/0.5.3/argon2/)。
 
 ## 请求合同
 

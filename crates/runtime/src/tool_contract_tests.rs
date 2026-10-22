@@ -2,6 +2,30 @@ use super::*;
 use serde_json::json;
 
 #[test]
+fn ranked_search_delivery_matches_its_closed_output_schema() {
+    let registry = crate::orchestrator::resident_tool_registry();
+    let registration = registry.registration("book.search").unwrap();
+    let book = read_tools::Book::load(concat!(env!("CARGO_MANIFEST_DIR"), "/../book-tool-contracts/fixtures/example-book")).unwrap();
+    let input = json!({"query":"threshold activation conditions","limit":4});
+    let raw = serde_json::to_string(&book.search_ranked("threshold activation conditions", None, 4).unwrap()).unwrap();
+    let project = |limit| crate::tool_result::project_tool_result("book.search", &input.to_string(), &raw,
+        ToolOutputPolicy { result_policy:ToolResultPolicy::EvidenceProjection,max_model_body_bytes:limit }, limit, &book);
+    let complete = project(100_000);
+    assert!(!complete.truncated);
+    let schema = registration.output_schema().unwrap();
+    let complete_schema = &schema["oneOf"][0]["properties"]["model_body"]["anyOf"][0];
+    validate_schema(complete_schema, &complete.model_body, "$").unwrap();
+    let mut invalid = complete.model_body.clone(); invalid["unadvertised"] = json!(true);
+    assert!(validate_schema(complete_schema, &invalid, "$").is_err());
+    let partial = project(serde_json::to_vec(&complete.model_body).unwrap().len()-1);
+    assert!(partial.truncated);
+    let partial_schema = &schema["oneOf"][1]["properties"]["model_body"];
+    validate_schema(partial_schema, &partial.model_body, "$").unwrap();
+    let omitted = project(32);
+    validate_schema(partial_schema, &omitted.model_body, "$").unwrap();
+}
+
+#[test]
 fn presentation_read_error_explains_the_complete_operation_without_hiding_cause() {
     let registry = crate::orchestrator::resident_tool_registry();
     let registration = registry.registration("presentation.author").unwrap();
@@ -150,8 +174,8 @@ fn advertised_examples_survive_provider_projection_and_real_validation() {
             count += 1;
         }
     }
-    // Workspace and teaching examples plus five executable video inputs.
-    assert_eq!(count, 60);
+    // Includes ranked searches and five examples for music reading/interaction.
+    assert_eq!(count, 74);
 }
 
 #[test]
@@ -173,20 +197,20 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         context
     };
     let cases = [
-        ("active", json!({"status":"active"}), 10),
-        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 12),
+        ("active", json!({"status":"active"}), 13),
+        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 13),
         ("observing", json!({"status":"observing"}), 2),
-        ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 3),
+        ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 2),
         ("reference", json!({"status":"reference"}), 1),
-        ("explain_selection", action("explain_selection"), 8),
-        ("clarify_answer", action("clarify_answer"), 10),
-        ("continue_answer", action("continue_answer"), 10),
-        ("supplement", supplement, 10),
-        ("guided_default", guided, 10),
-        ("confirmed_preference", preferred, 10),
-        ("choice_explain", choice("explain"), 10),
-        ("choice_compare", choice("compare"), 10),
-        ("choice_observe", choice("observe"), 10),
+        ("explain_selection", action("explain_selection"), 10),
+        ("clarify_answer", action("clarify_answer"), 13),
+        ("continue_answer", action("continue_answer"), 13),
+        ("supplement", supplement, 13),
+        ("guided_default", guided, 13),
+        ("confirmed_preference", preferred, 13),
+        ("choice_explain", choice("explain"), 13),
+        ("choice_compare", choice("compare"), 13),
+        ("choice_observe", choice("observe"), 13),
     ];
     let mut snapshots = serde_json::Map::new();
     for (name, context, count) in cases {
@@ -199,8 +223,6 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
             assert!(!examples[..index].contains(input), "duplicate in {name}");
             validate_schema(&spec.parameters, input, "$").unwrap_or_else(|e| panic!("{name}: {input}: {e:?}"));
             registration.validate_arguments(&input.to_string()).unwrap();
-            if input["operation"] == "assess" { assert_eq!(input["action_ref"], context["learner_context"]["pending_assessment_refs"][0]); }
-            if input["nature"] == "hypothesis" { assert_eq!(input["fact_refs"][0], context["learner_context"]["uninterpreted_fact_refs"][0]); }
             if context["current_action"].is_object() && input["operation"] == "select" {
                 assert!(input["move"].get("capability").is_none());
                 assert!(input["move"]["target"].is_object());
@@ -242,6 +264,94 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
 }
 
 #[test]
+fn tutor_schema_examples_stay_stable_when_actual_references_change() {
+    for status in ["active", "observing", "reference"] {
+        let context = |suffix: &str| json!({"status":status,"learner_context":{
+            "pending_assessment_refs":[format!("action:open-{suffix}")],
+            "uninterpreted_fact_refs":[format!("usage:learner-{suffix}")]}});
+        let earlier = context("earlier");
+        let current = context("current");
+        let first = crate::tutor::spec_for_context(&earlier).unwrap();
+        let next = crate::tutor::spec_for_context(&current).unwrap();
+        assert_eq!(serde_json::to_value(&first).unwrap(), serde_json::to_value(&next).unwrap(),
+            "actual event IDs must not change the advertised contract in {status}");
+        assert_ne!(crate::tutor::learner_view(&earlier), crate::tutor::learner_view(&current));
+        assert_eq!(crate::tutor::learner_view(&current)["uninterpreted_fact_refs"],
+            current["learner_context"]["uninterpreted_fact_refs"]);
+        assert!(!next.parameters.to_string().contains("usage:learner-current"));
+        assert!(!next.parameters.to_string().contains("action:open-current"));
+
+        let without_refs = crate::tutor::spec_for_context(&json!({"status":status})).unwrap();
+        assert_eq!(serde_json::to_value(&next).unwrap(), serde_json::to_value(&without_refs).unwrap(),
+            "gaining or consuming a learner fact must not change the advertised contract in {status}");
+        let examples = without_refs.parameters["examples"].as_array().unwrap();
+        assert!(!examples.iter().any(|example| example["operation"] == "assess" || example["nature"] == "hypothesis"),
+            "stable examples must not fabricate available learner facts");
+        if status == "observing" {
+            assert_eq!(next.parameters["properties"]["operation"]["enum"], json!(["trace", "understanding", "evidence"]));
+            assert!(next.parameters["properties"].get("move").is_none());
+        } else if status == "reference" {
+            assert_eq!(next.parameters["properties"]["operation"]["enum"], json!(["trace"]));
+            assert!(next.parameters["properties"].get("move").is_none());
+        }
+    }
+}
+
+#[test]
+fn tutor_learner_view_examples_follow_available_facts_and_current_permissions() {
+    for status in ["active", "observing", "reference", "paused", "inactive", "unready"] {
+        for (assessment, hypothesis) in [(false, false), (true, false), (false, true), (true, true)] {
+            let context = json!({"status":status,"learner_context":{
+                "pending_assessment_refs":if assessment { vec!["action:actual-open"] } else { vec![] },
+                "uninterpreted_fact_refs":if hypothesis { vec!["usage:actual-user"] } else { vec![] },
+            }});
+            let view = crate::tutor::learner_view(&context);
+            let expect_assessment = assessment && status == "active";
+            let expect_hypothesis = hypothesis && matches!(status, "active" | "observing");
+            if !expect_assessment && !expect_hypothesis {
+                assert!(view.get("tool_input_examples").is_none(), "no applicable examples in {status}");
+                continue;
+            }
+            let published = &view["tool_input_examples"];
+            assert_eq!(published["tool"], "tutor.step");
+            let notice = published["notice"].as_str().unwrap();
+            assert!(notice.contains("not learner facts or evidence"));
+            assert!(notice.contains("actual material read this turn"));
+            assert!(notice.contains("placeholders, never event IDs"));
+            assert!(notice.contains("learner's original words"));
+            let examples = published["examples"].as_array().unwrap();
+            assert_eq!(examples.len(), usize::from(expect_assessment) + usize::from(expect_hypothesis));
+            assert_eq!(examples.iter().any(|input| input["operation"] == "assess"), expect_assessment);
+            assert_eq!(examples.iter().any(|input| input["nature"] == "hypothesis"), expect_hypothesis);
+            let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
+            let registration = registry.registration("tutor.step").unwrap();
+            for input in examples {
+                validate_schema(&registration.spec.parameters, input, "$").unwrap();
+                registration.validate_arguments(&input.to_string()).unwrap();
+                let mut actual_request = input.clone();
+                if input["operation"] == "assess" {
+                    assert_eq!(input["action_ref"], "<pending_assessment_action_ref>");
+                    actual_request["action_ref"] = context["learner_context"]["pending_assessment_refs"][0].clone();
+                } else {
+                    assert_eq!(input["nature"], "hypothesis");
+                    assert_eq!(input["fact_refs"], json!(["<learner_expression_fact_ref>"]));
+                    actual_request["fact_refs"] = context["learner_context"]["uninterpreted_fact_refs"].clone();
+                }
+                registration.validate_arguments(&actual_request.to_string()).unwrap();
+            }
+            let empty = json!({"status":status,"learner_context":{
+                "pending_assessment_refs":[],"uninterpreted_fact_refs":[],
+            }});
+            assert!(crate::tutor::learner_view(&empty).get("tool_input_examples").is_none(),
+                "consumed facts remove examples from the current view");
+            assert_eq!(serde_json::to_value(&registration.spec).unwrap(),
+                serde_json::to_value(crate::tutor::spec_for_context(&empty).unwrap()).unwrap(),
+                "availability belongs in the appended learner view, not the tool prefix");
+        }
+    }
+}
+
+#[test]
 fn tutor_neutral_request_can_invite_without_rewriting_learner_intent_or_forcing_every_turn() {
     let context = json!({"status":"active","current_request":"I still mix moving time up with the whole journey."});
     let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
@@ -276,6 +386,24 @@ fn tutor_participation_rationale_stays_private_while_the_invitation_remains_publ
     for malformed in [json!({"operation":"select","participation":request["move"]["participation"]}),
         json!({"operation":"select","move":request["move"].to_string()})] {
         assert!(!crate::tutor::public_arguments(&malformed.to_string()).contains("participation"));
+    }
+}
+
+#[test]
+fn tutor_coach_binding_and_adjustment_stay_private_in_tool_arguments() {
+    let mut request = crate::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+        .find(|example| example["move"]["response_expectation"].is_object()).unwrap().clone();
+    request["move"]["coach_ref"] = json!("coach:source-turn");
+    request["move"]["coach_adjustment"] = json!({"reason":"PRIVATE_COACH_ADJUSTMENT", "fact_refs":["user:current"]});
+    let public:Value = serde_json::from_str(&crate::tutor::public_arguments(&request.to_string())).unwrap();
+    assert_eq!(public["move"]["response_expectation"], request["move"]["response_expectation"]);
+    assert_eq!(public["move"]["prompt"], request["move"]["prompt"]);
+    for field in ["coach_ref", "coach_adjustment"] { assert!(public["move"].get(field).is_none()); }
+    for input in [request.clone(),
+        json!({"operation":"select","coach_ref":request["move"]["coach_ref"],"coach_adjustment":request["move"]["coach_adjustment"]}),
+        json!({"operation":"select","move":request["move"].to_string()})] {
+        let public = crate::tutor::public_arguments(&input.to_string());
+        assert!(!public.contains("coach:source-turn") && !public.contains("PRIVATE_COACH_ADJUSTMENT"));
     }
 }
 

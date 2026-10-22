@@ -63,7 +63,7 @@ fn config_error() -> String {
 
 // ureq's request deadline cannot interrupt the OS resolver. Bound the caller's
 // wait as well; a late DNS result is discarded before any HTTP send can occur.
-fn resolve_bounded(
+pub(crate) fn resolve_bounded(
     lookup: impl FnOnce() -> std::io::Result<Vec<SocketAddr>> + Send + 'static,
     timeout: Duration,
 ) -> std::io::Result<Vec<SocketAddr>> {

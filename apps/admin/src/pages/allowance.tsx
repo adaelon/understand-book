@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { percentage, percentageInput, milliPercentage } from "@/lib/allowance";
 import { McpCorrectionDialog } from "./mcp";
+import { CloudPlansPanel } from "./cloud-plans";
 
 export function AllowancePanel({
   userId,
@@ -103,6 +104,7 @@ export function AllowancePanel({
       <p className="text-sm text-muted-foreground">
         额度按每期固定基准显示百分比，实际收款单独以元记录。补充额度不会改变旧用量比例，新一期不自动结转旧余额。
       </p>
+      <CloudPlansPanel userId={userId} />
       {current ? (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">

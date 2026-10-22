@@ -26,6 +26,8 @@ describe("model input renderer", () => {
       work_unit_id: "discourse-1-1",
       unit_kind: "profile_sidecar_discourse" as const,
       visible_lids: ["1.1"],
+      discourse_lids: ["1.1"],
+      math_anchor_lids: [],
       formula_lids: [],
       text: "[1.1] Body",
     };
@@ -34,6 +36,8 @@ describe("model input renderer", () => {
       "work_unit_id: discourse-1-1",
       "unit_kind: profile_sidecar_discourse",
       'visible_lids: ["1.1"]',
+      'discourse_lids: ["1.1"]',
+      'math_anchor_lids: []',
       "formula_lids: []",
       "",
       "TEXT",

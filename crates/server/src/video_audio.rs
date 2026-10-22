@@ -26,19 +26,25 @@ impl AudioConfig {
 }
 
 pub(crate) fn review_for_run(scope: &crate::run_scope::RunScope, request: ReviewAudio, cancel: &CancellationToken) -> Result<AudioReview, ToolError> {
+    review_for_run_metered(scope,request,cancel,None)
+}
+
+pub(crate) fn review_for_run_metered(scope: &crate::run_scope::RunScope, request: ReviewAudio, cancel: &CancellationToken,
+    spend: Option<&crate::model_spend_store::ModelSpendStore>) -> Result<AudioReview, ToolError> {
     let declared: crate::published_library::PublicationManifest = serde_json::from_slice(
         &fs::read(scope.book_dir.join("publication.json")).map_err(|e| failed(e.to_string()))?
     ).map_err(|e| failed(e.to_string()))?;
     if scope.publication.as_ref().is_some_and(|p| p.reference != declared.reference) { return Err(failed("Run publication mismatch")); }
-    review_audio(&scope.book, &scope.book_dir, &declared.reference, &scope.turn_id, request, cancel, &AudioConfig::from_env()?)
+    review_audio_metered(&scope.book, &scope.book_dir, &declared.reference, &scope.turn_id, request, cancel, &AudioConfig::from_env()?,spend.map(|spend|(spend,scope)))
 }
 
-fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &CancellationToken, deadline: Instant) -> Result<(), ToolError> {
+fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &CancellationToken, deadline: Instant, started: Option<&mut bool>) -> Result<(), ToolError> {
     cancel.check()?;
     let log_path = staging.join(format!("{phase}.log"));
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::from(fs::File::create(&log_path).map_err(|e| failed(e.to_string()))?));
     #[cfg(windows)] { use std::os::windows::process::CommandExt; command.creation_flags(0x08000000); }
     let mut child = command.spawn().map_err(|e| failed(format!("Cannot start {phase}: {e}")))?;
+    if let Some(started) = started { *started = true; }
     drop(command);
     loop {
         if cancel.is_cancelled() || Instant::now() >= deadline {
@@ -59,6 +65,11 @@ fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &Cancellat
 
 pub fn review_audio(book: &Book, directory: &Path, publication: &PublishedBookRef, run_id: &str, request: ReviewAudio,
     cancel: &CancellationToken, config: &AudioConfig) -> Result<AudioReview, ToolError> {
+    review_audio_metered(book,directory,publication,run_id,request,cancel,config,None)
+}
+
+pub(crate) fn review_audio_metered(book: &Book, directory: &Path, publication: &PublishedBookRef, run_id: &str, request: ReviewAudio,
+    cancel: &CancellationToken, config: &AudioConfig, metering: Option<(&crate::model_spend_store::ModelSpendStore,&crate::run_scope::RunScope)>) -> Result<AudioReview, ToolError> {
     cancel.check()?;
     let declared: crate::published_library::PublicationManifest = serde_json::from_slice(
         &fs::read(directory.join("publication.json")).map_err(|e| failed(e.to_string()))?
@@ -86,7 +97,7 @@ pub fn review_audio(book: &Book, directory: &Path, publication: &PublishedBookRe
         .args(["-t",&(duration_ms / 1000.0).to_string(),"-map","0:a:0","-vn","-ac","1","-ar","16000","-c:a","pcm_s16le","-y"])
         .arg(&audio);
     let deadline = Instant::now() + Duration::from_secs(120);
-    execute(decode, staging.path(), "FFmpeg", cancel, deadline)?;
+    execute(decode, staging.path(), "FFmpeg", cancel, deadline,None)?;
     // Embed the existing VI3 adapter so execution does not depend on a repository-relative script.
     let script = staging.path().join("whisper.py");
     fs::write(&script, include_str!("../../../packages/core/src/video-whisper.py")).map_err(|e| failed(e.to_string()))?;
@@ -96,8 +107,24 @@ pub fn review_audio(book: &Book, directory: &Path, publication: &PublishedBookRe
     fs::write(&input, json!({"audio":audio,"model_dir":config.model_dir}).to_string()).map_err(|e| failed(e.to_string()))?;
     let mut recognize = Command::new(&config.python);
     recognize.arg(script).arg(input).arg(&output);
-    execute(recognize, staging.path(), "Whisper", cancel, deadline)?;
-    let raw: Value = serde_json::from_slice(&fs::read(output).map_err(|e| failed(e.to_string()))?).map_err(|e| failed(e.to_string()))?;
+    let usage_id=metering.map(|(spend,scope)|spend.service_admit_run(scope,duration_ms.ceil() as i64,crate::multi_user_host::now())).transpose()?;
+    let mut started=false;
+    let recognized=(|| {
+        execute(recognize, staging.path(), "Whisper", cancel, deadline,Some(&mut started))?;
+        let raw: Value=serde_json::from_slice(&fs::read(output).map_err(|e|failed(e.to_string()))?).map_err(|e|failed(e.to_string()))?;
+        let actual=raw["info"]["duration"].as_f64().filter(|v|v.is_finite() && *v > 0.0).ok_or_else(||failed("Missing decoded audio duration"))? * 1000.0;
+        if (actual-duration_ms).abs()>1.0 { return Err(failed("Decoded audio does not cover the requested range")); }
+        Ok((raw,actual))
+    })();
+    if let (Some((spend,scope)),Some(usage_id))=(metering,usage_id) {
+        let quantity=recognized.as_ref().ok().map(|(_,ms)|(*ms).round().min(duration_ms.ceil()) as i64);
+        let status=if recognized.is_ok() {"completed"} else if started {"unknown"} else {"not_started"};
+        spend.service_receipt(&scope.turn_id,crate::service_usage::ServiceReceipt {usage_id,status:status.into(),
+            quantity_ms:if status=="not_started" {Some(0)} else {quantity},
+            evidence:json!({"source":"video.review_audio","publication":publication,"start_ms":request.location.start_ms,
+                "end_ms":request.location.end_ms,"decoded_duration_ms":recognized.as_ref().ok().map(|(_,ms)|ms)})},crate::multi_user_host::now())?;
+    }
+    let (raw,_)=recognized?;
     cancel.check()?;
     let mut review = project(publication, request, map.segments, &raw)?;
     review.run_id = run_id.into();
@@ -230,10 +257,10 @@ mod tests {
         let python=std::env::var("VIDEO_WHISPER_PYTHON").unwrap_or_else(|_| "python".into());
         let command=|| {let mut c=Command::new(&python);c.args(["-c","import time; time.sleep(20)"]);c};
         let cancel=CancellationToken::default();
-        assert!(execute(command(),staging.path(),"timeout",&cancel,Instant::now()).unwrap_err().message.contains("deadline"));
+        assert!(execute(command(),staging.path(),"timeout",&cancel,Instant::now(),None).unwrap_err().message.contains("deadline"));
         let token=cancel.clone();
         let worker=std::thread::spawn(move|| {std::thread::sleep(Duration::from_millis(100));token.cancel();});
-        assert_eq!(execute(command(),staging.path(),"cancel",&cancel,Instant::now()+Duration::from_secs(10)).unwrap_err().error_code,"AGENT_RUN_CANCELLED");
+        assert_eq!(execute(command(),staging.path(),"cancel",&cancel,Instant::now()+Duration::from_secs(10),None).unwrap_err().error_code,"AGENT_RUN_CANCELLED");
         worker.join().unwrap();
     }
 }

@@ -25,6 +25,8 @@ PROFILE_SIDECAR_SEMANTIC_UNIT
 work_unit_id: discourse-3-2-1-abcd1234
 unit_kind: profile_sidecar_discourse
 visible_lids: ["3.2.1", "3.2.2", "3.2.3", "3.2.4"]
+discourse_lids: ["3.2.1"]
+math_anchor_lids: ["3.2.1"]
 formula_lids: []
 
 TEXT
@@ -36,15 +38,17 @@ For `content_profile=paper`, the `TEXT` section may begin with `PAPER_DISCOURSE_
 
 Rules:
 - `visible_lids` is the complete set of LIDs you may cite.
+- `discourse_lids` lists the paragraph/list-item anchors to classify. Other visible LIDs supply context only, including short connective text, inline symbols, headings and display equations.
+- Read adjacent LID-labelled fragments within the same paragraph together. A short fragment or bare variable can carry a necessary assumption even when it is not an extraction target.
 - `formula_lids` is deterministic; never invent formula LIDs.
 - Every `lid`, `target_lid`, `context_lids`, and `evidence_lids` value must be from `visible_lids`.
 - Only emit formula semantics for LIDs listed in `formula_lids`.
-- For `profile_sidecar_discourse`, emit only `discourse_items`; `formula_semantics` must be absent.
-- For `profile_sidecar_formula`, emit only `formula_semantics`; `discourse_items` must be absent.
+- For `profile_sidecar_discourse`, emit `discourse_items` and, when grounded, `math_items`; `formula_semantics` must be absent.
+- For `profile_sidecar_formula`, emit only `formula_semantics`; `discourse_items` and `math_items` must be absent.
 
 ## Step A - Discourse Classification
 
-Only for `profile_sidecar_discourse`:for every eligible paragraph LID in `visible_lids`, emit one discourse item. Classify what the paragraph is doing, add a grounded local summary when useful, and initialize its relations for Step B. The generated Machine Contract below is the sole authority for exact field names, enum membership, required/nullable rules, bounds, and profile-specific hints.
+Only for `profile_sidecar_discourse`:for every anchor in `discourse_lids`, emit one discourse item for its complete source paragraph or list item, including the visible inline math and attached display equations. Do not classify context-only LIDs separately. Classify what the paragraph is doing, add a grounded local summary when useful, and initialize its relations for Step B. The generated Machine Contract below is the sole authority for exact field names, enum membership, required/nullable rules, bounds, and profile-specific hints.
 
 `local_summary` must summarize what this LID actually says or does in context. Do not use generic phrases such as "explains the current topic", "continues the discussion", or "provides information" unless the source text itself is that generic.
 
@@ -112,10 +116,23 @@ Formula rules:
 - Evidence must stay inside `formula_lid + context_lids`.
 - If composition cannot be grounded, omit the formula candidate.
 - Do not use outside math knowledge as book evidence.
+- Preserve visible hypotheses and qualifiers when explaining a conclusion. A heading such as “习题” makes “证明” a task for the reader, not a proof already supplied by the author. Keep theorem statements, proof steps and exercise requests distinct.
 - Do not write English prose in FormulaSemantics explanations unless the source itself is an English technical term that should remain untranslated.
 
+## Step D - Lightweight Mathematical Structure
+
+Only discourse units with non-empty `math_anchor_lids` may emit `math_items`. These are candidate locations in `technical_learning`, not preclassified mathematical objects. Emit at most one item per listed anchor when the source actually introduces a definition, theorem, lemma, proposition, corollary, assumption, proof, exercise or algorithm. A sentence such as “引理 2.1 实际上指的是…” merely discusses an earlier result; do not create another lemma. An exercise collection heading is not an individual exercise.
+
+Each item has `anchor_lid`, `kind`, optional verbatim `label` (for example “定理 5.3”), `evidence_lids`, `assumptions`, and `references`. Evidence includes the anchor and the visible statement with its inline symbols and conclusion formula. A proof item locates the source proof's opening; it does not assert that the complete proof has been checked or included. Context-only prior statements must not become extra items.
+
+`assumptions` contains `{quote, evidence_lids}` for conditions explicitly stated for this object. Copy complete conditions verbatim, including formulas, quantifiers and negation. Empty means no condition was extracted, not that the result is unconditional. Do not infer missing hypotheses or promote assumptions introduced inside a proof into hypotheses of the theorem.
+
+`references` contains `{relation, target_kind, target_label, scope, quote, evidence_lids}`. Use `uses` for an explicitly invoked result, `proves` only for the source author's proof of a visible named result, `asks_to_prove` only for an exercise requesting a proof, and `refers_to` for other explicit references. For “利用定理6.5证明推论6.2”, emit uses → 定理6.5 and asks_to_prove → 推论6.2. Quote the source instruction exactly. A preceding labelled theorem may identify the object of an immediately following “证明”; cite both locations and quote the proof marker. Never treat the exercise as an already supplied proof.
+
+`scope` is `local` for a reference within this book and `external` for a cited work (for example “[145] 定理 6.5”). Preserve the reference's original label and evidence even when the target is outside the visible input. Do not invent a target LID: the publisher resolves labels across accepted items, leaving missing or ambiguous references unresolved. Use an empty array when the text does not support assumptions or references; do not fill gaps with outside mathematical knowledge.
+
 <!-- BEGIN GENERATED EXTRACTOR CONTRACT -->
-## Machine Contract: profile_sidecar_output.v2
+## Machine Contract: profile_sidecar_output.v3
 
 The writer validates this exact shape before semantic gating:
 
@@ -183,6 +200,37 @@ The writer validates this exact shape before semantic gating:
         }
       ]
     }
+  ],
+  "math_items": [
+    {
+      "anchor_lid": "3.2.1",
+      "kind": "theorem",
+      "label": "定理 1",
+      "evidence_lids": [
+        "3.2.1",
+        "3.2.4"
+      ],
+      "assumptions": [
+        {
+          "quote": "设 f 可微",
+          "evidence_lids": [
+            "3.2.1"
+          ]
+        }
+      ],
+      "references": [
+        {
+          "relation": "uses",
+          "target_kind": "lemma",
+          "target_label": "引理 1",
+          "scope": "local",
+          "quote": "由引理 1",
+          "evidence_lids": [
+            "3.2.1"
+          ]
+        }
+      ]
+    }
   ]
 }
 ```
@@ -218,7 +266,8 @@ Field constraints:
 - rhetorical_move.profile_hints.paper=problem_framing | related_work_positioning | method_setup | experiment_report | result_claim | limitation_acknowledgement | future_work_projection
 
 Cross-field invariants:
-- A profile_sidecar_discourse unit emits only discourse_items; a profile_sidecar_formula unit emits only formula_semantics.
+- A profile_sidecar_discourse unit emits discourse_items and may emit math_items for math_anchor_lids; a profile_sidecar_formula unit emits only formula_semantics.
+- math_items preserve source labels, exact assumption quotes and explicit reference quotes; proofs use proves, exercises use asks_to_prove. The writer checks anchors and quoted evidence against the source.
 - All discourse and relation evidence LIDs must be visible; relation evidence includes source lid and target_lid.
 - formula_lid must be in formula_lids; context_lids must be visible; formula evidence stays inside formula_lid + context_lids.
 - composition.source_lid must equal formula_lid.

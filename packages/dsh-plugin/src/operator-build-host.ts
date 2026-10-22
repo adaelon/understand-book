@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import type { ExternalBuildCostConnection } from '../../core/src/external-build-cost.ts';
-import { videoOperatorCommand } from './engine-client.ts';
+import { musicOperatorCommand, videoOperatorCommand } from './engine-client.ts';
 import { createBuildControl, type BuildControlConfig, type OperatorBuildPlan } from './build-control.ts';
 
 export interface OperatorBuildHostConfig {
@@ -23,12 +23,16 @@ interface OperatorVideoPlan {
   version: 'operator_video_plan.v1'; target_input: string; workspace_dir: string;
   review_markdown: string; build_tutor: false;
 }
+interface OperatorMusicPlan {
+  version: 'operator_music_plan.v1'; target_input: string; workspace_dir: string;
+  review_markdown: string; build_tutor: false;
+}
 interface Material {
   material_id: string; label: string; target_input?: string; root_dir?: string;
   pass2?: 'enabled' | 'disabled'; max_parallel?: 1 | 2 | 3;
   published_book_ref?: {book_id:string;publication_id:string};
-  material_kind?: 'book' | 'video'; build_tutor?: boolean;
-  plan?: OperatorBuildPlan | OperatorVideoPlan; invocation_ref?: string; workspace_dir?: string;
+  material_kind?: 'book' | 'video' | 'music'; build_tutor?: boolean; required_capabilities?: string[];
+  plan?: OperatorBuildPlan | OperatorVideoPlan | OperatorMusicPlan; invocation_ref?: string; workspace_dir?: string;
 }
 interface Task {
   user_id?: string; learning_workspace_id?: string;
@@ -36,9 +40,10 @@ interface Task {
   max_micro_cny: number; reserved_per_execution_micro_cny: number;
   invocation_max_micro_cny: number;
   confirmation: string; confirmed_at: number; pause_requested?: boolean;
+  processing_confirmation?: string;
 }
 
-/** Books use the existing DSH root; videos use their existing native-media Codex pipeline. */
+/** Books use the DSH root; media builds retain their own processing inside the same task queue. */
 export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig, presetId: string,
   host: OperatorBuildHostConfig, fetcher: typeof fetch = fetch) {
   const shutdown = new AbortController();
@@ -85,6 +90,35 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
         if (material.published_book_ref) continue;
         if (signal.aborted) throw new Error('build_cancelled');
         const base = `${endpoint}/materials/${encodeURIComponent(material.material_id)}`;
+        if (material.material_kind === 'music') {
+          if (task.user_id) throw new Error('operator_music_requires_curated_public_source');
+          if (material.build_tutor) throw new Error('operator_music_tutor_unsupported');
+          const plan = material.plan as OperatorMusicPlan | undefined ?? {
+            version:'operator_music_plan.v1' as const, target_input:material.target_input!, build_tutor:false as const,
+            workspace_dir:path.resolve(material.root_dir!,task.task_id,`music-${material.material_id}`),
+            review_markdown:'音乐预构建：读取精选资料清单 → 导入真实录音与 MusicXML → 生成谱面 → 接纳有依据的对齐、音乐事件和听辨素材 → 检查能力。已有成果继续复用；本地处理不调用音乐模型，不产生供应商调用费用。',
+          };
+          if (plan.version !== 'operator_music_plan.v1') throw new Error('operator_music_plan_invalid');
+          if (!material.plan) await request(`${base}/progress`, {...owner,state:'planned',plan,workspace_dir:plan.workspace_dir});
+          if (task.action === 'prepare') continue;
+          const invocation = material.invocation_ref ?? `music:${task.task_id}:${material.material_id}`;
+          const progress = async (value: unknown) => {
+            const updated=await request(`${base}/progress`, {...owner,state:'running',invocation_ref:invocation,
+              workspace_dir:plan.workspace_dir,observation:{progress:value}});
+            if (updated.pause_requested) cancellation.abort();
+          };
+          await progress({stage:'music_prepare',completed:0,total:0,unit:'tasks',message:'读取精选音乐资料与已有成果'});
+          const result = await musicOperatorCommand(config, {curation_path:plan.target_input,workspace_dir:plan.workspace_dir,
+            required_capabilities:material.required_capabilities ?? ['music','music_score','music_events'],
+            external_cost:{binding:{version:'external_build_cost.v1',cost_owner:'platform',task_ref:task.task_id,
+              max_micro_cny:task.max_micro_cny,reserved_per_execution_micro_cny:task.reserved_per_execution_micro_cny,
+              confirmation:task.confirmation},connection:c,registry_root:config.driverRoot},
+            dependencies:{ffmpeg:host.video?.ffmpegExecutable,ffprobe:host.video?.ffprobeExecutable}},progress,signal);
+          await request(`${base}/progress`, {...owner,state:'complete',invocation_ref:invocation,
+            workspace_dir:plan.workspace_dir,observation:result});
+          await request(`${base}/import`, {...owner,invocation_ref:invocation,workspace_dir:plan.workspace_dir});
+          continue;
+        }
         const video = material.material_kind === 'video' || /\.mp4$/iu.test(material.target_input ?? '')
           || !!material.target_input && ['video_import.json','video_source_manifest.json'].some(file=>existsSync(path.join(material.target_input!,file)));
         if (video) {
@@ -94,7 +128,7 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
             version:'operator_video_plan.v1' as const, target_input:path.resolve(material.target_input!), build_tutor:false as const,
             workspace_dir:['video_import.json','video_source_manifest.json'].some(file=>existsSync(path.join(material.target_input!,file)))
               ? path.resolve(material.target_input!) : path.resolve(material.root_dir!,task.task_id,`video-${material.material_id}`),
-            review_markdown:task.user_id ? '个人视频：导入 → 本地转写 → 原文阅读。原始画面和原声可在学习时按需读取。' : '视频预构建：导入 → 转写 → 翻译 → 画面索引 → 概念图谱 → 原讲解结构。默认不生成 Tutor 教学材料；按已完成工作显示进度。',
+            review_markdown:task.user_id ? '个人视频：导入 → 按音频时长计量转写 → 原文阅读。转写与模型共用已确认的任务额度，已完成片段继续复用。' : '视频预构建：导入 → 转写 → 翻译 → 画面索引 → 概念图谱 → 原讲解结构。默认不生成 Tutor 教学材料；按已完成工作显示进度。',
           };
           if (plan.version !== 'operator_video_plan.v1') throw new Error('operator_video_plan_invalid');
           if (!material.plan) await request(`${base}/progress`, {...owner,state:'planned',plan,workspace_dir:plan.workspace_dir});
@@ -113,6 +147,7 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
             confirmation:task.confirmation,
           };
           const result = await videoOperatorCommand(config, {input_path:plan.target_input,workspace_dir:plan.workspace_dir,
+            processing_confirmation:task.processing_confirmation,
             personal_source_only:!!task.user_id,codex_executable:host.video.codexExecutable,publisher_executable:host.video.publisherExecutable,
             publication_service_root:host.video.publicationServiceRoot ?? path.join(config.driverRoot,'video-publications',task.task_id),
             external_cost:{binding,connection:c,registry_root:config.driverRoot},

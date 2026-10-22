@@ -61,6 +61,23 @@ describe("active lease reads for migration routing", () => {
     }
     expect(actual).toEqual(expected);
   });
+  it("does not read migration receipts when the requested stage has no legacy artifacts", () => {
+    const root = fs.mkdtempSync(path.join(tmpdir(), "ub-empty-legacy-audit-"));
+    const source = path.join(root, "source.md");
+    fs.writeFileSync(source, "# Test\n\nCurrent generation only.\n");
+    const target = resolveAutomaticBuildTarget(source, root);
+    const migrationDir = path.join(target.workspace_dir, ".build", "automatic-build", "v4", "migrations", "pass1", "old-to-new");
+    fs.mkdirSync(migrationDir, { recursive: true });
+    fs.writeFileSync(path.join(migrationDir, "unneeded.json"), "{}");
+    reads.files = [];
+    try {
+      expect(auditAutomaticBuildLegacy(target, "pass1").artifacts).toEqual([]);
+      expect(reads.files.some(file => file.includes("migrations"))).toBe(false);
+      expect(reads.files).not.toContain(source);
+    } finally {
+      reads.files = undefined;
+    }
+  });
   it("reads only the requested task when dispatch recovery looks up one receipt", () => {
     const root = fs.mkdtempSync(path.join(tmpdir(), "ub-scoped-attempts-"));
     const source = path.join(root, "source.md");

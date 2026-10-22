@@ -391,6 +391,7 @@ pub struct ToolExposureEntry {
 pub struct ToolExposureState {
     activated: BTreeSet<String>,
     pub(crate) video_available: bool,
+    pub(crate) music_available: bool,
     pub(crate) pending_source_images: bool,
     pub(crate) presentation_unavailable_reason: Option<&'static str>,
     explicit_reader_mutation_intent: bool,
@@ -506,6 +507,10 @@ impl ToolExposurePlan {
             registry.registration("book.text_batch").is_some()
                 && state.is_activated("book.text_batch"),
         );
+        // Lightweight relevance search supplements the existing source tools;
+        // it must not evict book.structure and make document coverage unavailable.
+        let ranked_search_slot = usize::from(registry.registration("book.search")
+            .is_some_and(|registration| classify(registration.handler, context).0 == ToolExposureDisposition::Direct));
         // Showing newly observed evidence must not evict a core read tool.
         let source_slot = usize::from(
             registry.registration("source.present").is_some()
@@ -514,7 +519,8 @@ impl ToolExposurePlan {
         );
         let workspace_goal_slot = usize::from(registry.registration("workspace.goal.update").is_some());
         let workspace_records_slot = usize::from(registry.registration("workspace.records.read").is_some());
-        let direct_limit = workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + source_slot + if registry.registration("goal.update").is_some() {
+        let progress_slot = usize::from(registry.registration("agent.progress").is_some());
+        let direct_limit = progress_slot + workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + ranked_search_slot + source_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -535,6 +541,8 @@ impl ToolExposurePlan {
                     // These images are included in the next request. A source call
                     // executes only after that request successfully observed them.
                     (ToolExposureDisposition::Direct, ToolExposureReason::EvidenceAvailable)
+                } else if matches!(registration.handler, ToolHandlerId::MusicRead | ToolHandlerId::MusicInteract) && !state.music_available {
+                    (ToolExposureDisposition::Hidden, ToolExposureReason::ProfileMismatch)
                 } else if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio) && !state.video_available {
                     (ToolExposureDisposition::Hidden, ToolExposureReason::ProfileMismatch)
                 } else { classify(registration.handler, context) };
@@ -960,7 +968,7 @@ pub fn resolve_capabilities(
     let mut candidates = Vec::new();
     let mut blocked = Vec::new();
     for (index, registration) in registry.registrations().iter().enumerate() {
-        if registration.handler == ToolHandlerId::ToolSearch {
+        if matches!(registration.handler, ToolHandlerId::ToolSearch | ToolHandlerId::AgentProgress) {
             continue;
         }
         // Batch reading is enabled by the locator ledger, not discovered. An
@@ -986,7 +994,7 @@ pub fn resolve_capabilities(
             .expect("sampled exposure plan must cover every registered tool");
         // A text publication has no video backend. Its absent media tools must
         // not change the actionable locator/recovery path for ordinary reading.
-        if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio)
+        if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio | ToolHandlerId::MusicRead | ToolHandlerId::MusicInteract)
             && entry.reason == ToolExposureReason::ProfileMismatch
         {
             continue;
@@ -1473,11 +1481,12 @@ fn classify(
 
     match handler {
         Handler::BookTextBatch => (Disposition::Hidden, Reason::RuntimeOwned),
-        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (Disposition::Deferred, Reason::CapabilityDeferred),
+        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
+        Handler::AgentProgress => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::WorkspaceRecordsRead => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::TutorStep => (Disposition::Hidden, Reason::RuntimeOwned),
-        Handler::LibraryList | Handler::LibraryRead => (Disposition::Deferred, Reason::CoreRead),
+        Handler::LibraryList | Handler::LibrarySearch | Handler::LibraryRead => (Disposition::Deferred, Reason::CoreRead),
         Handler::LibraryLearning => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::Artifact(_) if !context.artifact.has_overlay() => {
             (Disposition::Hidden, Reason::ArtifactOverlayUnavailable)
@@ -1504,6 +1513,7 @@ fn classify(
             BookToolId::Query
             | BookToolId::Synthesize
             | BookToolId::SearchText
+            | BookToolId::Search
             | BookToolId::Text
             | BookToolId::Context
             | BookToolId::Concept,
@@ -1573,13 +1583,15 @@ fn direct_priority(handler: ToolHandlerId) -> usize {
         ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::TutorStep => 1,
         ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
-        ToolHandlerId::Book(BookToolId::SearchText) => 3,
+        ToolHandlerId::Book(BookToolId::SearchText | BookToolId::Search) => 3,
         ToolHandlerId::Book(BookToolId::Concept) => 4,
         ToolHandlerId::Book(BookToolId::Query) => 5,
         ToolHandlerId::Book(BookToolId::Synthesize) => 6,
         ToolHandlerId::Artifact(ArtifactToolId::Search | ArtifactToolId::Read) => 6,
         ToolHandlerId::SourcePresent => 7,
         ToolHandlerId::Book(BookToolId::Structure) => 8,
+        // Keep source tools usable when a provider has an unusually small schema budget.
+        ToolHandlerId::AgentProgress => 9,
         _ => usize::MAX,
     }
 }
@@ -1686,6 +1698,27 @@ mod tests {
     // These existing exposure contracts describe runs without a learning workspace.
     fn resident_tool_registry() -> ToolRegistry {
         crate::orchestrator::resident_tool_registry().without_workspace_goal_update().without_workspace_records()
+    }
+    #[test]
+    fn web_tools_require_discovery_and_disappear_without_host_configuration() {
+        let registry = resident_tool_registry();
+        let context = context(ContentProfileId::TechnicalLearning);
+        let mut state = ToolExposureState::default();
+        let initial = ToolExposurePlan::build(&registry, &model(), &context, &state);
+        assert!(!initial.is_visible("web.search"));
+        assert!(!initial.is_visible("web.fetch"));
+        let discovery = search_and_activate(
+            r#"{"task":"find external primary sources for a missing mechanism","required_capabilities":["web_search"],"scope":"document","operation":"explain","effect_mode":"read_only","max_results":1}"#,
+            &context, &initial, &registry, &mut state).unwrap();
+        assert_eq!(discovery.matches[0].name, "web.search");
+        assert_eq!(discovery.matches[0].visibility, ToolSearchVisibility::NextSampling);
+        assert!(!initial.is_visible("web.search"));
+        let next = ToolExposurePlan::build(&registry, &model(), &context, &state);
+        assert!(next.is_visible("web.search"));
+        assert!(!next.is_visible("web.fetch"));
+        let unavailable = registry.without_web();
+        assert!(unavailable.registration("web.search").is_none());
+        assert!(unavailable.registration("web.fetch").is_none());
     }
     #[test]
     fn w4_workspace_goal_tool_keeps_the_existing_read_surface() {
@@ -1905,7 +1938,9 @@ mod tests {
             "book.query",
             "book.synthesize",
             "book.search_text",
+            "book.search",
             "book.text",
+            "agent.progress",
             "tool.search",
             "goal.update",
             "book.context",
@@ -1945,7 +1980,9 @@ mod tests {
                 "book.query",
                 "book.synthesize",
                 "book.search_text",
+                "book.search",
                 "book.text",
+                "agent.progress",
                 "tool.search",
                 "goal.update",
                 "book.context",
@@ -1953,8 +1990,8 @@ mod tests {
                 "book.structure",
             ]
         );
-        assert!(technical.visible_tools.len() <= DEFAULT_DIRECT_TOOL_LIMIT);
-        assert_eq!(technical.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT);
+        assert!(technical.visible_tools.len() <= technical.direct_limit);
+        assert_eq!(technical.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 2);
         assert_eq!(
             technical.entry("book.text_batch").unwrap().disposition,
             ToolExposureDisposition::Hidden
@@ -2421,6 +2458,24 @@ mod tests {
     }
 
     #[test]
+    fn ranked_search_slot_preserves_structure_and_the_model_schema_budget() {
+        let registry = resident_tool_registry();
+        let without_search = registry.clone().experimental_subset(|spec| spec.name != "book.search");
+        let runtime_context = context(ContentProfileId::TechnicalLearning);
+        let state = ToolExposureState::default();
+        let before = ToolExposurePlan::build(&without_search, &model(), &runtime_context, &state);
+        let after = ToolExposurePlan::build(&registry, &model(), &runtime_context, &state);
+        assert_eq!(after.direct_limit, before.direct_limit + 1);
+        assert!(after.is_visible("book.search"));
+        assert!(after.is_visible("book.structure"));
+        for name in visible_names(&before) { assert!(after.is_visible(name), "ranked search displaced {name}"); }
+        let mut constrained_model = model();
+        constrained_model.tool_schema_budget_bytes = before.schema_bytes;
+        let constrained = ToolExposurePlan::build(&registry, &constrained_model, &runtime_context, &state);
+        assert!(constrained.schema_bytes <= constrained_model.tool_schema_budget_bytes);
+    }
+
+    #[test]
     fn tool_search_v2_reader_write_requires_authority_and_permission_and_zero_hit_is_inert() {
         let registry = resident_tool_registry();
         let runtime_profile = model();
@@ -2617,7 +2672,7 @@ mod tests {
                 let source_available = allowed
                     && matches!(evidence_state, EvidenceState::KnownLids | EvidenceState::UserProvided);
 
-                assert_eq!(without.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT);
+                assert_eq!(without.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 2);
                 assert_eq!(with.direct_limit, without.direct_limit + usize::from(source_available));
                 assert_eq!(with.is_visible("source.present"), source_available);
                 for name in visible_names(&without) {
@@ -2855,7 +2910,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.disposition == ToolExposureDisposition::Direct)
                 .count()
-                <= DEFAULT_DIRECT_TOOL_LIMIT
+                <= routable.direct_limit
         );
 
         let mut hit_context = context(ContentProfileId::TechnicalLearning);

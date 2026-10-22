@@ -8,6 +8,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.0.2",
+    "@tesseract.js-data/chi_sim": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "fflate": "^0.8.2",
     "latex-utensils": "^7.0.0",
     "mdast-util-from-markdown": "^2.0.3",
@@ -17,7 +20,10 @@
     "micromark-extension-math": "^3.1.0",
     "node-html-parser": "^7.0.1",
     "pdfjs-dist": "^6.1.200",
-    "zod": "^3.23.0"
+    "tesseract.js": "7.0.0",
+    "zod": "^3.23.0",
+    "verovio": "6.3.0",
+    "@xmldom/xmldom": "^0.8.11"
   },
   "devDependencies": {
     "@types/mdast": "^4.0.4",

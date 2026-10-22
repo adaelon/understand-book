@@ -1,0 +1,50 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+body{font:16px/1.6 sans-serif;margin:0;padding:12px;overflow-wrap:anywhere}
+main{max-width:760px;margin:auto}section{padding:12px;border:1px solid #ddd;margin-bottom:16px}
+.controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.controls input{grid-column:1/-1;min-width:44px;width:100%;height:44px;margin:0}
+button{min-width:44px;min-height:44px;margin:4px}output{font-variant-numeric:tabular-nums}
+#pair-grid{display:grid;gap:3px;grid-template-columns:30px repeat(var(--columns),minmax(0,1fr))}
+.cell{min-width:0;aspect-ratio:1;background:#4477aa}.cell.mask{background:#eee}
+</style>
+<main>
+<h1>依赖路径与查询配对</h1>
+<section id="dependency-section"><h2>屏 1 · 依赖路径</h2>
+<p>四个输入已经到达，三层节点每个耗时一单位，允许跨层流水。RNN 每个节点等待上一层同位置和同层前一位置。</p>
+<button id="rnn">RNN</button><button id="causal">因果 Transformer</button>
+<p>最长依赖链：<output id="chain"></output> 个单位。</p>
+</section>
+<section id="pair-section"><h2>屏 2 · 查询配对</h2>
+<div class="controls"><label for="context">已有上下文</label><output id="context-value"></output>
+<input id="context" type="range" min="0" max="12" value="0"></div>
+<button id="preset">上下文 12，新输入 6</button>
+<div id="pair-grid" aria-label="查询配对矩阵"></div>
+<p id="result"></p>
+</section>
+</main>
+<script>
+let state=Object.assign({s:0,p:6,mode:'rnn'},window.presentation?.initialState||{});
+const $=id=>document.getElementById(id);
+function render(){
+ const layers=3,tokens=4;
+ const chain=layers+tokens-1;
+ $('chain').textContent=state.mode==='rnn'?chain:layers;
+ $('context').value=state.s;
+ $('context-value').textContent=state.s;
+ $('rnn').setAttribute('aria-pressed',String(state.mode==='rnn'));
+ $('causal').setAttribute('aria-pressed',String(state.mode==='causal'));
+ const columns=state.s+state.p;
+ const grid=$('pair-grid');grid.style.setProperty('--columns',columns);
+ grid.innerHTML=Array.from({length:state.p},(_,r)=>'<span>q'+(r+1)+'</span>'+Array.from({length:columns},(_,c)=>'<i class="cell '+(c>state.s+r?'mask':'')+'"></i>').join('')).join('');
+ $('result').textContent='上下文 '+state.s+'；新输入 '+state.p+'；配对数 '+(state.p*state.s+state.p*(state.p+1)/2)+'；模型 '+state.mode;
+}
+$('context').oninput=e=>{state.s=+e.target.value;render()};
+$('preset').onclick=()=>{state.s=12;state.p=6;render()};
+$('rnn').onclick=()=>{state.mode='rnn';render()};
+$('causal').onclick=()=>{state.mode='causal';render()};
+window.presentation?.registerStateReader(()=>({values:state}));
+window.presentation?.registerStateRestorer(saved=>{state={...saved.values.page};render()});
+render();
+</script>

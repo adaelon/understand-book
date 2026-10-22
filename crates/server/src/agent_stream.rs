@@ -16,6 +16,10 @@ pub struct RunDescriptor {
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct RunSnapshot {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub music_command: Option<runtime::music::MusicCommand>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub presentation_command: Option<runtime::presentation_interact::PresentationCommand>,
     pub descriptor: RunDescriptor,
     pub last_seq: u64,
     pub execution_state: String,
@@ -43,6 +47,8 @@ struct Buffer {
     bytes: usize,
 }
 pub struct RunStream {
+    pub(crate) music_commands: crate::music_interact::MusicCommands,
+    pub(crate) presentation_commands: crate::presentation_interact::PresentationCommands,
     start: Instant,
     buffer: Mutex<Buffer>,
     changed: Condvar,
@@ -52,6 +58,8 @@ pub struct RunStream {
 impl RunStream {
     pub fn new(descriptor: RunDescriptor) -> Arc<Self> {
         let stream = Self::from_snapshot(RunSnapshot {
+            music_command: None,
+            presentation_command: None,
             descriptor,
             last_seq: 0,
             execution_state: "running".into(),
@@ -75,6 +83,8 @@ impl RunStream {
         byte_limit: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
+            music_commands: Default::default(),
+            presentation_commands: Default::default(),
             start: Instant::now(),
             buffer: Mutex::new(Buffer {
                 bindings: Vec::new(),
@@ -90,6 +100,8 @@ impl RunStream {
     pub(crate) fn queued(descriptor: RunDescriptor, boot: &str, byte_limit: usize) -> Arc<Self> {
         Self::with_observation(
             RunSnapshot {
+                music_command: None,
+                presentation_command: None,
                 descriptor,
                 last_seq: 0,
                 execution_state: "queued".into(),
@@ -234,6 +246,13 @@ impl RunStream {
             }
         }
         self.changed.notify_all();
+    }
+    pub(crate) fn presentation_command(&self, command: Option<&runtime::presentation_interact::PresentationCommand>) {
+        self.update("presentation.command", |s| s.presentation_command = command.cloned(), |s| json!(s.presentation_command));
+    }
+
+    pub(crate) fn music_command(&self, command: Option<&runtime::music::MusicCommand>) {
+        self.update("music.command", |s| s.music_command = command.cloned(), |s| json!(s.music_command));
     }
     pub fn reader_changed(&self, state: Value) {
         self.update(

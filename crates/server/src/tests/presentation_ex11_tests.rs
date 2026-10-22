@@ -44,7 +44,7 @@ impl ModelAdapter for Ex11RecordingAdapter {
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, runtime::AdapterError> {
         let ordinal = self.completions.fetch_add(1, SeqCst);
         save_json(self.inner.evidence.join(format!("completion-{ordinal:02}-request.json")), &json!({
-            "system":request.system,"user":request.user,"output_token_limit":request.output_token_limit,
+            "system":request.system,"user":request.user,"images":request.images,"output_token_limit":request.output_token_limit,
             "reasoning_effort":request.reasoning_effort,"elapsed_ms":self.started.elapsed().as_millis(),
         }));
         let mut usage = None;
@@ -242,6 +242,7 @@ fn ex11_preflight() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                action_contract: vec![],
                 teaching_binding: None,
                 method_refs: None,
                 new_object: false,

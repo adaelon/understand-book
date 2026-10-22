@@ -376,7 +376,7 @@ function readScopedTerminalFailureReceipt(input: {
   work_unit_id: string;
   attempt: number;
   attempt_scope_digest?: string;
-}): { failure_diagnostic: AutomaticBuildFailureDiagnosticV2; sha256: string } | undefined {
+}): { failure_diagnostic: AutomaticBuildFailureDiagnosticV2; failed_at: string; sha256: string } | undefined {
   if (!existsSync(input.file)) return undefined;
   const receipt = readJson<Record<string, unknown>>(input.file);
   if (receipt.version !== "automatic_build_task_receipt.v2"
@@ -389,7 +389,8 @@ function readScopedTerminalFailureReceipt(input: {
     || typeof receipt.target_ref !== "object"
     || receipt.target_ref === null
     || !sameTargetRef(receipt.target_ref as unknown as BuildTargetRefV2, input.target_ref)
-    || receipt.failure_diagnostic === undefined) {
+    || receipt.failure_diagnostic === undefined
+    || typeof receipt.failed_at !== "string") {
     throw new Error(`invalid automatic build terminal failure receipt: ${input.file}`);
   }
   const metrics = receipt.metrics;
@@ -400,6 +401,7 @@ function readScopedTerminalFailureReceipt(input: {
       }
     : undefined;
   return {
+    failed_at: receipt.failed_at,
     failure_diagnostic: validateAutomaticBuildFailureDiagnostic(
       receipt.failure_diagnostic,
       phaseFacts === undefined
@@ -527,7 +529,7 @@ function attemptStates(
         && execution.attempt_scope_digest !== inferredScope.attempt_scope_digest) {
         throw new Error(`automatic build execution and lease scope mismatch: ${executionPath}`);
       }
-      const result = existsSync(resultPath) ? readAutomaticBuildAttemptEvent(resultPath) : undefined;
+      let result = existsSync(resultPath) ? readAutomaticBuildAttemptEvent(resultPath) : undefined;
       const reset = existsSync(resetPath) ? readAutomaticBuildAttemptEvent(resetPath) : undefined;
       const terminalFailureReceipt = readScopedTerminalFailureReceipt({
         file: failureReceiptPath,
@@ -540,6 +542,20 @@ function attemptStates(
       const recovery = existsSync(recoveryPath)
         ? validateAutomaticBuildRetryRecoveryReceipt(readJson<unknown>(recoveryPath))
         : undefined;
+      if (terminalFailureReceipt && !result && !options.allow_pending_terminal_failure_receipt) {
+        // The publisher writes the receipt before its event. Reconcile that durable fact
+        // through the same idempotent writer, including after an interrupted publisher.
+        recordAutomaticBuildAttemptEvent(target, {
+          stage,
+          work_unit_id: workUnitId,
+          attempt,
+          event_id: `${stage}:${workUnitId}:${attempt}:failure`,
+          outcome: "failure",
+          failure_diagnostic: terminalFailureReceipt.failure_diagnostic,
+          created_at: terminalFailureReceipt.failed_at,
+        });
+        result = readAutomaticBuildAttemptEvent(resultPath);
+      }
       for (const event of [result, reset]) {
         if (!event) continue;
         if (!sameTargetRef(event.target_ref, target.target_ref)
@@ -563,9 +579,6 @@ function attemptStates(
       }
       if (terminalFailureReceipt) {
         const eventDiagnostic = result ? failureDiagnosticFromEvent(result) : undefined;
-        if (!result && !options.allow_pending_terminal_failure_receipt) {
-          throw new Error(`automatic build terminal failure receipt is missing its event: ${failureReceiptPath}`);
-        }
         if (result && (!eventDiagnostic
           || eventDiagnostic.diagnostic_digest !== terminalFailureReceipt.failure_diagnostic.diagnostic_digest)) {
           throw new Error(`automatic build terminal event and failure receipt disagree: ${failureReceiptPath}`);
@@ -1207,14 +1220,45 @@ function applyAttemptEvent(
   }
 }
 
+/** Directory discovery also includes legacy attempts that have not been migrated. */
+export function listAutomaticBuildAttemptedTaskIds(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+): Set<string> {
+  const known = new Set(Object.keys(readLegacyLedger(target)?.stages[stage] ?? {}));
+  const directory = path.join(automaticBuildTaskStoreRoot(target), stage);
+  if (existsSync(directory)) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) known.add(decodeURIComponent(entry.name));
+    }
+  }
+  return known;
+}
+
+/** Visit stored attempts once; untouched pending units cannot have failed attempts. */
+export function readAutomaticBuildPendingFailures(
+  target: AutomaticBuildTarget,
+  stages: ReadonlyArray<{ stage: AutomaticBuildStage; pending_tasks: readonly string[] }>,
+): Array<{ stage: AutomaticBuildStage; work_unit_id: string; failures: number }> {
+  return stages.flatMap(({ stage, pending_tasks }) => {
+    if (!pending_tasks.length) return [];
+    const known = listAutomaticBuildAttemptedTaskIds(target, stage);
+    return pending_tasks.flatMap(work_unit_id => {
+      if (!known.has(work_unit_id)) return [];
+      const record = readAutomaticBuildAttemptRecord(target, stage, work_unit_id);
+      return record?.failures ? [{ stage, work_unit_id, failures: record.failures }] : [];
+    });
+  });
+}
+
 export function readAutomaticBuildAttemptRecord(
   target: AutomaticBuildTarget,
   stage: AutomaticBuildStage,
   workUnitId: string,
 ): AutomaticBuildAttemptRecord | undefined {
   const legacy = readLegacyLedger(target)?.stages[stage]?.[workUnitId];
-  const events = readTaskEvents(target, stage, workUnitId);
   const executionIdentity = readAutomaticBuildExecutionIdentity(target, stage, workUnitId);
+  const events = readTaskEvents(target, stage, workUnitId);
   if (!legacy && events.length === 0 && !executionIdentity) return undefined;
   const record: AutomaticBuildAttemptRecord = legacy
     ? {

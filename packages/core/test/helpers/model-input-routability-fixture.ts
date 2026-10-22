@@ -65,10 +65,10 @@ export interface SyntheticRoutabilityFixture {
 
 export function createSyntheticRoutabilityFixture(
   paragraphTokens = SYNTHETIC_LONG_PARAGRAPH_TOKENS,
+  paragraphText = asciiBodyForEstimatedTokens(paragraphTokens),
 ): SyntheticRoutabilityFixture {
   const root = mkdtempSync(path.join(tmpdir(), "understand-book-routability-"));
   const sourceFile = path.join(root, "synthetic-routability.md");
-  const paragraphText = asciiBodyForEstimatedTokens(paragraphTokens);
   const source = `# Synthetic routability\n\n${paragraphText}\n`;
   writeFileSync(sourceFile, source, "utf8");
 

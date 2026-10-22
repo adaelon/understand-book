@@ -620,8 +620,33 @@ impl EvidenceTarget {
         base: &ReadOnlyBase,
         source: &str,
     ) -> Validation {
+        Self::validate_batch(std::iter::once(self), manifest, base, source)
+    }
+
+    /// Evidence in one contribution shares a manifest and canonical source. Validate
+    /// that shared input once, including for joint targets, without weakening targets.
+    pub fn validate_batch<'a>(
+        targets: impl IntoIterator<Item = &'a Self>,
+        manifest: &VideoSourceManifest,
+        base: &ReadOnlyBase,
+        source: &str,
+    ) -> Validation {
         manifest.validate()?;
         require(base.book_id == manifest.material.book_id, "evidence base")?;
+        let mut text_source = None;
+        for target in targets {
+            target.validate_prepared(manifest, base, source, &mut text_source)?;
+        }
+        Ok(())
+    }
+
+    fn validate_prepared(
+        &self,
+        manifest: &VideoSourceManifest,
+        base: &ReadOnlyBase,
+        source: &str,
+        text_source: &mut Option<Vec<u16>>,
+    ) -> Validation {
         match self {
             Self::Text {
                 publication,
@@ -633,7 +658,7 @@ impl EvidenceTarget {
                     transcript.as_ref() == Some(&manifest.material.transcript),
                     "evidence transcript",
                 )?;
-                text_at(text_range, base, &source.encode_utf16().collect::<Vec<_>>())?;
+                text_at(text_range, base, text_source.get_or_insert_with(||source.encode_utf16().collect()))?;
             }
             Self::Visual {
                 publication,
@@ -679,7 +704,7 @@ impl EvidenceTarget {
                         "joint publication",
                     )?;
                     publication = Some(p);
-                    member.target.validate(manifest, base, source)?;
+                    member.target.validate_prepared(manifest, base, source, text_source)?;
                 }
             }
         }

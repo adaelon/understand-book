@@ -32,6 +32,11 @@ pub struct TeachingTarget {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub media_bindings: Option<Vec<TeachingMediaBinding>>,
+    // Read-time source snapshots, bound by the host; never model-authored targets.
+    #[schemars(skip)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub music_bindings: Option<Vec<TeachingMusicBinding>>,
     #[serde(default)]
     pub object_refs: Vec<TeachingObjectRevision>,
 }
@@ -54,6 +59,15 @@ pub struct TeachingMediaBinding {
     pub source_id: String,
     pub source_revision: String,
     pub target: base_schema::EvidenceTarget,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+#[serde(deny_unknown_fields)]
+pub struct TeachingMusicBinding {
+    pub source_id: String,
+    pub source_revision: String,
+    pub target: base_schema::MusicSourceTarget,
 }
 
 fn media_identity_matches(target: &base_schema::EvidenceTarget, source: &str) -> bool {
@@ -79,7 +93,8 @@ impl TeachingTarget {
     /// Storage validates identity. The turn owner checks these ranges against actual reads.
     pub fn validate(&self, binding: &TeachingBinding) -> Result<(), ToolError> {
         if [&self.learning_focus, &self.expected_performance, &self.capability]
-            .iter().any(|s| s.trim().is_empty()) || (self.source_bindings.is_empty() && self.media_bindings.as_ref().is_none_or(Vec::is_empty))
+            .iter().any(|s| s.trim().is_empty()) || (self.source_bindings.is_empty() && self.media_bindings.as_ref().is_none_or(Vec::is_empty)
+                && self.music_bindings.as_ref().is_none_or(Vec::is_empty))
             || self.source_bindings.iter().any(|source| {
                 source.source_id.trim().is_empty() || source.source_revision.trim().is_empty()
                     || source.source_id != binding.source_id || source.source_revision != binding.source_revision
@@ -88,6 +103,14 @@ impl TeachingTarget {
             || self.media_bindings.iter().flatten().any(|source| source.source_id != binding.source_id
                 || source.source_revision != binding.source_revision || source.source_revision.trim().is_empty()
                 || !media_identity_matches(&source.target, &binding.source_id))
+            || self.music_bindings.iter().flatten().any(|source| source.source_id != binding.source_id
+                || source.source_revision != binding.source_revision || source.source_revision.trim().is_empty()
+                || source.target.publication.book_id != binding.source_id || source.target.publication.publication_id.trim().is_empty()
+                || source.target.audio.recording.recording_id.trim().is_empty() || source.target.audio.recording.revision.trim().is_empty()
+                || !source.target.audio.start_ms.is_finite() || !source.target.audio.end_ms.is_finite()
+                || source.target.audio.start_ms < 0.0 || source.target.audio.end_ms <= source.target.audio.start_ms
+                || source.target.score.as_ref().is_some_and(|score| score.score.score_id.trim().is_empty() || score.score.revision.trim().is_empty()
+                    || score.source_ids.is_empty() || score.source_ids.iter().any(|id|id.trim().is_empty())))
             || self.object_refs.iter().any(|object| object.source_id != binding.source_id
                 || object.object_id.trim().is_empty() || object.object_revision == 0)
         {
@@ -103,6 +126,8 @@ pub enum TeachingFact {
     TurnBound,
     /// The teacher's reviewed work and corrections, never learner evidence.
     AgentWorkReviewed,
+    /// A coach's future guidance, never a delivered activity or learner evidence.
+    CoachGuided,
     DesignRevised,
     MoveSelected,
     MessageDelivered,
@@ -145,6 +170,16 @@ pub struct TeachingEvent {
 }
 
 impl TeachingEvent {
+    /// A retry may have a new attempt time, but must preserve the saved fact.
+    pub fn validate_unchanged_retry(&self, previous: &Self) -> Result<(), ToolError> {
+        let mut retry = self.clone();
+        retry.occurred_at = previous.occurred_at.clone();
+        if *previous != retry {
+            return Err(invalid("同一教学操作不能改写已保存事实"));
+        }
+        Ok(())
+    }
+
     /// Actual learner expression; UI labels and assistant quotations remain context.
     pub fn learner_expression(&self) -> Option<&str> {
         let text = match self.kind {
@@ -290,11 +325,55 @@ impl LearningStore {
 
     pub fn teaching_expression_interpretations(&self, fact: &str) -> Result<Vec<crate::learning_evidence::LearningEvidence>, ToolError> {
         let mut query=self.connection.prepare("SELECT evidence FROM learning_evidence e
-            WHERE e.learning_workspace_id=?2 AND EXISTS(SELECT 1 FROM json_each(e.evidence,'$.fact_refs') f WHERE f.value=?1)
+            WHERE e.learning_workspace_id=?2 AND (json_extract(e.evidence,'$.action_ref')=?1
+                OR EXISTS(SELECT 1 FROM json_each(e.evidence,'$.fact_refs') f WHERE f.value=?1))
             AND NOT EXISTS(SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
             ORDER BY seq DESC LIMIT 4").map_err(storage)?;
         let rows=query.query_map(params![fact,self.workspace_scope],|row|row.get::<_,String>(0)).map_err(storage)?;
         rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
+    }
+
+    /// Find work before applying the preview limit. Unrelated recent deliveries
+    /// must not push an earlier response to the current relationship out of view.
+    pub fn teaching_continuity_facts(
+        &self, binding: &TeachingBinding, design_ref: Option<&str>, blocks: &[String],
+        fact_refs: &[String],
+    ) -> Result<Vec<TeachingEvent>, ToolError> {
+        let mut query = self.connection.prepare("WITH RECURSIVE lineage(id) AS (
+            SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
+            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t
+            JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?6
+                AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL),
+            support(id) AS (
+                SELECT event_id FROM teaching_trace WHERE learning_workspace_id=?6 AND session_id=?2
+                AND json_extract(event,'$.kind')='message_delivered'
+                AND json_extract(event,'$.payload.move.design_ref') IN (SELECT id FROM lineage)
+                AND EXISTS(SELECT 1 FROM json_each(event,'$.payload.move.block_refs') b
+                    JOIN json_each(?5) f ON b.value=f.value))
+            SELECT event FROM teaching_trace t WHERE learning_workspace_id=?6 AND session_id=?2
+                AND json_extract(event,'$.binding.source_id')=?3
+                AND json_extract(event,'$.binding.source_revision')=?4
+                AND (json_extract(event,'$.kind')='learner_action'
+                    AND json_extract(event,'$.payload.action') IN ('submit','revise','chat_response')
+                    OR json_extract(event,'$.kind')='usage_observed'
+                    AND json_extract(event,'$.payload.usage.kind') IN ('user_message','reading_action'))
+                AND (?1 IS NULL OR json_extract(event,'$.binding.turn_id')=?8
+                    OR event_id IN (SELECT value FROM json_each(?7))
+                    OR json_extract(event,'$.payload.delivery_ref') IN (SELECT id FROM support)
+                    OR json_extract(event,'$.payload.invitation_context_ref') IN (SELECT id FROM support)
+                    OR EXISTS(SELECT 1 FROM json_each(event,'$.payload.support_delivery_refs') s JOIN support ON s.value=support.id)
+                    OR EXISTS(SELECT 1 FROM learning_evidence e WHERE e.learning_workspace_id=?6
+                        AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM lineage)
+                        AND EXISTS(SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
+                        AND NOT EXISTS(SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=?6 AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
+                        AND (json_extract(e.evidence,'$.action_ref')=t.event_id
+                            OR EXISTS(SELECT 1 FROM json_each(e.evidence,'$.fact_refs') f WHERE f.value=t.event_id))))
+            ORDER BY seq DESC LIMIT 13").map_err(storage)?;
+        let rows = query.query_map(params![design_ref, binding.tutor_session_id, binding.source_id,
+            binding.source_revision, serde_json::to_string(blocks).map_err(storage)?,
+            self.workspace_scope, serde_json::to_string(fact_refs).map_err(storage)?, binding.turn_id],
+            |r| r.get::<_, String>(0)).map_err(storage)?;
+        rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
     }
     pub fn teaching_activity_events(
         &self,
@@ -416,11 +495,7 @@ impl LearningStore {
             .map_err(storage)?;
         if let Some(json) = previous {
             let old: TeachingEvent = serde_json::from_str(&json).map_err(storage)?;
-            let mut retry = event.clone();
-            retry.occurred_at = old.occurred_at.clone();
-            if old != retry {
-                return Err(invalid("同一教学操作不能改写已保存事实"));
-            }
+            event.validate_unchanged_retry(&old)?;
             return Ok(old);
         }
         // Causal edges always stay inside the same private teaching session.
@@ -457,6 +532,28 @@ impl LearningStore {
 mod tests {
     use super::*;
     #[test]
+    fn om2_continuity_queries_keep_workspace_source_and_stage_after_reopen() {
+        let root=tempfile::tempdir().unwrap();
+        let path=root.path().join("learning.db");
+        let binding=TeachingBinding {tutor_session_id:"stage".into(),session_revision:1,control_revision:1,
+            source_id:"book".into(),source_revision:"v1".into(),map_revision:None,chat_session_id:"chat".into(),turn_id:"old".into()};
+        let fact=TeachingEvent {event_id:"work".into(),binding:binding.clone(),kind:TeachingFact::UsageObserved,
+            causal_refs:vec![],payload:serde_json::json!({"usage":{"kind":"user_message"},"response":"I can explain this example."}),occurred_at:"then".into()};
+        for scope in ["selected","other"] {
+            let mut store=LearningStore::open(&path,false).unwrap().with_workspace(Some(scope));
+            store.append_teaching(&fact).unwrap();
+            for (id,stage,revision) in [("other-stage","old-stage","v1"),("other-version","stage","v2")] {
+                let mut other=fact.clone(); other.event_id=id.into();
+                other.binding.tutor_session_id=stage.into(); other.binding.source_revision=revision.into();
+                store.append_teaching(&other).unwrap();
+            }
+        }
+        let store=LearningStore::open(&path,false).unwrap().with_workspace(Some("selected"));
+        assert_eq!(store.teaching_continuity_facts(&binding,None,&[],&[]).unwrap(),[fact]);
+        let empty=LearningStore::open(&path,false).unwrap().with_workspace(Some("unselected"));
+        assert!(empty.teaching_continuity_facts(&binding,None,&[],&[]).unwrap().is_empty());
+    }
+    #[test]
     fn media_target_preserves_exact_visual_audio_identity_without_text_positions() {
         let binding=TeachingBinding {tutor_session_id:"s".into(),session_revision:0,control_revision:0,source_id:"video".into(),source_revision:"original".into(),map_revision:None,chat_session_id:"chat".into(),turn_id:"turn".into()};
         let visual=serde_json::json!({"kind":"visual","publication":{"book_id":"video","publication_id":"v1"},"frames":[{"video":{"media_id":"clip","media_revision":"1"},"actual_pts_ms":1000.0,"width":1280,"height":720}],"regions":[]});
@@ -468,6 +565,19 @@ mod tests {
             target.media_bindings.as_mut().unwrap()[0].source_revision="other".into();assert!(target.validate(&binding).is_err());
             target.media_bindings=None;assert!(target.validate(&binding).is_err());
         }
+    }
+    #[test]
+    fn music_target_retains_prepared_source_without_claiming_audio_observation() {
+        let binding=TeachingBinding {tutor_session_id:"s".into(),session_revision:0,control_revision:0,source_id:"music".into(),source_revision:"book-revision".into(),map_revision:None,chat_session_id:"chat".into(),turn_id:"turn".into()};
+        let raw=serde_json::json!({"learning_focus":"旋律与伴奏","expected_performance":"指出两种角色的区别","capability":"listening_comparison","source_bindings":[],
+            "music_bindings":[{"source_id":"music","source_revision":"book-revision","target":{"publication":{"book_id":"music","publication_id":"pub1"},
+                "audio":{"recording":{"recording_id":"recording","revision":"r1"},"start_ms":1000,"end_ms":2000},
+                "score":{"score":{"score_id":"score","revision":"s1"},"source_ids":["note1"]},"occurrence_ids":["repeat2"],"event_ids":["theme"],"provenance_ids":["notation"]}}],"object_refs":[]});
+        let mut target:TeachingTarget=serde_json::from_value(raw).unwrap();target.validate(&binding).unwrap();
+        assert!(target.media_bindings.is_none());assert!(target.source_bindings.is_empty());
+        let stored=serde_json::to_string(&target).unwrap();assert_eq!(serde_json::from_str::<TeachingTarget>(&stored).unwrap(),target);
+        target.music_bindings.as_mut().unwrap()[0].target.publication.book_id="other".into();assert!(target.validate(&binding).is_err());
+        target.music_bindings=None;assert!(target.validate(&binding).is_err());
     }
     #[test]
     fn continuation_events_roundtrip_without_becoming_performance() {

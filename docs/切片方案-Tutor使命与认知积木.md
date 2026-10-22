@@ -2,6 +2,8 @@
 
 状态：2026-10-12，设计已确认，TB0–TB5 完成；TB2–TB4 按用户成本约束通过工程与 GPT-6.1-Sol 教学内容验收，本次与 TO0–TO14 集成；TB6 跨材料与真人验收留作上线使用后的后续工作。[TB5 记录](performance/tutor-building-blocks-tb5/README.md)保存教法／理解视图、TB4 实际记录的浏览器读取与纠正重开验收，新增模型调用 0；[TB4 记录](performance/tutor-building-blocks-tb4/README.md)保存操作教具、实际版本／现场与原聊天接续、2 次子代理实验及局部修正；[TB3 记录](performance/tutor-building-blocks-tb3/README.md)保存帮助适配、事实回读修复、16 次实验与四组回应／重开交付；[TB2 记录](performance/tutor-building-blocks-tb2/README.md)保存前置交付和 DeepSeek 历史未结项；[TB1 记录](performance/tutor-building-blocks-tb1/README.md)固定材料与输入。对应 [ADR-0164](adr/0164-tutor-mission-and-cognitive-building-blocks.md)。
 
+后续设计（2026-10-20）：[交互教学与学习接续](切片方案-交互教学与学习接续.md)沿用本方案的教学使命和证据边界，补充语义现场、教师实时演示与有依据的学习接续；[ADR-0172](adr/0172-interactive-teaching-state-and-learning-continuity.md)已接受，实施进度以该切片方案为准。
+
 Tutor 的使命是：**从学习者当前的理解出发，提供他能够理解、操作和组合的认知积木，引导他用这些积木建立新的理解，并逐步能够独立运用。**
 
 ## 1 对齐确认与实施基线

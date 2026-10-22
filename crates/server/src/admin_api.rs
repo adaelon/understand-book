@@ -168,11 +168,28 @@ pub(crate) fn dispatch(
         return access.admin.apply(principal.user_id(), &id, principal.user_id(),
             Command::AllowanceOffer(parse(input)?), now).map(|(receipt,_)|receipt);
     }
+    if parts.as_slice() == ["admin", "cloud-plans"] {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        if method == "GET" { return access.admin.cloud_plan_catalog(); }
+        if method != "POST" { return Err(admin_store::invalid()); }
+        let mut input = input;
+        let id = input.as_object_mut().and_then(|value|value.remove("operation_id"))
+            .and_then(|value|value.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
+        return access.admin.apply(principal.user_id(), &id, principal.user_id(),
+            Command::CloudPlan(crate::cloud_plans::Mutation::Product(parse(input)?)), now).map(|(receipt,_)|receipt);
+    }
+    if let ("GET", ["admin", "users", owner, "cloud-plan-purchases"]) = (method, parts.as_slice()) {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        return access.admin.cloud_plan_summary(owner, now);
+    }
     if matches!(parts.as_slice(), ["admin", "build-tasks", _, ..]) {
         if !query.is_empty() { return Err(admin_store::invalid()); }
         return match (method, parts.as_slice()) {
             ("GET", ["admin", "build-tasks", task]) => access.spend.build_status(task, None),
             ("GET", ["admin", "build-tasks", task, "charges", call]) => access.spend.build_status(task, Some(call)),
+            ("GET", ["admin", "build-tasks", task, "service-charges", usage]) => access.spend.service_charge(task, usage),
+            ("POST", ["admin", "build-tasks", task, "service-admit"]) => access.spend.service_admit(task, parse(input)?, now),
+            ("POST", ["admin", "build-tasks", task, "service-receipts"]) => access.spend.service_receipt(task, parse(input)?, now),
             ("POST", ["admin", "build-tasks", task, "budget"]) => access.spend.build_budget(principal.user_id(), task, parse(input)?, now),
             ("POST", ["admin", "build-tasks", task, "metered-admit"]) => access.spend.build_metered_admit(task, input, now),
             ("POST", ["admin", "build-tasks", task, "metered-receipts"]) => access.spend.build_metered_receipt(task, parse(input)?, now),
@@ -180,6 +197,10 @@ pub(crate) fn dispatch(
             ("POST", ["admin", "build-tasks", task, "receipts"]) => access.spend.build_receipt(task, parse(input)?, now),
             _ => Err(crate::authorization::missing()),
         };
+    }
+    if let ("POST", ["admin", "service-usage", id, "reconcile"]) = (method, parts.as_slice()) {
+        if !query.is_empty() { return Err(admin_store::invalid()); }
+        return access.spend.service_reconcile(principal.user_id(),id,parse(input)?,now);
     }
     if method == "GET" && matches!(parts.as_slice(), ["admin", "users", _, "mcp"]) {
         if !query.is_empty() { return Err(admin_store::invalid()); }
@@ -305,6 +326,12 @@ pub(crate) fn dispatch(
                 "revoke-sessions" => {
                     let body: Operation = parse(input)?;
                     (body.operation_id, Command::RevokeSessions)
+                }
+                "cloud-plan-purchases" => {
+                    let mut input = input;
+                    let id = input.as_object_mut().and_then(|value|value.remove("operation_id"))
+                        .and_then(|value|value.as_str().map(str::to_owned)).ok_or_else(admin_store::invalid)?;
+                    (id, Command::CloudPlan(crate::cloud_plans::Mutation::Purchase(parse(input)?)))
                 }
                 "book-grants" | "book-revocations" => {
                     let body: BookOperation = parse(input)?;

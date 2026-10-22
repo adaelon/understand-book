@@ -488,11 +488,14 @@ export function inspectAutomaticBuildStagePolicySet(target: AutomaticBuildTarget
   return prepared;
 }
 
-export function readAutomaticBuildCurrentMigration(input: Parameters<typeof recordAutomaticBuildPolicyMigration>[0]) {
+export function readAutomaticBuildCurrentMigration(
+  input: Parameters<typeof recordAutomaticBuildPolicyMigration>[0],
+  fileExists: (file: string) => boolean = existsSync,
+) {
   const identity = { ...currentIdentity(input.target, input.stage, input.current, input.policy_set, input.execution_profile),
     from_policy_generation_id: input.from_policy_generation_id };
   const receipt = readMigrationReceipt(input.target, input.stage, input.from_policy_generation_id,
-    identity.to_policy_generation_id, identity.work_unit_id);
+    identity.to_policy_generation_id, identity.work_unit_id, fileExists);
   if (receipt && (receipt.from_policy_generation_id !== identity.from_policy_generation_id
     || receipt.to_policy_generation_id !== identity.to_policy_generation_id || receipt.work_unit_id !== identity.work_unit_id
     || receipt.current_input_hash !== identity.current_input_hash
@@ -1093,6 +1096,7 @@ function readMigrationReceipt(
   fromPolicyGenerationId: string,
   toPolicyGenerationId: string,
   workUnitId: string,
+  fileExists: (file: string) => boolean = existsSync,
 ): AutomaticBuildPolicyMigrationReceiptV2 | undefined {
   const file = automaticBuildPolicyMigrationReceiptPath(
     target,
@@ -1101,7 +1105,7 @@ function readMigrationReceipt(
     toPolicyGenerationId,
     workUnitId,
   );
-  if (!existsSync(file)) return undefined;
+  if (!fileExists(file)) return undefined;
   return validateAutomaticBuildPolicyMigrationReceipt(
     target,
     stage,

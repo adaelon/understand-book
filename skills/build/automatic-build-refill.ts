@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AUTOMATIC_BUILD_MAX_WORKERS } from "../../packages/core/src/automatic-build-protocol";
 import type { AutomaticBuildStepRequestV1, AutomaticBuildStepResponseV1 } from "./automatic-build-driver";
 
 const ref = z.string().min(1).max(1024);
@@ -6,7 +7,7 @@ const owned = z.object({ child: ref, opaque_handoff_ref: ref }).strict();
 const control = z.object({
   version: z.literal("automatic_build_refill_request.v1"),
   invocation_ref: ref,
-  capacity_limit: z.number().int().min(0).max(3),
+  capacity_limit: z.number().int().min(0).max(AUTOMATIC_BUILD_MAX_WORKERS),
   live_by_slot: z.record(z.string(), owned),
   completed_refs: z.array(ref),
   terminal_children: z.array(ref),
@@ -55,7 +56,7 @@ export function automaticBuildRefill(value: unknown, engine: RefillEngine): Auto
     delete live_by_slot[slot];
   }
   const capacity = Math.min(capacity_limit, engine.maxParallel(request.invocation_ref));
-  const available = Math.max(0, capacity - Object.keys(live_by_slot).length) as 0 | 1 | 2 | 3;
+  const available = Math.max(0, capacity - Object.keys(live_by_slot).length) as AutomaticBuildStepRequestV1["available_agent_slots"];
   const result = engine.step({ ...request, available_agent_slots: available },
     Object.values(live_by_slot).map(child => child.opaque_handoff_ref), [...completed]);
   const finish = (step: AutomaticBuildStepResponseV1): AutomaticBuildRefillResponseV1 => {

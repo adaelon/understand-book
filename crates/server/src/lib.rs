@@ -91,6 +91,14 @@ pub mod model_rates;
 mod model_spend_store;
 mod external_build_costs;
 mod allowance_offers;
+mod cloud_plans;
+mod cloud_storage;
+mod service_usage;
+mod web_usage;
+mod web_search;
+mod course_access;
+mod exam_sprints;
+mod desktop_auth;
 mod selection_translation;
 mod pdf_bytes;
 mod charge_admin;
@@ -114,6 +122,9 @@ mod book_cover;
 mod book_title;
 pub mod auth;
 pub mod video_media;
+mod music_media;
+mod music_calibration;
+pub mod video_playback;
 pub mod video_frames;
 pub mod video_audio;
 mod video_draft;
@@ -121,6 +132,8 @@ mod video_publication;
 pub mod mcp_access;
 pub mod mcp_read;
 mod cross_book;
+mod workspace_retrieval;
+mod semantic_retrieval;
 mod mcp_output_schema;
 pub mod mcp_usage;
 pub mod mcp_pack;
@@ -128,6 +141,7 @@ mod remote_mcp;
 pub mod authorization;
 pub mod multi_user_host;
 mod multi_user_review;
+mod teaching_coach;
 mod pending_confirmation;
 pub mod agent_run;
 mod run_admission;
@@ -144,6 +158,9 @@ mod host_lifecycle;
 pub mod mcp;
 pub mod observability;
 mod presentation_api;
+mod presentation_interact;
+mod music_interact;
+mod music_source;
 mod note_api;
 mod tutor_api;
 mod teaching;
@@ -674,6 +691,7 @@ fn paper_minimap_localization_request(base: &PaperMinimapBase) -> CompletionRequ
         })).collect::<Vec<_>>(),
     });
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: PAPER_MINIMAP_LOCALIZATION_SYSTEM.into(),
@@ -1036,6 +1054,8 @@ pub struct AgentTurnError {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentChatTurn {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub music_question: Option<base_schema::MusicQuestionContext>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_question: Option<base_schema::VideoQuestionContext>,
     #[serde(default)]
     pub domain: session_event::TurnDomain,
@@ -1152,6 +1172,7 @@ pub struct AgentChatSessionSummary {
 
 #[derive(Debug, serde::Serialize)]
 pub struct AgentChatTurnView {
+    pub music_question: Option<base_schema::MusicQuestionContext>,
     pub video_question: Option<base_schema::VideoQuestionContext>,
     pub domain: session_event::TurnDomain,
     pub published_book_ref: Option<published_library::PublishedBookRef>,
@@ -1641,6 +1662,7 @@ fn precommit_agent_turn_with_goal(
     goal_action: Option<&str>,
     video_question: Option<base_schema::VideoQuestionContext>,
     domain: Option<session_event::TurnDomain>,
+    music_question: Option<base_schema::MusicQuestionContext>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
     if state.user.session_store.is_some() {
@@ -1649,8 +1671,9 @@ fn precommit_agent_turn_with_goal(
         let mut session = state.user.agent_history.sessions[index].clone();
         let turn_ref = append_pending_agent_turn(&mut session, user, question_anchor_lid, question_quote,
             presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-            state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+            state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, now)?;
         session.turns.last_mut().unwrap().video_question = video_question.clone();
+        session.turns.last_mut().unwrap().music_question = music_question.clone();
         session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
         if let Some(domain) = domain { session.turns.last_mut().unwrap().domain = domain; }
         session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(
@@ -1666,8 +1689,9 @@ fn precommit_agent_turn_with_goal(
     let session = &mut candidate.sessions[session_index];
     let turn_ref = append_pending_agent_turn(session, user, question_anchor_lid, question_quote,
         presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-        state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+        state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, now)?;
     session.turns.last_mut().unwrap().video_question = video_question.clone();
+    session.turns.last_mut().unwrap().music_question = music_question.clone();
     session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
     if let Some(domain) = domain { session.turns.last_mut().unwrap().domain = domain; }
     session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(
@@ -1741,7 +1765,7 @@ fn append_pending_agent_turn(
         session.title = compact_title(&user);
     }
     session.updated_at = now.into();
-    session.turns.push(AgentChatTurn {
+    session.turns.push(AgentChatTurn { music_question: None,
         video_question: None,
         domain: Default::default(),
         admission_input: None,
@@ -1779,7 +1803,7 @@ fn precommit_agent_turn(
     presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
-    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, None, None, now)
+    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, None, None, None, now)
 }
 
 fn finalize_agent_turn(
@@ -2323,7 +2347,7 @@ fn legacy_answer_projection(
             source_ref_id: source_ref_id.clone(),
             label: source.label.clone(),
         });
-        bindings.push(SourceBinding { publication_id: None, source_revision: None,
+        bindings.push(SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None,
             source_ref_id,
             book_id: book.base.book_id.clone(),
@@ -2460,6 +2484,7 @@ fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
     }
     AgentChatTurnView {
         video_question: turn.video_question.clone(),
+        music_question: turn.music_question.clone(),
         domain: turn.domain.clone(),
         published_book_ref: turn.published_book_ref.clone(),
         teaching_ref: turn.teaching_ref.clone(),
@@ -2788,6 +2813,10 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
 }
 
 fn route_inner(state: &mut AppState, req: Req) -> Reply {
+    let (local_path, _) = parse_query(req.url);
+    if let Some(action) = local_path.strip_prefix("/build_workbench/music/") {
+        return music_calibration::dispatch(state, action, req.method, req.body);
+    }
     if state.workspace.publication.is_some() {
         let (path, _) = parse_query(req.url);
         if path.starts_with("/build_workbench/") || path.starts_with("/sidecar_plan/")
@@ -3012,11 +3041,25 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
         if req.method != "POST" { return agent_method_not_allowed(); }
         return presentation_api::feedback_route(&state.private_context(), req.body, path.rsplit('.').next().unwrap(), req.now);
     }
+    if path == "/agent/presentation.interaction" {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let input = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        return match presentation_interact::respond(&state.workspace, &state.private_context(), &input) {
+            Ok(value) => ok_json(&value), Err(error) => err_reply(&error),
+        };
+    }
+    if path == "/agent/music/respond" {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let input = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        return match music_interact::respond(&state.workspace, &input) {
+            Ok(value) => ok_json(&value), Err(error) => err_reply(&error),
+        };
+    }
     if path == "/agent/presentation.state.save" {
         if req.method != "POST" {
             return agent_method_not_allowed();
         }
-        return presentation_api::save_state(&state.private_context(), req.body);
+        return presentation_api::save_browser_state(&state.workspace, &state.private_context(), req.body, req.now);
     }
     if path == "/agent/presentation.read" || path == "/agent/presentation.observe" {
         if req.method != "POST" {
@@ -3432,7 +3475,7 @@ fn bind_rest_book_input(
             transport_key.as_str()
         };
         let value = if (id == BookToolId::Context && key == "k")
-            || (id == BookToolId::Concept && key == "limit")
+            || (matches!(id, BookToolId::Concept | BookToolId::Search) && key == "limit")
             || (id == BookToolId::Text && key == "start_utf16")
         {
             match value.parse::<usize>() {
@@ -3516,6 +3559,12 @@ fn bind_rest_search_text_input(query: &HashMap<String, String>) -> Result<BookTo
 
 fn route_canonical_readonly_book_tool(book: &Book, id: BookToolId, input: BookToolInput) -> Reply {
     match (id, input) {
+        (BookToolId::Search, BookToolInput::Search(input)) => {
+            match book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT)) {
+                Ok(result) => ok_json(&result),
+                Err(error) => err_reply(&error),
+            }
+        }
         (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&book.manifest()),
         (BookToolId::Text, BookToolInput::Text(input)) => {
             match book.read_text(&input) {
@@ -3599,6 +3648,19 @@ fn route_book(
         }
     }
     match leaf {
+        "music_context" => match music_media::projection(book_dir) {
+            Ok(value) => ok_json(&value), Err(error) => err_reply(&error),
+        },
+        "video_playback" => {
+            if !book_dir.join("video_source_manifest.json").is_file() { return ok_json(&Value::Null); }
+            let result = (|| -> Result<Value, ToolError> {
+                let publication: published_library::PublicationManifest = serde_json::from_slice(&std::fs::read(book_dir.join("publication.json")).map_err(|_| authorization::missing())?).map_err(|_| authorization::missing())?;
+                // The standalone reader retains original-file playback; cloud hosts
+                // resolve their shared delivery cache before reaching this route.
+                video_playback::projection(book_dir, &book_dir.join(".playback"), &publication.reference)
+            })();
+            match result { Ok(value) => ok_json(&value), Err(error) => err_reply(&error) }
+        },
         "video_context" => {
             if !book_dir.join("video_source_manifest.json").is_file() { return ok_json(&Value::Null); }
             let result = (|| -> Result<Value, ToolError> {
@@ -5354,11 +5416,12 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         .unwrap_or(&book_id)
         .to_string();
 
-    let (paper_md, paper_md_source, paper_md_original) =
+    let markdown = if value.get("paper_md_text").and_then(|v| v.as_str()).is_some()
+        || value.get("paper_md_path").and_then(|v| v.as_str()).is_some_and(|s| !s.trim().is_empty()) {
         match source_value(&value, "paper_md_text", "paper_md_path") {
-            Ok(value) => value,
-            Err(e) => return err_reply(&e),
-        };
+            Ok(value) => Some(value), Err(e) => return err_reply(&e),
+        }
+    } else { None };
     let (paper_pdf, paper_pdf_source, paper_pdf_original) =
         match source_value(&value, "paper_pdf_base64", "paper_pdf_path") {
             Ok(value) => value,
@@ -5378,14 +5441,14 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
     }
     let paper_md_path = target_dir.join("paper.md");
     let paper_pdf_path = target_dir.join("paper.pdf");
-    if let Err(e) = write_workbench_input_file(&paper_md_path, &paper_md) {
-        return err_reply(&e);
+    if let Some((paper_md, _, _)) = &markdown {
+        if let Err(e) = write_workbench_input_file(&paper_md_path, paper_md) { return err_reply(&e); }
     }
     if let Err(e) = write_workbench_input_file(&paper_pdf_path, &paper_pdf) {
         return err_reply(&e);
     }
 
-    let paper_md_sha256 = sha256_hex(&paper_md);
+    let paper_md_sha256 = markdown.as_ref().map(|(text, _, _)| sha256_hex(text)).unwrap_or_else(|| "not-provided".into());
     let paper_pdf_sha256 = sha256_hex(&paper_pdf);
     let config_hash = workbench_config_hash();
     let fingerprint = json!({
@@ -5393,7 +5456,7 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         "paper_pdf_sha256": paper_pdf_sha256,
         "config_hash": config_hash,
     });
-    let manifest = json!({
+    let mut manifest = json!({
         "version": "workbench_input_manifest.v1",
         "book_id": book_id,
         "profile_id": "paper",
@@ -5401,13 +5464,6 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         "created_at": now,
         "updated_at": now,
         "inputs": {
-            "paper_md": {
-                "path": "paper.md",
-                "sha256": paper_md_sha256,
-                "size_bytes": paper_md.len(),
-                "source": paper_md_source,
-                "original_path": paper_md_original,
-            },
             "paper_pdf": {
                 "path": "paper.pdf",
                 "sha256": paper_pdf_sha256,
@@ -5420,6 +5476,9 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
         "fingerprint": fingerprint,
         "trusted": false,
     });
+    if let Some((text, source, original)) = &markdown {
+        manifest["inputs"]["paper_md"] = json!({"path":"paper.md","sha256":paper_md_sha256,"size_bytes":text.len(),"source":source,"original_path":original});
+    }
     let manifest_path = workbench_input_manifest_path(&target_dir);
     if let Some(parent) = manifest_path.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
@@ -5437,6 +5496,9 @@ fn route_workbench_input_import(state: &mut AppState, body: &str, now: &str) -> 
     state.workspace.book_dir = target_dir;
     state.workspace.workbench_loaded_revision = None;
     let _ = save_session(state, state.workspace.book_dir.to_str());
+    if markdown.is_none() {
+        return route_workbench_job_start(state, r#"{"stage":"source_reconciliation","executor":"manual","adapter_mode":"builtin"}"#, now);
+    }
     route_build_workbench(&state.workspace.book, &state.workspace.book_dir)
 }
 
@@ -5448,7 +5510,7 @@ fn current_workbench_job_input(
         return Err(ToolError {
             error_code: "WORKBENCH_INPUT_NOT_READY".into(),
             category: "validation".into(),
-            message: "尚未导入 paper.md + paper.pdf".into(),
+            message: "尚未导入 PDF".into(),
         });
     };
     let current_config_hash = workbench_config_hash();
@@ -5982,6 +6044,7 @@ fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Re
         "pdf_page_label": block.get("pdf_page_label").cloned().unwrap_or_else(|| json!(null)),
     });
     let request = CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: SOURCE_REVIEW_LLM_SYSTEM.into(),
@@ -6266,6 +6329,19 @@ fn route_build_workbench(book: &Book, book_dir: &Path) -> Reply {
 }
 
 fn build_workbench_snapshot(book: &Book, book_dir: &Path, maintain_jobs: bool) -> Reply {
+    if book_dir.join(music_media::MANIFEST).exists() {
+        return match music_media::load(book_dir).and_then(|manifest| {
+            if manifest.book_id != book.base.book_id { return Err(authorization::missing()); }
+            music_media::validate_files(book_dir, &manifest)?;
+            Ok(manifest)
+        }) {
+            Ok(manifest) => ok_json(&json!({"version":"build_workbench_snapshot.v1","book_id":book.base.book_id,
+                "readiness":{"route":"reader","status":"music_ready","reasons":[],
+                "capabilities":music_media::capabilities(&manifest),
+                "stages":{"music_prebuild":{"status":"done"}}},"jobs":[]})),
+            Err(error) => err_reply(&error),
+        };
+    }
     if book_dir.join("video_source_manifest.json").exists() {
         return match book.load_video_source(book_dir) {
             Ok(_) => ok_json(&json!({"version":"build_workbench_snapshot.v1","book_id":book.base.book_id,
@@ -10466,6 +10542,7 @@ Terminology policy: use chinese_gloss only when policy is use_chinese_gloss; ret
     }))
     .expect("selection translation prompt data is serializable");
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: system.into(),
@@ -11797,11 +11874,11 @@ fn workspace_source_binding(
         .filter(|session| session.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)
             || (workspace.learning_workspace_id.is_none() && session.learning_workspace_id.is_none()
                 && session.turns.iter().any(|turn| turn.turn_id == request.turn_id
-                    && turn.source_bindings.iter().any(|binding| binding.source_ref_id == request.source_ref_id && binding.media.is_some()))))
+                    && turn.source_bindings.iter().any(|binding| binding.source_ref_id == request.source_ref_id && (binding.media.is_some() || binding.music.is_some())))))
         .flat_map(|session| session.turns.iter())
         .find(|turn| turn.turn_id == request.turn_id);
     if let Some(turn) = turn {
-        if workspace.learning_workspace_id.is_none() && !turn.source_bindings.iter().any(|b| b.source_ref_id == request.source_ref_id && b.media.is_some()) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
+        if workspace.learning_workspace_id.is_none() && !turn.source_bindings.iter().any(|b| b.source_ref_id == request.source_ref_id && (b.media.is_some() || b.music.is_some())) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
             return Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "Open the original publication to read this source; no replacement is selected"));
         }
     }
@@ -11844,6 +11921,7 @@ fn route_agent_source_resolve(state: &AppState, body: &str) -> Reply {
         Err(error) => return err_reply(&error),
     };
     if binding.media.is_some() { return ok_json(&video_source::local_popup(&state.workspace, &request, &binding)); }
+    if binding.music.is_some() { return ok_json(&music_source::local_popup(&state.workspace, &request, &binding)); }
     let material_title = answer_source_material_title(&state.workspace, &binding);
     let resolved = if binding.book_id == state.workspace.book.base.book_id { state.workspace.book.resolve_source(
         binding.evidence_range.as_ref().expect("text binding"),
@@ -11934,6 +12012,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
 /// `OuterOutcome{answer, incomplete, effects, trace, ...}`;agent 动作即时驱动共享 reader 视口,
 /// effects 供前端可撤销提议、trace 供查询踪迹展示。provider 错经 run 映射 `PROVIDER_ERROR` 透传不降级。
 struct ValidatedAgentInput {
+    music_question: Option<base_schema::MusicQuestionContext>,
     video_question: Option<base_schema::VideoQuestionContext>,
     interaction: Option<runtime::tutor_continuation::ResolvedInteraction>,
     request: Value, message: String, display_user: String, question_anchor_lid: Option<String>,
@@ -12048,7 +12127,7 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             .filter_map(|(t,s)|Some((t,s,base_schema::PublishedBookRef {book_id:s.book_id.clone(),publication_id:s.publication_id.clone()?})))
             .filter(|(_,_,r)|seen.insert(r.clone())).take(8)
             .map(|(t,s,r)|json!({"origin_turn_id":t.turn_id,"published_book_ref":r,"source_revision":s.source_revision,
-                "label":s.label_snapshot,"start_lid":s.evidence_range.as_ref().map(|r|&r.start_lid),"end_lid":s.evidence_range.as_ref().map(|r|&r.end_lid),"media_target":s.media.as_ref().map(|m|&m.target)})).collect();
+                "label":s.label_snapshot,"start_lid":s.evidence_range.as_ref().map(|r|&r.start_lid),"end_lid":s.evidence_range.as_ref().map(|r|&r.end_lid),"media_target":s.media.as_ref().map(|m|&m.target),"music_target":s.music.as_ref().map(|m|&m.target)})).collect();
         if !references.is_empty() {
             agent_message.push_str(&format!("\n\nReference materials from delivered answers (locators only, not newly observed evidence): {}. For a related follow-up, consult library.learning and re-read the exact publication with library.read before citing or updating understanding. Keep the current book and reading task.",json!(references)));
         }
@@ -12077,6 +12156,10 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     };
     if let Some(action) = &mut interaction { action.presentation_follow_up = presentation_follow_up.clone(); }
     let video_question = video_draft::for_input(workspace, user, &v).map_err(|e| err_reply(&e))?;
+    let music_question = music_interact::question(workspace, &v).map_err(|e| err_reply(&e))?;
+    if let Some(question) = &music_question {
+        agent_message.push_str(&format!("\n\nMusic question at submission (fixed source locator, not audio heard by the model): {}. Keep this exact publication, recording, occurrence and time range even if playback later moves. Read the corresponding prepared source before explaining.", json!(question)));
+    }
     let message = msg.to_string();
     if interaction.is_none() {
         let learning = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref()).map_err(|e| err_reply(&e))?;
@@ -12116,7 +12199,7 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             }
         }
     }
-    Ok(ValidatedAgentInput { video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    Ok(ValidatedAgentInput { music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
 
@@ -12130,7 +12213,7 @@ fn prepare_agent_chat(
         state.user.learning_store_for_workspace(Some(id)).and_then(|mut store| store.sync_workspace_goal(goal.revision, now))
             .map_err(|error| err_reply(&error))?;
     }
-    let ValidatedAgentInput { video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    let ValidatedAgentInput { music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, mut agent_message, presentation_context } = validate_agent_input(&mut state.user, &state.workspace, body)?;
     let msg = message.as_str();
     let current_book_id = state.workspace.book.base.book_id.clone();
@@ -12148,6 +12231,7 @@ fn prepare_agent_chat(
         v.get("goal_action").and_then(|value| value.as_str()),
         video_question.clone(),
         domain,
+        music_question.clone(),
         now,
     ) {
         Ok(turn_ref) => turn_ref,
@@ -12178,10 +12262,12 @@ fn prepare_agent_chat(
     session_runtime::link_teaching(&mut state.user, &turn_ref, now).map_err(|e| err_reply(&e))?;
     let mut scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
     scope.reader_input.video_question = video_question;
+    scope.music_question = music_question;
     if scope.presentation_follow_up.is_some() {
         agent_message.push_str(presentation_context.as_deref().expect("validated presentation context"));
     }
     Ok(agent_run::PreparedAgentChat {
+        exam_calendar: None,
         accepted_workspace_goal: None,
         scope,
         tutor,
@@ -13127,8 +13213,11 @@ pub fn load_session(path: &Option<PathBuf>) -> Option<SessionState> {
 
 #[cfg(test)]
 mod tests {
+    mod music_runtime_tests;
     mod video_draft_tests;
     mod video_publication_tests;
+    mod music_publication_tests;
+    mod music_calibration_tests;
     mod video_source_tests;
     mod video_workspace_tests;
     mod video_operator_build_tests;
@@ -13148,6 +13237,10 @@ mod tests {
     mod s1_workspace_publication_tests;
     mod b1_operator_build_tests;
     mod b2_preparation_tests;
+    mod c4_service_usage_tests;
+    mod cloud_host_tests;
+    mod cloud_course_e2e_tests;
+    mod cloud_browser_host;
     mod s2_b1_browser_host;
     mod q5_s1_browser_host;
     mod mcp_pack_api_tests;
@@ -13160,7 +13253,7 @@ mod tests {
     mod online_publication_tests;
     mod mu4_tests;
     mod pdf_service_tests;
-    mod mu5_tests;
+    pub(crate) mod mu5_tests;
     mod mu6_tests;
     mod cross_book_tests;
     mod session_management_tests;
@@ -13176,12 +13269,13 @@ mod tests {
     pub(crate) mod presentation_author_tests;
     mod presentation_store_tests;
     mod tutor_tests;
-    mod tutor_loop_tests;
+    pub(crate) mod tutor_loop_tests;
     mod tutor_continuation_tests;
     mod tutor_building_blocks_tests;
     mod tutor_adaptation_tests;
-    mod teaching_design_tests;
+    pub(crate) mod teaching_design_tests;
     mod teaching_design_live_tests;
+    mod workspace_cache_live_tests;
     mod tutor_response_fit_tests;
     mod tutor_presentation_tests;
     mod tutor_understanding_view_tests;
@@ -13836,6 +13930,7 @@ mod tests {
             unimplemented!("agent 测不走内层 complete")
         }
         fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            if let Some(guidance)=tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
             if let Some(review)=tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
             unimplemented!("agent 测不走内层 complete")
         }
@@ -15363,6 +15458,34 @@ mod tests {
             .unwrap()
             .iter()
             .any(|warning| warning["code"] == "job_failed"));
+    }
+
+    #[test]
+    fn pdf_only_import_automatically_reaches_reader_and_resolves_selection() {
+        let mut s = state_named("pdf-only-import");
+        let input = s.workspace.book_dir.join("selected.pdf");
+        std::fs::write(&input, simple_pdf("Read this PDF immediately")).unwrap();
+        let imported = post(&mut s, "/build_workbench/input.import", &json!({
+            "book_id": "pdf-native", "paper_pdf_path": path_string(&input),
+        }).to_string());
+        assert_eq!(imported.status, 200, "{}", imported.body);
+        let snapshot: serde_json::Value = serde_json::from_str(&imported.body).unwrap();
+        assert!(snapshot["input"]["manifest"]["inputs"]["paper_md"].is_null());
+        let job_id = snapshot["jobs"][0]["job_id"].as_str().unwrap();
+        wait_for_job_status(&s.workspace.book_dir, job_id, "done");
+        let ready = get(&mut s, "/book/build_workbench");
+        let ready: serde_json::Value = serde_json::from_str(&ready.body).unwrap();
+        assert_eq!(ready["readiness"]["route"], "reader", "{ready}");
+        assert_eq!(s.workspace.book.base.book_id, "pdf-native");
+        assert!(!s.workspace.book_dir.join("paper.md").exists());
+        let manifest: serde_json::Value = serde_json::from_slice(&std::fs::read(s.workspace.book_dir.join("source_manifest.json")).unwrap()).unwrap();
+        assert_eq!(manifest["canonical_source"]["kind"], "pdf_text");
+        let resolved = post(&mut s, "/reader/pdf_selection.resolve", &json!({
+            "pageIndex":0,"rects":[{"pageIndex":0,"bbox":[70,98,270,115]}],"selected_text":"Read this PDF immediately",
+        }).to_string());
+        assert_eq!(resolved.status, 200, "{}", resolved.body);
+        let resolved: serde_json::Value = serde_json::from_str(&resolved.body).unwrap();
+        assert_eq!(resolved["status"], "resolved", "{resolved}");
     }
 
     #[test]
@@ -20259,6 +20382,32 @@ unchanged after training concludes";
     }
 
     #[test]
+    fn ranked_search_rest_mcp_parity_and_executable_source_read() {
+        let mut state = state_named("ranked-search-parity");
+        state.workspace.book = Book::new(sample_base(), &"X".repeat(100)).into();
+        let query = "X".repeat(100);
+        let rest = get(&mut state, &format!("/book/search?query={query}&within_lid=1.1&limit=2"));
+        let mcp = mcp::dispatch_mcp_tool(&mut state, "book_search",
+            json!({"query":query,"within_lid":"1.1","limit":2}), "1000");
+        assert_eq!(rest.status, 200, "{}", rest.body);
+        assert_eq!(mcp.status, 200, "{}", mcp.body);
+        let result: Value = serde_json::from_str(&rest.body).unwrap();
+        let mut projected = result.clone();
+        mcp::project_candidate_read_calls(BookToolId::Search, &mut projected, None);
+        assert_eq!(projected, serde_json::from_str::<Value>(&mcp.body).unwrap());
+        let hit = &projected["hits"][0];
+        assert_eq!(hit["start_lid"], "1.1");
+        let call = &hit["next_calls"][0];
+        assert_eq!(call["name"], "book_text");
+        let source = mcp::dispatch_mcp_tool(&mut state, call["name"].as_str().unwrap(), call["arguments"].clone(), "1001");
+        assert_eq!(source.status, 200, "{}", source.body);
+        assert!(source.body.contains(&query));
+        let invalid = get(&mut state, "/book/search?query=word&limit=21");
+        assert_eq!(invalid.status, 400);
+        assert!(invalid.body.contains("BOOK_TOOL_INPUT_INVALID"));
+    }
+
+    #[test]
     fn search_text_rest_mcp_and_resident_contracts_have_parity() {
         let mut state = state_named("search-text-parity");
         state.workspace.book = (Book::new(sample_base(), &"X".repeat(100))).into();
@@ -21195,7 +21344,7 @@ unchanged after training concludes";
         let mut state = state_named("profile-backfill-http");
         let book_id = state.workspace.book.base.book_id.clone();
         let turns = (1..=3)
-            .map(|ordinal| AgentChatTurn {
+            .map(|ordinal| AgentChatTurn { music_question: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -21239,7 +21388,7 @@ unchanged after training concludes";
             title: "Other book history".into(),
             created_at: "created".into(),
             updated_at: "updated".into(),
-            turns: vec![AgentChatTurn {
+            turns: vec![AgentChatTurn { music_question: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -21799,7 +21948,7 @@ unchanged after training concludes";
             .resolve_source(&evidence_range, "zh-CN", None)
             .unwrap();
         let source_ref_id = "source_ref_server_fixture".to_string();
-        let binding = runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+        let binding = runtime::orchestrator::SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None,
             source_ref_id: source_ref_id.clone(),
             book_id: state.workspace.book.base.book_id.clone(),
@@ -23422,7 +23571,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         };
         let mut history = AgentHistory::default();
         let mut session = new_agent_session("book", "t0", 0);
-        session.turns.push(AgentChatTurn {
+        session.turns.push(AgentChatTurn { music_question: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -24410,8 +24559,11 @@ Version 1.2 and bare 1.1 stay unchanged.
             .iter()
             .position(|message| message.content.as_deref() == Some("current raw user text"))
             .unwrap();
-        assert!(context_index < checkpoint_index);
         assert!(checkpoint_index < raw_index);
+        let current_index = sampled.iter().position(|message|
+            message.content.as_deref() == Some("continue after restart")).unwrap();
+        assert!(raw_index < context_index, "turn-frozen state follows reusable history");
+        assert!(context_index < current_index);
         assert!(sampled.iter().all(|message| {
             !message
                 .content

@@ -36,6 +36,7 @@ fn bindings(values: &[SourceBinding]) -> Vec<NoteSourceBinding> {
             source_revision: b.source_revision.clone(),
             evidence_range: b.evidence_range.clone(),
             media: b.media.as_ref().map(|media| json!(media)),
+            music: b.music.as_ref().map(|music| json!(music)),
             evidence_text_digest: b.evidence_text_digest.clone(),
             label_snapshot: b.label_snapshot.clone(),
             preview_snapshot: b.preview_snapshot.clone(),
@@ -298,6 +299,26 @@ pub(crate) fn follow_up(
 #[cfg(test)]
 mod video_note_tests {
     use super::*;
+
+    #[test]
+    fn music_note_retains_original_publication_and_prepared_snapshot() {
+        let source: SourceBinding = serde_json::from_value(json!({
+            "source_ref_id":"music-note-ref","book_id":"piece","publication_id":"original",
+            "source_revision":"source-revision","evidence_range":null,"evidence_text_digest":"",
+            "label_snapshot":"Repeated phrase","preview_snapshot":"Melody returns",
+            "music":{"target":{"publication":{"book_id":"piece","publication_id":"original"},
+                "audio":{"recording":{"recording_id":"recording","revision":"1"},"start_ms":1200,"end_ms":1600},
+                "score":{"score":{"score_id":"score","revision":"1"},"source_ids":["n1"]},
+                "occurrence_ids":["repeat"],"event_ids":["return"],"provenance_ids":["analysis"]},
+                "title":"Piece","label":"Repeated phrase","preview":"Melody returns",
+                "material":{"events":[{"event_id":"return","description":"saved analysis"}]}}
+        })).unwrap();
+        let bytes = serde_json::to_vec(&bindings(&[source.clone()])).unwrap();
+        let restored: Vec<NoteSourceBinding> = serde_json::from_slice(&bytes).unwrap();
+        let recovered: SourceBinding = serde_json::from_value(json!(restored[0])).unwrap();
+        assert_eq!(recovered,source);
+        assert!(recovered.evidence_range.is_none());
+    }
 
     #[test]
     fn video_note_retains_media_source_through_memory_serialization() {

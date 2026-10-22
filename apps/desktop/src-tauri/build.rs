@@ -1,12 +1,18 @@
 fn main() {
-    println!("cargo:rerun-if-env-changed=UNDERSTAND_BOOK_MARKETPLACE_SOURCE");
-    println!("cargo:rerun-if-env-changed=UNDERSTAND_BOOK_MARKETPLACE_NAME");
+    println!("cargo:rerun-if-env-changed=UNDERSTAND_BOOK_CLOUD_ORIGIN");
     let app_manifest = tauri_build::AppManifest::new().commands(&[
-        "codex_plugin_status",
-        "install_codex_plugin",
-        "set_desktop_library_directory",
-        "desktop_provider_status",
-        "save_desktop_provider_settings",
+        "desktop_sign_in",
+        "desktop_cancel_sign_in",
+        "desktop_open_cloud",
+        "desktop_open_local_library",
+        "desktop_local_materials",
+        "desktop_pdf_reading",
+        "desktop_pdf_update",
+        "desktop_import_local_material",
+        "desktop_read_local_material_chunk",
+        "desktop_local_material_cloud_copy",
+        "desktop_remove_local_material",
+        "desktop_open_local_material",
         "save_reading_share_image",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(app_manifest))

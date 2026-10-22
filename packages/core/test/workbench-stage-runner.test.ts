@@ -80,6 +80,23 @@ function workspace(markdown: string, pdfText: string) {
 }
 
 describe("PH17 Workbench deterministic stage runtime", () => {
+  it("imports only a PDF and reaches readable, selectable state without Markdown review", async () => {
+    const { dir, fingerprint } = workspace("unused", "Read and highlight immediately");
+    const file = path.join(dir, ".build/input/manifest.json");
+    const manifest = JSON.parse(readFileSync(file, "utf8"));
+    delete manifest.inputs.paper_md;
+    writeFileSync(file, JSON.stringify(manifest));
+    rmSync(path.join(dir, "paper.md"));
+    try {
+      const job = await runWorkbenchStage({ book_dir: dir, job_id: "job_fixture", stage: "source_reconciliation", now: "2" });
+      expect(job.status, JSON.stringify(job.failure_summary)).toBe("done");
+      expect(job.decision_requests.filter(request => request.status === "pending")).toHaveLength(0);
+      expect(readFileSync(path.join(dir, "source.txt"), "utf8")).toContain("Read and highlight immediately");
+      const sourceManifest = JSON.parse(readFileSync(path.join(dir, "source_manifest.json"), "utf8"));
+      expect(sourceManifest.canonical_source.kind).toBe("pdf_text");
+      expect(detectBuildReadiness(readBuildWorkbenchSnapshot(dir, { current_input_fingerprint: fingerprint })).route).toBe("reader");
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
   it("U1 resolves paper attachments and completes the foundation after relocation", async () => {
     const { dir } = workspace("Hello PDF\n", "Hello PDF");
     await runWorkbenchStage({ book_dir: dir, job_id: "job_fixture", stage: "source_reconciliation", now: "2" });

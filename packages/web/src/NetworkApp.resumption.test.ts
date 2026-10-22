@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { installIdentity, network, workspaceStorageKey, type NetworkWorkspace } from './network-context';
+import { installIdentity, installWorkspace, forgetNetwork, network, workspaceStorageKey, type NetworkWorkspace } from './network-context';
 vi.mock('./App.vue', () => ({ default: { name: 'App', props: ['readerVisible'], methods: { beforeNoteLeave: async () => true },
   emits: ['show-library'], template: '<div class="reader"><button @click="$emit(\'show-library\')">打开书</button><textarea /></div>' } }));
 import NetworkApp from './NetworkApp.vue';
@@ -13,9 +13,9 @@ const books = [{ published_book_ref: { book_id: '同一本书', publication_id: 
   { published_book_ref: { book_id: '同一本书', publication_id: 'original' }, title: '能量守恒与变化' },
   { published_book_ref: { book_id: '另一窗口的书', publication_id: 'other' } }];
 beforeEach(() => {
-  sessionStorage.clear(); calls = []; authorized = true; question = '为什么守恒？';
+  sessionStorage.clear(); localStorage.clear(); calls = []; authorized = true; question = '为什么守恒？';
   installIdentity(identity);
-  sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'this-window' }));
+  sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'this-window', view: 'library' }));
   workspace = { workspace_id: 'this-window', generation: 3, revision: 8, selected_chat: 'original-chat',
     published_book_ref: books[1].published_book_ref, reader: { viewport: { top_lid: '1.16' } } } as NetworkWorkspace;
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
@@ -24,6 +24,7 @@ beforeEach(() => {
     if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return Response.json({ books: authorized ? books : [books[2]] });
     if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
+    if (url === '/api/me/reading-resumption') return Response.json(null);
     if (!authorized) return Response.json({ error_code: 'NOT_FOUND', message: '材料不可用' }, { status: 404 });
     if (url === '/api/workspaces/this-window/resumption') return Response.json({ workspace_id: workspace.workspace_id,
       published_book_ref: workspace.published_book_ref, selected_chat: workspace.selected_chat,
@@ -38,7 +39,7 @@ beforeEach(() => {
   }));
 });
 afterEach(() => {
-  wrapper?.unmount(); wrapper = undefined; vi.unstubAllGlobals(); sessionStorage.clear();
+  wrapper?.unmount(); wrapper = undefined; vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear();
   network.value = { ...network.value, enabled: false, identity: null, workspace: null };
 });
 async function start() {
@@ -47,6 +48,67 @@ async function start() {
   wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
   await flushPromises();
 }
+
+it('restores the saved publication, chat and position after closing and reopening a tab', async () => {
+  sessionStorage.clear();
+  installWorkspace(workspace);
+  sessionStorage.clear();
+  await start();
+  expect(network.value.workspace).toEqual(workspace);
+  expect(wrapper!.find('.network-library').exists()).toBe(false);
+  expect(wrapper!.find('.reader').exists()).toBe(true);
+  expect(calls.filter(call => call.startsWith('POST '))).toEqual(['POST /api/workspaces/this-window/attach']);
+});
+
+it('restores this tab instead of switching to the other tab saved on the same device', async () => {
+  localStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'other-window', view: 'reader' }));
+  sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'this-window', view: 'reader' }));
+  await start();
+  expect(network.value.workspace).toEqual(workspace);
+  expect(calls.some(call => call.includes('other-window'))).toBe(false);
+});
+
+it('keeps a deliberate return to the shelf across reopening and still offers the saved reading', async () => {
+  await start();
+  await wrapper!.get('.resumption-continue').trigger('click'); await flushPromises();
+  await wrapper!.get('.reader button').trigger('click'); await flushPromises();
+  wrapper!.unmount(); wrapper = undefined; sessionStorage.clear(); calls = [];
+  await start();
+  expect(wrapper!.find('.network-library').exists()).toBe(true);
+  expect(wrapper!.get('.reading-resumption').text()).toContain('为什么守恒？');
+  expect(calls.some(call => call.includes('/attach'))).toBe(false);
+});
+
+it('retains the reading bookmark through session expiry and restores it after signing in again', async () => {
+  sessionStorage.clear(); installWorkspace(workspace);
+  localStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'other-window', view: 'reader' }));
+  forgetNetwork();
+  let signedIn = false;
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => {
+    if (String(input) === '/api/auth/me' && !signedIn) return Promise.resolve(Response.json({}, { status: 401 }));
+    if (String(input) === '/api/auth/login') { signedIn = true; return Promise.resolve(Response.json({ ok: true })); }
+    return original(input, init);
+  });
+  await start();
+  await wrapper!.get('input[autocomplete="username"]').setValue('reader');
+  await wrapper!.get('input[type="password"]').setValue('fixture-only-password');
+  await wrapper!.get('form').trigger('submit'); await flushPromises();
+  expect(network.value.workspace).toEqual(workspace);
+  expect(wrapper!.find('.network-library').exists()).toBe(false);
+});
+
+it('finds the account reading record when browser pointers are gone, then continues that exact record', async () => {
+  sessionStorage.clear();
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input) === '/api/me/reading-resumption'
+    ? original('/api/workspaces/this-window/resumption', init) : original(input, init));
+  await start();
+  expect(wrapper!.get('.reading-resumption').text()).toContain('为什么守恒？');
+  await wrapper!.get('.resumption-continue').trigger('click'); await flushPromises();
+  expect(network.value.workspace).toEqual(workspace);
+  expect(wrapper!.find('.network-library').exists()).toBe(false);
+});
 
 function holdResumption() {
   let resolve!: (response: Response) => void;
@@ -92,6 +154,8 @@ it.each([500, 404])('preserves a card after transient failure but clears unavail
 });
 it('previews only this window, then restores the exact publication, chat and saved position on click', async () => {
   await start();
+  const versions = wrapper!.findAll('.network-book-card').filter(card => card.text().includes('能量守恒与变化')).map(card => card.text());
+  expect(versions[0]).toContain('版本 1（默认）'); expect(versions[1]).toContain('版本 2');
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('能量守恒与变化 · 版本 2');
   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('为什么守恒？');
   expect(wrapper!.find('.reader').exists()).toBe(false);

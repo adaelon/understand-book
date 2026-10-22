@@ -19,6 +19,7 @@ pub(crate) struct RunScope {
     pub provider_binding: runtime::ModelRuntimeProfile,
     pub reader_input: ReaderInputSnapshot,
     pub question_quote: Option<AskQuote>,
+    pub music_question: Option<base_schema::MusicQuestionContext>,
     pub presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
 }
 
@@ -54,6 +55,7 @@ impl RunScope {
                 message,
             ),
             question_quote,
+            music_question: None,
             presentation_follow_up,
         }
     }

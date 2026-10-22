@@ -27,6 +27,8 @@ mod method_library;
 mod se3;
 #[path = "presentation_se8_tests.rs"]
 mod se8;
+#[path = "presentation_repair_tests.rs"]
+mod repair;
 use crate::agent_run::{AppStatePort, BorrowedAppPort, RuntimeStatePort};
 use runtime::{
     presentation_author::*,
@@ -59,6 +61,7 @@ fn presentation_ex6_model_preview_json_deserializes() {
 }
 fn write(html: &str) -> AuthorRequest {
     AuthorRequest::Write {
+                action_contract: vec![],
         teaching_binding: None,
         method_refs: None,
         new_object: false,
@@ -88,6 +91,14 @@ fn working() -> String {
             .join("tests/fixtures/presentation-author.html"),
     )
     .unwrap()
+}
+
+pub(super) fn preview_touch_environments(port:&mut impl ResidentStatePort,id:&str,actions:Vec<PreviewAction>) {
+    for (_,viewport) in &REQUIRED_PREVIEW_ENVIRONMENTS[..2] {
+        let result=port.author_presentation(AuthorRequest::Preview {candidate_id:id.into(),width:None,viewport:Some(*viewport),
+            read_selector:None,actions:actions.clone()},&[],&[],&CancellationToken::default()).unwrap();
+        assert!(result.body["errors"].as_array().unwrap().is_empty(),"{}",result.body);
+    }
 }
 
 #[test]
@@ -129,7 +140,7 @@ fn ex12_source_list_error_explains_recovery_without_granting_sources() {
     let (_root, mut state, turn) = setup();
     let evidence_range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+    let binding = runtime::orchestrator::SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None, source_ref_id: "source-observed".into(),
         book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label,
@@ -211,7 +222,7 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
             lid: "1.1".into(), range: read_tools::SourceTextRange { start, end: start + 3 },
         }] };
         let resolved = state.workspace.book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-        runtime::orchestrator::SourceBinding { publication_id: None, source_revision: None,
+        runtime::orchestrator::SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None, source_ref_id: format!("source-{index}"), book_id: state.workspace.book.base.book_id.clone(), evidence_range: Some(evidence_range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview }
     }).collect();
@@ -225,7 +236,7 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
     let result = port.author_presentation(AuthorRequest::Preview {
         candidate_id: candidate.body["candidate_id"].as_str().unwrap().into(), read_selector: None, width: None, viewport: None, actions: vec![],
     }, &bindings, &[], &cancellation).unwrap();
-    assert_eq!(result.body["status"], "preview_ready_for_inspection", "{}", result.body);
+    assert_eq!(result.body["status"], "preview_environment_recorded", "{}", result.body);
     let dom = &result.body["observations"][0]["dom"];
     let labels: Vec<_> = dom["controls"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap()).collect();
     assert_eq!(labels, vec!["正文 [1]", "正文 [2]", "正文 [1]"]);
@@ -237,7 +248,7 @@ fn source_chips_match_reader_preview_and_keep_labels_out_of_answer_semantics() {
 fn preview_reopens_custom_state_and_rejects_wrong_restore_shape() {
     for (restorer, expected_status) in [
         ("saved => { chapter=saved.values.chapter; theme=saved.values.theme; step=saved.visible_step; render(); }", "preview_failed"),
-        ("async saved => { await Promise.resolve(); chapter=saved.values.page.chapter; theme=saved.values.page.theme; step=saved.visible_step; render(); }", "preview_ready_for_inspection"),
+        ("async saved => { await Promise.resolve(); chapter=saved.values.page.chapter; theme=saved.values.page.theme; step=saved.visible_step; render(); }", "preview_environment_recorded"),
         ("saved => { chapter=saved.values.page.chapter; theme=saved.values.page.theme; render(); }", "preview_failed"),
     ] {
         let (_root, mut state, turn) = setup();
@@ -265,7 +276,7 @@ window.presentation.registerStateRestorer({restorer});render();</script>"#);
             assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).is_err());
         } else {
             assert!(result.body["errors"].as_array().unwrap().is_empty());
-            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).unwrap().delivered.is_some());
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).is_err(),"desktop alone cannot authorize delivery");
         }
     }
 }
@@ -327,9 +338,9 @@ render();</script>"#);
         assert_eq!(result.body["reading"]["text"], "lexical page 2");
         assert_eq!(result.body["reading"]["page_state"], if wrapped { json!({"values":raw_state}) } else { raw_state });
         if wrapped {
-            assert_eq!(result.body["status"], "preview_ready_for_inspection", "{}", result.body);
+            assert_eq!(result.body["status"], "preview_environment_recorded", "{}", result.body);
             assert!(result.body["errors"].as_array().unwrap().is_empty());
-            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).unwrap().delivered.is_some());
+            assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: id }, &[], &[], &CancellationToken::default()).is_err(),"desktop alone cannot authorize delivery");
         } else {
             assert_eq!(result.body["status"], "preview_failed", "{}", result.body);
             assert_eq!(result.body["errors"][0]["kind"], "state_restore_mismatch");
@@ -435,6 +446,7 @@ fn presentation_plot_renders_real_image_and_freezes_assets_in_candidate() {
     let saved = port
         .author_presentation(
             AuthorRequest::Write {
+                action_contract: vec![],
                 teaching_binding: None,
                 method_refs: None,
                 new_object: false,
@@ -541,6 +553,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let candidate_id = port
         .author_presentation(
             AuthorRequest::Write {
+                action_contract: vec![],
                 teaching_binding: None,
                 method_refs: None,
                 new_object: false,
@@ -581,11 +594,12 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
         )
         .unwrap();
     assert_eq!(
-        preview.body["status"], "preview_ready_for_inspection",
+        preview.body["status"], "preview_environment_recorded",
         "{}",
         preview.body
     );
     assert!(preview.images[0].png_base64.starts_with("iVBOR"));
+    preview_touch_environments(&mut port,&candidate_id,vec![]);
     let reference = port
         .author_presentation(
             AuthorRequest::Deliver { candidate_id },
@@ -629,6 +643,7 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
     let next_id = port
         .author_presentation(
             AuthorRequest::Write {
+                action_contract: vec![],
                 teaching_binding: None,
                 method_refs: None,
                 new_object: false,
@@ -677,10 +692,11 @@ fn presentation_plot_previews_and_reopens_the_same_version_asset() {
         )
         .unwrap();
     assert_eq!(
-        next_preview.body["status"], "preview_ready_for_inspection",
+        next_preview.body["status"], "preview_environment_recorded",
         "{}",
         next_preview.body
     );
+    preview_touch_environments(&mut port,&next_id,vec![]);
     let next_version = port
         .author_presentation(
             AuthorRequest::Deliver {
@@ -1183,7 +1199,7 @@ fn presentation_author_browser_correction_and_private_delivery() {
         )
         .unwrap();
     assert_eq!(
-        preview.body["status"], "preview_ready_for_inspection",
+        preview.body["status"], "preview_environment_recorded",
         "{}",
         preview.body
     );
@@ -1200,6 +1216,7 @@ fn presentation_author_browser_correction_and_private_delivery() {
         .images
         .iter()
         .all(|i| i.png_base64.starts_with("iVBOR")));
+    preview_touch_environments(&mut port,&fixed,vec![PreviewAction::Click {selector:"#add".into()}]);
     let saved = port
         .author_presentation(
             AuthorRequest::Deliver {
@@ -1317,6 +1334,7 @@ fn presentation_ex1_gold_uses_three_real_preview_environments() {
     let written = port
         .author_presentation(
             AuthorRequest::Write {
+                action_contract: vec![],
                 teaching_binding: None,
                 method_refs: None,
                 new_object: false,
@@ -1398,6 +1416,7 @@ fn presentation_ex6_seeks_and_observes_the_same_frozen_scene() {
     let cancellation = CancellationToken::default();
     let candidate_id = port.author_presentation(
         AuthorRequest::Write {
+                action_contract: vec![],
             teaching_binding: None,
             method_refs: None,
             new_object: false,

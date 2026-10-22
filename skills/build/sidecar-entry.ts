@@ -138,7 +138,12 @@ async function runScript(script: string, args: string[]): Promise<void> {
 
 if (command === "video-asset" && argv[1] === "whisper" && argv.length === 2) {
   process.stdout.write(videoWhisperScript);
-} else if (command?.startsWith('video-')) {
+} else if (command === 'music-calibrate') {
+  const args = forwardedArgs(1);
+  prepare('music-calibration-cli.ts', args);
+  const { runMusicCalibrationCli } = await import('./music-calibration-cli');
+  runMusicCalibrationCli(args);
+} else if (command?.startsWith('video-') || command === 'music-operator') {
   prepare('automatic-build.ts', argv);
   const { runAutomaticBuildCli } = await import('./automatic-build');
   await runAutomaticBuildCli(argv);
@@ -226,7 +231,7 @@ if (command === "video-asset" && argv[1] === "whisper" && argv.length === 2) {
   await runScript(script, forwardedArgs(2));
 } else if (command === "workbench-stage") {
   await runScript("workbench-stage-runner.ts", forwardedArgs(1));
-} else if (command === "build.step" || command === "build.refill") {
+} else if (command === "build.step" || command === "build.refill" || command === "build.prepare") {
   if (argv.length !== 1) {
     console.error(`usage: understand-book-build ${command} < request.json`);
     process.exit(2);
@@ -267,6 +272,6 @@ if (command === "video-asset" && argv[1] === "whisper" && argv.length === 2) {
   prepare("intent-blueprint.ts", forwardedArgs(1));
   await import("./intent-blueprint");
 } else {
-  console.error("usage: understand-book-build <legacy-plan|protocol-doctor|plan|next|dispatch.next|dispatch.inspect|dispatch.finish|audit-legacy|migration-mode|quality|metrics|record-attempt|heartbeat|candidate|submit|legacy-submit|fail|inspect|input|write|close|run-script|prompt|workbench-stage|build.step|build.refill|executor.agent-template|executor.mcp-config|executor.mcp-launcher|executor.mcp|executor.open|executor.session|executor.input.next|executor.generation.start|executor.submit_candidate|intent.plan|intent.artifact|intent.metrics|intent.blueprint> [...args]");
+  console.error("usage: understand-book-build <legacy-plan|protocol-doctor|plan|next|dispatch.next|dispatch.inspect|dispatch.finish|audit-legacy|migration-mode|quality|metrics|record-attempt|heartbeat|candidate|submit|legacy-submit|fail|inspect|input|write|close|run-script|prompt|workbench-stage|build.step|build.refill|build.prepare|executor.agent-template|executor.mcp-config|executor.mcp-launcher|executor.mcp|executor.open|executor.session|executor.input.next|executor.generation.start|executor.submit_candidate|intent.plan|intent.artifact|intent.metrics|intent.blueprint> [...args]");
   process.exit(2);
 }

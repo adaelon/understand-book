@@ -573,6 +573,7 @@ fn s2_schema17_upgrade_rolls_back_all_new_tables_and_preserves_old_facts_and_reo
     f.ok(&f.b,"POST","/api/admin/build-tasks/s2-old-cost/admit",json!({"execution_id":"s2-old-execution","call_id":"s2-old-call","logical_call_id":"s2-old-logical","attempt":1,"granularity":"execution_total","reserved_micro_cny":20,"provider":"fixture","model":"fixture","purpose":"prebuild","budget_enforced":true,"receipt_capability":"complete"}));
     f.ok(&f.b,"POST","/api/admin/build-tasks/s2-old-cost/receipts",json!({"call_id":"s2-old-call","status":"confirmed","provider_cost_micro_cny":12,"evidence":{"fixture":"confirmed"},"succeeded":true}));
     let original_manifest:String = f.control.connection.query_row("SELECT manifest_json FROM workspace_releases WHERE release_id='exam-course' AND version=1",[],|r|r.get(0)).unwrap();
+    f.control.connection.execute_batch(include_str!("remove_schema19.sql")).unwrap();
     f.control.connection.execute_batch("DROP TABLE workspace_release_instance_operations; DROP TABLE workspace_release_instance_history; DROP TABLE workspace_release_instance_private_materials; DROP TABLE workspace_release_instances; DROP TABLE workspace_release_archives; DROP TABLE operator_builds; PRAGMA user_version=17; CREATE TABLE operator_builds(original TEXT); INSERT INTO operator_builds VALUES('keep-before-upgrade');").unwrap();
     assert!(ControlStore::open(f.control.writer.clone()).is_err());
     assert_eq!(
@@ -617,6 +618,7 @@ fn s2_schema17_upgrade_rolls_back_all_new_tables_and_preserves_old_facts_and_reo
             "exam-course",
             1,
             crate::workspace_release_instances::UseRelease {
+                exam_sprint: None,
                 operation_id: "s2-after-upgrade".into(),
                 goal: base_schema::WorkspaceGoalInput {
                     text: "升级后开始学习".into(),
@@ -644,6 +646,7 @@ fn s2_schema17_upgrade_rolls_back_all_new_tables_and_preserves_old_facts_and_reo
                 "exam-course",
                 1,
                 crate::workspace_release_instances::UseRelease {
+                exam_sprint: None,
                     operation_id: "s2-after-upgrade".into(),
                     goal: base_schema::WorkspaceGoalInput {
                         text: "升级后开始学习".into(),

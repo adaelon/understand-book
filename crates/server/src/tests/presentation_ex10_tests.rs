@@ -39,6 +39,7 @@ fn ex10_preflight() {
     std::fs::write(root.join("assembled.html"), &html).unwrap();
     let cancellation = CancellationToken::default();
     let written = port.author_presentation(AuthorRequest::Write {
+                action_contract: vec![],
         teaching_binding: None,
         method_refs: None,
         new_object: false,

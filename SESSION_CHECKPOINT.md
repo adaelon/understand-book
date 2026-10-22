@@ -1,42 +1,36 @@
-# SESSION_CHECKPOINT — 2026-10-16，最近改动已上线
+# SESSION_CHECKPOINT — 2026-10-22 集成收口与 0.3.6 发布
 
 ## 新鲜度
 
-- 工作树基线 commit：402d9be；本轮没有提交或推送。保留其他工作线未提交改动。
-- 用户最新要求：把最近尚未上线的改动上线；中断后明确要求继续。
+- 基线为 `33c19c7`；本次主实现与实验候选／报告分别提交，最新提交以 Git 历史为准。
+- 网站、管理后台及 Windows 0.3.6 已完成构建和必要本机回归，Linux 隔离数据启动验证通过；正式切换和公网验收尚待本轮完成。
+- 现网切换前为 `video-playback-20261021`，目标 `integration-20261022`，数据 schema 20。
 
-## 当前状态
+## 当前工作
 
-2026-10-16 16:02 HKT 已发布 `current-20261016` 至 https://understandbook.top/ 。服务 PID64600、active，数据根 `/opt/understand-book/data/multi-reader-to-tb-20261012`、schema14沿用。主服务、演示worker、Nginx静态目录均已切换。旧版本 `context-cache-20261015` 保留，完整备份与旧配置可恢复。无需再次部署本轮改动。
+整合云端学习与存储／课程／考试、Windows 本机书库、PDF 原页与 OCR、视频分段播放、OM0–OM6 教学接续、Coach 与教学审阅、音乐工具、网页与混合检索、数学结构、自动构建恢复、请求缓存及进度取消。
 
-## 已发布
+主实现验证通过：Reader 967、Admin 65、Core 1482（2 跳过）、Runtime 807（11 跳过）、Server 1053（106 跳过）、Windows 原生单元 7、PDF 浏览器 2；真实 WebView2 四种格式、离线和删除原件后阅读通过。完整失败／修复记录及去重覆盖见发布记录。
 
-- 模板目录 revision4：discrete-update@3、原其余七项@2、spatial-linked-views@1（齿轮/弹簧）。完整源文件、Author元数据、按需读取已进入正式程序。
-- 三维托管库、交互与图解联动、现场恢复与静态输出，演示版本/反馈/案例支持。
-- 跨书补讲CB0–CB5、私人理解、引用与原任务接续。
-- 当日对话压缩校验修复；原上下文缓存和命令行热发布保留。
-- 模板库：https://understandbook.top/demos/methods/
-- 完整齿轮：https://understandbook.top/demos/gears/
-- 弹簧：https://understandbook.top/demos/methods/spatial-linked-views/v1/preview.html?topic=spring
+## 下一步
 
-## 验收
+1. 主实现提交后单独提交实验候选和报告，并推送。
+2. 对齐服务器源码与提交，保留旧版本和停服时的数据备份，同时切换网站／后台／服务端／Windows 下载。
+3. 验证公网普通账号与管理员、PDF 和视频播放／跳转／恢复、下载内容，并补入最终发布回执。
 
-- 前端相关127项和正式构建通过；Linux Runtime611通过、8默认忽略。
-- Server修正集成测试后并行789通过；6项逐项复验通过（5个本机并发桩超时、1个旧错误码断言），总795通过、77默认忽略。
-- 测试修正仅涉及工具示例数量、独立临时数据库、MCP下一步调用投影、当前模板样例与既有输入/公开来源合同；不改变生产执行代码。
-- Linux隔离数据副本、真实服务用户与独立sandbox，受控Provider完成模板发现→读取→写入→3种WebGL预览→交付→终答；外部模型调用0次。
-- 上线前后与公网reader11项/admin12项授权版本完全相同；目录、正文、私有书隔离、四项制作能力正常；发布socket0600。
-- 停服至本机恢复验收11.88秒，整个部署脚本48.86秒。完整数据备份333MiB。
-- 公网浏览器验收及截图：docs/performance/current-release-20261016/public-browser.json。
+## 未完成
 
-## 恢复与记录
+- 音乐 M0–M8 完整听核、对齐精度、贝九共享许可、四轮教学质量与速度及真人效果；本机贝九材料不能作为公开课程。
+- Coach 完整重试界面；实验稳定收益尚未证明，chart-reveal v3 和 Coach-first 冻结补丁只保留在实验中。
+- 云端价格／正式配额／真实售卖课程／准备宿主待配置，个人上传保持关闭。
+- 不保留云端文件的本机资料临时 AI 处理未接通；服务器未安装语义嵌入运行环境和模型，使用词法回退。
+- 本次不重复付费模型质量实验。临时目录、构建产物、私人配置与原始媒体不入库。
 
-- 记录：docs/performance/current-release-20261016/README.md、deployment.json、validation.json、renderer-e2e.json、build.log、test.log。
-- 数据备份：/opt/understand-book/backups/current-20261016。
-- 旧配置：/opt/understand-book/acceptance/current-20261016/previous-configuration/。
-- 恢复程序时沿用最新schema14数据，避免回滚上线后新增对话；流程见发布记录。
-- 发布脚本：tmp/current-release-20261016；之前模板验收：docs/performance/presentation-method-library-v2 和 presentation-spatial-template-v1。
+## 冷启动读序与证据
 
-## 下一步与边界
+1. [本次发布说明、验证与未完成项](docs/performance/integration-release-20261022/README.md)。
+2. [云端检查点](SESSION_CHECKPOINT_CLOUD.md)、[架构](docs/架构.md)、[代码链路](docs/代码链路.md)，按下一项具体工作读取。
+3. 教学接续沿用 [OM6 实施记录](docs/performance/interactive-teaching-continuity/om6/README.md)；已通过场景无需重新调用模型。
+4. 实验从 [自进化检查点](SESSION_CHECKPOINT_SELF_EVOLUTION.md)进入；冻结候选没有自动应用到正式目录。
 
-本轮部署已完成，后续按用户新要求推进。SE8及FP7实验继续暂停，没有付费模型或自主迁移新主题质量评测，也没有提交或推送。发布后磁盘可用约1.9GiB，保留历史release与恢复副本。
+执行脚本与原始中间日志在 `tmp/integration-release-20261022/`；可复用证据单独收录到发布记录。恢复时保留现有写入，正式开放后只回退程序与配置，不用旧数据副本覆盖新数据。

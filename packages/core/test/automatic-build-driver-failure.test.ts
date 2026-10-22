@@ -1,4 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import * as fs from "node:fs";
+import * as crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -13,10 +15,60 @@ vi.mock("node:os", async importOriginal => {
   const actual = await importOriginal<typeof import("node:os")>();
   return { ...actual, homedir: vi.fn(actual.homedir) };
 });
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, writeFileSync: vi.fn(actual.writeFileSync) };
+});
+vi.mock("node:crypto", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  return { ...actual, randomBytes: vi.fn(actual.randomBytes) };
+});
 
-afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("build driver failure boundary", () => {
+  it.each([0, 17])("cleans a failed create after %i bytes and permits the identical retry", async partialBytes => {
+    const actualFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    const root = mkdtempSync(path.join(tmpdir(), "build-driver-write-interrupted-"));
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", root);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-22T00:00:00Z"));
+    vi.mocked(crypto.randomBytes).mockReturnValue(Buffer.alloc(32, 1) as never);
+    const originalError = Object.assign(new Error("PRIVATE_PATH write failed"), { code: "ENOSPC", syscall: "write" });
+    vi.mocked(fs.writeFileSync).mockImplementationOnce((target, _data, options) => {
+      actualFs.writeFileSync(target, Buffer.alloc(partialBytes, 32), options);
+      throw originalError;
+    });
+    const first = automaticBuildDriverFailureResponse(originalError);
+    expect(first).toMatchObject({ action: { projection: {
+      code: "build_step_failed_diagnostic_unavailable", os_error: { code: "ENOSPC", syscall: "write" },
+    } } });
+    if (first.version !== "automatic_build_step.v1" || first.action.kind !== "NEEDS_USER") throw new Error("expected failure");
+    const file = path.join(root, "diagnostics", `${first.action.request_id}.json`);
+    expect(existsSync(file)).toBe(false);
+    expect(JSON.stringify(first)).not.toContain("PRIVATE_PATH");
+    expect(automaticBuildDriverFailureResponse(originalError)).toMatchObject({ action: {
+      request_id: first.action.request_id, projection: { code: "build_step_failed" },
+    } });
+    expect(JSON.parse(readFileSync(file, "utf8")).error).toMatchObject({ code: "ENOSPC", syscall: "write" });
+  });
+
+  it("preserves an existing different record when a create-only replay conflicts", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "build-driver-write-conflict-"));
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", root);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-22T00:00:00Z"));
+    vi.mocked(crypto.randomBytes).mockReturnValue(Buffer.alloc(32, 2) as never);
+    const first = automaticBuildDriverFailureResponse(new Error("first"));
+    if (first.version !== "automatic_build_step.v1" || first.action.kind !== "NEEDS_USER") throw new Error("expected failure");
+    const file = path.join(root, "diagnostics", `${first.action.request_id}.json`);
+    const before = readFileSync(file);
+    expect(automaticBuildDriverFailureResponse(new Error("different"))).toMatchObject({ action: {
+      projection: { code: "build_step_failed_diagnostic_unavailable" },
+    } });
+    expect(readFileSync(file)).toEqual(before);
+  });
+
   it("accepts refill stdin larger than 64 KiB with the full completed-ref history", () => {
     const registry = mkdtempSync(path.join(tmpdir(), "build-driver-large-refill-"));
     const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));

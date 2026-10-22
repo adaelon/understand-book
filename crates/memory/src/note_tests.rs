@@ -1,5 +1,16 @@
 use super::*;
 
+#[test]
+fn music_note_source_retains_its_original_snapshot_and_old_notes_stay_readable() {
+    let source = serde_json::json!({"source_ref_id":"music-source","book_id":"music-book","publication_id":"pub1",
+        "source_revision":"original-source","evidence_text_digest":"","label_snapshot":"主题再现","preview_snapshot":"原解释",
+        "music":{"target":{"publication":{"book_id":"music-book","publication_id":"pub1"},"audio":{"recording":{"recording_id":"rec1","revision":"1"},"start_ms":1000,"end_ms":2000},"occurrence_ids":["repeat2"]},"material":{"explanation":"原解释"}}});
+    let binding:crate::note::NoteSourceBinding=serde_json::from_value(source.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&binding).unwrap()["music"],source["music"]);
+    let mut old=source;old.as_object_mut().unwrap().remove("music");
+    assert!(serde_json::from_value::<crate::note::NoteSourceBinding>(old).unwrap().music.is_none());
+}
+
 fn input(state: u32) -> SaveInput {
     SaveInput {
         mem_id: None,

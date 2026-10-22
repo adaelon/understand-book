@@ -33,6 +33,19 @@ pub struct AnimationAsset {
     pub cues: Vec<AnimationCue>,
 }
 
+/// Teaching semantics projected from the page's current calculation state.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct PresentationObservation {
+    pub summary: String,
+    #[ts(type = "Record<string, unknown>")]
+    pub state: BTreeMap<String, Value>,
+    /// Only for pages whose displayed result can lag behind the current inputs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "Record<string, unknown>")]
+    pub rendered: Option<BTreeMap<String, Value>>,
+}
+
 /// One browser snapshot. Results are page observations, not verified learning evidence.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
@@ -42,6 +55,9 @@ pub struct PresentationState {
     pub visible_step: Option<String>,
     pub observed_result: String,
     pub source_ref_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub observation: Option<PresentationObservation>,
 }
 
 /// Receipt returned only after an immutable snapshot has reached private storage.
@@ -113,6 +129,8 @@ pub struct PresentationFeedback {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct PresentationView {
+    #[serde(default)]
+    pub action_contract: Vec<crate::presentation_interact::PresentationActionContract>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub teaching_binding: Option<PresentationTeachingBinding>,
@@ -215,6 +233,8 @@ pub struct PresentationMethodObservations {
 /// Source bindings come from the existing source compiler, never from page assertions.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PresentationContent {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub action_contract: Vec<crate::presentation_interact::PresentationActionContract>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub teaching_binding: Option<PresentationTeachingBinding>,
     /// None means historical use was not recorded; Some([]) declares no methods.

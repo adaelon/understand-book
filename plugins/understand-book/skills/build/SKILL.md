@@ -1,6 +1,6 @@
 ---
 name: understand-book-build
-description: Build or resume a book workspace, optionally from a confirmed natural-language reading goal shared with the Reader.
+description: Operator maintenance tool to build or resume a local book workspace with explicitly provisioned build executables.
 ---
 
 # $understand-book-build
@@ -29,6 +29,9 @@ caller error into a user decision or a separate maintenance task.
 - The root must not call, probe, enumerate, or use `executor.submit_candidate` to diagnose a handoff.
 - Conversation memory is not build state. Re-enter through the same confirmed plan and invocation;
   code rereads durable state on every step.
+  During stable profile-sidecar work, the Engine reuses completed Pass1 and prepared task routes,
+  reads changed task results, and keeps claims, retries and budgets live. The first indexed step
+  and source/policy/publication changes can require a full route; continue the same invocation.
 
 ## Choose the planning route first
 
@@ -48,14 +51,14 @@ path, or request to “build this paper” is not by itself a natural-language r
 Do this classification before either plan-authoring surface is called. Never reinterpret an
 ordinary prebuild request as a reading goal merely because the workspace contains a paper.
 
-## Resolve the installed Reader and Build Engine
+## Resolve the operator Build Engine and controller
 
-1. Resolve `understand-book-build.exe` in this order:
-   - use `UNDERSTAND_BOOK_BUILD_EXE` when it names an existing file;
-   - on Windows, read `InstallDir` from `HKCU\Software\UnderstandBook` and use the executable there;
-   - otherwise tell the user to install or repair Understand Book.
-2. Resolve `UnderstandBook.exe` from `UNDERSTAND_BOOK_DESKTOP_EXE` when set, otherwise from the same
-   `InstallDir`. It is the only controller for reader-private intent planning.
+1. Resolve `understand-book-build.exe` from `UNDERSTAND_BOOK_BUILD_EXE`, which must name an existing
+   operator-provisioned executable. Cloud Windows Setup does not install the local build tools.
+2. Resolve `understand-book-maintenance.exe` from `UNDERSTAND_BOOK_DESKTOP_EXE`. Build it from
+   `apps/desktop/maintenance-host` in the operator environment. It preserves the
+   `--codex-build-intent` controller for reader-private intent planning.
+   Missing executables require operator provisioning; installing the cloud desktop is not a repair.
 3. Do not install Node, Bun, Cargo, or another runtime as an implicit fallback. Do not fall back to
    old build commands when the packaged entry reports an incompatible installation.
 
@@ -101,7 +104,7 @@ create another standard plan merely to resume. If no unique confirmed plan path 
 
 A natural-language goal must be explicit and planned against an absolute workspace already trusted by Reader.
 The Desktop controller response is the only authority for whether foundation is required. Stop as
-`needs_user(foundation_required)` only when `UnderstandBook.exe --codex-build-intent` returns
+`needs_user(foundation_required)` only when the maintenance controller's `--codex-build-intent` returns
 `error_code=CODEX_BUILD_FOUNDATION_REQUIRED`. Do not inspect `.build/input/manifest.json`, source
 manifests, PDFs, optional sidecars, or workspace names to invent a profile or foundation gate.
 
@@ -151,7 +154,7 @@ the invocation:
   "root_dir": "<root>",
   "build_plan_path": "<confirmed opaque path>",
   "quality_profile": "full",
-  "max_parallel": 1,
+  "max_parallel": 8,
   "created_at": "<ISO-8601>",
   "budget": "<optional versioned budget>",
   "wall_budget": "<optional versioned wall budget>",
@@ -159,8 +162,10 @@ the invocation:
 }
 ```
 
-Omit optional fields rather than sending placeholders. `max_parallel` is fixed in `1..3` for the
-invocation. Consume only `automatic_build_invocation_ref.v1` and retain its `invocation_ref` in the
+Omit optional fields rather than sending placeholders. `max_parallel` is fixed in `1..8` for the
+invocation; use 8 for new builds unless the user requests fewer. Actual launches must still fit
+the host's currently available dedicated subagent slots. Consume only
+`automatic_build_invocation_ref.v1` and retain its `invocation_ref` in the
 task checkpoint. Recreating the exact same request is idempotent; changing target, plan, quality,
 budget, or requested parallelism starts a different invocation and may require new confirmation.
 
@@ -175,7 +180,7 @@ dedicated subagent slots and send:
 }
 ```
 
-`available_agent_slots` is live capacity in `0..3`; it is not remembered from a previous turn. A
+`available_agent_slots` is live capacity in `0..8`; it is not remembered from a previous turn. A
 fresh user choice is added only as
 `decision={request_id:<returned id>,choice_id:<selected returned id>}`. Never send a digest,
 receipt body, command, path inspection result, or reconstructed stage status.
@@ -290,6 +295,28 @@ Use only these bounded projections; never open plans, task files or semantic inp
 
 ## Four-action loop
 
+When `build_progress.current_stage` is `profile_sidecar` or `book_structure`, first launch the returned
+executors, then, while they generate, send one preparation request on stdin to
+`<build-exe> build.prepare`:
+
+```json
+{"version":"automatic_build_prepare_request.v1","invocation_ref":"<saved invocation ref>","stage":"<current stage>"}
+```
+
+Use the saved invocation ref exactly. Run this once on entering this stage in the
+current root chat, including after restoring a chat. If BookStructure returns
+`skipped` with `reason=outline_pending`, its chapter inputs still depend on the running
+outline; try preparation once more after the next `SPAWN_EXECUTORS` in that stage.
+Consume the bounded
+`automatic_build_prepare.v1` response (`prepared` or `skipped`) and continue the
+normal completion-and-refill loop. Preparation does not acquire a slot or start a
+lease. Discourse inputs and BookStructure unit/fragment routes are reused automatically by refill;
+current receipts, leases, capacity and budgets still decide the actual launch.
+Consume terminal observations delivered during preparation before the next refill.
+BookStructure preparation binds the accepted outline and current upstream projections.
+Chapter selection, reducers, themes and final assembly continue to read current accepted results.
+If preparation returns a normal Driver `NEEDS_USER` failure, handle that action below.
+
 Consume `automatic_build_step.v1` (the nested `step` when using `build.refill`). Handle its action
 exactly; use the single refill operation below when a child finishes:
 
@@ -333,8 +360,10 @@ exactly; use the single refill operation below when a child finishes:
   Code matches each owned child identity, moves only its owned ref to `completed_refs`, releases
   only its own slot, computes current capacity, and calls `build.step` once.
   Duplicate or late observations cannot release a replacement child's slot.
-  After a step returns, consume terminal observations delivered during that call before launching
-  or waiting; the next step must use the latest capacity, not the count sent before the call.
+  After a refill returns SPAWN_EXECUTORS, launch its ready_executors and record their ownership
+  immediately. Then consume terminal observations delivered during that call in the next refill,
+  including the newly launched children in live_by_slot. Do not wait for another planning call
+  before starting work already reserved for a free slot. Other actions consume terminals before waiting.
   Keep the old ref in `completed_refs`; only the Driver-issued replacement ref can launch.
   Every other live slot
   remains owned and must not be duplicated, orphaned, or forgotten. Never wait for all children
@@ -377,7 +406,7 @@ uncertain ownership after restoring a chat. Keep the pre-release ownership map i
 {
   "version": "automatic_build_refill_request.v1",
   "invocation_ref": "<saved invocation ref>",
-  "capacity_limit": 3,
+  "capacity_limit": 8,
   "live_by_slot": {
     "<slot A>": {"child": "<child A>", "opaque_handoff_ref": "<ref A>"},
     "<slot B>": {"child": "<child B>", "opaque_handoff_ref": "<ref B>"},
@@ -390,7 +419,7 @@ uncertain ownership after restoring a chat. Keep the pre-release ownership map i
 
 Use saved values rather than placeholders; `completed_refs` retains earlier terminal refs.
 `capacity_limit` is the current total capacity reserved for this build, including its live
-children, capped at three; the code also honors the invocation's `max_parallel`.
+children, capped at eight; the code also honors the invocation's `max_parallel`.
 An optional `decision` or one queued failure observation uses the same fields as `build.step`.
 
 Consume `automatic_build_refill.v1`: replace the local `live_by_slot` and `completed_refs` with
@@ -400,9 +429,10 @@ the returned ownership map. These entries already exclude live slots and complet
 With A, B and C live and only C terminal, the internal step receives `available_agent_slots: 1`;
 A and B remain owned and the next reference D is returned for launch.
 
-If B's terminal notification arrives during that call, submit one new `build.refill` for B using
-the returned records before launching. Use the latest response's `ready_executors`; the Engine
-reprojects unstarted references. Never wait for A to finish. A malformed refill returns
+If B's terminal notification arrives during that call, first start D from the returned
+`ready_executors` and record its ownership. Then submit one new `build.refill` for B using
+the updated records, with A and D still owned. Launch only that response's new `ready_executors`.
+Never wait for A to finish. A malformed refill returns
 `automatic_build_request_error.v1` with `invalid_refill_request`; correct the request and resubmit.
 This operation requests work; the host's native spawn tool starts each returned subagent.
 

@@ -3,10 +3,16 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { api, agentRunEventsUrl, ApiError } from "./api";
 import { initialRun, interruptRun, reduceRun, type RunDescriptor, type RunEvent, type RunSnapshot } from "./agent-run-state";
 
-const events = ["run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
+import { presentationDispatcher } from "./presentation-interaction";
+import { musicDispatcher } from "./music-interaction";
+
+const events = ["music.command", "presentation.command", "run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "commentary.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
 export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
+  const presentations = presentationDispatcher();
+  const music = musicDispatcher();
   const snapshot = shallowRef<RunSnapshot | null>(null);
   const connection = ref("closed");
+  const cancellationPending = ref(false);
   let disposed = false;
   let cursor: string | undefined;
   let observedScene = sceneKey();
@@ -31,6 +37,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     if (next) install(next);
   }
   const active = computed(() => snapshot.value?.persistence_state === "pending");
+  const stopping = computed(() => active.value && (cancellationPending.value || snapshot.value?.execution_state === "cancelling"));
   function closeTransport() {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
@@ -39,7 +46,9 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     source = null;
   }
   function close() {
+    presentations.stop(); music.stop();
     observationGeneration += 1;
+    cancellationPending.value = false;
     if (reconcileTimer !== null) window.clearTimeout(reconcileTimer);
     reconcileTimer = null;
     reconcileTask = null;
@@ -49,6 +58,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   function install(next: RunSnapshot) {
     const previous = snapshot.value;
     snapshot.value = next;
+    presentations.update(next); music.update(next);
     if (next.persistence_state !== "pending") {
       closeTransport();
       connection.value = next.error?.error_code === "AGENT_RUN_NOT_FOUND" ? "interrupted" : "closed";
@@ -64,7 +74,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     const current = new EventSource(agentRunEventsUrl(descriptor.turn_id, cursor));
     source = current;
     current.onopen = () => { if (source === current) connection.value = "connected"; };
-    current.onerror = () => { if (source === current) { connection.value = "reconnecting"; scheduleReconcile(); } };
+    current.onerror = () => { if (source === current) { connection.value = "reconnecting"; presentations.stop(); music.stop(); scheduleReconcile(); } };
     for (const name of events) current.addEventListener(name, (message) => {
       if (source !== current || !snapshot.value || (network.value.enabled && observedScene !== sceneKey())) return;
       cursor = (message as MessageEvent).lastEventId || cursor;
@@ -150,10 +160,22 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   }
   async function cancel() {
     const current = snapshot.value;
-    if (!current || !active.value) return;
-    const next = await api.agentRunCancel(current.descriptor.turn_id);
-    flushDraft();
-    if (snapshot.value?.descriptor.turn_id === next.descriptor.turn_id && (network.value.enabled || next.last_seq >= snapshot.value.last_seq)) install(next);
+    if (!current || !active.value || stopping.value) return;
+    const generation = observationGeneration;
+    cancellationPending.value = true;
+    try {
+      const next = await api.agentRunCancel(current.descriptor.turn_id);
+      if (generation !== observationGeneration || !sameDescriptor(snapshot.value?.descriptor, current.descriptor)) return;
+      flushDraft();
+      const installed = snapshot.value!;
+      if (installed.persistence_state !== "pending" && next.persistence_state === "pending") return;
+      if (network.value.enabled && next.persistence_state === "pending") {
+        // HTTP recovery omits the live event buffer; preserve the observed work.
+        snapshot.value = { ...installed, execution_state: next.execution_state, descriptor: next.descriptor };
+      } else if (network.value.enabled || next.last_seq >= installed.last_seq) install(next);
+    } finally {
+      if (generation === observationGeneration) cancellationPending.value = false;
+    }
   }
   function forget() { close(); snapshot.value = null; terminalNotified = false; }
   const recoverVisible = () => {
@@ -172,5 +194,5 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     window.removeEventListener("online", recoverVisible);
     close();
   });
-  return { snapshot, connection, active, observe, reconcile, cancel, close, forget };
+  return { snapshot, connection, active, stopping, observe, reconcile, cancel, close, forget };
 }

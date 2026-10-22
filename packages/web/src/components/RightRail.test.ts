@@ -81,7 +81,7 @@ it('exchanges the welcome illustration for a compact identity without replacing 
     expect(wrapper.get('.conversation-welcome h3').text()).toBe('这一节，想先弄明白什么？');
     expect(wrapper.get('.welcome-mascot img').attributes('src')).toBe(yeyeAssets.idle);
     expect(wrapper.get('.welcome-mascot').attributes('aria-hidden')).toBe('true');
-    await wrapper.get('.question-example').trigger('click');
+    await wrapper.findAll('.purpose-other button').find(button => button.text().includes('自己描述目标'))!.trigger('click');
     expect(document.activeElement).toBe(input.element);
     expect(wrapper.emitted('send-agent')).toBeUndefined();
     await wrapper.setProps({ agentInput: '帮我梳理当前这一节的核心概念。' });
@@ -155,11 +155,13 @@ it('keeps learning actions in the chat and the teaching switch next to the compo
   expect(wrapper.get('#reader-panel-agent .conversation-learning-actions').text()).toContain('我的理解');
   expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
   expect(wrapper.get('.agent-input [role=switch]').text()).toBe('连续教学');
-  await wrapper.get('.question-example').trigger('click');
-  expect(wrapper.emitted('update:agentInput')).toEqual([['帮我梳理当前这一节的核心概念。']]);
+  wrapper.getComponent({ name: 'LearningPurposeEntry' }).vm.$emit('choose', 'understand', 'chapter');
+  expect(wrapper.emitted('learning-purpose')).toEqual([['understand', 'chapter']]);
+  expect(wrapper.emitted('update:agentInput')).toBeUndefined();
   expect(wrapper.emitted('send-agent')).toBeUndefined();
   await wrapper.setProps({agentInput:'已经写下的问题',fullscreen:true});
   expect(wrapper.find('.question-example').exists()).toBe(false);
+  expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(true);
   expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
   wrapper.unmount();
 });
@@ -1373,7 +1375,7 @@ describe("RightRail AskQuote", () => {
 
 describe("Resident activities", () => {
   it("retains live progress, emits stop and preserves upward scrolling without diagnostics", async () => {
-    const activity = { step_id: 1, parent_step_id: null, kind: "model", name: "outer", label: "生成回答", status: "running" as const, started_ms: 0, duration_ms: null, result_count: null, error_code: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
+    const activity = { step_id: 1, parent_step_id: null, kind: "tool", name: "book.read", label: "读取原文", status: "running" as const, started_ms: 0, duration_ms: null, result_count: null, error_code: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
     const turn = { turnId: "turn", user: "问题", outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], activities: [activity], runStatus: "正在运行" };
     const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn], sending: true, canStop: true } });
     expect(wrapper.find(".transcript .agent-activity").attributes("data-status")).toBe("running");
@@ -1392,7 +1394,79 @@ describe("Resident activities", () => {
     expect(el.scrollTop).toBe(50);
     expect(wrapper.find(".pending").exists()).toBe(false);
     expect(wrapper.find(".run-status").text()).toBe("已停止");
+    expect(wrapper.get('.activity-summary').text()).toBe('查看工作过程 · 1 项操作');
+    await wrapper.get('.activity-summary').trigger('click');
     expect(wrapper.findAll('.agent-activity[data-status="cancelled"]')).toHaveLength(1);
+    wrapper.unmount();
+  });
+  it("keeps stop available outside the composer, disables it while stopping and preserves the input", async () => {
+    const turn = { turnId: 'running', user: '解释架构', outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], runStatus: '正在运行' };
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn], canStop: true, sending: true, agentInput: '还想补充的要求' } });
+    const stop = wrapper.get('.run-progress-footer .stop-work-button');
+    expect(stop.text()).toBe('停止');
+    await stop.trigger('click');
+    expect(wrapper.emitted('stop-agent')).toHaveLength(1);
+    await wrapper.setProps({ stopping: true, canStop: false });
+    expect(stop.text()).toBe('正在停止');
+    expect(stop.attributes('disabled')).toBeDefined();
+    expect(wrapper.get('.stop-agent').attributes('disabled')).toBeDefined();
+    await stop.trigger('click');
+    await wrapper.get('.stop-agent').trigger('click');
+    expect(wrapper.emitted('stop-agent')).toHaveLength(1);
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('还想补充的要求');
+    await wrapper.setProps({ stopping: false, canStop: true });
+    await stop.trigger('click');
+    expect(wrapper.emitted('stop-agent')).toHaveLength(2);
+    wrapper.unmount();
+  });
+  it("keeps stop reachable when the mobile composer or presentation discussion is collapsed", async () => {
+    const match = vi.spyOn(window, 'matchMedia').mockImplementation(query => ({
+      matches: query.includes('max-width'), addEventListener() {}, removeEventListener() {},
+    } as unknown as MediaQueryList));
+    const turn = { turnId: 'running', user: '解释架构', outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], runStatus: '正在运行' };
+    const previous = { ...turn, turnId: 'saved', pending: false, hasTeaching: true, outcome: {
+      answer: '已经完成的解释', effects: [], trace: [], memory_updates: [], incomplete: false,
+      profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] },
+    } };
+    const wrapper = mount(RightRail, { shallow: true, attachTo: document.body, props: { ...baseProps, chat: [previous as never, turn], canStop: true, sending: true, agentInput: '保留草稿' } });
+    try {
+      await flushPromises();
+      expect(wrapper.classes()).toContain('conversation-mobile');
+      wrapper.getComponent({ name: 'TutorActivities' }).vm.$emit('editing-response', true);
+      await nextTick();
+      expect(wrapper.get('.agent-input').classes()).toContain('mobile-answering');
+      expect(wrapper.get('.agent-compose-row').isVisible()).toBe(false);
+      expect(wrapper.get('.run-progress-footer .stop-work-button').isVisible()).toBe(true);
+      await wrapper.get('.run-progress-footer .stop-work-button').trigger('click');
+      expect(wrapper.emitted('stop-agent')).toHaveLength(1);
+      await wrapper.setProps({ presentationWorkspace: { turnId: 'saved', reference: { presentation_id: 'scene', revision: 1 } } });
+      expect(wrapper.get('.discussion-toggle').attributes('aria-expanded')).toBe('false');
+      expect(wrapper.get('.workspace-tools .stop-work-button').isVisible()).toBe(true);
+      await wrapper.get('.workspace-tools .stop-work-button').trigger('click');
+      expect(wrapper.emitted('stop-agent')).toHaveLength(2);
+      expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('保留草稿');
+    } finally { wrapper.unmount(); match.mockRestore(); }
+  });
+  it("follows same-revision streamed draft appends but respects upward scrolling", async () => {
+    const turn = reactive({ turnId: 'streaming', user: '解释架构', outcome: null, pending: true, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+      draft: { message_id: 1, revision: 1, operation: 'replace', view: { parts: [{ kind: 'markdown' as const, text: '第一段' }], sources: [] } },
+      activities: [] as import('../agent-run-state').RunActivity[] });
+    const wrapper = mount(RightRail, { props: { ...baseProps, chat: [turn] } });
+    const transcript = wrapper.get('.transcript');
+    const el = transcript.element as HTMLElement;
+    Object.defineProperty(el, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(el, 'clientHeight', { value: 200, configurable: true });
+    el.scrollTop = 790;
+    await transcript.trigger('scroll');
+    turn.draft.view.parts[0]!.text += '，继续解释';
+    await flushPromises();
+    expect(el.scrollTop).toBe(1000);
+    el.scrollTop = 200;
+    await transcript.trigger('scroll');
+    turn.draft.view.parts[0]!.text += '，最后一段';
+    await flushPromises();
+    expect(el.scrollTop).toBe(200);
+    expect(wrapper.get('.answer-draft').text()).toContain('最后一段');
     wrapper.unmount();
   });
 });

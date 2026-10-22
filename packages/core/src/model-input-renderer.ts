@@ -105,7 +105,7 @@ export type ModelInputRenderRequest =
       kind: "profile_sidecar_discourse" | "profile_sidecar_formula";
       input: Pick<
         ProfileSidecarSemanticPacketV2,
-        "work_unit_id" | "unit_kind" | "visible_lids" | "formula_lids" | "text"
+        "work_unit_id" | "unit_kind" | "visible_lids" | "discourse_lids" | "math_anchor_lids" | "formula_lids" | "text"
       >;
     }
   | { kind: "profile_sidecar_discourse_fragment"; input: ProfileSidecarDiscourseFragmentRenderInputV1 }
@@ -213,7 +213,7 @@ export function renderPass1LidStitchModelInput(input: Pass1LidStitchRenderInputV
 export function renderProfileSidecarModelInput(
   input: Pick<
     ProfileSidecarSemanticPacketV2,
-    "work_unit_id" | "unit_kind" | "visible_lids" | "formula_lids" | "text"
+    "work_unit_id" | "unit_kind" | "visible_lids" | "discourse_lids" | "math_anchor_lids" | "formula_lids" | "text"
   >,
 ): string {
   return lineDocument([
@@ -221,6 +221,8 @@ export function renderProfileSidecarModelInput(
     `work_unit_id: ${input.work_unit_id}`,
     `unit_kind: ${input.unit_kind}`,
     `visible_lids: ${JSON.stringify(input.visible_lids)}`,
+    `discourse_lids: ${JSON.stringify(input.discourse_lids)}`,
+    `math_anchor_lids: ${JSON.stringify(input.math_anchor_lids)}`,
     `formula_lids: ${JSON.stringify(input.formula_lids)}`,
     "",
     "TEXT",

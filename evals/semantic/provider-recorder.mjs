@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { createRequestDiffTracker } from './request-diff.mjs';
 
 // Classify only signatures owned by the production request builders. User/tool
 // text is deliberately excluded: a quoted policy is not the request's purpose.
@@ -74,6 +75,7 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
   const records = [];
   const budgetRejections = [];
   const pending = new Set();
+  const requestDiffs = createRequestDiffTracker();
   const server = http.createServer(async (req, res) => {
     if (tokenLimit !== null && records.reduce((n, r) => n + (r.usage?.total_tokens ?? 0), 0) >= tokenLimit) {
       budgetRejections.push({ at: new Date().toISOString(), reason: 'actual_provider_token_limit' });
@@ -91,11 +93,12 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
       for await (const b of req) buffers.push(b);
       const body = Buffer.concat(buffers);
       const request = JSON.parse(body.toString('utf8'));
+      record.purpose = requestPurpose(request);
+      record.request_diff = requestDiffs.observe(request, record.purpose, record.ordinal);
       record.request = { ...request, ...(request.messages ? { messages: request.messages.map(message => {
         const { reasoning_content, ...publicMessage } = message;
         return publicMessage;
       }) } : {}) };
-      record.purpose = requestPurpose(record.request);
       const scripted = intercept ? await intercept(request, records) : null;
       if (scripted) {
         record.scripted = true;
@@ -149,6 +152,7 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
       for (const controller of pending) controller.abort();
       server.closeAllConnections();
       await new Promise(resolve => server.close(resolve));
+      requestDiffs.clear();
     },
   };
 }

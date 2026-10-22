@@ -1,5 +1,6 @@
 use super::*;
 include!("../../runtime/src/testdata/book_example_adapter.rs");
+include!("../../read-tools/testdata/math_book.rs");
 
 #[test]
 fn mcp_contract_to12_local_wire_results_cover_every_book_tool() {
@@ -47,6 +48,26 @@ fn mcp_contract_to12_local_wire_results_cover_every_book_tool() {
     let error = handle_jsonrpc_message(&mut app,&json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"book_text","arguments":{"lid":"missing"}}}).to_string(),"1003").unwrap()["result"].clone();
     assert_eq!(error["isError"],true);
     samples.push(json!({"tool":"book_text","reply":error}));
+    app.workspace.book = optimization_math_book().into();
+    for (name, input) in [
+        ("book_text", json!({"lid":"1.8","end_lid":"1.9"})),
+        ("book_text", json!({"lid":"1.1","end_lid":"1.3","start_utf16":0})),
+        ("book_context", json!({"lid":"1.9","k":2})),
+    ] {
+        let reply = handle_jsonrpc_message(&mut app, &json!({"jsonrpc":"2.0","id":5,"method":"tools/call",
+            "params":{"name":name,"arguments":input}}).to_string(),"1004").unwrap()["result"].clone();
+        assert_eq!(reply["isError"], false);
+        let collection = if name == "book_text" { "math_context" } else { "items" };
+        for item in reply["structuredContent"][collection].as_array().unwrap() {
+            for next in item["next_calls"].as_array().unwrap() {
+                assert_eq!(next["name"], "book_text");
+                let read = dispatch_mcp_tool(&mut app, "book_text", next["arguments"].clone(), "1005");
+                assert_eq!(read.status, 200, "{}", read.body);
+                assert!(serde_json::from_str::<Value>(&read.body).unwrap()["text"].is_string());
+            }
+        }
+        samples.push(json!({"tool":name,"input":input,"reply":reply}));
+    }
     for tool in tools.as_array().unwrap().iter().filter(|t|t["name"].as_str().unwrap().starts_with("book_")) {
         assert_eq!(tool["outputSchema"]["type"],"object");
         assert_eq!(tool["annotations"]["readOnlyHint"],tool["name"]!="book_guide");
@@ -198,12 +219,14 @@ fn mcp_contract_local_advertised_examples_use_real_dispatch() {
                 "book_text" => assert_eq!(result["text"], app.workspace.book.text("1.1", Some("1.2")).unwrap()),
                 "book_concept" => assert_eq!(result["returned_count"], 2),
                 "book_search_text" => assert_eq!(result["occurrences"][0]["start_lid"], if input["order"] == "document" { "1.1" } else { "1.2" }),
+                "book_search" => assert!(!result["hits"].as_array().unwrap().is_empty()),
                 "book_context" => assert!(!result["items"].as_array().unwrap().is_empty()),
                 "book_structure" => assert_eq!(result["available"], true, "{result}"),
                 _ => unreachable!("{name}"),
             }
             let collection = match name {
                 "book_search_text" => Some("occurrences"),
+                "book_search" => Some("hits"),
                 "book_concept" => Some("candidates"),
                 "book_context" => Some("items"),
                 _ => None,
@@ -226,7 +249,7 @@ fn mcp_contract_local_advertised_examples_use_real_dispatch() {
             count += 1;
         }
     }
-    assert_eq!(count, 8);
+    assert_eq!(count, 9);
     let reply = dispatch_mcp_tool(&mut app, "book_search_text", json!({"query":"10.\nThe beta"}), "1000");
     assert_eq!(reply.status, 200);
     let located: Value = serde_json::from_str(&reply.body).unwrap();

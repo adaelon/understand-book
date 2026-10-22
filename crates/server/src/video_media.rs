@@ -176,6 +176,31 @@ fn byte_range(range: Option<&str>, size: u64) -> Result<Option<(u64, u64)>, ()> 
     }
     Ok(Some((start, end)))
 }
+pub(crate) fn content_type(path: &Path) -> &'static str {
+    match path.extension().and_then(|extension| extension.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+        "m3u8" => "application/vnd.apple.mpegurl",
+        "mp3" => "audio/mpeg",
+        "m4a" => "audio/mp4",
+        "aac" => "audio/aac",
+        "wav" => "audio/wav",
+        "flac" => "audio/flac",
+        "ogg" | "oga" => "audio/ogg",
+        "opus" => "audio/ogg; codecs=opus",
+        "svg" => "image/svg+xml",
+        "musicxml" | "xml" => "application/vnd.recordare.musicxml+xml",
+        "mxl" => "application/vnd.recordare.musicxml",
+        _ => "video/mp4",
+    }
+}
+
+pub(crate) fn accel_uri(path: &Path, root: &Path) -> Option<String> {
+    let relative = path.strip_prefix(root).ok()?.to_str()?.replace('\\', "/");
+    let encoded: String = relative.bytes().map(|b| {
+        if b.is_ascii_alphanumeric() || b"/-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }
+    }).collect();
+    Some(format!("/_private_media/{encoded}"))
+}
+
 pub(crate) fn stream_response(
     path: &Path,
     method: &str,
@@ -184,7 +209,7 @@ pub(crate) fn stream_response(
     let mut file = fs::File::open(path)?;
     let size = file.metadata()?.len();
     let mut headers = vec![
-        Header::from_bytes("Content-Type", "video/mp4").unwrap(),
+        Header::from_bytes("Content-Type", content_type(path)).unwrap(),
         Header::from_bytes("Accept-Ranges", "bytes").unwrap(),
         Header::from_bytes("Cache-Control", "no-store").unwrap(),
         Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap(),
@@ -349,6 +374,13 @@ pub(crate) fn catalog(root: &Path, owner: &str) -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn nginx_media_paths_and_playlist_type() {
+        let root = std::path::Path::new("/data/reader");
+        assert_eq!(super::accel_uri(&root.join("shared-cache/video-playback/a/media.mp4"), root).as_deref(), Some("/_private_media/shared-cache/video-playback/a/media.mp4"));
+        assert_eq!(super::accel_uri(std::path::Path::new("/another/media.mp4"), root), None);
+        assert_eq!(super::content_type(std::path::Path::new("index.m3u8")), "application/vnd.apple.mpegurl");
+    }
     use super::*;
     use crate::{
         authorization::Authorization,

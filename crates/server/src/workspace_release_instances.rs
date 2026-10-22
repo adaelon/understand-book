@@ -32,6 +32,8 @@ fn conflict() -> ToolError {
 pub(crate) struct UseRelease {
     pub operation_id: String,
     pub goal: WorkspaceGoalInput,
+    #[serde(default)]
+    pub exam_sprint: Option<crate::exam_sprints::SprintInput>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -74,6 +76,13 @@ fn save_operation(
     Ok(())
 }
 fn ready_release(db: &Connection, owner: &str, id: &str, version: u32) -> Result<Value, ToolError> {
+    let explicitly_visible: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM workspace_releases r,json_each(r.visible_to_users_json) u WHERE r.release_id=? AND r.version=? AND u.value=?)",
+        params![id,version,owner],|r|r.get(0),
+    ).map_err(|_|storage())?;
+    if !explicitly_visible && !crate::course_access::release_allowed(db,owner,id,version,crate::multi_user_host::now())? {
+        return Err(crate::authorization::missing());
+    }
     let release = workspace_publication::detail(db, Some(owner), id, version, false)?;
     if release["availability"]["status"] != "ready" {
         return Err(error(
@@ -123,7 +132,8 @@ fn instance(db: &Connection, owner: &str, workspace: &str) -> Result<Option<Valu
         return Ok(None);
     };
     let release = workspace_publication::detail(db, Some(owner), &id, version, false)?;
-    let latest:u32 = db.query_row("SELECT MAX(version) FROM workspace_releases WHERE release_id=?1 AND EXISTS(SELECT 1 FROM json_each(visible_to_users_json) WHERE value=?2)",params![id,owner],|r|r.get(0)).map_err(|_|storage())?;
+    let tier = crate::course_access::current_tier(db,owner,crate::multi_user_host::now())?;
+    let latest:u32 = db.query_row("SELECT COALESCE(MAX(version),?4) FROM workspace_releases r WHERE release_id=?1 AND (EXISTS(SELECT 1 FROM json_each(visible_to_users_json) WHERE value=?2) OR EXISTS(SELECT 1 FROM course_release_access a,json_each(a.allowed_tiers_json) t WHERE a.release_id=r.release_id AND a.version=r.version AND t.value=?3))",params![id,owner,tier,version],|r|r.get(0)).map_err(|_|storage())?;
     let mut query = db.prepare("SELECT version,selected_at FROM workspace_release_instance_history WHERE owner_user_id=? AND learning_workspace_id=? ORDER BY version").map_err(|_|storage())?;
     let history: Vec<Value> = query
         .query_map(params![owner, workspace], |r| {
@@ -148,13 +158,15 @@ impl ControlStore {
         owner: &str,
         id: &str,
         version: u32,
-        input: UseRelease,
+        mut input: UseRelease,
         now: i64,
     ) -> Result<Value, ToolError> {
         self.user_paths(owner)?;
         crate::admin_store::operation_id(&input.operation_id)?;
         validate_goal(&input.goal)?;
-        let parameters = json!({"kind":"use","release_id":id,"version":version,"goal":input.goal});
+        if let Some(sprint) = &input.exam_sprint { sprint.validate()?; input.goal.constraints.extend(sprint.constraints()); }
+        let mut parameters = json!({"kind":"use","release_id":id,"version":version,"goal":input.goal});
+        if let Some(sprint) = &input.exam_sprint { parameters["exam_sprint"] = json!(sprint); }
         let tx = self.connection.transaction().map_err(|_| storage())?;
         if let Some(workspace) = replay(&tx, owner, &input.operation_id, &parameters)? {
             drop(tx);
@@ -175,6 +187,7 @@ impl ControlStore {
         let workspace = uuid::Uuid::now_v7().to_string();
         tx.execute("INSERT INTO learning_workspaces(owner_user_id,learning_workspace_id,created_at,updated_at) VALUES(?,?,?,?)",params![owner,workspace,now,now]).map_err(|_|storage())?;
         insert_goal(&tx, owner, &workspace, 1, &input.goal, now)?;
+        if let Some(sprint) = &input.exam_sprint { crate::exam_sprints::save(&tx,owner,&workspace,1,sprint,now)?; }
         for material in &materials {
             tx.execute("INSERT INTO learning_workspace_members(owner_user_id,learning_workspace_id,book_id,publication_id,added_at) VALUES(?,?,?,?,?)",params![owner,workspace,material.book_id,material.publication_id,now]).map_err(|_|storage())?;
         }
@@ -220,7 +233,7 @@ impl ControlStore {
         Ok(json!({"instance":current,"release":release,"changes":{
             "added_materials":added,"removed_materials":removed,
             "public_goal_changed":previous["public_goal"] != next["public_goal"],
-            "composition_changed":previous["topic_links"] != next["topic_links"] || previous["suggested_route"] != next["suggested_route"],
+            "composition_changed":previous["topic_links"] != next["topic_links"] || previous["suggested_route"] != next["suggested_route"] || previous["external_resources"] != next["external_resources"],
             "required_capabilities_changed":previous["materials"] != next["materials"],
             "description_changed":previous["name"] != next["name"] || previous["publisher"] != next["publisher"] || previous["applicability"] != next["applicability"] || previous["prerequisites"] != next["prerequisites"]
         },"preserved_private_materials":preserved}))

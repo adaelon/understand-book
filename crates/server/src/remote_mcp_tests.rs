@@ -224,7 +224,7 @@ fn remote_mcp_http_initialize_discover_read_continue_and_charge() {
         .iter()
         .map(|v| v["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names.len(), 11);
+    assert_eq!(names.len(), 12);
     assert!(names.contains(&"mcp_usage") && !names.contains(&"book_query"));
     let directory = f.tool(0, "book_list", json!({}));
     assert_eq!(
@@ -492,7 +492,7 @@ fn remote_mcp_exhaustion_skips_load_and_keeps_free_tools_available() {
             .as_array()
             .unwrap()
             .len(),
-        11
+        12
     );
     assert_eq!(f.count(), 0);
 }

@@ -117,7 +117,11 @@ export interface Charge {
   cost_owner: 'account' | 'platform';
   revision: number;
   state: string;
-  model: string;
+  model: string | null;
+  entry_kind?: 'model' | 'service' | 'web_search' | 'web_fetch';
+  service_kind?: string;
+  quantity_ms?: number | null;
+  admitted_quantity_ms?: number;
   purpose: string;
   reserved_micro_cny: number;
   account_debit_micro_cny: number | null;

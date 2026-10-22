@@ -240,7 +240,8 @@ const isWorkspaceSource = path.resolve(book) === path.join(outputDir, "source.tx
   || path.resolve(book) === path.join(outputDir, "source.epub");
 const existingManifest = isWorkspaceSource && existsSync(existingManifestPath)
   ? SourceManifestZ.parse(JSON.parse(readFileSync(existingManifestPath, "utf8"))) : null;
-const sourceManifest = preserveFoundationPath
+const sourceManifest = preserveFoundationPath || (existingManifest && "version" in existingManifest
+  && existsSync(path.join(outputDir, "document_import.json")))
   ? null
   : existingManifest && !("version" in existingManifest) ? existingManifest : buildSourceManifest({
       book_id: bookId,

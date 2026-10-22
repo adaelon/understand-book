@@ -130,7 +130,7 @@ function fixture(label: string, policies?: {
   const oldPolicy = policies?.oldPolicy ?? defaultPolicy;
   const currentPolicy = policies?.currentPolicy ?? {
     ...defaultPolicy,
-    router_version: "profile_sidecar_semantic_units.v3",
+    router_version: "profile_sidecar_semantic_units.test-next",
   };
   const policyMembers = [
     {
@@ -348,7 +348,7 @@ describe("automatic build policy generation and selective migration", () => {
       })),
       frozen_at: input.policySet.frozen_at,
     });
-    expect(currentPolicy.stage_policy_version).toBe("profile_sidecar_policy.v2");
+    expect(currentPolicy.stage_policy_version).toBe("profile_sidecar_policy.v3");
     expect(oldPolicy.stage_policy_version).not.toBe(currentPolicy.stage_policy_version);
     expect(oldPolicy.prompt_sha256).not.toBe(currentPolicy.prompt_sha256);
     expect(oldPolicySet.members[0].semantic_contract)

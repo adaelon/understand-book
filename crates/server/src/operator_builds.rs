@@ -74,6 +74,7 @@ pub(crate) struct Task {
     #[serde(default)] pub user_id: Option<String>,
     #[serde(default)] pub learning_workspace_id: Option<String>,
     #[serde(default)] pub confirmed_period_id: Option<String>,
+    #[serde(default)] pub processing_confirmation: Option<String>,
     pub task_id: String,
     pub name: String,
     pub max_micro_cny: i64,
@@ -142,7 +143,7 @@ impl Mutation {
                     if material.material_kind.is_none() {
                         material.material_kind = Some(if video_input { "video" } else { "book" }.into());
                     }
-                    if !matches!(material.material_kind.as_deref(), Some("book" | "video"))
+                    if !matches!(material.material_kind.as_deref(), Some("book" | "video" | "music"))
                         || (video_input && material.material_kind.as_deref() != Some("video"))
                     {
                         return Err(invalid());
@@ -155,6 +156,16 @@ impl Mutation {
                         }
                         if material.required_capabilities == capabilities() {
                             material.required_capabilities = ["text", "video", "translation", "visual_index", "graph", "discourse"]
+                                .into_iter().map(String::from).collect();
+                        }
+                    }
+                    if material.material_kind.as_deref() == Some("music") {
+                        if material.build_tutor {
+                            return Err(error("OPERATOR_MUSIC_TUTOR_UNSUPPORTED", "validation",
+                                "音乐准备接纳精选谱本、录音、对齐与音乐事件；伴听教学由实际互动生成"));
+                        }
+                        if material.required_capabilities == capabilities() {
+                            material.required_capabilities = ["music", "music_score", "music_events"]
                                 .into_iter().map(String::from).collect();
                         }
                     }
@@ -283,6 +294,7 @@ impl Mutation {
                     host_session_id: None,
                     pause_requested: false,
                     confirmation: None,
+                    processing_confirmation: None,
                     confirmed_at: None,
                     invocation_max_micro_cny: None,
                     created_by: actor.into(),
@@ -327,20 +339,20 @@ impl Mutation {
                         .into();
                     }
                     "start" | "continue" => {
-                        let direct_video_start = command == "start" && task.state == "draft"
+                        let direct_media_start = command == "start" && task.state == "draft"
                             && task.materials.iter().all(|m| m.input.published_book_ref.is_some()
-                                || m.input.material_kind.as_deref() == Some("video"));
+                                || matches!(m.input.material_kind.as_deref(), Some("video" | "music")));
                         if !matches!(
                             (command.as_str(), task.state.as_str()),
                             ("start", "awaiting_confirmation") | ("continue", "interrupted")
-                        ) && !direct_video_start {
+                        ) && !direct_media_start {
                             return Err(conflict());
                         }
                         if task
                             .materials
                             .iter()
                             .any(|m| m.input.published_book_ref.is_none() && m.plan.is_none()
-                                && m.input.material_kind.as_deref() != Some("video"))
+                                && !matches!(m.input.material_kind.as_deref(), Some("video" | "music")))
                         {
                             return Err(conflict());
                         }
@@ -379,6 +391,7 @@ impl Mutation {
                             )?;
                         }
                         task.max_micro_cny = requested;
+                        task.processing_confirmation = Some(operation.into());
                         if task.confirmation.is_none() {
                             task.confirmation = Some(operation.into());
                             task.confirmed_at = Some(now);
@@ -618,13 +631,16 @@ impl AdminStore {
         if let Some(plan) = input.plan {
             let video_plan = m.input.material_kind.as_deref() == Some("video")
                 && plan["version"] == "operator_video_plan.v1";
-            let valid_plan = if video_plan {
+            let music_plan = m.input.material_kind.as_deref() == Some("music")
+                && plan["version"] == "operator_music_plan.v1";
+            let valid_plan = if video_plan || music_plan {
                 matches!(task.state.as_str(), "preparing" | "running")
                     && plan["build_tutor"] == false
                     && plan["review_markdown"].as_str().is_some()
                     && plan["workspace_dir"].as_str().is_some_and(|p| PathBuf::from(p).is_absolute())
+                    && (!music_plan || plan["target_input"].as_str() == m.input.target_input.as_deref())
             } else {
-                m.input.material_kind.as_deref() != Some("video")
+                !matches!(m.input.material_kind.as_deref(), Some("video" | "music"))
                     && task.state == "preparing"
                     && plan["plan"]["private_artifacts"]
                     .as_array()
@@ -635,7 +651,7 @@ impl AdminStore {
             if !valid_plan {
                 return Err(invalid());
             }
-            if video_plan && m.plan.as_ref().is_some_and(|old| old != &plan) {
+            if (video_plan || music_plan) && m.plan.as_ref().is_some_and(|old| old != &plan) {
                 return Err(conflict());
             }
             m.plan = Some(plan);

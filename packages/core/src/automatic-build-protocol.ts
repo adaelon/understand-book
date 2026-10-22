@@ -2,6 +2,8 @@ export const AUTOMATIC_BUILD_PROTOCOL_V2 = "automatic_build_protocol.v2" as cons
 export const AUTOMATIC_BUILD_EXECUTOR_DISPATCH_PROTOCOL_V1 = "automatic_build_protocol.v2_dispatch" as const;
 export const AUTOMATIC_BUILD_LEGACY_PROTOCOL_V1 = "automatic_build_protocol.v1" as const;
 export const AUTOMATIC_BUILD_PRODUCTION_DEFAULT = AUTOMATIC_BUILD_EXECUTOR_DISPATCH_PROTOCOL_V1;
+export const AUTOMATIC_BUILD_MAX_WORKERS = 8;
+export type AutomaticBuildWorkerCount = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export const AUTOMATIC_BUILD_ROUTING_RELEASE = {
   version: "automatic_build_routing_release.v1" as const,
@@ -23,10 +25,10 @@ export const AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1 = {
   safety_margin_tokens: 256,
 } as const;
 
-export const PROFILE_SIDECAR_POLICY_V2 = {
-  stage_policy_version: "profile_sidecar_policy.v2",
-  prompt_sha256: "4d920312fe6d5f08b409b1854e2b91e92f5de4917eeeafe2dab489b91f3d7d6d",
-  schema_version: "profile_sidecar_output.v2",
+export const PROFILE_SIDECAR_POLICY_V3 = {
+  stage_policy_version: "profile_sidecar_policy.v3",
+  prompt_sha256: "fda6c6bc093e5ebc2bef714db685f443542ce66ca8f8dd95f0277347e54b804f",
+  schema_version: "profile_sidecar_output.v3",
 } as const;
 
 export const AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 = [
@@ -65,10 +67,10 @@ export const AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 = [
     kind: "profile_sidecar_discourse",
     extractor: "profile-sidecar-extractor",
     prompt_name: "profile-sidecar-extractor.md",
-    stage_policy_version: PROFILE_SIDECAR_POLICY_V2.stage_policy_version,
-    router_version: "profile_sidecar_semantic_units.v2",
-    prompt_sha256: PROFILE_SIDECAR_POLICY_V2.prompt_sha256,
-    schema_version: PROFILE_SIDECAR_POLICY_V2.schema_version,
+    stage_policy_version: PROFILE_SIDECAR_POLICY_V3.stage_policy_version,
+    router_version: "profile_sidecar_semantic_units.v4",
+    prompt_sha256: PROFILE_SIDECAR_POLICY_V3.prompt_sha256,
+    schema_version: PROFILE_SIDECAR_POLICY_V3.schema_version,
   },
   {
     stage: "profile_sidecar",
@@ -95,10 +97,10 @@ export const AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 = [
     kind: "profile_sidecar_formula",
     extractor: "profile-sidecar-extractor",
     prompt_name: "profile-sidecar-extractor.md",
-    stage_policy_version: PROFILE_SIDECAR_POLICY_V2.stage_policy_version,
-    router_version: "profile_sidecar_semantic_units.v2",
-    prompt_sha256: PROFILE_SIDECAR_POLICY_V2.prompt_sha256,
-    schema_version: PROFILE_SIDECAR_POLICY_V2.schema_version,
+    stage_policy_version: PROFILE_SIDECAR_POLICY_V3.stage_policy_version,
+    router_version: "profile_sidecar_semantic_units.v4",
+    prompt_sha256: PROFILE_SIDECAR_POLICY_V3.prompt_sha256,
+    schema_version: PROFILE_SIDECAR_POLICY_V3.schema_version,
   },
 ] as const;
 
@@ -197,7 +199,7 @@ export const AUTOMATIC_BUILD_RELEASE_V3 = {
     budget: AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1,
   },
   release_policy_members: AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1,
-  max_workers: 3,
+  max_workers: AUTOMATIC_BUILD_MAX_WORKERS,
   candidate_handoff: "executor_owned_task_mailbox" as const,
   exact_usage_policy: "receipt_or_unknown" as const,
   legacy_policy: "explicit_legacy_resume_or_v2_rebuild" as const,

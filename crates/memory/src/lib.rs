@@ -23,6 +23,7 @@ pub mod learning;
 pub mod teaching;
 pub mod agent_work;
 pub mod teaching_design;
+pub mod tutor_coach;
 pub mod assessment;
 pub mod learning_evidence;
 pub mod learning_records;

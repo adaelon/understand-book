@@ -164,7 +164,7 @@ export const SourceManifestV2Z = z.object({
   version: z.literal("source_manifest.v2"),
   book_id: z.string().min(1),
   canonical_source: z.object({
-    kind: z.literal("reconciled_markdown"),
+    kind: z.enum(["reconciled_markdown", "pdf_text"]),
     path: z.literal("source.txt"),
     citation_anchor: z.literal("lid"),
     sha256: z.string().min(1),
@@ -256,6 +256,7 @@ export const PdfRegionZ = PdfPageRectZ.extend({
   region_id: z.string().min(1),
 });
 export const PdfPageMetaZ = z.object({
+  ocr_lines: z.array(z.object({ text: z.string(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]), words: z.array(z.object({ text: z.string(), bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]) })) })).optional(),
   pageIndex: z.number().int().nonnegative(),
   page_label: z.string().min(1).optional(),
   width: z.number().positive(),
@@ -406,7 +407,7 @@ export const AlignmentReportZ = z.object({
   version: z.literal("alignment_report.v1"),
   book_id: z.string().min(1),
   config: z.object({
-    algorithm: z.enum(["monotonic_forward_fuzzy_v1", "monotonic_windowed_blocks_v2", "monotonic_windowed_characters_v3", "banded_windowed_characters_v4"]),
+    algorithm: z.enum(["monotonic_forward_fuzzy_v1", "monotonic_windowed_blocks_v2", "monotonic_windowed_characters_v3", "banded_windowed_characters_v4", "pdf_text_layer_v1"]),
     lookback_words: z.number().int().nonnegative(),
     lookahead_words: z.number().int().nonnegative(),
     merge_gap_utf16: z.number().int().nonnegative(),

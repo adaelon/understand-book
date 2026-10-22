@@ -24,7 +24,7 @@ fn cc1_tool_policy_changes_preserve_sent_message_prefix() {
             COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile, ToolPermissions::default(),
             &exposure, ArtifactExposureContext::no_overlay(),
             if step == 0 { EvidenceState::Unlocated } else { EvidenceState::KnownLids },
-            &[], None, false, None,
+            &[], None, false, None, None,
         ).unwrap();
         plans.push(plan);
         let id = format!("cc1-{step}");
@@ -77,7 +77,7 @@ fn cc1_open_presentation_goal_seeds_capability_without_old_turn_authority() {
 }
 
 #[test]
-fn teaching_presentation_exposure_waits_for_accepted_design() {
+fn teaching_presentation_stable_schema_waits_for_accepted_design() {
     let b = book();
     let registry = resident_tool_registry();
     let profile = ModelRuntimeProfile::fallback("teaching-presentation-exposure", ProviderToolProtocol::Native);
@@ -101,16 +101,20 @@ fn teaching_presentation_exposure_waits_for_accepted_design() {
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER,
             &registry, &profile, ToolPermissions::default(), &exposure,
             ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
-            &[], None, false, tutor.as_ref(),
+            &[], None, false, tutor.as_ref(), None,
         ).unwrap();
         assert!(tools.is_visible("presentation.author"), "{label}: existing pages remain readable");
         let author = plan.tools.iter().find(|tool| tool.name == "presentation.author").unwrap();
-        let operations = &author.parameters["properties"]["operation"]["enum"];
+        let canonical = crate::presentation_author::spec();
+        assert_eq!(author.parameters, canonical.parameters, "{label}: design state must not rewrite the schema");
+        assert_eq!(author.description, canonical.description, "{label}: design state must not rewrite the description");
+        let operations = &selection_state(&plan).unwrap()["allowed_operations"];
         if expected {
-            assert_eq!(operations, &crate::presentation_author::spec().parameters["properties"]["operation"]["enum"], "{label}");
+            assert_eq!(operations, &canonical.parameters["properties"]["operation"]["enum"], "{label}");
         } else {
             assert_eq!(operations, &json!(["read", "search"]), "{label}");
-            assert_eq!(author.parameters["anyOf"].as_array().unwrap().len(), 2);
+            assert!(plan.ordered_messages().iter().any(|message|
+                message.content.as_deref().is_some_and(|text| text.contains(PRESENTATION_DESIGN_REQUIRED))));
         }
         assert_eq!(selection_state(&plan).is_some_and(|state| state["active"] == true), expected, "{label}");
         assert_eq!(plan.instruction_assets.iter().any(|asset|
@@ -119,10 +123,55 @@ fn teaching_presentation_exposure_waits_for_accepted_design() {
 }
 
 #[test]
+fn teaching_presentation_design_changes_preserve_native_and_react_prefix() {
+    let b = book();
+    let registry = resident_tool_registry();
+    let profile = ModelRuntimeProfile::fallback("author-stable-prefix", ProviderToolProtocol::Native);
+    let mut exposure = ToolExposureState::default();
+    exposure.activate("presentation.author");
+    let mut fragments = ContextFragmentLedger::default();
+    let mut messages = new_session();
+    messages.push(Message::user("Keep explaining this relationship."));
+    let mut previous = None;
+    for (index, kind) in [None, Some("text"), Some("presentation"), Some("text")].into_iter().enumerate() {
+        let tutor = json!({"status":"active","current_design":kind.map(|kind| json!({
+            "design_ref":format!("design:{index}"),"design":{"representation":{"kind":kind}}
+        }))});
+        let (_, plan) = build_sample_request(
+            &messages, &mut fragments, &b, &mut ActiveToolResultLedger::default(), None,
+            COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile, ToolPermissions::default(),
+            &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
+            &[], None, false, Some(&tutor), None,
+        ).unwrap();
+        let state = selection_state(&plan).unwrap();
+        assert_eq!(state["allowed_operations"].as_array().unwrap().len() == 2, kind != Some("presentation"));
+        let (native, _) = crate::native_chat_request_projection("author-stable-prefix", &plan);
+        let react = crate::react_chat_request_projection("author-stable-prefix", &plan);
+        if let Some((prior_native, prior_react)) = previous.as_ref() {
+            let prior_native: &Value = prior_native;
+            let prior_react: &Value = prior_react;
+            assert_eq!(prior_native["tools"], native["tools"], "design changed native tool schemas");
+            for (label, prior, current) in [("native", prior_native, &native), ("react", prior_react, &react)] {
+                let prefix = prior["messages"].as_array().unwrap();
+                assert_eq!(prefix.as_slice(), &current["messages"].as_array().unwrap()[..prefix.len()],
+                    "{label}: design change rewrote the sent prefix");
+            }
+        }
+        previous = Some((native, react));
+        let id = format!("accepted-{index}");
+        messages.push(Message { provider_continuation: None, role: Role::Assistant, content: None,
+            tool_calls: vec![call(&id, "tutor.step", r#"{"operation":"design"}"#)], tool_call_id: None });
+        messages.push(Message { provider_continuation: None, role: Role::Tool, content: Some("Accepted current design.".into()),
+            tool_calls: vec![], tool_call_id: Some(id) });
+    }
+}
+
+#[test]
 fn teaching_presentation_inspection_before_design_keeps_mutations_blocked() {
     for kind in [None, Some("text")] {
         for mutation in [
             json!({"operation":"prepare","phase":"local","needs":[]}),
+            json!({"operation":"preview","candidate_id":"c1"}),
             // The real repair attempted write with assets/based_on. Report the
             // unavailable operation before misleading the caller into deleting fields.
             json!({"operation":"write","title":"Unplanned","html":"<p>Unplanned</p>","readable_content":"Unplanned",
@@ -161,6 +210,46 @@ fn teaching_presentation_inspection_before_design_keeps_mutations_blocked() {
 }
 
 #[test]
+fn teaching_presentation_same_batch_design_cannot_grant_unsampled_operations() {
+    for kind in [None, Some("text")] {
+        let b = book();
+        let mut port = AuthoringPort::new(&b, &format!("author-frozen-design-{}", kind.unwrap_or("none")));
+        let mut request = crate::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+            .find(|example| example["operation"] == "design").unwrap().clone();
+        request["design"]["representation"] = json!({"kind":"presentation","reason":"Keep the elapsed interval visible.",
+            "observation":"The stopped interval is still part of the trip."});
+        let adapter = RequestPlanRecordingAdapter::new(vec![
+            discover(),
+            turn_calls(vec![call("design", "tutor.step", &request.to_string()),
+                call("early-preview", "presentation.author", r#"{"operation":"preview","candidate_id":"c1"}"#)]),
+            prepare("observed-prepare", "local", "The trip clock", "Include stopped time", json!([])),
+            turn_final("The accepted design is prepared; no page has been delivered."),
+        ], vec![]);
+        // Four author samples plus the current-request coach at prepare.
+        let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(5), ..Default::default()}, adapter.model_runtime_profile());
+        context.tutor = Some(json!({"status":"active","learner_context":{},"current_design":kind.map(|kind|
+            json!({"design_ref":"design:previous","design":{"representation":{"kind":kind}}}))}));
+        let _ = execute(&mut port, &b, &adapter, &mut context);
+        assert_eq!(context.tutor.as_ref().unwrap()["current_design"]["design_ref"], "design:author-fixture",
+            "the earlier design in this same batch must have been accepted");
+        let blocked = tool_result(&context.messages, "early-preview");
+        assert!(blocked.contains("PRESENTATION_ARGUMENTS_INVALID"), "{blocked}");
+        assert!(!context.presentation_candidates.contains("c1"), "unsampled preview reached the host");
+        assert_eq!((port.writes, port.deliveries), (0, 0));
+        let plans = adapter.seen_plans.borrow();
+        let prepared = plans[3].input.iter().find(|message| message.tool_call_id.as_deref() == Some("observed-prepare")).unwrap();
+        let prepared: Value = serde_json::from_str(prepared.content.as_deref().unwrap()).unwrap();
+        assert_eq!(prepared["model_body"]["status"], "authoring_context_prepared",
+            "next sampling must permit prepare using the observed design: {prepared}");
+        assert_eq!(selection_state(&plans[3]).unwrap()["active"], true);
+        let feedback = plans[2].input.iter().find(|message| message.tool_call_id.as_deref() == Some("early-preview")).unwrap();
+        assert!(feedback.content.as_deref().unwrap().contains(PRESENTATION_DESIGN_REQUIRED));
+        assert_eq!(selection_state(&plans[1]).unwrap()["allowed_operations"], json!(["read", "search"]));
+        assert!(selection_state(&plans[2]).unwrap()["allowed_operations"].as_array().unwrap().contains(&json!("prepare")));
+    }
+}
+
+#[test]
 fn teaching_presentation_reuses_focused_design_and_preserves_review() {
     let b = book();
     let registry = resident_tool_registry();
@@ -194,9 +283,11 @@ fn teaching_presentation_reuses_focused_design_and_preserves_review() {
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER,
             &registry, &profile, ToolPermissions::default(), &exposure,
             ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
-            &[], authoring, false, Some(&tutor),
+            &[], authoring, false, Some(&tutor), None,
         ).unwrap();
         assert_eq!(selection_state(&plan).unwrap()["phase"], expected_phase, "{label}");
+        assert!(plan.ordered_messages().iter().filter_map(|message|message.content.as_deref())
+            .any(|text|text.contains("registerStateRestorer")),"{label}: initial teaching authoring must already know how to restore state");
         let context = design(&plan).unwrap();
         let framework: Value = serde_json::from_str(context["framework"].as_str().unwrap()).unwrap();
         assert_eq!(framework["target"], tutor["current_design"]["design"]["target"]);
@@ -226,7 +317,8 @@ fn teaching_presentation_prepare_keeps_local_scope_in_run_state() {
         prepare("review","review","ANOTHER WHOLE LESSON","Verify the repaired clock label",json!(["state"])),
         turn_final("The page is not delivered yet."),
     ],vec![]);
-    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(3),..Default::default()},adapter.model_runtime_profile());
+    // Three author samples plus the current-request coach at prepare.
+    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(4),..Default::default()},adapter.model_runtime_profile());
     context.tutor = Some(json!({"status":"active","current_design":{"design_ref":"design:clock","design":{
         "target":{"learning_focus":"Elapsed time"},"focus_block_refs":["clock"],
         "blocks":[{"block_id":"clock","relation":"Count stopped time."}],
@@ -550,6 +642,13 @@ impl AuthoringPort {
     }
 }
 impl ResidentStatePort for AuthoringPort {
+    fn tutor_step(&mut self, request: Value, _: &[SourceBinding], _: &[read_tools::EvidenceRange]) -> Result<Value, ToolError> {
+        if request["operation"] == "design" {
+            Ok(json!({"design_ref":"design:author-fixture","design":request["design"]}))
+        } else {
+            Err(memory::teaching::invalid("Teaching context unavailable"))
+        }
+    }
     fn presentation_unavailable_reason(&self) -> Option<&'static str> {
         self.unavailable_reason
     }
@@ -858,7 +957,7 @@ fn ex12_stage_round_trip_replaces_design_and_preserves_candidate_inspection() {
     assert!(out.answer_view.unwrap().parts.iter().any(|p| matches!(p, AgentAnswerPart::Presentation {presentation_id,..} if presentation_id == "saved")));
     let plans = adapter.seen_plans.borrow();
     phase(&plans[1], "global", &[]);
-    phase(&plans[2], "local", &["konva"]);
+    phase(&plans[2], "local", &["state", "konva"]);
     assert_eq!(design(&plans[2]).unwrap()["framework"], "FRAME_A");
     assert_eq!(plans[4].preview_images.len(), 1);
     assert_eq!(
@@ -880,7 +979,7 @@ fn ex12_stage_round_trip_replaces_design_and_preserves_candidate_inspection() {
     );
     assert!(plans[11].instruction_assets.iter().all(|a| !a.asset_id.contains(".phase.") && !a.asset_id.contains(".reference.")));
     assert!(design(&plans[11]).is_none(), "delivery clears design");
-    phase(&plans[12], "local", &[]);
+    phase(&plans[12], "local", &["state"]);
     let new_work = design(&plans[12]).unwrap();
     assert!(new_work["framework"].is_null());
     assert!(new_work["focus"].is_null());
@@ -919,7 +1018,7 @@ fn ex12_simple_local_can_deliver_without_framework_and_plain_answer_stays_plain(
     execute(&mut port, &b, &adapter, &mut context).unwrap();
     assert_eq!(port.deliveries, 1);
     assert!(context.presentation_authoring.is_none());
-    phase(&adapter.seen_plans.borrow()[2], "local", &["editing"]);
+    phase(&adapter.seen_plans.borrow()[2], "local", &["editing", "state"]);
     assert!(design(&adapter.seen_plans.borrow()[2]).unwrap()["framework"].is_null());
     let plain = RequestPlanRecordingAdapter::new(vec![turn_final("A short explanation.")], vec![]);
     let mut next = RunContext::new(
@@ -989,6 +1088,23 @@ fn ex12_identical_prepares_do_not_reset_no_progress_or_complete_a_goal() {
     assert!(context.delivered_presentations.is_empty());
     assert!(context.presentation_candidates.is_empty());
     assert!(context.inspected_presentations.is_empty());
+}
+
+#[test]
+fn agent_progress_can_accompany_presentation_prepare() {
+    let b = book();
+    let mut port = AuthoringPort::new(&b, "agent-progress-prepare");
+    let mut calls = prepare("prepare", "local", "FRAME", "FOCUS", json!([])).tool_calls;
+    calls.insert(0, call("progress", "agent.progress", r#"{"message":"先明确页面要表达的关系，再开始制作。"}"#));
+    let adapter = RequestPlanRecordingAdapter::new(
+        vec![discover(), turn_calls(calls), turn_final("Pending.")], vec![],
+    );
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    execute(&mut port, &b, &adapter, &mut context).unwrap();
+    assert!(!tool_result(&context.messages, "prepare").contains("PRESENTATION_PREPARE_REQUIRES_NEXT_SAMPLING"));
+    assert!(context.presentation_authoring.is_some());
+    assert_eq!(context.events.activities().iter().filter(|activity| activity.kind == "commentary").count(), 1);
+    assert_eq!(port.writes, 0);
 }
 
 #[test]
@@ -1299,7 +1415,7 @@ fn ex12_omitted_fields_clear_previous_work_before_delivery() {
     execute(&mut port, &b, &adapter, &mut context).unwrap();
     let plans = adapter.seen_plans.borrow();
     phase(&plans[2], "local", &["state", "continuous-scene", "manim"]);
-    phase(&plans[3], "local", &[]);
+    phase(&plans[3], "local", &["state"]);
     let replaced = design(&plans[3]).unwrap();
     assert!(replaced["framework"].is_null());
     assert!(replaced["focus"].is_null());
@@ -1356,7 +1472,7 @@ fn presentation_omitted_environments_report_remaining_groups_and_recover_after_o
 }
 
 #[test]
-fn presentation_restore_failure_loads_state_contract_without_replanning() {
+fn presentation_state_contract_precedes_write_and_failure_keeps_the_task() {
     for phase_name in ["local", "review"] {
         let b = book();
         let mut port = AuthoringPort::new(&b, &format!("restore-guidance-{phase_name}"));
@@ -1376,13 +1492,28 @@ fn presentation_restore_failure_loads_state_contract_without_replanning() {
         let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
         execute(&mut port, &b, &adapter, &mut context).unwrap();
         let plans = adapter.seen_plans.borrow();
-        phase(&plans[3], phase_name, &[]);
+        phase(&plans[2], phase_name, &["state"]);
+        phase(&plans[3], phase_name, &["state"]);
         phase(&plans[4], phase_name, &["state"]);
-        let mut expected = design(&plans[3]).unwrap();
-        expected["needs"] = json!(["state"]);
+        let expected = design(&plans[3]).unwrap();
         assert_eq!(design(&plans[4]).unwrap(), expected, "a restore failure must not replace the page task");
         assert_eq!((port.writes, port.deliveries), (1, 0));
     }
+}
+
+#[test]
+fn presentation_candidate_in_reference_gets_the_correct_edit_target() {
+    let b=book();let mut port=AuthoringPort::new(&b,"candidate-edit-target");
+    let adapter=RequestPlanRecordingAdapter::new(vec![discover(),write("write"),
+        author("bad-read",json!({"operation":"read","reference":{"presentation_id":"c1","revision":1},"file":"index.html"})),
+        turn_final("The draft remains available.")],vec![]);
+    let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+    execute(&mut port,&b,&adapter,&mut context).unwrap();
+    let plans=adapter.seen_plans.borrow();
+    let feedback:Value=serde_json::from_str(tool_result(&plans[3].input,"bad-read")).unwrap();
+    assert_eq!(feedback["model_body"]["error_code"],"PRESENTATION_ARGUMENTS_INVALID");
+    assert!(feedback["model_body"]["message"].as_str().unwrap().contains("candidate_id: \"c1\""));
+    assert!(port.inspections.is_empty(),"a candidate ID must not be looked up as a saved version");
 }
 
 
@@ -1400,7 +1531,7 @@ fn presentation_sampling_pressure_rebases_runtime_context_without_dropping_turn_
         fragments.upsert(ContextFragment::new("agent.learner_context",FragmentScope::Dynamic,Role::System,state,FragmentSensitivity::Private)).unwrap();
         let before=raw.clone();
         let (_,plan)=build_sample_request(&raw,&mut fragments,&b,&mut results,None,COMPACTION_CONSUMPTION_WRAPPER,&registry,&profile,
-            ToolPermissions::default(),&exposure,ArtifactExposureContext::no_overlay(),EvidenceState::Unlocated,&[],None,false,None).unwrap();
+            ToolPermissions::default(),&exposure,ArtifactExposureContext::no_overlay(),EvidenceState::Unlocated,&[],None,false,None,None).unwrap();
         let count=plan.input.iter().filter(|message|message.content.as_deref().is_some_and(|text|text.starts_with("runtime_state_snapshot.v1\n"))).count();
         assert_eq!(raw,before);
         assert!(plan.active_context.fits);

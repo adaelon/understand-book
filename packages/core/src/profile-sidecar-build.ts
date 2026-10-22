@@ -10,15 +10,18 @@ import {
 } from "./content-profile";
 import type { TechnicalLearningDiscourseItem } from "./discourse-index";
 import type { FormulaSemanticsBuildCandidate } from "./formula-semantics";
+import type { MathStructureCandidate } from "./math-structure";
 
 export interface ProfileSidecarExtractionOutput {
   discourse_items?: TechnicalLearningDiscourseItem[];
   formula_semantics?: FormulaSemanticsBuildCandidate[];
+  math_items?: MathStructureCandidate[];
 }
 
 export interface ProfileSidecarArtifact extends Pass1ArtifactMeta {
   discourse_items: TechnicalLearningDiscourseItem[];
   formula_semantics: FormulaSemanticsBuildCandidate[];
+  math_items: MathStructureCandidate[];
 }
 
 export interface ProfileSidecarWindowInput {
@@ -48,6 +51,7 @@ export function buildProfileSidecarArtifact(
     content_hash: profileSidecarContentHash(window, buildProfileSidecarWindowInput(window, byLid, source, contentProfile)),
     discourse_items: output.discourse_items ?? [],
     formula_semantics: output.formula_semantics ?? [],
+    math_items: output.math_items ?? [],
   };
 }
 

@@ -4,14 +4,16 @@ use memory::assessment::{
     AssessmentContract, AssessmentStatus, FeedbackPolicy, ResponseAssessment, ScoringRule,
 };
 use memory::learning::{
-    TutorAction, TutorMaterial, TutorMaterialRole, TutorMutation, TutorSessionStatus,
+    LearningPurpose, TutorAction, TutorMaterial, TutorMaterialRole, TutorMutation, TutorSessionStatus,
 };
 use memory::teaching::{invalid, TeachingBinding, TeachingEvent, TeachingFact, TeachingTarget};
 use runtime::tutor::TeachingMove;
 use runtime::run_context::TeachingSelectionPreflightError;
 mod design;
+mod continuity;
 mod grounding;
 mod page_help;
+pub(crate) use page_help::record_presentation_action;
 
 fn preview(value: &Value, limit: usize) -> Value {
     let text = value
@@ -19,6 +21,18 @@ fn preview(value: &Value, limit: usize) -> Value {
         .map(str::to_string)
         .unwrap_or_else(|| value.to_string());
     json!({"text":text.chars().take(limit).collect::<String>(),"truncated":text.chars().count()>limit})
+}
+
+fn workspace_goal_revision(state: &PrivateBookContext<'_>, binding: &TeachingBinding) -> Result<Option<u32>, ToolError> {
+    let admitted = state.user.agent_history.sessions.iter().find(|session|session.id==binding.chat_session_id)
+        .and_then(|session|session.turns.iter().find(|turn|turn.turn_id==binding.turn_id))
+        .and_then(|turn|turn.admission_input.as_ref().and_then(|input|input.learning_workspace_goal.as_ref())
+            .or_else(||turn.domain.scene.as_ref().and_then(|scene|scene.workspace_goal.as_ref())))
+        .map(|goal|goal.revision);
+    if admitted.is_some() { return Ok(admitted); }
+    let view=state.user.learning_store_for_workspace(state.learning_workspace_id)?.state()?;
+    Ok(view.sessions.get(&binding.tutor_session_id).and_then(|session|session.workspace_goal_revision)
+        .or(view.workspace_goal_revision))
 }
 fn trace_summary(event: &TeachingEvent) -> Value {
     if event.kind == TeachingFact::AgentWorkReviewed {
@@ -63,6 +77,10 @@ fn delivered_text(event: &TeachingEvent) -> Value {
 
 fn readable_fact(state: &PrivateBookContext<'_>, fact: &TeachingEvent) -> Result<Value, ToolError> {
     let mut value = delivered_text(fact);
+    if fact.kind == TeachingFact::LearnerAction {
+        value["assessment"] = json!(state.user.learning_store_for_workspace(state.learning_workspace_id)?
+            .assessment(&fact.event_id)?);
+    }
     if fact.kind == TeachingFact::UsageObserved {
         let mut presentations = Vec::new();
         for part in fact.payload["answer_view"]["parts"].as_array().into_iter().flatten() {
@@ -288,10 +306,38 @@ fn require_target_read_this_turn(state: &PrivateBookContext<'_>, start: &str, en
     preflight_target_read(state, start, end, ranges).map_err(|failure| failure.error)
 }
 
-fn bind_target(mut input: Value, binding: &TeachingBinding) -> Result<memory::teaching::TeachingTarget, ToolError> {
+#[cfg(test)]
+#[path = "tests/music_teaching_target_tests.rs"]
+mod music_target_tests;
+
+fn bind_target(mut input: Value, binding: &TeachingBinding, evidence: &[SourceBinding]) -> Result<memory::teaching::TeachingTarget, ToolError> {
     if input.get("media_bindings").is_some() {
         return Err(invalid("媒体来源由 library.learning 的本轮来源引用绑定，不能直接写入教学目标"));
     }
+    let source_refs: Vec<String> = input.as_object_mut().and_then(|fields| fields.remove("source_ref_ids"))
+        .map(serde_json::from_value).transpose().map_err(|e| invalid(format!("音乐来源引用无效：{e}")))?.unwrap_or_default();
+    let matching_music = |source: &SourceBinding| source.book_id == binding.source_id
+        && source.source_revision.as_deref() == Some(binding.source_revision.as_str()) && source.music.is_some();
+    let mut music: Vec<memory::teaching::TeachingMusicBinding> = input.as_object_mut().and_then(|fields| fields.remove("music_bindings"))
+        .filter(|value| !value.is_null()).map(serde_json::from_value).transpose()
+        .map_err(|e| invalid(format!("音乐来源绑定无效：{e}")))?.unwrap_or_default();
+    // Preflight returns normalized targets to the runtime reviewer. Re-check those
+    // exact bindings against the same turn ledger when the reviewed request commits.
+    for saved in &music {
+        if saved.source_id != binding.source_id || saved.source_revision != binding.source_revision
+            || !evidence.iter().any(|source| matching_music(source) && source.music.as_ref().is_some_and(|m| m.target == saved.target)) {
+            return Err(invalid("音乐教学来源必须来自本轮已读并登记的 source.present 引用"));
+        }
+    }
+    for id in source_refs {
+        let source = evidence.iter().find(|source| source.source_ref_id == id && matching_music(source))
+            .ok_or_else(|| invalid("音乐教学目标的 source_ref_ids 未在本轮读取，或不属于本轮资料版本"))?;
+        let target = source.music.as_ref().unwrap().target.clone();
+        if !music.iter().any(|saved| saved.target == target) {
+            music.push(memory::teaching::TeachingMusicBinding { source_id: binding.source_id.clone(), source_revision: binding.source_revision.clone(), target });
+        }
+    }
+    if !music.is_empty() { input["music_bindings"] = json!(music); }
     for source in input["source_bindings"].as_array_mut().into_iter().flatten() {
         if let Some(fields) = source.as_object_mut() {
             for (key, expected) in [("source_id", &binding.source_id), ("source_revision", &binding.source_revision)] {
@@ -377,6 +423,7 @@ pub(crate) fn start_request(state: &PrivateBookContext<'_>, now: &str) -> Result
                         role: TutorMaterialRole::Primary,
                     }],
                     default_teaching_intent: None,
+                    learning_purpose: None,
                 },
             },
             now,
@@ -408,6 +455,7 @@ pub(crate) fn prepare(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, reque
         .and_then(|t| t.domain.interaction.as_ref());
     let frozen = freeze_prepare(state, turn, request, interaction, now)?;
     frozen.resume(state.user)?;
+    crate::teaching_coach::ensure_turn(state.user, state.learning_workspace_id, turn, frozen.context.as_ref(), now)?;
     Ok(frozen.context)
 }
 
@@ -449,6 +497,37 @@ pub(crate) fn freeze_prepare(
         // start a new active stage under a newer workspace goal.
         return prepare_observation(state, turn, request, interaction, now, events);
     }
+    let learning_purpose = interaction.and_then(|action| action.learning_purpose);
+    // A quick overview is a one-shot request even while another stage is active.
+    if learning_purpose == Some(LearningPurpose::Discover) {
+        return prepare_observation(state, turn, request, interaction, now, events);
+    }
+    if let Some(action) = interaction.filter(|action| action.learning_purpose.is_some()) {
+        if view.control.enabled {
+            let scope_refs: Vec<_> = action.source_bindings.iter().map(|source| {
+                if source.start_lid == source.end_lid && crate::interaction_input::chapter_title(state.book, &source.start_lid).is_ok() {
+                    source.start_lid.clone()
+                } else { format!("{}–{}", source.start_lid, source.end_lid) }
+            }).collect();
+            let material_scope = vec![TutorMaterial { source_id: state.book.base.book_id.clone(),
+                scope_refs, role: TutorMaterialRole::Primary }];
+            let current = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id));
+            let reusable = current.filter(|session| session.learning_purpose == learning_purpose
+                && session.material_scope == material_scope && session.workspace_goal_revision == view.workspace_goal_revision
+                && session.status != TutorSessionStatus::Ended);
+            let action = match reusable {
+                Some(session) if session.status == TutorSessionStatus::Active => None,
+                Some(session) => Some(TutorAction::Resume { session_id: session.id.clone() }),
+                None => Some(TutorAction::Start { user_intent:format!("{}\n{}",action.accepted_request,action.user_supplement),
+                    explicit_constraints:vec![], material_scope, default_teaching_intent:None, learning_purpose }),
+            };
+            if let Some(action) = action {
+                view = state.user.learning_store_for_workspace(state.learning_workspace_id)?.mutate(&TutorMutation {
+                    operation_id:format!("purpose:{}",turn.turn_id), expected_revision:view.control.revision, action,
+                }, now)?;
+            }
+        }
+    }
     // Chapter identity is settled before binding the turn; later navigation does not revise it.
     let chapter_lid = interaction.filter(|a| matches!(a.action,
         runtime::tutor_continuation::InteractionAction::UiEntry { entry_action: runtime::tutor_continuation::EntryAction::GuideChapter }))
@@ -457,7 +536,7 @@ pub(crate) fn freeze_prepare(
     if view.control.enabled {
         if let Some(lid) = chapter_lid {
             let same_active = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
-                .is_some_and(|s| s.status == TutorSessionStatus::Active && s.material_scope.iter()
+                .is_some_and(|s| s.status == TutorSessionStatus::Active && s.learning_purpose == learning_purpose && s.material_scope.iter()
                     .any(|m| m.source_id == state.book.base.book_id && m.scope_refs == [lid]));
             if !same_active {
                 let intent = interaction.map(|a| format!("{}\n{}", a.accepted_request, a.user_supplement))
@@ -466,7 +545,7 @@ pub(crate) fn freeze_prepare(
                     operation_id: format!("chapter:{}", turn.turn_id), expected_revision: view.control.revision,
                     action: TutorAction::Start { user_intent: intent, explicit_constraints: vec![],
                         material_scope: vec![TutorMaterial { source_id: state.book.base.book_id.clone(),
-                            scope_refs: vec![lid.into()], role: TutorMaterialRole::Primary }], default_teaching_intent: None },
+                            scope_refs: vec![lid.into()], role: TutorMaterialRole::Primary }], default_teaching_intent: None, learning_purpose },
                 }, now)?;
             }
         }
@@ -485,7 +564,7 @@ pub(crate) fn freeze_prepare(
                 action: TutorAction::Start { user_intent:message.into(), explicit_constraints:vec![],
                     material_scope:vec![TutorMaterial { source_id:state.book.base.book_id.clone(),
                         scope_refs:interaction.map(|a|a.source_bindings.iter().map(|s|format!("{}–{}",s.start_lid,s.end_lid)).collect()).unwrap_or_default(), role:TutorMaterialRole::Primary }],
-                    default_teaching_intent:None },
+                    default_teaching_intent:None, learning_purpose },
             }, now)?;
         }
     }
@@ -556,9 +635,10 @@ pub(crate) fn freeze_prepare(
         .map(|f| json!({"fact_id":f.fact_id,"preference":f.payload})).collect();
     let background: Vec<_> = confirmed.iter().filter(|f| matches!(f.payload, memory::ProfilePayload::Background(_) | memory::ProfilePayload::Capability(_)))
         .map(|f| json!({"fact_id":f.fact_id,"claim":preview(&json!(f.payload),1000)})).collect();
-    let mut learner = learner_context(state,&binding,&objects,&session.current_focus.target_object_refs,request["teaching_ref"].as_str())?;
+    let mut learner = learner_context(state,&binding,&objects,&session.current_focus.target_object_refs,request["teaching_ref"].as_str(),&events)?;
     learner["current_request"] = request["message"].clone();
     learner["user_intent"] = json!(session.user_intent);
+    learner["learning_purpose"] = json!(session.learning_purpose);
     learner["constraints"] = json!(session.explicit_constraints);
     learner["confirmed_background"] = json!(background);
     learner["confirmed_preferences"] = json!(preferences);
@@ -575,6 +655,7 @@ pub(crate) fn freeze_prepare(
         .filter_map(|item|item["evidence_ref"].as_str().map(str::to_owned)).collect::<Vec<_>>();
     learner["learner_grounding"]=grounding::context(state,&binding,&learner["current_design"]["design"],&[],&events,&interpretation_refs)?;
     let mut context = json!({"status":"active","binding":binding,"user_intent":session.user_intent,
+        "learning_purpose":session.learning_purpose,
         "workspace_goal_revision":session.workspace_goal_revision,
         "goal_relation":"When proposing a stage or next step, explain how it serves the accepted workspace goal and its explicit constraints; a temporary question does not change that goal.",
         "constraints":session.explicit_constraints,"material_scope":session.material_scope,"chapter_scope":chapter_scope,"default_teaching_intent":session.default_teaching_intent,
@@ -610,7 +691,7 @@ fn prepare_observation(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, requ
     let mut recent = state.user.learning_store_for_workspace(state.learning_workspace_id)?.teaching_recent(&binding.tutor_session_id,8)?;
     for fact in events.iter().filter(|e| e.kind == TeachingFact::UsageObserved) { recent.insert(0,fact.clone()); }
     recent.truncate(8);
-    let mut learner = learner_context(state,&binding,&objects,&[],None)?;
+    let mut learner = learner_context(state,&binding,&objects,&[],None,&events)?;
     learner["current_request"] = request["message"].clone();
     learner["recent_facts"] = json!(recent.iter().map(trace_summary).collect::<Vec<_>>());
     learner["uninterpreted_fact_refs"] = uninterpreted_facts(state, &binding, &recent)?;
@@ -638,6 +719,10 @@ fn attach_current_action(interaction: Option<&runtime::tutor_continuation::Resol
     if let Some(interaction) = interaction {
         context["current_action"] = json!(interaction);
         context["learner_context"]["current_action"] = json!(interaction);
+        if let Some(purpose) = interaction.learning_purpose {
+            context["learning_purpose"] = json!(purpose);
+            context["learner_context"]["learning_purpose"] = json!(purpose);
+        }
         // User quotes continue to refer only to actual supplementary user text.
         context["current_request"] = json!(interaction.user_supplement);
         context["learner_context"]["current_request"] = json!(interaction.user_supplement);
@@ -671,16 +756,28 @@ fn usage_facts(state: &PrivateBookContext<'_>, binding: &TeachingBinding, reques
             json!({"original_ref":{"kind":"reading_record","mem_id":record.mem_id,"book_id":record.book_id},
                 "usage":{"kind":"reading_contact","lid":record.anchor.lid,"count":record.usage.count,"source_revision":null},"record":record}), &record.generated_at)?;
     }
-    let mut sessions: Vec<_> = state.user.agent_history.sessions.iter().filter(|s| s.book_id == binding.source_id).collect();
+    let goal_revision=workspace_goal_revision(state,binding)?;
+    let mut sessions: Vec<_> = state.user.agent_history.sessions.iter()
+        .filter(|s| s.matches_scope(state.learning_workspace_id,&binding.source_id)).collect();
     sessions.sort_by(|a,b|a.updated_at.cmp(&b.updated_at));
-    let recent: Vec<_> = sessions.into_iter().flat_map(|s| s.turns.iter().map(move |t| (s,t))).rev().take(12).collect();
+    let recent: Vec<_> = sessions.into_iter().flat_map(|s| s.turns.iter().map(move |t| (s,t)))
+        .filter(|(session,turn)| turn.published_book_ref.as_ref().map(|r|r.book_id.as_str())
+            .unwrap_or(&session.book_id)==binding.source_id).rev().take(12).collect();
     for (session, turn) in recent.into_iter().rev() {
         if turn.turn_id == binding.turn_id { continue; }
+        if bound(state,&turn.turn_id)?.is_some_and(|original|
+            original.binding.source_id!=binding.source_id || original.binding.source_revision!=binding.source_revision) {
+            continue;
+        }
+        let original_goal=turn.admission_input.as_ref().and_then(|input|input.learning_workspace_goal.as_ref())
+            .or_else(||turn.domain.scene.as_ref().and_then(|scene|scene.workspace_goal.as_ref())).map(|goal|goal.revision);
+        if original_goal != goal_revision { continue; }
         let original = json!({"kind":"chat_turn","book_id":session.book_id,"session_id":session.id,"turn_id":turn.turn_id});
         add(format!("usage:{}:user:{}", binding.tutor_session_id, turn.turn_id), &session.id, &turn.turn_id,
             json!({"original_ref":original,"usage":{"kind":if turn.domain.interaction.is_some() { "reading_action" } else { "user_message" }},
                 "interaction":turn.domain.interaction,"response":turn.user_authored_text(),"presentation_follow_up":turn.presentation_follow_up,
-                "question_anchor_lid":turn.question_anchor_lid,"teaching_ref":turn.teaching_ref}), &session.updated_at)?;
+                "question_anchor_lid":turn.question_anchor_lid,"teaching_ref":turn.teaching_ref,
+                "workspace_goal_revision":original_goal,"published_book_ref":turn.published_book_ref}), &session.updated_at)?;
         if let Some(outcome) = turn.outcome.as_ref().filter(|o| turn.status == AgentAssistantStatus::Completed
             && !crate::observability::lifecycle::delivery_failed(o)
             && !turn.delivery_diagnostics.as_ref().and_then(|d|d.repair.as_ref()).is_some_and(|r|!r.issues.is_empty())) {
@@ -705,6 +802,21 @@ struct PreparedSelection {
     selected_id: String,
 }
 
+impl PreparedSelection {
+    fn event(&self, bind: &TeachingEvent, occurred_at: &str) -> TeachingEvent {
+        TeachingEvent {
+            event_id: self.selected_id.clone(),
+            binding: bind.binding.clone(),
+            kind: TeachingFact::MoveSelected,
+            causal_refs: vec![bind.event_id.clone()],
+            payload: json!({"move":self.movement,"delivery_move_refs":self.delivery_move_refs,
+                "object_versions":self.object_versions,"scoring_sources":self.scoring_sources,
+                "scorer_version":"assessment.v1","retry_policy":"append_attempt","help_policy":"preserve_exposure"}),
+            occurred_at: occurred_at.into(),
+        }
+    }
+}
+
 /// Share all deterministic validation and normalization with the eventual
 /// append, so a model review examines exactly the move the host will accept.
 fn prepare_select(
@@ -721,7 +833,7 @@ fn prepare_select(
     let binding = &bind.binding;
     let mut move_input = request["move"].clone();
     if let Some(target) = move_input.get_mut("target").filter(|value| !value.is_null()) {
-        *target = serde_json::to_value(bind_target(target.clone(), binding)?).unwrap();
+        *target = serde_json::to_value(bind_target(target.clone(), binding, evidence)?).unwrap();
     }
     if bind.payload["current_action"].is_object() {
         if let Some(capability) = move_input["target"].get("capability").cloned() {
@@ -777,10 +889,14 @@ fn prepare_select(
         let store = state.user.learning_store_for_workspace(state.learning_workspace_id)?;
         let (interpretation,_) = store.understanding_basis(binding,id)?;
         if let (Some(scope), Some(target)) = (&interpretation.target, &movement.target) {
-            if !scope.source_bindings.iter().any(|a| target.source_bindings.iter().any(|b|
+            let text_overlap = scope.source_bindings.iter().any(|a| target.source_bindings.iter().any(|b|
                 a.source_id == b.source_id && a.source_revision == b.source_revision
-                && source_ranges_overlap(state, &a.start_lid, &a.end_lid, &b.start_lid, &b.end_lid)))
-            { return Err(invalid("所采用解释与本次教学范围不相交")); }
+                && source_ranges_overlap(state, &a.start_lid, &a.end_lid, &b.start_lid, &b.end_lid)));
+            let music_overlap = scope.music_bindings.iter().flatten().any(|a| target.music_bindings.iter().flatten().any(|b|
+                a.source_id == b.source_id && a.source_revision == b.source_revision
+                && a.target.audio.recording == b.target.audio.recording
+                && a.target.audio.start_ms < b.target.audio.end_ms && b.target.audio.start_ms < a.target.audio.end_ms));
+            if !text_overlap && !music_overlap { return Err(invalid("所采用解释与本次教学范围不相交")); }
         }
     }
     if movement.intent_origin == "current_request"
@@ -858,6 +974,13 @@ fn prepare_select(
     let map = turn_assets(state, binding)?;
     let objects = active_objects(&map);
     if let Some(target) = &movement.target {
+        for music in target.music_bindings.iter().flatten() {
+            if !evidence.iter().any(|source| source.book_id == binding.source_id
+                && source.source_revision.as_deref() == Some(binding.source_revision.as_str())
+                && source.music.as_ref().is_some_and(|read| read.target == music.target)) {
+                return Err(invalid("本轮尚未重新读取继承的音乐目标；请按原范围读取并登记 source.present 来源"));
+            }
+        }
         if target.capability != movement.capability
             || target.object_refs.len() != movement.object_ids.len()
             || movement.object_ids.iter().any(|id| !target.object_refs.iter().any(|r| &r.object_id == id))
@@ -954,7 +1077,15 @@ fn prepare_select(
         }
     }
     if !delivery_move_refs.contains(&selected_id) { delivery_move_refs.push(selected_id.clone()); }
-    Ok(PreparedSelection { movement, retained_moves, object_versions, scoring_sources, delivery_move_refs, selected_id })
+    let prepared = PreparedSelection { movement, retained_moves, object_versions, scoring_sources, delivery_move_refs, selected_id };
+    // Reject a changed saved fact before model review. The append transaction
+    // repeats the same check, so preflight does not reserve or write anything.
+    match event(state, &prepared.selected_id) {
+        Ok(previous) => prepared.event(bind, &previous.occurred_at).validate_unchanged_retry(&previous)?,
+        Err(error) if error.error_code == "TEACHING_INVALID" => {},
+        Err(error) => return Err(error.into()),
+    }
+    Ok(prepared)
 }
 
 pub(crate) fn preflight_step(
@@ -973,7 +1104,7 @@ pub(crate) fn preflight_step(
     }
     if request["operation"] == "design" {
         let mut normalized=request.clone();
-        normalized["design"]=json!(design::prepare(state,&bind,request,ranges)?);
+        normalized["design"]=json!(design::prepare(state,&bind,request,evidence,ranges)?);
         return Ok(normalized);
     }
     let prepared = prepare_select(state, turn, &bind, request, evidence, ranges)?;
@@ -1017,8 +1148,8 @@ pub(crate) fn step(
         ));
     }
     match request["operation"].as_str() {
-        Some("design") => design::accept(state,&bind,&request,ranges,&occurred_at),
-        Some("evidence") if request["nature"] == "hypothesis" => accept_hypothesis(state, binding, &request, ranges),
+        Some("design") => design::accept(state,&bind,&request,evidence,ranges,&occurred_at),
+        Some("evidence") if request["nature"] == "hypothesis" => accept_hypothesis(state, binding, &request, evidence, ranges),
         Some("evidence") => accept_ungraded_evidence(state, binding, &request),
         Some("understanding") => {
             if let Some(id) = request["evidence_ref"].as_str() {
@@ -1130,22 +1261,15 @@ pub(crate) fn step(
         )?)
         .unwrap()),
         Some("select") => {
-            let PreparedSelection { movement, object_versions, scoring_sources, delivery_move_refs, selected_id, .. } =
+            let prepared =
                 prepare_select(state, turn, &bind, &request, evidence, ranges).map_err(|failure| failure.error)?;
-            let saved = append(
-                state,
-                binding,
-                selected_id,
-                TeachingFact::MoveSelected,
-                vec![bind.event_id],
-                json!({"move":movement,"delivery_move_refs":delivery_move_refs,"object_versions":object_versions,"scoring_sources":scoring_sources,"scorer_version":"assessment.v1","retry_policy":"append_attempt","help_policy":"preserve_exposure"}),
-                &occurred_at,
-            )?;
+            let saved = state.user.learning_store_for_workspace(state.learning_workspace_id)?
+                .append_teaching(&prepared.event(&bind, &occurred_at))?;
             let delivery_draft=delivery_draft(state,&saved)?;
             Ok(
-                json!({"selected":saved.event_id,"design_ref":movement.design_ref,"delivery_move_refs":delivery_move_refs,"delivery_draft":delivery_draft,"instruction":if movement.continuation.is_some() {
-                    "Deliver the selected explanation fully. Leave the optional continuation work for the reader's choice; do not execute those options or duplicate their menu in the final answer. Saved candidate is not displayed."
-                } else { "Deliver this move in the final answer. Saved candidate is not displayed." }}),
+                json!({"selected":saved.event_id,"design_ref":prepared.movement.design_ref,"delivery_move_refs":prepared.delivery_move_refs,"delivery_draft":delivery_draft,"instruction":if prepared.movement.continuation.is_some() {
+                    "Deliver the selected explanation fully. Leave the optional continuation work for the reader's choice; do not execute those options or duplicate their menu in the final answer. Saved candidate is not displayed. This selection is immutable. Retry unchanged input with the same move_id; revise with a new move_id and omit superseded selections from delivery_move_refs."
+                } else { "Deliver this move in the final answer. Saved candidate is not displayed. This selection is immutable. Retry unchanged input with the same move_id; revise with a new move_id and omit superseded selections from delivery_move_refs." }}),
             )
         }
         _ => Err(invalid("未知教学操作")),
@@ -1283,6 +1407,8 @@ pub(crate) fn record_user_delivery(
         public_move.as_object_mut().unwrap().remove("explanation");
         public_move.as_object_mut().unwrap().remove("assessment");
         public_move.as_object_mut().unwrap().remove("participation");
+        public_move.as_object_mut().unwrap().remove("coach_ref");
+        public_move.as_object_mut().unwrap().remove("coach_adjustment");
         public_move.as_object_mut().unwrap().remove("delivery_text");
         // A later selection in the same turn may have opened a formal activity.
         if outcome.incomplete || events.iter().any(|e| e.kind == TeachingFact::MoveSelected && !e.payload["move"]["assessment"].is_null()) {
@@ -1299,6 +1425,7 @@ pub(crate) fn record_user_delivery(
             now,
         )?;
     }
+    crate::teaching_coach::after_delivery(user, turn, now)?;
     Ok(())
 }
 
@@ -1717,7 +1844,7 @@ pub(crate) fn assessment_accept(
     let bind = bound(state, &turn.turn_id)?.ok_or_else(|| invalid("本轮教学绑定不存在"))?;
     let objects = active_objects(&turn_assets(state, &bind.binding)?);
     Ok(
-        json!({"assessment":status,"action_ref":id,"learner_context":learner_context(state,&bind.binding,&objects,&[],Some(id))?}),
+        json!({"assessment":status,"action_ref":id,"learner_context":learner_context(state,&bind.binding,&objects,&[],Some(id),&[])?}),
     )
 }
 
@@ -1742,10 +1869,10 @@ fn source_ranges_overlap(state: &PrivateBookContext<'_>, a: &str, b: &str, c: &s
     }
 }
 
-fn accept_hypothesis(state: &PrivateBookContext<'_>, binding: &TeachingBinding, request: &Value, ranges: &[EvidenceRange]) -> Result<Value, ToolError> {
+fn accept_hypothesis(state: &PrivateBookContext<'_>, binding: &TeachingBinding, request: &Value, evidence: &[SourceBinding], ranges: &[EvidenceRange]) -> Result<Value, ToolError> {
     use memory::learning_evidence::{EvidenceNature, LearningEvidence};
     let required = |key: &str| request[key].as_str().filter(|v|!v.trim().is_empty()).ok_or_else(||invalid(format!("缺少 {key}")));
-    let target = bind_target(request["target"].clone(), binding)?;
+    let target = bind_target(request["target"].clone(), binding, evidence)?;
     let objects=active_objects(&turn_assets(state,binding)?);
     if target.object_refs.iter().any(|r|!objects.iter().any(|o|o["ref"]["object_id"]==r.object_id && o["object_revision"].as_u64()==Some(r.object_revision))) {
         return Err(invalid("理解目标的对象修订不属于本轮资料"));
@@ -1795,7 +1922,7 @@ fn accept_hypothesis(state: &PrivateBookContext<'_>, binding: &TeachingBinding, 
     let accepted = state.user.learning_store_for_workspace(state.learning_workspace_id)?.append_evidence(&evidence)?;
     refresh_learning(state,&binding.tutor_session_id,&binding.source_id)?;
     Ok(json!({"evidence_ref":accepted.evidence_id,"nature":accepted.nature,"teaching_implication":accepted.teaching_implication,
-        "learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None)?,
+        "learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None,&[])?,
         "instruction":"Use this current interpretation when relevant to the move; record its reference in move.interpretation_refs. The frozen input remains unchanged."}))
 }
 
@@ -1916,7 +2043,7 @@ fn accept_ungraded_evidence(
     refresh_learning(state, &binding.tutor_session_id, &binding.source_id)?;
     Ok(
         json!({"evidence_ref":accepted.evidence_id,"status":"observed_source_discrimination","mastery":"unknown",
-            "learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None)?}),
+            "learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None,&[])?}),
     )
 }
 
@@ -1926,6 +2053,7 @@ fn learner_context(
     objects: &[Value],
     focus: &[String],
     reference: Option<&str>,
+    pending_facts: &[TeachingEvent],
 ) -> Result<Value, ToolError> {
     let mut targets = focus.to_vec();
     let mut current_target = Value::Null;
@@ -1987,6 +2115,7 @@ fn learner_context(
         "delivered_support":support_context,
         "interpretation_refs":related_interpretation_refs,"pending_response_invitation":pending_invitation,
         "return_context":design::return_context(state,&current_design["design"])?,
+        "continuity":continuity::context(state,binding,&current_design,&related_interpretation_refs,pending_facts,reference)?,
         "unknown_when_absent":true});
     let mut interpretations=Vec::new();
     for (_,e) in store.current_design_interpretations(&binding.tutor_session_id,&binding.source_id,&binding.source_revision,current_design["design_ref"].as_str(),&focus_blocks,12)? {

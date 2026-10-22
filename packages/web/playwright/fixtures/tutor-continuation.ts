@@ -46,6 +46,7 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     const body = route.request().method() === 'POST' ? route.request().postDataJSON() : {};
     let result: unknown;
     if (path === '/api/desktop/status') result = {desktop_host:false,reader_only:true,active_book:true};
+    else if (path === '/api/book/video_playback') result = null;
     else if (path === '/api/book/build_workbench') result = {book_id:scenario.book_id,readiness:{route:'reader'},input:{manifest:null},source_review:{unresolved:[]}};
     else if (path === '/api/book/manifest') result = {tree:[
       {lid:'1',kind:'chapter',children:['1.1','1.2'],span:{start:0,end:source.length},title:scenario.title},

@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 18;
+pub const CONTROL_SCHEMA_VERSION: i64 = 20;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -173,6 +173,13 @@ impl ControlStore {
                 .map_err(|_| storage())?;
             tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("cloud_plans.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("cloud_storage.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("service_usage.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("course_access.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("exam_sprints.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("desktop_auth.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("web_usage.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -284,15 +291,32 @@ impl ControlStore {
             tx.execute_batch(include_str!("workspace_publication.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
-            tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 18).map_err(|_| storage())?;
             tx.commit().map_err(|_| storage())?;
         }
         if version == 17 {
             let tx = connection.transaction().map_err(|_| storage())?;
             tx.execute_batch(include_str!("workspace_release_instances.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("operator_builds.sql")).map_err(|_| storage())?;
-            tx.pragma_update(None,"user_version",CONTROL_SCHEMA_VERSION).map_err(|_|storage())?;
+            tx.pragma_update(None,"user_version",18).map_err(|_|storage())?;
             tx.commit().map_err(|_|storage())?;
+        }
+        if (1..=18).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("cloud_plans.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("cloud_storage.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("service_usage.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("course_access.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("exam_sprints.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("desktop_auth.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 19).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=19).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("web_usage.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
         }
         memory::ReaderPrivateStorageGate::secure_file(&writer.root.join("control.sqlite"))?;
         eprintln!("Service SQLite {}: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema={CONTROL_SCHEMA_VERSION}", rusqlite::version());

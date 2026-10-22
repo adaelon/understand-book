@@ -14,7 +14,7 @@ pub fn directory() -> crate::InstructionModule {
     crate::InstructionModule::new(
         "resident-agent.presentation.methods",
         format!("se3.v1.catalog.{}", catalog()["revision"]),
-        format!("Presentation method directory:\nChoose zero or more methods by the current understanding obstacle and boundary. Technical needs are selected separately with prepare. Read a listed exact id/revision using presentation.author read_method; omitted file reads card.md. Read its example source and adaptation guide before adapting it. File offsets and lengths count Unicode characters. Follow next_offset when a requested range is truncated; end_offset marks the requested range end. Declare actual uses with write/patch method_refs (method_id, revision, optional scope). Observe a read in a later sampling before declaring a new method. patch omission inherits; a supplied list replaces all references, including [] to clear. Full write never implicitly inherits: explicitly redeclare when rewriting a version with recorded methods. read returns the version's recorded references; null means historical use was not recorded. No method grants book-source, preview or delivery authority.\n{}", catalog()),
+        format!("Presentation method directory:\nChoose zero or more methods by the current understanding obstacle and boundary. Technical needs are selected separately with prepare. Read a listed exact id/revision using presentation.author read_method; omitted file reads card.md. Read its example source and adaptation guide before adapting it. File offsets and lengths count Unicode characters. For read_method, length is a page size and end_offset is the actual returned page end. Follow the returned next_offset with the same page size through the whole file until null (EOF), including after output-budget truncation; do not guess or skip offsets. Declare actual uses with write/patch method_refs (method_id, revision, optional scope). Observe a read in a later sampling before declaring a new method. patch omission inherits; a supplied list replaces all references, including [] to clear. Full write never implicitly inherits: explicitly redeclare when rewriting a version with recorded methods. read returns the version's recorded references; null means historical use was not recorded. No method grants book-source, preview or delivery authority.\n{}", catalog()),
     )
 }
 
@@ -127,7 +127,7 @@ mod tests {
         message.content = Some(json!({"status":"partial","model_body":{
             "status":"method_read","method_id":"discrete-update","revision":1,
             "file":"example/index.html","offset":80,"text":"实际片段",
-            "end_offset":1000,"total_characters":2000,"next_offset":84
+            "end_offset":84,"total_characters":2000,"next_offset":84
         }}).to_string());
         let mut plan = crate::AgentRequestPlan::for_agent_turn(
             crate::ModelRuntimeProfile::fallback("test", crate::ProviderToolProtocol::Native), &[message.clone()], &[]);
@@ -136,7 +136,7 @@ mod tests {
         let delta = observed.newly_sampled(&plan, &current);
         assert_eq!(delta.catalog.as_ref(), Some(catalog()));
         assert_eq!(delta.reads.len(), 1);
-        assert_eq!((delta.reads[0].offset, delta.reads[0].characters, delta.reads[0].end_offset), (80,4,1000));
+        assert_eq!((delta.reads[0].offset, delta.reads[0].characters, delta.reads[0].end_offset), (80,4,84));
         observed.merge(&delta);
         assert!(observed.newly_sampled(&plan, &current).is_empty());
         assert!(PresentationMethodObservations::default().newly_sampled(&plan, &Default::default()).reads.is_empty(), "historical reads are not current-run evidence");

@@ -898,6 +898,7 @@ mod tests {
                 messages.push(Message::user("CANARY_PRIVATE_FOLLOWUP"));
             }
             let completion = || CompletionRequest {
+                images: Vec::new(),
                 system: "CANARY_PRIVATE_SYSTEM".into(), user: "CANARY_PRIVATE_INPUT".into(),
                 output_token_limit: Some(100), reasoning_effort: None,
             };
@@ -1219,7 +1220,7 @@ mod tests {
             trace: Vec::new(),
             profile_usage: Default::default(),
             memory_updates: Vec::new(),
-            source_bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+            source_bindings: vec![SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None,
                 source_ref_id: "source_ref_safe".into(),
                 book_id: "CANARY_PRIVATE_BOOK".into(),

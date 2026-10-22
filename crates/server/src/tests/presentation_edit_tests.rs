@@ -21,7 +21,7 @@ fn ex13_saved_candidates_remain_readable_across_patch_delivery_and_run_boundary(
         "edits":[{"old_text":"second","new_text":"third"}]})).unwrap();
     let third = patched.body["candidate_id"].as_str().unwrap().to_owned();
     assert!(call(&mut port, json!({"operation":"deliver","candidate_id":third})).is_err());
-    port.previewed.insert(third.clone(), std::collections::HashSet::from(["legacy".into()]));
+    port.previewed.insert(third.clone(), REQUIRED_PREVIEW_ENVIRONMENTS.iter().map(|(name,_)|(*name).to_owned()).collect());
     let delivered = call(&mut port, json!({"operation":"deliver","candidate_id":third})).unwrap();
     let candidates = [(first, "first"), (independent, "independent"), (second, "second"), (third, "third")];
     for (id, text) in &candidates {
@@ -126,7 +126,7 @@ fn presentation_edit_search_then_patch_preserves_original_and_requires_new_previ
     );
     port.previewed.insert(
         id.clone(),
-        std::collections::HashSet::from(["legacy".into()]),
+        REQUIRED_PREVIEW_ENVIRONMENTS.iter().map(|(name,_)|(*name).to_owned()).collect(),
     );
     let error = call(
         &mut port,

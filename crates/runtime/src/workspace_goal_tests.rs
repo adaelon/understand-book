@@ -49,7 +49,7 @@ fn replay_with_tutor(name:&str, goal:WorkspaceGoal, user:&str, turns:Vec<Assista
     let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(6),..Default::default()},adapter.model_runtime_profile());
     context.current_user_message = Some(user.into());
     context.goal = Some(crate::goal::ResidentGoal::new("delivery:1".into(),"turn:1".into(),user.into()));
-    context.workspace_goal = Some(WorkspaceGoalContext {learning_workspace_id:"workspace:A".into(),goal:goal.clone()});
+    context.workspace_goal = Some(WorkspaceGoalContext {exam_calendar:None,learning_workspace_id:"workspace:A".into(),goal:goal.clone()});
     // Ordinary questions carry the parent direction without turning teaching on.
     context.tutor = Some(tutor);
     let mut state = WorkspaceState {state:BorrowedResidentState {store:&mut store,reader:&mut reader},
@@ -98,7 +98,8 @@ fn w4_deep_learning_prerequisite_plan_returns_to_original_goal() {
 
 #[test]
 fn w4_three_day_exam_constraint_reaches_plan_and_continuation() {
-    let goal = direction("机器学习期末考试冲刺",&["考试只剩三天","考纲只包括线性模型和反向传播"]);
+    let goal = direction("系统学习机器学习，包括线性模型、反向传播和无监督学习",
+        &["考试只剩三天","考纲只包括线性模型和反向传播，不考无监督学习"]);
     let (out,context,requests,updates,plans) = replay("w4-three-days",goal.clone(),"按我的考纲和时间安排下一步。",vec![
         plan("优先处理考纲内尚未掌握的反向传播","用一道考纲内的计算题核对薄弱连接，再安排余下两天复习"),
         turn_final("三天内先处理反向传播的薄弱连接，再用一道考纲内计算题决定后续复习深度。"),
@@ -111,6 +112,22 @@ fn w4_three_day_exam_constraint_reaches_plan_and_continuation() {
     for constraint in &goal.constraints { assert!(latest.contains(constraint)); }
     assert!(latest.contains("\"active_teaching\":false"));
     assert_wire_goal(&requests[1],&goal.text);
+    for request in &requests {
+        let (native,_) = crate::native_chat_request_projection("w4-narrow-exam-scope",request);
+        let react = crate::react_chat_request_projection("w4-narrow-exam-scope",request);
+        for wire in [native,react] {
+            let prompt = wire["messages"].as_array().unwrap().iter().filter_map(|message|message["content"].as_str()).collect::<Vec<_>>().join("\n");
+            assert!(prompt.contains(&goal.text),"the broad goal must be retained, not rewritten to hide the scope distinction");
+            assert!(prompt.contains(&goal.constraints[1]),"the current narrower syllabus must accompany the broad goal");
+            let policy = request.input.iter().filter_map(|message|message.content.as_deref())
+                .find(|text|text.contains("key=agent.workspace_goal_policy\n")).unwrap();
+            for priority_rule in ["latest accepted exam scope","takes precedence","exam requirements","out-of-scope background",
+                "confirmed grading criteria","marks or deductions"] {
+                assert!(policy.contains(priority_rule) && prompt.contains(priority_rule),
+                    "the scope priority guidance must reach the actual provider: {priority_rule}");
+            }
+        }
+    }
 }
 
 #[test]
@@ -170,7 +187,7 @@ fn w4_committed_goal_with_failed_turn_record_stops_before_next_model_send() {
         &json!({"basis_quote":user,"expected_revision":3,"goal":{"text":"只准备三天后的期末考试","constraints":[]}}).to_string())])],vec![]);
     let mut context = RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
     context.current_user_message = Some(user.into());
-    context.workspace_goal = Some(WorkspaceGoalContext {learning_workspace_id:"workspace:A".into(),goal:goal.clone()});
+    context.workspace_goal = Some(WorkspaceGoalContext {exam_calendar:None,learning_workspace_id:"workspace:A".into(),goal:goal.clone()});
     let mut state = WorkspaceState {state:BorrowedResidentState {store:&mut store,reader:&mut reader},
         current_goal:goal,updates:vec![],plans:vec![],fail_goal_record:true};
     let error = run_context(&book,&mut state,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
@@ -179,4 +196,87 @@ fn w4_committed_goal_with_failed_turn_record_stops_before_next_model_send() {
     assert_eq!(adapter.seen_plans.borrow().len(),1,"partial persistence must not trigger another plan or fallback model send");
     assert_eq!(state.current_goal.revision,4,"the accepted workspace goal already exists");
     assert_eq!(context.model_turns,1,"the completed model call remains accounted for");
+}
+
+#[test]
+fn exam_calendar_is_visible_only_for_the_effective_goal_revision() {
+    let goal = direction("准备期末考试", &["只复习前三章"]);
+    let context = WorkspaceGoalContext {learning_workspace_id:"exam".into(),goal:goal.clone(),
+        exam_calendar:Some(json!({"workspace_goal_revision":3,"current_local_date":"2026-10-21","remaining_days":2}))};
+    let projection = crate::workspace_goal::projection(&context,None,None);
+    assert!(projection.contains("2026-10-21"));
+    assert!(projection.contains("remaining_days"));
+    let changed = WorkspaceGoal { revision:4, ..goal };
+    let projection = crate::workspace_goal::projection(&context,Some(&changed),None);
+    assert!(!projection.contains("2026-10-21"));
+}
+
+#[test]
+fn workspace_material_directory_and_cross_material_tools_reach_first_sampling() {
+    struct LibraryState<'a> {
+        state: BorrowedResidentState<'a>,
+        available: bool,
+        directory_reads: usize,
+    }
+    impl ResidentStatePort for LibraryState<'_> {
+        fn library_available(&self) -> bool { self.available }
+        fn library_read(&mut self, name: &str, arguments: serde_json::Value) -> Result<crate::library::LibraryReadResult, ToolError> {
+            assert_eq!(name, "library.list");
+            assert_eq!(arguments, json!({"limit":6}));
+            self.directory_reads += 1;
+            Ok(crate::library::LibraryReadResult { source:None, body:json!({
+                "items":[
+                    {"name":"课程讲义","published_book_ref":{"book_id":"text","publication_id":"text-v1"},"available_operations":["structure","text"]},
+                    {"name":"配套视频","published_book_ref":{"book_id":"video","publication_id":"video-v2"},"available_operations":["search_text","text"],
+                     "video":{"duration_ms":60000,"video":{"media_id":"original-video","media_revision":"1"}}}
+                ],
+                "complete":false,
+                "next_calls":[{"name":"library.list","arguments":{"after":{"book_id":"video","publication_id":"video-v2"},"limit":6}}]
+            }) })
+        }
+        fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R,ToolError> { self.state.submit_private(operation) }
+        fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R,ToolError> { self.state.read_live_reader(operation) }
+        fn apply_reader<R>(&mut self, operation: impl FnOnce(&mut MemoryStore,&mut Reader) -> R) -> Result<R,ToolError> { self.state.apply_reader(operation) }
+        fn reader_input(&mut self, book:&Book, question:&str)->crate::run_context::ReaderInputSnapshot { self.state.reader_input(book,question) }
+    }
+    for (workspace, available) in [(true,true),(true,false),(false,true)] {
+        let book = book();
+        let mut store = MemoryStore::open(tmp(&format!("workspace-material-directory-{workspace}-{available}"))).unwrap();
+        let mut reader = Reader::new(&book, DEFAULT_RADIUS);
+        let snapshot = default_profile_snapshot(&book,&store,"t0");
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("请从你正在做的题开始。")],vec![]);
+        let mut context = RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        if workspace {
+            context.workspace_goal = Some(WorkspaceGoalContext { exam_calendar:None,learning_workspace_id:"workspace:course".into(),
+                goal:direction("期末复习",&[]) });
+        }
+        let mut state = LibraryState {state:BorrowedResidentState {store:&mut store,reader:&mut reader},available,directory_reads:0};
+        run_context(&book,&mut state,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"从这道题开始","t0").unwrap();
+        let supplied = workspace && available;
+        assert_eq!(state.directory_reads,usize::from(supplied));
+        let plans = adapter.seen_plans.borrow();
+        let first = &plans[0];
+        for name in ["library.list","library.read","library.learning","video.search"] {
+            assert_eq!(first.tools.iter().any(|tool|tool.name==name),supplied,"{name}");
+        }
+        assert!(!first.tools.iter().any(|tool|tool.name=="video.read_frames"));
+        let (native,_) = crate::native_chat_request_projection("workspace-materials",first);
+        let react = crate::react_chat_request_projection("workspace-materials",first);
+        for wire in [native,react] {
+            let prompt = wire["messages"].as_array().unwrap().iter().filter_map(|message|message["content"].as_str()).collect::<Vec<_>>().join("\n");
+            assert_eq!(prompt.contains("workspace_materials.v1"),supplied);
+            if supplied {
+                assert!(prompt.contains("配套视频"));
+                assert!(prompt.contains("video-v2"));
+                assert!(prompt.contains("next_calls"));
+                assert!(prompt.contains("metadata, not observed source evidence"));
+                assert!(prompt.contains("book.* reads only the currently open material"));
+            }
+        }
+        assert!(context.evidence_ledger.references.is_empty(),"directory metadata cannot count as a reference read");
+        assert!(context.evidence_ledger.bindings().is_empty());
+        assert!(!context.messages.iter().filter_map(|message|message.content.as_deref()).any(|content|content.contains("workspace_materials.v1")),
+            "the fresh directory must not become stale saved conversation history");
+    }
 }

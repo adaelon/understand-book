@@ -104,7 +104,8 @@ pub(super) fn context(
         delivered_support.push(json!({"delivery_ref":fact.event_id,"kind":fact.kind,
             "answer":fact.payload["answer"],"text":fact.payload["text"],"move":fact.payload["move"],
             "presentation":readable["content"]["presentation"],"presentations":readable["presentations"],
-            "scene":readable["scene"],"feedback":feedback}));
+            "scene":readable["scene"],"feedback":feedback,"actor":fact.payload["actor"],
+            "action_ref":fact.payload["action_ref"],"before_receipt":fact.payload["before_receipt"]}));
     }
     Ok(json!({"expressions":expressions,"interpretations":interpretations,"delivered_support":delivered_support,
         "unavailable_basis_refs":unavailable_basis_refs,"unknown_when_absent":true}))

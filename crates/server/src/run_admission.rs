@@ -48,6 +48,8 @@ struct RunProvider {
 /// Only the necessary request/scene/provider metadata; credentials and temporary candidates are absent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FrozenTurn<M = Vec<Message>> {
+    #[serde(default)]
+    exam_sprint: Option<crate::exam_sprints::SprintInput>,
     version: u32,
     #[serde(default)]
     pub(crate) learning_workspace_id: Option<String>,
@@ -66,6 +68,8 @@ pub(crate) struct FrozenTurn<M = Vec<Message>> {
     publication: PublishedBookRef,
     normalized: Value,
     reader: runtime::run_context::ReaderInputSnapshot,
+    #[serde(default)]
+    music_question: Option<base_schema::MusicQuestionContext>,
     confirmation: Option<String>,
     provider: ProviderBinding,
     message: String,
@@ -79,8 +83,10 @@ pub(crate) struct FrozenTurn<M = Vec<Message>> {
     preparation_complete: bool,
 }
 impl<M> FrozenTurn<M> {
+    pub(crate) fn coach_provider_binding(&self) -> Value { json!(self.provider) }
     pub(crate) fn map_messages<N>(self, map: impl FnOnce(M) -> N) -> FrozenTurn<N> {
         FrozenTurn {
+            exam_sprint: self.exam_sprint,
             learning_workspace_id: self.learning_workspace_id,
             learning_workspace_goal: self.learning_workspace_goal,
             learning_workspace_members: self.learning_workspace_members,
@@ -88,6 +94,7 @@ impl<M> FrozenTurn<M> {
             generation: self.generation, effect_revision: self.effect_revision, chat: self.chat,
             turn: self.turn, ordinal: self.ordinal, head: self.head, publication: self.publication,
             normalized: self.normalized, reader: self.reader, confirmation: self.confirmation,
+            music_question: self.music_question,
             provider: self.provider, message: self.message, agent_message: self.agent_message,
             messages: map(self.messages), quote: self.quote, presentation: self.presentation,
             teaching: self.teaching, goal: self.goal, now: self.now,
@@ -117,6 +124,9 @@ impl FrozenTurn {
             .unwrap()
             .load(&self.owner, &self.publication)?;
         Ok(PreparedAgentChat {
+            exam_calendar: self.exam_sprint.as_ref().map(|sprint| sprint.calendar(
+                crate::multi_user_host::now(), self.learning_workspace_goal.as_ref().map_or(0, |goal| goal.revision),
+            )).transpose()?,
             accepted_workspace_goal: None,
             scope: run_scope::RunScope {
                 learning_workspace_id: self.learning_workspace_id.clone(),
@@ -133,6 +143,7 @@ impl FrozenTurn {
                 provider_binding: self.provider.profile.clone(),
                 reader_input: self.reader.clone(),
                 question_quote: self.quote.clone(),
+                music_question: self.music_question.clone(),
                 presentation_follow_up: self.presentation.clone(),
             },
             tutor: self.teaching.context.clone(),
@@ -261,6 +272,10 @@ impl RunAdmissions {
             .map(|provider| provider.make_task.clone())
             .ok_or_else(|| fault("TRANSLATION_PROVIDER_UNCONFIGURED", "provider"))?;
         Ok(make())
+    }
+    pub(crate) fn coach_provider_binding(&self) -> Result<Value, ToolError> {
+        self.provider.lock().unwrap().as_ref().map(|p|json!(p.binding))
+            .ok_or_else(||fault("TUTOR_COACH_PROVIDER_UNCONFIGURED","provider"))
     }
     #[cfg(test)]
     pub(crate) fn configure_fake(
@@ -505,6 +520,7 @@ impl RunAdmissions {
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                music_question,
                 video_question,
                 interaction,
                 request,
@@ -556,6 +572,9 @@ impl RunAdmissions {
                 .and_then(|r| session.goals.iter().find(|g| g.id == r.id))
                 .cloned();
             let frozen = FrozenTurn {
+                exam_sprint: scene.workspace.learning_workspace_id.as_ref().map(|id|
+                    crate::exam_sprints::settings(&self.state.lock().unwrap().control.connection,&row.owner,id)
+                ).transpose()?.flatten(),
                 version: 1,
                 learning_workspace_id: scene.workspace.learning_workspace_id.clone(),
                 learning_workspace_goal: scene.workspace.learning_goal.clone(),
@@ -570,6 +589,7 @@ impl RunAdmissions {
                 head,
                 publication: row.publication.clone(),
                 normalized,
+                music_question: music_question.clone(),
                 reader: {
                     let mut reader = runtime::run_context::ReaderInputSnapshot::capture(&scene.workspace.book, &scene.workspace.reader, &message);
                     reader.video_question = video_question.clone();
@@ -588,6 +608,7 @@ impl RunAdmissions {
                 preparation_complete: false,
             };
             session.turns.last_mut().unwrap().video_question = video_question.clone();
+            session.turns.last_mut().unwrap().music_question = music_question;
             session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&scene.workspace));
             session.turns.last_mut().unwrap().admission_input = Some(frozen);
             if user.session_store.is_some() {
@@ -692,6 +713,8 @@ impl RunAdmissions {
             }
         }
         session_runtime::link_teaching(user, &frozen.turn_ref(), &frozen.now)?;
+        crate::teaching_coach::ensure_turn(user, frozen.learning_workspace_id.as_deref(),
+            &frozen.turn_ref(), frozen.teaching.context.as_ref(), &frozen.now)?;
         self.point("prepared")?;
         {
             let mut state = self.state.lock().unwrap();
@@ -863,7 +886,7 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["entry_action", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
+    for key in ["music_question", "entry_action", "learning_purpose", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }
@@ -1038,6 +1061,24 @@ impl RunAdmissions {
                 }
             }
         };
+        let coach_ready = (|| {
+            let user = handle.lock().unwrap();
+            crate::teaching_coach::ensure_turn(&user, frozen.learning_workspace_id.as_deref(),
+                &frozen.turn_ref(), frozen.teaching.context.as_ref(), &frozen.now)?;
+            crate::teaching_coach::prepare_execution(&user, frozen.learning_workspace_id.as_deref(), &frozen.turn_ref())
+        })();
+        match coach_ready {
+            Ok(false) => return Ok(false),
+            Ok(true) => {},
+            Err(error) => {
+                let mut user=handle.lock().unwrap();
+                if let Err(error)=self.end_pending(&mut user,&row,&error.error_code,false) {
+                    self.mark_unsaved(&row); return Err(error);
+                }
+                self.update(&row,"settled",false)?;
+                return Ok(true);
+            }
+        }
         let provider = self.provider.lock().unwrap().clone();
         let Some(provider) = provider.filter(|p| p.binding == frozen.provider) else {
             let mut user = handle.lock().unwrap();

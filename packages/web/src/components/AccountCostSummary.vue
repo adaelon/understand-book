@@ -3,7 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue';
 import { accountAllowance } from '../network-client';
 import { network, sceneKey } from '../network-context';
 import { allowancePercent, allowanceTime, usagePurpose, usageState, type AccountUsagePage } from '../account-allowance';
-import { accountCostQuery, type AccountCostFilter, type AccountCostReport, type AccountCostSummary } from '../account-costs';
+import { accountCostCategories, accountCostQuery, type AccountCostFilter, type AccountCostReport, type AccountCostSummary } from '../account-costs';
 
 const report = ref<AccountCostReport | null>(null), busy = ref(false), error = ref('');
 const mode = ref<'account' | 'tasks' | 'workspaces' | 'memory'>('account');
@@ -42,6 +42,7 @@ onBeforeUnmount(() => { request++; detailRequest++; });
       <article v-for="row in rows()" :key="row.key" class="cost-row">
         <div class="heading"><h4>{{ row.title }}</h4><button v-if="row.filter" @click="drill(row.title, row.filter)">查看调用明细</button></div>
         <p>{{ row.summary.request_count }} 次调用<span v-if="row.summary.unknown_cost_requests"> · {{ row.summary.unknown_cost_requests }} 次费用尚未确认</span></p>
+        <dl aria-label="调用分类"><div v-for="[kind, label] in accountCostCategories" :key="kind" :aria-label="`${label}调用`"><dt>{{ label }}</dt><dd>{{ row.summary.cost_breakdown[kind].request_count }} 次调用<span v-if="row.summary.cost_breakdown[kind].estimated_cost_requests"> · {{ row.summary.cost_breakdown[kind].estimated_cost_requests }} 次成本为估计</span><span v-if="row.summary.cost_breakdown[kind].unknown_cost_requests"> · {{ row.summary.cost_breakdown[kind].unknown_cost_requests }} 次费用尚未确认</span><span v-if="row.summary.cost_breakdown[kind].pending_requests"> · {{ row.summary.cost_breakdown[kind].pending_requests }} 次待核算</span><span v-if="row.summary.cost_breakdown[kind].reconciliation_requests"> · {{ row.summary.cost_breakdown[kind].reconciliation_requests }} 次待核对</span></dd></div></dl>
         <p v-if="row.related?.length">关联工作区：{{ row.related.join('、') }}。关联仅说明来源，不追加扣减。</p>
         <details v-if="row.reference"><summary>核对任务标识</summary><p>{{ row.reference }}</p></details>
         <section v-for="group in row.summary.period_groups" :key="group.period_id" class="cost-period">

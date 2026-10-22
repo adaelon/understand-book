@@ -1,5 +1,69 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
+test('closed tabs and sign-in preserve reading and recover a missing browser bookmark', async ({ page, context }) => {
+  const failures: string[] = [];
+  context.on('page', opened => opened.on('pageerror', error => failures.push(error.message)));
+  page.on('pageerror', error => failures.push(error.message));
+  const signIn = async (current: Page) => {
+    await current.getByLabel('邮箱或账号', { exact: true }).fill('A');
+    await current.getByLabel('密码', { exact: true }).fill('fixture-only-password');
+    await current.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(current.locator('.network-library')).toBeVisible();
+  };
+  const savedScene = async (current: Page) => {
+    const id = await current.evaluate(() => JSON.parse(sessionStorage.getItem('understand-book:workspace:A')!).workspace_id);
+    const response = await current.request.get(`https://localhost:4189/api/workspaces/${id}`);
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
+  await page.goto('https://localhost:4189/');
+  await signIn(page);
+  const cookie = (await context.cookies()).find(item => item.name === '__Host-ub_session')!;
+  expect(cookie.expires - Date.now() / 1000).toBeGreaterThan(29 * 24 * 60 * 60);
+  // Match the production root, where Nginx serves the introduction page.
+  await context.route('https://localhost:4189/', async route => {
+    const response = await route.fetch({ url: 'https://localhost:4189/home.html' });
+    await route.fulfill({ response });
+  });
+  await page.locator('.network-book-card').filter({ hasText: 'mu5 x' }).click();
+  await expect(page.locator('.workspace-shell')).toBeVisible();
+  await page.locator('.topbar').getByRole('button', { name: '新对话', exact: true }).click();
+  await expect.poll(async () => (await savedScene(page)).selected_chat).not.toBeNull();
+  const before = await savedScene(page);
+  await page.close();
+
+  const reopened = await context.newPage();
+  await reopened.goto('https://localhost:4189/');
+  await expect(reopened.locator('.workspace-shell')).toBeVisible();
+  await expect(reopened.locator('.network-library')).toHaveCount(0);
+  const restored = await savedScene(reopened);
+  expect(restored.published_book_ref).toEqual(before.published_book_ref);
+  expect(restored.selected_chat).toBe(before.selected_chat);
+  expect(restored.reader.viewport.top_lid).toBe(before.reader.viewport.top_lid);
+
+  await reopened.getByRole('button', { name: '打开书', exact: true }).click();
+  await expect(reopened.locator('.reading-resumption')).toBeVisible();
+  await reopened.close();
+  const shelf = await context.newPage();
+  await shelf.goto('https://localhost:4189/');
+  await expect(shelf.locator('.network-library')).toBeVisible();
+  await expect(shelf.locator('.reading-resumption')).toContainText('mu5 x');
+
+  // Losing local browser state must still leave the account's committed continuation available.
+  await shelf.evaluate(() => { sessionStorage.clear(); localStorage.clear(); });
+  await context.clearCookies();
+  await shelf.reload();
+  await signIn(shelf);
+  await expect(shelf.locator('.reading-resumption')).toContainText('mu5 x');
+  await shelf.getByRole('button', { name: '继续阅读', exact: true }).click();
+  await expect(shelf.locator('.workspace-shell')).toBeVisible();
+  const recovered = await savedScene(shelf);
+  expect(recovered.published_book_ref).toEqual(before.published_book_ref);
+  expect(recovered.selected_chat).toBe(before.selected_chat);
+  expect(recovered.reader.viewport.top_lid).toBe(before.reader.viewport.top_lid);
+  expect(failures).toEqual([]);
+});
+
 async function host(context: BrowserContext, lostResponse = false) {
   const posts: unknown[] = [], failures: string[] = [];
   const observeErrors = (page: Page) => page.on('console', message => {

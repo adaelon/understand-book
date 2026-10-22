@@ -13,6 +13,141 @@ use std::{
 
 const NOW: i64 = 1_790_000_000;
 const PASSWORD: &str = "fixture-only-password";
+include!("../../read-tools/testdata/math_book.rs");
+
+#[test]
+fn ranked_search_remote_hits_are_locators_until_their_source_read() {
+    let f = Fixture::new();
+    let search = f.call("alice", "book_search", json!({"published_book_ref":f.a,"query":"needle content","limit":2})).unwrap();
+    assert_eq!(search["sources"], json!([]));
+    assert!(!search["data"]["hits"].as_array().unwrap().is_empty());
+    let call = &search["data"]["hits"][0]["next_calls"][0];
+    assert_eq!(call["name"], "book_text");
+    assert_eq!(call["arguments"]["published_book_ref"], json!(f.a));
+    let read = f.next("alice", call).unwrap();
+    assert!(!read["sources"].as_array().unwrap().is_empty());
+    assert!(read["data"]["text"].as_str().unwrap().contains("needle"));
+    let resident = crate::cross_book::read(&f.library, "alice", Some(&[f.a.clone()]), "library.read",
+        json!({"operation":"search","published_book_ref":f.a,"query":"needle content","limit":2})).unwrap();
+    assert_eq!(resident.body["sources"], json!([]));
+    let resident_call = &resident.body["data"]["hits"][0]["next_calls"][0];
+    assert_eq!(resident_call["name"], "library.read");
+    assert_eq!(resident_call["arguments"]["operation"], "text");
+    let resident_read = crate::cross_book::read(&f.library, "alice", Some(&[f.a.clone()]), "library.read", resident_call["arguments"].clone()).unwrap();
+    assert!(resident_read.body["data"]["text"].as_str().unwrap().contains("needle"));
+    assert!(!resident_read.body["sources"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn workspace_search_requires_members_and_filters_before_top_k() {
+    let f = Fixture::new();
+    let search = |members: Option<&[PublishedBookRef]>, args: Value| crate::workspace_retrieval::search_with(
+        &f.library, "alice", members, args, |_| Err("semantic retrieval is not configured".into()));
+    let missing = search(None, json!({"query":"needle"})).err().unwrap();
+    assert_eq!(missing.error_code, "WORKSPACE_REQUIRED");
+    f.library.lock().unwrap().grant("alice", &f.b).unwrap();
+    let members = vec![f.a.clone()];
+    let result = search(Some(&members), json!({"query":"needle content","limit":1})).unwrap();
+    assert!(result.source.is_none());
+    assert_eq!(result.body["hits"].as_array().unwrap().len(), 1);
+    assert_eq!(result.body["hits"][0]["published_book_ref"], json!(f.a));
+    assert_eq!(result.body["retrieval"]["semantic"]["status"], "unavailable");
+    assert_eq!(result.body["exhaustive"], false);
+    let call = &result.body["hits"][0]["next_calls"][0];
+    let read = crate::cross_book::read(&f.library, "alice", Some(&members), "library.read", call["arguments"].clone()).unwrap();
+    assert!(read.body["data"]["text"].as_str().unwrap().contains("needle"));
+    let outside = search(Some(&members), json!({"query":"needle","published_book_refs":[f.b]})).err().unwrap();
+    assert_eq!(outside.error_code, "WORKSPACE_MATERIAL_UNAVAILABLE");
+    f.library.lock().unwrap().revoke("alice", &f.a).unwrap();
+    let revoked = search(Some(&[f.a.clone(), f.b.clone()]), json!({"query":"needle","limit":1})).unwrap();
+    assert_eq!(revoked.body["hits"][0]["published_book_ref"], json!(f.b));
+    let empty = search(Some(&[]), json!({"query":"needle"})).unwrap();
+    assert_eq!(empty.body["hits"], json!([]));
+}
+
+#[test]
+fn workspace_search_semantic_candidates_keep_versions_and_do_not_hold_library_lock() {
+    let f = Fixture::new();
+    let publication = f.library.lock().unwrap().load("alice", &f.a).unwrap();
+    let span = publication.book.base.lid_nodes.iter().find(|n| n.lid == "1.2").unwrap().span.clone();
+    let revision = publication.book.source_fingerprint().to_owned();
+    let result = crate::workspace_retrieval::search_with(&f.library, "alice", Some(&[f.a.clone()]), json!({"query":"generalization to unfamiliar examples"}), |request| {
+        assert!(f.library.try_lock().is_ok(), "semantic inference must not hold the library mutex");
+        assert_eq!(request.publications.len(), 1);
+        assert_eq!(request.publications[0].publication_id, f.a.publication_id);
+        assert_eq!(request.publications[0].source_revision, revision);
+        Ok(crate::semantic_retrieval::SemanticSearchResult { status:"ready".into(),reason:None,
+            hits:vec![crate::semantic_retrieval::SemanticSearchHit { book_id:f.a.book_id.clone(),publication_id:f.a.publication_id.clone(),
+                lid:"1.2".into(),start_utf16:span.start as u64,end_utf16:span.end as u64,score:0.9 }],
+            indexed_publications:1,embedded_chunks:60,cache_hits:0,query_tokens:6,document_tokens:300 })
+    }).unwrap();
+    assert!(result.source.is_none());
+    let hit = &result.body["hits"][0];
+    assert_eq!(hit["source_revision"], revision);
+    assert_eq!(hit["published_book_ref"], json!(f.a));
+    assert_eq!(hit["semantic_rank"], 1);
+    assert!(hit["lexical_rank"].is_null());
+    assert_eq!(hit["next_calls"][0]["arguments"]["start_utf16"], span.start);
+    assert_eq!(result.body["retrieval"]["semantic"]["status"], "ready");
+}
+
+#[test]
+fn workspace_search_rechecks_authorization_after_inference_before_final_limit() {
+    let f = Fixture::new();
+    f.library.lock().unwrap().grant("alice", &f.b).unwrap();
+    let result = crate::workspace_retrieval::search_with(&f.library, "alice", Some(&[f.a.clone(),f.b.clone()]),
+        json!({"query":"needle content","limit":1}), |_| {
+            f.library.lock().unwrap().revoke("alice", &f.a).unwrap();
+            Err("test lexical fallback".into())
+        }).unwrap();
+    assert_eq!(result.body["hits"].as_array().unwrap().len(), 1);
+    assert_eq!(result.body["hits"][0]["published_book_ref"], json!(f.b));
+}
+
+#[test]
+fn math_structure_remote_and_reference_reads_follow_same_publication() {
+    let f = Fixture::new();
+    let path = f.input.path().join("optimization");
+    fs::create_dir_all(&path).unwrap();
+    let (base, source, index) = optimization_math_material();
+    fs::write(path.join("base.json"), serde_json::to_vec(&base).unwrap()).unwrap();
+    fs::write(path.join("source.txt"), source).unwrap();
+    fs::write(path.join("math_structure.json"), index.to_string()).unwrap();
+    let reference = {
+        let mut library = f.library.lock().unwrap();
+        let reference = library.publish(&path).unwrap().reference;
+        library.grant("alice", &reference).unwrap();
+        reference
+    };
+    let args = json!({"published_book_ref":reference,"lid":"1.8","end_lid":"1.9"});
+    let remote = f.call("alice", "book_text", args.clone()).unwrap();
+    assert_eq!(remote["data"]["text"], optimization_math_book().text("1.8", Some("1.9")).unwrap());
+    let next = &remote["data"]["math_context"][0]["next_calls"][0];
+    assert_eq!(next["name"], "book_text");
+    assert_eq!(next["arguments"]["published_book_ref"], json!(reference));
+    let results = f.next("alice", next).unwrap();
+    assert!(results["data"]["text"].as_str().unwrap().contains("定理 6.5"));
+    let context = f.call("alice", "book_context", json!({"published_book_ref":reference,"lid":"1.9","k":2})).unwrap();
+    assert_eq!(context["data"]["items"][1]["via"]["type"], "asks_to_prove");
+    let mut library_args = args;
+    library_args["operation"] = json!("text");
+    let local = crate::cross_book::read(&f.library, "alice", None, "library.read", library_args).unwrap().body;
+    let next = &local["data"]["math_context"][0]["next_calls"][0];
+    assert_eq!(next["name"], "library.read");
+    assert_eq!(next["arguments"]["published_book_ref"], json!(reference));
+    let results = crate::cross_book::read(&f.library, "alice", None, next["name"].as_str().unwrap(), next["arguments"].clone()).unwrap();
+    assert!(results.body["data"]["text"].as_str().unwrap().contains("定理 6.5"));
+    if let Ok(dir) = std::env::var("TO12_DIR") {
+        let tools = tool_definitions();
+        let samples: Vec<_> = [("book_text", remote), ("book_context", context)].into_iter().map(|(name, body)| {
+            let mut schema = tools.iter().find(|t| t["name"] == name).unwrap()["outputSchema"].clone();
+            // McpRead owns content; the HTTP handler adds usage after charging.
+            schema["required"].as_array_mut().unwrap().retain(|key| key != "usage");
+            json!({"schema":schema,"body":body})
+        }).collect();
+        fs::write(Path::new(&dir).join("math-remote.json"), serde_json::to_vec_pretty(&samples).unwrap()).unwrap();
+    }
+}
 
 #[test]
 fn w2_library_scope_filters_before_paging_and_keeps_live_authorization() {
@@ -75,7 +210,7 @@ fn cross_book_source_preview_and_open_resolve_exact_authorized_publication() {
     let publication=f.library.lock().unwrap().load("alice",&f.a).unwrap();
     let range=read_tools::EvidenceRange {start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]};
     let resolved=publication.book.resolve_source(&range,"zh-CN",None).unwrap();
-    let binding=runtime::orchestrator::SourceBinding { media: None,source_ref_id:"ref-rust".into(),book_id:f.a.book_id.clone(),
+    let binding=runtime::orchestrator::SourceBinding { music: None, media: None,source_ref_id:"ref-rust".into(),book_id:f.a.book_id.clone(),
         publication_id:Some(f.a.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),evidence_range:Some(range),evidence_text_digest:resolved.evidence_text_digest,
         label_snapshot:"Rust".into(),preview_snapshot:resolved.preview};
     let view=crate::cross_book::source_view(&f.library,"alice",&binding,false).unwrap();
@@ -109,7 +244,7 @@ fn cross_book_learning_scenario(scope: Option<&str>) {
     let publication=f.library.lock().unwrap().load("alice",&f.a).unwrap();
     let range=read_tools::EvidenceRange {start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]};
     let resolved=publication.book.resolve_source(&range,"zh-CN",None).unwrap();
-    let source=runtime::orchestrator::SourceBinding { media: None,source_ref_id:"rust-source".into(),book_id:f.a.book_id.clone(),publication_id:Some(f.a.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),
+    let source=runtime::orchestrator::SourceBinding { music: None, media: None,source_ref_id:"rust-source".into(),book_id:f.a.book_id.clone(),publication_id:Some(f.a.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),
         evidence_range:Some(range),evidence_text_digest:resolved.evidence_text_digest,label_snapshot:"Rust".into(),preview_snapshot:resolved.preview};
     macro_rules! context { ($user:expr) => {crate::PrivateBookContext {user:$user,learning_workspace_id:scope,book:&publication.book,book_dir:publication.directory(),messages:&[],selected_chat:Some(turn.session_id.as_str())}}; }
     let mut request=json!({"operation":"observe","operation_id":"difficulty","source_ref_ids":["rust-source"],
@@ -339,7 +474,7 @@ fn mcp_read_catalog_isolates_accounts_pages_versions_and_avoids_private_or_resid
             .as_array()
             .unwrap()
             .len(),
-        9
+        10
     );
     assert_eq!(first["items"][0]["is_default"], false);
     assert_eq!(first["complete"], false);
@@ -766,7 +901,7 @@ fn mcp_read_search_context_empty_results_and_remote_parameter_validation() {
         );
     }
     let definitions = tool_definitions();
-    assert_eq!(definitions.len(), 10);
+    assert_eq!(definitions.len(), 11);
     for tool in definitions.iter().skip(1) {
         assert_eq!(tool["inputSchema"]["additionalProperties"], false);
         assert!(tool["inputSchema"]["required"]

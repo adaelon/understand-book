@@ -15,6 +15,7 @@ export type WorkspaceAuxTab = "agent" | "artifacts" | "profile" | "formula" | "n
 const props = withDefaults(defineProps<{
   logical: WorkspaceLogicalState;
   videoMode?: boolean;
+  musicMode?: boolean;
   contextKey?: string;
   preference?: DisplayPreference;
   compareIntent?: boolean;
@@ -192,11 +193,11 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
   >
     <header v-if="projection.navigation !== 'desktop'" class="workspace-mobile-top">
       <button v-if="!videoMode" type="button" aria-controls="reader-outline" :aria-expanded="outlineOpen" @click="toggleOutline">目录</button>
-      <span v-else class="workspace-video-label">视频学习</span>
+      <span v-else class="workspace-video-label">{{ musicMode ? '音乐伴听' : '视频学习' }}</span>
       <span v-if="projection.deferredFocus" role="status">当前编辑结束后显示请求区域</span>
       <span v-else-if="projection.unavailableFocus" role="status">请求区域尚未挂载</span>
       <button v-if="props.returnAvailable" type="button" class="workspace-return" @click="emit('return')">{{ props.returnLabel }}</button>
-      <button type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? '退出专注' : videoMode ? '专注观看' : '专注阅读' }}</button>
+      <button type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? '退出专注' : musicMode ? '专注聆听' : videoMode ? '专注观看' : '专注阅读' }}</button>
       <button type="button" :aria-pressed="preference === 'compare'" @click="toggleCompare">对照</button>
     </header>
 
@@ -239,8 +240,8 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
     ></button>
 
     <nav v-if="projection.navigation !== 'desktop'" class="workspace-mobile-nav" aria-label="阅读工作区">
-      <button type="button" :class="{ active: projection.foreground === 'reader' }" @click="showReader">{{ videoMode ? '视频' : '阅读' }}</button>
-      <button type="button" :class="{ active: projection.foreground === 'assistant' }" @click="showAssistant('agent')">{{ videoMode ? '伴读' : '问答' }}</button>
+      <button type="button" :class="{ active: projection.foreground === 'reader' }" @click="showReader">{{ musicMode ? '听音乐' : videoMode ? '视频' : '阅读' }}</button>
+      <button type="button" :class="{ active: projection.foreground === 'assistant' }" @click="showAssistant('agent')">{{ musicMode ? '伴听' : videoMode ? '伴读' : '问答' }}</button>
       <button type="button" @click="showAssistant('notes')">笔记</button>
       <details ref="moreMenu" class="workspace-more" @keydown.esc.stop.prevent="closeMoreMenu(true)">
         <summary>更多</summary>
@@ -259,7 +260,7 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
         @click="emit('global-actions-request')"
       >菜单</button>
       <button v-if="projection.navigation === 'compact'" type="button" :aria-pressed="preference === 'compare'" @click="toggleCompare">对照</button>
-      <button v-if="projection.navigation === 'compact'" type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? '退出专注' : videoMode ? '专注观看' : '专注阅读' }}</button>
+      <button v-if="projection.navigation === 'compact'" type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? '退出专注' : musicMode ? '专注聆听' : videoMode ? '专注观看' : '专注阅读' }}</button>
       <button v-if="projection.navigation === 'compact' && props.returnAvailable" type="button" class="workspace-return" @click="emit('return')">{{ props.returnLabel }}</button>
     </nav>
   </section>

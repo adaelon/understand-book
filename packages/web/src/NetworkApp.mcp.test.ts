@@ -12,7 +12,7 @@ const identity = { user_id: 'alice', csrf_token: 'csrf' };
 const publication = { book_id: 'book', publication_id: 'original' };
 const sourceLink = '/?book_id=book&publication_id=original&start_lid=1.1&end_lid=1.2&start_utf16=8000&end_utf16=9000';
 beforeEach(() => {
-  signedIn = false; authorized = true; calls = []; sessionStorage.clear();
+  signedIn = false; authorized = true; calls = []; sessionStorage.clear(); localStorage.clear();
   network.value = { ...network.value, workspace: null, identity: null, enabled: false };
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
     calls.push(url);
@@ -21,6 +21,7 @@ beforeEach(() => {
     if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/library') return Response.json({ books: [] });
     if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
+    if (url === '/api/me/reading-resumption') return Response.json(null);
     if (url === '/api/workspaces') {
       expect(JSON.parse(String(init.body)).published_book_ref).toEqual(publication);
       if (!authorized) return Response.json({ error_code: 'NOT_FOUND' }, { status: 404 });

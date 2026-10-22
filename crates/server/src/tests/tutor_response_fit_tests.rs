@@ -144,6 +144,7 @@ impl ModelAdapter for Replay {
     }
 
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
         if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
         unreachable!("frozen local replay never calls another helper model")
     }
@@ -353,6 +354,69 @@ fn tutor_response_fit_revises_hypothesis_without_erasing_help_or_claiming_master
         .as_array()
         .unwrap()
         .is_empty());
+}
+
+#[test]
+fn om3_open_plan_analysis_keeps_multiple_options_without_a_scoring_contract() {
+    let (_root, mut state) = super::teaching_design_tests::fixture();
+    let request = "帮我分析同一路线怎样缩短总时间；可以少停，也可以在安全条件下快一点，必要的休息要保留。先给比较框架。";
+    let run = prepare_agent_chat(&mut state, &json!({"message":request}).to_string(), "om3").unwrap();
+    let fact = format!("usage:{}:user:{}", run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap(), run.turn_ref.turn_id);
+    let mut design = super::teaching_design_tests::design_request("om3-open-plan", None);
+    design["design"]["basis_refs"] = json!([fact]);
+    design["design"]["organizing_model"] = json!("相同路程下比较行驶时间与停留时间，保留用户提出的必要休息与安全条件。");
+    design["design"]["revision_reason"] = json!("当前开放任务需要比较理由和可兼用的方案；先给框架，再由任务需要决定是否提问。");
+    let mut selection = runtime::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+        .find(|example| example["move"]["move_id"] == "compare-journey-options").unwrap().clone();
+    selection["move"]["responds_to"] = json!({"fact_refs":[fact],"disposition":"addressed"});
+    let report = super::tutor_building_blocks_tests::om3_replay(&mut state, run, design, selection, "open-plan");
+    let movement = &report["selection"]["payload"]["move"];
+    assert_eq!(movement["participation"]["choice"], "support");
+    assert!(movement["assessment"].is_null());
+    assert!(movement["response_expectation"].is_null());
+    assert_eq!(report["review_input"]["learner_grounding"]["expressions"][0]["text"], request);
+    assert_eq!(report["review_input"]["current_design"]["design"]["basis_refs"], json!([fact]));
+    assert!(report["delivery"]["payload"]["answer"].as_str().unwrap().contains("Both changes may be combined"));
+}
+
+#[test]
+fn om3_current_depth_request_overrides_history_without_rewriting_preference() {
+    use memory::{Applicability, CreateProfileFact, FactSource, PreferenceClaim, ProfileScope, Sensitivity};
+    let (_root, mut state) = super::teaching_design_tests::fixture();
+    let prior = prepare_agent_chat(&mut state, r#"{"message":"平时请用简单例子，少推导公式。"}"#, "2026-10-20T08:00:00Z").unwrap();
+    let preference = state.user.store.create_profile_fact(CreateProfileFact {
+        scope: ProfileScope::Book { book_id: state.workspace.book.base.book_id.clone() },
+        applicability: Applicability::Any,
+        payload: ProfilePayload::ExplanationPreference(PreferenceClaim { key:"depth".into(), value:"平时请用简单例子，少推导公式。".into() }),
+        source: FactSource::UserStated,
+        evidence: vec![memory::EvidenceRef::Turn { session_id:prior.turn_ref.session_id.clone(), turn_id:prior.turn_ref.turn_id.clone() }],
+        confidence: None, sensitivity: Sensitivity::Normal, valid_until: None,
+    }, "2026-10-20T08:00:00Z").unwrap();
+    super::tutor_loop_tests::finish(&mut state, &prior.turn_ref, &super::tutor_loop_tests::outcome(None));
+    let request = "这次我想深入推导，请直接解释 v = d/T 的来由和 T > 0 的条件，不用先做题。";
+    let run = prepare_agent_chat(&mut state, &json!({"message":request}).to_string(), "2026-10-20T08:01:00Z").unwrap();
+    assert_eq!(run.tutor.as_ref().unwrap()["confirmed_preferences"][0]["fact_id"], preference.fact_id);
+    let preferences = run.tutor.as_ref().unwrap()["confirmed_preferences"].clone();
+    let fact = format!("usage:{}:user:{}", run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap(), run.turn_ref.turn_id);
+    let mut design = super::teaching_design_tests::design_request("om3-deeper-now", None);
+    design["design"]["basis_refs"] = json!([fact]);
+    design["design"]["revision_reason"] = json!("当前明确要求深入推导，优先于历史少推导偏好；本次改变讲解深度，保留原偏好。");
+    let mut selection = super::teaching_design_tests::select_request("om3-derivation", "", false);
+    selection["move"]["kind"] = json!("explain");
+    selection["move"]["interaction_intent"] = json!("direct_explanation");
+    selection["move"]["intent_origin"] = json!("current_request");
+    selection["move"]["intent_quote"] = json!(request);
+    selection["move"]["responds_to"] = json!({"fact_refs":[fact],"disposition":"addressed"});
+    selection["move"]["participation"] = json!({"choice":"conclude","reason":"当前要求直接推导；给出完整关系与条件后收束。"});
+    selection["move"]["delivery_text"] = json!("把平均速度 v 定义为在同一总时间 T 内走完同一总路程 d 的恒定速度。恒定速度下路程是 vT，因此 vT = d。当 T > 0 时，两边除以 T 得 v = d/T。T 为零时不能作这个除法；总时间包括出发至到达之间的停留。");
+    let report = super::tutor_building_blocks_tests::om3_replay(&mut state, run, design, selection, "current-depth");
+    assert_eq!(report["review_input"]["frozen_input"]["confirmed_preferences"], preferences);
+    assert_eq!(report["delivery"]["payload"]["move"]["intent_origin"], "current_request");
+    assert_eq!(report["delivery"]["payload"]["move"]["intent_quote"], request);
+    assert!(report["delivery"]["payload"]["move"]["response_expectation"].is_null());
+    let next = prepare_agent_chat(&mut state, r#"{"message":"继续。"}"#, "2026-10-20T08:02:00Z").unwrap();
+    assert_eq!(next.tutor.unwrap()["confirmed_preferences"], preferences,
+        "a one-turn depth request must not mutate or add a long-term preference");
 }
 
 #[test]

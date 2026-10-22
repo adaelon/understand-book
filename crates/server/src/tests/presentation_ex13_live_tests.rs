@@ -88,6 +88,7 @@ fn continuation(root: &Path) -> (AppState, Value, Value) {
     let receipt = state.private_context().save_presentation_state(&session_id,
         version["created_by_turn_id"].as_str().unwrap(), &reference,
         runtime::presentation::PresentationState {
+            observation: None,
             values:json!({"page":scene["state"]["values"],"controls":[]}),
             visible_step:None,observed_result:scene["selected_text"].as_str().unwrap().into(),source_ref_ids:vec![],
         }).unwrap();

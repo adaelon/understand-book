@@ -36,7 +36,7 @@ fn video_revision_failure_history_notes_and_explicit_switch_keep_original_source
         let session = user.agent_history.sessions.iter().find(|s|s.id==port.scope.chat_session_id).unwrap();
         let turn = &session.turns[0];
         let reference = AgentTurnRef {session_id:session.id.clone(),turn_id:turn.turn_id.clone(),user_turn_ordinal:turn.user_turn_ordinal};
-        crate::session_runtime::append(&mut user,&reference,"source",crate::session_event::EventBody::SourcesBound {bindings:vec![SourceBinding { publication_id: None, source_revision: None,
+        crate::session_runtime::append(&mut user,&reference,"source",crate::session_event::EventBody::SourcesBound {bindings:vec![SourceBinding { music: None, publication_id: None, source_revision: None,
             source_ref_id:"vi17-old".into(),book_id:original.book_id.clone(),evidence_range:None,evidence_text_digest:String::new(),
             media:Some(media),label_snapshot:"原正文".into(),preview_snapshot:"A frame.".into()}]}).unwrap();
     }
@@ -107,7 +107,7 @@ fn video_source_history_uses_original_network_publication_and_authorization() {
         let session = user.agent_history.sessions.iter().find(|s| s.id == port.scope.chat_session_id).unwrap();
         let turn = &session.turns[0];
         let reference = AgentTurnRef { session_id: session.id.clone(), turn_id: turn.turn_id.clone(), user_turn_ordinal: turn.user_turn_ordinal };
-        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding { music: None, publication_id: None, source_revision: None,
             source_ref_id: "saved-media".into(), book_id: original.book_id.clone(), evidence_range: None, evidence_text_digest: String::new(),
             media: Some(media), label_snapshot: "旧英文来源".into(), preview_snapshot: "A frame.".into(),
         }] }).unwrap();
@@ -145,7 +145,7 @@ fn video_source_original_frames_translations_joint_snapshot_and_unavailable() {
     ] }] {
         let media = crate::video_source::snapshot(&book, root.path(), target).unwrap();
         assert_eq!(media.translations[0].zh_text, "一帧。");
-        let binding = SourceBinding { publication_id: None, source_revision: None, source_ref_id: "source-original".into(), book_id: publication.book_id.clone(), evidence_range: None, evidence_text_digest: String::new(), label_snapshot: "原片来源".into(), preview_snapshot: "A frame.".into(), media: Some(media) };
+        let binding = SourceBinding { music: None, publication_id: None, source_revision: None, source_ref_id: "source-original".into(), book_id: publication.book_id.clone(), evidence_range: None, evidence_text_digest: String::new(), label_snapshot: "原片来源".into(), preview_snapshot: "A frame.".into(), media: Some(media) };
         let saved: SourceBinding = serde_json::from_str(&serde_json::to_string(&binding).unwrap()).unwrap();
         // A revisable VU artifact cannot redirect this saved reference.
         std::fs::write(root.path().join("visual_units.json"), r#"{"units":[{"id":"replacement","start_ms":1500}]}"#).unwrap();

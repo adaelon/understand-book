@@ -21,6 +21,8 @@ mod w5_browser_host;
 mod w6_learning_records_tests;
 #[path = "e1_workspace_integration_tests.rs"]
 mod e1_workspace_integration_tests;
+#[path = "interactive_teaching_om6_network_tests.rs"]
+mod om6;
 
 #[derive(Clone, Default)]
 struct Probe {
@@ -2136,7 +2138,7 @@ fn jl8_network_recap_keeps_private_owner_and_original_publication_without_execut
         let session = &user.agent_history.sessions[0];
         let turn = &session.turns[0];
         let reference = AgentTurnRef { session_id: session.id.clone(), turn_id: turn.turn_id.clone(), user_turn_ordinal: turn.user_turn_ordinal };
-        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+        crate::session_runtime::append(&mut user, &reference, "source", crate::session_event::EventBody::SourcesBound { bindings: vec![SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None,
             source_ref_id: "original-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(range),
             evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview,

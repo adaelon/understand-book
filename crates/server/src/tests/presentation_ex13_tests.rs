@@ -48,6 +48,7 @@ fn ex13_follow_up_projects_locators_and_reads_the_exact_old_version_on_demand() 
     let original = persist(&mut state, &first, &candidate);
     finish(&mut state, &first, &original).unwrap();
     let observation = PresentationState {
+        observation: None,
         values: json!({"page":{"count":1,"mode":"compare"},"controls":[{"id":"mode","value":"compare"}]}),
         visible_step: Some("compare".into()),
         observed_result: "Found one piece".into(),
@@ -138,6 +139,7 @@ fn ex13_follow_up_write_requires_an_exact_base_or_explicit_new_object() {
     let reference = persist(&mut state, &first, &base);
     finish(&mut state, &first, &reference).unwrap();
     let scene = |count| PresentationState {
+        observation: None,
         values: json!({"page":{"count":count},"controls":[]}),
         visible_step: Some("compare".into()),
         observed_result: format!("Found {count} pieces"),
@@ -222,7 +224,7 @@ fn ex13_follow_up_write_requires_an_exact_base_or_explicit_new_object() {
     // Storage/intent test: seed the existing host receipt; browser behavior is unchanged.
     port.previewed.insert(
         candidate_id.clone(),
-        std::collections::HashSet::from(["legacy".into()]),
+        runtime::presentation_preview::REQUIRED_PREVIEW_ENVIRONMENTS.iter().map(|(name,_)|(*name).to_owned()).collect(),
     );
     let delivered = author(
         &mut port,
@@ -254,7 +256,7 @@ fn ex13_follow_up_write_requires_an_exact_base_or_explicit_new_object() {
     assert!(author(&mut port, json!({"operation":"deliver","candidate_id":id})).is_err());
     port.previewed.insert(
         id.clone(),
-        std::collections::HashSet::from(["legacy".into()]),
+        runtime::presentation_preview::REQUIRED_PREVIEW_ENVIRONMENTS.iter().map(|(name,_)|(*name).to_owned()).collect(),
     );
     let independent = author(&mut port, json!({"operation":"deliver","candidate_id":id}))
         .unwrap()

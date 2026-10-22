@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, toRaw, watch } from "vue";
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toRaw, watch } from "vue";
 import { createYeyeFeedback } from './yeye-feedback';
 import ShareImagePanel from './components/ShareImagePanel.vue';
 import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
@@ -12,10 +12,12 @@ import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
 import BookCover from './components/BookCover.vue';
 import { bookTitle } from './book-title';
 import VideoReaderPane from './components/VideoReaderPane.vue';
+import MusicReaderPane from './components/MusicReaderPane.vue';
+import type { MusicContext, MusicQuestionContext } from './music-api';
 import { mediaSourceStart, type MediaSourceSnapshot } from './api';
 import { createVideoQuestion, videoWindowId } from './video-question';
 import { createVideoAdoption } from './video-adoption';
-import type { PublishedVideo } from './video-api';
+import type { PublishedVideo, VideoPlayback } from './video-api';
 import { publishedUrl } from './network-client';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
@@ -26,23 +28,36 @@ import { typographyHtml } from './reader-typography';
 import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
-const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean }>(), { readerVisible: true });
+const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; materialTitle?: string }>(), { readerVisible: true });
 const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void }>();
 import { spendNotice, type SpendNotice } from './account-allowance';
 const api = bindSceneApi(sharedApi, readerKey);
 const mountedReaderKey = readerKey();
 const publishedVideo = ref<PublishedVideo | null>(null);
+const videoPlayback = ref<VideoPlayback | null>(null);
+const videoMode = computed(() => !!videoPlayback.value || !!publishedVideo.value);
+const musicContext = ref<MusicContext | null>(null);
+const musicMode = computed(() => !!musicContext.value);
+const mediaMode = computed(() => videoMode.value || musicMode.value);
+const musicPane = ref<InstanceType<typeof MusicReaderPane>>();
+const musicQuestionContext = ref<MusicQuestionContext | null>(null);
+function askMusic(context: MusicQuestionContext) { musicQuestionContext.value = context; agentInput.value ||= '刚才这一段，应该注意听什么？'; workspaceRef.value?.showAssistant('agent'); }
+function clearMusicQuestion() { musicQuestionContext.value = null; }
+const videoDetailsLoading = ref(false), videoDetailsError = ref('');
 const videoFrameReady = ref(false);
 const videoPane = ref<InstanceType<typeof VideoReaderPane>>();
 const videoQuestion = createVideoQuestion(videoWindowId(), input => api.videoDraft(input), id => {
   if (!videoPane.value) throw new Error('请等待视频加载');
   return videoPane.value.captureQuestion(id);
 });
-const videoInitial = computed(() => publishedVideo.value ? {
-  video: publishedVideo.value.source.video, title: publishedVideo.value.source.original_path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '').replace(/_/g, ' ') || '视频学习', stage: 'awaiting_transcript' as const,
-  copied_bytes: 1, total_bytes: 1, duration_ms: publishedVideo.value.source.duration_ms,
-  playable: true, qa_ready: false as const, english_ready: true, failure: null, publication: publishedVideo.value.publication,
-} : null);
+const videoInitial = computed(() => {
+  const video = videoPlayback.value ?? publishedVideo.value;
+  return video ? {
+    video: video.source.video, title: recapProps.materialTitle || videoPlayback.value?.title || video.source.original_path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '').replace(/_/g, ' ') || '视频学习', stage: 'awaiting_transcript' as const,
+    copied_bytes: 1, total_bytes: 1, duration_ms: video.source.duration_ms,
+    playable: true, qa_ready: false as const, english_ready: true, failure: null, publication: video.publication,
+  } : null;
+});
 const videoMediaUrl = ref('');
 const videoAdoption = createVideoAdoption(
   () => !network.value.workspace?.learning_workspace_id && !!publishedVideo.value && !agentHistoryLoading.value && !agentHistoryError.value
@@ -70,11 +85,17 @@ watch(() => network.value.workspace?.published_book_ref.publication_id, async ()
 function onAgentInput(value: string) {
   agentInput.value = value;
   if (publishedVideo.value) videoQuestion.input(value);
+  if (musicContext.value && value.trim() && !musicQuestionContext.value) { try { musicQuestionContext.value = musicPane.value?.captureQuestion() ?? null; } catch (failure) { banner.value = (failure as Error).message; } }
 }
 function enterMediaSource(source: MediaSourceSnapshot) {
   if (publishedVideo.value?.publication.book_id !== source.publication.book_id) return;
   const ms = mediaSourceStart(source);
   if (Number.isFinite(ms)) videoPane.value?.seek(ms);
+}
+function enterMusicSource(source: import('./music-api').MusicSourceSnapshot) {
+  const current = musicContext.value?.publication, target = source.target;
+  if (!current || current.book_id !== target.publication.book_id || current.publication_id !== target.publication.publication_id) return;
+  try { musicPane.value?.openSource(target); workspaceRef.value?.showReader(); } catch (failure) { banner.value = (failure as Error).message; }
 }
 function cancelVideoDraft() { videoQuestion.clear(); agentInput.value = ''; }
 let imageContext: import('../../core/src/generated/VideoQuestionContext').VideoQuestionContext | undefined;
@@ -211,6 +232,8 @@ import {
 import TopBar from "./components/TopBar.vue";
 import TutorControl from './components/TutorControl.vue';
 import ConversationLearningGoal from './components/ConversationLearningGoal.vue';
+import { learningPurposeLabel, type LearningScopeKind, type LearningScopeOption } from './learning-purpose';
+import type { LearningPurpose } from './generated/LearningPurpose';
 import TutorPanel from './components/TutorPanel.vue';
 import { useTutorControl } from './useTutorControl';
 import BuildWorkbenchPane from "./components/BuildWorkbenchPane.vue";
@@ -437,7 +460,6 @@ const bookPickerDir = ref("");
 const bookPickerMode = ref<"open" | "create">("open");
 const newBookTitle = ref("");
 const generatedNewBookId = computed(() => generateBookIdFromTitle(newBookTitle.value));
-const newBookMarkdown = ref<File | null>(null);
 const newBookPdf = ref<File | null>(null);
 const openingBook = ref(false);
 const desktopNeedsBook = ref(false);
@@ -1354,7 +1376,13 @@ async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
   noteTransition.value = null;
   pending.resolve(action !== 'continue');
 }
-defineExpose({ beforeNoteLeave });
+defineExpose({ beforeNoteLeave, prepareExamQuestion });
+function prepareExamQuestion(message: string) {
+  askDraft.value = null;
+  targetGoalId.value = null;
+  agentInput.value = message;
+  workspaceRef.value?.showAssistant('agent');
+}
 async function beginNote(draft: Omit<NoteDraft, 'materialKey' | 'initialContent'>) {
   if (draft.memId && noteEditor.value?.memId === draft.memId && !draft.selectionContext) { noteCollapsed.value = false; return; }
   const materialKey = noteMaterialKey.value;
@@ -2332,6 +2360,21 @@ async function rejectBuildIntent(payload: { plan_id: string }) {
 }
 
 let workspaceLoadSeq = 0;
+async function loadVideoDetails(current: () => boolean) {
+  videoDetailsLoading.value = true;
+  videoDetailsError.value = '';
+  try {
+    const video = await api.videoContext();
+    if (!current()) return;
+    if (!video) throw new Error('视频字幕暂不可用，请重新打开资料。');
+    publishedVideo.value = video;
+    await videoQuestion.restore();
+    if (!current()) return;
+    if (videoQuestion.draft.value) agentInput.value = videoQuestion.draft.value.message;
+  } catch (error) {
+    if (current()) videoDetailsError.value = (error as Error).message;
+  } finally { if (current()) videoDetailsLoading.value = false; }
+}
 async function init() {
   const request = ++workspaceLoadSeq;
   const current = () => !disposed && request === workspaceLoadSeq;
@@ -2368,12 +2411,20 @@ async function init() {
       return;
     }
     desktopNeedsBook.value = false;
-    const video = await api.videoContext();
+    const [video, music] = await Promise.all([api.videoPlayback(), api.musicContext()]);
     if (!current()) return;
-    if (video) readerOnly.value = true;
-    const workbench = network.value.enabled || video ? null : await loadBuildWorkbenchSnapshot();
-    if (network.value.enabled || video) {
-      const reference = video?.publication ?? network.value.workspace!.published_book_ref;
+    musicContext.value = music; musicQuestionContext.value = null;
+    videoPlayback.value = video;
+    publishedVideo.value = null;
+    const videoDetails = video ? loadVideoDetails(current) : Promise.resolve();
+    if (video || music) {
+      readerOnly.value = true;
+      videoMediaUrl.value = network.value.enabled ? `/api${publishedUrl('video/media')}` : '/api/book/video/media';
+      appSurface.value = 'reader';
+    }
+    const workbench = network.value.enabled || video || music ? null : await loadBuildWorkbenchSnapshot();
+    if (network.value.enabled || video || music) {
+      const reference = music?.publication ?? video?.publication ?? network.value.workspace!.published_book_ref;
       buildWorkbenchSnapshot.value = { book_id: reference.book_id, readiness: { route: "reader", reasons: [], stages: {} } } as unknown as BuildWorkbenchSnapshot;
     }
     if (!workbench && buildWorkbenchError.value) {
@@ -2396,13 +2447,6 @@ async function init() {
     if (buildWorkbenchSnapshot.value?.book_id !== noteSource.book_id) {
       throw new Error("Note source identity does not match the active book");
     }
-    publishedVideo.value = video;
-    if (video) {
-      videoMediaUrl.value = network.value.enabled ? `/api${publishedUrl('video/media')}` : '/api/book/video/media';
-      await videoQuestion.restore();
-      if (!current()) return;
-      if (videoQuestion.draft.value) agentInput.value = videoQuestion.draft.value.message;
-    }
     noteSourceFingerprint.value = noteSource.source_fingerprint;
     await nextTick(); // Apply this book's saved reading surface before deciding what blocks display.
     sourceManifestTree.value = m;
@@ -2416,6 +2460,7 @@ async function init() {
     await Promise.all([
       loadWindow(st.viewport, "replace", st.viewport.top_lid, current, false),
       readerSurfacePreference.value === "markdown" ? Promise.resolve() : pdfReady,
+      videoDetails,
     ]);
     if (!current()) return;
     appSurface.value = "reader";
@@ -3456,6 +3501,7 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  musicQuestion?: MusicQuestionContext | null;
   videoQuestion?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   hasTeaching?: boolean;
   interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction | null;
@@ -3514,6 +3560,15 @@ watch(() => [recapProps.recapTarget, agentHistoryLoading.value, rightRailRef.val
   } catch (failure) { fail(failure); }
 });
 const askDraft = ref<AskDraft | null>(recapProps.chatDraft?.quote ?? null);
+const learningScopeOptions = computed<LearningScopeOption[]>(() => [
+  ...(askDraft.value?.quote.trim() && askDraft.value.status !== 'partial' ? [{ value: 'selection' as const, label: '当前选中的原文' }] : []),
+  ...(guideChapter.value ? [{ value: 'chapter' as const, label: musicMode.value ? `《${guideChapter.value.title}》这首作品` : `《${guideChapter.value.title}》这一章` }] : []),
+  { value: 'material', label: recapProps.materialTitle || (musicMode.value ? '当前作品与资料' : '当前材料') },
+]);
+const learningPurposeAvailable = computed(() => !!buildWorkbenchSnapshot.value?.book_id && !!noteSourceFingerprint.value
+  && !mediaMode.value && !agentHistoryLoading.value && !agentHistoryError.value);
+const learningPurposeReady = computed(() => !!tutor.state.value && !tutor.busy.value && !tutor.pending.value
+  && tutor.readiness.value?.status === 'ready' && !tutor.readinessError.value);
 watch([agentInput, askDraft, targetGoalId], ([message, quote, goalId]) => {
   if (!disposed) recapEmit('update:chatDraft', { message, quote, goalId });
 }, { flush: 'sync' });
@@ -4038,6 +4093,7 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
   return {
     videoQuestion: turn.video_question,
+    musicQuestion: turn.music_question,
     spendStop: spendNotice(turn.error, turn.status === 'pending_assistant' ? 'pending' : 'saved'),
     interaction: turn.domain?.interaction,
     dispositions: Object.fromEntries((turn.domain?.effects ?? []).filter(e => e.disposition).map(e => [e.effect_id, e.disposition!])),
@@ -4193,24 +4249,16 @@ async function tutorAction(action: import("./generated/TutorAction").TutorAction
     await startTutorRequest();
   }
 }
-async function startTutorRequest(chapter?: { lid: string; title: string; sourceId: string; sourceRevision?: string; sessionId: string; head: string | null }) {
+async function startTutorRequest() {
     try {
       const result = await api.tutorStart();
       await tutor.load();
       if (tutor.error.value || tutor.pending.value) return;
-      if (chapter && (activeChatSessionId.value !== chapter.sessionId || (noteSourceFingerprint.value ?? undefined) !== chapter.sourceRevision)) return;
       if (result.started && result.message && sending.value) {
         banner.value = "教学设置已保存，当前回复完成后可点击继续教学。";
       } else if (result.started && result.message) {
         tutorPanelOpen.value = false;
-        if (chapter) {
-          workspaceRef.value?.showAssistant('agent');
-          await submitAgentMessage('', `带我读《${chapter.title}》这一章`, null, undefined, {
-            entry_action: 'guide_chapter', chapter_lid: chapter.lid, source_id: chapter.sourceId,
-            source_revision: chapter.sourceRevision, session_id: chapter.sessionId,
-            client_request_id: crypto.randomUUID(), expected_chat_head: chapter.head,
-          });
-        } else await submitAgentMessage(result.message, "继续学习", null);
+        await submitAgentMessage(result.message, "继续学习", null);
       } else if (result.reason) banner.value = result.reason;
     } catch (failure) {
       if (!disposed && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) {
@@ -4220,34 +4268,45 @@ async function startTutorRequest(chapter?: { lid: string; title: string; sourceI
 }
 async function guideCurrentChapter() {
   const chapter = guideChapter.value;
-  const sourceId = tutor.readiness.value?.source_id;
-  if (!chapter || !sourceId || guidingChapter.value || sending.value || tutor.busy.value || tutor.pending.value
-    || !tutor.state.value || tutor.readiness.value?.status !== 'ready' || tutor.readinessError.value
-    || agentHistoryLoading.value || agentHistoryError.value || hasUnconfirmedReadingRequest()) return;
-  const request = { lid: chapter.lid, title: chapter.title, sourceId, sourceRevision: noteSourceFingerprint.value ?? undefined,
-    sessionId: activeChatSessionId.value, head: actionHead() };
+  if (chapter) await startLearningPurpose('understand', 'chapter', `带我读《${chapter.title}》这一章`);
+}
+async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: LearningScopeKind, display?: string) {
+  if (!learningPurposeAvailable.value || guidingChapter.value || sending.value || hasUnconfirmedReadingRequest()
+    || (purpose !== 'discover' && !learningPurposeReady.value)) return;
+  const scope = learningScopeOptions.value.find(option => option.value === (scopeKind ?? learningScopeOptions.value[0]?.value));
+  if (!scope) return;
+  const request = {
+    sourceId: buildWorkbenchSnapshot.value!.book_id, sourceRevision: noteSourceFingerprint.value!,
+    sessionId: activeChatSessionId.value, scene: chatSceneKey.value, head: actionHead(),
+    chapterLid: scope.value === 'chapter' ? guideChapter.value?.lid : undefined,
+    quote: scope.value === 'selection' && askDraft.value ? structuredClone(toRaw(askDraft.value)) : null,
+  };
   guidingChapter.value = true;
   try {
-    if (!tutor.state.value.control.enabled) {
+    if (purpose !== 'discover' && !tutor.state.value?.control.enabled) {
       await tutorAction({ kind: 'set_enabled', enabled: true });
       if (tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
     }
-    const session = tutor.current.value;
-    const sameChapter = session?.material_scope.some(material => material.source_id === sourceId && material.scope_refs.includes(request.lid));
-    if (!sameChapter || session?.status === 'ended') {
-      await tutor.act({ kind: 'start', user_intent: `带我读《${request.title}》这一章`, explicit_constraints: [],
-        material_scope: [{ source_id: sourceId, scope_refs: [request.lid], role: 'primary' }], default_teaching_intent: null });
-    } else if (session?.status === 'paused') await tutor.act({ kind: 'resume', session_id: session.id });
+    if (disposed || request.scene !== chatSceneKey.value || request.sessionId !== activeChatSessionId.value
+      || request.sourceRevision !== noteSourceFingerprint.value) return;
+    tutorPanelOpen.value = false;
+    workspaceRef.value?.showAssistant('agent');
+    await submitAgentMessage('', display ?? `${learningPurposeLabel(purpose, musicMode.value)} · ${scope.label}`, request.quote, undefined, {
+      entry_action: 'learn_with_purpose', learning_purpose: purpose, chapter_lid: request.chapterLid,
+      source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
+      client_request_id: crypto.randomUUID(), expected_chat_head: request.head,
+    });
+    await tutor.load();
     window.dispatchEvent(new Event('tutor-state-changed'));
-    if (tutor.error.value || tutor.pending.value) return;
-    await startTutorRequest(request);
   } finally { guidingChapter.value = false; }
 }
 async function setConversationLearningGoal(intent: string) {
   const sourceId = tutor.readiness.value?.source_id;
   if (!sourceId || sending.value) return;
-  await tutor.act({ kind: 'start', user_intent: intent, explicit_constraints: [],
-    material_scope: [{ source_id: sourceId, scope_refs: [], role: 'primary' }], default_teaching_intent: null });
+  const session = tutor.currentForSource.value;
+  await tutor.act({ kind: 'start', user_intent: intent, explicit_constraints: session?.explicit_constraints ?? [],
+    material_scope: session?.material_scope ?? [{ source_id: sourceId, scope_refs: [], role: 'primary' }],
+    learning_purpose: session?.learning_purpose, default_teaching_intent: session?.default_teaching_intent ?? null });
   window.dispatchEvent(new Event('tutor-state-changed'));
 }
 async function resumeConversationLearning() {
@@ -4343,28 +4402,23 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       ranges: visible.ranges.map(r => ({ lid: r.lid, range: { start: r.start, end: r.end } })) };
   }
   let videoMeta: { video_window_id?: string; video_draft_id?: string } = {};
-  if (publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice) {
-    try {
-      // A plain workspace draft can arrive from another material before the video loads.
-      if (!videoQuestion.draft.value || videoQuestion.draft.value.message !== msg) videoQuestion.input(msg);
-      videoMeta = await videoQuestion.submission();
-    }
-    catch (error) { fail(error); return; }
-  }
+  const saveVideoDraft = publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice;
   const questionAnchorLid = goalMeta.chapter_lid ?? (goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? readingAnchorLid.value);
-  const turn: ChatTurn = {
+  const turn = reactive<ChatTurn>({
     teachingRef: goalMeta.teaching_ref,
+    musicQuestion: musicQuestionContext.value ? structuredClone(JSON.parse(JSON.stringify(musicQuestionContext.value))) : undefined,
     videoQuestion: videoQuestion.draft.value ? JSON.parse(JSON.stringify(videoQuestion.draft.value.context)) : undefined,
     presentationFollowUp,
     turnId: null,
     user: displayUser,
     outcome: null,
     pending: true,
+    runStatus: saveVideoDraft ? '正在保存视频提问…' : '正在提交问题…',
     questionAnchorLid,
     questionQuote: draft ? localQuestionQuoteView(draft) : null,
     questionSelection: draft ? { ...draft } : null,
     effectLabels: [],
-  };
+  });
   const submissionSessionId = activeChatSessionId.value;
   const submission = ++submissionSequence;
   const submissionIdentity = network.value.identity;
@@ -4372,13 +4426,26 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   chat.value.push(turn);
   acceptingRun.value = true;
   banner.value = "";
+  let requestStarted = false;
   try {
+    if (saveVideoDraft) {
+      // A plain workspace draft can arrive from another material before the video loads.
+      if (!videoQuestion.draft.value || videoQuestion.draft.value.message !== msg) videoQuestion.input(msg);
+      videoMeta = await videoQuestion.submission();
+      if (disposed || submission !== submissionSequence) return;
+      turn.videoQuestion = JSON.parse(JSON.stringify(videoQuestion.draft.value!.context));
+    }
+    turn.runStatus = '正在提交问题…';
     await flushFocusPosition();
+    if (disposed || submission !== submissionSequence) return;
+    requestStarted = true;
     const result = await api.agentRunCreate(msg, {
+      music_question: musicQuestionContext.value ?? undefined,
       presentation_follow_up: presentationFollowUp,
       ...videoMeta,
       ...goalMeta,
-      display_user: displayUser, question_anchor_lid: questionAnchorLid,
+      display_user: displayUser,
+      question_anchor_lid: goalMeta.entry_action === 'learn_with_purpose' && !draft ? undefined : questionAnchorLid,
       question_quote: draft ? { ...draft } : null,
     });
     if ('turn_id' in result && submittedDraft && submissionIdentity?.user_id === network.value.identity?.user_id && submissionIdentity?.csrf_token === network.value.identity?.csrf_token) {
@@ -4387,11 +4454,12 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     if (disposed || submission !== submissionSequence) return;
     if ("turn_id" in result) {
       if (videoMeta.video_draft_id) { videoQuestion.accepted(videoMeta.video_draft_id); agentInput.value = ''; }
+      if (musicQuestionContext.value) { musicQuestionContext.value = null; agentInput.value = ''; }
       turn.turnId = result.turn_id;
       activeChatSessionId.value = result.session_id;
       residentRun.observe(result);
     } else if ('kind' in result && result.kind === 'activity_help') {
-      chat.value = chat.value.filter(candidate => toRaw(candidate) !== turn);
+      chat.value = chat.value.filter(candidate => toRaw(candidate) !== toRaw(turn));
       activityHelpLocation.value = result.activity ? { ...result.activity, delivery_refs: result.delivery_refs } : null;
       banner.value = '这段内容属于当前待答题，请使用原题的提示或直接讲解；未提供帮助时可返回原文阅读。';
       await nextTick();
@@ -4406,7 +4474,10 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     if (disposed || submission !== submissionSequence) return;
     turn.pending = false;
     const stop = error instanceof ApiError ? spendNotice({ error_code: error.errorCode, category: error.category, message: error.message }, 'unsubmitted') : undefined;
-    if (stop) {
+    if (!requestStarted) {
+      // Saving a draft has not submitted a model request; retain it for a retry.
+      turn.error = (error as Error).message;
+    } else if (stop) {
       turn.spendStop = stop;
       turn.error = stop.message;
       restoreAllowanceDraft(turn, submittedDraft);
@@ -4424,6 +4495,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       try { applyAgentHistory(await api.agentHistory()); } catch { /* Keep the explicit unknown state. */ }
     }
   } finally {
+    if (!turn.turnId) turn.runStatus = undefined;
     if (submission === submissionSequence) acceptingRun.value = false;
   }
 }
@@ -4748,20 +4820,9 @@ function switchBookPickerMode(mode: "open" | "create") {
   bookPickerError.value = null;
 }
 
-function selectNewBookMarkdown(file: File | null) {
-  newBookMarkdown.value = file;
-  if (!file) return;
-  const inferredTitle = file.name.replace(/\.md$/i, "");
-  if (!newBookTitle.value.trim()) newBookTitle.value = inferredTitle;
-}
-
-function readLocalFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("读取 Markdown 文件失败"));
-    reader.readAsText(file);
-  });
+function selectNewBookPdf(file: File | null) {
+  newBookPdf.value = file;
+  if (file && !newBookTitle.value.trim()) newBookTitle.value = file.name.replace(/\.pdf$/i, "");
 }
 
 function readLocalFileAsBase64(file: File): Promise<string> {
@@ -4780,14 +4841,13 @@ async function submitCreateBook() {
   if (!await beforeNoteLeave('创建另一份材料')) return;
   const title = newBookTitle.value.trim();
   const bookId = generatedNewBookId.value;
-  const markdown = newBookMarkdown.value;
   const pdf = newBookPdf.value;
   if (!title || !bookId) {
     bookPickerError.value = "请输入论文标题，书 ID 将由系统自动生成。";
     return;
   }
-  if (!markdown || !pdf) {
-    bookPickerError.value = "请选择 Markdown 和 PDF 文件。";
+  if (!pdf) {
+    bookPickerError.value = "请选择 PDF 文件。";
     return;
   }
   try {
@@ -4797,7 +4857,6 @@ async function submitCreateBook() {
     const snapshot = await api.createBook({
       book_id: generatedNewBookId.value,
       display_title: title,
-      paper_md_text: await readLocalFileAsText(markdown),
       paper_pdf_base64: await readLocalFileAsBase64(pdf),
     });
     resetBookSessionUi();
@@ -4806,7 +4865,6 @@ async function submitCreateBook() {
     bookPickerOpen.value = false;
     bookPickerMode.value = "open";
     newBookTitle.value = "";
-    newBookMarkdown.value = null;
     newBookPdf.value = null;
   } catch (e) {
     bookPickerError.value = e instanceof Error ? e.message : String(e);
@@ -4938,14 +4996,15 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 <template>
   <div class="app" :style="typography.style.value">
     <TopBar
-      :video-mode="!!publishedVideo"
+      :video-mode="mediaMode"
+      :music-mode="musicMode"
       :focus-available="appSurface === 'reader'"
       :focus-reading="focusReading"
       @toggle-focus="workspaceRef?.toggleFocus()"
-      :typography-available="appSurface === 'reader' && !publishedVideo"
+      :typography-available="appSurface === 'reader' && !mediaMode"
       @open-typography="typography.open.value = true"
-      :chapter-title="publishedVideo ? '视频伴读' : appSurface === 'workbench' ? '构建工作台' : activeChapterTitle"
-      :guide-chapter-title="appSurface === 'reader' && !publishedVideo ? guideChapter?.title : undefined"
+      :chapter-title="musicMode ? '音乐伴听' : videoMode ? '视频伴读' : appSurface === 'workbench' ? '构建工作台' : activeChapterTitle"
+      :guide-chapter-title="appSurface === 'reader' && !mediaMode ? guideChapter?.title : undefined"
       :guide-chapter-enabled="!!tutor.state.value?.control.enabled"
       :guide-chapter-busy="guidingChapter || sending || tutor.busy.value || !!tutor.pending.value || !tutor.state.value || tutor.readiness.value?.status !== 'ready' || !!tutor.readinessError.value"
       @guide-chapter="guideCurrentChapter"
@@ -4972,7 +5031,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       <template #account><slot name="account" /></template>
     </TopBar>
     <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
-    <TutorPanel v-if="tutorPanelOpen" :initial-view="tutorPanelView" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value" @action="tutorAction" @retry="tutor.retry" @close="tutorPanelOpen = false" />
+    <TutorPanel v-if="tutorPanelOpen" :music-mode="musicMode" :initial-view="tutorPanelView" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value"
+      :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable" :learning-purpose-busy="guidingChapter || sending"
+      @learning-purpose="startLearningPurpose" @action="tutorAction" @retry="tutor.retry" @close="tutorPanelOpen = false" />
 
     <AlignmentQualityBar
       v-if="appSurface === 'reader' && sourceManifest?.alignment_quality"
@@ -5206,23 +5267,16 @@ async function submitOpenBook(dir = bookPickerDir.value) {
               </output>
             </label>
             <FileDropField
-              :model-value="newBookMarkdown"
-              label="Markdown"
-              accept=".md,text/markdown,text/plain"
-              accept-label=".md"
-              kind="markdown"
-              :disabled="openingBook"
-              @update:model-value="selectNewBookMarkdown"
-            />
-            <FileDropField
-              v-model="newBookPdf"
+              :model-value="newBookPdf"
               label="PDF"
               accept=".pdf,application/pdf"
               accept-label=".pdf"
               kind="pdf"
               :disabled="openingBook"
+              @update:model-value="selectNewBookPdf"
             />
           </div>
+          <p class="book-picker-root">直接导入 PDF。自动提取正文，扫描页补充文字识别，准备好后进入阅读。</p>
           <p v-if="bookPickerRoot" class="book-picker-root">{{ bookPickerRoot }}</p>
           <p v-if="bookPickerError" class="book-picker-error">{{ bookPickerError }}</p>
         </div>
@@ -5240,10 +5294,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <button
             v-else
             class="primary-action"
-            :disabled="openingBook || !newBookTitle.trim() || !generatedNewBookId || !newBookMarkdown || !newBookPdf"
+            :disabled="openingBook || !newBookTitle.trim() || !generatedNewBookId || !newBookPdf"
             @click="submitCreateBook"
           >
-            {{ openingBook ? "创建中" : "创建并进入工作台" }}
+            {{ openingBook ? "正在导入…" : "导入并阅读" }}
           </button>
         </footer>
       </section>
@@ -5283,7 +5337,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     <ReaderWorkspace
       v-else-if="appSurface === 'reader'"
       ref="workspaceRef"
-      :video-mode="!!publishedVideo"
+      :video-mode="mediaMode"
+      :music-mode="musicMode"
       :logical="workspaceLogicalState"
       :context-key="readerContextKey"
       :enabled="mobileWorkspaceEnabled"
@@ -5304,7 +5359,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       @reader-surface-request="selectReaderSurface"
     >
       <LeftRail
-        v-if="!publishedVideo"
+        v-if="!mediaMode"
         v-show="leftRailOpen"
         v-model:goto-input="gotoInput"
         v-model:search-query="outlineSearch"
@@ -5334,7 +5389,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       />
 
       <div
-        v-if="!publishedVideo"
+        v-if="!mediaMode"
         class="resize-handle resize-handle-left"
         role="separator"
         aria-orientation="vertical"
@@ -5342,7 +5397,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @mousedown="startResize('left', $event)"
       ></div>
 
-      <VideoReaderPane v-if="publishedVideo && videoInitial" ref="videoPane" :initial="videoInitial" :published="publishedVideo" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :media-url="videoMediaUrl" :question="videoQuestion.draft.value?.context" :selection-disabled="questionImagePreparing || videoQuestion.restoring.value || sending || videoAdoption.adopting.value" :adoption-error="videoAdoption.error.value" @select-region="videoQuestion.selectRegion" @clear-region="videoQuestion.clearRegion" @select-range="videoQuestion.selectRange" @clear-range="videoQuestion.clearRange" @frame-ready="videoFrameReady = $event" embedded />
+      <MusicReaderPane v-if="musicContext" ref="musicPane" :key="`${musicContext.publication.book_id}/${musicContext.publication.publication_id}`" :context="musicContext" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :question="musicQuestionContext" :selection-disabled="sending || agentHistoryLoading" @question="askMusic" @clear-question="clearMusicQuestion" />
+      <VideoReaderPane v-else-if="videoMode && videoInitial" ref="videoPane" :initial="videoInitial" :published="publishedVideo || undefined" :playback="videoPlayback || undefined" :details-loading="videoDetailsLoading" :details-error="videoDetailsError" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :media-url="videoMediaUrl" :question="videoQuestion.draft.value?.context" :selection-disabled="videoDetailsLoading || !publishedVideo || questionImagePreparing || videoQuestion.restoring.value || sending || videoAdoption.adopting.value" :adoption-error="videoAdoption.error.value" @select-region="videoQuestion.selectRegion" @clear-region="videoQuestion.clearRegion" @select-range="videoQuestion.selectRange" @clear-range="videoQuestion.clearRange" @frame-ready="videoFrameReady = $event" embedded />
       <PdfReaderPane
         v-else-if="activeReaderSurface === 'pdf'"
         ref="pdfReaderPaneRef"
@@ -5433,6 +5489,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       ></div>
 
       <RightRail
+        :music-mode="musicMode"
         :key="chatSceneKey"
         :companion-visible="recapProps.readerVisible !== false && appSurface === 'reader' && !focusReading && assistantVisible"
         :waiting-turn-id="waitingTurnId"
@@ -5446,7 +5503,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @question-image="setQuestionImage"
         @question-image-loading="prepareQuestionImage"
         :video-error="videoQuestion.error.value"
-        :question-input-blocked="videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && !videoFrameReady && !videoQuestion.draft.value)"
+        :question-input-blocked="(videoMode && (videoDetailsLoading || !publishedVideo || agentHistoryLoading)) || videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && (acceptingRun || (!videoFrameReady && !videoQuestion.draft.value)))"
         @update:agent-input="onAgentInput"
         @cancel-video-draft="cancelVideoDraft"
         :history-loading="agentHistoryLoading"
@@ -5463,6 +5520,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :continuation-label="tutor.label.value"
         :learning-title="tutor.currentForSource.value?.user_intent"
         :learning-attention="tutor.error.value || (tutor.currentForSource.value && tutor.currentForSource.value.status !== 'active' ? tutor.label.value : '')"
+        :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable"
+        :learning-purpose-ready="learningPurposeReady" :learning-purpose-busy="guidingChapter"
+        @learning-purpose="startLearningPurpose" @resume-learning="resumeConversationLearning"
         @enable-tutor="tutorAction({ kind: 'set_enabled', enabled: true })"
         @continue-answer="continueAnswer"
         @clarify-answer="clarifyAnswer"
@@ -5471,6 +5531,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @workspace-menu="mobileGlobalActionsOpen = true"
         :run-connection="runConnection"
         :can-stop="residentRun.active.value"
+        :stopping="residentRun.stopping.value"
         @stop-agent="stopResidentRun"
         @continue-goal="continueGoal"
         @show-allowance="recapEmit('show-allowance')"
@@ -5541,6 +5602,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @agent-source-will-open="captureAgentSourceReturnPoint"
         @agent-source-opened="syncAfterAgentSourceOpen"
         @media-source-enter="enterMediaSource"
+        @music-source-enter="enterMusicSource"
         @refresh-profile="refreshProfileSurface()"
         @mutate-profile="mutateProfile"
         @confirm-sensitive-profile="confirmSensitiveProfile"
@@ -5563,9 +5625,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <ConversationLearningGoal
             :workspace-scoped="!!network.workspace?.learning_workspace_id"
             :session="network.workspace?.learning_workspace_id ? tutor.current.value : tutor.currentForSource.value" :other-session="tutor.hasOtherSourceSession.value"
-            :enabled="!!tutor.state.value?.control.enabled" :busy="tutor.busy.value || sending" :available="!!tutor.state.value && !tutor.pending.value && !!tutor.readiness.value?.source_id"
+            :enabled="!!tutor.state.value?.control.enabled" :busy="tutor.busy.value || sending || guidingChapter" :available="!!tutor.state.value && !tutor.pending.value && !!tutor.readiness.value?.source_id"
             :ready="tutor.readiness.value?.status === 'ready' && !tutor.readinessError.value"
-            :error="tutor.error.value" @goal="setConversationLearningGoal" @manage="openTutorPanel()"
+            :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable"
+            :error="tutor.error.value" @learning-purpose="startLearningPurpose" @goal="setConversationLearningGoal" @manage="openTutorPanel()"
             @resume="resumeConversationLearning" @retry="tutor.retry" />
         </template>
         <template #tutor-control>

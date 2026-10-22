@@ -202,9 +202,33 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     assert_eq!(short.join().unwrap().0, 200);
     let short_history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert!(short_history.sessions[0].turns[2].run_summary.as_ref().unwrap().trace.is_empty());
+    let recent_goal_id = short_history.sessions[0].goals[1].id.clone();
     let (status, ambiguous) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
     assert_eq!(status, 400);
     assert_eq!(ambiguous["error_code"], "GOAL_AMBIGUOUS");
+    let url = running.url.clone();
+    let selected_id = recent_goal_id.clone();
+    let continued = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"继续", "goal_id":selected_id})));
+    finish_missing_page(&provider, provider.next());
+    assert_eq!(continued.join().unwrap().0, 200);
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
+    assert_eq!(history.sessions[0].goals.len(), 2);
+    assert_eq!(history.sessions[0].turns.last().unwrap().goal_ref.as_ref().unwrap().id, recent_goal_id);
+
+    // Multiple open tasks require an explicit goal selection on each continuation.
+    let url = running.url.clone();
+    let selected_id = goal_id.clone();
+    let selected = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"继续", "goal_id":selected_id})));
+    finish_missing_page(&provider, provider.next());
+    assert_eq!(selected.join().unwrap().0, 200);
+    let url = running.url.clone();
+    let selected_id = goal_id.clone();
+    let retried = thread::spawn(move || http(&url, "POST", "/agent/chat", json!({"message":"重试", "goal_id":selected_id})));
+    finish_missing_page(&provider, provider.next());
+    assert_eq!(retried.join().unwrap().0, 200);
+    let history = crate::session_store::load_chat_storage(&path).unwrap().0;
+    assert_eq!(history.sessions[0].goals.len(), 2);
+    assert_eq!(history.sessions[0].turns.last().unwrap().goal_ref.as_ref().unwrap().id, goal_id);
 
     let url = running.url.clone();
     let cancel = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":goal_id})));
@@ -212,12 +236,12 @@ fn resident_goals_persist_continue_select_and_cancel_without_resurrection() {
     let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].goals[0].status, runtime::goal::GoalStatus::Cancelled);
     assert_eq!(history.sessions[0].goals[1].status, runtime::goal::GoalStatus::Open);
-    assert_eq!(history.sessions[0].turns.len(), 3, "cancel must not add a chat turn");
+    assert_eq!(history.sessions[0].turns.len(), 6, "cancel must not add a chat turn");
     let second_id = history.sessions[0].goals[1].id.clone();
     let url = running.url.clone();
     let cancel_second = thread::spawn(move || http(&url, "POST", "/agent/goals/cancel", json!({"goal_id":second_id})));
     assert_eq!(cancel_second.join().unwrap().0, 200);
-    assert_eq!(crate::session_store::load_chat_storage(&path).unwrap().0.sessions[0].turns.len(), 3);
+    assert_eq!(crate::session_store::load_chat_storage(&path).unwrap().0.sessions[0].turns.len(), 6);
     let (status, missing) = http(&running.url, "POST", "/agent/chat", json!({"message":"继续"}));
     assert_eq!(status, 400);
     assert_eq!(missing["error_code"], "GOAL_NOT_FOUND");
@@ -523,6 +547,49 @@ fn resident_model_wait_releases_state_and_preserves_concurrent_reader_memory_and
         .messages
         .iter()
         .any(|message| message.content.as_deref() == Some("完成解释。")));
+    drop(state);
+    running.shutdown();
+}
+
+#[test]
+fn resident_public_progress_survives_snapshot_and_cancelled_history() {
+    let provider = Provider::new();
+    let (running, _) = fixture("public-progress");
+    running.set_provider_config(provider.config.clone());
+    let worker = chat(&running, "先读 1.1 这一节，再制作演示");
+    let first = provider.next();
+    assert!(first.request.to_string().contains("agent.progress"));
+    first.finish(json!({"role":"assistant","content":null,"tool_calls":[
+        {"id":"progress", "type":"function", "function":{"name":"agent.progress","arguments":json!({"message":"先读这一节，再整理演示的结构。"}).to_string()}},
+        {"id":"read", "type":"function", "function":{"name":"book.text","arguments":json!({"lid":"1.1"}).to_string()}}
+    ]}));
+    let next = provider.next();
+    let turn_id = running.state.lock().unwrap().user.agent_history.sessions[0].turns[0].turn_id.clone();
+    let stream = running.run_coordinator.stream(&turn_id).unwrap();
+    let live = stream.snapshot();
+    let commentary = live.activities.iter().find(|a| a.kind == "commentary").expect("public progress is in the live snapshot");
+    assert_eq!(commentary.label, "先读这一节，再整理演示的结构。");
+    let read = live.activities.iter().find(|a| a.name == "book.text").unwrap();
+    assert!(commentary.step_id < read.step_id);
+    assert_eq!(read.status, runtime::run_events::ActivityStatus::Succeeded);
+    let (events, _) = stream.read_after(Some(0), Duration::ZERO);
+    assert!(events.iter().any(|event| event.event_type == "commentary.finished"));
+    let (recovered, _) = stream.read_after(None, Duration::ZERO);
+    assert_eq!(recovered[0].event_type, "run.snapshot");
+    assert!(recovered[0].payload["activities"].as_array().unwrap().iter()
+        .any(|activity| activity["label"] == commentary.label));
+    assert!(running.run_coordinator.cancel().is_some());
+    next.tool("reader.highlight", json!({"lid":"1.1"}));
+    assert_eq!(worker.join().unwrap().1["error_code"], "AGENT_RUN_CANCELLED");
+    assert!(provider.steps.try_recv().is_err());
+    let state = running.state.lock().unwrap();
+    let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
+    let turn = &history.sessions[0].turns[0];
+    assert_eq!(turn.status, AgentAssistantStatus::Cancelled);
+    let summary = turn.run_summary.as_ref().unwrap();
+    assert!(summary.activities.as_ref().unwrap().iter().any(|a| a == commentary));
+    assert!(!summary.trace.iter().any(|step| step.tool == "reader.highlight"));
+    assert!(summary.effects.is_empty());
     drop(state);
     running.shutdown();
 }

@@ -6,7 +6,15 @@ use read_tools::{Book, ToolError};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-pub const READ_OPERATIONS: [(&str, BookToolId); 5] = [
+pub(crate) const WORKSPACE_CATALOG_POLICY: &str = "Workspace materials:
+- The following directory is the first page of this run's frozen workspace materials, filtered by this reader's current authorization. It is metadata, not observed source evidence. Names, publication identities and video positions come from the directory; never invent a missing material or source position. Follow library.list next_calls only when the needed material is not on this page.
+- book.* reads only the currently open material. For related content across this workspace use library.search; it reports whether semantic retrieval was available and returns publication-bound text reads. To use another textbook, handout or video, copy its exact published_book_ref into library.read and library.learning. Use structure, search or search_text to locate relevant passages, then text to read them. Bounded retrieval is not an exhaustive overview. Preserve the original task and Reader position. A failed search in the current book does not establish that the whole workspace lacks the answer.
+- For a video, its saved transcript is readable through library.read; use video.search with the same published_book_ref for visual or teaching-role locators. Read only the relevant source. When actual frames or sound are necessary, discover source_read with scope=passage and operation=read_source for video.read_frames or video.review_audio, then follow the returned locations. Transcript text alone does not establish unseen visuals or unheard audio.
+- For published music, use music.read with its published_book_ref for notation, events, part roles and provenance; pure music has no spoken transcript. Only music.interact applied browser receipts establish player actions, and prepared analysis is not a main-model audio listen.
+- To show a textbook passage or video transcript location, call source.present with the exact observed quote and the same published_book_ref; Runtime retains that publication and its actual source location. For observed frames or audio use their returned source targets. If a required tool is absent from this sampling, use tool.search; discover corpus source_read for library reads and corpus memory_read for the learner's existing understanding. Directory entries and search hits alone cannot support a source citation.";
+
+pub const READ_OPERATIONS: [(&str, BookToolId); 6] = [
+    ("search", BookToolId::Search),
     ("text", BookToolId::Text), ("search_text", BookToolId::SearchText),
     ("concept", BookToolId::Concept), ("structure", BookToolId::Structure),
     ("context", BookToolId::Context),
@@ -21,6 +29,18 @@ pub struct LibrarySource {
 pub struct LibraryReadResult {
     pub body: Value,
     pub source: Option<LibrarySource>,
+}
+
+/// Mathematical follow-up reads keep the source publication in review and budget projections.
+pub(crate) fn scope_math_read_calls(body: &mut Value, reference: &PublishedBookRef) {
+    for item in body.get_mut("math_context").and_then(Value::as_array_mut).into_iter().flatten() {
+        for call in item["next_calls"].as_array_mut().into_iter().flatten() {
+            call.as_object_mut().unwrap().remove("tool");
+            call["name"] = json!("library.read");
+            call["arguments"]["operation"] = json!("text");
+            call["arguments"]["published_book_ref"] = json!(reference);
+        }
+    }
 }
 
 pub fn unavailable() -> ToolError {
@@ -40,6 +60,17 @@ pub fn list_spec() -> ToolSpec {
         parameters: json!({"type":"object","properties":{"after":reference_schema(),
             "limit":{"type":"integer","minimum":1,"maximum":50}},"additionalProperties":false,
             "examples":[{}]}) }
+}
+
+pub fn search_spec() -> ToolSpec {
+    ToolSpec { name: "library.search".into(),
+        description: "Locate relevant passages across this run's frozen learning-workspace materials, filtered by current account authorization. Uses lexical relevance and, when configured, semantic retrieval; the result reports the actual retrieval status. published_book_refs may only narrow the workspace. Results are bounded candidates, never exhaustive coverage or observed source evidence. Follow each hit's library.read text call before explaining or citing. For an explicit selection read it directly; for one ordinary article prefer book.search without embeddings.".into(),
+        parameters: json!({"type":"object","properties":{
+            "query":{"type":"string","minLength":1,"maxLength":4096},
+            "limit":{"type":"integer","minimum":1,"maximum":20},
+            "published_book_refs":{"type":"array","items":reference_schema(),"minItems":1,"uniqueItems":true}},
+            "required":["query"],"additionalProperties":false,
+            "examples":[{"query":"why does the model fail on unseen examples","limit":6}]}) }
 }
 
 pub fn read_spec() -> ToolSpec {

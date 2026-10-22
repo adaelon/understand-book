@@ -17,8 +17,8 @@ use std::{
 };
 
 pub const COOKIE: &str = "__Host-ub_session";
-pub const SESSION_SECONDS: i64 = 12 * 60 * 60;
-const MAX_SESSIONS: usize = 8;
+pub const SESSION_SECONDS: i64 = 30 * 24 * 60 * 60;
+pub(crate) const MAX_SESSIONS: usize = 8;
 
 // Only this module constructs identity; it cannot be deserialized from a request.
 #[derive(Clone)]
@@ -68,7 +68,7 @@ fn limited() -> ToolError {
         "Too many sign-in attempts; try again later",
     )
 }
-fn digest(token: &str) -> Vec<u8> {
+pub(crate) fn digest(token: &str) -> Vec<u8> {
     Sha256::digest(token.as_bytes()).to_vec()
 }
 pub(crate) fn csrf(token: &str) -> String {
@@ -236,7 +236,7 @@ impl Attempts {
 }
 
 pub struct AuthService {
-    control: Mutex<ControlStore>,
+    pub(crate) control: Mutex<ControlStore>,
     attempts: Mutex<Attempts>,
     password_slot: Mutex<()>,
 }
@@ -436,6 +436,22 @@ impl AuthService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reading_login_survives_an_overnight_break_and_expires_after_thirty_days() {
+        let root = tempfile::tempdir().unwrap();
+        let writer = crate::control_store::ServiceWriter::acquire(root.path()).unwrap();
+        let mut store = ControlStore::open(writer.clone()).unwrap();
+        store.provision_password("reader", "fixture-only-password", true).unwrap();
+        let service = AuthService::new(ControlStore::open(writer).unwrap());
+        let started = 100;
+        let token = service.login("reader", "fixture-only-password", None, started).unwrap();
+        assert!(cookie(&token, false).contains("Max-Age=2592000"));
+        for elapsed in [13 * 60 * 60, 7 * 24 * 60 * 60, 30 * 24 * 60 * 60 - 1] {
+            assert_eq!(service.authenticate(&token, started + elapsed).unwrap().user_id(), "reader");
+        }
+        assert!(service.authenticate(&token, started + 30 * 24 * 60 * 60).is_err());
+    }
+
     #[test]
     fn inv5_email_and_legacy_login_share_identity_role_and_attempt_budget() {
         let root = tempfile::tempdir().unwrap();

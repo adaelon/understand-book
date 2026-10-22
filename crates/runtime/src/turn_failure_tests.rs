@@ -49,7 +49,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         let (_, plan) = build_sample_request(&messages, &mut ContextFragmentLedger::default(), &b,
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
-            &[], None, false, Some(&tutor)).unwrap();
+            &[], None, false, Some(&tutor), None).unwrap();
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
         let ids: Vec<_> = plan.instruction_assets.iter().map(|a| a.asset_id.as_str()).collect();
         assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "active"), "{status}");
@@ -146,7 +146,7 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
         build_sample_request(&new_session(), &mut ContextFragmentLedger::default(), &b,
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), state, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
-            &[], authoring, finished, Some(context)).unwrap()
+            &[], authoring, finished, Some(context), None).unwrap()
     };
     let (initial_exposure, initial) = sample(&exposure, None, false, &tutor);
     assert!(!initial.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
@@ -156,7 +156,9 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
         &initial_exposure, &registry, &mut exposure).unwrap();
     let (_, inspection) = sample(&exposure, None, false, &tutor);
     let author = inspection.tools.iter().find(|t| t.name == "presentation.author").unwrap();
-    assert_eq!(author.parameters["properties"]["operation"]["enum"], serde_json::json!(["read", "search"]));
+    assert_eq!(author.parameters, crate::presentation_author::spec().parameters);
+    assert!(inspection.ordered_messages().iter().any(|message| message.content.as_deref()
+        .is_some_and(|text| text.starts_with("presentation_guidance_state.v1\n") && text.contains(PRESENTATION_DESIGN_REQUIRED))));
     assert!(!inspection.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
     let accepted_tutor = serde_json::json!({"status":"active", "learner_context":{"current_request":""},
         "current_design":{"design_ref":"tb4-design", "design":{
@@ -291,6 +293,52 @@ fn tutor_turn_context_appears_once_across_five_samples() {
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
         assert_eq!(text.matches("FROZEN_LEARNER_SENTINEL").count(), 1, "sample {index}");
     }
+}
+
+#[test]
+fn tutor_coach_guidance_is_private_and_present_from_the_first_sample() {
+    struct CoachPort<'a> {
+        inner: BorrowedResidentState<'a>,
+        reads: usize,
+    }
+    impl ResidentStatePort for CoachPort<'_> {
+        fn tutor_coach_context(&mut self) -> Result<Option<serde_json::Value>, ToolError> {
+            self.reads += 1;
+            Ok(Some(serde_json::json!({"status":"ready","coach_ref":"coach:source-turn",
+                "source_turn_ref":"turn:prior","guidance":{"sentinel":"private-coach-guidance"}})))
+        }
+        fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { self.inner.submit_private(operation) }
+        fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { self.inner.read_live_reader(operation) }
+        fn apply_reader<R>(&mut self, operation: impl FnOnce(&mut MemoryStore, &mut Reader) -> R) -> Result<R, ToolError> { self.inner.apply_reader(operation) }
+        fn reader_input(&mut self, book: &Book, question: &str) -> crate::run_context::ReaderInputSnapshot { self.inner.reader_input(book, question) }
+    }
+    let b = book_leaves(2);
+    let mut store = MemoryStore::open(tmp("tutor-coach-frozen-sampling")).unwrap();
+    let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+    let snapshot = default_profile_snapshot(&b, &store, "t0");
+    let question = "Please explain the condition first instead of asking me to recall it.";
+    let adapter = RequestPlanRecordingAdapter::new(vec![
+        turn_calls(vec![call("read-first", "book.text", r#"{"lid":"1.1"}"#)]),
+        turn_calls(vec![call("read-second", "book.text", r#"{"lid":"1.2"}"#)]),
+        turn_final("先解释条件为什么必要。"),
+    ], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    context.tutor = Some(serde_json::json!({"status":"active","learner_context":{}}));
+    context.tutor_resolved = true;
+    let mut state = CoachPort { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, reads: 0 };
+    run_context(&b, &mut state, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
+        &mut EphemeralCompactionCheckpointSink::default(), question, "t0").unwrap();
+    let plans = adapter.seen_plans.borrow();
+    assert_eq!(plans.len(), 3);
+    assert_eq!(state.reads, 1, "the admitted guidance stays frozen while the teacher executes this turn");
+    for (index, plan) in plans.iter().enumerate() {
+        let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
+        assert_eq!(text.matches("private-coach-guidance").count(), 1, "sample {index}");
+        assert!(text.contains("coach:source-turn") && text.contains("turn:prior"), "sample {index}");
+        assert!(text.contains(question), "the latest user request must accompany the prior guidance at sample {index}");
+    }
+    let public = serde_json::to_string(&context.messages).unwrap();
+    assert!(!public.contains("private-coach-guidance") && !public.contains("coach:source-turn"));
 }
 
 #[test]

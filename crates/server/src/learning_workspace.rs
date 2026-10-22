@@ -39,14 +39,7 @@ pub(crate) fn authorize_material(
     owner: &str,
     reference: &PublishedBookRef,
 ) -> Result<(), ToolError> {
-    let allowed: bool = db
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM book_grants g JOIN users u ON u.user_id=g.owner_user_id
-         WHERE u.disabled=0 AND g.owner_user_id=? AND g.book_id=? AND g.publication_id=?)",
-            params![owner, reference.book_id, reference.publication_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| storage())?;
+    let allowed = crate::course_access::material_allowed(db, owner, reference, crate::multi_user_host::now())?;
     if !allowed {
         return Err(error(
             "WORKSPACE_MATERIAL_NOT_AUTHORIZED",
@@ -176,12 +169,11 @@ impl ControlStore {
             .collect::<Result<_, ToolError>>()?;
         let goal = goal_history.last().cloned().ok_or_else(storage)?;
         let mut query = self.connection.prepare(
-            "SELECT m.book_id,m.publication_id,m.added_at,
-             EXISTS(SELECT 1 FROM book_grants g WHERE g.owner_user_id=m.owner_user_id AND g.book_id=m.book_id AND g.publication_id=m.publication_id)
+            "SELECT m.book_id,m.publication_id,m.added_at
              FROM learning_workspace_members m WHERE m.owner_user_id=? AND m.learning_workspace_id=?
              ORDER BY m.added_at,m.book_id,m.publication_id",
         ).map_err(|_| storage())?;
-        let members = query
+        let mut members: Vec<LearningWorkspaceMember> = query
             .query_map(params![owner, id], |row| {
                 Ok(LearningWorkspaceMember {
                     published_book_ref: PublishedBookRef {
@@ -189,12 +181,15 @@ impl ControlStore {
                         publication_id: row.get(1)?,
                     },
                     added_at: row.get(2)?,
-                    readable: row.get(3)?,
+                    readable: false,
                 })
             })
             .map_err(|_| storage())?
             .collect::<Result<_, _>>()
             .map_err(|_| storage())?;
+        for member in &mut members {
+            member.readable = crate::course_access::material_allowed(&self.connection,owner,&member.published_book_ref,crate::multi_user_host::now())?;
+        }
         Ok(LearningWorkspace {
             learning_workspace_id: id.into(),
             goal,

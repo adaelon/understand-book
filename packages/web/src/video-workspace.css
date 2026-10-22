@@ -5,11 +5,11 @@
 .video-topbar .topbar-focus { border-color: var(--hairline); background: #f8f7f4; }
 .video-workspace { background: #f8f7f4; }
 .video-workspace[data-mode="wide"] .workspace-grid { grid-template-columns: minmax(0, 1fr) 5px clamp(320px, var(--right-rail-width, 384px), 40vw); grid-template-areas: "reader divider assistant"; min-width: 0; }
-.video-workspace .video-reader { grid-area: reader; }
+.video-workspace :is(.video-reader, .music-reader) { grid-area: reader; }
 .video-workspace .resize-handle-right { grid-area: divider; background: #f8f7f4; }
 .video-workspace .right-rail { grid-area: assistant; background: #fffefa; border-left: 1px solid var(--hairline-soft); backdrop-filter: none; }
 .video-workspace[data-mode="single"] .workspace-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main"; }
-.video-workspace[data-mode="single"] :is(.video-reader, .right-rail) { grid-area: main; }
+.video-workspace[data-mode="single"] :is(.video-reader, .music-reader, .right-rail) { grid-area: main; }
 .video-workspace[data-mode="single"] .resize-handle-right { display: none; }
 .video-workspace[data-mode="single"][data-foreground="assistant"] .video-reader { display: none; }
 .video-workspace[data-mode="single"][data-foreground="reader"] .right-rail { display: none; }

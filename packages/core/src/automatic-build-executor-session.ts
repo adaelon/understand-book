@@ -34,6 +34,7 @@ import {
 } from "../../../skills/build/automatic-build";
 import {
   advanceAutomaticBuildDispatch,
+  AutomaticBuildDispatchSettledError,
   finishAutomaticBuildDispatch,
   inspectAutomaticBuildDispatchRecoveryGeneration,
   recordAutomaticBuildDispatchBootstrapFailure,
@@ -1760,7 +1761,9 @@ export function issueAutomaticBuildOpaqueHandoff(input: AutomaticBuildOpaqueHand
     ).recovery_identity;
     if (canonicalAutomaticBuildJson(recoveryIdentity)
       !== canonicalAutomaticBuildJson(currentRecoveryIdentity)) {
-      throw new Error("opaque handoff recovery identity is not current");
+      // An owned executor can commit between the driver's inspection and this publication.
+      // Reject the stale identity and let the driver reread the current generation.
+      throw new AutomaticBuildDispatchSettledError("opaque handoff recovery identity is not current");
     }
     const identity = {
       kind: "public_dispatch" as const,
@@ -2325,8 +2328,7 @@ function assertCandidateReplayMatches(
   if (!existsSync(canonicalPath)) throw new Error("committed executor task is missing its candidate mailbox");
   const source = normalizedCandidateBytes(candidatePath);
   const canonical = normalizedCandidateBytes(canonicalPath);
-  if (createHash("sha256").update(source).digest("hex")
-    !== createHash("sha256").update(canonical).digest("hex")) {
+  if (!source.equals(canonical)) {
     throw new Error("candidate already exists with a different hash");
   }
 }

@@ -1,5 +1,6 @@
 import type { PresentationView } from "./generated/PresentationView";
 import commonStyle from "./presentation.css?raw";
+import actions from "./presentation-actions.js?raw";
 import bridge from "./presentation-bridge.js?raw";
 import staticCapture from "./presentation-static.js?raw";
 import mediaLifecycle from "./presentation-media.js?raw";
@@ -55,8 +56,8 @@ export function presentationDocument(view: PresentationView, channel = crypto.ra
   const script = doc.createElement("script");
   // JSON escaping protects the script element, not the generated page from its own code.
   const data = JSON.stringify({ channel, sources: view.sources, initialState: view.initial_state, restoredState: view.restored_state,
-    teachingBinding: view.teaching_binding }).replaceAll("<", "\\u003c");
-  script.textContent = `${sourceChipScript.replace('export function', 'function')}\n(${bridge.trim()})(${data}, (${staticCapture.trim()}));\n${mediaLifecycle.replaceAll("\"agent-presentation\"", JSON.stringify(channel))}`;
+    teachingBinding: view.teaching_binding, actionContract: view.action_contract }).replaceAll("<", "\\u003c");
+  script.textContent = `${sourceChipScript.replace('export function', 'function')}\n(${bridge.trim()})(${data}, (${staticCapture.trim()}), (${actions.trim()}));\n${mediaLifecycle.replaceAll("\"agent-presentation\"", JSON.stringify(channel))}`;
   doc.head.prepend(policy, style, script);
   return "<!doctype html>" + doc.documentElement.outerHTML;
 }

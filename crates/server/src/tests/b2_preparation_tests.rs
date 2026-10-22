@@ -6,6 +6,7 @@ fn fixture() -> (Fixture,String,String) {
     let mut f=Fixture::new(); let period=adm5_tests::seed(&mut f,"fixture",100_000);
     f.control.connection.execute("INSERT INTO allowance_bases VALUES('b2-basis',100000)",[]).unwrap();
     f.control.connection.execute("INSERT INTO allowance_period_bases VALUES(?,'b2-basis')",[&period]).unwrap();
+    crate::cloud_storage::tests::seed(&f.control.connection,"A",&period,1024*1024,1024*1024);
     let workspace=f.ok(&f.a,"POST","/api/learning-workspaces",json!({"goal":{"text":"学习并解释深度学习"},"members":[f.x]}))["learning_workspace_id"].as_str().unwrap().to_owned();
     (f,workspace,period)
 }
@@ -68,7 +69,7 @@ fn b2_partial_usage_and_changed_allowance_period_require_explicit_continuation()
     let mut partial=receipt("missing-cache",25);partial["usage"]["cached_input_tokens"]=Value::Null;
     let value=f.ok(&f.b,"POST",&format!("{adm}/metered-receipts"),partial);assert_eq!(value["charge"]["state"],"pending");assert!(value["charge"]["account_debit_micro_cny"].is_null());
     let now=crate::multi_user_host::now();
-    f.control.connection.execute("UPDATE allowance_periods SET expires_at=? WHERE period_id=?",rusqlite::params![now-1,p]).unwrap();
+    f.control.connection.execute("UPDATE allowance_periods SET closed_at=? WHERE period_id=?",rusqlite::params![now-1,p]).unwrap();
     let next=f.ok(&f.b,"POST","/api/admin/users/A/allowance-periods",json!({"operation_id":"next-period","starts_at":now,"expires_at":now+3600,"basis":{"version":"b2-next-basis","basis_micro_cny":200000}}))["allowance_period"]["period_id"].as_str().unwrap().to_owned();
     f.ok(&f.b,"POST","/api/admin/users/A/allowance-adjustments",json!({"operation_id":"next-grant","period_id":next,"revision":0,"delta_micro_cny":10000,"reason":"top up"}));
     assert_eq!(f.call(&f.b,"POST",&format!("{adm}/metered-admit"),admission("changed-period")).1["error_code"],"BUILD_PERIOD_CONFIRMATION_REQUIRED");
@@ -87,6 +88,7 @@ fn b2_browser_host(){
     let mut f=Fixture::new();let period=adm5_tests::seed_model(&mut f,"probe","scripted",1_000_000);
     f.control.connection.execute("INSERT INTO allowance_bases VALUES('b2-http-basis',1000000)",[]).unwrap();
     f.control.connection.execute("INSERT INTO allowance_period_bases VALUES(?,'b2-http-basis')",[&period]).unwrap();
+    crate::cloud_storage::tests::seed(&f.control.connection,"A",&period,64*1024*1024,64*1024*1024);
     let origin="https://127.0.0.1:4190";
     let server=crate::multi_user_host::start_with_access("127.0.0.1:4190".parse().unwrap(),std::sync::Arc::new(crate::multi_user_host::Site::new(origin).unwrap()),f.access.clone()).unwrap();
     let control=tiny_http::Server::http("127.0.0.1:4191").unwrap();

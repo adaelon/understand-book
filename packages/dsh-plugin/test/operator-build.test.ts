@@ -29,6 +29,29 @@ test('two video tasks sharing an output root and material name keep separate fro
   }finally{await host.dispose();await h.dispose();}
 });
 
+test('curated music prepares in the same operator queue without a speech model configuration',async()=>{
+  const root=mkdtempSync(path.join(tmpdir(),'ub-music-plan-'));
+  const h=await operatorHarness({onFirstCommit:async()=>{}});
+  const task={task_id:'music-task',action:'prepare',max_micro_cny:100,reserved_per_execution_micro_cny:100,
+    materials:[{material_id:'schubert',label:'舒伯特',material_kind:'music',target_input:path.join(root,'curation.json'),root_dir:root}]};
+  const events:any[]=[];let claimed=false;
+  const fetcher:typeof fetch=async(url,init)=>{
+    if(String(url).endsWith('/next')){if(claimed)return Response.json({task:null});claimed=true;return Response.json({task});}
+    const body=JSON.parse(String(init?.body));events.push(body);return Response.json({});
+  };
+  const host=createOperatorBuildHost(h.ctx,{executable:process.execPath,driverRoot:path.join(root,'registry'),maxOutputTokens:4096,safetyMarginTokens:4096,handoffsPerCall:8},
+    'understand-book-executor',{rootSessionId:h.parent.id,connection:{base_url:'http://fixture',origin:'http://fixture',cookie:'fixture',csrf_token:'fixture'}},fetcher);
+  try{
+    await host.processNext();
+    assert.equal(events.at(-1).state,'awaiting_confirmation');
+    const plan=events.find(event=>event.plan).plan;
+    assert.equal(plan.version,'operator_music_plan.v1');
+    assert.equal(plan.workspace_dir,path.join(root,'music-task','music-schubert'));
+    assert.equal(plan.target_input,task.materials[0].target_input);
+    assert.equal(plan.build_tutor,false);assert.equal(h.model.requests.length,0);
+  }finally{await host.dispose();await h.dispose();}
+});
+
 test('B1 operator queue prepares without models, resumes the existing Engine and reuses one completed book', {timeout:360000}, async()=>{
   const root=mkdtempSync(path.join(tmpdir(),'ub-b1-operator-'));
   const source=path.join(root,'book.md');writeFileSync(source,'# Transactions\n\nTransactions group operations into one atomic change.\n');

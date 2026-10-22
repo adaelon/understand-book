@@ -335,6 +335,7 @@ mod tests {
                 let mut deltas = Vec::new();
                 let mut observe = |d| deltas.push(d);
                 let req = || CompletionRequest {
+                    images: Vec::new(),
                     output_token_limit: None,
                     reasoning_effort: None,
                     system: "test".into(),

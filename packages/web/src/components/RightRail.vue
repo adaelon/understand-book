@@ -38,6 +38,9 @@ import { answerNoteExcerpt } from "../answer-note-selection";
 import AgentActivities from "./AgentActivities.vue";
 import TutorActivities from "./TutorActivities.vue";
 import TutorContinuation from './TutorContinuation.vue';
+import LearningPurposeEntry from './LearningPurposeEntry.vue';
+import type { LearningPurpose } from '../generated/LearningPurpose';
+import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
 import type { TutorContinuationView } from '../generated/TutorContinuationView';
 import NoteDetail from "./NoteDetail.vue";
 import AgentPresentation from "./AgentPresentation.vue";
@@ -60,6 +63,7 @@ type ContextTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  musicQuestion?: import('../music-api').MusicQuestionContext | null;
   videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   hasTeaching?: boolean;
   interaction?: import("../generated/ResolvedInteraction").ResolvedInteraction | null;
@@ -97,6 +101,8 @@ interface ChatSessionTurnSummary {
 
 const props = withDefaults(defineProps<{
   videoImagesEnabled?: boolean;
+  musicMode?: boolean;
+  musicQuestion?: import('../music-api').MusicQuestionContext | null;
   videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   videoError?: string;
   questionSendBlocked?: string;
@@ -111,12 +117,17 @@ const props = withDefaults(defineProps<{
   waitingTurnId?: string | null;
   learningTitle?: string;
   learningAttention?: string;
+  learningScopeOptions?: LearningScopeOption[];
+  learningPurposeAvailable?: boolean;
+  learningPurposeReady?: boolean;
+  learningPurposeBusy?: boolean;
   agentInput: string;
   sending: boolean;
   historyLoading?: boolean;
   historyError?: string | null;
   runConnection?: string;
   canStop?: boolean;
+  stopping?: boolean;
   unquotedNotePlacementAvailable?: boolean;
   notePlacementSurface?: "markdown" | "pdf";
   noteSourceFingerprint?: string | null;
@@ -167,6 +178,7 @@ const emit = defineEmits<{
   (e: 'question-image', image: VideoQuestionImage | null): void;
   (e: 'question-image-loading', active: boolean): void;
   (e: 'media-source-enter', source: import('../api').MediaSourceSnapshot): void;
+  (e: 'music-source-enter', source: import('../music-api').MusicSourceSnapshot): void;
   (e: "cancel-video-draft"): void;
   (e: 'request-formula'): void;
   (e: 'prepare-artifacts'): void;
@@ -183,6 +195,8 @@ const emit = defineEmits<{
   (e: 'return-reading'): void;
   (e: 'workspace-menu'): void;
   (e: 'enable-tutor'): void;
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void;
+  (e: 'resume-learning'): void;
   (e: "retry-history"): void;
   (e: "stop-agent"): void;
   (e: "toggle-fullscreen"): void;
@@ -392,7 +406,7 @@ function hostedTeachingPresentations(turn: ChatTurn): PresentationRef[] {
     && (!workspaceVisible.value || workspaceKey.value === presentationKey(turn.turnId!, part)));
 }
 function submitMessage() {
-  if (imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.historyLoading || props.historyError || (!props.agentInput.trim() && !props.videoQuestion?.image)) return;
+  if (imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !props.videoQuestion?.image)) return;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
@@ -540,7 +554,12 @@ const taskDetailsOpen = ref(false);
 const taskSummaryButton = ref<HTMLButtonElement | null>(null);
 let taskDetailsTrigger: HTMLElement | null = null;
 const taskCloseButton = ref<HTMLButtonElement | null>(null);
-const runActive = computed(() => props.sending || props.canStop);
+const runActive = computed(() => props.sending || props.canStop || props.stopping);
+const stopAvailable = computed(() => props.canStop || props.stopping);
+function stopAgent() {
+  if (!props.canStop || props.stopping) return;
+  emit('stop-agent');
+}
 const showConversationWelcome = computed(() => props.chat.length === 0
   && !props.historyLoading && !props.historyError && !runActive.value && !workspaceVisible.value);
 const companionActive = computed(() => props.companionVisible !== false && activeTab.value === 'agent'
@@ -677,7 +696,10 @@ watch(
     return [
       props.chat.length,
       last?.pending ? 1 : 0,
-      last?.activities?.map(a => `${a.step_id}:${a.status}`).join(",") ?? "",
+      last?.activities?.map(a => `${a.step_id}:${a.status}:${a.label}`).join(",") ?? "",
+      last?.draft?.message_id ?? -1,
+      last?.draft?.revision ?? -1,
+      last?.draft?.view?.parts.reduce((size, part) => size + (part.kind === 'markdown' ? part.text.length : 0), 0) ?? 0,
       last?.outcome?.answer?.length ?? 0,
       props.askDraft ? 1 : 0,
     ].join(":");
@@ -925,6 +947,7 @@ async function openActiveAgentSourceInReader() {
   const source = activeAgentSource.value;
   if (!popup || !source || source.stale || !source.can_open_in_reader || popup.opening) return;
   if (source.media) { emit('media-source-enter', source.media); closeAgentSourcePopup(); return; }
+  if (source.music) { emit('music-source-enter', source.music); closeAgentSourcePopup(); return; }
   const requestSequence = sourceRequestSequence;
   popup.opening = true;
   popup.error = null;
@@ -1229,15 +1252,16 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <div v-if="$slots['learning-details']" class="workspace-learning-details"><slot name="learning-details" /></div>
       <label class="workspace-split">演示宽度 <input v-model="split" type="range" min="40" max="72" aria-label="演示宽度" /></label>
       <button class="discussion-toggle" type="button" :aria-expanded="discussionOpen" @click="discussionOpen = !discussionOpen"><span class="discussion-indicator" aria-hidden="true"></span>{{ discussionOpen ? '收起讨论' : '展开讨论' }}<ChevronDown :size="14" aria-hidden="true" /></button>
+      <button v-if="stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? '正在停止' : '停止' }}</button>
     </div>
     <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
       <div v-show="mobileConversation" class="mobile-conversation-header">
-        <button class="mobile-back" type="button" aria-label="返回阅读" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
+        <button class="mobile-back" type="button" :aria-label="musicMode ? '返回聆听' : '返回阅读'" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
         <button ref="mobileLearningButton" class="mobile-learning-title" type="button" aria-label="学习与会话" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.videoImagesEnabled ? '视频伴读' : '问这本书' }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.videoImagesEnabled ? '一起弄懂正在看的内容' : '围绕这本书聊一聊') }}</small></button>
         <div ref="mobileRecordsHost" class="mobile-records" />
       </div>
       <h3 v-show="!mobileConversation" class="rail-title"><YeyeMascot ref="fullscreenCompanion" variant="avatar" :size="32" :active="companionActive && !mobileConversation && !!props.fullscreen && !historyOpen" />{{ props.videoImagesEnabled ? '视频伴读' : '问这本书' }}</h3>
-      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" aria-label="辅助阅读功能">
+      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" :aria-label="musicMode ? '辅助聆听功能' : '辅助阅读功能'">
       <button
         v-for="tab in tabs.slice(0, 2)"
         :key="tab.id"
@@ -1260,12 +1284,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </span>
       </button>
       <div ref="contextTools" class="context-tools">
-        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" aria-label="阅读工具" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
+        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" :aria-label="musicMode ? '伴听工具' : '阅读工具'" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
           {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? '工具' }}
           <span v-if="profileAttentionCount" class="tool-attention">{{ profileAttentionCount }}</span>
           <ChevronDown :size="14" aria-hidden="true" />
         </button>
-        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" aria-label="更多阅读工具">
+        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" :aria-label="musicMode ? '更多伴听工具' : '更多阅读工具'">
           <button v-for="tab in tabs.slice(2)" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" role="tab" :id="`reader-tab-${tab.id}`" :aria-selected="activeTab === tab.id" :aria-controls="`reader-panel-${tab.id}`" @click="selectTab(tab.id)">
             {{ tab.label }}<span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">{{ profileAttentionCount }}</span>
           </button>
@@ -1278,7 +1302,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <Teleport :to="sessionToolsTarget || 'body'" :disabled="!sessionToolsTarget">
           <div v-show="chatMenuOpen || wideConversation || mobileConversation" id="chat-secondary-actions" class="chat-secondary-actions" @click.capture="closeChatMenuAfterAction">
           <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新对话</button>
-          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">本次阅读回顾</button>
+          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">{{ musicMode ? '本次聆听回顾' : '本次阅读回顾' }}</button>
           <button ref="historyButton" class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
             本书历史
             <span>{{ historySessions.length }}</span>
@@ -1301,7 +1325,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <div ref="mobileGoalHost" @click.capture="leaveMobileGoalTools" />
       <div class="mobile-tool-section"><p>学习方式</p><div ref="mobileTeachingHost" /></div>
       <nav class="mobile-tool-section" aria-label="本书会话"><p>会话</p><div ref="mobileSessionHost" /></nav>
-      <nav class="mobile-tool-section mobile-tool-links" aria-label="阅读工具">
+      <nav class="mobile-tool-section mobile-tool-links" :aria-label="musicMode ? '伴听工具' : '阅读工具'">
         <button v-if="openGoals.length" type="button" @click="mobileToolsOpen = false; openTaskDetails($event)">{{ openGoals.length }} 项待办<ArrowRight :size="15" aria-hidden="true" /></button>
         <button v-for="tab in tabs.filter(tab => tab.id !== 'agent')" :key="tab.id" type="button" @click="mobileToolsOpen = false; selectTab(tab.id)">{{ tab.label }}<ArrowRight :size="15" aria-hidden="true" /></button>
         <button type="button" @click="mobileToolsOpen = false; emit('workspace-menu')">阅读设置<ArrowRight :size="15" aria-hidden="true" /></button>
@@ -1359,7 +1383,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
         @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
-        <p v-if="props.historyLoading" role="status">正在恢复对话，可以先阅读正文。</p>
+        <p v-if="props.historyLoading" role="status">{{ musicMode ? '正在恢复对话，可以先听音乐或查看乐谱。' : '正在恢复对话，可以先阅读正文。' }}</p>
         <div v-else-if="props.historyError" role="alert">
           <p>对话暂时无法加载：{{ props.historyError }}</p>
           <button @click="emit('retry-history')">重试</button>
@@ -1376,13 +1400,17 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </div>
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
+          <p v-if="turn.musicQuestion" class="turn-video-context">音乐问题 · {{ videoTime(turn.musicQuestion.audio.start_ms) }}–{{ videoTime(turn.musicQuestion.audio.end_ms) }}<span v-if="turn.musicQuestion.occurrence_id"> · 当前演奏片段</span></p>
           <p v-if="turn.videoQuestion" class="turn-video-context">视频问题 · {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? ' · 已选区域' : '' }}<span v-if="turn.videoQuestion.range"> · 时间范围 {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
           <details v-if="turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl(turn.videoQuestion.image)" alt="本次提问图片" />查看提问图片</summary><img :src="questionImageUrl(turn.videoQuestion.image)" alt="本次提问图片放大预览" /></details>
           <p class="u-msg">{{ turn.user }}</p>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
-          <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" />
-          <p v-if="turn.runStatus" class="run-status" role="status">{{ turn.runStatus }}</p>
-          <p v-if="turn.pending && !turn.runStatus" class="pending">正在接收运行...</p>
+          <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending" />
+          <div v-if="turn.runStatus || (turn.pending && stopAvailable)" class="run-progress-footer">
+            <p v-if="turn.runStatus && (turn.runStatus !== '正在运行' || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
+            <button v-if="turn.pending && stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? '正在停止' : '停止' }}</button>
+          </div>
+          <p v-if="turn.pending && !turn.runStatus && !turn.activities?.length" class="pending">正在接收运行...</p>
           <YeyeMascot v-if="wideConversation && turn.pending && props.waitingTurnId === turn.turnId && !turn.draft?.view && !turn.error"
             class="waiting-mascot" variant="reading" :size="144" motion="waiting" :active="companionActive" />
           <div v-if="!turn.outcome && turn.liveEffects?.length" class="live-effects">
@@ -1523,10 +1551,15 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         <div v-if="showConversationWelcome" class="empty conversation-welcome">
           <YeyeMascot class="welcome-mascot" :size="mobileConversation ? 128 : 144" motion="idle" :active="companionActive" />
-          <h3>{{ props.videoImagesEnabled ? '没听懂的，一起弄懂。' : '这一节，想先弄明白什么？' }}</h3>
-          <p>{{ props.videoImagesEnabled ? '从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。' : '问一个问题，或说说你想学会什么。' }}</p>
-          <button v-if="!props.agentInput.trim() && !props.askDraft" type="button" class="question-example" :disabled="props.questionInputBlocked" @click="emit('update:agentInput', props.videoImagesEnabled ? '请结合当前画面，解释这里在讲什么。' : '帮我梳理当前这一节的核心概念。'); agentInputRef?.focus()">{{ props.videoImagesEnabled ? '讲清当前画面' : '帮我讲清当前这一节' }} <span aria-hidden="true">↗</span></button>
-          <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">查看本书的 {{ historySessions.length }} 段历史对话</button>
+          <h3>{{ props.musicMode ? '这首作品，想先听懂什么？' : props.videoImagesEnabled ? '没听懂的，一起弄懂。' : '这一节，想先弄明白什么？' }}</h3>
+          <p>{{ props.videoImagesEnabled ? '从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。' : props.learningTitle ? '接着上次学习，也可以随时调整目标。' : props.musicMode ? '从听到的一个片段问起，也可以说说想了解什么。' : '选一个目的开始，也可以直接写下你的问题。' }}</p>
+          <button v-if="props.learningTitle && !props.videoImagesEnabled" type="button" class="question-example"
+            :disabled="sending || learningPurposeBusy || !learningPurposeReady" @click="emit('resume-learning')">{{ tutorEnabled ? '继续上次学习' : '开启并继续上次学习' }} <span aria-hidden="true">→</span></button>
+          <LearningPurposeEntry v-else-if="!props.videoImagesEnabled" :music-mode="props.musicMode" :available="!!learningPurposeAvailable" :ready="!!learningPurposeReady"
+            :enabled="!!tutorEnabled" :busy="sending || !!learningPurposeBusy" :scope-options="learningScopeOptions"
+            @choose="(purpose, scope) => emit('learning-purpose', purpose, scope)" @custom="agentInputRef?.focus()" />
+          <button v-else-if="!props.agentInput.trim() && !props.askDraft" type="button" class="question-example" :disabled="props.questionInputBlocked" @click="emit('update:agentInput', '请结合当前画面，解释这里在讲什么。'); agentInputRef?.focus()">讲清当前画面 <span aria-hidden="true">↗</span></button>
+          <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">查看{{ musicMode ? '这首作品' : '本书' }}的 {{ historySessions.length }} 段历史对话</button>
         </div>
       </div>
 
@@ -1536,7 +1569,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <div v-show="mobileConversation && !!mobileResponseTurn" class="mobile-response-toolbar"><div ref="responseEditingHost" /><button type="button" class="mobile-editor-close" aria-label="收起作答" @click="closeResponseEditor"><X :size="18" aria-hidden="true" /></button></div>
         <Teleport :to="responseSidebarHost || 'body'" :disabled="!wideConversation || !responseSidebarHost">
         <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" role="group" aria-label="当前回答的学习操作">
-          <div class="learning-dock-copy"><span>读到这里</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? '试着把理解变成自己的话' : '有疑问，随时停下来聊一聊' }}</p></div>
+          <div class="learning-dock-copy"><span>{{ musicMode ? '听到这里' : '读到这里' }}</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? '试着把理解变成自己的话' : '有疑问，随时停下来聊一聊' }}</p></div>
           <button type="button" class="learning-help" aria-label="这一步没跟上" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />{{ mobileConversation ? '没跟上' : '这一步没跟上' }}</button>
           <button v-show="!mobileConversation || structuredResponseAvailable" type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </div>
@@ -1570,8 +1603,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :disabled="props.questionInputBlocked || (network.enabled && (props.historyLoading || !!props.historyError))"
           :value="props.agentInput"
           rows="1"
-          aria-label="围绕当前阅读内容提问"
-          :placeholder="props.askDraft ? '围绕引用来源提问...' : props.videoImagesEnabled ? '这里为什么这样？问问伴读…' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
+          :aria-label="musicMode ? '围绕当前音乐提问' : '围绕当前阅读内容提问'"
+          :placeholder="props.askDraft ? '围绕引用来源提问...' : props.videoImagesEnabled ? '这里为什么这样？问问伴读…' : props.musicMode ? '说说你听到了什么，或想听懂什么…' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
@@ -1588,7 +1621,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <Teleport :to="recordsToolsTarget || 'body'" :disabled="!recordsToolsTarget"><div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" aria-label="学习记录"><slot name="learning-actions" /></div></Teleport>
           </div>
         </div>
-        <button v-if="props.canStop" type="button" class="stop-agent" aria-label="停止" title="停止生成" @click="emit('stop-agent')"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
+        <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? '正在停止' : '停止'" :title="stopping ? '正在停止' : '停止生成'" :disabled="stopping" @click="stopAgent"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
         <button v-else type="button" class="send-agent" :aria-label="props.sending ? '发送中' : '发送'" title="发送（Ctrl+Enter）" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !props.videoQuestion?.image)" @click="submitMessage">
           <ArrowUp :size="20" aria-hidden="true" />
         </button>
@@ -1855,7 +1888,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               @click="openActiveAgentSourceInReader"
             >
               <ExternalLink :size="15" aria-hidden="true" />
-              <span>{{ agentSourcePopup.opening ? "正在打开..." : activeAgentSource?.media ? "进入原视频位置" : "在正文中查看" }}</span>
+              <span>{{ agentSourcePopup.opening ? "正在打开..." : activeAgentSource?.music ? "回到这段音乐与乐谱" : activeAgentSource?.media ? "进入原视频位置" : "在正文中查看" }}</span>
             </button>
           </footer>
         </section>
@@ -2778,6 +2811,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .agent-compose-row > .send-agent:not(:disabled) { border-color: var(--brand-accent); background: var(--brand-accent); color: var(--brand-on-accent); }
 .agent-compose-row > .send-agent:hover:not(:disabled) { border-color: var(--brand-accent-deep); background: var(--brand-accent-deep); }
 .agent-compose-row > .stop-agent { background: var(--ink); color: var(--canvas); }
+.agent-compose-row > .stop-agent:disabled { background: var(--line); color: var(--steel); }
+.run-progress-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 16px; }
+.run-progress-footer .run-status { margin: 0; }
+.run-progress-footer > .stop-work-button { margin-left: auto; }
+.stop-work-button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--canvas); color: var(--ink); font-size: 12px; cursor: pointer; }
+.stop-work-button:hover:not(:disabled) { background: var(--surface-soft); border-color: var(--steel); }
+.stop-work-button:disabled { color: var(--steel); cursor: default; }
+.stop-work-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
 .composer-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; min-height: 34px; }
 .composer-controls .attach-image { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--steel); }
 .composer-controls .attach-image:hover:not(:disabled) { background: var(--line); color: var(--ink); }
@@ -3040,6 +3081,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   .conversation-mobile .learning-dock :is(.learning-help, .learning-respond) { border-color: transparent; background: transparent; color: var(--steel); box-shadow: none; }
   .conversation-mobile .learning-dock :is(.learning-help, .learning-respond):hover:not(:disabled) { background: var(--surface-soft); color: var(--ink); }
   .conversation-mobile .agent-compose-row > button, .conversation-mobile .composer-controls .attach-image { width: 40px; height: 40px; }
+  .conversation-mobile .stop-work-button, .workspace-tools .stop-work-button { min-height: 40px; padding-inline: 12px; }
   .conversation-mobile .compose-caption { margin-bottom: 5px; padding: 0 4px; }
   .conversation-mobile .compose-caption button { min-height: 36px; }
 }

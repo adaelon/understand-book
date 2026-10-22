@@ -7,6 +7,9 @@ import type { PresentationFeedback } from '../generated/PresentationFeedback';
 import type { PresentationFeedbackSelection } from '../generated/PresentationFeedbackSelection';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 import type { PresentationView } from '../generated/PresentationView';
+import type { PresentationState } from '../generated/PresentationState';
+import { presentationDispatcher } from '../presentation-interaction';
+import { initialRun } from '../agent-run-state';
 
 const reference = { presentation_id: 'p', revision: 1 };
 const emptyFeedback = (revision = 1): PresentationFeedback => ({ session_id: 's', turn_id: 't', reference: { ...reference, revision },
@@ -14,10 +17,47 @@ const emptyFeedback = (revision = 1): PresentationFeedback => ({ session_id: 's'
 const savedFeedback = (selection: PresentationFeedbackSelection, revision = 1): PresentationFeedback => ({ ...emptyFeedback(), selection,
   feedback_revision: revision, created_at: '2026-10-16T03:00:00Z', updated_at: '2026-10-16T03:00:00Z' });
 const savedScene: PresentationFollowUp = { session_id: 's', turn_id: 't', reference, state_revision: 1, saved_state_ref: 'scene-original' };
-const view: PresentationView = { animation_assets: {}, reference, title: 'Experiment', entrypoint: 'index.html',
+const view: PresentationView = { action_contract: [], animation_assets: {}, reference, title: 'Experiment', entrypoint: 'index.html',
   content_files: { 'index.html': '<p>Experiment</p>' }, sources: [], assumptions: [], initial_state: {},
   restored_state: null, restored_state_revision: null, readable_view: { parts: [], sources: [] } };
 const like: PresentationFeedbackSelection = { choice: 'like', reasons: [], comment: '' };
+
+it.each([
+  { status: 'observed' as const, saveFails: false },
+  { status: 'applied' as const, saveFails: false },
+  { status: 'applied' as const, saveFails: true },
+])('OM5 saves scene and support before returning $status (saveFails=$saveFails)', async ({ status, saveFails }) => {
+  let saved!: (receipt: PresentationFollowUp) => void;
+  let failed!: (reason: Error) => void;
+  const save = vi.spyOn(api, 'presentationSaveState').mockImplementation(() => new Promise((resolve, reject) => { saved = resolve; failed = reject; }));
+  const requests = vi.spyOn(api, 'presentationInteraction').mockResolvedValue({ claimed: true, accepted: true });
+  const { wrapper, send, post } = await mountFeedback();
+  const dispatch = presentationDispatcher();
+  try {
+    dispatch.update({ ...initialRun({ book_id: 'b', session_id: 's', turn_id: 'run' }), presentation_command: {
+      command_id: 'om4', run_turn_id: 'run', session_id: 's', delivery_turn_id: 't',
+      request: status === 'observed' ? { operation: 'observe', reference } :
+        { operation: 'act', reference, based_on: 'before', action: { kind: 'invoke', action_id: 'apply' } },
+      page_id: null, expected_values: {}, expected_edits: {}, available_actions: [],
+    } });
+    await flushPromises();
+    const command = post.mock.calls.map(([message]) => message as any).find(message => message.kind === 'interaction');
+    expect(command).toBeDefined();
+    const state: PresentationState = { values: { page: { speed: 2 } }, visible_step: 'applied', observed_result: '20 metres', source_ref_ids: [] };
+    const support = status === 'applied' ? [{ region_id: 'result', text: '20 metres' }] : [];
+    await send({ kind: 'interaction-result', request_id: command.request_id, status, state, support });
+    expect(save).toHaveBeenCalledExactlyOnceWith('s', 't', reference, state,
+      { command_id: 'om4', run_turn_id: 'run', page_id: command.channel, status, support });
+    expect(requests).toHaveBeenCalledTimes(1);
+    if (saveFails) failed(new Error('状态保存失败')); else saved(savedScene);
+    await flushPromises();
+    expect(requests.mock.calls[1][0]).toMatchObject(saveFails
+      ? { operation: 'complete', status: 'failed', reason: '状态保存失败' }
+      : { operation: 'complete', status, receipt: savedScene });
+    expect(requests.mock.calls[1][0]).not.toHaveProperty('state'); // server reloads the exact saved snapshot
+  } finally { dispatch.stop(); wrapper.unmount(); }
+});
+
 beforeEach(() => { vi.spyOn(api, 'presentationFeedbackRead').mockResolvedValue(emptyFeedback()); });
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
@@ -44,6 +84,34 @@ async function mountFeedback(selectedView = view, teaching = false) {
   };
   return { wrapper, frame, snapshot, post, send, channel };
 }
+
+it('OM1 saves semantic inputs and displayed results together and follows the captured receipt while the page advances', async () => {
+  const pending: PresentationState = {
+    values: { page: { input_speed_b_m_s: 2, applied_speed_b_m_s: 1 } },
+    visible_step: 'awaiting_apply', observed_result: '10 秒，B 走 10 米', source_ref_ids: [],
+    observation: { summary: '新输入等待应用', state: { speed_b_m_s: 2 }, rendered: { speed_b_m_s: 1, distance_b_m: 10 } },
+  };
+  let release!: (receipt: PresentationFollowUp) => void;
+  const save = vi.spyOn(api, 'presentationSaveState')
+    .mockImplementationOnce(() => new Promise(resolve => { release = resolve; }))
+    .mockResolvedValue({ ...savedScene, state_revision: 2, saved_state_ref: 'scene-applied' });
+  const { wrapper, post, send } = await mountFeedback();
+  try {
+    await wrapper.get('.presentation-follow-up input').setValue('为什么没有变');
+    await wrapper.get('.presentation-follow-up').trigger('submit'); await flushPromises();
+    const request = post.mock.calls.map(([data]) => data as any).find(data => data.kind === 'snapshot');
+    await send({ kind: 'state', request_id: request.request_id, state: pending });
+    expect(save).toHaveBeenNthCalledWith(1, 's', 't', reference, pending);
+    expect(wrapper.emitted('follow-up')).toBeUndefined();
+    const applied = { ...pending, observed_result: '10 秒，B 走 20 米',
+      observation: { summary: '新结果已应用', state: { speed_b_m_s: 2 }, rendered: { speed_b_m_s: 2, distance_b_m: 20 } } };
+    await send({ kind: 'state', state: applied });
+    release(savedScene); await flushPromises();
+    expect(wrapper.emitted('follow-up')).toEqual([['为什么没有变', savedScene]]);
+    expect(save).toHaveBeenNthCalledWith(2, 's', 't', reference, applied);
+    expect(wrapper.text()).toContain('演示状态已保存');
+  } finally { wrapper.unmount(); }
+});
 
 it('does not show an actionless teaching plan below the delivered presentation', async () => {
   vi.spyOn(api, 'tutorActivities').mockResolvedValue({ activities: [{ delivery_ref: 'explanation', status: 'active', attempted: false, help_seen: [],
@@ -245,7 +313,7 @@ it('SE5 ignores a save response after switching content and removes only the ins
 
 it("keeps the live frame when a parent renders the same version reference again", async () => {
   const read = vi.spyOn(api, "presentationRead").mockResolvedValue({
-    animation_assets: {},
+    action_contract: [], animation_assets: {},
     reference: { presentation_id: "p", revision: 1 }, title: "Experiment", entrypoint: "index.html",
     content_files: { "index.html": "<p>Experiment</p>" }, sources: [], assumptions: [], initial_state: {},
     restored_state: null, restored_state_revision: null, readable_view: { parts: [], sources: [] },
@@ -272,7 +340,7 @@ it("keeps the live frame when a parent renders the same version reference again"
 
 it("zooms and opens readable content without rebuilding the live presentation", async () => {
   const read = vi.spyOn(api, "presentationRead").mockResolvedValue({
-    animation_assets: {}, reference: { presentation_id: "p", revision: 1 }, title: "Experiment", entrypoint: "index.html",
+    action_contract: [], animation_assets: {}, reference: { presentation_id: "p", revision: 1 }, title: "Experiment", entrypoint: "index.html",
     content_files: { "index.html": '<input id="parameter" value="7">' }, sources: [], assumptions: [], initial_state: {},
     restored_state: null, restored_state_revision: null, readable_view: { parts: [{ kind: "markdown", text: "**说明**" }], sources: [] },
   });

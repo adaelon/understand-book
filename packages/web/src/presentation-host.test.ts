@@ -2,9 +2,22 @@ import { describe, expect, it } from "vitest";
 import { acceptsPresentationMessage, resolvePresentationEditingMessage } from "./presentation-host";
 
 describe("MU7 frame channel", () => {
+  it('OM1 accepts semantic and DOM-only snapshots on the current frame channel', () => {
+    const source = {} as Window;
+    const state = { values: { page: { input_speed_b_m_s: 2, applied_speed_b_m_s: 1 } },
+      visible_step: 'awaiting_apply', observed_result: 'B 走 10 米', source_ref_ids: [] };
+    for (const snapshot of [state, { ...state, observation: {
+      summary: 'B 的新输入等待应用', state: { speed_b_m_s: 2 }, rendered: { distance_b_m: 10 },
+    } }]) {
+      expect(acceptsPresentationMessage({ source, origin: 'null',
+        data: { channel: 'current', kind: 'state', request_id: 1, state: snapshot } } as MessageEvent, source, 'current')).toBe(true);
+    }
+  });
   it('accepts bridge teaching help and region results only from the current frame and channel', () => {
     const source = {} as Window;
     for (const data of [
+      { kind: 'interaction-result', request_id: 3, status: 'applied', state: { values: { page: { speed: 2 } } } },
+      { kind: 'interaction-result', request_id: 4, status: 'failed', reason: 'Page changed' },
       { kind: 'teaching-help', request_id: 1, move_id: 'observe-candidate', help_kind: 'hint', region_id: 'candidate-help', text: '乙仍在候选里。' },
       { kind: 'teaching-help', request_id: 2, move_id: 'observe-candidate', help_kind: 'explanation', region_id: 'candidate-help', text: '主干只是一种选择结果。' },
       { kind: 'region-located', region_id: 'candidate-help', located: false },

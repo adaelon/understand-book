@@ -12,6 +12,7 @@ import { buildTechnicalLearningDiscourseIndex, type TechnicalLearningDiscourseIt
 import { buildFormulaSemanticsSidecar, type FormulaSemanticsBuildCandidate } from "../../packages/core/src/formula-semantics";
 import { FormulaSemanticsSidecarZ, TechnicalLearningDiscourseIndexZ } from "../../packages/core/src/zod";
 import type { ProfileSidecarArtifact } from "../../packages/core/src/profile-sidecar-build";
+import { buildMathStructureIndex, type MathStructureCandidate } from "../../packages/core/src/math-structure";
 import { computeProfileSidecarCandidateStatus } from "../../packages/core/src/profile-sidecar-router";
 import type { Pass1ArtifactMeta } from "../../packages/core/src/build-resume";
 import { contentProfileUsage, parseContentProfileArgsOrExit } from "./content-profile-options";
@@ -98,6 +99,7 @@ if (shadowGeneration && shadowFinal) {
   });
   const discourseItems: TechnicalLearningDiscourseItem[] = [];
   const formulaCandidates: FormulaSemanticsBuildCandidate[] = [];
+  const mathCandidates: MathStructureCandidate[] = [];
   let committed: number;
   let pending: number;
   let eligible: number;
@@ -161,6 +163,7 @@ if (shadowGeneration && shadowFinal) {
       }
       discourseItems.push(...artifact.discourse_items);
       formulaCandidates.push(...artifact.formula_semantics);
+      mathCandidates.push(...artifact.math_items);
     }
     committed = contributors.length;
     pending = 0;
@@ -188,6 +191,7 @@ if (shadowGeneration && shadowFinal) {
       const artifact = artifacts.get(id)!;
       discourseItems.push(...(artifact.discourse_items ?? []));
       formulaCandidates.push(...(artifact.formula_semantics ?? []));
+      mathCandidates.push(...(artifact.math_items ?? []));
     }
     committed = status.committed;
     pending = status.pending;
@@ -200,6 +204,8 @@ if (shadowGeneration && shadowFinal) {
   const formula = buildFormulaSemanticsSidecar(header, formulaCandidates, lidNodes);
   TechnicalLearningDiscourseIndexZ.parse(discourse.sidecar);
   FormulaSemanticsSidecarZ.parse(formula.sidecar);
+  const math = parsedProfile.contentProfile.id === "technical_learning"
+    ? buildMathStructureIndex(header, mathCandidates, { source, byLid }) : undefined;
 
   const outDir = `.understand-book/${bookId}`;
   mkdirSync(outDir, { recursive: true });
@@ -209,6 +215,7 @@ if (shadowGeneration && shadowFinal) {
     artifacts: {
       "discourse_index.json": JSON.stringify(discourse.sidecar, null, 2),
       "formula_semantics.json": JSON.stringify(formula.sidecar, null, 2),
+      ...(math ? { "math_structure.json": JSON.stringify(math, null, 2) } : {}),
     },
   });
 
@@ -216,5 +223,6 @@ if (shadowGeneration && shadowFinal) {
   console.error(`  discourse_lids=${initial.analysis.accounting.discourse_eligible_lids} groups=${initial.analysis.accounting.discourse_groups} formula_total=${initial.analysis.accounting.formula_total} formula_eligible=${initial.analysis.accounting.formula_eligible} skipped=${skipped} done=${committed}/${eligible} pending=${pending}`);
   console.error(`  discourse_index.json items=${discourse.sidecar.items.length} dropped=${discourse.dropped.length}`);
   console.error(`  formula_semantics.json items=${formula.sidecar.items.length} pending=${formula.pending.length}`);
+  if (math) console.error(`  math_structure.json items=${math.items.length} unresolved=${math.items.flatMap((item) => item.references).filter((ref) => ref.resolution === "missing" || ref.resolution === "ambiguous").length}`);
   process.stdout.write(`${JSON.stringify(buildAutomaticBuildStageBatchResult(publicationReceipt))}\n`);
 }

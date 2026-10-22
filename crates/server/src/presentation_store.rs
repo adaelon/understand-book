@@ -89,7 +89,7 @@ mod mu2_tests {
             let store = PresentationStore::for_user(&user).unwrap();
             let version = AgentPresentation { reference: reference.clone(), candidate_id: "candidate-legacy".into(),
                 owner: owner.clone(), created_by_turn_id: "turn-legacy".into(), based_on: None,
-                content: PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets: Default::default(), title: id.into(),
+                content: PresentationContent { action_contract: vec![], teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets: Default::default(), title: id.into(),
                     content_files: Default::default(), entrypoint: "index.html".into(), readable_content: id.into(),
                     source_bindings: vec![], assumptions: vec![], state_contract: serde_json::json!({}), initial_state: serde_json::json!({}) } };
             PresentationStore::write(&store.version_path(&reference).unwrap(), &version).unwrap();
@@ -316,6 +316,11 @@ fn validate_content(
         return Err(invalid(
             "Content requires title, readable content and an existing entrypoint",
         ));
+    }
+    for key in runtime::presentation_interact::parameter_names(&content.action_contract) {
+        if !content.state_contract.get(&key).is_some_and(serde_json::Value::is_string) || content.initial_state.get(&key).is_none() {
+            return Err(invalid("Action parameters require state_contract definitions and initial_state values"));
+        }
     }
     for path in content.content_files.keys() {
         if path.is_empty()

@@ -21,7 +21,7 @@ import {
 } from "../src/extractor-contract";
 import {
   AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1,
-  PROFILE_SIDECAR_POLICY_V2,
+  PROFILE_SIDECAR_POLICY_V3,
 } from "../src/automatic-build-protocol";
 import {
   automaticBuildExtractionPolicy,
@@ -419,7 +419,7 @@ describe("automatic build extractor contracts", () => {
     }
   });
 
-  it("publishes profile_sidecar_policy.v2 under one raw prompt hash", () => {
+  it("publishes profile_sidecar_policy.v3 under one raw prompt hash", () => {
     const prompt = readFileSync(path.join(REPO_ROOT, "agents", "profile-sidecar-extractor.md"), "utf8");
     const promptSha256 = createHash("sha256").update(prompt).digest("hex");
     const policy = automaticBuildExtractionPolicy(
@@ -427,13 +427,13 @@ describe("automatic build extractor contracts", () => {
       resolveContentProfile("technical_learning"),
       "full",
     );
-    expect(policy).toMatchObject(PROFILE_SIDECAR_POLICY_V2);
-    expect(promptSha256).toBe(PROFILE_SIDECAR_POLICY_V2.prompt_sha256);
+    expect(policy).toMatchObject(PROFILE_SIDECAR_POLICY_V3);
+    expect(promptSha256).toBe(PROFILE_SIDECAR_POLICY_V3.prompt_sha256);
     const releaseMembers = AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1
       .filter((member) => member.prompt_name === "profile-sidecar-extractor.md");
     expect(releaseMembers).toHaveLength(2);
     expect(releaseMembers.every((member) => (
-      member.stage_policy_version === PROFILE_SIDECAR_POLICY_V2.stage_policy_version
+      member.stage_policy_version === PROFILE_SIDECAR_POLICY_V3.stage_policy_version
       && member.prompt_sha256 === promptSha256
       && member.schema_version === EXTRACTOR_CONTRACT_SCHEMA_VERSIONS.profile_sidecar
     ))).toBe(true);

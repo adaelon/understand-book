@@ -6,6 +6,8 @@ export type { RunActivity };
 export interface RunDescriptor { workspace_id?: string; workspace_generation?: number; published_book_ref?: { book_id: string; publication_id: string }; book_id: string; session_id: string; turn_id: string }
 export interface AnswerDraft { message_id: number; revision: number; operation: string; view: AgentAnswerView | null }
 export interface RunSnapshot {
+  music_command?: import('./music-api').MusicCommand | null;
+  presentation_command?: import("./generated/PresentationCommand").PresentationCommand | null;
   observation_epoch?: string;
   reader_state?: ReaderState | null;
   effects?: { effect_id: string; effect: AgentEffect }[];
@@ -45,6 +47,8 @@ export function reduceRun(state: RunSnapshot, event: RunEvent): RunSnapshot {
   const next = { ...state, last_seq: event.seq };
   if (event.type === "run.started") next.execution_state = "running";
   if (event.type === "run.resource") next.execution_state = (event.payload as { execution_state: RunSnapshot['execution_state'] }).execution_state;
+  if (event.type === "presentation.command") next.presentation_command = event.payload as RunSnapshot["presentation_command"];
+  if (event.type === 'music.command') next.music_command = event.payload as RunSnapshot['music_command'];
   if (event.type === "reader.changed") {
     const reader = event.payload as ReaderState;
     if (reader.book_id === state.descriptor.book_id && reader.revision >= (state.reader_state?.revision ?? -1)) next.reader_state = reader;
@@ -76,7 +80,7 @@ export function reduceRun(state: RunSnapshot, event: RunEvent): RunSnapshot {
   }
   if (event.type === "run.cancelling") next.execution_state = "cancelling";
   if (event.type === "run.finalizing") next.execution_state = "finalizing";
-  if (/^(model|tool)\.(started|finished)$/.test(event.type)) {
+  if (/^(model|tool|commentary)\.(started|finished)$/.test(event.type)) {
     const activity = event.payload as RunActivity;
     next.activities = [...state.activities];
     const index = next.activities.findIndex((old) => old.step_id === activity.step_id);

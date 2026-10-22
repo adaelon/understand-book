@@ -39,7 +39,7 @@ fn spatial_three_is_opt_in_and_composes_with_state_and_timeline() {
     assert_eq!(reference_names(&plan), ["state", "continuous-scene", "three"]);
     assert!(plan.instructions.contains("preserveDrawingBuffer:true"));
     assert!(plan.instructions.contains("spatial-linked-views@1"));
-    assert_eq!(reference_names(&request(PresentationPhase::Local, &[PresentationNeed::Three])), ["three"]);
+    assert_eq!(reference_names(&request(PresentationPhase::Local, &[PresentationNeed::Three])), ["state", "three"]);
 }
 
 fn assert_shared_contract(plan: &AgentRequestPlan, phase: &str) {
@@ -168,7 +168,9 @@ fn global_design_gets_directory_but_no_engineering_references() {
         "requestVideoFrameCallback",
         "HAVE_CURRENT_DATA",
         "hitFunc",
-        "registerStateRestorer",
+        // The short write example restores its own counter; global planning
+        // still must not receive the full implementation reference.
+        "Saved page state contract:",
         "160px-high",
         "180s timeout",
     ] {
@@ -189,7 +191,6 @@ fn static_local_and_local_edit_do_not_require_interaction_or_seek() {
         assert_shared_contract(&plan, "local");
         for interactive in [
             "presentationScene",
-            "registerStateReader",
             "requestVideoFrameCallback",
             "seek(",
             "position slider",
@@ -200,9 +201,9 @@ fn static_local_and_local_edit_do_not_require_interaction_or_seek() {
             );
         }
         if needs.is_empty() {
-            assert!(reference_names(&plan).is_empty());
+            assert_eq!(reference_names(&plan), ["state"]);
         } else {
-            assert_eq!(reference_names(&plan), ["editing", "static-plot"]);
+            assert_eq!(reference_names(&plan), ["editing", "static-plot", "state"]);
             assert!(plan
                 .instructions
                 .contains("old_text must appear exactly once"));
@@ -279,10 +280,10 @@ fn media_local_includes_decoding_paused_restore_and_resource_contracts() {
 }
 
 #[test]
-fn konva_does_not_imply_timeline_and_custom_state_is_explicit() {
+fn konva_gets_state_without_implying_timeline() {
     let plan = request(PresentationPhase::Local, &[PresentationNeed::Konva]);
     assert_shared_contract(&plan, "local");
-    assert_eq!(reference_names(&plan), ["konva"]);
+    assert_eq!(reference_names(&plan), ["state", "konva"]);
     for contract in [
         "hitFunc",
         "getRelativePointerPosition",

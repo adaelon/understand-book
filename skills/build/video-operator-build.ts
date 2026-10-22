@@ -36,6 +36,7 @@ export interface OperatorVideoBuildInput {
   cost_ledger: ExternalBuildCostLedger;
   /** Personal input preparation uses only local import/transcription; paid CLI enrichment stays operator-owned. */
   personal_source_only?: boolean;
+  processing_confirmation?: string;
   signal?: AbortSignal;
   model?: string;
   dependencies?: { ffmpeg?: string; ffprobe?: string; python?: string; modelDir?: string };
@@ -115,7 +116,8 @@ export async function runOperatorVideoBuild(input: OperatorVideoBuildInput) {
       await stage({ stage: 'import', completed: 0, total: 0, unit: 'bytes', message: '导入视频并检查媒体' });
       await importVideo(source, workspace, operation);
       await stage({ stage: 'transcript', completed: 0, total: 0, unit: 'chunks', message: '逐段转写视频原文' });
-      const transcript = await buildVideoTranscript(workspace, { ...operation, ...input.dependencies });
+      const transcript = await buildVideoTranscript(workspace, { ...operation, ...input.dependencies,
+        serviceMeter:input.cost_ledger.transcriptMeter(workspace,input.processing_confirmation) });
       if (transcript.stage !== 'ready') throw new Error(transcript.failure ?? 'Video transcript incomplete; resume missing chunks');
     }
     if (input.personal_source_only) {

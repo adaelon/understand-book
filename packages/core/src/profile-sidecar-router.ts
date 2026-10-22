@@ -11,6 +11,8 @@ import type { Pass1ArtifactMeta } from "./build-resume";
 import type { ContentProfileDefinition } from "./content-profile";
 import type { LidNode } from "./generated/LidNode";
 import { inspectRenderedModelInput } from "./model-input-renderer";
+import { createProfileSidecarContext, type ProfileSidecarContext } from "./profile-sidecar-context";
+import { validateMathStructureCandidates, type MathStructureSource } from "./math-structure";
 import {
   renderProfileSidecarDiscourseText,
   type ProfileSidecarArtifact,
@@ -25,7 +27,7 @@ import {
 } from "./stage-work-unit";
 import { estimateTokens, type Window } from "./window";
 
-export const PROFILE_SIDECAR_ROUTER_VERSION = "profile_sidecar_semantic_units.v2" as const;
+export const PROFILE_SIDECAR_ROUTER_VERSION = "profile_sidecar_semantic_units.v4" as const;
 export const DEFAULT_DISCOURSE_GROUP_LIDS = 12;
 export const DEFAULT_DISCOURSE_INPUT_TOKENS =
   AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1.stage_body_limit_tokens;
@@ -38,6 +40,8 @@ export interface ProfileSidecarSemanticPacketV2 {
   work_unit_id: string;
   unit_kind: ProfileSidecarSemanticUnitKind;
   visible_lids: string[];
+  discourse_lids: string[];
+  math_anchor_lids: string[];
   formula_lids: string[];
   text: string;
   estimated_input_tokens: number;
@@ -113,17 +117,10 @@ function nodeText(node: LidNode, source: string): string {
   return source.slice(node.span.start, node.span.end).trim();
 }
 
-function discourseSkipReason(node: LidNode, source: string): string | undefined {
-  if (node.kind !== "paragraph") return "non_paragraph_discourse_fragment";
-  const text = nodeText(node, source).replace(/\s+/g, " ").trim();
-  if (!text || /^<!--|^#{1,6}\s|^\d{1,4}$/.test(text)) return "discourse_heading_or_marker";
-  if (text.length < 20 || !/[\p{L}\p{N}]/u.test(text)) return "discourse_short_fragment";
-  return undefined;
-}
-
 function formulaSkipReason(raw: string): string | undefined {
   const trimmed = raw.trim();
-  if (/\\underline\s*\{|\\text\s*\{/.test(trimmed)) return "formula_text_decoration";
+  const withoutText = trimmed.replace(/\\text\s*\{[^{}]*\}/g, "");
+  if (withoutText !== trimmed && !withoutText.replace(/\$|\\underline|[{}\s]/g, "")) return "formula_text_decoration";
   const body = trimmed
     .replace(/^\$+|\$+$/g, "")
     .replace(/\\(?:mathcal|mathbf|mathrm|operatorname)\s*\{([^{}]+)\}/g, "$1")
@@ -145,6 +142,8 @@ function buildPacket(input: {
   workUnitId: string;
   unitKind: ProfileSidecarSemanticUnitKind;
   visibleLids: string[];
+  discourseLids: string[];
+  mathAnchorLids: string[];
   formulaLids: string[];
   text: string;
 }): ProfileSidecarSemanticPacketV2 {
@@ -154,6 +153,8 @@ function buildPacket(input: {
     work_unit_id: input.workUnitId,
     unit_kind: input.unitKind,
     visible_lids: input.visibleLids,
+    discourse_lids: input.discourseLids,
+    math_anchor_lids: input.mathAnchorLids,
     formula_lids: input.formulaLids,
     text: input.text,
   };
@@ -167,13 +168,6 @@ function buildPacket(input: {
   };
 }
 
-function textForLids(lids: string[], byLid: Map<string, LidNode>, source: string): string {
-  return [...lids]
-    .sort((left, right) => byLid.get(left)!.span.start - byLid.get(right)!.span.start)
-    .map((lid) => `[${lid}] ${nodeText(byLid.get(lid)!, source)}`)
-    .join("\n\n");
-}
-
 function discoursePackets(input: {
   windows: Window[];
   byLid: Map<string, LidNode>;
@@ -182,6 +176,7 @@ function discoursePackets(input: {
   maxGroupLids: number;
   maxInputTokens: number;
   allowOverLimitPackets: boolean;
+  context: ProfileSidecarContext;
 }): { packets: ProfileSidecarSemanticPacketV2[]; skips: ProfileSidecarRoutingAnalysis["skips"]; eligible: number; skipped: number } {
   const packets: ProfileSidecarSemanticPacketV2[] = [];
   const skips: ProfileSidecarRoutingAnalysis["skips"] = {};
@@ -193,7 +188,7 @@ function discoursePackets(input: {
     for (const lid of window.leafLids) {
       const node = input.byLid.get(lid)!;
       if (node.kind === "formula") continue;
-      if (discourseSkipReason(node, input.source)) skippedLids.push(lid);
+      if (!input.context.discourseTargets.has(lid)) skippedLids.push(lid);
       else eligibleLids.push(lid);
     }
     eligible += eligibleLids.length;
@@ -208,25 +203,35 @@ function discoursePackets(input: {
       };
     }
     let current: string[] = [];
-    const flush = () => {
-      if (!current.length) return;
-      const digest = sha256(current.join("\n")).slice(0, 12);
-      const workUnitId = `discourse-${current[0].replace(/[^A-Za-z0-9]+/g, "-")}-${digest}`;
-      const baseText = textForLids(current, input.byLid, input.source);
-      const packet = buildPacket({
+    const packetFor = (targets: string[]) => {
+      const digest = sha256(targets.join("\n")).slice(0, 12);
+      const workUnitId = `discourse-${targets[0].replace(/[^A-Za-z0-9]+/g, "-")}-${digest}`;
+      const mathAnchorLids = input.contentProfile.id === "technical_learning"
+        ? targets.flatMap((lid) => input.context.mathAnchors.has(lid) ? [input.context.mathAnchors.get(lid)!] : []) : [];
+      const visibleLids = [...new Set([...targets, ...mathAnchorLids,
+        ...targets.flatMap((lid) => input.context.discourseLids(lid)),
+        ...(mathAnchorLids.length ? targets.flatMap((lid) => input.context.mathContextLids(lid)) : []),
+      ])];
+      return buildPacket({
         workUnitId,
         unitKind: "profile_sidecar_discourse",
-        visibleLids: [...current],
+        visibleLids,
+        discourseLids: [...targets],
+        mathAnchorLids,
         formulaLids: [],
-        text: renderProfileSidecarDiscourseText(input.contentProfile, baseText),
+        text: renderProfileSidecarDiscourseText(input.contentProfile, input.context.render(visibleLids)),
       });
+    };
+    const flush = () => {
+      if (!current.length) return;
+      const packet = packetFor(current);
       if (packet.estimated_rendered_tokens > input.maxInputTokens && !input.allowOverLimitPackets) {
         const bodyEstimate = current.length === 1
           ? estimateTokens(nodeText(input.byLid.get(current[0])!, input.source))
           : packet.estimated_rendered_tokens;
         throw new ProfileSidecarRoutingBudgetBlock(
-          workUnitId,
-          [...current],
+          packet.work_unit_id,
+          packet.visible_lids,
           bodyEstimate,
           input.maxInputTokens,
         );
@@ -236,9 +241,9 @@ function discoursePackets(input: {
     };
     for (const lid of eligibleLids) {
       const proposed = [...current, lid];
-      const baseText = textForLids(proposed, input.byLid, input.source);
-      const estimate = estimateTokens(renderProfileSidecarDiscourseText(input.contentProfile, baseText));
-      if (current.length && (proposed.length > input.maxGroupLids || estimate > input.maxInputTokens)) flush();
+      if (current.length && (proposed.length > input.maxGroupLids
+        || input.context.discourseTargets.get(current[0]) !== input.context.discourseTargets.get(lid)
+        || packetFor(proposed).estimated_rendered_tokens > input.maxInputTokens)) flush();
       current.push(lid);
     }
     flush();
@@ -268,6 +273,7 @@ function formulaPackets(input: {
   windows: Window[];
   byLid: Map<string, LidNode>;
   source: string;
+  context: ProfileSidecarContext;
 }): { packets: ProfileSidecarSemanticPacketV2[]; skips: ProfileSidecarRoutingAnalysis["skips"]; total: number; skipped: number; noFormulaWindows: number } {
   const packets: ProfileSidecarSemanticPacketV2[] = [];
   const skips: ProfileSidecarRoutingAnalysis["skips"] = {};
@@ -288,17 +294,13 @@ function formulaPackets(input: {
       };
       continue;
     }
-    const contextLids = window.leafLids.filter((lid) => !discourseSkipReason(input.byLid.get(lid)!, input.source));
     for (const formulaLid of formulaLids) {
       total += 1;
       const node = input.byLid.get(formulaLid)!;
       let reason = bibliography.has(formulaLid) ? "formula_bibliography_fragment" : formulaSkipReason(nodeText(node, input.source));
-      const beforeCandidate = [...contextLids].filter((lid) => input.byLid.get(lid)!.span.end <= node.span.start).at(-1);
-      const afterCandidate = contextLids.find((lid) => input.byLid.get(lid)!.span.start >= node.span.end);
-      const before = beforeCandidate && node.span.start - input.byLid.get(beforeCandidate)!.span.end <= 1_500 ? beforeCandidate : undefined;
-      const after = afterCandidate && input.byLid.get(afterCandidate)!.span.start - node.span.end <= 1_500 ? afterCandidate : undefined;
-      const explanationLids = [before, after].filter((lid): lid is string => Boolean(lid));
-      if (!reason && !explanationLids.length) reason = "formula_without_explanatory_context";
+      const context = input.context.formulaContext(formulaLid);
+      const explanationLids = context.lids.filter((lid) => lid !== formulaLid);
+      if (!reason && !context.hasExplanation) reason = "formula_without_explanatory_context";
       const safeLid = formulaLid.replace(/[^A-Za-z0-9]+/g, "-");
       if (reason) {
         skipped += 1;
@@ -318,8 +320,10 @@ function formulaPackets(input: {
         workUnitId,
         unitKind: "profile_sidecar_formula",
         visibleLids,
+        discourseLids: [],
+        mathAnchorLids: [],
         formulaLids: [formulaLid],
-        text: textForLids(visibleLids, input.byLid, input.source),
+        text: input.context.render(visibleLids),
       }));
     }
   }
@@ -339,6 +343,7 @@ export function analyzeProfileSidecarSemanticUnits(input: {
   const maxInputTokens = input.max_discourse_input_tokens ?? DEFAULT_DISCOURSE_INPUT_TOKENS;
   if (!Number.isSafeInteger(maxGroupLids) || maxGroupLids < 1) throw new Error("max_discourse_group_lids must be a positive safe integer");
   if (!Number.isSafeInteger(maxInputTokens) || maxInputTokens < 1) throw new Error("max_discourse_input_tokens must be a positive safe integer");
+  const context = createProfileSidecarContext(input.source, input.byLid);
   const discourse = discoursePackets({
     windows: input.windows,
     byLid: input.byLid,
@@ -347,8 +352,9 @@ export function analyzeProfileSidecarSemanticUnits(input: {
     maxGroupLids,
     maxInputTokens,
     allowOverLimitPackets: input.allow_over_limit_packets === true,
+    context,
   });
-  const formula = formulaPackets(input);
+  const formula = formulaPackets({ ...input, context });
   const packetList = [...discourse.packets, ...formula.packets];
   return {
     version: "profile_sidecar_routing_analysis.v2",
@@ -390,8 +396,8 @@ export function routeProfileSidecarWorkUnits(input: {
       estimated_input_tokens: packet.estimated_input_tokens,
       visible_lids: packet.visible_lids.length,
       formula_lids: packet.formula_lids.length,
-      candidate_count: packet.unit_kind === "profile_sidecar_formula" ? 1 : packet.visible_lids.length,
-      expected_output_items: packet.unit_kind === "profile_sidecar_formula" ? 1 : packet.visible_lids.length,
+      candidate_count: packet.unit_kind === "profile_sidecar_formula" ? 1 : packet.discourse_lids.length + packet.math_anchor_lids.length,
+      expected_output_items: packet.unit_kind === "profile_sidecar_formula" ? 1 : packet.discourse_lids.length + packet.math_anchor_lids.length,
     }),
     legacy_artifact_ref: `.build/profile-sidecar/${packet.work_unit_id}.json`,
   }));
@@ -493,21 +499,29 @@ export function computeProfileSidecarCandidateStatus(input: {
 export function buildProfileSidecarSemanticArtifact(
   packet: ProfileSidecarSemanticPacketV2,
   output: ProfileSidecarExtractionOutput,
+  source?: MathStructureSource,
 ): ProfileSidecarArtifact {
   const discourseItems = output.discourse_items ?? [];
   const formulaSemantics = output.formula_semantics ?? [];
+  const mathItems = output.math_items ?? [];
   if (packet.unit_kind === "profile_sidecar_discourse") {
     if (output.formula_semantics !== undefined) throw new Error("discourse unit must not emit formula_semantics");
-    const allowed = new Set(packet.visible_lids);
+    const allowed = new Set(packet.discourse_lids);
     if (discourseItems.some((item) => !allowed.has(item.lid))) throw new Error("discourse unit emitted an out-of-scope lid");
   } else {
     if (output.discourse_items !== undefined) throw new Error("formula unit must not emit discourse_items");
+    if (output.math_items !== undefined) throw new Error("formula unit must not emit math_items");
     const allowed = new Set(packet.formula_lids);
     if (formulaSemantics.some((item) => !allowed.has(item.formula_lid))) throw new Error("formula unit emitted an out-of-scope formula_lid");
+  }
+  if (mathItems.length) {
+    if (!source) throw new Error("math structure validation requires the source");
+    validateMathStructureCandidates(mathItems, { ...source, anchor_lids: packet.math_anchor_lids, visible_lids: packet.visible_lids });
   }
   return {
     content_hash: packet.input_hash,
     discourse_items: discourseItems,
     formula_semantics: formulaSemantics,
+    math_items: mathItems,
   };
 }

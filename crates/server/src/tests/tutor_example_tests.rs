@@ -22,6 +22,32 @@ fn discrimination(state: &mut AppState) {
         "action":"submit","response":"The source supports total distance; colour is not supported."}));
 }
 
+// A model must resolve sample placeholders from the current runtime data, not
+// treat a tool definition as the identity of the learner's latest expression.
+fn resolve_example_references(plan: &AgentRequestPlan, input: &mut Value) {
+    let field = if input["operation"] == "assess" {
+        assert_eq!(input["action_ref"], "<pending_assessment_action_ref>");
+        "pending_assessment_refs"
+    } else if input["nature"] == "hypothesis" {
+        assert_eq!(input["fact_refs"], json!(["<learner_expression_fact_ref>"]));
+        "uninterpreted_fact_refs"
+    } else { return; };
+    let view = sampled_learner_view(plan);
+    let reference = view[field].as_array().and_then(|refs| refs.first())
+        .expect("the advertised example requires an actual current reference").clone();
+    if input["operation"] == "assess" { input["action_ref"] = reference; }
+    else { input["fact_refs"] = json!([reference]); }
+}
+
+fn sampled_learner_view(plan: &AgentRequestPlan) -> Value {
+    plan.input.iter().rev()
+        .filter_map(|message| message.content.as_deref())
+        .flat_map(str::lines)
+        .find_map(|line| line.starts_with("Current learner view (")
+            .then(|| serde_json::from_str(line.split_once(": ").unwrap().1).unwrap()))
+        .expect("the sampled request must carry the actual current learner view")
+}
+
 pub(crate) struct PublishedExample {
     pub(crate) example: Value,
     pub(crate) previous_design_ref: Option<String>,
@@ -31,6 +57,7 @@ pub(crate) struct PublishedExample {
 impl ModelAdapter for PublishedExample {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance)=fixture_coach_guidance(&request) { return Ok(guidance); }
         if let Some(review)=fixture_delivery_review(&request) { return Ok(review); }
         unreachable!()
     }
@@ -46,7 +73,11 @@ impl ModelAdapter for PublishedExample {
             }
             stage if stage==1 || selecting && stage==2 => {
                 let spec = plan.tools.iter().find(|t| t.name == "tutor.step").unwrap();
-                let mut input = spec.parameters["examples"].as_array().unwrap().iter().find(|e| {
+                let view = sampled_learner_view(plan);
+                let examples = if self.example["nature"] == "hypothesis" {
+                    &view["tool_input_examples"]["examples"]
+                } else { &spec.parameters["examples"] };
+                let mut input = examples.as_array().unwrap().iter().find(|e| {
                     e["operation"] == self.example["operation"] && e["move"]["move_id"] == self.example["move"]["move_id"]
                         && e["nature"] == self.example["nature"]
                 }).expect("example must survive the actual sampled state").clone();
@@ -56,6 +87,7 @@ impl ModelAdapter for PublishedExample {
                         .find_map(|value|value["model_body"]["design_ref"].as_str().map(str::to_owned)).expect("use the actually accepted design result");
                     input["move"]["design_ref"]=json!(reference);
                 }
+                resolve_example_references(plan, &mut input);
                 self.observed.lock().unwrap().push(input.clone());
                 Ok(call("tutor.step", input))
             }
@@ -82,7 +114,8 @@ fn tutor_to3_published_examples_execute_through_resident_dispatch() {
                 store.current_teaching_design(session,&state.workspace.book.base.book_id,state.workspace.book.source_fingerprint()).unwrap().map(|event|event.event_id))
         };
         state.services.adapter = Box::new(PublishedExample { example:example.clone(), previous_design_ref, stage:AtomicUsize::new(0), observed:observed.clone() });
-        let result = json_post(&mut state, "/agent/chat", json!({"message":"Help me examine average speed."}));
+        let request = example["move"]["intent_quote"].as_str().unwrap_or("Help me examine average speed.");
+        let result = json_post(&mut state, "/agent/chat", json!({"message":request}));
         let mut published = observed.lock().unwrap()[0].clone();
         if example["operation"]=="select" { published["move"]["design_ref"]=example["move"]["design_ref"].clone(); }
         if example["nature"] != "hypothesis" { assert_eq!(published, *example); }
@@ -112,6 +145,28 @@ fn tutor_to3_published_examples_execute_through_resident_dispatch() {
 
 #[test]
 fn tutor_to3_assess_example_uses_original_open_response() {
+    struct AssessmentExample(ChatStubAdapter);
+    impl ModelAdapter for AssessmentExample {
+        fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
+        fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            self.0.complete_structured(request)
+        }
+        fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+            let mut turn = self.0.chat(plan)?;
+            for tool in &mut turn.tool_calls {
+                let request: Value = serde_json::from_str(&tool.arguments).unwrap();
+                if tool.name == "tutor.step" && request["operation"] == "assess" {
+                    let spec = plan.tools.iter().find(|tool| tool.name == "tutor.step").unwrap();
+                    assert!(spec.parameters["examples"].as_array().unwrap().iter().all(|e| e["operation"] != "assess"));
+                    let mut actual = sampled_learner_view(plan)["tool_input_examples"]["examples"].as_array().unwrap().iter()
+                        .find(|example| example["operation"] == "assess").unwrap().clone();
+                    resolve_example_references(plan, &mut actual);
+                    tool.arguments = actual.to_string();
+                }
+            }
+            Ok(turn)
+        }
+    }
     let (_root, mut state) = fixture();
     let spec = runtime::tutor::spec();
     let examples = spec.parameters["examples"].as_array().unwrap();
@@ -134,12 +189,12 @@ fn tutor_to3_assess_example_uses_original_open_response() {
     let response = "A's claim is wrong: the stop makes A's total time 15 minutes, versus B's 12. For the same distance, B takes less total time and has the greater average speed.";
     json_post(&mut state, "/tutor/action", json!({"operation_id":"to3-open","delivery_ref":id,"action":"submit","response":response}));
     let example = examples.iter().find(|e| e["operation"] == "assess").unwrap();
-    state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![
+    state.services.adapter = Box::new(AssessmentExample(ChatStubAdapter::scripted(vec![
         call("tutor.step", example.clone()),
         answer(&json!({"items":[{"id":"total-time","verdict":"supported","response_quote":response,
             "sources":[{"lid":"1.1","quote":"total time"}],"reason":"The response includes the stop and uses the equal distances and total times to reject A's claim."}]}).to_string()),
         call("tutor.step", json!({"operation":"outside"})), answer("The response meets the frozen criterion."),
-    ]));
+    ])));
     json_post(&mut state, "/agent/chat", json!({"message":"Evaluate my response","teaching_ref":"action:to3-open"}));
     assert_eq!(state.user.learning_store().unwrap().assessment("action:to3-open").unwrap().unwrap().status, memory::assessment::AssessmentStatus::Correct);
     let reveal = json_post(&mut state, "/tutor/action",

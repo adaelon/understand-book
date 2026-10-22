@@ -105,7 +105,7 @@ fn video_workspace_mixed_release_scope_drafts_selected_update_and_original_sourc
     let handle=f.access.users.lock().unwrap().get("A","now").unwrap();
     let turn=AgentTurnRef {session_id:run.scope.chat_session_id.clone(),turn_id:run.scope.turn_id.clone(),user_turn_ordinal:1};
     let revision=f.access.library.lock().unwrap().load("A",&original).unwrap().book.source_fingerprint().to_owned();
-    let binding=SourceBinding {publication_id:Some(original.publication_id.clone()),source_revision:Some(revision),
+    let binding=SourceBinding { music: None,publication_id:Some(original.publication_id.clone()),source_revision:Some(revision),
         source_ref_id:"mixed-video-source".into(),book_id:original.book_id.clone(),evidence_range:None,evidence_text_digest:String::new(),
         media:Some(media),label_snapshot:"原视频英文".into(),preview_snapshot:"A frame.".into()};
     crate::session_runtime::append(&mut handle.lock().unwrap(),&turn,"video-source",crate::session_event::EventBody::SourcesBound {bindings:vec![binding.clone()]}).unwrap();
@@ -226,4 +226,28 @@ fn video_workspace_browser_host() {
         request.respond(tiny_http::Response::from_string(value.to_string()).with_header(tiny_http::Header::from_bytes("Content-Type","application/json").unwrap())).unwrap();
     }
     server.shutdown();
+}
+
+#[test]
+#[ignore = "measures catalog admission against an existing complete CS336 publication"]
+fn video_workspace_catalog_existing_course_benchmark() {
+    let directory=std::path::PathBuf::from(std::env::var("VIDEO_CATALOG_PUBLICATION").expect("existing publication directory"));
+    let manifest:crate::published_library::PublicationManifest=serde_json::from_slice(&std::fs::read(directory.join("publication.json")).unwrap()).unwrap();
+    let db=rusqlite::Connection::open_in_memory().unwrap();
+    db.execute_batch("CREATE TABLE book_publications(book_id TEXT,publication_id TEXT,manifest TEXT,directory TEXT)").unwrap();
+    db.execute("INSERT INTO book_publications VALUES(?,?,?,?)",rusqlite::params![manifest.reference.book_id,manifest.reference.publication_id,serde_json::to_string(&manifest).unwrap(),directory.to_str().unwrap()]).unwrap();
+    let material=crate::workspace_publication::Material {published_book_ref:manifest.reference,
+        required_capabilities:["text","video","transcript","translation","visual_index","graph","discourse"].into_iter().map(str::to_owned).collect()};
+    let mut samples=Vec::new();
+    for _ in 0..3 {
+        let start=std::time::Instant::now();
+        let readiness=crate::workspace_publication::material_readiness(&db,&material).unwrap();
+        let elapsed_ms=start.elapsed().as_secs_f64()*1000.0;
+        assert_eq!(readiness["publication_available"],true);
+        assert_eq!(readiness["missing_capabilities"],json!([]));
+        samples.push(json!({"elapsed_ms":elapsed_ms,"readiness":readiness}));
+    }
+    let report=json!({"samples":samples,"model_calls":0});
+    if let Ok(path)=std::env::var("VIDEO_CATALOG_REPORT") {std::fs::write(path,serde_json::to_vec_pretty(&report).unwrap()).unwrap();}
+    println!("{report}");
 }

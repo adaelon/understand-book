@@ -82,6 +82,8 @@ pub enum AuthorRequest {
     },
     Patch {
         #[serde(default)]
+        action_contract: Option<Vec<crate::presentation_interact::PresentationActionContract>>,
+        #[serde(default)]
         teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
         #[serde(default)]
         method_refs: Option<Vec<PresentationMethodRef>>,
@@ -100,6 +102,8 @@ pub enum AuthorRequest {
         initial_state: Option<Value>,
     },
     Write {
+        #[serde(default)]
+        action_contract: Vec<crate::presentation_interact::PresentationActionContract>,
         #[serde(default)]
         teaching_binding: Option<crate::presentation::PresentationTeachingBinding>,
         #[serde(default)]
@@ -189,7 +193,7 @@ pub struct AuthorResult {
     pub delivered: Option<PresentationRef>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, Deserialize)]
 pub struct PreviewImage {
     pub caption: String,
     pub png_base64: String,
@@ -217,7 +221,7 @@ pub fn spec() -> ToolSpec {
             "needs":{"type":"array","items":{"type":"string","enum":["editing","static_plot","state","continuous_scene","konva","three","manim"]},"description":"Required for prepare, including []: technical guidance needed for the next sampling."},
             "method_id":{"type":"string","minLength":1,"description":"read_method: exact id from the method directory."},
             "revision":{"type":"integer","minimum":1,"description":"read_method: exact method revision from the directory; no implicit latest version."},
-            "length":{"type":"integer","minimum":1,"description":"read/read_method: maximum characters requested from offset; omitted reads to file end, within model output budget."},
+            "length":{"type":"integer","minimum":1,"description":"read: exact requested range length; omitted reads to file end. read_method: page size in Unicode characters, within model output budget; end_offset is the actual returned page end and next_offset continues through the whole file, null only at EOF. Omit to request the remaining file."},
             "query":{"type":"string","minLength":1,"description":"search: literal case-sensitive source text, not a regular expression."},
             "max_matches":{"type":"integer","minimum":1,"maximum":50,"description":"search: default 20. Follow next_offset to find subsequent occurrences."},
             "edits":{"type":"array","minItems":1,"items":{"type":"object","properties":{"old_text":{"type":"string","minLength":1},"new_text":{"type":"string"}},"required":["old_text","new_text"],"additionalProperties":false},"description":"patch: ordered exact replacements in the entrypoint; every old_text must match once. All edits succeed or no candidate is saved. Unchanged bytes and version resources are preserved."}
@@ -232,27 +236,27 @@ pub fn spec() -> ToolSpec {
             "data":{"description":"JSON data available as the Python variable data"},
             "size":{"type":"object","properties":{"width":{"type":"integer","minimum":320,"maximum":1600},"height":{"type":"integer","minimum":240,"maximum":1200}},"required":["width","height"],"additionalProperties":false},
             "cues":{"type":"array","maxItems":16,"items":{"type":"object","properties":{"id":{"type":"string"},"label":{"type":"string"},"at_seconds":{"type":"number","minimum":0}},"required":["id","label","at_seconds"],"additionalProperties":false}},
-            "reference":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},
+            "reference":{"type":"object","description":"read/search/patch: exact saved reference returned by deliver. For a write/patch candidate use candidate_id instead; never put a candidate ID in presentation_id.","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},
             "based_on":{"type":"object","description":"write: exact delivered revision to revise. With a presentation follow-up receipt, must match its reference. Omit only for a new object; a follow-up then requires new_object=true.","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},
             "state_contract":{"type":"object","description":"Parameter name -> semantic definition string, including units and allowed range. Preserve a definition only when old values retain exactly the same meaning and domain. Saved page parameters with identical definitions and JSON types replace matching initial_state fields; all others keep new defaults."},
             "file":{"type":"string","description":"read_method: registered relative file name, defaults to card.md; read the listed entrypoint and adaptation guide separately. read/search: logical file name; defaults to entrypoint. Use readable_content for the version's explanatory prose with offset/length or query, without HTML. Omit file to read entrypoint source plus full readable_content metadata. Managed libraries return metadata only."},
-            "offset":{"type":"integer","minimum":0,"description":"read/read_method/search: zero-based Unicode character offset (not bytes or UTF-16). For truncated reads follow next_offset and remaining length until null."},
+            "offset":{"type":"integer","minimum":0,"description":"read/read_method/search: zero-based Unicode character offset (not bytes or UTF-16). read: follow next_offset with the remaining requested range length when output is truncated. read_method: follow the returned next_offset with the same page size until null (EOF); do not guess or skip offsets. search: follow next_offset for subsequent matches."},
             "title":{"type":"string"}, "html":{"type":"string"},
             "readable_content":{"type":"string"},
             "libraries":{"type":"array","items":{"type":"string","enum":["konva","three"]},"description":"Optional fixed host libraries. Explicitly select dependencies on every write, including based_on revisions; omitted means none."},
             "asset_refs":{"type":"array","items":{"type":"string"},"description":"Refs returned by render_plot/render_animation or listed by read; include each asset used by html."},
             "source_ref_ids":{"type":"array","items":{"type":"string"},"description":"write: explicitly list every source ref used in HTML data-source-ref or readable_content [[source:ref]], including refs already observed through source.present or preserved by based_on. Observing a ref does not automatically attach it to the candidate. patch: omission preserves the candidate's sources."},
             "assumptions":{"type":"array","items":{"type":"string"}},
-            "initial_state":{}, "candidate_id":{"type":"string"},
+            "initial_state":{}, "candidate_id":{"type":"string","description":"Current-run candidate returned by write/patch. Use this field for read/search/patch/preview/deliver; do not wrap it in reference."},
             "read_selector":{"type":"string","description":"preview: CSS selector matching one visible result region. After the final action, returns its complete rendered text together with live page state, input values and scene position as reading. Use this page-computed reading for numerical claims; keep each value with its parameters and semantic step. action_step counts preview actions, not mathematical iterations. For another state, run another preview with the required actions. A playing scene must be paused/seeked first. Narrow the selected region if its full context exceeds the result budget."},
-            "width":{"type":"integer","minimum":240,"maximum":1920,"description":"Legacy preview width in CSS pixels; defaults to 960. Mutually exclusive with viewport."},
+            "width":{"type":"integer","minimum":240,"maximum":1920,"description":"Preview width in CSS pixels; defaults to 960 with height 720 and mouse input. Counts only for that actual environment, never the required touch viewports. Mutually exclusive with viewport."},
             "viewport":{"type":"object","description":"Explicit content-container environment. Do not provide width at the same time.","properties":{
                 "width":{"type":"integer","minimum":240,"maximum":1920},
                 "height":{"type":"integer","minimum":160,"maximum":2160},
                 "input":{"type":"string","enum":["mouse","touch"]}
             },"required":["width","height","input"],"additionalProperties":false},
             "actions":{"type":"array","maxItems":4,"items":{"type":"object","properties":{
-                "kind":{"type":"string","enum":["click","key","seek","scroll"]}, "selector":{"type":"string","description":"Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key."},
+                "kind":{"type":"string","enum":["click","key","seek","scroll","interact"]}, "selector":{"type":"string","description":"Required click target; optional key target to focus before pressing. Without a key target, the current focus receives the key."},
                 "y":{"type":"integer","minimum":0,"maximum":4294967295u64,"description":"Required for scroll: absolute document vertical position in CSS pixels, clamped at the page bottom. Changes reading position without focusing or activating controls. Observations report the action, actual scroll position, viewport and visible_text. Each preview starts with a fresh page."},
                 "key":{"type":"string","enum":["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","Enter","Tab"]},
                 "semantic_state":{"type":"integer","minimum":0,"maximum":1000,"description":"seek: completed semantic step"},
@@ -260,7 +264,9 @@ pub fn spec() -> ToolSpec {
             },"required":["kind"],"additionalProperties":false}}
         },"required":["operation"],"additionalProperties":false}),
     };
+    tool.parameters["properties"]["action_contract"] = json!({"type":"array","items":book_tool_contracts::schema_value::<crate::presentation_interact::PresentationActionContract>(),"description":"Declared live actions. Parameters refer to state_contract and real controls marked data-presentation-parameter; invoke binds a real control marked data-presentation-action. Regions use data-teaching-region or id. Register registerActionHandler; reuse control functions and await actual rendering. annotate only reveals existing reviewed content."});
     tool.parameters["properties"].as_object_mut().unwrap().extend(source_properties.as_object().unwrap().clone());
+    tool.parameters["properties"]["actions"]["items"]["properties"]["action"] = book_tool_contracts::schema_value::<crate::presentation_interact::PresentationAction>();
     tool.parameters["examples"] = input_examples();
     tool.description.push_str(" read_method reads a registered explanation method by exact method_id and revision, without a presentation reference or candidate. Default file is card.md; the result lists the entrypoint and all registered files. Read only selected files/ranges; source is returned on demand and grants no delivery eligibility.");
     tool.description.push_str(" Examples illustrate calls, not live object IDs: replace reference/based_on with the exact delivered reference, candidate_id with the current run's write/patch result, and source/asset refs and asset paths with actual observed results. For an edit chain, read/search the delivered reference, patch it, then read/search/patch the returned candidate before preview and deliver. Observe each preview in a later sampling before deliver; explicit viewport previews must cover all environments required by the returned receipt.");
@@ -270,7 +276,7 @@ pub fn spec() -> ToolSpec {
 fn input_examples() -> Value {
     let reference = json!({"presentation_id":"PRESENTATION_ID_FROM_DELIVER","revision":1});
     let candidate = "CANDIDATE_ID_FROM_WRITE_OR_PATCH";
-    let html = "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};</script>";
+    let html = "<style>#add{min-width:44px;min-height:44px}</style><h1>证据召回率</h1><output id='result'></output><button id='add'>补齐证据</button><script>let count=window.presentation.initialState.count;const render=()=>document.getElementById('result').textContent=String(count/3);render();document.getElementById('add').onclick=()=>{count=3;render();};window.presentation.registerStateReader(()=>({values:{count}}));window.presentation.registerStateRestorer(saved=>{count=saved.values.page.count;render();});</script>";
     let readable = "已找到两处证据，共需三处。补齐后为一。";
     json!([
         {"operation":"prepare","phase":"local","framework":"Compare the found evidence with the required total.","focus":"Revise the existing button label and verify its result.","needs":["editing","state"]},
@@ -283,10 +289,11 @@ fn input_examples() -> Value {
         {"operation":"search","candidate_id":candidate,"query":"补齐全部证据","max_matches":5},
         {"operation":"patch","reference":reference,"edits":[{"old_text":"补齐证据","new_text":"补齐全部证据"}]},
         {"operation":"patch","candidate_id":candidate,"edits":[{"old_text":"补齐全部证据","new_text":"补齐所需证据"}]},
-        {"operation":"write","new_object":true,"title":"证据召回率","html":html,"readable_content":readable,"initial_state":{"count":2}},
-        {"operation":"write","based_on":reference,"title":"证据召回率与图示","html":format!("{html}<img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>"),"readable_content":format!("{readable} [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]"),"initial_state":{"count":2},"asset_refs":["PLOT_ASSET_REF"],"source_ref_ids":["SOURCE_REF_FROM_SOURCE_PRESENT"]},
+        {"operation":"write","new_object":true,"title":"证据召回率","html":html,"readable_content":readable,"state_contract":{"count":"Found evidence items; integer from 0 to 3"},"initial_state":{"count":2}},
+        {"operation":"write","based_on":reference,"title":"证据召回率与图示","html":format!("{html}<img src='assets/PLOT_ASSET_REF.svg' alt='Required and found evidence'><button data-source-ref='SOURCE_REF_FROM_SOURCE_PRESENT'>来源</button>"),"readable_content":format!("{readable} [[source:SOURCE_REF_FROM_SOURCE_PRESENT]]"),"state_contract":{"count":"Found evidence items; integer from 0 to 3"},"initial_state":{"count":2},"asset_refs":["PLOT_ASSET_REF"],"source_ref_ids":["SOURCE_REF_FROM_SOURCE_PRESENT"]},
         {"operation":"preview","candidate_id":candidate,"width":960,"actions":[{"kind":"click","selector":"#add"}],"read_selector":"#result"},
         {"operation":"preview","candidate_id":candidate,"viewport":{"width":320,"height":420,"input":"touch"},"actions":[{"kind":"click","selector":"#add"},{"kind":"scroll","y":0}],"read_selector":"#result"},
+        {"operation":"preview","candidate_id":candidate,"viewport":{"width":640,"height":240,"input":"touch"},"actions":[{"kind":"click","selector":"#add"}],"read_selector":"#result"},
         {"operation":"deliver","candidate_id":candidate}
     ])
 }

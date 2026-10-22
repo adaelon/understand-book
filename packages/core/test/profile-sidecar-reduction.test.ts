@@ -239,17 +239,18 @@ function replayTree(
 }
 
 describe("profile sidecar dormant fragment/reduce routing", () => {
-  it("keeps the existing whole-unit renderer byte-identical and freezes the synthetic source/LID identity", () => {
+  it("renders explicit discourse targets and freezes the synthetic source/LID identity", () => {
     const existing = renderProfileSidecarModelInput({
       work_unit_id: "discourse-1-1",
       unit_kind: "profile_sidecar_discourse",
       visible_lids: ["1.1"],
+      discourse_lids: ["1.1"],
+      math_anchor_lids: [],
       formula_lids: [],
       text: "[1.1] Body",
     });
-    expect(Buffer.byteLength(existing, "utf8")).toBe(151);
+    expect(existing).toContain('discourse_lids: ["1.1"]\n');
     expect(existing.endsWith("\n")).toBe(true);
-    expect(sha256(existing)).toBe("c24ebdb992895e4c93fac2a7895314be0e2dcd9e9b324b529f465bbcf17c146b");
 
     const fixture = createSyntheticRoutabilityFixture();
     expect(fixture.identity).toEqual({

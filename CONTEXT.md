@@ -1,7 +1,25 @@
 # CONTEXT —— 术语表
 
+## 云端学习产品（CloudLearningProduct）
+网站与正式 Windows 客户端共用账号、资料授权、私人工作区和服务额度；核心 Agent、教学策略与资料准备在服务器执行，客户端保留阅读交互和必要本机能力。状态：BOUNDARY_CHANGE，2026-10-20 云端 Reader、系统浏览器授权及独立维护工具已实现，联合验收和发布状态见[实施计划](docs/实施计划-云端学习与考试冲刺.md)与[ADR-0173](docs/adr/0173-cloud-learning-subscriptions-and-exam-sprints.md)。
+
+## 套餐权益期（PlanEntitlementPeriod）
+账号在确定时段内拥有的套餐档位、私人空间、课程访问范围及服务额度授予事实；关联原有 AllowancePeriod，不另建平行余额。同账号同一时刻只有一个有效权益组合；商品调整不改写已售事实。状态：NEW，三档月付与1/3/7天冲刺、人工核款、续期及下一期换档已实现；正式商品值待配置，见[运行说明](docs/运行说明-云端学习与考试冲刺.md)。
+
+## 冲刺套餐（SprintPass）
+连续24/72/168小时的短期购买方式，有效期内共用所授服务额度，默认不自动续费；与月付使用同一档位、账号和计量基准。计时始于实际开通，考试日期属于个人学习目标，不由套餐到期日代替。状态：NEW，商品与权益期已实现，见[产品方案](docs/产品方案-云端学习与考试冲刺.md)。
+
+## 私人云端空间（PersonalCloudStorage）
+账号上传的书籍、视频、课件等原始私人材料所占空间，跨设备和工作区合计；同一资料多次引用只计一次。演示页、交互状态、笔记等学习成果，以及公共资料引用与内部索引/副本不计上传空间；保存学习成果不要求存储套餐。上传中预留、完成占用、取消及实际删除的释放沿同一资料身份处理。状态：BOUNDARY_CHANGE，2026-10-21 将套餐空间限制收回到原始材料上传，见[实施计划 C3](docs/实施计划-云端学习与考试冲刺.md#c3-账号空间上传与保留生命周期)。
+
+## 预置课程工作区（PresetCourseWorkspace）
+面向明确课程范围、由平台提前准备和编排的 WorkspaceRelease；学生确认目标后建立自己的 LearningWorkspace 实例。公共资料与构建成果复用，考试日期、作答、聊天和理解归个人。状态：NEW，套餐课程访问、考试设置和外链导览已实现，以原创材料验证通用流程；正式课程待选定，见[运行说明](docs/运行说明-云端学习与考试冲刺.md)。
+
 ## 学习工作区（LearningWorkspace）
 用户围绕已接受的大目标组织资料、聊天及私人理解的学习范围；当前打开的资料是其阅读焦点。同一用户的工作区共用账号额度，聊天、私人理解和局部画像按工作区归属，稳定偏好仍归账号。运行冻结目标版本和确切资料成员，资料读取同时受当前账号授权约束；旧记录经用户选择以原身份关联。状态：BOUNDARY_CHANGE，2026-10-18 W1–W5已完成，W6历史保留与选择承接已实现，验收记录统一见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+
+## 工作区相关内容检索（WorkspaceRetrieval）
+在本轮冻结成员与当前账号授权的交集内，以正文词法相关性和本地多语言向量寻找跨资料候选，再沿确切发布、LID 与 UTF-16 位置读取原文并形成来源证据。`library.search` 按需建立可复用向量缓存；普通文章直接读或使用无模型的 `book.search`，`book.search_text` 保留字面出现语义。状态：NEW，2026-10-22 实现与验证见[工作区检索记录](docs/实施计划-工作区检索与轻量搜索.md)。
 
 ## 带入的学习记录（LinkedLearningRecords）
 用户确认当前大目标后，选定旧聊天或另一工作区聊天的已提交范围，并以原工作区、原聊天和原回合引用关联到当前工作区。聊天前缀固定，后续新回合需再次明确选择；必要因果事实、证据修订和来源保留原身份供回看和Agent读取。带入记录不直接计为当前掌握，新解释写入当前工作区，原记录保持原归属。状态：NEW，W6引用存储、保留入口与只读承接已实现（[ADR-0170 §4](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md#4-历史承接)）。
@@ -33,6 +51,22 @@ DSH在每次真实模型请求前准入，服务端冻结费率并预占账号�
 Agent在工作区冻结成员和当前授权范围内，以确切发布引用检索、取帧和复核另一份视频的原声。当前阅读焦点不变，文本和媒体观察分别归原资料证据；音频复核候选不覆盖保存的转写。状态：BOUNDARY_CHANGE，V1跨资料接入已完成（[实施记录](docs/个人资料准备与跨资料媒体-20261018.md)）。
 
 私人理解通过本轮已绑定的媒体来源保存确切发布、画面位置和原声范围；纯媒体来源不要求文字行号。`TeachingTarget.media_bindings`由运行时派生，旧文字记录保持原读取方式，普通Tutor目标输入继续使用原文字合同（[E1联合验收](docs/联合验收-工作区与统一额度-20261018.md)）。
+
+## 音乐伴听（GuidedMusicListening）
+
+围绕精选作品、确切录音与谱本，通过原声回听、谱面定位、声部聚焦和随用户反应调整的教学帮助理解音乐的学习场景。公共作品理解与素材沿共享发布复用，个人目标、聊天与理解沿原学习工作区保存；播放器实际执行和模型是否听过原声分别表达。状态：NEW，核心链路已实现，首批内容及端到端验收收尾中（[ADR-0175](docs/adr/0175-curated-music-prebuild-and-guided-listening.md)、[验收记录](docs/验收-音乐伴听.md)）。
+
+## 音乐事件（MusicEvent）
+
+对作品或具体演奏中可指认变化的语义组织，记录发生的内容、参与声部及其作用、原声与谱面或参考资料依据，以及帮助听见的方式。事件可重叠、可跨片段关联并修订；`occurrence_ids` 可绑定随校准修订的播放范围，来源音频证据及历史引用仍保留原位置。谱面事实、录音分析、参考资料、解释性观点与谱面合成分别表达，读取事件保留该依据类型。状态：NEW，合同、构建和读时来源链已实现，内容验收见[验收记录](docs/验收-音乐伴听.md)（[ADR-0175 §2](docs/adr/0175-curated-music-prebuild-and-guided-listening.md#2-预构建产物与教学分工)）。
+
+## 音乐声部与片段角色
+
+乐器及乐器组表示声音来源，谱面声部表示谱本内可定位的演奏内容，片段角色表示声部在一段音乐中的主题、伴奏、低音或节奏推动等作用。角色可重叠并随片段变化，同一主题由明确的 `theme_id` 标识并可在不同声部间传递；谱面参与与录音中实际可闻程度分别表达。同一乐器的多个 voice 保持原乐器身份，`voice_ids` 可限定片段角色；整乐器聚焦与 `focused_voices` 的具体声部选择取并集，空选择表示全部。状态：NEW，乐器、voice 及角色聚焦合同与播放链已实现（[ADR-0175 §3](docs/adr/0175-curated-music-prebuild-and-guided-listening.md#3-乐器声部与音乐作用)）。
+
+## 演奏出现与谱音映射（PerformanceOccurrence / ScoreAudioAlignment）
+
+演奏出现指某个小节在确定录音中一次实际经过的实例，包含该小节各声部的谱对象；反复使相同对象具有不同出现身份。谱音映射关联确切谱本中的位置、出现次序与原录音时间，分别表达小节／乐句及音符级精度和覆盖。候选保持 `pending`，只有已接纳区间驱动对应精度的跟谱；逐音覆盖要求所涉出现的非休止谱对象均有对齐。修订映射不改变旧引用保存的原声区间与谱面依据，谱面排版坐标独立于录音时间。状态：NEW，合同、局部修订与播放器覆盖判断已实现，实际样本精度见[验收记录](docs/验收-音乐伴听.md)（[ADR-0175 §4](docs/adr/0175-curated-music-prebuild-and-guided-listening.md#4-稳定来源演奏出现与对齐精度)）。
 
 ## 标准额度基准（AllowanceBasis）
 将一份固定内部额度表达为100%的换算基准，按版本绑定额度期；补充额度只加量，余额可以超过100%，历史使用原期基准。状态：EXISTING，Q1固定绑定、百分比授额及余额/历史接口已实现，Q4销售配置与百分比收款更正已接入；旧期由管理员明确绑定，商业数值待配置，界面验收状态见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
@@ -105,6 +139,8 @@ Agent在工作区冻结成员和当前授权范围内，以确切发布引用检
 
 ## 账号使用额度（AccountAllowance）
 授予一个读者、用于承担其托管 Agent 服务的使用权限，内部沿用人民币成本口径计量，与实际付款、Token 数和现金余额分别表达。回答、后台整理与个人构建共用账号额度，用户界面按固定标准基准显示百分比；状态：BOUNDARY_CHANGE，统一账本、固定百分比投影及收款更正接口已实现，Q3/Q4验收状态见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)、[ADR-0171](docs/adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)）。
+
+云端商业方案已将视频准备和学习原声复核的实际转写毫秒数纳入同一账号服务额度；模型与处理共享余额、在途占用及任务上限，实际成本缺少凭据时保持未知。正式处理费率待配置，见[服务处理计量说明](docs/服务处理计量-20261020.md)与实施计划 C4。
 
 ## 额度期（AllowancePeriod）
 一个账号使用额度的有效时间范围，同一账号同一时刻只有一个有效额度期。一次调用的费用归属固定到准入时的额度期，过期后仍可核算该次费用；状态：EXISTING，ADM3 建期/有效期编辑已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)）。
@@ -867,13 +903,13 @@ Desktop Reader App 中由当前用户选择、跨启动保持的唯一书库根�
 Desktop Reader App 当前用户为读时 LLM adapter 提供的模式、Base URL、Model 与 API Key 配置。保存成功后立即替换当前 server 的 adapter,不重启、不改变当前书与会话;保存只做确定性格式校验,不自动产生模型请求。API Key 暂按用户明确接受的风险明文保存在用户级设置中,界面不回显已存值。状态:NEW(详见 [docs/adr/0070])。
 
 ## Build Engine Sidecar
-随 Desktop Reader App 安装、由 Codex plugin 调用但不直接展示的确定性预构建可执行程序 `understand-book-build.exe`。它承载 resolve/next/input/write/close/gate 与 protocol doctor,不执行语义模型;用户不需要安装 Node、pnpm 或 Cargo。状态:NEW(详见 [docs/adr/0068])。
+由维护工具及 Codex plugin 调用的确定性预构建可执行程序 `understand-book-build.exe`。它承载 resolve/next/input/write/close/gate 与 protocol doctor，不执行语义模型。状态:BOUNDARY_CHANGE，0.3.0 云端 Reader 安装包不再携带此程序，运营维护环境通过显式路径配置；原协议保持，见[ADR-0173](docs/adr/0173-cloud-learning-subscriptions-and-exam-sprints.md)及[桌面说明](apps/desktop/README.md)。
 
 ## Windows Installer
-用户首次运行的 per-user NSIS `UnderstandBookSetup.exe`:安装桌面阅读器与 Build Engine Sidecar,经明确授权后从公开 Git marketplace 安装 Codex plugin。阅读器安装与插件安装分事务;Codex/网络失败只产生可重试的待安装状态。状态:NEW(详见 [docs/adr/0068])。
+用户首次运行的 per-user NSIS `UnderstandBookSetup.exe`。状态:BOUNDARY_CHANGE，0.3.0 候选改为安装云端 Reader，不携带本地核心执行或插件安装流程；原本地功能改由独立维护工具提供。实际构建与升级验证状态见[桌面说明](apps/desktop/README.md)，原本地安装设计见 [docs/adr/0068]。
 
 ## Plugin Installation Receipt
-Windows Installer 对 Codex plugin 安装所有权的用户级记录。只有 `installed_by_reader_setup=true` 的插件才由阅读器卸载器默认提议移除;书库、`.understand-book` 与阅读记忆默认不删除。状态:NEW(详见 [docs/adr/0068])。
+旧 Windows Installer 对 Codex plugin 安装所有权的用户级记录。只有 `installed_by_reader_setup=true` 的插件才由旧阅读器卸载器默认提议移除；书库、`.understand-book` 与阅读记忆默认不删除。状态:EXISTING，0.3.0 云端安装器不新增此记录，旧版卸载行为仍属于升级路径的一部分，见[桌面说明](apps/desktop/README.md)及 [docs/adr/0068]。
 
 ## Codex marketplace source migration
 Understand Book 将同名 Codex plugin marketplace 从旧 source 切换到当前发布 source 的受控更新。只有 Plugin Installation Receipt 同时匹配 plugin/marketplace 名且声明该 marketplace 由 Setup 创建时,Reader 才可删除旧 plugin/marketplace 后重新添加;无回执、名称不匹配或外部拥有的 marketplace 必须保持不变并返回人工处理提示。同一 source 的正常更新只刷新 marketplace snapshot。状态:BOUNDARY_CHANGE(详见 [docs/adr/0068])。
@@ -941,18 +977,27 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 用户在当前 Resident 聊天内要求完成的一项任务，保留用户意图、范围、明确交付要求以及可修订的工作判断，并关联实际成果与尚未完成的义务；一次运行停止不等于任务完成。它与长期读者目标、构建目标及教学会话学习意图分别表达，完成交付不等于读者掌握。状态:BOUNDARY_CHANGE（任务保存、调整、投影和实际交付检查已实现，见 [ADR-0136](docs/adr/0136-resident-goal-lifecycle-and-delivery-completion.md)；工作计划扩展已实现，见 [ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)）。
 
 ## Agent 工作与纠错记忆（AgentWorkingState）
-同一教学会话与来源版本内，教师已有的解释、原文支持的理解、未决工作和审阅修订记录的有界私人视图。权威记录是 `learning.db` 中追加的 `AgentWorkReviewed` 事件，保存原请求、实际待交付稿、本轮已读原文、审阅结论及相邻稿件的实际变化；下一轮与重启恢复时重新读取。`agent_working_state` 与 `learner_context` 并列，教师的错误和解释缺口归于教师工作，不写成用户画像或学习者理解证据。`accepted_by_review` 表示该稿获审阅接纳，实际交付另以 `delivered_refs` 表达。状态：NEW（2026-10-18，见 [Tutor 架构](docs/架构.md#tutor-架构t1t12-已实现)及 `memory::agent_work`）。
+同一教学会话与来源版本内，教师已有的解释、原文支持的理解、未决工作和审阅修订记录的有界私人视图。权威记录是 `learning.db` 中追加的 `AgentWorkReviewed` 事件，保存原请求、实际待交付稿、本轮已读原文、审阅结论及相邻稿件的实际变化；下一轮与重启恢复时重新读取。`agent_working_state` 与 `learner_context` 并列，教师的错误和解释缺口归于教师工作，不写成用户画像或学习者理解证据。`accepted_by_review` 表示该稿获审阅接纳，主动教学动作的实际交付另以 `delivered_refs` 表达。已确认考试工作区的普通答疑也使用观察态绑定保存这类记录，其实际交付沿原回答和 `UsageObserved` 记录确认，不据此创建活动课程或伪造教学动作。状态：NEW（2026-10-18，2026-10-21 接入考试直接讲题；见 [Tutor 架构](docs/架构.md#tutor-架构t1t12-已实现)、[冲刺运行说明](docs/运行说明-云端学习与考试冲刺.md)及 `memory::agent_work`）。
 
 ## Goal 工作计划
 ResidentGoal 内由 Agent 维护、随实际观察修订的工作安排，用工作项及待做、进行中、已完成状态表达推进顺序与当前进展。工作项是达成用户要求的方法，可以重排、拆合或放弃；它不自行改变用户要求，不构成独立任务，也不能以全部勾选代替实际交付或内容完整性判断。状态:NEW（[ADR-0155](docs/adr/0155-goal-work-plan-and-version-centered-presentation-context.md)，EX13.3 已实现，2026-10-02）。
 
 ## TutorSession
-`LearningMemory` 独立持有的可回放私人教学会话，按学习工作区保存阶段学习意图、约束、当前焦点、材料范围、默认教法、私人进度及大目标版本。工作区目标修改后旧阶段暂停，不能在新版目标下直接恢复；阶段仍可聚焦某份资料或章节，切到其他成员资料时保留原阶段并允许普通提问。全局教学开关决定主动推进是否开启。状态：BOUNDARY_CHANGE，W3工作区归属及W4目标版本接续已实现（[ADR-0118](docs/adr/0118-learning-memory-owned-replayable-tutor-session.md)、[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
+`LearningMemory` 独立持有的可回放私人教学会话，按学习工作区保存阶段学习意图、可选 LearningPurpose、约束、当前焦点、材料范围、默认教法、私人进度及大目标版本。工作区目标修改后旧阶段暂停，不能在新版目标下直接恢复；阶段仍可聚焦某份资料或章节，切到其他成员资料时保留原阶段并允许普通提问。全局教学开关决定主动推进是否开启。状态：BOUNDARY_CHANGE，W3工作区归属及W4目标版本接续已实现，2026-10-22 增加阶段目的（[ADR-0118](docs/adr/0118-learning-memory-owned-replayable-tutor-session.md)、[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)、[ADR-0174](docs/adr/0174-teaching-coach-and-participation-planning.md)）。
 
 ## 会话学习意图
 用户希望在 TutorSession 阶段内完成的事及其明确约束，允许最初表达模糊，与 Agent 的当前焦点和本回合交互方式分别表达。新工作区先由用户确立大目标，会话意图在其内展开；界面使用“当前阶段”与“大目标”区分两层调整，阶段变化不覆写工作区目标。状态：BOUNDARY_CHANGE，W4/W5层级接入已实现（`grill.md` Q93、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
 主动教学已开启而尚无当前会话时，用户的首个问题即可作为初始学习意图；目标在对话中可见、可调整，无须先进入会话管理。暂停和结束仍由用户明确恢复。状态：BOUNDARY_CHANGE，2026-10-10，见 [ADR-0161](docs/adr/0161-conversation-first-learning-and-multi-user-memory.md)。
+
+## 阶段学习目的（LearningPurpose）
+用户通过入口选择的本次目的：discover、understand、exam 或 explore，随已解析交互与教学阶段保存。discover 只请求当前范围概览；其他目的沿原教学控制开始或接续阶段。它不覆盖工作区大目标、不决定固定教法，也不成为理解证据。状态：NEW，2026-10-22 目的点击与服务端接纳链路已实现，验证状态见[实施方案](docs/实施方案-Tutor教练与用户参与闭环.md#10-验证与会改变实施的失败)。
+
+## 教学教练（TeachingCoach）
+Tutor 内负责全局节奏与用户参与活动的独立模型角色。系统在阶段起步及每个成功教学回合后自动调度；主 Agent 负责读取来源、具体化设计、交付与现场回应。教练输入固定截至源回合的实际表达、帮助和交付，后续用户输入由下一轮主 Agent 优先处理，实际调整再回流教练。状态：NEW，2026-10-22 自动调度与下轮注入链路已实现（[ADR-0174](docs/adr/0174-teaching-coach-and-participation-planning.md)）。
+
+## 教练指导与依赖（CoachGuidance / CoachTurnDependency）
+教练针对下一轮给出的私有目标、参与活动和少量条件安排，绑定源回合、阶段与目标版本。接纳下一轮时固定所依赖任务，在首次主模型采样前等待结果并冻结 ready／unavailable 上下文；本轮不热替换指导。计划中的条件不代表用户已满足，建议不等同已接纳设计或实际活动。任务、尝试、指导事件及消费记录由 learning schema 4 持有，网络调用费用归 ReaderTask。状态：NEW，2026-10-22 已实现；专门重试界面与真人学习观察见[实施范围](docs/实施方案-Tutor教练与用户参与闭环.md#9-实施切片与依赖)。
 
 ## 暂定学习目标
 Agent 基于当前材料、相关历史与会话学习意图采用的当前学习焦点，可随实际回应细化，用于组织起步及接下来的教学动作。它保留 Agent 解释的身份，不覆写用户已表达的会话学习意图，不是已确认的长期目标或能力证据，完整画像与细化目标不成为开始学习的前置条件。状态:NEW(见 `grill.md` Q92/Q93)。
@@ -961,7 +1006,7 @@ Agent 基于当前材料、相关历史与会话学习意图采用的当前学�
 由 `TutorSession` 持有、经用户显式动作建立或变更的会话默认教法，仅在全局 Tutor 开启、该会话有效且请求属于其范围时参与本回合交互意图的解析。当前明确要求直接讲解可以覆盖它，Agent 的局部教学选择不改变它；它不表示整个应用是否启用 Tutor。状态:BOUNDARY_CHANGE（[ADR-0141](docs/adr/0141-global-tutor-control-and-session-ownership.md)）。
 
 ## TutorLoop
-Agent 在原生学习环境中持续观察使用过程、修订理解判断、选择教学动作并利用反馈的读时循环，以全局 Tutor 开启、有效教学会话与 Tutor 可用就绪为前提。它从当前请求、会话教法及已确认偏好解析交互意图，结合普通对话与教学活动的实际事实、适用理解假设、可信原文和可用素材选择有界 TeachingMove；系统维护真实状态与证据，Agent 的具体教学选择随反馈调整，PathPlanner、ContextBuilder 与 Estimator 继续是其内部职责。状态:BOUNDARY_CHANGE（[ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)，T16 Server 准入与 T17 持续观察已实现）。
+在原生学习环境中持续观察实际表达、修订理解判断、实施教学活动并利用反馈的读时循环，以全局 Tutor 开启、有效教学会话与 Tutor 可用就绪为前提。系统自动调度独立教练并向下一轮供给指导；主 Agent 结合最新请求、会话教法、真实事实及可信原文落实 TeachingMove，必要时按当前表达调整。系统维护阶段、任务、来源和证据，具体设计仍沿原合同接纳。状态：BOUNDARY_CHANGE，2026-10-22 将持续规划交给教练、现场实施交给主 Agent（[ADR-0174](docs/adr/0174-teaching-coach-and-participation-planning.md)，原准入与证据边界继续见 [ADR-0143](docs/adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)）。
 
 ## 认知积木
 学习者能够从已有理解出发理解、操作和组合，用于建立新理解的知识关系、模型、方法或表征；其范围、表达方式与提供时机取决于当前目标、实际表现和所需帮助。同一内容可以形成适合不同学习起点的认知积木，价值体现为学习者能够借它完成具体判断、解释或运用。状态：NEW，设计已接受；TB2 文字教学、TB3 回应与记忆接续、TB4 操作教具及现场接续通过工程与子代理内容验收（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。

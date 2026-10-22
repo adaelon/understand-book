@@ -75,15 +75,31 @@ export function installWorkspace(workspace: NetworkWorkspace, attachment = netwo
   const readerGeneration = keepReader ? network.value.readerGeneration ?? previous.generation : workspace.generation;
   const readerPublication = keepReader ? network.value.readerPublication ?? previous!.published_book_ref.publication_id : workspace.published_book_ref.publication_id;
   network.value = { ...network.value, workspace, attachment, linked, readerGeneration, readerPublication };
-  if (!linked && network.value.identity) sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: workspace.workspace_id }));
+  if (!linked && network.value.identity) {
+    const saved = savedWorkspace();
+    saveWorkspace(workspace.workspace_id, saved?.workspace_id === workspace.workspace_id ? saved.view ?? 'reader' : 'reader');
+  }
 }
 export function workspaceStorageKey() { return `understand-book:workspace:${network.value.identity?.user_id}`; }
+type SavedWorkspace = { workspace_id: string; view?: 'reader' | 'library' };
+export function savedWorkspace(): SavedWorkspace | null {
+  if (!network.value.identity) return null;
+  const saved = sessionStorage.getItem(workspaceStorageKey()) ?? localStorage.getItem(workspaceStorageKey());
+  return saved ? JSON.parse(saved) : null;
+}
+export function saveWorkspace(workspaceId: string, view: 'reader' | 'library') {
+  if (!network.value.identity || network.value.linked) return;
+  const saved = JSON.stringify({ workspace_id: workspaceId, view });
+  // Each open tab keeps its own scene; a new tab can recover this device's last visit.
+  sessionStorage.setItem(workspaceStorageKey(), saved);
+  localStorage.setItem(workspaceStorageKey(), saved);
+}
 export function forgetNetwork() {
   const owner = network.value.identity?.user_id;
   if (owner) {
     for (const storage of [sessionStorage, localStorage]) {
       for (const key of Object.keys(storage)) {
-        if (key.startsWith(`understand-book:pending:${owner}:`) || key.startsWith(`understand-book:learning:${owner}:`) || key === workspaceStorageKey()) storage.removeItem(key);
+        if (key.startsWith(`understand-book:pending:${owner}:`) || key.startsWith(`understand-book:learning:${owner}:`)) storage.removeItem(key);
       }
     }
   }

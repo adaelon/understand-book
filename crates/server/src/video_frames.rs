@@ -467,7 +467,7 @@ pub(crate) mod tests {
         let declared: crate::published_library::PublicationManifest = serde_json::from_slice(&fs::read(dir.path().join("publication.json")).unwrap()).unwrap();
         let publication = crate::published_library::PublishedBook { reference:reference.clone(), book:book.clone(), manifest:declared,
             directory:dir.path().into(),localization_cache:dir.path().join("cache/localization.json") };
-        let mut scope = crate::run_scope::RunScope { learning_workspace_id: None, goal: None, members: None, publication:Some(Arc::new(publication)), user_id:"u".into(),workspace_id:"w".into(),
+        let mut scope = crate::run_scope::RunScope { music_question: None, learning_workspace_id: None, goal: None, members: None, publication:Some(Arc::new(publication)), user_id:"u".into(),workspace_id:"w".into(),
             workspace_generation:1,chat_session_id:"c".into(),turn_id:"run".into(),confirmation_id:None,book,book_dir:dir.path().into(),
             provider_binding:runtime::ModelRuntimeProfile::fallback("test",runtime::ProviderToolProtocol::Native),reader_input:input,
             question_quote:None,presentation_follow_up:None };

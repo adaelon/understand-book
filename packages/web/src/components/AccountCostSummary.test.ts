@@ -8,7 +8,9 @@ const wrappers: ReturnType<typeof mount>[] = [];
 afterEach(() => { wrappers.splice(0).forEach(w => w.unmount()); vi.unstubAllGlobals(); network.value = { ...network.value, identity: null, enabled: false }; });
 const pct=(value:string)=>({value,nonzero:value!=='0',below_tenth:false});
 const periods=[{period_id:'old-period',allowance_basis:{version:'old-basis',basis_micro_cny:1000000},percentages:{debited:pct('2.3'),active_reserved:pct('0'),pending:pct('0')},unknown_provider_cost_count:0},{period_id:'new-period',allowance_basis:{version:'new-basis',basis_micro_cny:2000000},percentages:{debited:pct('5'),active_reserved:pct('1'),pending:pct('2')},unknown_provider_cost_count:1}];
-const summary={request_count:3,unknown_cost_requests:1,pending_requests:1,period_groups:periods};
+const emptyCategory={request_count:0,unknown_cost_requests:0,pending_requests:0,estimated_cost_requests:0,reconciliation_requests:0};
+const cost_breakdown={model:{...emptyCategory,request_count:1},web_search:{...emptyCategory,request_count:1},web_fetch:{...emptyCategory,request_count:1,unknown_cost_requests:1,pending_requests:1},service:emptyCategory};
+const summary={request_count:3,unknown_cost_requests:1,pending_requests:1,period_groups:periods,cost_breakdown};
 const report={as_of:1792281600,account:summary,platform:{provider_cost_micro_cny:999999},workspaces:[{...summary,learning_workspace_id:'ws / &',workspace_goal:'期末复习'}],account_level:[{...summary,request_count:1}],tasks:{items:[{...summary,cost_owner:'account',user_id:'A',parent_task_ref:'task / &',latest_at:1792281600,learning_workspace_ids:['ws / &'],related_learning_workspace_ids:['w1','w2'],purposes:['answer','memory']}],total:21,limit:20,offset:0}};
 const button=(w:ReturnType<typeof mount>,text:string)=>w.findAll('button').find(b=>b.text()===text)!;
 function start() { installIdentity({user_id:'A',csrf_token:'a'});const w=mount(AccountCostSummary);wrappers.push(w);return w; }
@@ -16,6 +18,9 @@ it('keeps original period percentages separate and drills parent task, workspace
   const fetcher=vi.fn(async(url:string)=>Response.json(url.includes('cost-summary')?report:{items:[{call_id:'background-call',purpose:'memory',state:'settled',account_debit_micro_cny:23000,period_id:'old-period',allowance_basis:periods[0].allowance_basis,allowance_percentages:{debited:pct('2.3')},created_at:1792281600}],total:1,limit:20,offset:0}));
   vi.stubGlobal('fetch',fetcher);const w=start();await flushPromises();
   expect(w.text()).toContain('2.3%');expect(w.text()).toContain('5%');expect(w.text()).not.toContain('7.3%');expect(w.text()).not.toContain('999999');expect(w.text()).toContain('1 次费用尚未确认');
+  expect(w.get('[aria-label="模型调用"]').text()).toContain('模型1 次调用');
+  expect(w.get('[aria-label="搜索调用"]').text()).toContain('搜索1 次调用');
+  expect(w.get('[aria-label="网页读取调用"]').text()).toContain('网页读取1 次调用 · 1 次费用尚未确认 · 1 次待核算');
   await button(w,'按任务').trigger('click');await button(w,'查看调用明细').trigger('click');await flushPromises();
   expect(w.text()).toContain('background-call');expect(w.text()).toContain('关联仅说明来源，不追加扣减');
   let params=new URL(fetcher.mock.calls.at(-1)![0],'https://reader.test').searchParams;expect(params.get('parent_task_ref')).toBe('task / &');

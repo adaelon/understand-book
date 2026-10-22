@@ -1,4 +1,4 @@
-import { getDocument, OPS, VerbosityLevel } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument, OPS, VerbosityLevel, type PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 export interface PdfGeometryRect {
   pageIndex: number;
@@ -8,6 +8,7 @@ export interface PdfGeometryRect {
 export interface PdfGeometryChar extends PdfGeometryRect {
   charIndex: number;
   text: string;
+  origin?: "ocr";
 }
 
 export interface PdfGeometryWord extends PdfGeometryRect {
@@ -309,7 +310,34 @@ function rotationOf(value: number): 0 | 90 | 180 | 270 {
   return value === 90 || value === 180 || value === 270 ? value : 0;
 }
 
-export async function extractPdfTextGeometry(data: Uint8Array | ArrayBuffer): Promise<PdfTextGeometry> {
+export async function extractPdfPageGeometry(page: PDFPageProxy, pageLabel?: string): Promise<PdfGeometryPage> {
+  const textContent = await page.getTextContent({ includeMarkedContent: false });
+  const operatorList = await page.getOperatorList();
+  const items = textContent.items.filter((item): item is PdfTextItem => isTextItem(item));
+  const charsByItem: PdfGeometryChar[][] = [];
+  let charIndex = 0;
+  for (const item of items) {
+    const chars = textItemChars(item, page.pageNumber - 1, charIndex);
+    charsByItem.push(chars);
+    charIndex += chars.length;
+  }
+  const chars = charsByItem.flat();
+  const viewport = page.getViewport({ scale: 1, rotation: 0 });
+  return {
+    pageIndex: page.pageNumber - 1,
+    ...(pageLabel ? { page_label: pageLabel } : {}),
+    width: viewport.width, height: viewport.height, rotate: rotationOf(page.rotate),
+    view: [page.view[0], page.view[1], page.view[2], page.view[3]],
+    chars, words: buildWords(page.pageNumber - 1, chars),
+    lines: buildLines(page.pageNumber - 1, items, charsByItem),
+    objects: extractOperatorObjects(operatorList, page.pageNumber - 1),
+  };
+}
+
+export async function extractPdfTextGeometry(data: Uint8Array | ArrayBuffer, options: {
+  signal?: AbortSignal;
+  preparePage?: (page: PDFPageProxy, geometry: PdfGeometryPage) => Promise<void>;
+} = {}): Promise<PdfTextGeometry> {
   const task = getDocument({
     data: asPdfData(data),
     disableFontFace: true,
@@ -321,31 +349,12 @@ export async function extractPdfTextGeometry(data: Uint8Array | ArrayBuffer): Pr
     const labels = await pdf.getPageLabels().catch(() => null);
     const pages: PdfGeometryPage[] = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      options.signal?.throwIfAborted();
       const page = await pdf.getPage(pageNumber);
-      const textContent = await page.getTextContent({ includeMarkedContent: false });
-      const operatorList = await page.getOperatorList();
-      const items = textContent.items.filter((item): item is PdfTextItem => isTextItem(item));
-      const charsByItem: PdfGeometryChar[][] = [];
-      let charIndex = 0;
-      for (const item of items) {
-        const chars = textItemChars(item, pageNumber - 1, charIndex);
-        charsByItem.push(chars);
-        charIndex += chars.length;
-      }
-      const chars = charsByItem.flat();
-      const viewport = page.getViewport({ scale: 1, rotation: 0 });
-      pages.push({
-        pageIndex: pageNumber - 1,
-        ...(labels?.[pageNumber - 1] ? { page_label: labels[pageNumber - 1] } : {}),
-        width: viewport.width,
-        height: viewport.height,
-        rotate: rotationOf(page.rotate),
-        view: [page.view[0], page.view[1], page.view[2], page.view[3]],
-        chars,
-        words: buildWords(pageNumber - 1, chars),
-        lines: buildLines(pageNumber - 1, items, charsByItem),
-        objects: extractOperatorObjects(operatorList, pageNumber - 1),
-      });
+      const geometry = await extractPdfPageGeometry(page, labels?.[pageNumber - 1]);
+      await options.preparePage?.(page, geometry);
+      pages.push(geometry);
+      page.cleanup();
     }
     return { pages };
   } finally {

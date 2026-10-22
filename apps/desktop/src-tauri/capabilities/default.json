@@ -2,19 +2,23 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Reader window capability",
-  "remote": {
-    "urls": ["http://127.0.0.1:*"]
-  },
   "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
     "dialog:allow-save",
-    "allow-codex-plugin-status",
-    "allow-install-codex-plugin",
-    "allow-set-desktop-library-directory",
-    "allow-desktop-provider-status",
-    "allow-save-desktop-provider-settings",
+    "allow-desktop-sign-in",
+    "allow-desktop-cancel-sign-in",
+    "allow-desktop-open-cloud",
+    "allow-desktop-open-local-library",
+    "allow-desktop-local-materials",
+    "allow-desktop-pdf-reading",
+    "allow-desktop-pdf-update",
+    "allow-desktop-import-local-material",
+    "allow-desktop-read-local-material-chunk",
+    "allow-desktop-local-material-cloud-copy",
+    "allow-desktop-remove-local-material",
+    "allow-desktop-open-local-material",
     "allow-save-reading-share-image"
   ]
 }

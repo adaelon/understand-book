@@ -125,6 +125,7 @@ cargo run -p server --bin server -- .understand-book/quantification-essence
 
 ## 深入项目
 
+- [云端学习与考试冲刺产品方案](docs/产品方案-云端学习与考试冲刺.md) · [实施计划](docs/实施计划-云端学习与考试冲刺.md) · [运行说明](docs/运行说明-云端学习与考试冲刺.md)（云端账号、套餐、空间与课程实施及验收状态）
 - [完整 Agent 评测方法与复现](evals/semantic/AGENT_EVAL.md)
 - [架构与设计决策](docs/架构.md)
 - [工具接口](docs/book工具.md)

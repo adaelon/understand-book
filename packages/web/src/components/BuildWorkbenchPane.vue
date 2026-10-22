@@ -101,10 +101,8 @@ const importError = ref<string | null>(null);
 const importFields = reactive({
   target_dir: "",
   display_title: "",
-  paper_md_path: "",
   paper_pdf_path: "",
 });
-const paperMdFile = ref<File | null>(null);
 const paperPdfFile = ref<File | null>(null);
 const replacingInput = ref(false);
 const selectedStage = ref<BuildStageId>("source_reconciliation");
@@ -448,9 +446,7 @@ function resetInputDraft() {
   importError.value = null;
   importFields.target_dir = "";
   importFields.display_title = "";
-  importFields.paper_md_path = "";
   importFields.paper_pdf_path = "";
-  paperMdFile.value = null;
   paperPdfFile.value = null;
 }
 
@@ -463,15 +459,6 @@ function beginInputReplacement() {
 function finishInputReplacement() {
   replacingInput.value = false;
   resetInputDraft();
-}
-
-function readFileAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("读取 Markdown 文件失败"));
-    reader.readAsText(file);
-  });
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -502,22 +489,19 @@ async function importWorkbenchInput() {
   };
   try {
     if (importMode.value === "path") {
-      const mdPath = optionalText(importFields.paper_md_path);
       const pdfPath = optionalText(importFields.paper_pdf_path);
-      if (!mdPath || !pdfPath) {
-        importError.value = "请填写 paper.md 和 paper.pdf 的服务器本机路径。";
+      if (!pdfPath) {
+        importError.value = "请填写 PDF 的服务器路径。";
         return;
       }
-      payload.paper_md_path = mdPath;
       payload.paper_pdf_path = pdfPath;
     } else {
-      if (!paperMdFile.value || !paperPdfFile.value) {
-        importError.value = "请选择 paper.md 和 paper.pdf 文件。";
+      if (!paperPdfFile.value) {
+        importError.value = "请选择 PDF 文件。";
         return;
       }
-      payload.paper_md_text = await readFileAsText(paperMdFile.value);
       payload.paper_pdf_base64 = await readFileAsBase64(paperPdfFile.value);
-      payload.display_title ??= paperMdFile.value.name.replace(/\.md$/i, "");
+      payload.display_title ??= paperPdfFile.value.name.replace(/\.pdf$/i, "");
     }
     emit("import-input", payload);
   } catch (error) {
@@ -670,20 +654,20 @@ function draftSidecarPlan() {
 
       <section class="workbench-section input-section">
         <div class="section-headline">
-          <h2>论文输入</h2>
+          <h2>导入 PDF</h2>
           <p v-if="currentInputManifest" class="workbench-meta">
-            {{ currentInputManifest.display_title }} · {{ currentInputManifest.inputs.paper_md.size_bytes }}B MD ·
+            {{ currentInputManifest.display_title }} ·
             {{ currentInputManifest.inputs.paper_pdf.size_bytes }}B PDF
           </p>
-          <p v-else class="workbench-meta">尚未导入 paper.md + paper.pdf</p>
+          <p v-else class="workbench-meta">选择 PDF 即可开始。自动提取文字，扫描页和图片中的文字会自动识别。</p>
         </div>
-        <div v-if="props.snapshot.input.fingerprint" class="fingerprint-grid">
+        <div v-if="currentInputManifest?.inputs.paper_md && props.snapshot.input.fingerprint" class="fingerprint-grid">
           <code>MD {{ props.snapshot.input.fingerprint.paper_md_sha256.slice(0, 12) }}</code>
           <code>PDF {{ props.snapshot.input.fingerprint.paper_pdf_sha256.slice(0, 12) }}</code>
           <code>配置 {{ props.snapshot.input.fingerprint.config_hash.slice(0, 12) }}</code>
         </div>
         <div v-if="currentInputManifest && !replacingInput" class="input-ready-state">
-          <p>Markdown 与 PDF 已保存在当前工作区，无需重新选择。</p>
+          <p>PDF 已保存在当前工作区，无需重新选择。</p>
           <button :disabled="props.importing" @click="beginInputReplacement">更换输入</button>
         </div>
         <template v-else>
@@ -703,16 +687,8 @@ function draftSidecarPlan() {
           </div>
           <div v-if="importMode === 'upload'" class="file-input-grid">
             <FileDropField
-              v-model="paperMdFile"
-              label="paper.md"
-              accept=".md,text/markdown,text/plain"
-              accept-label=".md"
-              kind="markdown"
-              :disabled="props.importing"
-            />
-            <FileDropField
               v-model="paperPdfFile"
-              label="paper.pdf"
+              label="PDF 文件"
               accept="application/pdf,.pdf"
               accept-label=".pdf"
               kind="pdf"
@@ -721,11 +697,7 @@ function draftSidecarPlan() {
           </div>
           <div v-else class="input-grid">
             <label>
-              <span>paper.md 路径</span>
-              <input v-model="importFields.paper_md_path" placeholder="E:\\papers\\paper.md" />
-            </label>
-            <label>
-              <span>paper.pdf 路径</span>
+              <span>PDF 路径</span>
               <input v-model="importFields.paper_pdf_path" placeholder="E:\\papers\\paper.pdf" />
             </label>
           </div>
@@ -735,7 +707,7 @@ function draftSidecarPlan() {
               取消更换
             </button>
             <button class="primary-action" :disabled="props.importing" @click="importWorkbenchInput">
-              {{ props.importing ? "导入中" : (currentInputManifest ? "确认更换" : "导入输入") }}
+              {{ props.importing ? "正在导入…" : (currentInputManifest ? "确认更换" : "导入并阅读") }}
             </button>
           </div>
         </template>

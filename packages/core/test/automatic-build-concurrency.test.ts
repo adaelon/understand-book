@@ -210,12 +210,12 @@ describe("automatic build safe concurrent execution", () => {
     expect(refill).toEqual([plan.dispatches[3].dispatch_id]);
   });
 
-  it("refills from the accepted runtime plan while slower dispatches remain active", () => {
+  it.each([3, 8])("refills one of %i workers from the accepted runtime plan while slower dispatches remain active", (workers) => {
     const root = mkdtempSync(path.join(tmpdir(), "understand-book-runtime-refill-"));
     const source = path.join(root, "concurrency-guide.md");
     writeFileSync(source, [
       "# Runtime refill guide",
-      ...Array.from({ length: 1_300 }, (_, index) => (
+      ...Array.from({ length: (workers + 1) * 400 }, (_, index) => (
         `Paragraph ${index + 1} contains stable semantic evidence for runtime refill.`
       )),
     ].join("\n\n"), "utf8");
@@ -230,19 +230,19 @@ describe("automatic build safe concurrent execution", () => {
     };
     const buildPlan = confirmedStandardBuildPlan(source, root);
     const initialPlan = automaticBuildPlan(source, root, {
-      requested_workers: 3,
-      available_agent_slots: 3,
+      requested_workers: workers,
+      available_agent_slots: workers,
       budget: refillBudget,
       build_plan: buildPlan,
     });
-    if (!initialPlan.preflight || initialPlan.preflight.dispatch_plan.dispatches.length < 4) {
-      throw new Error("expected at least four executor dispatches");
+    if (!initialPlan.preflight || initialPlan.preflight.dispatch_plan.dispatches.length <= workers) {
+      throw new Error("expected more executor dispatches than available workers");
     }
-    const initial = automaticBuildNext(source, root, 3, {
+    const initial = automaticBuildNext(source, root, workers, {
       owner: "runtime-refill",
       now: "2026-07-25T03:00:00.000Z",
       budget: refillBudget,
-      available_agent_slots: 3,
+      available_agent_slots: workers,
       accepted_plan_digest: initialPlan.preflight.descriptor_plan_digest,
       executor_dispatches: true,
       build_plan: buildPlan,
@@ -250,7 +250,7 @@ describe("automatic build safe concurrent execution", () => {
     if (!("dispatches" in initial.action) || !initial.action.dispatches) {
       throw new Error("expected initial dispatch handoff");
     }
-    expect(initial.action.dispatches).toHaveLength(3);
+    expect(initial.action.dispatches).toHaveLength(workers);
     for (const slow of initial.action.dispatches.slice(1)) {
       expect(automaticBuildDispatchNext(source, root, slow.manifest.stage, slow.manifest.dispatch_id, {
         dispatch_run_id: slow.dispatch_run_id,
@@ -261,6 +261,18 @@ describe("automatic build safe concurrent execution", () => {
     let step = automaticBuildDispatchNext(source, root, fastest.stage, fastest.dispatch_id, {
       now: "2026-07-25T03:00:01.000Z",
     });
+    if (workers < 8) {
+      const full = automaticBuildNext(source, root, workers, {
+        owner: "runtime-refill",
+        now: "2026-07-25T03:00:01.500Z",
+        budget: refillBudget,
+        available_agent_slots: 8 - workers,
+        accepted_plan_digest: initialPlan.preflight.descriptor_plan_digest,
+        executor_dispatches: true,
+        build_plan: buildPlan,
+      });
+      expect(full.action).toMatchObject({ kind: "waiting", reason: "active_dispatches" });
+    }
     let second = 2;
     while (step.action.kind === "task") {
       const task = step.action.task;
@@ -297,13 +309,13 @@ describe("automatic build safe concurrent execution", () => {
     });
 
     const refillPlan = automaticBuildPlan(source, root, {
-      requested_workers: 3,
+      requested_workers: workers,
       available_agent_slots: 1,
       budget: refillBudget,
       build_plan: buildPlan,
     });
     if (!refillPlan.preflight) throw new Error("expected refill preflight");
-    const refill = automaticBuildNext(source, root, 3, {
+    const refill = automaticBuildNext(source, root, workers, {
       owner: "runtime-refill",
       now: "2026-07-25T03:00:31.000Z",
       budget: refillBudget,
@@ -317,22 +329,24 @@ describe("automatic build safe concurrent execution", () => {
     }
     expect(refill.action.dispatches).toHaveLength(1);
     expect(refill.action.dispatches[0].manifest.dispatch_id).toBe(
-      initialPlan.preflight.dispatch_plan.dispatches[3].dispatch_id,
+      initialPlan.preflight.dispatch_plan.dispatches[workers].dispatch_id,
     );
-  }, 20_000);
+  }, 60_000);
 
-  it("caps workers by live slots, hard limit three, and parallel cost without changing plan identity", () => {
-    const units = [descriptor("a", 10), descriptor("b", 20), descriptor("c", 30), descriptor("d", 40)];
+  it("caps workers by live slots, hard limit eight, and parallel cost without changing plan identity", () => {
+    const units = Array.from({ length: 10 }, (_, index) => descriptor(`unit-${index}`, (index + 1) * 10));
     const base = {
       target_ref: targetRef,
       stage: "pass1" as const,
       work_units: units,
       pending_ids: units.map((unit) => unit.work_unit_id),
       quality_profile: "full" as const,
-      requested_workers: 5,
+      requested_workers: 10,
       budget,
     };
     const three = buildAutomaticBuildPreflight({ ...base, available_agent_slots: 3 });
+    const eight = buildAutomaticBuildPreflight({ ...base, available_agent_slots: 10 });
+    const requested = buildAutomaticBuildPreflight({ ...base, requested_workers: 6, available_agent_slots: 8 });
     const one = buildAutomaticBuildPreflight({ ...base, available_agent_slots: 1 });
     const zero = buildAutomaticBuildPreflight({ ...base, available_agent_slots: 0 });
     const costLimited = buildAutomaticBuildPreflight({
@@ -343,7 +357,10 @@ describe("automatic build safe concurrent execution", () => {
 
     expect(three.descriptor_plan_digest).toBe(one.descriptor_plan_digest);
     expect(one.descriptor_plan_digest).toBe(zero.descriptor_plan_digest);
-    expect(three.worker_plan).toMatchObject({ max_workers: 3, hard_worker_limit: 3, concurrency_release: "ap14_safe_concurrency.v1" });
+    expect(eight.descriptor_plan_digest).toBe(three.descriptor_plan_digest);
+    expect(eight.worker_plan).toMatchObject({ max_workers: 8, hard_worker_limit: 8 });
+    expect(requested.worker_plan.max_workers).toBe(6);
+    expect(three.worker_plan).toMatchObject({ max_workers: 3, hard_worker_limit: 8, concurrency_release: "ap14_safe_concurrency.v1" });
     expect(one.worker_plan.max_workers).toBe(1);
     expect(zero.worker_plan).toMatchObject({ available_agent_slots: 0, max_workers: 0 });
     expect(costLimited.worker_plan.max_workers).toBe(2);

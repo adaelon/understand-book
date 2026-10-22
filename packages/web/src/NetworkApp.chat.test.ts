@@ -8,7 +8,7 @@ import { installIdentity, installWorkspace, network, type NetworkWorkspace } fro
 import { workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
-  'videoContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
+  'videoPlayback', 'videoContext', 'musicContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
   'recall', 'save', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
 ].map(name => [name, vi.fn()])));
 vi.mock('./api', async original => {
@@ -40,6 +40,8 @@ beforeEach(() => {
   reads.sourceFingerprint.mockResolvedValue({ book_id: 'book', source_fingerprint: 'book' });
   reads.sourceManifest.mockResolvedValue(null);
   reads.videoContext.mockResolvedValue(null);
+  reads.videoPlayback.mockResolvedValue(null);
+  reads.musicContext.mockResolvedValue(null);
   reads.profileManifest.mockResolvedValue({ profile_id: 'technical_learning', slots: [] });
   reads.text.mockResolvedValue({ lid: '1', text: '当前正文' });
   reads.recall.mockResolvedValue([]); reads.profileMemory.mockResolvedValue({});

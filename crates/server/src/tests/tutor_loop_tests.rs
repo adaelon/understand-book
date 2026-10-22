@@ -61,7 +61,7 @@ fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
     fixture_with_book(published, Book::new(sample_base(), &source), &source)
 }
-pub(super) fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
+pub(crate) fn fixture_with_book(published: bool, book: Book, source: &str) -> (tempfile::TempDir, AppState) {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named(&format!(
         "tutor-loop-{}",
@@ -119,10 +119,27 @@ pub(super) fn fixture_participation(movement:&mut Value) {
             "support":"The complete journey includes stopped time as well as moving time.","learner_inference":null})};
 }
 
+/// The automatic coach must not consume the Resident's scripted chat turns.
+/// This fixture leaves source knowledge unknown and supplies no learner diagnosis.
+pub(crate) fn fixture_coach_guidance(request:&CompletionRequest) -> Option<Value> {
+    if !request.system.starts_with("你是 Understand Book 的教学教练。") { return None; }
+    Some(json!({
+        "next_step":{"focus":"The learner's current question",
+            "participation":{"choice":"support",
+                "reason":"Provide source-grounded help for the current request.",
+                "support":"Read the relevant source before explaining the requested relationship.",
+                "learner_inference":null}},
+        "alternatives":[],
+        "needs_read":[{"scope":"The source relevant to the current request",
+            "purpose":"Establish the relationship and its conditions before teaching it."}],
+        "reason":"This scripted fixture supplies no source or learner-understanding judgment."
+    }))
+}
+
 /// Scripted storage/dispatch fixtures do not evaluate teaching content. The
 /// acceptance gate itself is exercised with rejecting/failing runtime adapters;
 /// live teaching adapters continue to send this request to the real model.
-pub(super) fn fixture_delivery_review(request:&CompletionRequest) -> Option<Value> {
+pub(crate) fn fixture_delivery_review(request:&CompletionRequest) -> Option<Value> {
     if !request.system.starts_with("Teaching delivery acceptance review.") { return None; }
     let packet:Value=serde_json::from_str(&request.user).unwrap();
     let question=[&packet["frozen_input"]["current_request"],&packet["frozen_input"]["learner_request"],
@@ -181,7 +198,7 @@ pub(super) fn select(state: &AppState, turn: &AgentTurnRef, id: &str, reference:
     step_with_design(&state.private_context(),turn,json!({"operation":"select","move":{"move_id":id,"object_ids":["speed"],"capability":"explanation","kind":"observe","interaction_intent":"neutral","intent_origin":"neutral","prompt":format!("Observe {id}"),
         "actions":["submit","revise","request_hint","reveal","skip","self_report"],"hint":"Compare the two times.","explanation":"Use total distance divided by total time.","presentation":reference}}),&[],&[range()]).unwrap();
 }
-pub(super) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
+pub(crate) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
     let mut parts = vec![AgentAnswerPart::Markdown {
         text: "Compare total distance and total time.".into(),
     }];
@@ -211,7 +228,7 @@ pub(super) fn outcome(reference: Option<&PresentationRef>) -> OuterOutcome {
         request_audit: Default::default(),
     }
 }
-pub(super) fn finish(state: &mut AppState, turn: &AgentTurnRef, result: &OuterOutcome) {
+pub(crate) fn finish(state: &mut AppState, turn: &AgentTurnRef, result: &OuterOutcome) {
     let mut result=result.clone();
     if result.teaching_delivery_move_refs.is_empty() {
         let store=state.user.learning_store().unwrap();
@@ -379,7 +396,15 @@ fn tutor_open_assessment_is_isolated_budgeted_and_contract_checked() {
     assert!(!sampled[2]["instruction_assets"].as_array().unwrap().iter().any(|a| a["asset_id"] == "resident-agent.tutor.assessment"), "completed assessment expires at the next sampling");
     let examples = |index: usize| sampled[index]["tools"].as_array().unwrap().iter()
         .find(|t| t["name"] == "tutor.step").unwrap()["parameters"]["examples"].as_array().unwrap();
-    assert!(examples(0).iter().any(|e| e["operation"] == "assess" && e["action_ref"] == "action:open"));
+    assert!(!examples(0).iter().any(|e| e["operation"] == "assess"), "fact-dependent examples do not change the stable tool schema");
+    let learner:Value=sampled[0]["input"].as_array().unwrap().iter()
+        .filter_map(|message|message["content"].as_str()).flat_map(str::lines)
+        .find_map(|line|line.starts_with("Current learner view (")
+            .then(||serde_json::from_str(line.split_once(": ").unwrap().1).unwrap()))
+        .expect("the current learner view must supply the pending response identity");
+    assert!(learner["pending_assessment_refs"].as_array().unwrap().iter().any(|id|id=="action:open"));
+    assert!(learner["tool_input_examples"]["examples"].as_array().unwrap().iter()
+        .any(|e| e["operation"] == "assess" && e["action_ref"] == "<pending_assessment_action_ref>"));
     assert!(!examples(2).iter().any(|e| e["operation"] == "assess"), "completed assessment example expires with its instruction");
     drop(sampled);
     let assessment = state
@@ -836,7 +861,7 @@ fn tutor_two_activities_keep_exact_scene_help_and_cross_chat_ownership() {
             &turn.session_id,
             &turn.turn_id,
             None,
-            PresentationContent { teaching_binding: None,
+            PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "Speed".into(),
@@ -863,6 +888,7 @@ fn tutor_two_activities_keep_exact_scene_help_and_cross_chat_ownership() {
             &turn.turn_id,
             &reference,
             PresentationState {
+                observation: None,
                 values: json!({"speed":2}),
                 visible_step: Some("original".into()),
                 observed_result: "The page says correct".into(),
@@ -1236,7 +1262,7 @@ fn tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene() {
     let (_root,mut state)=fixture_with_assets(false);
     let run=prepare(&mut state);
     let candidate=state.private_context().create_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,None,
-        PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"Journey".into(),
+        PresentationContent { action_contract: vec![], teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"Journey".into(),
             content_files:BTreeMap::from([("index.html".into(),"<p>Journey</p>".into())]),entrypoint:"index.html".into(),
             readable_content:"Watch the total elapsed time.".into(),source_bindings:vec![],assumptions:vec![],state_contract:json!({}),initial_state:json!({"time":2}) }).unwrap();
     let reference=state.private_context().persist_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,&candidate.candidate_id).unwrap();
@@ -1251,7 +1277,7 @@ fn tutor_t17a_usage_trace_reads_only_committed_presentations_and_exact_scene() {
     assert!(read["chunk"].as_str().unwrap().contains("Watch the total elapsed time."));
     assert!(!read["chunk"].as_str().unwrap().contains("content_files"));
     let scene=state.private_context().save_presentation_state(&run.turn_ref.session_id,&run.turn_ref.turn_id,&reference,
-        PresentationState{values:json!({"time":4}),visible_step:Some("waiting".into()),observed_result:"four seconds".into(),source_ref_ids:vec![]}).unwrap();
+        PresentationState{observation:None,values:json!({"time":4}),visible_step:Some("waiting".into()),observed_result:"four seconds".into(),source_ref_ids:vec![]}).unwrap();
     let next=prepare_agent_chat(&mut state,&json!({"message":"Why four seconds?","presentation_follow_up":scene}).to_string(),"later").unwrap_or_else(|r|panic!("{}",r.body));
     let usage=format!("usage:{}:user:{}",binding["tutor_session_id"].as_str().unwrap(),next.turn_ref.turn_id);
     let read=step_with_design(&state.private_context(),&next.turn_ref,json!({"operation":"trace","event_id":usage}),&[],&[]).unwrap();
@@ -1844,7 +1870,7 @@ window.presentation.registerStateRestorer(s=>{control.value=String(s.values.page
             &turn.session_id,
             &turn.turn_id,
             None,
-            PresentationContent { teaching_binding: None,
+            PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "Average speed".into(),

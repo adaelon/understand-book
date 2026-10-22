@@ -5,4 +5,4 @@
  * P1 覆盖 Tree / Concept(mid 二跳) / Edge(local 与 long_range 召回路标);
  * P2a 覆盖 technical_learning discourse sidecar 投影 `[ADR-0033]`。
  */
-export type Via = { "kind": "tree", rel: string, } | { "kind": "concept", name: string, shared_count: number, } | { "kind": "edge", scope: string, type: string, weight: number, direction: string, } | { "kind": "discourse", source_lid: string, target_lid: string, type: string, family: string | null, direction: string, confidence: number, evidence_lids: Array<string>, };
+export type Via = { "kind": "tree", rel: string, } | { "kind": "concept", name: string, shared_count: number, } | { "kind": "edge", scope: string, type: string, weight: number, direction: string, } | { "kind": "discourse", source_lid: string, target_lid: string, type: string, family: string | null, direction: string, confidence: number, evidence_lids: Array<string>, } | { "kind": "mathematical", source_lid: string, target_lid: string, type: string, direction: string, evidence_lids: Array<string>, };

@@ -10,7 +10,33 @@ vi.mock('./App.vue', () => ({ default: { name: 'App', props: ['chatDraft'], emit
 } }));
 import NetworkApp from './NetworkApp.vue';
 
-afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
+afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
+
+it('shows published video metadata in workspace cards and shared routes without duplicating the video on the shelf', async () => {
+  installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
+  const reference = { book_id: '19ac880d-a788-43f4-9725-6c56f4980189', publication_id: 'lecture-v1' };
+  const value: LearningWorkspace = { learning_workspace_id: 'course', goal: { text: '学习张量运算', constraints: [], revision: 1, created_at: 1 },
+    goal_history: [], members: [{ published_book_ref: reference, readable: true, added_at: 1 }], archived: false, created_at: 1, updated_at: 1 };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/auth/me') return Response.json(network.value.identity);
+    if (url === '/api/library') return Response.json({ books: [{ published_book_ref: reference, title: null, cover: { kind: 'image', url: '/api/course-frame.png' } }] });
+    if (url === '/api/videos') return Response.json({ videos: [{ video: { media_id: 'course-video', media_revision: '1' }, title: 'CS336 第 2 讲 · PyTorch', publication: reference, english_ready: true }] });
+    if (url === '/api/learning-workspaces') return Response.json({ workspaces: [value] });
+    if (url.endsWith('/reading-resumption')) return Response.json(null);
+    throw new Error(url);
+  }));
+  const wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true, PersonalMaterials: true, ExamSprintPanel: true, SharedWorkspaceInstance: true } } });
+  try {
+    await flushPromises();
+    expect(wrapper.findAll('.network-book-card')).toHaveLength(1);
+    expect(wrapper.get('.network-book-card').text()).toContain('CS336 第 2 讲 · PyTorch');
+    await wrapper.get('.learning-space-select').trigger('click'); await flushPromises();
+    expect(wrapper.get('.learning-member.is-video').text()).toContain('CS336 第 2 讲 · PyTorch');
+    expect(wrapper.get('.learning-member img').attributes('src')).toBe('/api/course-frame.png');
+    expect(wrapper.getComponent({ name: 'SharedWorkspaceInstance' }).props('books')[0].title).toBe('CS336 第 2 讲 · PyTorch');
+    expect(wrapper.text()).not.toContain(reference.book_id);
+  } finally { wrapper.unmount(); }
+});
 
 it('creates empty goal workspaces, manages exact materials and restores each workspace draft through switches and refresh', async () => {
   installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
@@ -22,6 +48,7 @@ it('creates empty goal workspaces, manages exact materials and restores each wor
     const body = init.body ? JSON.parse(String(init.body)) : null; requests.push({ url, body });
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/videos') return Response.json({ videos: [] });
+    if (url === '/api/me/reading-resumption') return Response.json(null);
     if (url === '/api/library') return Response.json({ books: references.map((published_book_ref, index) => ({ published_book_ref, title: `资料${index + 1}` })) });
     if (url === '/api/learning-workspaces' && init.method === 'GET') return Response.json({ workspaces: spaces });
     if (url === '/api/learning-workspaces') {
@@ -52,7 +79,7 @@ it('creates empty goal workspaces, manages exact materials and restores each wor
   let wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
   const flush = () => flushPromises();
   const clickText = async (selector: string, text: string) => {
-    const button = wrapper.findAll(selector).find(item => item.text() === text); expect(button).toBeTruthy(); await button!.trigger('click'); await flush();
+    const button = wrapper.findAll(selector).find(item => item.text() === text || (item.find('.member-read-action').exists() && item.get('.member-read-action').text() === text)); expect(button).toBeTruthy(); await button!.trigger('click'); await flush();
   };
   try {
     await flush();
@@ -84,7 +111,7 @@ it('creates empty goal workspaces, manages exact materials and restores each wor
     await clickText('.workspace-goal-bar button', '工作区与资料'); await clickText('.learning-member button', '开始阅读');
     expect((wrapper.get('.test-reader textarea').element as HTMLTextAreaElement).value).toBe('空间 A 的问题');
     wrapper.unmount(); network.value = { ...network.value, workspace: null }; wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } }); await flush();
-    await clickText('.learning-space-card button', '打开工作区');
+    expect(wrapper.find('.network-library').exists()).toBe(false);
     expect((wrapper.get('.test-reader textarea').element as HTMLTextAreaElement).value).toBe('空间 A 的问题');
     await clickText('.workspace-goal-bar button', '工作区与资料');
     await clickText('.learning-details button', '修改大目标'); await wrapper.get('.learning-goal-edit textarea').setValue('三天内复习深度学习'); await wrapper.get('.learning-goal-edit').trigger('submit'); await flush();
@@ -135,6 +162,7 @@ it('moves the current reader to the selected shared material version after updat
     const body = init.body ? JSON.parse(String(init.body)) : null;
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/videos') return Response.json({ videos: [] });
+    if (url === '/api/me/reading-resumption') return Response.json(null);
     if (url === '/api/library') return Response.json({ books: [old, next, personal].map(published_book_ref => ({ published_book_ref, title: published_book_ref.book_id })) });
     if (url === '/api/learning-workspaces') return Response.json({ workspaces: [value] });
     if (url === '/api/workspaces' || url.endsWith('/book/open')) {

@@ -6,7 +6,7 @@
 
 ## Windows Desktop 安装
 
-发布目录包含插件 `understand-book-dsh-plugin-0.1.0-rc.2.tgz`、`engine/understand-book-build.exe`、本说明和 `release.json`。Engine 可保存在任意固定目录，支持中文和空格；升级时保留原 Engine 和 registry。
+发布目录包含插件 `understand-book-dsh-plugin-0.1.0-rc.2.tgz`、`engine/understand-book-build.exe`、相邻的 `engine/resources/`、本说明和 `release.json`。整个 `engine` 目录可保存在任意固定位置，支持中文和空格；升级时保留原 Engine 和 registry。音乐构建需要随附的可替换谱面库与许可资料，部署时保留整个目录。
 
 1. 配置 Engine：已安装的兼容 Reader 可通过 `HKCU\Software\UnderstandBook\InstallDir` 自动发现；独立 Engine 可通过环境变量 `UNDERSTAND_BOOK_DSH_ENGINE` 指定完整 exe 路径，然后启动 Desktop。也可以在 Desktop 的插件配置中设置 `executable`。
 2. 打开 Desktop 的「插件 → 添加插件」，输入 tarball 的完整路径，点击「安装」，安装成功后点击「立即启用」。插件详情应显示 `understand-book-build` 正在运行。
@@ -91,6 +91,18 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 同一实例中的重叠继续请求返回 `build_already_running`；另一插件实例或进程遇到 Engine 保存的活动 controller 返回 `build_owner_active`。Engine 只有证明原宿主进程已退出才允许重新取得控制权；无法证明时保持阻塞。不同 invocation 的工作区竞争继续使用已有 dispatch/lease 所有权门。
 
 每次启动的有界观察保存在 Engine registry 的 `dsh-observations/<invocation_ref>/<launch_id>.json`。bootstrap 零调用、精确 open 拒绝、连接中断、运行时故障、候选回执和取消分别保存；没有调用证据时为 `null`。已提交但响应丢失时继续原引用，由 Engine 重读持久成果；未知故障不会自动变成语义重试。跨宿主接手需停止旧 owner，重新评估并确认新 invocation，已有有效产物继续复用。
+
+### 精选音乐预构建
+
+后台的「精选音乐」使用同一运营队列、预算、暂停继续、在线导入和共享发布。来源位置填写 `music_curation.v1` 清单的绝对路径；清单内音频、MusicXML 和对齐文件可相对清单目录定位。示例见 `evals/music/schubert-curation.json`。真实录音、谱本、素材许可、演奏出现、校准覆盖和有来源的音乐事件分别保存，纯音乐不创建语音转写。首期接纳已审核的精选标注与本地计算结果，不启动音乐理解模型。
+
+音乐任务不需要配置 Codex、Whisper 或视频暂存发布器。FFmpeg / FFprobe 按现有媒体工具规则读取；已有运营 `video.ffmpegExecutable`、`video.ffprobeExecutable` 也可作为明确的媒体工具路径。任务保留统一平台预算，本地导入、谱面渲染、接纳标注不会创建供应商模型调用回执；用户实际伴听时的模型费用继续走既有运行时计费。
+
+`node apps/desktop/scripts/build-sidecar.mjs` 同时准备 Engine 相邻 `resources/music/`。Verovio 6.3.0 的 ESM/WASM 模块以可替换文件分发，附原始许可、确切对应源码及构建/替换说明；`resources/music/NOTICE.txt` 是谱面使用的 Leipzig 字体版权与 OFL 许可。部署时保留整个目录，不能只复制 `.exe`。首次构建会从官方来源取得固定版本源码与许可并缓存到 `target/dependencies/verovio-6.3.0`，后续构建复用缓存。
+
+本地音乐校准工作台通过同一 Engine 的 `music-calibrate --book-dir <workspace> --revision-file <revision.json>` 保存修订，保留前后记录、已有来源和候选状态；已发布目录禁止原地校准。该本地命令不创建新队列或模型费用，校准后的共享版本仍沿原发布流程生成。
+
+每份资料默认要求「音乐播放、可查乐谱、音乐事件」；逐音符跟谱是独立能力，并按发布中的覆盖区间说明范围。准备完成后服务端再次检查原始资产、素材分发权及版本绑定，再授予选定账号并发布共享工作区。对齐未接纳的范围不变成已完成能力，缺少所需能力时保留已有成果，中断任务等待补齐清单后继续。
 
 ### 个人资料准备（B2）
 

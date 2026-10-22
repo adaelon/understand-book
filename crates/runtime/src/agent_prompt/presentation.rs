@@ -1,7 +1,7 @@
 //! Pure presentation guidance selection; RunContext owns the current selection.
 use crate::InstructionModule;
 
-pub const REVISION: &str = "spatial.v1";
+pub const REVISION: &str = "coach-handoff.v1";
 const COMMON: &str = include_str!("../../../../skills/presentation/SKILL.md");
 const ENGINEERING: &str = include_str!("../../../../skills/presentation/engineering.md");
 const DIRECTORY: &str = include_str!("../../../../skills/presentation/capabilities.md");
@@ -144,14 +144,10 @@ pub(crate) fn selected_modules(guidance: Option<&PresentationGuidance>) -> Vec<I
         // An unspecified selection retains all technical contracts. Resident passes
         // an explicit selection (global by default) for every sampling.
         let selected = guidance.is_none_or(|g| {
-            g.needs.contains(&need)
-                || (need == PresentationNeed::State
-                    && g.needs.iter().any(|n| {
-                        matches!(
-                            n,
-                            PresentationNeed::ContinuousScene | PresentationNeed::Manim
-                        )
-                    }))
+            // Any local page can acquire controls during construction. Supply
+            // their persistence contract before the first write, including the
+            // local context derived automatically from a teaching design.
+            need == PresentationNeed::State || g.needs.contains(&need)
                 || (need == PresentationNeed::ContinuousScene
                     && g.needs.contains(&PresentationNeed::Manim))
         });

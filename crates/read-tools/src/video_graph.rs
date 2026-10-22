@@ -3,6 +3,7 @@ use base_schema::{EvidenceTarget, GraphEdge, GraphIdentity, GraphNode, JointEvid
     VideoMaterial, VideoSourceManifest, PublishedBookRef, FrameLocation, TranscriptMap};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::io::Read;
 use std::path::Path;
 
 #[derive(Deserialize)]
@@ -53,16 +54,19 @@ pub(crate) fn load_into(directory: &Path, base: &mut ReadOnlyBase, source: &str)
             for f in &c.frames {
                 manifest.source.validate_frame(&f.frame)?;
                 require(batch.files.contains(&f.path),"frame dependency")?;
-                let bytes=std::fs::read(directory.join(&f.path)).map_err(|e|e.to_string())?;
-                require(bytes.len()>=24 && bytes[..8]==[137,80,78,71,13,10,26,10],"frame PNG")?;
+                // Signature and dimensions occupy the first 24 bytes; image pixels are not graph data.
+                let mut bytes=[0u8;24];
+                std::fs::File::open(directory.join(&f.path)).and_then(|mut file|file.read_exact(&mut bytes)).map_err(|e|e.to_string())?;
+                require(bytes[..8]==[137,80,78,71,13,10,26,10],"frame PNG")?;
                 require(u32::from_be_bytes(bytes[16..20].try_into().unwrap())==f.frame.width
                     && u32::from_be_bytes(bytes[20..24].try_into().unwrap())==f.frame.height,"frame dimensions")?;
             }
+            EvidenceTarget::validate_batch(c.nodes.iter().flat_map(|n|&n.evidence)
+                .chain(c.edges.iter().flat_map(|e|&e.evidence)).map(|e|&e.target),&manifest,base,source)?;
             for evidence in c.nodes.iter().map(|n|&n.evidence).chain(c.edges.iter().map(|e|&e.evidence)) {
                 require(!evidence.is_empty(),"empty support")?;
                 for e in evidence {
                     require(!e.support_role.trim().is_empty(),"support role")?;
-                    e.target.validate(&manifest,base,source)?;
                     validate_target(&e.target,&c,&map)?;
                 }
             }
@@ -147,7 +151,7 @@ mod tests {
         write(&directory.join("video_enrichments.json"),&json!({"version":"video_enrichments.v1","material":f["manifest"]["material"],"batches":[{"files":["video-enrichments/a/graph.json","video-enrichments/a/frame.png"]}]}));
         let mut png=vec![0u8;24];png[..8].copy_from_slice(&[137,80,78,71,13,10,26,10]);
         png[16..20].copy_from_slice(&(frame["width"].as_u64().unwrap() as u32).to_be_bytes());png[20..24].copy_from_slice(&(frame["height"].as_u64().unwrap() as u32).to_be_bytes());
-        std::fs::write(directory.join("video-enrichments/a/frame.png"),png).unwrap();
+        std::fs::write(directory.join("video-enrichments/a/frame.png"),&png).unwrap();
         load_into(&directory,&mut base,source).unwrap();
         let count=base.graph_edges.len();
         let edge=base.graph_edges.last_mut().unwrap();std::mem::swap(&mut edge.source,&mut edge.target);
@@ -158,6 +162,11 @@ mod tests {
         let graph=recall.candidates[0].video_graph.as_ref().unwrap();
         assert_eq!(graph["evidence_status"],"candidate_only");assert_eq!(graph["read_hints"][0]["sampling"][0],frame["actual_pts_ms"]);
         assert_eq!(graph["relations"][0]["edge"]["evidence"][0]["target"]["members"][0]["support_role"],"spoken rule");
+        let mut wrong_dimensions=png.clone();wrong_dimensions[16..20].copy_from_slice(&1u32.to_be_bytes());
+        for invalid_header in [png[..23].to_vec(),vec![0u8;24],wrong_dimensions] {
+            std::fs::write(directory.join("video-enrichments/a/frame.png"),invalid_header).unwrap();
+            assert!(load_into(&directory,&mut book.base.clone(),source).is_err());
+        }
         std::fs::remove_file(directory.join("video-enrichments/a/frame.png")).unwrap();
         let mut base=book.base.clone();assert!(load_into(&directory,&mut base,source).is_err());
         std::fs::remove_dir_all(directory).unwrap();

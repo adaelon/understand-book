@@ -124,6 +124,7 @@ fn s1_schema16_upgrade_retains_ledger_publications_and_reopens_immutable_release
     f.ok(&f.b,"POST","/api/admin/build-tasks/s1-existing-cost/receipts",json!({"call_id":"s1-original-call","status":"confirmed","provider_cost_micro_cny":12,"evidence":{"fixture":"confirmed"},"succeeded":true}));
     let publications:Vec<(String,String)> = f.control.connection.prepare("SELECT publication_id,manifest FROM book_publications ORDER BY publication_id").unwrap().query_map([],|row|Ok((row.get(0)?,row.get(1)?))).unwrap().collect::<Result<_,_>>().unwrap();
     let budget_before = f.ok(&f.b,"GET","/api/admin/build-tasks/s1-existing-cost",Value::Null);
+    f.control.connection.execute_batch(include_str!("remove_schema19.sql")).unwrap();
     f.control.connection.execute_batch("DROP TABLE workspace_release_instance_private_materials; DROP TABLE workspace_release_instance_operations; DROP TABLE workspace_release_instance_history; DROP TABLE workspace_release_instances; DROP TABLE workspace_release_archives; DROP TABLE operator_builds; DROP TABLE workspace_releases; PRAGMA user_version=16; CREATE TABLE workspace_releases(original TEXT); INSERT INTO workspace_releases VALUES('keep');").unwrap();
     assert!(crate::control_store::ControlStore::open(f.control.writer.clone()).is_err());
     assert_eq!(f.control.connection.pragma_query_value(None,"user_version",|row|row.get::<_,i64>(0)).unwrap(),16);

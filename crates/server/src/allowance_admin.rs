@@ -218,6 +218,13 @@ impl Mutation {
             }
             Self::Validity(p) => {
                 valid_dates(p.starts_at, p.expires_at)?;
+                let sold_term_changes: bool = db.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM cloud_plan_entitlements WHERE period_id=? AND user_id=? AND (starts_at<>? OR expires_at<>?))",
+                    params![p.period_id, owner, p.starts_at, p.expires_at], |r| r.get(0),
+                ).map_err(storage)?;
+                if sold_term_changes {
+                    return Err(conflict("CLOUD_PLAN_PERIOD_IMMUTABLE"));
+                }
                 revision(db, owner, &p.period_id, p.revision)?;
                 no_overlap(db, owner, &p.period_id, p.starts_at, p.expires_at)?;
                 db.execute(

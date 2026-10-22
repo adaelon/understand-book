@@ -18,6 +18,7 @@ use runtime::memory_review::{
     ProviderReviewExecutorFactory, ReviewExecutionOutput, ReviewExecutorFactory, ReviewInput,
     ReviewTurnInput, ReviewTurnStatus,
 };
+use runtime::run_context::CancellationToken;
 use runtime::{AdapterError, ModelAdapter, ProviderConfig, ProviderRegistry};
 use serde_json::json;
 use std::path::{Path, PathBuf};
@@ -36,6 +37,7 @@ const REVIEW_SCHEDULER_POLL_MS: u64 = 250;
 const REVIEW_BOUNDARY_TIMEOUT_MS: u64 = 10_000;
 const READ_LEDGER_IDLE_FLUSH_MS: u64 = 250;
 const READ_LEDGER_POLL_MS: u64 = 25;
+const TEACHING_COACH_POLL_MS: u64 = 100;
 
 fn flush_read_ledger_if_ready(
     state: &Arc<Mutex<AppState>>,
@@ -86,6 +88,34 @@ fn spawn_read_ledger_worker(
                     error.error_code, error.message
                 );
             }
+        }
+    })
+}
+
+fn spawn_teaching_coach_worker(
+    state: Arc<Mutex<AppState>>,
+    coordinator: Arc<ReviewCoordinator>,
+    stop: Arc<AtomicBool>,
+) -> JoinHandle<()> {
+    let cancellation = CancellationToken::with_host_stop(stop.clone());
+    thread::spawn(move || {
+        while !cancellation.is_cancelled() {
+            // A pending assistant may be waiting for this job's guidance.
+            // Coaching therefore runs independently of the review scheduler.
+            match crate::teaching_coach::tick_local(
+                &state,
+                coordinator.provider_config_snapshot(),
+                &cancellation,
+            ) {
+                Ok(true) => continue,
+                Ok(false) => {}
+                Err(error) if !cancellation.is_cancelled() => eprintln!(
+                    "teaching coach background task failed [{}]: {}",
+                    error.error_code, error.message
+                ),
+                Err(_) => break,
+            }
+            thread::sleep(Duration::from_millis(TEACHING_COACH_POLL_MS));
         }
     })
 }
@@ -1342,6 +1372,8 @@ fn start_server_with_memory_path(
         }
         workspace.restore_chat(&mut user.agent_history, "server-start");
     }
+    crate::teaching_coach::recover_local(&state)
+        .map_err(|error| format!("failed to recover teaching coach jobs: {}", error.message))?;
     let observability = crate::observability::ObservabilityRuntime::from_env();
     let run_coordinator = Arc::new(crate::agent_run::RunCoordinator::new(
         state.clone(),
@@ -1393,6 +1425,11 @@ fn start_server_with_memory_path(
         Duration::from_millis(READ_LEDGER_IDLE_FLUSH_MS),
         Duration::from_millis(READ_LEDGER_POLL_MS),
     ));
+    handles.push(spawn_teaching_coach_worker(
+        state.clone(),
+        review_coordinator.clone(),
+        stop.clone(),
+    ));
     let boundary_timeout = review_boundary_timeout();
     let selection_translation_executor: Arc<dyn SelectionTranslationExecutor> =
         Arc::new(ProviderSelectionTranslationExecutor { stop: stop.clone() });
@@ -1419,6 +1456,13 @@ fn start_server_with_memory_path(
                 let method = request.method().to_string();
                 let url = request.url().to_string();
                 let video_url = normalize_api_url(&url);
+                let (calibration_path, _) = crate::parse_query(&video_url);
+                if (calibration_path == "/build_workbench/music/audio" || calibration_path.starts_with("/build_workbench/music/score/"))
+                    && matches!(method.as_str(), "GET" | "HEAD") {
+                    let source = crate::music_calibration::local_asset(&state.lock().unwrap(), &video_url);
+                    match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
+                    continue;
+                }
                 if let Some(path) = video_url.strip_prefix("/book/video/source/").and_then(|v| v.strip_suffix("/media")) {
                     if matches!(method.as_str(), "GET" | "HEAD") {
                         let source = (|| {
@@ -1434,6 +1478,22 @@ fn start_server_with_memory_path(
                         match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
                         continue;
                     }
+                }
+                if let Some(source) = video_url.strip_prefix("/book/music/source/") {
+                    if matches!(method.as_str(), "GET" | "HEAD") {
+                        let path = crate::music_source::local_asset(&state.lock().unwrap(), source);
+                        match path { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
+                        continue;
+                    }
+                }
+                if (video_url.starts_with("/book/music/") || (video_url.starts_with("/books/") && video_url.contains("/music/")))
+                    && matches!(method.as_str(), "GET" | "HEAD") {
+                    let source = {
+                        let guard = state.lock().unwrap();
+                        crate::music_media::local_path(&guard.workspace.book_dir, &video_url)
+                    };
+                    match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
+                    continue;
                 }
                 if video_url == "/book/video/media" && matches!(method.as_str(), "GET" | "HEAD") {
                     let source = {
@@ -2107,6 +2167,7 @@ mod tests {
         let coordinator = ReviewCoordinator::new(state.clone(), Some(review_provider("fake")), Arc::new(ProviderReviewExecutorFactory));
         let root = tempfile::tempdir().unwrap();
         let writer = crate::control_store::ServiceWriter::acquire(root.path()).unwrap();
+        crate::control_store::ControlStore::open(writer.clone()).unwrap().create_user("B").unwrap();
         let other = crate::user_runtime::UserRuntime::open_service(&writer.paths("B").unwrap(), writer.clone(), "1").unwrap();
         state.lock().unwrap().user = other;
         assert_eq!(coordinator.run_one("1").err().unwrap().error_code, "USER_OWNER_MISMATCH");
@@ -2158,6 +2219,49 @@ mod tests {
             MemoryStore::open(memory_path).unwrap().read_lids(&book_id),
             vec!["1"]
         );
+    }
+
+    #[test]
+    fn startup_interrupts_unfinished_teaching_coach_without_repeating_attempt() {
+        let root = tempfile::tempdir().unwrap();
+        let memory_path = root.path().join("memory/memory.json");
+        std::fs::create_dir_all(memory_path.parent().unwrap()).unwrap();
+        let memory = MemoryStore::open_private(memory_path.clone()).unwrap();
+        {
+            let mut learning = memory.learning_store().unwrap();
+            learning.ensure_coach_job(&memory::tutor_coach::CoachJobInput {
+                job_ref: "coach-interrupted-at-shutdown".into(),
+                origin: memory::tutor_coach::CoachJobOrigin::AfterTurn,
+                binding: memory::teaching::TeachingBinding {
+                    tutor_session_id: "teaching-stage".into(),
+                    session_revision: 1,
+                    control_revision: 1,
+                    source_id: "__desktop_bootstrap__".into(),
+                    source_revision: "1".into(),
+                    map_revision: None,
+                    chat_session_id: "prior-chat".into(),
+                    turn_id: "completed-turn".into(),
+                },
+                source_ref: "completed-turn".into(),
+                workspace_goal_revision: None,
+                context: json!({"delivered": "A completed teaching reply"}),
+            }, "before-restart").unwrap();
+            learning.claim_coach_job("coach-interrupted-at-shutdown", "before-restart").unwrap().unwrap();
+        }
+
+        for _ in 0..2 {
+            let running = start_server_with_memory_path(
+                ServerHostConfig::desktop(root.path().join("library"), root.path().join("dist")),
+                memory_path.clone(),
+            ).unwrap();
+            running.shutdown();
+            let job = memory.learning_store().unwrap()
+                .coach_job("coach-interrupted-at-shutdown").unwrap().unwrap();
+            assert_eq!(job.status, memory::tutor_coach::CoachJobStatus::Interrupted);
+            assert_eq!(job.attempt, 1);
+            assert_eq!(job.attempts.len(), 1);
+            assert!(job.guidance.is_none());
+        }
     }
 
     #[test]
@@ -2233,7 +2337,7 @@ mod tests {
                 created_at: "0".into(),
                 updated_at: "0".into(),
                 turns: (1..=turns_per_session)
-                    .map(|ordinal| AgentChatTurn {
+                    .map(|ordinal| AgentChatTurn { music_question: None,
                         video_question: None,
                         domain: Default::default(),
                         admission_input: None,

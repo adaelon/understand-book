@@ -3,6 +3,7 @@ import NoteEditorPanel from "./components/NoteEditorPanel.vue";
 import RightRail from "./components/RightRail.vue";
 import { renderMarkdown } from "./md";
 import "./style.css";
+import { useAgentRun } from "./useAgentRun";
 import { api } from "./api";
 import TutorControl from './components/TutorControl.vue';
 import TutorPanel from './components/TutorPanel.vue';
@@ -11,6 +12,8 @@ import type { PresentationWorkspace } from './presentation-workspace';
 
 const fixture = await fetch("/api/fixture").then(response => response.json());
 createApp(defineComponent({ setup() {
+  const run = useAgentRun(() => {});
+  if (fixture.run_descriptor) run.observe(fixture.run_descriptor);
   const opened = ref(false);
   const rn2 = new URLSearchParams(location.search).has('notes');
   const notes = ref<import('./api').MemoryRecord[]>([]);
@@ -74,6 +77,15 @@ createApp(defineComponent({ setup() {
       'onUpdate:presentationWorkspace': (value: PresentationWorkspace | null) => { workspace.value = value; },
       chatSessions: [], activeChatSessionId: selected.value, agentInput: input.value, sending: false,
       'onUpdate:agentInput': (value: string) => { input.value = value; },
+      onSendAgent: async () => {
+        const message = input.value;
+        if (!message.trim()) return;
+        input.value = '';
+        const outcome = await api.agentChat(message);
+        chat.value.push({ turnId: `follow-${chat.value.length}`, user: message, outcome, pending: false,
+          questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] });
+        followUp.value = '追问已完成';
+      },
       selectedLid: null, selectedFormula: null, contextNotes: notes.value, contextHighlights: [],
       renderMarkdown, effLabel: () => "", effState: () => undefined, isGoto: () => false,
       showEffectPrimary: () => false, showEffectSecondary: () => false, effectPrimaryLabel: () => "", effectSecondaryLabel: () => "", gotoBack: () => "", askDraft: null,

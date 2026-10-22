@@ -75,7 +75,13 @@ impl UserRuntime {
         let _learning = store.learning_store()?;
         let history_path = Some(paths.history.clone());
         let (mut agent_history, mut session_store) = crate::session_store::load_chat_storage(&history_path)?;
-        let control = crate::control_store::ControlStore::open(writer)?;
+        let mut control = crate::control_store::ControlStore::open(writer.clone())?;
+        {
+            let tx=control.connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(|_| crate::agent_history_internal("Cannot account for retained user files"))?;
+            crate::cloud_storage::adopt(&tx,writer.root(),&paths.owner,crate::multi_user_host::now())?;
+            tx.commit().map_err(|_| crate::agent_history_internal("Cannot account for retained user files"))?;
+        }
         let mut query = control.connection.prepare("SELECT turn_id FROM run_admissions WHERE owner_user_id=?").map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?;
         let admitted = query.query_map([&paths.owner], |r| r.get::<_,String>(0)).map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?.collect::<Result<std::collections::BTreeSet<_>,_>>().map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?;
         if session_store.is_none() {

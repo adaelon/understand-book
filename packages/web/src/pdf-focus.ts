@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import { TextLayer } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { appendPdfOcrText } from './pdf-ocr-text-layer';
 import type { PdfSourceMap } from './api';
 import { pdfPageVisualSize } from './pdf-annotation-projection';
 import { PDF_MAX_BACKING_PIXELS, pdfFocusRasterSize, pdfFocusWindow, pdfSpreadStart, type PdfFocusGeometry } from './pdf-rendering';
@@ -255,6 +256,7 @@ export class PdfFocusReader {
         p.textTask = new TextLayer({ textContentSource, container: div, viewport });
         await p.textTask.render(); await nextTask(); await this.gate();
         if (!this.screens.includes(screen)) return;
+        if (p.info.ocr_lines?.length) appendPdfOcrText(div, p.info.ocr_lines, viewport);
         p.text.replaceChildren(div);
         p.text.style.contentVisibility = 'hidden';
         await nextTask();

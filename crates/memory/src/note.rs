@@ -91,6 +91,9 @@ pub struct NoteSourceBinding {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(type = "unknown", optional)]
     pub media: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "unknown", optional)]
+    pub music: Option<serde_json::Value>,
     pub evidence_text_digest: String,
     pub label_snapshot: String,
     pub preview_snapshot: String,

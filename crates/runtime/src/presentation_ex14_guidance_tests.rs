@@ -126,7 +126,7 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
     assert_eq!(plans.len(), 8);
     for (index, name, references) in [
         (1, "global", vec![]),
-        (2, "local", vec![]),
+        (2, "local", vec!["state"]),
         (3, "local", vec!["state", "continuous-scene"]),
         (4, "review", vec!["state", "continuous-scene"]),
         (5, "review", vec!["state", "continuous-scene"]),
@@ -232,7 +232,7 @@ fn ex14_manim_review_guidance_is_selected_once_and_survives_compaction() {
         }
     }
     assert_eq!(guidance_count(&plans[2]), guidance_count(&plans[3]));
-    phase(&plans[4], "review", &[]);
+    phase(&plans[4], "review", &["state"]);
     assert!(!active_guidance_assets(&plans[4]).iter()
         .any(|asset| asset == "resident-agent.presentation.reference.manim"));
     drop(plans);
@@ -444,7 +444,7 @@ fn ex14_visual_static_revision_loads_local_and_keeps_scripted_patch_scope() {
         "请检查这张必要条件与充分条件说明页，把‘只要 A 就 B’改成‘A 成立时 B 一定成立’，保留原来的两个例子和版式。", "t0").unwrap();
     let plans = adapter.seen_plans.borrow();
     record("static-revision", &plans);
-    phase(&plans[2], "local", &["editing"]);
+    phase(&plans[2], "local", &["editing", "state"]);
     assert!(serde_json::to_string(&plans[2].ordered_messages())
         .unwrap()
         .contains("已有页面的措辞小修订保持原例子和版式"));

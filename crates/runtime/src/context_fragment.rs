@@ -167,12 +167,12 @@ impl ContextFragmentLedger {
         }
     }
 
-    pub fn project_messages(&self, messages: &[Message]) -> Vec<Message> {
+    pub fn project_session_stable_messages(&self, messages: &[Message]) -> Vec<Message> {
         let insert_at = messages
             .iter()
             .position(|message| message.role != Role::System)
             .unwrap_or(messages.len());
-        let fragments = self.projected_messages();
+        let fragments = self.projected_messages(FragmentScope::SessionStable);
         let mut projected = Vec::with_capacity(messages.len() + fragments.len());
         projected.extend_from_slice(&messages[..insert_at]);
         projected.extend(fragments);
@@ -180,11 +180,24 @@ impl ContextFragmentLedger {
         projected
     }
 
-    pub fn projected_messages(&self) -> Vec<Message> {
+    /// Keep the reusable history before this turn's frozen state. Apply this
+    /// before sampling snapshots or provider adaptation can add synthetic users.
+    pub fn project_turn_frozen_messages(&self, messages: &mut Vec<Message>) {
+        let insert_at = messages
+            .iter()
+            .rposition(|message| message.role == Role::User)
+            .unwrap_or(messages.len());
+        messages.splice(
+            insert_at..insert_at,
+            self.projected_messages(FragmentScope::TurnFrozen),
+        );
+    }
+
+    pub fn projected_messages(&self, scope: FragmentScope) -> Vec<Message> {
         self.snapshot()
             .fragments
             .iter()
-            .filter(|fragment| fragment.scope != FragmentScope::Dynamic)
+            .filter(|fragment| fragment.scope == scope)
             .map(ContextFragment::projected_message)
             .collect()
     }
@@ -348,6 +361,7 @@ mod tests {
     #[test]
     fn sampling_snapshots_survive_compacted_prefix_and_do_not_enter_frozen_context() {
         let mut history = ContextFragmentLedger::default();
+        history.upsert(fragment("scene", "frozen current scene")).unwrap();
         let mut first = history.clone();
         first
             .upsert(ContextFragment::new(
@@ -374,21 +388,36 @@ mod tests {
         let mut compacted = vec![
             Message::system("compacted older history"),
             Message::user("current task"),
-            Message::user("assistant/tool placeholder"),
-            Message::user("complete tool group"),
+            Message {
+                role: Role::Assistant, content: None, provider_continuation: None,
+                tool_calls: vec![crate::ToolCall {
+                    id: "read".into(), name: "book.text".into(), arguments: "{}".into(),
+                }],
+                tool_call_id: None,
+            },
+            Message {
+                role: Role::Tool, content: Some("complete tool group".into()),
+                provider_continuation: None, tool_calls: vec![], tool_call_id: Some("read".into()),
+            },
         ];
+        second.project_turn_frozen_messages(&mut compacted);
         second.project_sampling_snapshots(&mut compacted, 12);
-        assert!(compacted[2]
+        assert!(compacted[1].content.as_deref().unwrap().contains("frozen current scene"));
+        assert_eq!(compacted[2].content.as_deref(), Some("current task"));
+        assert!(compacted[3]
             .content
             .as_deref()
             .unwrap()
             .contains("remaining=2"));
-        assert!(compacted[5]
+        assert_eq!(compacted[4].tool_calls[0].id, "read");
+        assert_eq!(compacted[5].tool_call_id.as_deref(), Some("read"));
+        assert!(compacted[6]
             .content
             .as_deref()
             .unwrap()
             .contains("remaining=1"));
-        assert!(second.projected_messages().is_empty());
+        assert!(second.projected_messages(FragmentScope::SessionStable).is_empty());
+        assert_eq!(second.projected_messages(FragmentScope::TurnFrozen).len(), 1);
     }
 
     #[test]
@@ -474,7 +503,7 @@ mod tests {
         assert_eq!(bodies.iter().filter(|body| body.contains("Shared policy body")).count(), 1);
         assert_eq!(bodies.iter().filter(|body| body.contains("First phase body")).count(), 1);
         assert_eq!(bodies.iter().filter(|body| body.contains("Changed phase body")).count(), 2);
-        assert!(retained.projected_messages().is_empty());
+        assert!(retained.projected_messages(FragmentScope::TurnFrozen).is_empty());
     }
 
     #[test]
@@ -488,10 +517,10 @@ mod tests {
         ledger.record_sampling(2,&[common.clone(),old],vec![Message::user("OLD_AUTHOR_DESIGN")]);
         ledger.upsert(ContextFragment::new("learner",FragmentScope::Dynamic,Role::System,"CURRENT_LEARNER_STATE",FragmentSensitivity::Private)).unwrap();
         ledger.record_sampling(4,&[common,current.clone()],vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
-        let frozen=ledger.projected_messages();
+        let frozen=ledger.projected_messages(FragmentScope::TurnFrozen);
         assert!(ledger.retire_sampling_history());
         assert!(!ledger.retire_sampling_history(),"the retained current state is not repeatedly retired");
-        assert_eq!(ledger.projected_messages(),frozen);
+        assert_eq!(ledger.projected_messages(FragmentScope::TurnFrozen),frozen);
         let raw=vec![Message::system("base"),Message::user("ORIGINAL_USER"),Message {provider_continuation:None,role:Role::Assistant,content:None,
             tool_calls:vec![crate::ToolCall {id:"call".into(),name:"book.text".into(),arguments:r#"{"lid":"1.1"}"#.into()}],tool_call_id:None},
             Message {provider_continuation:None,role:Role::Tool,content:Some("OBSERVED_TOOL_BODY".into()),tool_calls:vec![],tool_call_id:Some("call".into())}];
@@ -577,8 +606,29 @@ mod tests {
             "reader_profile_snapshot.v1 synthetic",
         );
         ledger.upsert(profile.clone()).unwrap();
-        let first = ledger.project_messages(&[Message::system("base"), Message::user("question")]);
-        let second = ledger.project_messages(&[Message::system("base"), Message::user("question")]);
+        ledger.upsert(ContextFragment::new(
+            "stable", FragmentScope::SessionStable, Role::System, "stable session rules",
+            FragmentSensitivity::Public,
+        )).unwrap();
+        ledger.upsert(ContextFragment::new(
+            "task_data", FragmentScope::TurnFrozen, Role::User, "frozen task data",
+            FragmentSensitivity::Private,
+        )).unwrap();
+        let raw = vec![
+            Message::system("base"), Message::user("previous question"),
+            Message {
+                role: Role::Assistant, content: Some("previous answer".into()),
+                provider_continuation: None, tool_calls: vec![], tool_call_id: None,
+            },
+            Message::user("current question"),
+        ];
+        let project = |ledger: &ContextFragmentLedger, messages: &[Message]| {
+            let mut projected = ledger.project_session_stable_messages(messages);
+            ledger.project_turn_frozen_messages(&mut projected);
+            projected
+        };
+        let first = project(&ledger, &raw);
+        let second = project(&ledger, &raw);
         assert_eq!(
             serde_json::to_string(&first).unwrap(),
             serde_json::to_string(&second).unwrap()
@@ -591,9 +641,28 @@ mod tests {
                 .count(),
             1
         );
+        assert_eq!(first[0], raw[0]);
+        assert!(first[1].content.as_deref().unwrap().contains("stable session rules"));
+        assert_eq!(&first[2..4], &raw[1..3]);
+        assert_eq!(first[4].role, Role::System);
+        assert!(first[4].content.as_deref().unwrap().contains("reader_profile_snapshot.v1"));
+        assert_eq!(first[5].role, Role::User);
+        assert!(first[5].content.as_deref().unwrap().contains("frozen task data"));
+        assert_eq!(first[6], raw[3]);
 
         let mut collision = profile;
         collision.content = "different content with a forged revision".into();
         assert!(ledger.upsert(collision).is_err());
+        ledger.upsert(fragment("reader.profile_snapshot", "updated profile next turn")).unwrap();
+        let changed = project(&ledger, &raw);
+        assert_eq!(&changed[..4], &first[..4], "updated turn state must not alter the earlier history prefix");
+        assert_ne!(changed[4], first[4]);
+        assert_eq!(&changed[5..], &first[5..]);
+        assert!(!serde_json::to_string(&raw).unwrap().contains(CONTEXT_FRAGMENT_VERSION));
+
+        let no_user = vec![raw[0].clone(), raw[2].clone()];
+        let projected = project(&ledger, &no_user);
+        assert_eq!(projected[2], no_user[1]);
+        assert_eq!(&projected[3..], ledger.projected_messages(FragmentScope::TurnFrozen).as_slice());
     }
 }

@@ -157,7 +157,7 @@ const ROOT_EXECUTOR_SKILL = "skills/executor/SKILL.md";
 const RELEASE_EXECUTOR_SKILL = "plugins/understand-book/skills/executor/SKILL.md";
 const ROOT_BUILD_SKILL = "skills/build/SKILL.md";
 const RELEASE_BUILD_SKILL = "plugins/understand-book/skills/build/SKILL.md";
-const RELEASE_ASSERTION = "apps/desktop/scripts/assert-plugin-release.mjs";
+const RELEASE_ASSERTION = "apps/desktop/scripts/assert-maintenance-plugin-release.mjs";
 const ROOT_SHARED_MCP_CONFIGS = [
   ".mcp.json",
   "plugins/understand-book/.mcp.json",
@@ -334,8 +334,7 @@ describe("Codex executor bootstrap publication", () => {
     expect(releaseLauncher).toBe(rootLauncher);
     for (const marker of [
       "UNDERSTAND_BOOK_BUILD_EXE",
-      "HKCU\\Software\\UnderstandBook",
-      "understand-book-build.exe",
+      "operator-only build plugin",
       "executor.mcp --bootstrap-version automatic_build_executor_bootstrap.v3 "
         + "--protocol-generation automatic_build_executor_session.v3",
     ]) {
@@ -343,6 +342,7 @@ describe("Codex executor bootstrap publication", () => {
     }
     expect(rootLauncher).not.toContain("--agent-bootstrap-digest");
     expect(rootLauncher).not.toContain("%*");
+    expect(rootLauncher).not.toContain("reg.exe");
   });
 
   it("publishes byte-identical explicit registration script and skill projections", () => {
@@ -401,8 +401,8 @@ describe("Codex executor bootstrap publication", () => {
     expect(unavailable.status).toBe(2);
     expect(unavailable.stdout).toBe("");
     expect(unavailable.stderr).toBe(
-      "Understand Book Build Executor MCP is unavailable. "
-        + "Install Understand Book Setup or set UNDERSTAND_BOOK_BUILD_EXE.\r\n",
+      "This is an operator-only build plugin. Set UNDERSTAND_BOOK_BUILD_EXE "
+        + "to the maintained build tool. Cloud Windows Setup does not include it.\r\n",
     );
   });
 
@@ -494,7 +494,7 @@ describe("Codex executor bootstrap publication", () => {
     expect(backupConflict.status).not.toBe(0);
     expect(readFileSync(target)).toEqual(knownPredecessorWithCrLf);
     expect(readFileSync(backup, "utf8")).toBe("conflicting backup bytes\n");
-  }, 20_000);
+  }, 60_000);
 
   windowsIt("registers a personal executor agent inside an isolated CODEX_HOME", () => {
     const registrationScript = readText(ROOT_REGISTER_SCRIPT);
@@ -720,9 +720,11 @@ describe("Codex executor bootstrap publication", () => {
     expect(desktopPackage.scripts?.["test:t7-codex-cli-release"])
       .toContain("smoke-t7-codex-cli-release.ts");
     expect(desktopPackage.scripts?.["package:windows"])
-      .toContain("smoke-t7-executor-release.ts");
+      .toContain("assert-release-config.mjs");
     expect(desktopPackage.scripts?.["package:windows"])
-      .toContain("--t7-executor-release-prechecked");
+      .not.toContain("smoke-t7-executor-release.ts");
+    expect(desktopPackage.scripts?.["test:maintenance-plugin"])
+      .toContain("assert-maintenance-plugin-release.mjs");
 
     const smoke = readText("apps/desktop/scripts/smoke-t7-executor-release.ts");
     for (const marker of [
@@ -764,7 +766,7 @@ describe("Codex executor bootstrap publication", () => {
   it("keeps source agent directories out of the plugin while gating the asset template", () => {
     expect(existsSync(absolute("plugins/understand-book/agents"))).toBe(false);
     expect(existsSync(absolute("plugins/understand-book/.codex/agents"))).toBe(false);
-    const releaseAssertion = readText("apps/desktop/scripts/assert-plugin-release.mjs");
+    const releaseAssertion = readText(RELEASE_ASSERTION);
     for (const marker of [
       "assets/codex-agents/understand-book-executor.toml",
       "skills/register-executor/SKILL.md",

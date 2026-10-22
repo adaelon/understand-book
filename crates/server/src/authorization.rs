@@ -33,6 +33,10 @@ pub(crate) enum Capability {
     Me,
     Logout,
     Allowance,
+    CloudPlans,
+    CloudStorage,
+    CloudStorageDownload,
+    DesktopAuthorize,
     AccountUsage,
     CostSummary,
     WorkspaceRelease(Option<(String, u32)>, bool),
@@ -49,6 +53,7 @@ pub(crate) enum Capability {
     Book(PublishedBookRef, String),
     History,
     Recap,
+    ReadingResumption,
     LearningRecords(Option<String>),
     Chat(String),
     Run(String, String),
@@ -87,6 +92,10 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/account/mcp" => Capability::McpList,
         "/account/mcp/credentials" => Capability::McpCreate,
         "/account/allowance" => Capability::Allowance,
+        "/account/plans" => Capability::CloudPlans,
+        "/account/storage" => Capability::CloudStorage,
+        "/account/storage/download" => Capability::CloudStorageDownload,
+        "/auth/desktop/authorize" => Capability::DesktopAuthorize,
         "/account/usage" => Capability::AccountUsage,
         "/account/cost-summary" => Capability::CostSummary,
         "/workspace-releases" => Capability::WorkspaceRelease(None, false),
@@ -95,6 +104,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
         "/videos" => Capability::Videos,
         "/me/chats" | "/agent/history" => Capability::History,
         "/agent/history/recap" => Capability::Recap,
+        "/me/reading-resumption" => Capability::ReadingResumption,
         "/me/learning-records" => Capability::LearningRecords(None),
         "/workspaces" => Capability::NewWorkspace,
         "/learning-workspaces" => Capability::LearningWorkspace(None, ""),
@@ -137,6 +147,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
                 ["learning-workspaces", id, "shared-release", "preview"] => Capability::WorkspaceInstance((*id).into(),"preview"),
                 ["learning-workspaces", id, "shared-release", "update"] => Capability::WorkspaceInstance((*id).into(),"update"),
                 ["learning-workspaces", id, "goal"] => Capability::LearningWorkspace(Some((*id).into()), "goal"),
+                ["learning-workspaces", id, "exam-sprint"] => Capability::LearningWorkspace(Some((*id).into()), "exam-sprint"),
                 ["learning-workspaces", id, "members"] => Capability::LearningWorkspace(Some((*id).into()), "members"),
                 ["learning-workspaces", id, "archive"] => Capability::LearningWorkspace(Some((*id).into()), "archive"),
                 ["learning-workspaces", id, "preparations"] => Capability::LearningWorkspace(Some((*id).into()), "preparations"),
@@ -170,7 +181,14 @@ pub(crate) fn book_leaf_allowed(leaf: &str) -> bool {
             | "source_manifest"
             | "video_transcript"
             | "video_context"
+            | "video_playback"
+            | "music_context"
+            | "music/audio"
+            | "music/source"
             | "video/media"
+            | "video/playback/index.m3u8"
+            | "video/playback/media.mp4"
+            | "video/cover"
             | "asset_manifest"
             | "formula_semantics"
             | "pdf_source_map"
@@ -183,7 +201,7 @@ pub(crate) fn book_leaf_allowed(leaf: &str) -> bool {
             | "tutor_readiness"
             | "pdf/original"
             | "original.pdf"
-    ) || leaf.starts_with("assets/")
+    ) || leaf.starts_with("assets/") || leaf.starts_with("music/score/") || leaf.starts_with("music/demo/")
 }
 
 pub struct AuthorizedContext {
@@ -416,6 +434,17 @@ impl Authorization {
                 Ok(json!(control.create_learning_workspace(owner, input.goal, input.members, now)?))
             }
             ("GET", Some(id), "") => Ok(json!(control.learning_workspace(owner, id)?)),
+            ("GET", Some(id), "exam-sprint") => control.exam_sprint(owner, id, now),
+            ("POST", Some(id), "exam-sprint") => {
+                let input = serde_json::from_value(input).map_err(|_| invalid())?;
+                let result = control.revise_exam_sprint(owner, id, input, now)?;
+                let revision = control.learning_workspace(owner, id)?.goal.revision;
+                drop(control);
+                let user = self.users.lock().unwrap().get(owner, &now.to_string())?;
+                user.lock().unwrap().learning_store_for_workspace(Some(id))?
+                    .sync_workspace_goal(revision, &now.to_string())?;
+                Ok(result)
+            }
             ("POST", Some(id), "goal") => {
                 let input: Goal = serde_json::from_value(input).map_err(|_| invalid())?;
                 let updated = control.revise_learning_workspace_goal(owner, id, input.goal, now)?;
@@ -510,7 +539,7 @@ impl AuthorizedContext {
 pub(crate) fn turn_json(turn: &crate::AgentChatTurn) -> Value {
     json!({"turn_id":turn.turn_id,"user":turn.user,"status":turn.status,"domain":turn.domain,
         "teaching_ref":turn.teaching_ref,"goal_ref":turn.goal_ref,"presentation_follow_up":turn.presentation_follow_up,
-        "published_book_ref":turn.published_book_ref,"outcome":turn.outcome,
+        "published_book_ref":turn.published_book_ref,"music_question":turn.music_question,"outcome":turn.outcome,
         "usage":turn.run_summary.as_ref().and_then(|s|s.usage.as_ref()),
         "error":turn.error.as_ref().map(|e| json!({"error_code":e.error_code,"message":"The saved turn did not complete"}))})
 }

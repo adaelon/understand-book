@@ -5,7 +5,7 @@ import { presentationDocument } from "./presentation-document";
 import type { PresentationView } from "./generated/PresentationView";
 
 function view(): PresentationView {
-  return { animation_assets: {}, restored_state: null, restored_state_revision: null, reference: { presentation_id: "p", revision: 2 }, title: "Recall", entrypoint: "page/index.html",
+  return { action_contract: [], animation_assets: {}, restored_state: null, restored_state_revision: null, reference: { presentation_id: "p", revision: 2 }, title: "Recall", entrypoint: "page/index.html",
     content_files: { "page/index.html": '<link rel="stylesheet" href="../style.css"><h1>Recall</h1><script src="../main.js"></script><img src="../diagram.svg">',
       "style.css": ".card { padding: 8px; }", "main.js": "window.count = 2;", "diagram.svg": '<svg xmlns="http://www.w3.org/2000/svg"/>' },
     readable_view: { parts: [{ kind: "markdown", text: "Recall" }], sources: [] }, sources: [], assumptions: [], initial_state: { count: 2 } };

@@ -50,15 +50,16 @@ pub(crate) fn summary(db: &Connection, task: &str) -> Result<Value, ToolError> {
         "task_ref":task,"cost_owner":row.get::<_,String>(0)?,"user_id":row.get::<_,Option<String>>(1)?,
         "learning_workspace_id":row.get::<_,Option<String>>(2)?,"max_micro_cny":row.get::<_,i64>(3)?,"confirmation":row.get::<_,String>(4)?,"revision":row.get::<_,i64>(5)?
     }))).optional().map_err(api_storage)?.ok_or_else(crate::authorization::missing)?;
-    let (debit, active, pending, cost, unknown):(i64,i64,i64,i64,i64) = db.query_row(
-        "SELECT COALESCE(sum(c.account_debit_micro_cny),0),COALESCE(sum(CASE WHEN c.state IN ('reserved','sent') THEN c.reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN c.state='pending' THEN c.reserved_micro_cny ELSE 0 END),0),COALESCE(sum(c.provider_cost_micro_cny),0),COALESCE(sum(CASE WHEN c.provider_cost_status='pending' THEN 1 ELSE 0 END),0) FROM model_call_charges c JOIN external_build_calls x USING(call_id) JOIN external_build_executions e USING(execution_id) WHERE e.task_ref=?",[task],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).map_err(api_storage)?;
-    let spent = if value["cost_owner"] == "platform" { cost } else { debit };
+    let (debit, active, pending, cost, unknown, estimated, covered):(i64,i64,i64,i64,i64,i64,i64) = db.query_row(
+        "SELECT COALESCE(sum(account_debit_micro_cny),0),COALESCE(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN provider_cost_status='confirmed' THEN provider_cost_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN provider_cost_status='pending' THEN 1 ELSE 0 END),0),COALESCE(sum(CASE WHEN provider_cost_status='estimated' THEN provider_cost_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN provider_cost_status='confirmed' THEN max(provider_cost_micro_cny-COALESCE(account_debit_micro_cny,0),0) ELSE 0 END),0) FROM billable_usage WHERE parent_task_ref=?",[task],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?))).map_err(api_storage)?;
+    let spent = if value["cost_owner"] == "platform" { cost.saturating_add(estimated) } else { debit };
     let remaining = value["max_micro_cny"].as_i64().unwrap().saturating_sub(spent).saturating_sub(active).saturating_sub(pending).max(0);
     value["debited_micro_cny"] = json!(debit);
     value["reserved_micro_cny"] = json!(active);
     value["pending_micro_cny"] = json!(pending);
     value["provider_cost_micro_cny"] = json!(cost);
-    value["platform_covered_micro_cny"] = json!(cost.saturating_sub(debit));
+    value["estimated_cost_micro_cny"] = json!(estimated);
+    value["platform_covered_micro_cny"] = json!(covered);
     value["remaining_micro_cny"] = json!(remaining);
     value["unknown_count"] = json!(unknown);
     // These are planning amounts under today's active basis, not a conversion
@@ -80,7 +81,7 @@ pub(crate) fn summary(db: &Connection, task: &str) -> Result<Value, ToolError> {
 pub(crate) fn capped_debit(db: &Connection, call: &str, cost: i64) -> Result<i64, ToolError> {
     let budget: Option<(String,i64)> = db.query_row("SELECT e.task_ref,b.max_micro_cny FROM external_build_calls x JOIN external_build_executions e USING(execution_id) JOIN build_task_budgets b USING(task_ref) WHERE x.call_id=? AND b.cost_owner='account'",[call],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(api_storage)?;
     let Some((task, limit)) = budget else { return Ok(cost) };
-    let other: i64 = db.query_row("SELECT COALESCE(sum(c.account_debit_micro_cny),0) FROM model_call_charges c JOIN external_build_calls x USING(call_id) JOIN external_build_executions e USING(execution_id) WHERE e.task_ref=? AND c.call_id<>?",params![task,call],|r|r.get(0)).map_err(api_storage)?;
+    let other: i64 = db.query_row("SELECT COALESCE(sum(account_debit_micro_cny),0) FROM billable_usage WHERE parent_task_ref=? AND NOT(entry_kind='model' AND call_id=?)",params![task,call],|r|r.get(0)).map_err(api_storage)?;
     Ok(cost.min(limit.saturating_sub(other).max(0)))
 }
 

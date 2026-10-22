@@ -2,12 +2,14 @@
 use crate::*;
 use runtime::tutor_continuation::{AnswerRef, EntryAction, TeachingChoice, InteractionAction, InteractionResolution, ResolvedInteraction};
 use memory::teaching::TeachingSourceBinding;
+use memory::learning::LearningPurpose;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum InteractionInput {
     Typed,
     Selection,
     GuideChapter { chapter_lid: String },
+    LearnWithPurpose { purpose: LearningPurpose, chapter_lid: Option<String> },
     Answer { action: EntryAction, reference: AnswerRef },
     Choice(TeachingChoice),
 }
@@ -81,6 +83,7 @@ pub(crate) fn prepare_local(state: &mut AppState, turn: &AgentTurnRef, request: 
         #[cfg(test)]
         local_point("teaching_receipt")?;
     }
+    crate::teaching_coach::ensure_turn(&state.user, frozen.learning_workspace_id.as_deref(), turn, frozen.context.as_ref(), now)?;
     #[cfg(test)]
     local_point("prepared")?;
     Ok(frozen.context)
@@ -142,7 +145,17 @@ impl InteractionInput {
             source_excerpt: None, source_bindings: vec![], target: None,
             expected_chat_head: input["expected_chat_head"].as_str().map(str::to_owned),
             presentation_follow_up: None,
+            learning_purpose: None,
         };
+        if let Self::LearnWithPurpose { purpose, .. } = self {
+            resolved.learning_purpose = Some(*purpose);
+            if *purpose != LearningPurpose::Discover {
+                let view = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.state()?;
+                if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
+                    return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
+                }
+            }
+        }
         match self {
             Self::Choice(choice) => {
                 let saved = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&choice.delivery_ref)?;
@@ -180,33 +193,50 @@ impl InteractionInput {
                     }
                 }
             },
-            Self::GuideChapter { chapter_lid } => {
+            Self::GuideChapter { chapter_lid } | Self::LearnWithPurpose { chapter_lid: Some(chapter_lid), .. } => {
                 if input["source_id"] != workspace.book.base.book_id
                     || input["source_revision"] != workspace.book.source_fingerprint() {
                     return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新选择章节"));
                 }
                 let title = chapter_title(&workspace.book, chapter_lid)?;
-                resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter };
-                resolved.accepted_request = format!("带我读《{title}》这一章");
+                resolved.action = InteractionAction::UiEntry { entry_action: if resolved.learning_purpose.is_some() {
+                    EntryAction::LearnWithPurpose
+                } else { EntryAction::GuideChapter } };
+                resolved.accepted_request = resolved.learning_purpose.map(|purpose| purpose_request(purpose, &format!("《{title}》这一章")))
+                    .unwrap_or_else(||format!("带我读《{title}》这一章"));
                 resolved.source_bindings = vec![TeachingSourceBinding {
                     source_id: workspace.book.base.book_id.clone(),
                     source_revision: workspace.book.source_fingerprint().into(),
                     start_lid: chapter_lid.clone(), end_lid: chapter_lid.clone(),
                 }];
             },
-            Self::Selection => {
+            Self::Selection | Self::LearnWithPurpose { chapter_lid: None, .. } => {
                 if input["source_id"] != workspace.book.base.book_id
                     || input["source_revision"] != workspace.book.source_fingerprint() {
                     return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新选择"));
                 }
-                let quote = quote.filter(|q| q.status == Some(SelectionResolution::Resolved)
-                    && q.ranges.as_ref().is_some_and(|r| !r.is_empty()))
-                    .ok_or_else(|| invalid("直接帮助需要已核验的完整选区"))?;
-                resolved.source_excerpt = quote.resolved_quote.clone();
-                resolved.source_bindings = verified_question_evidence(&workspace.book, Some(quote)).iter()
-                    .map(|range| TeachingSourceBinding { source_id: workspace.book.base.book_id.clone(),
-                        source_revision: workspace.book.source_fingerprint().into(),
-                        start_lid: range.start_lid.clone(), end_lid: range.end_lid.clone() }).collect();
+                if let Some(purpose) = resolved.learning_purpose.filter(|_| input.get("question_quote").is_none_or(Value::is_null)) {
+                    let first = workspace.book.base.lid_nodes.iter().min_by_key(|node|node.span.start)
+                        .ok_or_else(||invalid("当前材料尚无可定位的正文"))?;
+                    let last = workspace.book.base.lid_nodes.iter().max_by_key(|node|node.span.end).unwrap();
+                    resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose };
+                    resolved.accepted_request = purpose_request(purpose, "当前材料");
+                    resolved.source_bindings = vec![TeachingSourceBinding { source_id:workspace.book.base.book_id.clone(),
+                        source_revision:workspace.book.source_fingerprint().into(), start_lid:first.lid.clone(),end_lid:last.lid.clone() }];
+                } else {
+                    let quote = quote.filter(|q| q.status == Some(SelectionResolution::Resolved)
+                        && q.ranges.as_ref().is_some_and(|r| !r.is_empty()))
+                        .ok_or_else(|| invalid("直接帮助需要已核验的完整选区"))?;
+                    resolved.source_excerpt = quote.resolved_quote.clone();
+                    if let Some(purpose) = resolved.learning_purpose {
+                        resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose };
+                        resolved.accepted_request = purpose_request(purpose, "所选内容");
+                    }
+                    resolved.source_bindings = verified_question_evidence(&workspace.book, Some(quote)).iter()
+                        .map(|range| TeachingSourceBinding { source_id: workspace.book.base.book_id.clone(),
+                            source_revision: workspace.book.source_fingerprint().into(),
+                            start_lid: range.start_lid.clone(), end_lid: range.end_lid.clone() }).collect();
+                }
             },
             Self::Answer { action, reference } => {
                 let turn = user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == workspace.selected_chat.as_deref())
@@ -270,7 +300,7 @@ impl InteractionInput {
             messages:&workspace.messages, selected_chat:workspace.selected_chat.as_deref() };
         // A chapter is a navigation scope, not a claim that the user selected
         // every pending activity inside it for more help.
-        let helps = if matches!(self, Self::GuideChapter { .. }) { vec![] }
+        let helps = if matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. }) { vec![] }
             else { teaching::pending_activity_help(&private, &resolved)? };
         if !helps.is_empty() && resolved.user_supplement.trim().is_empty() {
             return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
@@ -297,6 +327,11 @@ impl InteractionInput {
             .map_err(|_| invalid("回答引用格式无效"))?;
         let choice: Option<TeachingChoice> = serde_json::from_value(parse("teaching_choice"))
             .map_err(|_| invalid("建议选择格式无效"))?;
+        let purpose: Option<LearningPurpose> = serde_json::from_value(parse("learning_purpose"))
+            .map_err(|_| invalid("未知学习目的"))?;
+        if purpose.is_some() && action != Some(EntryAction::LearnWithPurpose) {
+            return Err(invalid("学习目的只用于目的选择操作"));
+        }
         if present("resolved_interaction") || present("current_action") || present("guide_chapter_lid") {
             return Err(invalid("解析结果由服务端生成"));
         }
@@ -308,10 +343,21 @@ impl InteractionInput {
             .iter().any(|key| present(key)) {
             return Err(invalid("阅读操作不能混用原活动回应、笔记或任务替换元数据"));
         }
-        if present("chapter_lid") && action != Some(EntryAction::GuideChapter) {
+        if present("chapter_lid") && !matches!(action, Some(EntryAction::GuideChapter | EntryAction::LearnWithPurpose)) {
             return Err(invalid("章节定位只用于章节导读操作"));
         }
         let result = match (action, answer, choice) {
+            (Some(EntryAction::LearnWithPurpose), None, None) => {
+                let purpose = purpose.ok_or_else(||invalid("请选择本次学习目的"))?;
+                let chapter_lid = input["chapter_lid"].as_str().map(str::to_owned);
+                let chapter = chapter_lid.as_ref().is_some_and(|s| !s.trim().is_empty());
+                let selection = input["question_quote"].is_object();
+                if (chapter && selection) || (present("chapter_lid") && !chapter)
+                    || (present("question_quote") && !selection) || (!selection && present("question_anchor_lid")) {
+                    return Err(invalid("学习目的的章节和选区不能同时提交；未选择时使用当前材料"));
+                }
+                Self::LearnWithPurpose { purpose, chapter_lid }
+            },
             (Some(EntryAction::GuideChapter), None, None)
                 if !present("question_quote") && !present("question_anchor_lid") => {
                     let chapter_lid = input["chapter_lid"].as_str().filter(|s| !s.trim().is_empty())
@@ -390,10 +436,24 @@ impl InteractionInput {
     }
 }
 
+fn purpose_request(purpose: LearningPurpose, scope: &str) -> String {
+    match purpose {
+        LearningPurpose::Discover => format!("先了解{scope}的重点"),
+        LearningPurpose::Understand => format!("带我读懂{scope}"),
+        LearningPurpose::Exam => format!("围绕{scope}复习备考"),
+        LearningPurpose::Explore => format!("围绕{scope}探索一个问题"),
+    }
+}
+
 /// Canonical chapter topology supplies the container; its source heading supplies the name.
 pub(crate) fn chapter_title(book: &Book, lid: &str) -> Result<String, ToolError> {
     let node = book.base.lid_nodes.iter().find(|n| n.lid == lid && n.kind == base_schema::NodeKind::Chapter)
         .ok_or_else(|| invalid("章节导读需要当前材料的规范章节点"))?;
+    if let Some(title) = book.manifest().tree.into_iter().find(|entry| entry.lid == node.lid).and_then(|entry| entry.title) {
+        let title = title.trim();
+        let title = if title.starts_with('#') { title.trim_start_matches('#').trim().trim_end_matches('#').trim() } else { title };
+        if !title.is_empty() { return Ok(title.to_owned()); }
+    }
     let label = book.source_label(&EvidenceRange { start_lid: node.lid.clone(), end_lid: node.lid.clone(), ranges: vec![] }, "zh-CN")?;
     Ok(label.strip_prefix("章节 · ").unwrap_or(&label).to_owned())
 }
@@ -410,4 +470,32 @@ pub(crate) fn requested_current_chapter(book: &Book, message: &str, anchor: &str
     let chapter = book.base.lid_nodes.iter().filter(|n| n.kind == base_schema::NodeKind::Chapter && at.path.starts_with(&n.path))
         .max_by_key(|n| n.path.len()).ok_or_else(|| invalid("当前阅读位置没有规范章节点"))?;
     Ok(Some(chapter.lid.clone()))
+}
+
+#[cfg(test)]
+mod chapter_title_tests {
+    use super::*;
+    use base_schema::{LidNode, NodeKind, Span};
+
+    #[test]
+    fn chapter_title_uses_source_heading_instead_of_lid_number() {
+        let title = "第1章 一本书怎样成为可以交互的阅读环境";
+        for heading in [title.to_owned(), format!("## {title} ##")] {
+            let source = format!("{heading}\n这里是正文。\n");
+            let heading_end = heading.encode_utf16().count() + 1;
+            let source_end = source.encode_utf16().count();
+            let mut base = base_schema::sample_base();
+            base.graph_nodes.clear();
+            base.graph_edges.clear();
+            base.lid_nodes = vec![
+                LidNode { lid:"5".into(),path:vec![5],kind:NodeKind::Chapter,span:Span {start:0,end:source_end},
+                    children:vec!["5.heading".into(),"5.1".into()] },
+                LidNode { lid:"5.heading".into(),path:vec![5,0],kind:NodeKind::Paragraph,span:Span {start:0,end:heading_end},children:vec![] },
+                LidNode { lid:"5.1".into(),path:vec![5,1],kind:NodeKind::Paragraph,span:Span {start:heading_end,end:source_end},children:vec![] },
+            ];
+            let book = Book::new(base,&source);
+            assert_eq!(chapter_title(&book,"5").unwrap(),title);
+            assert!(chapter_title(&book,"5.heading").is_err(),"a heading leaf is not a chapter container");
+        }
+    }
 }

@@ -16,6 +16,57 @@ function storage() {
   });
 }
 
+it('coalesces edits behind an in-flight save and sends the latest text with the original frame', async () => {
+  let complete!: (value: { draft: VideoDraft | null }) => void;
+  const command = storage();
+  command.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+  const scene = createVideoQuestion('a', command, question);
+  scene.input('这'); await vi.waitFor(() => expect(command).toHaveBeenCalledOnce());
+  for (const message of ['这里', '这里的资源', '这里的资源管理和书中一样吗？']) scene.input(message);
+  const submitted = scene.submission();
+  complete({ draft: null }); await submitted;
+  expect(command.mock.calls.map(([input]) => input.draft?.message)).toEqual(['这', '这里的资源管理和书中一样吗？']);
+  await scene.restore();
+  expect(scene.draft.value?.message).toBe('这里的资源管理和书中一样吗？');
+  expect(scene.draft.value?.context.frame.actual_pts_ms).toBe(492000);
+});
+
+it('preserves cancellation between coalesced drafts and reports a failed latest save', async () => {
+  let complete!: (value: { draft: VideoDraft | null }) => void;
+  const command = storage();
+  command.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+  const scene = createVideoQuestion('a', command, question);
+  scene.input('first'); await vi.waitFor(() => expect(command).toHaveBeenCalledOnce());
+  const first = scene.draft.value!.context.draft_id;
+  scene.input('edited first'); scene.clear(); scene.input('second'); scene.input('latest second');
+  const submitted = scene.submission();
+  complete({ draft: null }); await submitted;
+  expect(command.mock.calls.map(([input]) => input.action)).toEqual(['save', 'save', 'release', 'save']);
+  expect(command.mock.calls[2][0].draft_id).toBe(first);
+  await scene.restore();
+  expect(scene.draft.value?.message).toBe('latest second');
+  expect(scene.draft.value?.context.draft_id).not.toBe(first);
+  command.mockRejectedValueOnce(new Error('save unavailable'));
+  scene.input('final edit');
+  await expect(scene.submission()).rejects.toThrow('save unavailable');
+  expect(scene.draft.value?.message).toBe('final edit');
+  expect(scene.error.value).toBe('save unavailable');
+});
+
+it('retries an unchanged draft after a failed save only when the user sends again', async () => {
+  const command = storage(), capture = vi.fn(question), scene = createVideoQuestion('a', command, capture);
+  command.mockRejectedValueOnce(new Error('offline'));
+  scene.input('same question');
+  const id = scene.draft.value!.context.draft_id;
+  await expect(scene.submission()).rejects.toThrow('offline');
+  expect(command).toHaveBeenCalledOnce();
+  await expect(scene.submission()).resolves.toMatchObject({ video_draft_id: id });
+  expect(command).toHaveBeenCalledTimes(2);
+  expect(capture).toHaveBeenCalledOnce();
+  expect(command.mock.calls[1][0].draft?.message).toBe('same question');
+  expect(scene.error.value).toBe('');
+});
+
 it('replaces a selected screenshot with the crop and preserves it across save failure and restore', async () => {
   const command = storage(), scene = createVideoQuestion('a', command, question);
   scene.input('Explain this'); await scene.submission();

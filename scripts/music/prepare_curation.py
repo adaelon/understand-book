@@ -1,0 +1,46 @@
+"""Build the initial score-grounded Schubert curation, retaining pending timing."""
+from pathlib import Path
+import json
+import xml.etree.ElementTree as ET
+
+ROOT = Path(__file__).resolve().parents[2]
+OUT = ROOT / "evals/music"
+score = ET.parse(OUT / "assets/schubert-d780-3-noctave.musicxml").getroot()
+source_notes = []
+for part in score.findall("part"):
+    for mi, measure in enumerate(part.findall("measure"), 1):
+        for ni, note in enumerate(measure.findall("note"), 1):
+            source_notes.append(dict(id=f"{part.get('id')}-m{mi}-n{ni}", measure=mi, staff=note.findtext("staff"), rest=note.find("rest") is not None))
+def ids(start, end, staff=None, pitched=False):
+    return [n["id"] for n in source_notes if start <= n["measure"] <= end and (staff is None or n["staff"] == staff) and (not pitched or not n["rest"])]
+
+curation = {
+    "version": "music_curation.v1",
+    "book_id": "music-schubert-d780-3-vetter",
+    "title": "舒伯特 · 音乐瞬间第 3 首",
+    "work": {"work_id": "schubert-d780", "title": "Moments musicaux, D.780 / Op.94", "composer": "Franz Schubert", "movement": "No.3 in F minor · Allegro moderato"},
+    "score": {"source": {"score_id": "schubert-d780-3-noctave", "revision": "download-20261022"}, "title": "Noctave · 据 Mutopia / Claude Chaudron 公版谱转录", "musicxml_path": "assets/schubert-d780-3-noctave.mxl"},
+    "recording": {"source": {"recording_id": "schubert-d780-3-vetter", "revision": "imslp456646"}, "title": "Harald Vetter · Allegro moderato in F minor", "performers": "Harald Vetter, piano", "media_path": "assets/schubert-d780-3-vetter.mp3", "kind": "performance"},
+    "rights": [
+        {"asset_kind": "recording", "title": "Harald Vetter 演奏录音", "url": "https://imslp.org/wiki/Moments_musicaux,_D.780_(Schubert,_Franz)", "license": "CC BY 4.0", "attribution": "Franz Schubert, Moments musicaux D.780 No.3; piano and recording publisher: Harald Vetter; IMSLP #456646; https://creativecommons.org/licenses/by/4.0/ . Original recording unchanged.", "distribution": "allowed"},
+        {"asset_kind": "score", "title": "Noctave MusicXML 谱本", "url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/", "license": "CC0 1.0", "attribution": "Franz Schubert; typesetting Claude Chaudron / Mutopia-2007/08/11-1023; MusicXML conversion Noctave. https://creativecommons.org/publicdomain/zero/1.0/ . Source file unchanged; SVG is a derived rendering.", "distribution": "allowed"},
+    ],
+    "provenance": [{"provenance_id": "score-noctave-20261022", "kind": "score", "description": "直接读取原 MusicXML 的谱表、声部、音高、时值和休止；事件播放区间目前来自待复核 DTW 候选，不构成已接纳录音听核。", "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/", "processor": "MusicXML structural reading; score events reviewed from actual XML"}],
+    "events": [
+        {"event_id": "opening-entry", "title": "先找旋律进入的地方", "explanation": "谱面前两小节的上谱表为休止，下谱表持续演奏；第 3 小节上方线条进入。可以先看两条谱表的差别，再回到原声寻找这个进入。", "listen_for": "先听开头的伴奏，再尝试找出上方旋律开始的时刻。", "start_ms": 580, "end_ms": 5420, "roles": [{"part_id": "P1", "voice_ids": ["1:1", "1:2", "1:3", "2:5"], "role": "钢琴：下谱表持续，上谱表稍后进入"}], "evidence": [{"provenance_id": "score-noctave-20261022", "score_object_ids": ids(1,4), "audio": None}], "relations": [], "concept_tags": ["旋律", "伴奏", "进入"]},
+        {"event_id": "same-material-returns", "title": "同样的音符材料又出现", "explanation": "本谱第 3 小节与第 11 小节的音高、声部、谱表、相对起点、时值和装饰标记相同。把这两处放在一起，练习辨认重复材料；具体演奏处理需要进一步听辨。", "listen_for": "重听前一处，再听这里，尝试哼出两处共有的短旋律。", "start_ms": 12520, "end_ms": 14840, "roles": [{"part_id": "P1", "voice_ids": ["1:1", "1:2", "1:3", "2:5"], "role": "钢琴：再次呈现相同谱面材料"}], "evidence": [{"provenance_id": "score-noctave-20261022", "score_object_ids": ids(3,3)+ids(11,11), "audio": None}], "relations": [{"target_event_id": "opening-entry", "kind": "repetition", "description": "第 11 小节与第 3 小节的音符结构相同。"}], "concept_tags": ["重复", "旋律记忆"]},
+        {"event_id": "two-staves", "title": "换一条线听", "explanation": "第 3 小节上谱表 voice 1 与下谱表 voice 5 同时演奏。可以先关注上方线条，再观察下方的低音与和弦；谱面合成示范仅帮助辨认音符，不是原录音的分轨。", "listen_for": "这一遍只跟上方线条；下一遍改听下方的节奏。", "start_ms": 3040, "end_ms": 5420, "roles": [{"part_id": "P1", "voice_ids": ["1:1"], "role": "上谱表的旋律线条"}, {"part_id": "P1", "voice_ids": ["2:5"], "role": "下谱表的低音与和弦"}], "evidence": [{"provenance_id": "score-noctave-20261022", "score_object_ids": ids(3,4), "audio": None}], "relations": [{"target_event_id": "opening-entry", "kind": "support", "description": "同一进入片段可分别观察上、下谱表。"}], "concept_tags": ["声部", "旋律与伴奏"]},
+    ],
+    "structure": [{"section_id": "whole-piece", "parent_id": None, "title": "整首作品", "description": "78 小节的完整谱本与 Harald Vetter 的完整录音；当前深度事件只覆盖开头及重复材料案例，音符时间仍待复核。", "start_ms": 0, "end_ms": 101041.633, "event_ids": ["opening-entry", "same-material-returns", "two-staves"], "coverage": "navigation_only"}],
+    "demonstration_requests": [{"demonstration_id": "upper-line-m3-4", "title": "第 3–4 小节上方线条", "score_object_ids": ids(3,4,staff="1",pitched=True), "tempo_bpm": 80}],
+    "guide": "# 舒伯特 · 音乐瞬间第 3 首\n\n先完整听一小段，再带着一个问题重听。你可以从开头寻找旋律的进入，比较相同材料的两次出现，或切换关注上、下谱表。\n\n## 当前材料\n\n原声为 Harald Vetter 的钢琴演奏；谱本为 Noctave 据 Mutopia 公版谱转换的 MusicXML。谱面事实和原录音分别提供依据。演奏时间目前为自动分析候选，正在校准；事件范围用于回听定位，尚不代表逐音符同步已经核准。\n\n## 素材署名\n\n录音：Franz Schubert, Moments musicaux D.780 No.3；钢琴及录音发布者 Harald Vetter；IMSLP #456646；CC BY 4.0，原录音未修改。谱本：Claude Chaudron / Mutopia，经 Noctave 转换，CC0 1.0。谱面合成示范由选定谱音生成，区别于原演奏。\n",
+}
+for event in curation["events"]:
+    event["roles"] = [
+        {"part_id": "P1", "voice_ids": ["1:1"], "role": "上谱表的旋律线条", "theme_id": "schubert-d780-3-opening-theme"},
+        {"part_id": "P1", "voice_ids": ["2:5"], "role": "下谱表的低音与和弦"},
+    ]
+if (OUT / "results/schubert-alignment.pending.json").exists():
+    curation["alignment_path"] = "results/schubert-alignment.pending.json"
+(OUT / "schubert-curation.json").write_text(json.dumps(curation,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+print("evals/music/schubert-curation.json")

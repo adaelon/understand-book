@@ -3,7 +3,7 @@ use base_schema::{EvidenceTarget, FrameLocation, JointEvidenceMember, MediaLocat
     ReadOnlyBase, TranscriptMap, VideoMaterial, VideoSourceManifest};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{collections::BTreeSet, path::Path};
+use std::{collections::BTreeSet, io::Read, path::Path};
 
 #[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct Item {
@@ -46,12 +46,10 @@ fn require(ok: bool, why: &str) -> Result<(),String> {
 fn leaves(evidence: &[JointEvidenceMember]) -> Vec<&EvidenceTarget> {
     evidence.iter().flat_map(|e|match &e.target {EvidenceTarget::Joint{members}=>leaves(members), target=>vec![target]}).collect()
 }
-fn validate_support(evidence: &[JointEvidenceMember], c: &Contribution, manifest: &VideoSourceManifest,
-    map: &TranscriptMap, base: &ReadOnlyBase, source: &str) -> Result<(),String> {
+fn validate_support(evidence: &[JointEvidenceMember], c: &Contribution, map: &TranscriptMap) -> Result<(),String> {
     require(!evidence.is_empty(),"empty support")?;
     for e in evidence {
         require(!e.support_role.trim().is_empty(),"empty source role")?;
-        e.target.validate(manifest,base,source)?;
     }
     for target in leaves(evidence) {
         match target {
@@ -87,11 +85,16 @@ pub(crate) fn load(directory: &Path, base: &ReadOnlyBase, source: &str) -> Resul
             for f in &c.frames {
                 manifest.source.validate_frame(&f.frame)?;
                 require(batch.files.contains(&f.path),"frame dependency")?;
-                let bytes=std::fs::read(directory.join(&f.path)).map_err(|e|e.to_string())?;
-                require(bytes.len()>=24 && bytes[..8]==[137,80,78,71,13,10,26,10],"frame PNG")?;
+                // Signature and dimensions occupy the first 24 bytes; image pixels are not discourse data.
+                let mut bytes=[0u8;24];
+                std::fs::File::open(directory.join(&f.path)).and_then(|mut file|file.read_exact(&mut bytes)).map_err(|e|e.to_string())?;
+                require(bytes[..8]==[137,80,78,71,13,10,26,10],"frame PNG")?;
                 require(u32::from_be_bytes(bytes[16..20].try_into().unwrap())==f.frame.width
                     && u32::from_be_bytes(bytes[20..24].try_into().unwrap())==f.frame.height,"frame dimensions")?;
             }
+            EvidenceTarget::validate_batch(c.items.iter().flat_map(|item|item.evidence.iter()
+                .chain(item.relations.iter().flat_map(|relation|&relation.evidence)))
+                .map(|e|&e.target),&manifest,base,source)?;
             for binding in &c.visual_units {
                 let unit=units.iter().find(|u|u.vu_id==binding.vu_id).ok_or("Discourse VU is missing")?;
                 require(!binding.image_ids.is_empty() && binding.image_ids.iter().all(|id|c.frames.iter()
@@ -105,7 +108,7 @@ pub(crate) fn load(directory: &Path, base: &ReadOnlyBase, source: &str) -> Resul
                 require(item.local_function.as_ref().is_none_or(|f| ["definition","description","classification","explanation","cause","effect","example","counterexample","comparison","contrast","procedure_step","application","warning","limitation","question","answer","summary","research_question","hypothesis","related_work","method_description","experiment_setup","evidence_report","result_interpretation","future_work","transition"].contains(&f.as_str())),"local function")?;
                 require(item.rhetorical_move.as_ref().is_none_or(|f| ["chapter_setup","problem_framing","prerequisite","main_point","concept_elaboration","worked_example","case_analysis","argument_support","objection","resolution","recap","abstract_summary","related_work_positioning","method_setup","experiment_report","result_claim","limitation_acknowledgement","future_work_projection","bridge_to_next"].contains(&f.as_str())),"rhetorical move")?;
                 require(!item.local_summary.trim().is_empty() && item.local_summary.encode_utf16().count()<=200,"summary")?;
-                validate_support(&item.evidence,&c,&manifest,&map,base,source)?;
+                validate_support(&item.evidence,&c,&map)?;
                 for id in &item.vu_ids {
                     let binding=c.visual_units.iter().find(|u|&u.vu_id==id).ok_or("Undelivered discourse VU")?;
                     require(leaves(&item.evidence).iter().any(|e|match e {
@@ -117,7 +120,7 @@ pub(crate) fn load(directory: &Path, base: &ReadOnlyBase, source: &str) -> Resul
                     require(["backward","forward","lateral"].contains(&r.direction.as_str()) && r.family.as_ref().is_none_or(|f|["temporal","contingency","comparison","expansion"].contains(&f.as_str())),"relation direction/family")?;
                     require(r.confidence.is_finite() && (0.5..=1.0).contains(&r.confidence) && !r.rationale.trim().is_empty(),"relation confidence/rationale")?;
                     let target=c.items.iter().find(|i|i.id==r.target_id && i.id!=item.id).ok_or("Discourse relation endpoint")?;
-                    validate_support(&r.evidence,&c,&manifest,&map,base,source)?;
+                    validate_support(&r.evidence,&c,&map)?;
                     let support=leaves(&r.evidence);
                     require(leaves(&item.evidence).iter().chain(leaves(&target.evidence).iter()).all(|e|support.contains(e)),"relation missing endpoint support")?;
                 }
@@ -223,7 +226,7 @@ mod tests {
         write(&dir.join("video_enrichments.json"),&catalog);
         let mut png=vec![0u8;24];png[..8].copy_from_slice(&[137,80,78,71,13,10,26,10]);
         png[16..20].copy_from_slice(&(frame["width"].as_u64().unwrap() as u32).to_be_bytes());png[20..24].copy_from_slice(&(frame["height"].as_u64().unwrap() as u32).to_be_bytes());
-        std::fs::write(dir.join("video-enrichments/d/frame.png"),png).unwrap();
+        std::fs::write(dir.join("video-enrichments/d/frame.png"),&png).unwrap();
         let book=crate::Book::load(dir.to_str().unwrap()).unwrap();
         let query=|v:Value|book.search_video(&dir,&serde_json::from_value(publication.clone()).unwrap(),serde_json::from_value(v).unwrap()).unwrap();
         let found=query(json!({"query":"hidden"}));
@@ -245,7 +248,13 @@ mod tests {
             ("/items/1/vu_ids",json!(["unknown"])),
             ("/items/0/evidence/0/target/text_range/lid",json!("unknown")),
         ] {let mut bad=c.clone();*bad.pointer_mut(pointer).unwrap()=value;write(&file,&bad);assert!(crate::Book::load(dir.to_str().unwrap()).is_err(),"{pointer}");}
-        write(&file,&c);std::fs::remove_file(dir.join("video-enrichments/d/frame.png")).unwrap();
+        write(&file,&c);
+        let mut wrong_dimensions=png.clone();wrong_dimensions[20..24].copy_from_slice(&1u32.to_be_bytes());
+        for invalid_header in [png[..23].to_vec(),vec![0u8;24],wrong_dimensions] {
+            std::fs::write(dir.join("video-enrichments/d/frame.png"),invalid_header).unwrap();
+            assert!(crate::Book::load(dir.to_str().unwrap()).is_err());
+        }
+        std::fs::remove_file(dir.join("video-enrichments/d/frame.png")).unwrap();
         assert!(crate::Book::load(dir.to_str().unwrap()).is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }

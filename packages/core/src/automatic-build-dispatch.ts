@@ -173,6 +173,8 @@ export function planAutomaticBuildExecutorDispatches(input: {
   target_ref: BuildTargetRefV2;
   stage: AutomaticBuildStage;
   work_units: WorkUnitDescriptor[];
+  /** Reuse the digest already computed for these descriptors by the current preflight. */
+  descriptor_plan_digest?: string;
   pending_ids: string[];
   task_bindings?: Readonly<Record<string, AutomaticBuildTaskPolicyBinding>>;
   predicted_service_ms?: Readonly<Record<string, number>>;
@@ -278,7 +280,7 @@ export function planAutomaticBuildExecutorDispatches(input: {
     byKind[unit.kind] = value;
   }
   for (const dispatch of dispatches) byKind[dispatch.kind]!.dispatches += 1;
-  const descriptorPlanDigest = workUnitPlanDigest(input.work_units);
+  const descriptorPlanDigest = input.descriptor_plan_digest ?? workUnitPlanDigest(input.work_units);
   const planIdentity = {
     version: "automatic_build_executor_dispatch_plan.v1" as const,
     target_ref: input.target_ref,

@@ -9,6 +9,18 @@ pub(crate) fn read(directory: &Path, display_title: Option<&str>) -> Option<Stri
         .map(str::trim).filter(|title| !title.is_empty()).map(str::to_owned)
         .or_else(|| display_title.map(str::trim).filter(|title| !title.is_empty()).map(str::to_owned))
         .or_else(|| {
+            let music: Value = serde_json::from_slice(&std::fs::read(directory.join("music_source_manifest.json")).ok()?).ok()?;
+            music["title"].as_str().map(str::to_owned)
+        })
+        .or_else(|| {
+            let video: Value = serde_json::from_slice(&std::fs::read(directory.join("video_source_manifest.json")).ok()?).ok()?;
+            // Published transcripts have no heading. Keep the imported filename as
+            // their display title, including when prepared on a different OS.
+            let filename = video["source"]["original_path"].as_str()?.rsplit(['/', '\\']).next()?;
+            Path::new(filename).file_stem()?.to_str().map(|title| title.replace('_', " "))
+                .filter(|title| !title.trim().is_empty())
+        })
+        .or_else(|| {
             // The title is at the front of imported Markdown. Listing the library
             // must not load each book's entire source text.
             let mut bytes = Vec::new();
@@ -43,5 +55,16 @@ mod tests {
         assert_eq!(read(dir, Some(" ")).as_deref(), Some("让理解有出处"));
         std::fs::write(dir.join("source.txt"), "# C# ##\n正文").unwrap();
         assert_eq!(read(dir, None).as_deref(), Some("C#"));
+    }
+
+    #[test]
+    fn video_title_uses_original_filename_without_a_transcript_heading() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("source.txt"), "Today we will discuss tensors.\n").unwrap();
+        for path in [r"E:\courses\CS336_Lecture02_PyTorch.mp4", "/courses/CS336_Lecture02_PyTorch.mp4"] {
+            std::fs::write(root.path().join("video_source_manifest.json"), serde_json::json!({"source":{"original_path":path}}).to_string()).unwrap();
+            assert_eq!(read(root.path(), None).as_deref(), Some("CS336 Lecture02 PyTorch"));
+            assert_eq!(read(root.path(), Some("课程第二讲")).as_deref(), Some("课程第二讲"));
+        }
     }
 }

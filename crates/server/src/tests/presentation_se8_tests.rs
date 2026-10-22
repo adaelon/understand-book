@@ -10,19 +10,24 @@ fn save(root: &Path, name: &str, value: &Value) {
 
 struct Recorded {
     inner: Box<dyn ModelAdapter + Send>, root: PathBuf,
-    profile: runtime::ModelRuntimeProfile, calls: AtomicUsize, output_tokens: u32,
+    profile: runtime::ModelRuntimeProfile, calls: AtomicUsize, output_tokens: Option<u32>,
+    purpose: std::sync::Mutex<String>,
 }
 impl ModelAdapter for Recorded {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.profile.clone() }
     fn set_run_cancellation(&self, token: CancellationToken) { self.inner.set_run_cancellation(token); }
+    fn set_model_purpose(&self, purpose: &str) {
+        *self.purpose.lock().unwrap() = purpose.into();
+        self.inner.set_model_purpose(purpose);
+    }
     fn complete(&self, req: CompletionRequest) -> Result<ParsedResponse, runtime::AdapterError> { self.inner.complete(req) }
     fn complete_structured(&self, req: CompletionRequest) -> Result<Value, runtime::AdapterError> {
         self.complete_structured_observed(req, &mut runtime::provider_stream::ignore)
     }
     fn complete_structured_observed(&self, mut req: CompletionRequest, observer: &mut dyn ModelObserver) -> Result<Value, runtime::AdapterError> {
-        req.output_token_limit = Some(self.output_tokens);
+        if let Some(limit) = self.output_tokens { req.output_token_limit = Some(limit); }
         let n = self.calls.fetch_add(1, SeqCst);
-        save(&self.root, &format!("request-{n:03}.json"), &json!({"kind":"structured","system":req.system,"user":req.user,"output_token_limit":req.output_token_limit}));
+        save(&self.root, &format!("request-{n:03}.json"), &json!({"kind":"structured","purpose":self.purpose.lock().unwrap().clone(),"system":req.system,"user":req.user,"images":req.images,"output_token_limit":req.output_token_limit}));
         let start = Instant::now(); let mut usage = None;
         let result = self.inner.complete_structured_observed(req, &mut |delta: ModelDelta| {
             if let ModelDelta::Usage(value) = &delta { usage = Some(value.clone()); }
@@ -35,7 +40,8 @@ impl ModelAdapter for Recorded {
         self.chat_observed(req, &mut runtime::provider_stream::ignore)
     }
     fn chat_observed(&self, req: &runtime::AgentRequestPlan, observer: &mut dyn ModelObserver) -> Result<runtime::AssistantTurn, runtime::AdapterError> {
-        let mut req = req.clone(); req.output_token_limit = Some(self.output_tokens);
+        let mut req = req.clone();
+        if let Some(limit) = self.output_tokens { req.output_token_limit = Some(limit); }
         let n = self.calls.fetch_add(1, SeqCst);
         let images: Vec<_> = req.preview_images.iter().enumerate().map(|(i,image)| {
             let file = format!("image-{n:03}-{i:02}.png");
@@ -79,9 +85,11 @@ fn se8_live_task() {
     }
     let config = ProviderConfig::from_values("native","local-recording-relay",relay,"deepseek-v4-flash").unwrap();
     let mut profile = runtime::ModelRuntimeCatalog::default().resolve("deepseek-v4-flash",runtime::ProviderToolProtocol::Native,None);
-    let output_tokens: u32 = std::env::var("SE8_OUTPUT_TOKENS").unwrap_or_else(|_|"16384".into()).parse().unwrap();
-    profile.output_reserve_tokens = output_tokens;
-    let adapter = Recorded {inner:ProviderRegistry::adapter_from_config_with_runtime_profile(config,Some(profile.clone())),profile,root:root.clone(),calls:AtomicUsize::new(0),output_tokens};
+    // Omission preserves the production per-request limits (including Author).
+    // Archived experiments can still explicitly request their frozen override.
+    let output_tokens: Option<u32> = std::env::var("SE8_OUTPUT_TOKENS").ok().map(|value| value.parse().unwrap());
+    if let Some(limit) = output_tokens { profile.output_reserve_tokens = limit; }
+    let adapter = Recorded {inner:ProviderRegistry::adapter_from_config_with_runtime_profile(config,Some(profile.clone())),profile,root:root.clone(),calls:AtomicUsize::new(0),output_tokens,purpose:std::sync::Mutex::new("resident".into())};
     prepared.scope.provider_binding = adapter.profile.clone();
     save(&root,"input.json",&json!({"message":message,"catalog":runtime::presentation_methods::catalog(),"profile":adapter.profile}));
     let app = BorrowedAppPort(std::cell::RefCell::new(&mut state));

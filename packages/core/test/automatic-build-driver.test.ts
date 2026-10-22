@@ -21,6 +21,7 @@ import type {
   AutomaticBuildExecutorProvenanceV1,
   AutomaticBuildWallBudgetV1,
 } from "../src/automatic-build-budget";
+import { DEFAULT_AUTOMATIC_BUILD_BUDGET } from "../src/automatic-build-budget";
 import { recordAutomaticBuildInputObservation } from "../src/automatic-build-metrics";
 import {
   inspectAutomaticBuildDispatch,
@@ -128,7 +129,7 @@ interface AutomaticBuildStepResponseV1 {
 interface AutomaticBuildStepRequestV1 {
   version: "automatic_build_step_request.v1";
   invocation_ref: string;
-  available_agent_slots: 0 | 1 | 2 | 3;
+  available_agent_slots: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   decision?: { request_id: string; choice_id: string };
   bootstrap_failure?: { opaque_handoff_ref: string };
   open_call_correction?: import("../src/automatic-build-executor-session").AutomaticBuildOpenCallCorrectionV1;
@@ -189,7 +190,7 @@ interface AutomaticBuildInvocationCreateV1 {
   root_dir: string;
   build_plan_path: string;
   quality_profile: "full";
-  max_parallel: 1 | 2 | 3;
+  max_parallel: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   created_at: string;
   budget?: AutomaticBuildBudgetLimitsV1;
   wall_budget?: AutomaticBuildWallBudgetV1;
@@ -426,7 +427,7 @@ async function createInvocation(
     wall_budget?: AutomaticBuildWallBudgetV1;
     executor_provenance?: AutomaticBuildExecutorProvenanceV1;
     created_at?: string;
-    max_parallel?: 1 | 2 | 3;
+    max_parallel?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   } = {},
 ) {
   return driver.createAutomaticBuildInvocation({
@@ -871,6 +872,29 @@ async function exhaustedRetryBoundary(
 afterEach(async () => { await yieldToRunner(); });
 
 describe("S0 deterministic automatic-build driver protocol", () => {
+  it("accepts eight-worker invocations and live capacity while rejecting values above eight", async () => {
+    const driver = expectedDriver(), value = fixture("eight-workers");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+    try {
+      const invocation = await createInvocation(driver, value, { max_parallel: 8 });
+      const saved = JSON.parse(readFileSync(path.join(value.root, "registry", "invocations",
+        `${invocation.invocation_ref}.json`), "utf8"));
+      expect(saved.input.max_parallel).toBe(8);
+      await expect(createInvocation(driver, value, {
+        max_parallel: 9 as AutomaticBuildInvocationCreateV1["max_parallel"],
+      })).rejects.toThrow(/max_parallel/);
+      await expect(async () => driver.automaticBuildStep({
+        version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref,
+        available_agent_slots: 9 as AutomaticBuildStepRequestV1["available_agent_slots"],
+      })).rejects.toThrow(/available_agent_slots/);
+      const response = await driver.automaticBuildStep({
+        version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref,
+        available_agent_slots: 8,
+      });
+      expect(response.action.kind).toBe("SPAWN_EXECUTORS");
+    } finally { vi.unstubAllEnvs(); }
+  });
+
   it("keeps the root response limited to 64 KiB independently of refill stdin capacity", async () => {
     const driver = expectedDriver(), value = fixture("root-response-capacity");
     vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
@@ -999,6 +1023,33 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(replayed).toEqual(response);
     expect(snapshotRead).toHaveBeenCalledTimes(1);
     snapshotRead.mockRestore();
+  });
+
+  it("recreates lost launch projections from the same invocation and durable dispatch", async () => {
+    const driver = expectedDriver(), value = fixture("repair-empty-handoff-projection");
+    const registry = path.join(value.root, "registry");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", registry);
+    try {
+      const invocation = await createInvocation(driver, value);
+      const request: AutomaticBuildStepRequestV1 = { version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 };
+      const first = await driver.automaticBuildStep(request);
+      if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected launch");
+      const launch = first.action.executors[0]!;
+      const projection = path.join(registry, "handoff-projections", invocation.invocation_ref, `${launch.opaque_handoff_ref}.json`);
+      const original = readFileSync(projection);
+      // Model the interrupted write: the opaque handoff exists, the handoff projection
+      // is empty, and the following dispatch projection was never written.
+      writeFileSync(projection, "");
+      const dispatches = path.join(registry, "dispatch-projections", invocation.invocation_ref);
+      for (const file of readdirSync(dispatches)) rmSync(path.join(dispatches, file));
+      // Maintenance removes only the confirmed empty projection. The Engine rebuilds it.
+      rmSync(projection);
+      const recovered = await driver.automaticBuildStep(request);
+      expect(recovered.action).toEqual(first.action);
+      expect(readFileSync(projection)).toEqual(original);
+      expect(readdirSync(path.join(registry, "invocations"))).toHaveLength(1);
+    } finally { vi.unstubAllEnvs(); }
   });
 
   it("replays an active dispatch after more than 512 valid projection records accumulate", async () => {
@@ -1393,6 +1444,50 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(children.size).toBe(6);
     expect(live.size).toBe(0);
   }, 120_000);
+
+  it.each(["bootstrap", "connection_terminal", "handoff_ref_mismatch", "correction"] as const)("refill drains queued %s observations after simultaneous terminal children without replacing live successors", async (failureKind) => {
+    const driver = expectedDriver();
+    const value = fixture("queued-startup-observations", {
+      body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>
+        `Paragraph ${i + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}`,
+    });
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+    // Keep spare slots so queued observations exercise recovery rather than the no-capacity boundary.
+    const invocation = await createInvocation(driver, value, { max_parallel: 8 });
+    const request = { version: "automatic_build_refill_request.v1", invocation_ref: invocation.invocation_ref,
+      capacity_limit: 8, live_by_slot: {}, completed_refs: [], terminal_children: [] };
+    type Refill = import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    const first = await driver.runAutomaticBuildDriverCommand(request) as Refill;
+    expect(first.ready_executors).toHaveLength(3);
+    const live = Object.fromEntries(first.ready_executors.map((launch, index) => [launch.dispatch_slot_ref!,
+      { child: `failed-${index}`, opaque_handoff_ref: launch.opaque_handoff_ref }]));
+    const recovered = await driver.runAutomaticBuildDriverCommand({ ...request, live_by_slot: live,
+      terminal_children: Object.values(live).map(child => child.child),
+      ...failureObservation(failureKind, first.ready_executors[0]!.opaque_handoff_ref),
+    }) as Refill;
+    expect(recovered.step.action.kind).toBe("SPAWN_EXECUTORS");
+    expect(recovered.ready_executors).toHaveLength(3);
+    expect(recovered.completed_refs).toEqual(first.ready_executors.map(launch => launch.opaque_handoff_ref));
+    const replacements = Object.fromEntries(recovered.ready_executors.map((launch, index) => [launch.dispatch_slot_ref!,
+      { child: `replacement-${index}`, opaque_handoff_ref: launch.opaque_handoff_ref }]));
+    for (const original of first.ready_executors) {
+      expect(replacements[original.dispatch_slot_ref!]!.opaque_handoff_ref).not.toBe(original.opaque_handoff_ref);
+    }
+    const drain = { ...request, live_by_slot: replacements, completed_refs: recovered.completed_refs };
+    // The other terminal children were recovered before their queued observations reached the driver.
+    for (const original of [...first.ready_executors.slice(1), ...first.ready_executors]) {
+      const next = await driver.runAutomaticBuildDriverCommand({ ...drain,
+        ...failureObservation(failureKind, original.opaque_handoff_ref),
+      }) as Refill;
+      expect(next.step.action).toMatchObject({ kind: "WAIT", reason: "active_executors" });
+      expect(next.live_by_slot).toEqual(replacements);
+      expect(next.completed_refs).toEqual(recovered.completed_refs);
+      expect(next.ready_executors).toEqual([]);
+    }
+    const resumed = await driver.runAutomaticBuildDriverCommand({ ...request,
+      completed_refs: recovered.completed_refs }) as Refill;
+    expect(resumed.ready_executors).toEqual(recovered.ready_executors);
+  }, 60_000);
 
   it.each(["bootstrap", "connection_terminal", "handoff_ref_mismatch", "correction"] as const)("L2 %s: recovers a zero-call bootstrap failure once without consuming a semantic attempt", async (failureKind) => {
     const driver = expectedDriver();
@@ -1826,6 +1921,79 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     });
     expect(replayed).toEqual(continued);
   });
+
+  it.each([
+    "max_tasks", "max_total_score", "max_estimated_total_tokens", "max_batch_score", "max_parallel_cost",
+  ] as const)("continues and replays an approved forecast above the default %s limit", async (limit) => {
+    const driver = expectedDriver();
+    const value = fixture(`default-budget-${limit}`);
+    const originalLimit = DEFAULT_AUTOMATIC_BUILD_BUDGET[limit];
+    // Scale the default ceiling down so one real routed task exercises the same
+    // acceptance path as a whole book exceeding the production default ceiling.
+    DEFAULT_AUTOMATIC_BUILD_BUDGET[limit] = 0;
+    try {
+      const invocation = await createInvocation(driver, value);
+      const request: AutomaticBuildStepRequestV1 = {
+        version: "automatic_build_step_request.v1",
+        invocation_ref: invocation.invocation_ref,
+        available_agent_slots: 1,
+      };
+      const first = await driver.automaticBuildStep(request);
+      expect(first.action).toMatchObject({ kind: "NEEDS_USER", reason: "budget_exceeded",
+        projection: { violations: expect.arrayContaining([expect.objectContaining({ code: limit, limit: 0 })]) } });
+      const continued = await driver.automaticBuildStep({ ...request, decision: firstDecision(first) });
+      expect(continued.action.kind).toBe("SPAWN_EXECUTORS");
+      expectRootSafeStep(continued, [value.root, value.buildPlanPath]);
+      const snapshotRead = vi.spyOn(buildOrchestrator, "routeAutomaticBuildSnapshot");
+      try {
+        expect(await driver.automaticBuildStep(request)).toEqual(continued);
+        expect(snapshotRead).toHaveBeenCalledTimes(1);
+      } finally {
+        snapshotRead.mockRestore();
+      }
+
+      if (limit === "max_tasks") {
+        const originalScore = DEFAULT_AUTOMATIC_BUILD_BUDGET.max_total_score;
+        DEFAULT_AUTOMATIC_BUILD_BUDGET.max_total_score = 0;
+        try {
+          const changed = await driver.automaticBuildStep(request);
+          expect(changed.action).toMatchObject({ kind: "NEEDS_USER", reason: "budget_exceeded",
+            projection: { violations: expect.arrayContaining([expect.objectContaining({ code: "max_total_score" })]) } });
+          expect(firstDecision(changed).request_id).not.toBe(firstDecision(first).request_id);
+        } finally {
+          DEFAULT_AUTOMATIC_BUILD_BUDGET.max_total_score = originalScore;
+        }
+      }
+    } finally {
+      DEFAULT_AUTOMATIC_BUILD_BUDGET[limit] = originalLimit;
+    }
+  }, 30_000);
+
+  it("reuses an approved model budget after a sibling commits within the same descriptor plan", async () => {
+    const driver = expectedDriver();
+    const value = fixture("approved-budget-after-progress", {
+      body: "# First\n\nFirst synthetic paragraph.\n\n# Second\n\nSecond synthetic paragraph.\n",
+    });
+    const originalLimit = DEFAULT_AUTOMATIC_BUILD_BUDGET.max_tasks;
+    DEFAULT_AUTOMATIC_BUILD_BUDGET.max_tasks = 0;
+    try {
+      const invocation = await createInvocation(driver, value);
+      const request: AutomaticBuildStepRequestV1 = {
+        version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref, available_agent_slots: 1,
+      };
+      const first = await driver.automaticBuildStep(request);
+      expect(first.action).toMatchObject({ kind: "NEEDS_USER", reason: "budget_exceeded" });
+      const approved = await driver.automaticBuildStep({ ...request, decision: firstDecision(first) });
+      if (approved.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected initial approved dispatch");
+      executorMcpConnection().commit(approved.action.executors[0]!.opaque_handoff_ref);
+      const next = await driver.automaticBuildStep(request);
+      expect(next.build_progress?.stages.find(stage => stage.stage === "pass1")?.work).toMatchObject({ committed: 1, pending: 1 });
+      expect(next.action.kind).toBe("SPAWN_EXECUTORS");
+      expectRootSafeStep(next, [value.root, value.buildPlanPath]);
+    } finally {
+      DEFAULT_AUTOMATIC_BUILD_BUDGET.max_tasks = originalLimit;
+    }
+  }, 30_000);
 
   it("keeps deterministic retry_current side-effect free while the policy scope is unchanged", async () => {
     const previousRegistryRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;

@@ -25,6 +25,7 @@ it('INV5 displays email after login while preferences and workspace storage reta
     }
     if (url === '/api/auth/me') return signedIn ? Response.json(identity) : Response.json({}, { status: 401 });
     if (url === '/api/videos') return Response.json({ videos: [] });
+    if (url === '/api/me/reading-resumption') return Response.json(null);
     if (url === '/api/library') return Response.json({ books: [] });
     if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
     throw new Error(url);
@@ -43,7 +44,7 @@ it('INV5 displays email after login while preferences and workspace storage reta
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals(); vi.restoreAllMocks(); sessionStorage.clear();
+  vi.unstubAllGlobals(); vi.restoreAllMocks(); sessionStorage.clear(); localStorage.clear();
   history.replaceState({}, '', '/');
   network.value = { ...network.value, enabled: false, identity: null, workspace: null };
   observation.errors = []; observation.mounts = 0;

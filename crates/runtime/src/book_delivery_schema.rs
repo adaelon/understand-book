@@ -63,7 +63,7 @@ pub fn book_envelope_schema(tool: &str) -> Option<Value> {
     let batch = tool == "book.text_batch";
     let id = if batch { BookToolId::Text } else { book_tool_contracts::from_resident_alias(tool)? };
     let text = crate::book_output_schema::canonical(id)?;
-    let full = if batch {
+    let mut full = if batch {
         json!({"type":"object","additionalProperties":false,"required":["items"],"properties":{
             "items":{"type":"array","maxItems":crate::book_text_batch::MAX_RANGES,"items":{
                 "type":"object","additionalProperties":false,"required":["arguments","result"],"properties":{
@@ -74,8 +74,17 @@ pub fn book_envelope_schema(tool: &str) -> Option<Value> {
             }}
         }})
     } else { text };
+    if id == BookToolId::Search {
+        full["properties"]["exhaustive"] = json!({"const":false});
+        full["properties"]["next_calls"] = schema_for::<Vec<read_tools::BookTextCall>>();
+        full["properties"]["delivery"] = json!({"type":"object","additionalProperties":false,
+            "required":["status","returned_count","omitted_count","evidence"],"properties":{
+                "status":{"enum":["complete","partial"]},"returned_count":{"type":"integer","minimum":0},
+                "omitted_count":{"type":"integer","minimum":0},"evidence":{"const":"locators_only"}}});
+        full["required"].as_array_mut().unwrap().extend([json!("exhaustive"),json!("next_calls"),json!("delivery")]);
+    }
     let mut partial = full.clone();
-    if id != BookToolId::Text {
+    if !matches!(id, BookToolId::Text | BookToolId::Search) {
         add_delivery(&mut partial, &delivery_schema(id == BookToolId::SearchText));
     }
     let summary = json!({"type":"object","additionalProperties":false,"required":["projection","message"],

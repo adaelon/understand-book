@@ -312,6 +312,7 @@ impl RunEvents {
             "compaction" => "整理对话上下文",
             "repair" => "整理回答来源",
             "tutor_assessment" => "核对学习证据",
+            "tutor_coach" => "安排下一步学习",
             _ => "生成回答",
         };
         let mut activity = self.begin("model", purpose, label, true);
@@ -703,6 +704,7 @@ mod tests {
         let observed_inner = RecordingAdapter(std::sync::Mutex::new(Vec::new()));
         let baseline = direct
             .complete(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "fixed system".into(),
@@ -717,6 +719,7 @@ mod tests {
             runtime_profile: observed_inner.model_runtime_profile(),
         }
         .complete(CompletionRequest {
+            images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,
             system: "fixed system".into(),
@@ -775,6 +778,7 @@ mod tests {
         };
         assert!(observed
             .complete(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "system".into(),

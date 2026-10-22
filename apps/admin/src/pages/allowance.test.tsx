@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { queryClient, session } from '@/lib/api';
 import type { Period, AllowanceOffer } from '@/lib/types';
+import type { CloudPlanProduct } from '@/lib/cloud-plans';
 import { OperationsProvider } from '@/components/operation';
 import { AllowancePanel } from './allowance';
 
@@ -18,6 +19,8 @@ let fetcher: ReturnType<typeof vi.fn>;
 let mutate: (path: string, body: Record<string, unknown>) => Promise<Response>;
 let lookup: () => Promise<Response>;
 let offers: AllowanceOffer[];
+let cloudPlans: CloudPlanProduct[];
+const cloudProduct: CloudPlanProduct = { product_id: 'cloud-fixture', revision: 2, title: '测试用三天套餐', tier: 'basic', duration: 'day3', enabled: true, test_only: false, amount_fen: 1250, basis: { version: 'fixture', basis_micro_cny: 1000000 }, grant_milli_percent: 100000, storage_bytes: 1024 ** 3, max_file_bytes: 1024 ** 2, retention_seconds: 86400, instructions: '联系运营', saleable: true, unavailable_reasons: [] };
 const page = (items: unknown[]) => ({ items, total: items.length, limit: 20, offset: 0 });
 const receipt = (body: Record<string, unknown>, kind = 'percentage-receipts') => ({ operation_id: body.operation_id, user_id: 'A', actor: 'operator', kind, created_at: 1791684000, ok: true, parameters: body, allowance_period: period });
 const writes = () => fetcher.mock.calls.filter(([, init]) => init?.method === 'POST');
@@ -39,7 +42,7 @@ async function fill(name: string, value: string) {
 async function submit() { await act(async () => document.querySelector('[role=dialog] form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))); await settle(); }
 beforeEach(async () => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  sessionStorage.clear(); queryClient.clear(); offers = [];
+  sessionStorage.clear(); queryClient.clear(); offers = []; cloudPlans = [];
   mutate = async (_path, body) => Response.json(receipt(body));
   lookup = async () => Response.json({ error_code: 'NOT_FOUND' }, { status: 404 });
   fetcher = vi.fn(async (url: string, init?: RequestInit) => {
@@ -47,6 +50,8 @@ beforeEach(async () => {
     if (init?.method === 'POST') return mutate(url, JSON.parse(String(init.body)));
     if (url.startsWith('/api/admin/operations/')) return lookup();
     if (url === '/api/admin/allowance-offers') return Response.json({ items: offers });
+    if (url === '/api/admin/cloud-plans') return Response.json({ items: cloudPlans });
+    if (url === `${base}/cloud-plan-purchases`) return Response.json({ current: null, next: null, catalog: { items: [] } });
     if (url.startsWith(`${base}/allowance-periods`)) return Response.json(page([period]));
     throw new Error(`Unexpected request ${url}`);
   });
@@ -95,4 +100,33 @@ it('creates and edits a priced percentage offer without granting to the displaye
   expect(original.period_id).toBeUndefined(); expect(text()).toContain('12.50 元 · 增加 50%');
   await click('编辑方案'); await fill('amount', '15'); await submit();
   expect(JSON.parse(writes()[1][1].body)).toMatchObject({ offer_id: original.offer_id, amount_fen: 1500, delta_milli_percent: 50000 });
+});
+
+it('saves a cloud-plan draft without guessing price or quotas and does not grant to the account', async () => {
+  await mount(); await click('新增套餐商品');
+  for (const name of ['amount', 'basis_version', 'basis_amount', 'grant', 'storage_mb', 'max_file_mb', 'retention_days']) {
+    expect(document.querySelector<HTMLInputElement>(`[name="${name}"]`)!.value).toBe('');
+  }
+  await fill('title', '待配置冲刺'); await submit();
+  expect(writes()[0][0]).toBe('/api/admin/cloud-plans');
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ title: '待配置冲刺', revision: 0, enabled: false, amount_fen: null, grant_milli_percent: null, basis: null, storage_bytes: null, max_file_bytes: null, retention_seconds: null });
+  expect(JSON.parse(writes()[0][1].body).user_id).toBeUndefined();
+});
+
+it('opens a paid cloud period by pinned product version and retries an uncertain receipt with the original operation', async () => {
+  cloudPlans = [cloudProduct];
+  mutate = async () => { throw new TypeError('connection lost'); };
+  await mount(<AllowancePanel userId="A" current={null} />); await click('核款并开通');
+  expect(text()).toContain('实收 12.50 元'); expect(text()).toContain('授予 100%');
+  await fill('channel', '已核验渠道'); await fill('note', '已核款'); await submit();
+  const original = JSON.parse(writes()[0][1].body);
+  expect(writes()[0][0]).toBe(`${base}/cloud-plan-purchases`);
+  expect(original).toMatchObject({ product_id: 'cloud-fixture', product_revision: 2, channel: '已核验渠道', note: '已核款' });
+  expect(original.starts_at).toBeUndefined(); expect(original.expires_at).toBeUndefined();
+  expect(text()).toContain('购买商品版本2');
+  await unmount(); await mount();
+  mutate = async (_path, body) => Response.json({ ...receipt(body, 'cloud-plan-purchases'), entitlement: { title: cloudProduct.title, starts_at: 1791648000, expires_at: 1791907200 } });
+  await click('按原操作重试');
+  expect(JSON.parse(writes()[1][1].body)).toEqual(original);
+  expect(text()).toContain('已开通 测试用三天套餐'); expect(sessionStorage.length).toBe(0);
 });

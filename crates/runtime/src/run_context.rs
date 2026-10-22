@@ -196,6 +196,7 @@ mod tests {
             adapter.set_run_cancellation(cancellation);
             let error = adapter
                 .complete(CompletionRequest {
+                    images: Vec::new(),
                     output_token_limit: None,
                     reasoning_effort: None,
                     system: "test".into(),
@@ -230,6 +231,16 @@ impl From<read_tools::ToolError> for TeachingSelectionPreflightError {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn music_source_context(&mut self) -> Result<Option<serde_json::Value>, read_tools::ToolError> { Ok(None) }
+    fn read_music(&mut self, _reference: Option<&base_schema::PublishedBookRef>, _request: read_tools::music::MusicRead) -> Result<read_tools::music::MusicReadResult, read_tools::ToolError> { Err(crate::music::unavailable()) }
+    fn interact_music(&mut self, _request: crate::music::MusicInteractRequest, _cancellation: &CancellationToken) -> Result<crate::music::MusicPlaybackReceipt, read_tools::ToolError> { Err(crate::music::unavailable()) }
+    fn web_available(&self) -> bool { false }
+    fn web_call(&mut self, _name: &str, _arguments: serde_json::Value, _cancellation: &CancellationToken) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(crate::web::unavailable())
+    }
+    fn interact_presentation(&mut self, _request: crate::presentation_interact::InteractRequest, _cancellation: &CancellationToken) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(crate::presentation_interact::unavailable())
+    }
     fn workspace_records_available(&self) -> bool { false }
     fn workspace_records(&mut self, _request: serde_json::Value) -> Result<serde_json::Value, read_tools::ToolError> {
         Err(memory::teaching::invalid("Linked workspace records are unavailable"))
@@ -260,6 +271,9 @@ pub trait ResidentStatePort {
         Err(memory::teaching::invalid("Assessment unavailable"))
     }
     fn tutor_active(&mut self) -> Result<bool, read_tools::ToolError> { Ok(true) }
+    /// Host-frozen dependency result for this admitted turn, after any managed
+    /// coach wait. This must not read an unrelated latest job or run a model.
+    fn tutor_coach_context(&mut self) -> Result<Option<serde_json::Value>, read_tools::ToolError> { Ok(None) }
     fn tutor_working_state(&mut self) -> Result<serde_json::Value, read_tools::ToolError> {
         Ok(serde_json::Value::Null)
     }
@@ -329,6 +343,8 @@ pub struct RunContext {
     pub(crate) question_image: Option<base_schema::VideoQuestionImage>,
     pub audio_reviews: Vec<crate::video_audio::AudioReview>,
     pub media_observations: Vec<base_schema::MediaObservation>,
+    /// Actual player requests and host receipts, kept apart from source evidence.
+    pub(crate) music_interactions: Vec<serde_json::Value>,
     pub(crate) pending_video: Vec<crate::video::FrameBatch>,
     pub tutor: Option<serde_json::Value>,
     pub tutor_resolved: bool,
@@ -348,6 +364,9 @@ pub struct RunContext {
     pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub current_user_message: Option<String>,
     pub(crate) presentation_authoring: Option<crate::presentation_author::PresentationAuthoringContext>,
+    /// Current-request coach handoff, including unavailable attempts. Changing
+    /// layout/technical needs during this run must not buy another coach call.
+    pub(crate) presentation_coach: Option<serde_json::Value>,
     pub(crate) presentation_authoring_finished: bool,
     pub(crate) presentation_method_reads: std::collections::HashSet<String>,
     pub(crate) presentation_method_observations: crate::presentation::PresentationMethodObservations,
@@ -357,6 +376,9 @@ pub struct RunContext {
     /// Actual author previews, retained separately from learner observations.
     pub(crate) presentation_preview_observations: std::collections::BTreeMap<String, Vec<serde_json::Value>>,
     pub(crate) presentation_delivery_observations: std::collections::BTreeMap<String, Vec<serde_json::Value>>,
+    /// Retained after the author's image queue is consumed, for independent review.
+    pub(crate) presentation_preview_images: std::collections::BTreeMap<String, Vec<crate::presentation_author::PreviewImage>>,
+    pub(crate) presentation_delivery_images: std::collections::BTreeMap<String, Vec<crate::presentation_author::PreviewImage>>,
     pub(crate) pending_previews: std::collections::BTreeSet<String>,
     pub(crate) unobserved_preview_environments: std::collections::HashSet<(String, String)>,
     pub(crate) pending_plot_refs: std::collections::HashSet<String>,
@@ -428,6 +450,7 @@ impl RunContext {
             question_image: None,
             audio_reviews: Vec::new(),
             media_observations: Vec::new(),
+            music_interactions: Vec::new(),
             pending_video: Vec::new(),
             tutor: None,
             tutor_resolved: false,
@@ -440,6 +463,7 @@ impl RunContext {
             accepted_workspace_goal: None,
             current_user_message: None,
             presentation_authoring: None,
+            presentation_coach: None,
             presentation_authoring_finished: false,
             presentation_method_reads: Default::default(),
             presentation_method_observations: Default::default(),
@@ -448,6 +472,8 @@ impl RunContext {
             presentation_images: Vec::new(),
             presentation_preview_observations: Default::default(),
             presentation_delivery_observations: Default::default(),
+            presentation_preview_images: Default::default(),
+            presentation_delivery_images: Default::default(),
             pending_previews: Default::default(),
             unobserved_preview_environments: Default::default(),
             pending_plot_refs: Default::default(),

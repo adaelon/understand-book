@@ -247,6 +247,12 @@ pub fn dispatch_mcp_tool(state: &mut AppState, name: &str, arguments: Value, now
     match (id, input) {
         (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&state.workspace.book.manifest()),
         (BookToolId::Text, BookToolInput::Text(input)) => route_book_text(state, input),
+        (BookToolId::Search, BookToolInput::Search(input)) => {
+            match state.workspace.book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT)) {
+                Ok(result) => candidate_reply(id, json!(result)),
+                Err(error) => err_reply(&error),
+            }
+        }
         (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
             match state.workspace.book.search_text(&input) {
                 Ok(result) => candidate_reply(id, json!(result)),
@@ -370,7 +376,7 @@ fn artifact_overlay_unavailable(message: impl Into<String>) -> ToolError {
 
 fn route_book_text(state: &AppState, input: book_tool_contracts::TextInput) -> Reply {
     match state.workspace.book.read_text(&input) {
-        Ok(result) => ok_json(&result),
+        Ok(result) => candidate_reply(BookToolId::Text, result),
         Err(e) => err_reply(&e),
     }
 }
@@ -404,12 +410,14 @@ pub(crate) fn project_candidate_read_calls(
     reference: Option<&crate::published_library::PublishedBookRef>,
 ) {
     let collection = match id {
+        BookToolId::Text => "math_context",
         BookToolId::SearchText => "occurrences",
+        BookToolId::Search => "hits",
         BookToolId::Concept => "candidates",
         BookToolId::Context => "items",
         _ => return,
     };
-    let Some(items) = result[collection].as_array_mut() else { return };
+    let Some(items) = result.get_mut(collection).and_then(Value::as_array_mut) else { return };
     let name = contract_for(BookToolId::Text).aliases.mcp.unwrap();
     for item in items {
         if let Some(calls) = item["next_calls"].as_array_mut() {
@@ -1071,6 +1079,7 @@ mod tests {
                 "book_manifest",
                 "book_text",
                 "book_search_text",
+                "book_search",
                 "book_context",
                 "book_concept",
                 "book_structure",

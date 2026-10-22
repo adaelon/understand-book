@@ -1,6 +1,6 @@
 # 解释语法模板库
 
-正式目录 revision 4 包含 9 个可组合能力单元。首批八单元现包含双图同源、图形直接操作与完整讲解。每个版本保存语法卡、完整可运行作品、适配说明、Author 元数据和具体预期观察。新增的三维联动模板从用户认可的齿轮作品提取，并提供弹簧振子的跨题改写。
+正式目录 revision 5 包含 9 个可组合能力单元、10 个登记版本。首批八单元包含双图同源、图形直接操作与完整讲解；单因素对照的新版本支持同页连续演示、显现帮助和用户接手，原 @2 仍可读取。每个版本保存语法卡、完整可运行作品、适配说明、Author 元数据和具体预期观察。三维联动模板从用户认可的齿轮作品提取，并提供弹簧振子的跨题改写。
 
 [打开可操作总览](index.html) · [机器目录](catalog.json) · [来源与许可](SOURCES.md) · [制作与验证记录](../../../docs/performance/presentation-method-library-v1/README.md)
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | 当前状态怎样得到下一状态？ | [追踪一次离散更新](discrete-update/v3/card.md) | [运行](discrete-update/v3/example/index.html) |
 | 对象如何变，哪些性质保持？ | [保持身份的对象变换](object-transform/v2/card.md) | [运行](object-transform/v2/example/index.html) |
-| 差异由哪一个变量造成？ | [固定条件，只改变一个因素](compare-one-factor/v2/card.md) | [运行](compare-one-factor/v2/example/index.html) |
+| 差异由哪一个变量造成？ | [固定条件，只改变一个因素](compare-one-factor/v3/card.md) | [运行](compare-one-factor/v3/example/index.html) |
 | 这些部分如何组成整体？ | [整体与部分保持对应](part-whole/v2/card.md) | [运行](part-whole/v2/example/index.html) |
 | 输入经过哪些步骤得到结果？ | [沿关系逐步展开过程](process-reveal/v2/card.md) | [运行](process-reveal/v2/example/index.html) |
 | 这个结论具体由什么支持？ | [从证据走到有边界的结论](evidence-chain/v2/card.md) | [运行](evidence-chain/v2/example/index.html) |

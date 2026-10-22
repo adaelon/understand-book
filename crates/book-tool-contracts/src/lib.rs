@@ -11,6 +11,7 @@ pub enum BookToolId {
     Manifest,
     Text,
     SearchText,
+    Search,
     Context,
     Concept,
     Structure,
@@ -50,6 +51,7 @@ impl BookToolContract {
         )
         .replace("book.text", "book_text")
         .replace("book.structure", "book_structure")
+        .replace("book.search_text", "book_search_text")
     }
 }
 
@@ -69,10 +71,10 @@ const CONTRACTS: &[BookToolContract] = &[
         Some("book.text"),
         Some("book_text"),
         Some("text"),
-        "Read canonical source text by one LID or an inclusive LID range.",
+        "Read canonical source text by one LID or an inclusive LID range. Optional math_context annotates the delivered passage and supplies next_calls for missing statement evidence and referenced results; annotations and calls do not observe unread text.",
         "Read source text after a LID has been located.",
         "Do not use for lexical discovery when no LID is known.",
-        "book_text.v1",
+        "book_text.v2",
     ),
     contract(
         BookToolId::SearchText,
@@ -85,14 +87,24 @@ const CONTRACTS: &[BookToolContract] = &[
         "search_text.v1",
     ),
     contract(
+        BookToolId::Search,
+        Some("book.search"),
+        Some("book_search"),
+        Some("search"),
+        "Find relevant passages in the current material using lightweight lexical relevance ranking over canonical source. No graph, embeddings or semantic prebuild is required. Results are bounded candidates, not evidence or exhaustive semantic matches.",
+        "Locate passages for a natural-language question when the source location is unknown; optionally restrict to a known subtree. Read each chosen passage with its returned book.text call before explaining or citing.",
+        "For an already selected passage read it directly. For first, previous or every exact occurrence use book.search_text.",
+        "search_ranked.v1",
+    ),
+    contract(
         BookToolId::Context,
         Some("book.context"),
         Some("book_context"),
         Some("context"),
-        "Return context pointers for a LID: near adds tree adjacency and local edges, mid adds other concept or entity occurrences, and far adds long-range edges. Counts cover only known rule-recalled pointers, not all semantic relations; built structure availability is reported by book.structure. Pointers contain no source text; use book.text to read it.",
+        "Return context pointers for a LID: near adds direct mathematical relationships in both directions, tree adjacency and local edges; mid adds other concept or entity occurrences; far adds long-range edges. Mathematical links preserve uses, proves and asks_to_prove, with next_calls covering the related statement's evidence. Counts cover only known rule-recalled pointers, not all semantic relations; built structure availability is reported by book.structure. Pointers contain no source text; use book.text to read it.",
         "Expand around a verified LID through deterministic context links.",
         "Do not treat pointers as source text.",
-        "book_context.v1",
+        "book_context.v2",
     ),
     contract(
         BookToolId::Concept,
@@ -259,6 +271,24 @@ pub struct TextInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(description = "Absolute canonical-source UTF-16 position copied from a text continuation. Keep the original lid/end_lid. Omit or null for the initial read; a continuation returns a bounded page and its source_range, requested_range and next_start_utf16.")]
     pub start_utf16: Option<usize>,
+}
+
+pub const DEFAULT_SEARCH_LIMIT: usize = 8;
+pub const MAX_SEARCH_LIMIT: usize = 20;
+pub const MAX_SEARCH_QUERY_CHARS: usize = 4096;
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct SearchInput {
+    #[schemars(length(min = 1, max = 4096))]
+    #[schemars(description = "Nonblank natural-language question or terms to find relevant canonical-source passages. Ranking is lexical; translated or synonymous terms can help when the original wording differs.")]
+    pub query: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional known LID restricting candidates to this node and its descendants. Omit or null to search the current material.")]
+    pub within_lid: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Maximum ranked candidate passages, 1..20; omit or null for 8. Scores rank candidates and are not confidence. A bounded result cannot establish semantic exhaustiveness.")]
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -599,6 +629,7 @@ pub enum BookToolInput {
     Empty(EmptyInput),
     Text(TextInput),
     SearchText(SearchTextInput),
+    Search(SearchInput),
     Context(ContextInput),
     Concept(ConceptInput),
     At(AtInput),
@@ -627,6 +658,13 @@ pub fn input_schema(id: BookToolId) -> Value {
         }
         BookToolId::Text => schema_value::<TextInput>(),
         BookToolId::SearchText => search_text_input_schema(),
+        BookToolId::Search => {
+            let mut schema = schema_value::<SearchInput>();
+            schema["properties"]["limit"]["default"] = json!(DEFAULT_SEARCH_LIMIT);
+            schema["properties"]["limit"]["minimum"] = json!(1);
+            schema["properties"]["limit"]["maximum"] = json!(MAX_SEARCH_LIMIT);
+            schema
+        },
         BookToolId::Context => {
             let mut schema = schema_value::<ContextInput>();
             schema["properties"]["granularity"]["default"] = json!(DEFAULT_CONTEXT_GRANULARITY);
@@ -665,6 +703,7 @@ pub fn input_schema(id: BookToolId) -> Value {
 /// real call still come from that book's locating results, as field docs specify.
 pub fn input_examples(id: BookToolId) -> Vec<Value> {
     match id {
+        BookToolId::Search => vec![json!({"query":"threshold activation conditions","within_lid":"1","limit":4})],
         BookToolId::SearchText => vec![
             json!({"query":"threshold","match_mode":"exact","order":"document","page_size":1}),
             json!({"query":"THRESHOLD","match_mode":"normalized","scope":{"within_lid":"1","relative_to":{"lid":"1.3","direction":"before"}},"order":"reverse_document","page_size":1}),
@@ -780,6 +819,7 @@ pub fn validate_input(
         }
         BookToolId::Text => BookToolInput::Text(parse(value)?),
         BookToolId::SearchText => BookToolInput::SearchText(parse(value)?),
+        BookToolId::Search => BookToolInput::Search(parse(value)?),
         BookToolId::Context => BookToolInput::Context(parse(value)?),
         BookToolId::Concept => BookToolInput::Concept(parse(value)?),
         BookToolId::Structure | BookToolId::GuidePath => BookToolInput::At(parse(value)?),
@@ -816,6 +856,18 @@ fn validate_semantics(
         }
         (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
             validate_search_text_semantics(input)?;
+        }
+        (BookToolId::Search, BookToolInput::Search(input)) => {
+            require_non_empty("query", &input.query)?;
+            if input.query.chars().count() > MAX_SEARCH_QUERY_CHARS {
+                return Err(invalid(format!("query must contain at most {MAX_SEARCH_QUERY_CHARS} Unicode scalar values")));
+            }
+            if let Some(within_lid) = &input.within_lid {
+                require_non_empty("within_lid", within_lid)?;
+            }
+            if input.limit.is_some_and(|limit| !(1..=MAX_SEARCH_LIMIT).contains(&limit)) {
+                return Err(invalid(format!("limit must be between 1 and {MAX_SEARCH_LIMIT}")));
+            }
         }
         (BookToolId::Context, BookToolInput::Context(input)) => {
             require_non_empty("lid", &input.lid)?;
@@ -974,7 +1026,25 @@ mod tests {
                 count += 1;
             }
         }
-        assert_eq!(count, 8);
+        assert_eq!(count, 9);
+    }
+
+    #[test]
+    fn ranked_search_contract_keeps_literal_search_separate_and_bounds_candidates() {
+        assert_eq!(from_resident_alias("book.search"), Some(BookToolId::Search));
+        assert_eq!(from_mcp_alias("book_search"), Some(BookToolId::Search));
+        assert_eq!(from_rest_alias("search"), Some(BookToolId::Search));
+        assert!(validate_input(BookToolId::Search, json!({"query":"为什么训练误差低而泛化差"})).is_ok());
+        assert!(validate_input(BookToolId::Search, json!({"query":"threshold","within_lid":"1","limit":20})).is_ok());
+        for input in [json!({"query":" "}), json!({"query":"x","limit":0}),
+            json!({"query":"x","limit":21}), json!({"query":"x","within_lid":""}),
+            json!({"query":"x","match_mode":"normalized"})] {
+            assert!(validate_input(BookToolId::Search, input.clone()).is_err(), "{input}");
+        }
+        assert!(validate_input(BookToolId::SearchText, json!({"query":"x","limit":8})).is_err());
+        let schema = input_schema(BookToolId::Search);
+        assert_eq!(schema["properties"]["limit"]["default"], DEFAULT_SEARCH_LIMIT);
+        assert_eq!(schema["properties"]["limit"]["maximum"], MAX_SEARCH_LIMIT);
     }
 
     #[test]

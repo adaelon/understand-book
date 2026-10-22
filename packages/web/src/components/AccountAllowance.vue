@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { accountAllowance } from '../network-client';
 import AccountCostSummary from './AccountCostSummary.vue';
+import CloudPlans from './CloudPlans.vue';
 import { network, sceneKey } from '../network-context';
 import { allowancePercent, allowanceTime, offerPercentage, paymentAmount, usageOccupation, usagePurpose, usageState, type AccountAllowanceSummary, type AccountUsagePage } from '../account-allowance';
 
@@ -12,6 +13,7 @@ const allowance = computed(() => summary.value?.current_allowance);
 const percentages = computed(() => allowance.value?.balance.percentages);
 const busy = ref(false), error = ref(''), loaded = ref(false), supplement = ref(false);
 const showCosts = ref(false);
+const showPlans = ref(false);
 const limit = 20;
 const operatorContact = (import.meta.env.VITE_READER_OPERATOR_CONTACT ?? '').trim();
 let request = 0;
@@ -37,6 +39,8 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
   <dialog ref="dialog" class="account-allowance" aria-labelledby="allowance-title" @cancel.prevent="emit('close')">
     <header><h2 id="allowance-title">AI 使用额度</h2><button type="button" aria-label="关闭使用额度" @click="emit('close')">关闭</button></header>
     <div class="allowance-toolbar"><span>学习对话、记忆整理与资料准备共用账号额度</span><button type="button" :disabled="busy" @click="load()">刷新额度与明细</button></div>
+    <button type="button" :aria-expanded="showPlans" @click="showPlans = !showPlans">{{ showPlans ? '收起套餐与权益' : '套餐与权益 · 月付 / 冲刺' }}</button>
+    <CloudPlans v-if="showPlans" />
     <p v-if="busy" role="status">正在读取使用额度…</p>
     <p v-if="error" role="alert">{{ error }}。请点击刷新重试。</p>
     <template v-if="loaded">
@@ -101,7 +105,7 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
       <ul v-if="usage?.items.length" class="usage-list">
         <li v-for="item in usage.items" :key="item.call_id">
           <div class="usage-heading"><time>{{ allowanceTime(item.created_at) }}</time><strong>{{ usageState[item.state] }}</strong></div>
-          <p>{{ usagePurpose(item.purpose) }}</p>
+          <p>{{ usagePurpose(item.purpose) }}<span v-if="item.entry_kind === 'service' && item.quantity_ms != null"> · {{ (item.quantity_ms / 1000).toFixed(1) }} 秒</span></p>
           <dl class="usage-amounts"><div><dt>已用额度</dt><dd>{{ item.account_debit_micro_cny === null ? (item.state === 'pending' ? '待核算' : item.state === 'released' ? '0%' : '尚未结算') : allowancePercent(item.allowance_percentages?.debited) }}</dd></div><div><dt>当前占用</dt><dd>{{ usageOccupation(item) }}</dd></div></dl>
           <details><summary>原额度期与任务</summary><p>额度期：{{ item.period_id }} · 基准 {{ item.allowance_basis?.version ?? '待配置' }}</p><p>调用：{{ item.call_id }}</p><p v-if="item.run_ref">任务：{{ item.run_ref }}</p><p v-if="item.task_ref">后台任务：{{ item.task_ref }}</p></details>
         </li>

@@ -25,7 +25,7 @@ fn missing_preview_environments(receipts: &std::collections::HashSet<String>) ->
 }
 
 fn preview_contract_complete(receipts: &std::collections::HashSet<String>) -> bool {
-    receipts.contains("legacy") || missing_preview_environments(receipts).is_empty()
+    missing_preview_environments(receipts).is_empty()
 }
 
 fn plot_bytes(p: &crate::presentation_plot::PlotAsset) -> usize {
@@ -120,6 +120,9 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 let file = file.as_deref().unwrap_or("card.md");
                 let (method, source) = runtime::presentation_methods::source(&method_id, revision, file)?;
                 result.body = crate::presentation_source::read(source, offset, length).map_err(invalid)?;
+                let end = result.body["end_offset"].as_u64().unwrap();
+                let total = result.body["total_characters"].as_u64().unwrap();
+                result.body["next_offset"] = if end < total { json!(end) } else { Value::Null };
                 result.body.as_object_mut().unwrap().extend(
                     runtime::presentation_methods::read_metadata(method, file).as_object().unwrap().clone());
             }
@@ -178,7 +181,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     "title":content.title,"libraries":library_metadata,"animations":animations,"files":content.content_files.keys().collect::<Vec<_>>(),"entrypoint":content.entrypoint,
                     "asset_refs":content.content_files.keys().filter_map(|path| path.strip_prefix("assets/").and_then(|name| name.strip_suffix(".svg"))).chain(content.animation_assets.keys().map(String::as_str)).collect::<Vec<_>>(),
                     "file":file,"assumptions":content.assumptions,"source_ref_ids":content.source_bindings.iter().map(|b| &b.source_ref_id).collect::<Vec<_>>(),
-                    "state_contract":content.state_contract,"initial_state":content.initial_state});
+                    "action_contract":content.action_contract,"state_contract":content.state_contract,"initial_state":content.initial_state});
                 result.body.as_object_mut().unwrap().extend(metadata.as_object().unwrap().clone());
                 if !explicit_file { result.body["readable_content"] = json!(content.readable_content); }
             }
@@ -193,7 +196,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     result.body[key] = value;
                 }
             }
-            AuthorRequest::Patch { reference, candidate_id, edits, title, readable_content, state_contract, initial_state, method_refs, teaching_binding } => {
+            AuthorRequest::Patch { action_contract, reference, candidate_id, edits, title, readable_content, state_contract, initial_state, method_refs, teaching_binding } => {
                 let (mut content, based_on) = self.edit_base(&reference, &candidate_id)?;
                 let observations = self.with_private(|state| state.presentation_method_observations(&self.turn_ref.session_id, &self.turn_ref.turn_id))?;
                 let basis = reference.as_ref().map(|r| PresentationMethodBasis::Version { reference:r.clone() })
@@ -206,6 +209,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 if let Some(title) = title { content.title = title; }
                 if let Some(text) = readable_content { content.readable_content = text; }
                 if let Some(contract) = state_contract { content.state_contract = contract; }
+                if let Some(contract) = action_contract { content.action_contract = contract; }
                 if let Some(initial) = initial_state { content.initial_state = initial; }
                 if let Some(binding) = teaching_binding { content.teaching_binding = Some(binding); }
                 if content.content_files.values().map(String::len).sum::<usize>() > 1024 * 1024 {
@@ -239,6 +243,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     "next":"Preview and inspect this new candidate in all required environments before deliver. The base and its preview receipts are unchanged."});
             }
             AuthorRequest::Write {
+                action_contract,
                 method_refs,
                 teaching_binding,
                 based_on,
@@ -369,7 +374,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 if content_files.values().map(String::len).sum::<usize>() > 1024 * 1024 {
                     return Err(invalid("Candidate and version assets exceed 1 MiB"));
                 }
-                let content = PresentationContent {
+                let content = PresentationContent { action_contract,
                     method_refs,
                     teaching_binding,
                     method_observations,
@@ -424,7 +429,6 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                 };
                 let environment = request.environment().map_err(invalid)?;
                 let environment_name = preview_environment_name(environment);
-                let legacy_request = request.viewport.is_none();
                 let report: PreviewReport = if let Some(executor) = &self.sandbox {
                     executor.run(crate::presentation_sandbox::Job::Preview { request }, cancellation)?
                 } else {
@@ -450,11 +454,7 @@ impl<H: AuthorStorage> AuthorSession<'_, H> {
                     }
                 }
                 let clean = problems.is_empty() && !report.observations.is_empty();
-                let receipt = if legacy_request {
-                    "legacy".to_string()
-                } else {
-                    environment_name.clone()
-                };
+                let receipt = environment_name.clone();
                 if clean {
                     self.previewed
                         .entry(candidate_id.clone())
@@ -581,8 +581,13 @@ mod preview_contract_tests {
     }
 
     #[test]
-    fn legacy_preview_receipt_remains_deliverable() {
-        assert!(preview_contract_complete(&["legacy".to_string()].into()));
+    fn width_only_preview_does_not_replace_touch_environments() {
+        assert!(!preview_contract_complete(&["legacy".to_string()].into()));
+        let request = PreviewRequest { candidate_id:"c".into(), html:String::new(), actions:vec![],
+            width:Some(960), viewport:None, read_selector:None };
+        let receipt = preview_environment_name(request.environment().unwrap());
+        assert_eq!(receipt,"desktop-content");
+        assert_eq!(missing_preview_environments(&[receipt].into()),["narrow-content","short-content"]);
     }
 }
 
@@ -664,6 +669,9 @@ fn validate_observation(
     dom: &Value,
     messages: &[Message],
 ) -> Result<(), ToolError> {
+    if !content.action_contract.is_empty() && dom["action_problems"].as_array().is_none_or(|problems| !problems.is_empty()) {
+        return Err(invalid(format!("Action declaration does not match the live page: {}", dom["action_problems"])));
+    }
     if dom["unsupported_assets"]
         .as_array()
         .is_some_and(|a| !a.is_empty())
@@ -695,7 +703,7 @@ pub(crate) fn preview_document(content: &PresentationContent) -> String {
         .iter()
         .map(|b| json!({"source_ref_id":b.source_ref_id,"label":b.label_snapshot}))
         .collect();
-    let config = json!({"initialState":content.initial_state,"sources":sources,"teachingBinding":content.teaching_binding})
+    let config = json!({"initialState":content.initial_state,"sources":sources,"teachingBinding":content.teaching_binding,"actionContract":content.action_contract})
         .to_string()
         .replace('<', "\\u003c");
     let mut html = crate::presentation_libraries::inline(&content.content_files[&content.entrypoint], &content.content_files);
@@ -734,7 +742,9 @@ pub(crate) fn preview_document(content: &PresentationContent) -> String {
     format!(
         r#"<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <style>{}</style><script>{}</script><script>{}</script><script>
-(()=>{{const config={config};let stateReader=null,stateRestorer=null;
+(()=>{{const config={config};let stateReader=null,stateRestorer=null,actionHandler=null;
+const actions=({actions})(config.actionContract,()=>stateReader?.(),()=>actionHandler);
+window.__presentationPreviewActions=actions;
 window.__presentationPreviewState=()=>stateReader?stateReader():null;
 window.__presentationPreviewSnapshot=()=>{{
  const custom=stateReader?stateReader():{{}};
@@ -759,7 +769,7 @@ window.__presentationPreviewRestore=async saved=>{{
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  return window.__presentationPreviewSnapshot();
 }};
-window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:restorer=>{{stateRestorer=restorer}},commitState:()=>{{}},
+window.presentation=Object.freeze({{initialState:config.initialState,restoredState:null,registerActionHandler:handler=>{{actionHandler=handler}},registerStateReader:reader=>{{stateReader=reader}},registerStateRestorer:restorer=>{{stateRestorer=restorer}},commitState:()=>{{}},
 requestTeachingAction:(moveId,response)=>{{window.__presentationPreviewTeachingRequest={{moveId,response}}}},
 reportTeachingHelp:async(moveId,kind,regionId)=>{{
  const binding=config.teachingBinding?.regions.find(region=>region.region_id===regionId);
@@ -777,6 +787,7 @@ document.addEventListener('DOMContentLoaded',()=>{{
         include_str!("../../../packages/web/src/presentation.css"),
         include_str!("../../../packages/web/src/presentation-media.js"),
         include_str!("../../../packages/web/src/source-chip.js").replace("export function", "function"),
-        html
+        html,
+        actions = include_str!("../../../packages/web/src/presentation-actions.js")
     )
 }

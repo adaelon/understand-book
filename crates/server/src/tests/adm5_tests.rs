@@ -544,6 +544,7 @@ fn adm5_schema6_upgrade_is_atomic_and_keeps_charges() {
 
 fn completion() -> CompletionRequest {
     CompletionRequest {
+        images: Vec::new(),
         system: "fixture".into(),
         user: "fixture".into(),
         output_token_limit: Some(100),

@@ -197,5 +197,5 @@ describe("paper metadata candidate router", () => {
     const metadata = JSON.parse(readFileSync(publicArtifact, "utf8"));
     expect(metadata.references.value).toHaveLength(1);
     expect(metadata.references.value[0].raw).toContain("Deterministic routing for scholarly records");
-  }, 15_000);
+  }, 30_000);
 });

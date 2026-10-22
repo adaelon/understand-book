@@ -11,6 +11,24 @@ fn lecture() -> Case {
 }
 
 #[test]
+fn video_evidence_batch_checks_later_targets_and_joint_members() {
+    let case=lecture();
+    EvidenceTarget::validate_batch(&case.targets,&case.manifest,&case.base,&case.source_text).unwrap();
+    let valid=case.targets[1].clone();
+    let mut invalid=case.targets[0].clone();
+    let EvidenceTarget::Text {text_range,..}=&mut invalid else {panic!("fixture text target")};
+    text_range.lid="missing".into();
+    assert!(EvidenceTarget::validate_batch([&valid,&invalid],&case.manifest,&case.base,&case.source_text).is_err());
+    let joint=EvidenceTarget::Joint { members:vec![
+        JointEvidenceMember {target:valid.clone(),support_role:"visual".into()},
+        JointEvidenceMember {target:invalid,support_role:"text".into()},
+    ]};
+    assert!(EvidenceTarget::validate_batch([&valid,&joint],&case.manifest,&case.base,&case.source_text).is_err());
+    let mut bad_manifest=case.manifest.clone();bad_manifest.source.duration_ms=0.0;
+    assert!(EvidenceTarget::validate_batch([&valid],&bad_manifest,&case.base,&case.source_text).is_err());
+}
+
+#[test]
 fn video_input_diagnostics_preserve_location_frame_and_region_rules() {
     let case = lecture();
     let source = &case.manifest.source;

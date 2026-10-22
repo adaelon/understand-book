@@ -5,6 +5,9 @@ fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let result = (|| -> Result<serde_json::Value, Box<dyn std::error::Error>> {
         match args.first().map(String::as_str) {
+            Some("prepare-video-playback") if args.len() == 3 => server::video_playback::prepare(Path::new(&args[1]), Path::new(&args[2]))
+                .map(|directory| serde_json::json!({"playback_directory":directory}))
+                .map_err(|e| format!("{}: {}", e.error_code, e.message).into()),
             Some("video-readers") if args.len() >= 4 => {
                 server::video_media::set_readers(Path::new(&args[1]), &base_schema::VideoSourceRef { media_id: args[2].clone(), media_revision: args[3].clone() }, &args[4..])
                     .map(|_|serde_json::json!({"ok":true})).map_err(|e|format!("{}: {}",e.error_code,e.message).into())

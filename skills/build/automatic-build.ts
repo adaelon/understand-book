@@ -66,11 +66,15 @@ import {
   profileSidecarMapReducePolicyMembers,
   profileSidecarDiscourseShadowTaskPath,
   profileSidecarDiscourseShadowTaskPrivateDirectory,
+  readProfileSidecarProductionTask,
+  replayProfileSidecarDiscourseShadowInput,
+  replayProfileSidecarSemanticFastPathInput,
 } from "../../packages/core/src/profile-sidecar-reduction";
 import {
   bookStructureGenerationTaskPath,
   freezeBookStructureGenerationTask,
   readBookStructureGenerationTask,
+  renderBookStructureGenerationTaskInput,
   writeBookStructureGenerationCandidate,
 } from "../../packages/core/src/book-structure-generation";
 import { attachBuildPlanDigest, type BuildPlanV1 } from "../../packages/core/src/build-intent";
@@ -79,6 +83,7 @@ import { mapLegacyBuildInvocation } from "../../packages/core/src/build-intent-c
 import {
   readAutomaticBuildAttemptSnapshot,
   readAutomaticBuildAttemptRecord,
+  listAutomaticBuildAttemptedTaskIds,
   listAutomaticBuildStoredAttempts,
   recordAutomaticBuildAttemptEvent,
   type AutomaticBuildAttemptRecord,
@@ -888,6 +893,26 @@ export function renderAutomaticBuildTaskInput(
     if (!generationTaskPath || !existsSync(generationTaskPath)) {
       throw new Error(`policy_generation_conflict: frozen production generation task is unavailable: ${stage}/${taskId}`);
     }
+    if (stage === "book_structure") {
+      const task = readBookStructureGenerationTask(target, productionGenerationId, taskId);
+      if (!task) throw new Error(`frozen BookStructure generation task is unavailable: ${taskId}`);
+      return { stdout: renderBookStructureGenerationTaskInput(task), stderr: "" };
+    }
+    if (stage === "profile_sidecar") {
+      const task = readProfileSidecarProductionTask(target, productionGenerationId, taskId);
+      if ((task.version === "profile_sidecar_semantic_fast_path_task.v1" && task.packet.unit_kind === "profile_sidecar_discourse")
+        || (task.version === "profile_sidecar_discourse_shadow_task.v1" && task.route.role === "fragment")) {
+        // The selected task is already frozen. Replay the same source/policy/budget checks
+        // in this engine instead of starting another input process for each new executor.
+        const sourceBytes = readFileSync(target.source_path);
+        const source = /\.epub$/iu.test(target.source_path)
+          ? epubToSource(new Uint8Array(sourceBytes)).source : sourceBytes.toString("utf8");
+        const input = task.version === "profile_sidecar_semantic_fast_path_task.v1"
+          ? replayProfileSidecarSemanticFastPathInput({ target, source, task })
+          : replayProfileSidecarDiscourseShadowInput({ target, source, task });
+        return { stdout: input.rendered_input, stderr: "" };
+      }
+    }
   }
 
   const script = STAGE_COMMANDS[stage].input;
@@ -1161,6 +1186,7 @@ function preflightForAction(
     target_ref: target.target_ref,
     stage: action.stage,
     work_units: stage.work_units,
+    descriptor_plan_digest: stage.descriptor_plan_digest,
     ...(stage.task_bindings ? { task_bindings: stage.task_bindings } : {}),
     pending_ids: stage.pending_tasks,
     quality_profile: qualityProfile,
@@ -1292,13 +1318,14 @@ export function automaticBuildPlan(
   targetInput: string,
   rootDir: string,
   options: AutomaticBuildPlanOptions = {},
+  preparedRoute?: ReturnType<typeof routeAutomaticBuildSnapshot>,
 ) {
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const qualityProfile = options.quality_profile ?? "full";
   const requestedWorkers = options.requested_workers ?? 1;
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
-  const snapshotRoute = routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
+  const snapshotRoute = preparedRoute ?? routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
     public_stage_closure: options.build_plan?.public_stage_closure,
     reuse: options.build_plan?.reuse, retrieval: options.build_plan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
@@ -1587,7 +1614,10 @@ function expandAction(
     }
     const descriptors = new Map((productionStageState.work_units ?? [])
       .map((descriptor) => [descriptor.work_unit_id, descriptor]));
-    const claimInspections = action.task_ids.map((taskId) => {
+    const attemptedIds = listAutomaticBuildAttemptedTaskIds(target, action.stage);
+    // Untouched tasks have no lease or retry blocker. The selected tasks are
+    // still inspected by the claim writer immediately before publication.
+    const claimInspections = action.task_ids.filter(taskId => attemptedIds.has(taskId)).map((taskId) => {
       const descriptor = descriptors.get(taskId);
       const binding = productionStageState.task_bindings?.[taskId];
       if (!descriptor) throw new Error(`automatic semantic task is missing its descriptor: ${action.stage}/${taskId}`);
@@ -1834,6 +1864,7 @@ function expandAction(
         handoff = selectAutomaticBuildDispatchHandoff(target, {
           accepted_plan_digest: preflight.descriptor_plan_digest,
           current_dispatch_plan: preflight.dispatch_plan,
+          max_parallel: preflight.worker_plan.requested_workers,
           available_new_executor_slots: preflight.worker_plan.max_workers,
           created_at: leaseOptions.now,
           held_work_unit_ids: heldWorkUnitIds,
@@ -2481,6 +2512,8 @@ function syntheticModelInputRequest(
           work_unit_id: `release-doctor-${kind}`,
           unit_kind: kind,
           visible_lids: ["1"],
+          discourse_lids: kind === "profile_sidecar_discourse" ? ["1"] : [],
+          math_anchor_lids: [],
           formula_lids: kind === "profile_sidecar_formula" ? ["1"] : [],
           text: "[LID 1]\nSynthetic profile semantic input.\n",
         },
@@ -3230,6 +3263,7 @@ if (argv[0] === 'video-doctor') {
 }
 if (argv[0] === 'video-translation') { await (await import('./video-translation')).runVideoTranslationCli(argv.slice(1)); return; }
 if (argv[0] === 'video-operator') { await (await import('./video-operator-cli')).runOperatorVideoCli(); return; }
+if (argv[0] === 'music-operator') { await (await import('./music-operator-cli')).runOperatorMusicCli(); return; }
 if (argv[0] === 'video-visual-units') { await (await import('./video-visual-units')).runVideoVisualCli(argv.slice(1)); return; }
 if (argv[0] === 'video-semantic-series') { await (await import('./video-semantic-series')).runVideoSemanticSeriesCli(argv.slice(1)); return; }
 if (argv[0] === 'video-graph') { await (await import('./video-graph')).runVideoGraphCli(argv.slice(1)); return; }
@@ -3657,7 +3691,7 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
     if (operation === "close") {
       const outcome = closeAutomaticBuildStage({
         target,
-        stage: stageValue as Exclude<AutomaticBuildPublicationStage, "video_transcript" | "video_enrichment">,
+        stage: stageValue as Exclude<AutomaticBuildPublicationStage, "video_transcript" | "video_enrichment" | "music_prebuild">,
         quality_profile: qualityProfileFromArgs(argv),
         run_batch: () => {
           const batch = forwardStageScript(target, script, args, true);

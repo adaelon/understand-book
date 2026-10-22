@@ -10,7 +10,7 @@ import {
 import path from "node:path";
 import type { AutomaticBuildStage } from "./build-orchestrator";
 
-export type AutomaticBuildPublicationStage = Exclude<AutomaticBuildStage, "paper_reading_guide"> | "video_transcript" | "video_enrichment";
+export type AutomaticBuildPublicationStage = Exclude<AutomaticBuildStage, "paper_reading_guide"> | "video_transcript" | "video_enrichment" | "music_prebuild";
 
 const AUTOMATIC_BUILD_PUBLICATION_VERSION = "automatic_build_publication.v1" as const;
 const AUTOMATIC_BUILD_PUBLICATION_ROOT_REF = ".build/automatic-build/v2/publication";
@@ -62,6 +62,7 @@ function isPublicationStage(value: unknown): value is AutomaticBuildPublicationS
   return [
     "video_transcript",
     "video_enrichment",
+    "music_prebuild",
     "pass1",
     "paper_metadata",
     "paper_lexicon",

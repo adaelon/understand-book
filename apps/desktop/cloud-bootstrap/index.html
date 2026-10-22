@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Understand Book</title>
+<style>body{font-family:system-ui,sans-serif;background:#f4f0e8;color:#302d27;display:grid;place-items:center;min-height:90vh}main{max-width:520px;padding:36px}button{padding:12px 20px;margin:12px 8px 0 0;cursor:pointer;border-radius:8px;border:1px solid #bbb;background:white}#notice{line-height:1.7}</style>
+<main><h1>Understand Book</h1><p>打开云端课程，继续上次的学习。</p>
+<button id="open">进入学习</button><button id="login">使用网站账号登录</button><button id="cancel" hidden>取消登录</button>
+<p id="notice" role="status">正在连接…</p></main>
+<script>
+const invoke = (command) => window.__TAURI_INTERNALS__.invoke(command);
+const notice = document.querySelector('#notice'), login = document.querySelector('#login'), cancel = document.querySelector('#cancel');
+const open = async () => { try { await invoke('desktop_open_cloud'); } catch (error) { notice.textContent = String(error); } };
+document.querySelector('#open').onclick = open;
+login.onclick = async () => { login.disabled=true; cancel.hidden=false; notice.textContent='请在系统浏览器中确认登录。'; try { await invoke('desktop_sign_in'); } catch(error) { notice.textContent=String(error); } finally { login.disabled=false; cancel.hidden=true; } };
+cancel.onclick = () => invoke('desktop_cancel_sign_in');
+open();
+</script>
+</html>

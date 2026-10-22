@@ -156,6 +156,7 @@ pub fn evaluate_memory_intent(
     });
     let extracted = adapter
         .complete_structured(CompletionRequest {
+            images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,
             system: EXTRACTOR_SYSTEM.into(),

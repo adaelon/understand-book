@@ -3,7 +3,8 @@ import { STRUCTURE_DISCOVERY_PROMPT, structureDiscoverySources, structureDiscove
   accumulateStructureDiscovery, isStructureBodyExcerpt, type BookStructureDiscoveryProgress } from "./book-structure-discovery";
 import { createCandidateTransportContract } from "./executor-transport";
 import { readStructureCandidateCatalog } from "./book-structure-generation";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
 import { BookStructureContributionCoverageError, materializeBookStructureContributions } from "./book-structure-materialization";
 import { buildReproducibleProfileArtifactHeader } from "./profile-artifact";
@@ -12,7 +13,7 @@ import { readAcceptedBookStructureClose } from "./automatic-build-close";
 import { applyBookStructureRelationDeltas, type AcceptedBookStructureRelationDelta, type BookStructureRelationDelta } from "./book-structure-relations";
 import { bookStructureRelationContracts, routeBookStructureRelationSelections, bookStructureSelectedPairs, bookStructureRelationPredecessors, routeBookStructureRelationDelta,
   type BookStructureRelationRoutedWorkUnit, type BookStructureRelationSelection } from "./book-structure-relation-routing";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { deriveBookId } from "./book-id";
 import {
@@ -211,6 +212,7 @@ export type AutomaticBuildStage =
 // Media preparation precedes semantic stages; it owns its durable per-chunk plan and uses
 // the same artifact publication transaction before a transcript-backed Book is exposed.
 export { buildVideoTranscript, readVideoBuild } from "./video-transcript";
+export { prepareDocumentInput } from "./document-import";
 export { prepareVideoTranslation, acceptVideoTranslation, publishVideoTranslationGroup } from "./video-translation";
 
 import { routeTeachingBuildStages, type TeachingGenerationTask, type TeachingBuildInput } from "./teaching-build";
@@ -287,6 +289,8 @@ export interface AutomaticBuildStageState {
   closed: boolean;
   task_bindings?: Record<string, AutomaticBuildTaskPolicyBinding>;
   work_units?: WorkUnitDescriptor[];
+  /** Derived with the incremental catalog; invalidate whenever work_units change. */
+  descriptor_plan_digest?: string;
   pending_work_units?: WorkUnitDescriptor[];
   policy_set?: AutomaticBuildStagePolicySetV3;
   preparation_required?: boolean;
@@ -373,7 +377,7 @@ interface LoadedAutomaticBook {
   windows: ReturnType<typeof splitWindows>;
 }
 
-class AutomaticBuildSnapshotRecoverySignal extends Error {
+export class AutomaticBuildSnapshotRecoverySignal extends Error {
   readonly name = "AutomaticBuildSnapshotRecoverySignal";
 
   constructor(readonly recovery: AutomaticBuildRecoveryEnvelopeV1) {
@@ -507,10 +511,24 @@ function productionMigrationRecoveryActions(
   return ["migrate_policy"];
 }
 
+/** One read-only routing pass observes each artifact directory once. Writers use live reads. */
+function routingFileExists(): (file: string) => boolean {
+  const directories = new Map<string, Set<string>>();
+  return file => {
+    const directory = path.dirname(file);
+    let entries = directories.get(directory);
+    if (!entries) {
+      entries = new Set(existsSync(directory) ? readdirSync(directory) : []);
+      directories.set(directory, entries);
+    }
+    return entries.has(path.basename(file));
+  };
+}
+
 function productionMigrationContext(target: AutomaticBuildTarget, policySet: AutomaticBuildStagePolicySetV3, prepare = false) {
   try {
-    if (prepare) return { required: false, writer: prepareAutomaticBuildPolicyMigrations(target, policySet) };
-    return { required: !inspectAutomaticBuildStagePolicySet(target, policySet), writer: undefined };
+    if (prepare) return { required: false, writer: prepareAutomaticBuildPolicyMigrations(target, policySet), exists: existsSync };
+    return { required: !inspectAutomaticBuildStagePolicySet(target, policySet), writer: undefined, exists: routingFileExists() };
   } catch (error) {
     if (!(error instanceof AutomaticBuildPolicyGenerationConflictError)) throw error;
     throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
@@ -551,11 +569,11 @@ function applyAutomaticBuildProductionMigration(input: {
   };
   let migration: ReturnType<typeof recordAutomaticBuildPolicyMigration>;
   try {
-    const existing = readAutomaticBuildCurrentMigration(input);
+    const existing = readAutomaticBuildCurrentMigration(input, input.migrations.exists);
     const currentArtifact = descriptor && automaticBuildGenerationArtifactPath(input.target, input.stage,
       resolveAutomaticBuildStagePolicyMember(input.policy_set, descriptor.kind, descriptor.policy_fingerprint).policy_generation_id,
       descriptor.work_unit_id);
-    if (currentArtifact && existsSync(currentArtifact)) return "rebuild";
+    if (currentArtifact && input.migrations.exists(currentArtifact)) return "rebuild";
     if (existing && existing.decision !== "adopt_exact") return existing.decision;
     input.migrations.required = true;
     if (!input.migrations.writer) return current.route === "deterministic_skip" ? "deterministic_skip" : "rebuild";
@@ -806,6 +824,7 @@ interface WorkspaceProfileMetadataLike {
 }
 
 interface TechnicalLearningSourceManifestLike {
+  version?: string;
   book_id?: string;
   canonical_source?: {
     kind?: string;
@@ -1074,6 +1093,7 @@ function readPass1GenerationArtifact(
   target: AutomaticBuildTarget,
   workUnit: Pass1ShadowWorkUnitV1,
   policyGenerationId: string,
+  fileExists: (file: string) => boolean,
 ): SemanticArtifactEnvelopeV3<unknown> | undefined {
   const file = automaticBuildGenerationArtifactPath(
     target,
@@ -1081,7 +1101,7 @@ function readPass1GenerationArtifact(
     policyGenerationId,
     workUnit.descriptor.work_unit_id,
   );
-  if (!existsSync(file)) return undefined;
+  if (!fileExists(file)) return undefined;
   try {
     const artifact = readJson<SemanticArtifactEnvelopeV3<unknown>>(file);
     if (!semanticArtifactMatches(artifact, {
@@ -1183,7 +1203,7 @@ function routePass1ProductionStage(input: {
       from_policy_generation_id: fromPolicyGenerationId,
       policy_set: policySet,
       current: { route: "model", descriptor: workUnit.descriptor, rendered_input: workUnit.rendered_input },
-      ...(previousDescriptor && previousRenderedInputs.has(id) && existsSync(previousArtifactPath) ? {
+      ...(previousDescriptor && previousRenderedInputs.has(id) && migrations.exists(previousArtifactPath) ? {
         previous: {
           descriptor: previousDescriptor,
           rendered_input: previousRenderedInputs.get(id)!,
@@ -1241,7 +1261,7 @@ function routePass1ProductionStage(input: {
         workUnit.descriptor.kind,
         workUnit.descriptor.policy_fingerprint,
       );
-      const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id);
+      const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id, migrations.exists);
       if (!artifact) {
         pendingIds.push(workUnit.descriptor.work_unit_id);
         initialReady = false;
@@ -1297,7 +1317,7 @@ function routePass1ProductionStage(input: {
           workUnit.descriptor.kind,
           workUnit.descriptor.policy_fingerprint,
         );
-        const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id);
+        const artifact = readPass1GenerationArtifact(input.target, workUnit, member.policy_generation_id, migrations.exists);
         if (!artifact) {
           pendingIds.push(workUnit.descriptor.work_unit_id);
           levelReady = false;
@@ -1440,10 +1460,10 @@ function profileSidecarFastPathWorkUnit(input: {
       formula_lids: input.packet.formula_lids.length,
       candidate_count: input.packet.unit_kind === "profile_sidecar_formula"
         ? 1
-        : input.packet.visible_lids.length,
+        : input.packet.discourse_lids.length + input.packet.math_anchor_lids.length,
       expected_output_items: input.packet.unit_kind === "profile_sidecar_formula"
         ? 1
-        : input.packet.visible_lids.length,
+        : input.packet.discourse_lids.length + input.packet.math_anchor_lids.length,
     }),
   });
   return {
@@ -1458,10 +1478,108 @@ function profileSidecarFastPathWorkUnit(input: {
   };
 }
 
+interface PreparedProfileDiscourseInputs {
+  version: "profile_discourse_prepared_inputs.v1";
+  target_ref: BuildTargetRefV2;
+  source_fingerprint: string;
+  fast_policy: ReturnType<typeof automaticBuildExtractionPolicy>;
+  fragment_policy: ReturnType<typeof profileSidecarDiscourseFragmentPolicy>;
+  budget: typeof AUTOMATIC_BUILD_V3_MODEL_BUDGET;
+  analysis: ReturnType<typeof analyzeProfileSidecarSemanticUnits>;
+  discourse: Record<string, {
+    fast_path?: NonNullable<ReturnType<typeof profileSidecarFastPathWorkUnit>>;
+    fragments?: Extract<ReturnType<typeof routeProfileSidecarDiscourseFragmentWorkUnits>, { status: "routed" }>;
+  }>;
+}
+
+function profileDiscoursePreparationPath(target: AutomaticBuildTarget): string {
+  return path.join(target.workspace_dir, ".build", "automatic-build", "v3", "profile-discourse-inputs.json");
+}
+
+/** Only source-derived material is reused. Receipts, leases, budgets and reducers remain live reads. */
+function readPreparedProfileDiscourseInputs(
+  target: AutomaticBuildTarget,
+  sourceFingerprint: string,
+  fastPolicy: PreparedProfileDiscourseInputs["fast_policy"],
+  fragmentPolicy: PreparedProfileDiscourseInputs["fragment_policy"],
+): PreparedProfileDiscourseInputs | undefined {
+  const file = profileDiscoursePreparationPath(target);
+  if (!existsSync(file)) return undefined;
+  let saved: PreparedProfileDiscourseInputs;
+  try { saved = JSON.parse(readFileSync(file, "utf8")); }
+  catch (error) {
+    if (error instanceof SyntaxError || (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+  if (saved?.version !== "profile_discourse_prepared_inputs.v1"
+    || saved.source_fingerprint !== sourceFingerprint
+    || canonicalBuildJson(saved.target_ref) !== canonicalBuildJson(target.target_ref)
+    || canonicalBuildJson(saved.fast_policy) !== canonicalBuildJson(fastPolicy)
+    || canonicalBuildJson(saved.fragment_policy) !== canonicalBuildJson(fragmentPolicy)
+    || canonicalBuildJson(saved.budget) !== canonicalBuildJson(AUTOMATIC_BUILD_V3_MODEL_BUDGET)) return undefined;
+  return saved;
+}
+
+/** Explicit preparation while executors generate; creates no dispatch, claim or semantic attempt. */
+export function prepareProfileDiscourseInputs(target: AutomaticBuildTarget, quality: ExtractionQualityProfile) {
+  const loaded = loadAutomaticBook(target.source_path);
+  const profile = resolveContentProfile(target.profile_id);
+  const sourceFingerprint = canonicalSourceFingerprint(loaded.source);
+  const fastPolicy = automaticBuildExtractionPolicy("profile_sidecar", profile, quality);
+  const fragmentPolicy = profileSidecarDiscourseFragmentPolicy(profile, quality);
+  const existing = readPreparedProfileDiscourseInputs(target, sourceFingerprint, fastPolicy, fragmentPolicy);
+  const summary = (saved: PreparedProfileDiscourseInputs, reused: boolean) => ({
+    status: "prepared" as const, reused,
+    ordinary_tasks: Object.values(saved.discourse).filter(value => value.fast_path).length,
+    fragment_tasks: Object.values(saved.discourse).reduce((n, value) => n + (value.fragments?.units.length ?? 0), 0),
+  });
+  if (existing) return summary(existing, true);
+  const analysis = analyzeProfileSidecarSemanticUnits({
+    windows: loaded.windows, byLid: loaded.byLid, source: loaded.source, content_profile: profile,
+    max_discourse_input_tokens: AUTOMATIC_BUILD_V3_MODEL_BUDGET.stage_body_limit_tokens, allow_over_limit_packets: true,
+  });
+  const policySet = createAutomaticBuildStagePolicySet({
+    target_ref: target.target_ref, stage: "profile_sidecar", members: profileSidecarMapReducePolicyMembers(profile, quality),
+    frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+  });
+  const discourse: PreparedProfileDiscourseInputs["discourse"] = {};
+  for (const packet of Object.values(analysis.packets)) {
+    if (packet.unit_kind !== "profile_sidecar_discourse") continue;
+    const member = resolveAutomaticBuildStagePolicyMember(policySet, packet.unit_kind, fastPolicy);
+    const fastPath = profileSidecarFastPathWorkUnit({ target, loaded, packet, source_fingerprint: sourceFingerprint,
+      policy: fastPolicy, policy_generation_id: member.policy_generation_id });
+    if (fastPath) {
+      discourse[packet.work_unit_id] = { fast_path: fastPath };
+      continue;
+    }
+    const parent = packet.visible_lids.length === 1 ? loaded.byLid.get(packet.visible_lids[0]) : undefined;
+    if (!parent || parent.kind !== "paragraph") return { status: "skipped" as const, reason: "routing_requires_recovery" };
+    const fragments = routeProfileSidecarDiscourseFragmentWorkUnits({
+      target: target.target_ref, source: loaded.source, source_fingerprint: sourceFingerprint,
+      parent, content_profile_id: profile.id, policy: fragmentPolicy, budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET,
+    });
+    if (fragments.status === "blocked") return { status: "skipped" as const, reason: "routing_requires_recovery" };
+    discourse[packet.work_unit_id] = { fragments };
+  }
+  const saved: PreparedProfileDiscourseInputs = {
+    version: "profile_discourse_prepared_inputs.v1", target_ref: target.target_ref, source_fingerprint: sourceFingerprint,
+    fast_policy: fastPolicy, fragment_policy: fragmentPolicy, budget: AUTOMATIC_BUILD_V3_MODEL_BUDGET, analysis, discourse,
+  };
+  const file = profileDiscoursePreparationPath(target);
+  mkdirSync(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporary, JSON.stringify(saved), { encoding: "utf8", flag: "wx" });
+    renameSync(temporary, file);
+  } finally { if (existsSync(temporary)) unlinkSync(temporary); }
+  return summary(saved, false);
+}
+
 function readProfileSidecarGenerationArtifact(
   target: AutomaticBuildTarget,
   descriptor: WorkUnitDescriptorV3,
   policyGenerationId: string,
+  fileExists: (file: string) => boolean,
 ): SemanticArtifactEnvelopeV3<unknown> | undefined {
   const file = automaticBuildGenerationArtifactPath(
     target,
@@ -1469,7 +1587,7 @@ function readProfileSidecarGenerationArtifact(
     policyGenerationId,
     descriptor.work_unit_id,
   );
-  if (!existsSync(file)) return undefined;
+  if (!fileExists(file)) return undefined;
   try {
     const artifact = readJson<SemanticArtifactEnvelopeV3<unknown>>(file);
     if (!semanticArtifactMatches(artifact, {
@@ -1508,6 +1626,8 @@ function routeProfileSidecarProductionStage(input: {
   profile: ReturnType<typeof resolveContentProfile>;
   quality_profile: ExtractionQualityProfile;
   prepare?: boolean;
+  /** Recompute only these discourse parents when their accepted children change. */
+  parent_lids?: Set<string>;
 }): AutomaticBuildStageState {
   assertNoActiveLegacyGenerationLease(input.target, "profile_sidecar");
   const sourceFingerprint = canonicalSourceFingerprint(input.loaded.source);
@@ -1521,7 +1641,8 @@ function routeProfileSidecarProductionStage(input: {
     frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
   });
   const migrations = productionMigrationContext(input.target, policySet, input.prepare);
-  const analysis = analyzeProfileSidecarSemanticUnits({
+  const preparedInputs = readPreparedProfileDiscourseInputs(input.target, sourceFingerprint, fastPolicy, fragmentPolicy);
+  const analysis = preparedInputs?.analysis ?? analyzeProfileSidecarSemanticUnits({
     windows: input.loaded.windows,
     byLid: input.loaded.byLid,
     source: input.loaded.source,
@@ -1534,8 +1655,11 @@ function routeProfileSidecarProductionStage(input: {
     ? extractionPolicyFromSemanticContract(input.target.target_ref.profile_id, previousPolicyLock.semantic_contract)
     : fastPolicy;
   const fromPolicyGenerationId = previousPolicyLock?.policy_generation_id ?? "profile-sidecar-legacy.v2";
+  const packets = Object.values(analysis.packets).filter(packet => !input.parent_lids
+    || (packet.unit_kind === "profile_sidecar_discourse" && packet.visible_lids.some(lid => input.parent_lids!.has(lid))));
+  const skips = input.parent_lids ? [] : Object.entries(analysis.skips);
   const previousDescriptors = new Map<string, WorkUnitDescriptorV2>([
-    ...Object.values(analysis.packets).map((packet) => createWorkUnitDescriptor({
+    ...packets.map((packet) => createWorkUnitDescriptor({
       target: input.target.target_ref,
       stage: "profile_sidecar",
       work_unit_id: packet.work_unit_id,
@@ -1549,14 +1673,14 @@ function routeProfileSidecarProductionStage(input: {
         formula_lids: packet.formula_lids.length,
         candidate_count: packet.unit_kind === "profile_sidecar_formula"
           ? 1
-          : packet.visible_lids.length,
+          : packet.discourse_lids.length + packet.math_anchor_lids.length,
         expected_output_items: packet.unit_kind === "profile_sidecar_formula"
           ? 1
-          : packet.visible_lids.length,
+          : packet.discourse_lids.length + packet.math_anchor_lids.length,
       }),
       legacy_artifact_ref: `.build/profile-sidecar/${packet.work_unit_id}.json`,
     })),
-    ...Object.entries(analysis.skips).map(([workUnitId, skip]) => createWorkUnitDescriptor({
+    ...skips.map(([workUnitId, skip]) => createWorkUnitDescriptor({
       target: input.target.target_ref,
       stage: "profile_sidecar",
       work_unit_id: workUnitId,
@@ -1568,7 +1692,7 @@ function routeProfileSidecarProductionStage(input: {
       deterministic_skip: { code: skip.code, evidence: skip.evidence },
     })),
   ].map((descriptor) => [descriptor.work_unit_id, descriptor] as const));
-  const previousRenderedInputs = new Map(Object.values(analysis.packets).map((packet) => [
+  const previousRenderedInputs = new Map(packets.map((packet) => [
     packet.work_unit_id,
     renderProfileSidecarModelInput(packet),
   ]));
@@ -1604,7 +1728,7 @@ function routeProfileSidecarProductionStage(input: {
       policy_set: policySet,
       current: { route: "model", descriptor, rendered_input: renderedInput },
       ...(previousDescriptor && previousRenderedInputs.has(descriptor.work_unit_id)
-        && existsSync(previousArtifactPath) ? {
+        && migrations.exists(previousArtifactPath) ? {
           previous: {
             descriptor: previousDescriptor,
             rendered_input: previousRenderedInputs.get(descriptor.work_unit_id)!,
@@ -1623,7 +1747,7 @@ function routeProfileSidecarProductionStage(input: {
     }
   };
 
-  for (const [workUnitId, skip] of Object.entries(analysis.skips)) {
+  for (const [workUnitId, skip] of skips) {
     applyAutomaticBuildProductionMigration({
       migrations,
       target: input.target,
@@ -1643,13 +1767,14 @@ function routeProfileSidecarProductionStage(input: {
     });
   }
 
-  for (const packet of Object.values(analysis.packets)) {
+  for (const packet of packets) {
     const fastMember = resolveAutomaticBuildStagePolicyMember(
       policySet,
       packet.unit_kind,
       fastPolicy,
     );
-    const fastPath = profileSidecarFastPathWorkUnit({
+    const preparedPacket = preparedInputs?.discourse[packet.work_unit_id];
+    const fastPath = preparedPacket ? preparedPacket.fast_path : profileSidecarFastPathWorkUnit({
       target: input.target,
       loaded: input.loaded,
       packet,
@@ -1667,12 +1792,14 @@ function routeProfileSidecarProductionStage(input: {
         input.target,
         fastPath.descriptor,
         fastMember.policy_generation_id,
+        migrations.exists,
       );
       if (!artifact) pendingIds.push(fastPath.descriptor.work_unit_id);
       publicContributors.push({
         contributor_id: `profile-sidecar:${packet.work_unit_id}`,
         work_unit_id: fastPath.descriptor.work_unit_id,
-        parent_lids: [...packet.visible_lids],
+        parent_lids: packet.unit_kind === "profile_sidecar_discourse"
+          ? [...new Set([...packet.discourse_lids, ...packet.math_anchor_lids])] : [...packet.formula_lids],
       });
       continue;
     }
@@ -1699,7 +1826,7 @@ function routeProfileSidecarProductionStage(input: {
         limit_tokens: AUTOMATIC_BUILD_V3_MODEL_BUDGET.stage_body_limit_tokens,
       }));
     }
-    const fragments = routeProfileSidecarDiscourseFragmentWorkUnits({
+    const fragments = preparedPacket?.fragments ?? routeProfileSidecarDiscourseFragmentWorkUnits({
       target: input.target.target_ref,
       source: input.loaded.source,
       source_fingerprint: sourceFingerprint,
@@ -1749,6 +1876,7 @@ function routeProfileSidecarProductionStage(input: {
         input.target,
         workUnit.descriptor,
         fragmentMember.policy_generation_id,
+        migrations.exists,
       );
       if (!artifact) {
         pendingIds.push(workUnit.descriptor.work_unit_id);
@@ -1800,6 +1928,7 @@ function routeProfileSidecarProductionStage(input: {
           input.target,
           workUnit.descriptor,
           reduceMember.policy_generation_id,
+          migrations.exists,
         );
         if (!artifact) {
           pendingIds.push(workUnit.descriptor.work_unit_id);
@@ -1842,15 +1971,7 @@ function routeProfileSidecarProductionStage(input: {
     public_contributors: publicContributors,
     reduction_parents: reductionParents,
   };
-  const closed = pendingIds.length === 0
-    && currentV3QualityReportPassed(
-      input.target,
-      "profile_sidecar",
-      policySet,
-      input.quality_profile,
-    )
-    && profileArtifactMatches(path.join(input.target.workspace_dir, "discourse_index.json"), input.target)
-    && profileArtifactMatches(path.join(input.target.workspace_dir, "formula_semantics.json"), input.target);
+  const closed = profileSidecarStageClosed(input.target, pendingIds, policySet, input.quality_profile);
   return { preparation_required: !input.prepare && migrations.required, ...stageStateV3({
     stage: "profile_sidecar",
     closed,
@@ -1860,6 +1981,112 @@ function routeProfileSidecarProductionStage(input: {
     quality_routing: qualityRouting,
     generation_tasks: generationTasks,
   }) };
+}
+
+function profileSidecarStageClosed(target: AutomaticBuildTarget, pendingIds: string[],
+  policySet: AutomaticBuildStagePolicySetV3, quality: ExtractionQualityProfile): boolean {
+  return pendingIds.length === 0
+    && currentV3QualityReportPassed(target, "profile_sidecar", policySet, quality)
+    && profileArtifactMatches(path.join(target.workspace_dir, "discourse_index.json"), target)
+    && profileArtifactMatches(path.join(target.workspace_dir, "formula_semantics.json"), target)
+    && (target.profile_id !== "technical_learning"
+      || profileArtifactMatches(path.join(target.workspace_dir, "math_structure.json"), target));
+}
+
+/** Code policy identities are cheap to compare; no source windows or task artifacts are routed. */
+export function automaticBuildIncrementalPolicies(target: AutomaticBuildTarget, quality: ExtractionQualityProfile) {
+  const profile = resolveContentProfile(target.profile_id);
+  return (["pass1", "profile_sidecar"] as const).map(stage => createAutomaticBuildStagePolicySet({
+    target_ref: target.target_ref, stage,
+    members: stage === "pass1" ? pass1ModelSlicePolicyMembers(profile, quality)
+      : profileSidecarMapReducePolicyMembers(profile, quality),
+    frozen_at: AUTOMATIC_BUILD_ROUTING_RELEASE.activated_at,
+  }));
+}
+
+/** Refresh accepted results, retaining immutable task descriptions and unrelated parent routes. */
+export function refreshAutomaticBuildProfileSidecar(target: AutomaticBuildTarget,
+  previous: AutomaticBuildStageState, changedIds: string[], quality: ExtractionQualityProfile,
+  prepareParents: string[] = []): { stage: AutomaticBuildStageState; preparation_parents: string[] } {
+  const tasks = { ...previous.generation_tasks };
+  const bindings = { ...previous.task_bindings };
+  let units = previous.work_units!;
+  const pending = new Set(previous.pending_tasks);
+  const parents = new Set(prepareParents);
+  for (const id of changedIds) {
+    const task = tasks[id];
+    if (task?.kind === "profile_sidecar_discourse") {
+      parents.add(task.task.route.parent_lid);
+    } else if (task?.kind === "profile_sidecar_fast_path") {
+      const accepted = readProfileSidecarGenerationArtifact(target, task.task.descriptor,
+        task.task.policy_generation_id, existsSync);
+      if (accepted) pending.delete(id);
+      else pending.add(id);
+    }
+  }
+  let routing = previous.quality_routing!;
+  let preparationRequired = false;
+  if (parents.size) {
+    const partial = routeProfileSidecarProductionStage({
+      target, loaded: loadAutomaticBook(target.source_path), profile: resolveContentProfile(target.profile_id),
+      quality_profile: quality, parent_lids: parents, prepare: prepareParents.length > 0,
+    });
+    const parentOf = (id: string) => {
+      const task = tasks[id];
+      return task?.kind === "profile_sidecar_discourse" ? task.task.route.parent_lid : undefined;
+    };
+    // Keep original packet order, including new reduction levels in the affected packet's position.
+    const inserted = new Set<string>();
+    const nextUnits: WorkUnitDescriptor[] = [];
+    for (const unit of units) {
+      const parent = parentOf(unit.work_unit_id);
+      if (!parent || !parents.has(parent)) { nextUnits.push(unit); continue; }
+      if (!inserted.has(parent)) {
+        nextUnits.push(...partial.work_units!.filter(candidate => {
+          const task = partial.generation_tasks![candidate.work_unit_id];
+          return task.kind === "profile_sidecar_discourse" && task.task.route.parent_lid === parent;
+        }));
+        inserted.add(parent);
+      }
+      pending.delete(unit.work_unit_id);
+      delete tasks[unit.work_unit_id];
+      delete bindings[unit.work_unit_id];
+    }
+    units = nextUnits;
+    for (const id of partial.pending_tasks) pending.add(id);
+    Object.assign(tasks, partial.generation_tasks);
+    Object.assign(bindings, partial.task_bindings);
+    const changedRouting = partial.quality_routing!;
+    const unitOrder = new Map(units.map((unit, index) => [unit.work_unit_id, index]));
+    const parentOrder = new Map<string, number>();
+    for (const unit of units) {
+      const task = tasks[unit.work_unit_id];
+      if (task.kind === "profile_sidecar_discourse" && !parentOrder.has(task.task.route.parent_lid)) {
+        parentOrder.set(task.task.route.parent_lid, unitOrder.get(unit.work_unit_id)!);
+      }
+    }
+    routing = {
+      ...routing,
+      coverage: [...routing.coverage.filter(item => !parents.has(item.parent_lid)), ...changedRouting.coverage]
+        .sort((a, b) => parentOrder.get(a.parent_lid)! - parentOrder.get(b.parent_lid)!),
+      public_contributors: [...routing.public_contributors.filter(item => !item.parent_lids.some(lid => parents.has(lid))),
+        ...changedRouting.public_contributors]
+        .sort((a, b) => unitOrder.get(a.work_unit_id)! - unitOrder.get(b.work_unit_id)!),
+      reduction_parents: [...routing.reduction_parents.filter(item => !parents.has(item.parent_lid)),
+        ...changedRouting.reduction_parents]
+        .sort((a, b) => parentOrder.get(a.parent_lid)! - parentOrder.get(b.parent_lid)!),
+    };
+    preparationRequired = partial.preparation_required === true;
+  }
+  const pendingUnits = units.filter(unit => pending.has(unit.work_unit_id));
+  return {
+    stage: { ...previous, work_units: units, generation_tasks: tasks, task_bindings: bindings,
+      descriptor_plan_digest: isDeepStrictEqual(units, previous.work_units) ? previous.descriptor_plan_digest : undefined,
+      pending_tasks: pendingUnits.map(unit => unit.work_unit_id), pending_work_units: pendingUnits,
+      quality_routing: routing, preparation_required: preparationRequired,
+      closed: profileSidecarStageClosed(target, pendingUnits.map(unit => unit.work_unit_id), previous.policy_set!, quality) },
+    preparation_parents: preparationRequired ? [...parents] : [],
+  };
 }
 
 type BookStructureProductionRoutedWorkUnit =
@@ -1901,6 +2128,125 @@ function bookStructureProductionRecovery(input: {
   });
 }
 
+function bookStructureInputContracts(profile: ReturnType<typeof resolveContentProfile>, quality: ExtractionQualityProfile) {
+  return createBookStructureExecutionContractsV2({
+    profile, quality_profile: quality,
+    prompts: profile.id === "technical_learning"
+      ? { ...BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, fragment: STRUCTURE_DISCOVERY_PROMPT } : BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+  });
+}
+
+function bookStructureInputBudget(discovery: boolean, executionProfile: BuildExecutionProfileV1) {
+  return discovery
+    ? { stage_body_limit_tokens: 6000, executor_context_floor_tokens: 16384, output_reserve_tokens: 3500,
+      max_candidate_tokens: Math.min(3500, createCandidateTransportContract(executionProfile.transport_profile).candidate_value_max_estimated_tokens),
+      safety_margin_tokens: 512 }
+    : BOOK_STRUCTURE_EXECUTION_BUDGET_V2;
+}
+
+interface BookStructurePreparationContext {
+  target_ref: BuildTargetRefV2;
+  source_fingerprint: string;
+  contracts: ReturnType<typeof bookStructureInputContracts>;
+  transport_profile: BuildExecutionProfileV1["transport_profile"];
+  budget: ReturnType<typeof bookStructureInputBudget>;
+  outline: NonNullable<ReturnType<typeof routeStructureOrganization>["outline_result"]> | null;
+}
+
+interface PreparedBookStructureInput {
+  version: "book_structure_prepared_inputs.v1";
+  context: BookStructurePreparationContext;
+  units: Record<string, {
+    parent_content_hash: string;
+    route: Extract<ReturnType<typeof routeBookStructureUnitWorkUnitsV2>, { status: "ready" }>;
+  }>;
+}
+
+function bookStructurePreparationPath(target: Pick<AutomaticBuildTarget, "workspace_dir">) {
+  return path.join(target.workspace_dir, ".build", "automatic-build", "v4", "book-structure-inputs.json");
+}
+
+function readPreparedBookStructureInput(key: BookStructurePreparationContext) {
+  const file = bookStructurePreparationPath(key.target_ref);
+  if (!existsSync(file)) return undefined;
+  let saved: PreparedBookStructureInput;
+  try { saved = JSON.parse(readFileSync(file, "utf8")); }
+  catch (error) {
+    if (error instanceof SyntaxError || (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+  if (saved?.version !== "book_structure_prepared_inputs.v1"
+    || canonicalBuildJson(saved.context) !== canonicalBuildJson(key)) return undefined;
+  return saved;
+}
+
+function routeBookStructureSource(
+  source: BookStructureUnitSource, loaded: LoadedAutomaticBook,
+  key: BookStructurePreparationContext,
+) {
+  return routeBookStructureUnitWorkUnitsV2({
+    transport_profile: key.transport_profile, target: key.target_ref, source, lid_nodes: loaded.lidNodes,
+    source_fingerprint: key.source_fingerprint, contracts: key.contracts, budget: key.budget,
+    ...(key.outline ? { discovery: { outline: key.outline,
+      section_by_leaf: structureDiscoverySections(source, loaded.lidNodes, loaded.source) } } : {}),
+  });
+}
+
+/** Prepare source projections only. Accepted observations, reducers and organization stay live. */
+export function prepareBookStructureInputs(target: AutomaticBuildTarget, quality: ExtractionQualityProfile,
+  options: Pick<AutomaticBuildSnapshotOptions, "execution_profile" | "retrieval"> = {}) {
+  const loaded = loadAutomaticBook(target.source_path);
+  const profile = resolveContentProfile(target.profile_id);
+  const executionProfile = options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+  const base = readJson<ReadOnlyBase>(path.join(target.workspace_dir, "base.json"));
+  const discourseIndex = readJson<TechnicalLearningDiscourseIndex>(path.join(target.workspace_dir, "discourse_index.json"));
+  const formulaValue = readJson<{ items?: FormulaSemantics[] } | FormulaSemantics[]>(path.join(target.workspace_dir, "formula_semantics.json"));
+  const pass2Audit = profileArtifactMatches(path.join(target.workspace_dir, "pass2_audit.json"), target)
+    ? readJson<NonNullable<Parameters<typeof buildBookStructureUnitSources>[0]["pass2Audit"]>>(path.join(target.workspace_dir, "pass2_audit.json"))
+    : undefined;
+  const sources = buildBookStructureUnitSources({ lidNodes: loaded.lidNodes, source: loaded.source,
+    graphNodes: base.graph_nodes, graphEdges: base.graph_edges, discourseIndex,
+    formulaSemantics: Array.isArray(formulaValue) ? formulaValue : formulaValue.items ?? [], pass2Audit, contentProfile: profile });
+  const discovery = profile.id === "technical_learning";
+  const frontSources = discovery ? structureDiscoverySources(sources, loaded.lidNodes, loaded.source) : sources;
+  const contracts = bookStructureInputContracts(profile, quality);
+  const organization = discovery ? routeStructureOrganization({
+    target, execution_profile: executionProfile, contracts: structureOrganizationContracts(contracts.stitch_fragment),
+    outline: structureSourceOutline(frontSources, loaded.lidNodes, loaded.source),
+    context: { catalog: { version: "book_structure_candidates.v1", candidates: [] }, titles: {}, excerpts: [] },
+    retrieval: options.retrieval, stop_after_outline: true,
+  }) : undefined;
+  if (discovery && !organization?.outline_result) return { status: "skipped" as const, reason: "outline_pending" };
+  const key = { target_ref: target.target_ref, source_fingerprint: canonicalSourceFingerprint(loaded.source), contracts,
+    transport_profile: executionProfile.transport_profile, budget: bookStructureInputBudget(discovery, executionProfile),
+    outline: organization?.outline_result ?? null };
+  const existing = readPreparedBookStructureInput(key);
+  const units: PreparedBookStructureInput["units"] = {};
+  let reused = Boolean(existing);
+  for (const source of frontSources) {
+    const parentContentHash = bookStructureUnitHash(source);
+    const previous = existing?.units[source.unit_lid];
+    const current = previous?.parent_content_hash === parentContentHash ? previous : undefined;
+    const route = current?.route ?? routeBookStructureSource(source, loaded, key);
+    if (route.status === "blocked") return { status: "skipped" as const, reason: "routing_requires_recovery" };
+    units[source.unit_lid] = { parent_content_hash: parentContentHash, route };
+    if (!current) reused = false;
+  }
+  if (!reused) {
+    const saved: PreparedBookStructureInput = { version: "book_structure_prepared_inputs.v1", context: key, units };
+    const file = bookStructurePreparationPath(target);
+    mkdirSync(path.dirname(file), { recursive: true });
+    const temporary = `${file}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temporary, JSON.stringify(saved), { encoding: "utf8", flag: "wx" });
+      renameSync(temporary, file);
+    } finally { if (existsSync(temporary)) unlinkSync(temporary); }
+  }
+  return { status: "prepared" as const, reused,
+    ordinary_tasks: Object.values(units).filter(u => u.route.mode === "whole").length,
+    fragment_tasks: Object.values(units).filter(u => u.route.mode === "fragmented").reduce((n, u) => n + u.route.work_units.length, 0) };
+}
+
 function routeBookStructureProductionStage(input: {
   retrieval?: BuildRetrievalSelection;
   execution_profile: BuildExecutionProfileV1;
@@ -1917,11 +2263,7 @@ function routeBookStructureProductionStage(input: {
   const sourceFingerprint = canonicalSourceFingerprint(input.loaded.source);
   const discovery = input.profile.id === "technical_learning";
   const discoverySources = discovery ? structureDiscoverySources(input.unit_sources, input.loaded.lidNodes, input.loaded.source) : input.unit_sources;
-  const contracts = createBookStructureExecutionContractsV2({
-    profile: input.profile,
-    quality_profile: input.quality_profile,
-    prompts: discovery ? { ...BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, fragment: STRUCTURE_DISCOVERY_PROMPT } : BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
-  });
+  const contracts = bookStructureInputContracts(input.profile, input.quality_profile);
   const relationContracts = bookStructureRelationContracts(contracts.stitch_fragment);
   const organizationContracts = structureOrganizationContracts(contracts.stitch_fragment);
   const policyMembers: Parameters<typeof createAutomaticBuildStagePolicySet>[0]["members"] = ([
@@ -2090,21 +2432,21 @@ function routeBookStructureProductionStage(input: {
   let organization = outlineInput ? routeStructureOrganization({ target: input.target, execution_profile: input.execution_profile,
     contracts: organizationContracts, outline: outlineInput, context: { catalog: { version: "book_structure_candidates.v1", candidates: [] }, titles: {}, excerpts: [] },
     retrieval: input.retrieval, stop_after_outline: true }) : undefined;
+  const preparationKey = { target_ref: input.target.target_ref, source_fingerprint: sourceFingerprint, contracts,
+    transport_profile: input.execution_profile.transport_profile, budget: bookStructureInputBudget(discovery, input.execution_profile),
+    outline: organization?.outline_result ?? null };
+  // Bulk planning amortizes the prepared table. A focused executor check reroutes
+  // only its chapter, avoiding a full-book cache read for one small input.
+  const preparedInputs = input.task_parent_lid ? undefined : readPreparedBookStructureInput(preparationKey);
   const frontSources = discovery && input.task_parent_lid
     ? discoverySources.filter(s => s.unit_lid === input.task_parent_lid) : discoverySources;
   for (const source of discovery && !organization?.outline_result ? [] : frontSources) {
     const parentContentHash = bookStructureUnitHash(source);
-    const initial = routeBookStructureUnitWorkUnitsV2({
-      transport_profile: input.execution_profile.transport_profile,
-      target: input.target.target_ref,
-      source,
-      lid_nodes: input.loaded.lidNodes,
-      source_fingerprint: sourceFingerprint,
-      contracts,
-      ...(discovery ? { discovery: { outline: organization!.outline_result!, section_by_leaf: structureDiscoverySections(source, input.loaded.lidNodes, input.loaded.source) },
-        budget: { stage_body_limit_tokens: 6000, executor_context_floor_tokens: 16384, output_reserve_tokens: 3500,
-          max_candidate_tokens: Math.min(3500, createCandidateTransportContract(input.execution_profile.transport_profile).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 } } : {}),
-    });
+    const prepared = preparedInputs?.units[source.unit_lid];
+    // The existing parent hash binds current Pass1/discourse/formula/Pass2 projections.
+    // Outline and routing contracts are checked above; new sibling receipts are read below.
+    const initial = prepared?.parent_content_hash === parentContentHash
+      ? prepared.route : routeBookStructureSource(source, input.loaded, preparationKey);
     if (initial.status === "blocked") {
       throw new AutomaticBuildSnapshotRecoverySignal(bookStructureProductionRecovery({
         target: input.target,
@@ -2659,11 +3001,15 @@ function technicalLearningTargetFromWorkspace(workspaceInput: string): Automatic
     throw new Error(`technical_learning workspace profile identity 不一致: ${profilePath}`);
   }
   const sourceManifest = readJson<TechnicalLearningSourceManifestLike>(sourceManifestPath);
+  const importedDocument = sourceManifest.version === "source_manifest.v2"
+    && ["reconciled_markdown", "pdf_text"].includes(sourceManifest.canonical_source?.kind ?? "")
+    && sourceManifest.canonical_source?.path === "source.txt"
+    && existsSync(path.join(workspaceDir, "document_import.json"));
   if (
     sourceManifest.book_id !== bookId
     || !sourceManifest.canonical_source
-    || !(sourceManifest.canonical_source.kind === "markdown" || sourceManifest.canonical_source.kind === "epub")
-    || sourceManifest.canonical_source.truth_file !== "source.txt"
+    || (!importedDocument && (!(sourceManifest.canonical_source.kind === "markdown" || sourceManifest.canonical_source.kind === "epub")
+      || sourceManifest.canonical_source.truth_file !== "source.txt"))
   ) {
     throw new Error(`technical_learning workspace source manifest 不合法: ${sourceManifestPath}`);
   }
@@ -2794,6 +3140,13 @@ export function resolveAutomaticBuildTarget(
     throw new Error(`paper 输入匹配到多个 Workbench workspace，请显式指定 book id 或 workspace 路径: ${matches.join(", ")}`);
   }
   if (matches.length === 1) return paperTargetFromWorkspace(matches[0]);
+  if (/\.(pdf|pptx|ppt)$/iu.test(targetPath)) {
+    const workspace = path.join(resolvedRoot, ".understand-book", stableBookId ?? deriveBookId(targetPath));
+    const imported = path.join(workspace, "document_import.json");
+    if (existsSync(imported) && readJson<{source_path:string}>(imported).source_path === targetPath) {
+      return technicalLearningTargetFromWorkspace(workspace);
+    }
+  }
   if (path.extname(targetPath).toLowerCase() === ".pdf") {
     throw new Error("paper PDF 未匹配到可信 Workbench workspace，请先在预构建工作台完成来源对齐与混合阅读基座");
   }

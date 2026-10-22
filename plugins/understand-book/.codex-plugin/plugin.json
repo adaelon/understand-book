@@ -1,7 +1,7 @@
 {
   "name": "understand-book",
-  "version": "0.1.0+codex.20261015184655",
-  "description": "Build books and papers into evidence-anchored local reading workspaces.",
+  "version": "0.1.0+codex.20261020143709",
+  "description": "Operator-only local build tools. Requires explicitly provisioned maintenance executables; cloud Windows Setup does not install this plugin.",
   "author": {
     "name": "Understand Book contributors"
   },
@@ -16,9 +16,9 @@
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Understand Book",
-    "shortDescription": "Build evidence-anchored reading workspaces.",
-    "longDescription": "Turn Markdown, EPUB, or a trusted paper Workbench workspace into a resumable local reading base with LID evidence, semantic structure, and paper reading projections.",
+    "displayName": "Understand Book Maintenance",
+    "shortDescription": "Operator local build and maintenance.",
+    "longDescription": "Build local reading bases in an explicitly provisioned operator environment. Ordinary cloud learners use the website or Windows app and configure remote read-only Book MCP from their account.",
     "developerName": "Understand Book contributors",
     "category": "Productivity",
     "capabilities": [

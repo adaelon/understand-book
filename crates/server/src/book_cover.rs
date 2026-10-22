@@ -44,9 +44,20 @@ pub(crate) fn local(directory: &Path) -> Option<CoverDescriptor> {
     Some(CoverDescriptor { kind, url: format!("/api/book/library/cover?{query}") })
 }
 
+pub(crate) fn video_frame(manifest: &crate::published_library::PublicationManifest) -> Option<&str> {
+    if manifest.capabilities["video"] != true { return None; }
+    manifest.files.keys().find(|path| path.starts_with("video-enrichments/")
+        && (path.contains("/frames/") || path.ends_with("/frame.png")) && path.ends_with(".png"))
+        .map(String::as_str)
+}
+
 pub(crate) fn published(directory: &Path, manifest: &crate::published_library::PublicationManifest) -> Option<CoverDescriptor> {
     if let Some(path) = image(directory).filter(|p| manifest.files.contains_key(p)) {
         return Some(CoverDescriptor { kind: "image", url: manifest.reference.url(&path) });
+    }
+    // Reuse an admitted course frame; listing a workspace never decodes video.
+    if video_frame(manifest).is_some() {
+        return Some(CoverDescriptor { kind: "image", url: manifest.reference.url("video/cover") });
     }
     manifest.files.contains_key("original.pdf").then(|| CoverDescriptor {
         kind: "pdf", url: manifest.reference.url("pdf/original"),

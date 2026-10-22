@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { BuildExecutionProfileSelectionV1 } from "./build-execution-profile";
+import { TranscriptServiceLedger } from "./service-usage";
 
 /** Ownership is durable; authentication belongs only to the running operator host. */
 export interface ExternalBuildCostBinding {
@@ -79,6 +80,9 @@ export class ExternalBuildCostLedger {
     private readonly connection: ExternalBuildCostConnection, registryRoot: string,
     private readonly fetcher: typeof fetch = fetch) {
     this.directory = path.join(registryRoot, "external-build-cost", taskRef);
+  }
+  transcriptMeter(workspace: string, processingConfirmation?: string) {
+    return new TranscriptServiceLedger(this.taskRef, workspace, this.connection, this.fetcher, processingConfirmation);
   }
   private file(callId: string) {
     if (!/^[a-zA-Z0-9_-]+$/u.test(callId)) throw new Error("external_build_call_id_invalid");

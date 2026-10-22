@@ -573,6 +573,7 @@ fn mu9_learning_only_material_and_changed_pdf_cannot_be_silently_bound() {
                         role: memory::learning::TutorMaterialRole::Primary,
                     }],
                     default_teaching_intent: None,
+                    learning_purpose: None,
                 },
             },
             "3",

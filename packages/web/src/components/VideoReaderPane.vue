@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { videoGet, videoUrl, type PreparingVideo } from '../video-api';
+import { attachVideoPlayback } from '../video-playback';
 import type { TranscriptMap } from '../../../core/src/generated/TranscriptMap';
 import type { VideoQuestionContext } from '../../../core/src/generated/VideoQuestionContext';
 import { videoContentRect, videoRegion, type DisplayRect, type Point } from '../video-region';
 import { videoTime } from '../video-question';
 import { captureQuestionImage } from '../question-image';
 import { ArrowLeft, Captions, Check, ChevronDown, Clock3, Crosshair, Focus, Languages, Play, Search, Scissors, X } from '@lucide/vue';
-const props = defineProps<{ initial: PreparingVideo; owner: string; published?: import('../video-api').PublishedVideo; embedded?: boolean; mediaUrl?: string; question?: VideoQuestionContext | null; selectionDisabled?: boolean; adoptionError?: string }>();
+const props = defineProps<{ initial: PreparingVideo; owner: string; published?: import('../video-api').PublishedVideo; playback?: import('../video-api').VideoPlayback; detailsLoading?: boolean; detailsError?: string; embedded?: boolean; mediaUrl?: string; question?: VideoQuestionContext | null; selectionDisabled?: boolean; adoptionError?: string }>();
 const emit = defineEmits<{ (event: 'close'): void; (event: 'frame-ready', ready: boolean): void; (event: 'ready', publication: NonNullable<PreparingVideo['publication']>): void; (event: 'select-region', context: VideoQuestionContext): void; (event: 'clear-region'): void; (event: 'select-range', context: VideoQuestionContext): void; (event: 'clear-range'): void }>();
 const state = ref(props.initial), player = ref<HTMLVideoElement>(), error = ref(''), playbackFailure = ref('');
+const buffering = ref(true);
+const mediaSource = computed(() => props.mediaUrl || videoUrl(state.value.video, 'media'));
+const playlist = computed(() => props.playback?.hls ? mediaSource.value.replace(/\/media$/, '/playback/index.m3u8') : null);
+let releasePlayback: (() => void) | undefined;
+function savedPosition(): number {
+  try { const saved = JSON.parse(localStorage.getItem(key) || 'null'); return Number.isFinite(saved?.time) && saved.time >= 0 ? Math.min(saved.time, Math.max(0, duration.value / 1000 - 0.1)) : 0; } catch { return 0; }
+}
+function connectPlayback() {
+  releasePlayback?.(); releasePlayback = undefined;
+  if (!player.value) return;
+  buffering.value = true; playbackFailure.value = '';
+  releasePlayback = attachVideoPlayback(player.value, mediaSource.value, playlist.value, savedPosition(), message => { playbackFailure.value = message; buffering.value = false; });
+}
+function retryPlayback() { remember(); connectPlayback(); }
 const transcript = ref<TranscriptMap | undefined>(props.published?.map);
 const surface = ref<HTMLElement>(), transcriptSurface = ref<HTMLElement>();
 const translations = computed(() => new Map(props.published?.translations?.map(t => [t.segment_id, t.zh_text]) ?? []));
@@ -151,8 +166,9 @@ function followFrame() {
   const video = player.value;
   if (!video?.requestVideoFrameCallback) return;
   frameCallback = video.requestVideoFrameCallback((_now, metadata) => {
-    if (props.published) {
-      const [numerator, denominator] = props.published.time_base;
+    const context = props.playback ?? props.published;
+    if (context) {
+      const [numerator, denominator] = context.time_base;
       frameTime.value = Math.round(metadata.mediaTime * denominator / numerator) * numerator / denominator * 1000;
     }
     emit('frame-ready', true);
@@ -189,7 +205,7 @@ function restore() {
   position.value = player.value.currentTime * 1000;
 }
 async function refresh() {
-  if (props.published) return;
+  if (props.published || props.playback) return;
   try {
     const next = await videoGet<PreparingVideo>(videoUrl(props.initial.video, 'status'));
     if (!disposed) {
@@ -204,6 +220,7 @@ async function refresh() {
   } finally { if (!disposed) timer = setTimeout(refresh, 3000); }
 }
 function playbackError() { playbackFailure.value = '浏览器无法播放这份视频，请确认导入副本可读且浏览器支持 H.264/AAC MP4。'; }
+watch([player, mediaSource, playlist], connectPlayback);
 watch(player, video => {
   resizeObserver?.disconnect();
   if (video && typeof ResizeObserver !== 'undefined') {
@@ -212,7 +229,7 @@ watch(player, video => {
   }
 });
 onMounted(() => { window.addEventListener('pagehide', remember); window.addEventListener('keydown', escapeSelection); void refresh(); });
-onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.disconnect(); window.removeEventListener('keydown', escapeSelection); window.removeEventListener('pagehide', remember); remember(); if (frameCallback !== undefined) player.value?.cancelVideoFrameCallback?.(frameCallback); player.value?.pause(); });
+onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.disconnect(); window.removeEventListener('keydown', escapeSelection); window.removeEventListener('pagehide', remember); remember(); if (frameCallback !== undefined) player.value?.cancelVideoFrameCallback?.(frameCallback); releasePlayback?.(); });
 </script>
 <template>
   <main ref="surface" class="video-reader" aria-label="视频学习">
@@ -229,7 +246,9 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
     <div class="video-player-card">
     <div v-if="state.playable && !error" class="video-stage">
       <video ref="player" :controls="!selecting" playsinline preload="metadata"
-        :src="mediaUrl || videoUrl(state.video, 'media')" @timeupdate="position = ($event.target as HTMLVideoElement).currentTime * 1000" @seeking="seeking" @loadedmetadata="restore" @resize="measure" @play="playbackStarted" @pause="paused = true; remember()" @seeked="remember" @ratechange="remember" @error="playbackError" />
+        :poster="playback?.cover_url || undefined" @waiting="buffering = true" @loadeddata="buffering = false" @canplay="buffering = false" @playing="buffering = false"
+        @timeupdate="position = ($event.target as HTMLVideoElement).currentTime * 1000" @seeking="seeking" @loadedmetadata="restore" @resize="measure" @play="playbackStarted" @pause="paused = true; remember()" @seeked="remember" @ratechange="remember" @error="playbackError" />
+      <div v-if="buffering && !playbackFailure" class="video-buffering" role="status">正在加载画面…</div>
       <div v-if="selecting || visibleRegion" class="video-region-layer" :class="{ selecting }" :style="contentStyle" aria-label="画面框选区域"
         @pointerdown="startSelection" @pointermove="moveSelection" @pointerup="finishSelection" @pointercancel="cancelSelection" @lostpointercapture="cancelSelection">
         <div v-if="visibleRegion" class="video-region-box" :style="regionStyle" />
@@ -257,24 +276,26 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
     </div>
     <p v-if="selectionError" class="video-error" role="alert">{{ selectionError }}</p>
     <p v-if="rangeError" role="alert">{{ rangeError }}</p>
-    <p v-if="error || playbackFailure || state.failure" role="alert">{{ error || playbackFailure || state.failure }}</p>
+    <p v-if="error || playbackFailure || state.failure" role="alert">{{ error || playbackFailure || state.failure }} <button v-if="playbackFailure" type="button" @click="retryPlayback">重新加载</button></p>
+    <p v-if="detailsLoading" class="video-preparation" role="status">字幕与学习记录正在载入，可先观看视频。</p>
+    <p v-if="detailsError" class="video-error" role="alert">{{ detailsError }}</p>
     <p v-if="adoptionError" class="video-preparation" role="status">新成果暂未接入：{{ adoptionError }}</p>
     <section v-if="currentSegment" class="current-bilingual" aria-label="当前片段中英对照">
       <div class="current-caption-label"><span><Captions :size="15" aria-hidden="true" />此刻在讲</span><button :aria-label="`重听当前句 ${timeLabel(currentSegment.location.start_ms)}`" @click="seek(currentSegment.location.start_ms)"><Play :size="11" fill="currentColor" aria-hidden="true" />{{ timeLabel(currentSegment.location.start_ms) }}</button></div>
       <p class="current-original" lang="en">{{ currentSegment.text }}</p>
       <p class="current-translation" :class="{ 'translation-pending': !translations.has(currentSegment.segment_id) }">{{ translations.get(currentSegment.segment_id) ?? translationStatus(currentSegment.segment_id) }}</p>
     </section>
-    <div v-if="!published" class="video-preparation" role="status">
+    <div v-if="!published && !playback" class="video-preparation" role="status">
       <template v-if="state.stage === 'copying'">正在保留原片副本 <progress :value="state.copied_bytes" :max="state.total_bytes" /> {{ Math.floor(state.copied_bytes / state.total_bytes * 100) }}%</template>
       <template v-else-if="state.stage === 'probing'">原片已导入，正在检查媒体与解码能力。</template>
       <template v-else-if="state.stage === 'failed'">准备未完成。处理失败原因后，请恢复此视频的导入任务。</template>
-      <template v-else-if="state.english_ready">全片英文已发布，可按当前画面提问并回看回答来源。</template>
+      <template v-else-if="state.english_ready">视频字幕已发布，可按当前画面提问并回看回答来源。</template>
       <template v-else-if="state.transcript_progress">
-        英文转写：{{ state.transcript_progress.chunks.filter(c=>c.status==='completed').length }} / {{ state.transcript_progress.chunks.length }} 块完成。
+        视频转写：{{ state.transcript_progress.chunks.filter(c=>c.status==='completed').length }} / {{ state.transcript_progress.chunks.length }} 块完成。
         <p v-if="state.transcript_progress.failure" role="alert">{{ state.transcript_progress.failure }}</p>
         <span v-if="state.transcript_progress.stage==='ready'">正文与时间映射已完成，等待发布。</span>
       </template>
-      <template v-else><span v-if="state.playable">原片可观看。</span>全片英文转写与首个发布尚未就绪。</template>
+      <template v-else><span v-if="state.playable">原片可观看。</span>视频转写与首个发布尚未就绪。</template>
     </div>
     <details v-if="published && transcript" class="video-readiness">
       <summary><span class="readiness-dot" :class="{ pending: untranslated.length }" /><span>{{ untranslated.length ? `中文翻译 ${transcript.segments.length - untranslated.length} / ${transcript.segments.length}` : '双语字幕已就绪' }}</span><ChevronDown :size="14" aria-hidden="true" /></summary>
@@ -296,7 +317,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
         <div class="transcript-languages" role="group" aria-label="字幕语言"><button :aria-pressed="transcriptLanguage === 'bilingual'" @click="transcriptLanguage = 'bilingual'">双语</button><button :aria-pressed="transcriptLanguage === 'en'" @click="transcriptLanguage = 'en'">原文</button><button :aria-pressed="transcriptLanguage === 'zh'" @click="transcriptLanguage = 'zh'">中文</button></div>
       </div>
       <p v-if="transcriptQuery.trim()" class="transcript-result-count" role="status">找到 {{ filteredSegments.length }} 段字幕</p>
-      <div ref="transcriptSurface" class="transcript" aria-label="英文转写" tabindex="0" @wheel.passive="browseTranscript" @touchmove.passive="browseTranscript" @pointerdown="$event.target === transcriptSurface && browseTranscript()" @keydown="['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes($event.key) && browseTranscript()">
+      <div ref="transcriptSurface" class="transcript" aria-label="视频转写" tabindex="0" @wheel.passive="browseTranscript" @touchmove.passive="browseTranscript" @pointerdown="$event.target === transcriptSurface && browseTranscript()" @keydown="['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes($event.key) && browseTranscript()">
       <button v-for="segment in filteredSegments" :key="segment.segment_id" :data-segment="segment.segment_id" class="transcript-row" :class="{ current: currentSegment?.segment_id === segment.segment_id }" :aria-current="currentSegment?.segment_id === segment.segment_id ? 'true' : undefined" :aria-label="`回看 ${timeLabel(segment.location.start_ms)}`" @click="seek(segment.location.start_ms)">
         <span class="segment-time"><Play v-if="currentSegment?.segment_id === segment.segment_id" :size="10" fill="currentColor" aria-hidden="true" />{{ timeLabel(segment.location.start_ms) }}</span>
         <span class="segment-copy"><span v-if="transcriptLanguage !== 'zh'" class="segment-original" lang="en">{{ segment.text }}</span>
@@ -306,7 +327,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
       </button>
       <div v-if="!filteredSegments.length" class="transcript-empty"><Search :size="24" aria-hidden="true" /><p>{{ transcriptQuery.trim() ? '没有找到相关字幕' : '字幕正在准备中' }}</p><span>{{ transcriptQuery.trim() ? '试试更短的词，中文和英文都可以' : '准备完成后，可以在这里逐句回看' }}</span></div>
       </div>
-      <footer class="transcript-footer">机器转写 · 技术词可能需要校正</footer>
+      <footer class="transcript-footer">视频字幕 · 技术词可能需要校正</footer>
     </section>
     </div>
   </main>
@@ -327,6 +348,7 @@ h1 { font-size: clamp(19px, 2.2cqi, 27px); font-weight: 600; letter-spacing: -.0
 .video-viewing { min-width: 0; }
 .video-player-card { overflow: hidden; border: 1px solid #dedbd5; border-radius: 14px; background: #fff; box-shadow: 0 4px 20px #28251f06; }
 .video-stage { position: relative; }
+.video-buffering { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); border-radius: 2rem; padding: .55rem 1rem; color: white; background: #16252bcc; pointer-events: none; font-size: .85rem; }
 video { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 48vh; background: #171817; object-fit: contain; object-position: center; }
 .video-region-layer { position: absolute; pointer-events: none; }
 .video-region-layer.selecting { pointer-events: auto; touch-action: none; cursor: crosshair; }

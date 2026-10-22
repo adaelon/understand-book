@@ -10,7 +10,7 @@ import type {OperatorBuild} from '@/lib/operator-builds';
 
 const existing={book_id:'existing-book',publication_id:'exact-old'},built={book_id:'new-book',publication_id:'exact-new'};
 let root:Root|undefined,host:HTMLDivElement,fetcher:ReturnType<typeof vi.fn>,task:OperatorBuild;
-let existingKind:'book'|'video';
+let existingKind:'book'|'video'|'music';
 const writes=()=>fetcher.mock.calls.filter(([,init])=>init?.method==='POST');
 async function settle(){await act(async()=>{await new Promise(r=>setTimeout(r,20));});}
 async function click(label:string){const button=[...document.querySelectorAll('button')].find(b=>b.textContent===label);expect(button,label).toBeDefined();await act(async()=>button!.click());await settle();}
@@ -59,6 +59,34 @@ it('creates and starts an MP4 in one submission with the entered budget and no T
   expect(JSON.parse(writes()[1][1].body)).toMatchObject({expected_revision:0,max_micro_cny:2000000});
   expect(document.querySelector('[aria-label="运营构建任务详情"]')).not.toBeNull();
   expect(document.querySelector('[role=dialog]')).toBeNull();
+});
+
+it('creates curated music with score and event requirements and starts the existing operator queue',async()=>{
+  task={...task,state:'draft',revision:0,materials:[{material_id:'source-1',label:'舒伯特',state:'pending',material_kind:'music'}]};
+  await mount();await click('创建准备任务');await fill('准备任务名称','音乐伴听');await fill('平台预算上限（元）','2');await fill('每次执行预计占用（元）','0.02');await fill('成果授权账号（空格或逗号分隔）','A B');
+  const select=document.querySelector<HTMLSelectElement>('select[aria-label="资料类型"]')!;
+  await act(async()=>{select.value='music';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await fill('资料名称','舒伯特');await fill('来源文件或工作区位置','E:/music/curation.json');await fill('成果根目录','E:/build');
+  const dialog=document.querySelector('[role=dialog]')!;
+  expect(dialog.textContent).toContain('本地处理无模型调用费用');
+  expect(dialog.textContent).not.toContain('额外预构建 Tutor 教学材料');
+  await submit();
+  expect(writes()).toHaveLength(2);
+  const created=JSON.parse(writes()[0][1].body);
+  expect(created.materials).toMatchObject([{material_kind:'music',target_input:'E:/music/curation.json',build_tutor:false,required_capabilities:['music','music_score','music_events']}]);
+  expect(writes()[1][0]).toBe(`/api/admin/operator-builds/${created.task_id}/start`);
+  expect(document.querySelector('[role=dialog]')).toBeNull();
+});
+
+it('reuses music without requiring a fabricated transcript and exposes music capabilities for publication',async()=>{
+  existingKind='music';
+  task={...task,state:'ready',materials:[{material_id:'one',label:'音乐',state:'reused',published_book_ref:existing,required_capabilities:['music','music_score']}]};
+  await mount();await click('创建准备任务');await fill('准备任务名称','音乐课程');await fill('平台预算上限（元）','1');await fill('每次执行预计占用（元）','0.01');await fill('成果授权账号（空格或逗号分隔）','A');await check('existing-book · exact-old');await submit();
+  expect(JSON.parse(writes()[0][1].body).materials).toMatchObject([{required_capabilities:['music','music_score']}]);
+  await click('查看构建任务');await click('选择成果并发布');
+  const capability=(label:string)=>[...document.querySelectorAll('label')].find(l=>l.textContent===label)!.querySelector<HTMLInputElement>('input')!;
+  expect(capability('音乐播放').checked).toBe(true);expect(capability('可查乐谱').checked).toBe(true);
+  expect(capability('阅读原文').checked).toBe(false);expect(capability('逐音符跟谱').checked).toBe(false);
 });
 
 it('leaves a saved video task available to retry when its start is rejected',async()=>{

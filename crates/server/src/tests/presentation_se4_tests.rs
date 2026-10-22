@@ -228,7 +228,7 @@ fn se4_feedback_network_users_workspaces_linked_views_and_publication_access() {
             reference:reference.clone(), candidate_id:"candidate-se4".into(),
             owner:PresentationOwner {book_id:f.x.book_id.clone(),session_id:turn.session_id.clone()},
             created_by_turn_id:turn.turn_id.clone(), based_on:None,
-            content:PresentationContent { teaching_binding: None,
+            content:PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs:None, method_observations:Default::default(), animation_assets:Default::default(),
                 title:"A feedback scene".into(),content_files:BTreeMap::from([("index.html".into(),"<p>Scene</p>".into())]),
                 entrypoint:"index.html".into(),readable_content:"A scene".into(),source_bindings:vec![],assumptions:vec![],

@@ -15,6 +15,7 @@ use std::collections::{BTreeMap, HashSet};
 use ts_rs::TS;
 
 pub mod agent_prompt;
+mod agent_progress;
 pub mod agent_request_audit;
 pub mod answer_stream;
 pub mod auto_compaction;
@@ -28,6 +29,8 @@ pub mod goal;
 pub mod workspace_goal;
 pub mod workspace_records;
 pub mod tutor;
+pub mod tutor_review_input;
+pub mod tutor_coach;
 pub mod tutor_continuation;
 #[cfg(test)]
 mod tutor_continuation_tests;
@@ -36,13 +39,16 @@ pub mod memory_policy;
 pub mod memory_review;
 pub mod model_runtime;
 pub mod model_spend;
+pub mod web;
 pub mod observation;
 pub mod orchestrator;
 pub mod presentation;
 pub mod presentation_author;
+pub mod presentation_interact;
 pub mod presentation_methods;
 pub mod video;
 pub mod video_audio;
+pub mod music;
 pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
@@ -103,6 +109,7 @@ pub struct CompletionRequest {
     pub reasoning_effort: Option<String>,
     pub system: String,
     pub user: String,
+    pub images: Vec<crate::presentation_author::PreviewImage>,
 }
 
 #[derive(Debug)]
@@ -917,6 +924,7 @@ fn resolver_prompt(
         })
         .collect();
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: "You are the bounded PlanGate and referent resolver. Return one JSON object. Check that query, targets, and obligations preserve the same request. Classify every candidate as direct_match, semantic_match, plausible, or reject. Do not infer from anchor-neighbor text. If lexical recall failed, emit at most three short lexical probes total. Reasons must be short verdict summaries, never hidden chain-of-thought.".into(),
@@ -1366,6 +1374,13 @@ fn related_landmark_lids(
         }
 
         for lid in &referent.binding.source_lids {
+            for item in book.math_structure_items(lid) {
+                for reference in &item.references {
+                    if let Some(target_lid) = &reference.target_lid {
+                        push_unique_lid(&mut related, target_lid);
+                    }
+                }
+            }
             if let Some(item) = book.discourse_item(lid) {
                 for relation in &item.relations {
                     push_unique_lid(&mut related, &relation.target_lid);
@@ -1493,6 +1508,7 @@ fn support_prompt(
         .map(|(lid, text)| serde_json::json!({"lid": lid, "text": text}))
         .collect();
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: "Answer only from the full source LIDs supplied for frozen referent bindings. Assess every obligation exactly once as supported, uncertain, or unsupported. Each supported assessment must list citation_lids and citations must quote an exact nonempty substring of that source LID. Open semantic support is your judgment; do not expose hidden chain-of-thought. Put outside knowledge only in model_supplement.".into(),
@@ -2016,6 +2032,24 @@ fn discourse_hints(book: &Book, ev: &EvidenceSet) -> Vec<String> {
         }
         hints.push(lines.join("\n"));
     }
+    hints.extend(math_structure_hints(book, &allowed));
+    hints
+}
+
+fn math_structure_hints(book: &Book, allowed: &std::collections::BTreeSet<&str>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    let mut hints = Vec::new();
+    for lid in allowed {
+        for item in book.math_structure_items(lid) {
+            if !seen.insert(&item.anchor_lid) || !item.evidence_lids.iter().all(|evidence| allowed.contains(evidence.as_str())) {
+                continue;
+            }
+            let mut visible = item.clone();
+            visible.references.retain(|reference| reference.evidence_lids.iter().all(|evidence| allowed.contains(evidence.as_str()))
+                && reference.target_lid.as_ref().is_none_or(|target| allowed.contains(target.as_str())));
+            hints.push(format!("Math structure (source locator; not a verified proof): {}", serde_json::to_string(&visible).unwrap()));
+        }
+    }
     hints
 }
 fn build_synthesize_prompt(
@@ -2069,6 +2103,7 @@ fn build_synthesize_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: "You are an in-book synthesizer. Synthesize only from the LID scope supplied by the caller and never expand retrieval. Citations may reference only input LIDs. Put outside knowledge not covered by source text in model_supplement without a LID."
@@ -2485,6 +2520,7 @@ fn build_book_guide_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
         system: "You are an in-book route guide. Give the visitor only independently verifiable reading routes, without using private reader memory, the Reader viewport, or memory tools. In a neutral voice, explain the entry and next step. Citations may reference only evidence LIDs."
@@ -3282,7 +3318,7 @@ impl ModelAdapter for NativeAdapter {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system},
-                {"role": "user", "content": req.user},
+                {"role": "user", "content": completion_user_content(&req)},
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0,
@@ -3307,7 +3343,7 @@ impl ModelAdapter for NativeAdapter {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": req.system},
-                {"role": "user", "content": req.user},
+                {"role": "user", "content": completion_user_content(&req)},
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0,
@@ -3365,6 +3401,21 @@ impl ModelAdapter for NativeAdapter {
     }
 }
 
+fn completion_user_content(request: &CompletionRequest) -> serde_json::Value {
+    if request.images.is_empty() {
+        return serde_json::json!(request.user);
+    }
+    let mut content = vec![serde_json::json!({"type": "text", "text": request.user})];
+    for image in &request.images {
+        content.push(serde_json::json!({"type": "text", "text": image.caption}));
+        content.push(serde_json::json!({
+            "type": "image_url",
+            "image_url": {"url": format!("data:image/png;base64,{}", image.png_base64), "detail": "high"},
+        }));
+    }
+    serde_json::Value::Array(content)
+}
+
 fn apply_completion_limits(body: &mut serde_json::Value, request: &CompletionRequest) {
     if let Some(limit) = request.output_token_limit {
         body["max_tokens"] = serde_json::json!(limit);
@@ -3401,13 +3452,26 @@ fn native_chat_request_projection(
 ) -> (serde_json::Value, BTreeMap<String, String>) {
     let mut used_tool_names = HashSet::new();
     let mut provider_to_internal = BTreeMap::new();
-    let mut internal_to_provider = BTreeMap::new();
+    // Resident discovery changes the visible schemas, not historical call names.
+    // Reserve the same names even while a handler is hidden so activation does
+    // not rewrite an already-sent message prefix. Execution mapping below still
+    // includes only the tools authorized for this sampling.
+    let resident_to_provider: BTreeMap<String, String> = tool_registry::ToolHandlerId::ALL
+        .iter()
+        .enumerate()
+        .map(|(idx, handler)| {
+            let name = handler.canonical_name();
+            (name.to_owned(), provider_tool_name(name, idx, &mut used_tool_names))
+        })
+        .collect();
+    let mut internal_to_provider = resident_to_provider.clone();
     let tool_specs: Vec<serde_json::Value> = request
         .tools
         .iter()
         .enumerate()
         .map(|(idx, t)| {
-            let provider_name = provider_tool_name(&t.name, idx, &mut used_tool_names);
+            let provider_name = resident_to_provider.get(&t.name).cloned()
+                .unwrap_or_else(|| provider_tool_name(&t.name, idx, &mut used_tool_names));
             provider_to_internal.insert(provider_name.clone(), t.name.clone());
             internal_to_provider.insert(t.name.clone(), provider_name.clone());
             serde_json::json!({
@@ -3474,7 +3538,7 @@ impl ModelAdapter for ReActAdapter {
             "model": self.native.model,
             "messages": [
                 {"role": "system", "content": system},
-                {"role": "user", "content": req.user},
+                {"role": "user", "content": completion_user_content(&req)},
             ],
             "temperature": 0,
         });
@@ -4315,6 +4379,32 @@ mod tests {
             ],
         }])
     }
+    #[test]
+    fn math_structure_hints_keep_exercise_roles_and_only_use_available_evidence() {
+        let index = serde_json::from_value(serde_json::json!({
+            "version":"math_structure.v1", "header": {
+                "book_id":"discourse-book","book_version":"v1","profile_id":"technical_learning",
+                "profile_version":"technical_learning_v0","core_schema_version":"core_v0","generated_at":"1970-01-01T00:00:00.000Z"
+            }, "items": [
+                {"anchor_lid":"1.1","kind":"exercise","label":"习题6.3","evidence_lids":["1.1"],"assumptions":[],
+                 "references":[{"relation":"asks_to_prove","target_kind":"theorem","target_label":"定理5.3","scope":"local",
+                    "quote":"证明定理5.3","evidence_lids":["1.1"],"resolution":"resolved","target_lid":"1.2"}]},
+                {"anchor_lid":"1.2","kind":"theorem","label":"定理5.3","evidence_lids":["1.2","2.1"],
+                 "assumptions":[{"quote":"局部极小点","evidence_lids":["2.1"]}],"references":[]}
+            ]
+        })).unwrap();
+        let book = book_with_discourse_index().with_math_structure(Some(index));
+        let one = math_structure_hints(&book, &std::collections::BTreeSet::from(["1.1"]));
+        assert_eq!(one.len(), 1);
+        assert!(!one.join("\n").contains("asks_to_prove"));
+        let two = math_structure_hints(&book, &std::collections::BTreeSet::from(["1.1", "1.2"])).join("\n");
+        assert!(two.contains("asks_to_prove"));
+        assert!(!two.contains("局部极小点"));
+        let complete = math_structure_hints(&book, &std::collections::BTreeSet::from(["1.1", "1.2", "2.1"]));
+        assert_eq!(complete.len(), 2);
+        assert!(complete.join("\n").contains("局部极小点"));
+    }
+
     fn book_with_formula_semantics() -> Book {
         let source = "AAAAAAAAAAAABBBBBBBBBBBBBBB";
         let base = ReadOnlyBase {
@@ -5128,6 +5218,63 @@ mod tests {
     }
 
     #[test]
+    fn native_resident_history_keeps_names_when_deferred_tools_become_visible() {
+        let profile = ModelRuntimeProfile::fallback("test-model", ProviderToolProtocol::Native);
+        let names = ["book.text", "web.search", "web.fetch"];
+        let mut history = vec![Message::system("stable instructions"), Message::user("earlier request")];
+        history.push(Message {
+            role: Role::Assistant, content: None, tool_call_id: None, provider_continuation: None,
+            tool_calls: names.iter().enumerate().map(|(index, name)| ToolCall {
+                id:format!("old-{index}"), name:(*name).into(), arguments:"{}".into(),
+            }).collect(),
+        });
+        for index in 0..names.len() {
+            history.push(Message { role:Role::Tool, content:Some(format!("observed-{index}")),
+                tool_calls:vec![], tool_call_id:Some(format!("old-{index}")), provider_continuation:None });
+        }
+        let spec = |name: &str| ToolSpec { name:name.into(), description:"test capability".into(),
+            parameters:serde_json::json!({"type":"object"}) };
+        let hidden = AgentRequestPlan::for_ad_hoc(profile.clone(), &history, &[spec("tool.search")]);
+        let (before, hidden_mapping) = native_chat_request_projection("test-model", &hidden);
+        assert_eq!(hidden_mapping.len(), 1);
+        assert_eq!(before["tools"].as_array().unwrap().len(), 1);
+        for name in ["book_text", "web_search", "web_fetch"] {
+            assert!(!hidden_mapping.contains_key(name));
+        }
+        let previous_messages = before["messages"].as_array().unwrap();
+        assert_eq!(previous_messages[2]["tool_calls"][0]["function"]["name"], "book_text");
+        assert_eq!(previous_messages[2]["tool_calls"][1]["function"]["name"], "web_search");
+        assert_eq!(previous_messages[2]["tool_calls"][2]["function"]["name"], "web_fetch");
+
+        history.push(Message::user("continue with a deferred capability"));
+        for name in names {
+            let visible = AgentRequestPlan::for_ad_hoc(profile.clone(), &history, &[spec("tool.search"), spec(name)]);
+            let (after, visible_mapping) = native_chat_request_projection("test-model", &visible);
+            assert_eq!(&after["messages"].as_array().unwrap()[..previous_messages.len()], previous_messages.as_slice());
+            assert_eq!(after["tools"].as_array().unwrap().len(), 2);
+            assert_eq!(visible_mapping.len(), 2);
+            assert_eq!(visible_mapping.get(&name.replace('.', "_")), Some(&name.to_owned()));
+        }
+    }
+
+    #[test]
+    fn native_nonresident_tools_keep_collision_rules_without_renaming_resident_history() {
+        let profile = ModelRuntimeProfile::fallback("test-model", ProviderToolProtocol::Native);
+        let tools = ["custom.name", "custom_name", "book_text", "book.text"].map(|name| ToolSpec {
+            name:name.into(), description:"test capability".into(), parameters:serde_json::json!({"type":"object"}),
+        });
+        let plan = AgentRequestPlan::for_ad_hoc(profile, &[Message::user("test")], &tools);
+        let (body, mapping) = native_chat_request_projection("test-model", &plan);
+        let names: Vec<_> = body["tools"].as_array().unwrap().iter()
+            .map(|tool| tool["function"]["name"].as_str().unwrap()).collect();
+        assert_eq!(names, ["custom_name", "custom_name_2", "book_text_2", "book_text"]);
+        assert_eq!(mapping["custom_name_2"], "custom_name");
+        assert_eq!(mapping["book_text_2"], "book_text");
+        assert_eq!(mapping["book_text"], "book.text");
+        assert!(!mapping.contains_key("web_search"));
+    }
+
+    #[test]
     fn deepseek_final_answer_continuation_survives_history_reload() {
         let saved = serde_json::json!({
             "role":"Assistant", "content":"A public explanation", "tool_calls":[], "tool_call_id":null,
@@ -5612,6 +5759,90 @@ mod tests {
     }
 
     #[test]
+    fn completion_images_reach_native_and_react_wire_without_changing_text_requests() {
+        let images = vec![
+            crate::presentation_author::PreviewImage {
+                caption: "First viewport".into(),
+                png_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==".into(),
+                candidate_id: Some("candidate".into()),
+                environment_name: Some("desktop".into()),
+            },
+            crate::presentation_author::PreviewImage {
+                caption: "After scrolling".into(),
+                png_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==".into(),
+                candidate_id: Some("candidate".into()),
+                environment_name: Some("desktop".into()),
+            },
+        ];
+        for mode in [ProviderMode::Native, ProviderMode::ReAct] {
+            for structured in [false, true] {
+                for with_images in [false, true] {
+                    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+                    listener.set_nonblocking(true).unwrap();
+                    let addr = listener.local_addr().unwrap();
+                    let handle = std::thread::spawn(move || {
+                        let mut stream = accept_with_timeout(&listener);
+                        let request = read_http_request(&mut stream);
+                        let body: serde_json::Value = serde_json::from_str(request.split_once("\r\n\r\n").unwrap().1).unwrap();
+                        let content = serde_json::json!({"choices":[{"message":{"content":"{\"sufficient\":true,\"answer\":\"ok\",\"citations\":[],\"model_supplement\":[]}"}}]}).to_string();
+                        let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", content.len(), content);
+                        stream.write_all(response.as_bytes()).unwrap();
+                        body
+                    });
+                    let adapter = ProviderRegistry::adapter_from_config(ProviderConfig {
+                        mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-v4-flash".into(),
+                    });
+                    let request = CompletionRequest {
+                        output_token_limit: Some(32_768), reasoning_effort: None,
+                        system: "Review the actual page. Return JSON.".into(), user: "same review packet".into(),
+                        images: if with_images { images.clone() } else { Vec::new() },
+                    };
+                    let recorded = serde_json::to_value(&request).unwrap();
+                    assert_eq!(recorded["images"].as_array().unwrap().len(), if with_images { 2 } else { 0 });
+                    if with_images {
+                        assert_eq!(recorded["images"][0]["png_base64"], images[0].png_base64);
+                    }
+                    let mut observed_request = None;
+                    let mut observer = |delta| {
+                        if let provider_stream::ModelDelta::Request(body) = delta {
+                            observed_request = Some(body);
+                        }
+                    };
+                    if structured {
+                        assert_eq!(adapter.complete_structured_observed(request, &mut observer).unwrap()["answer"], "ok");
+                    } else {
+                        assert_eq!(adapter.complete_observed(request, &mut observer).unwrap().answer.as_deref(), Some("ok"));
+                    }
+                    let body = handle.join().unwrap();
+                    assert_eq!(observed_request.unwrap().as_ref(), &body);
+                    assert_eq!(body["model"], "deepseek-v4-flash");
+                    assert_eq!(body["max_tokens"], 32_768);
+                    assert_eq!(body["stream"], true);
+                    assert_eq!(body["stream_options"]["include_usage"], true);
+                    assert!(body.get("tools").is_none());
+                    assert_eq!(body["messages"].as_array().unwrap().len(), 2);
+                    if structured || mode == ProviderMode::Native {
+                        assert_eq!(body["response_format"]["type"], "json_object");
+                    } else {
+                        assert!(body.get("response_format").is_none());
+                    }
+                    if with_images {
+                        let parts = body["messages"][1]["content"].as_array().unwrap();
+                        assert_eq!(parts.len(), 5);
+                        assert_eq!(parts[0], serde_json::json!({"type":"text", "text":"same review packet"}));
+                        for (index, image) in images.iter().enumerate() {
+                            assert_eq!(parts[1 + index * 2], serde_json::json!({"type":"text", "text":image.caption}));
+                            assert_eq!(parts[2 + index * 2], serde_json::json!({"type":"image_url", "image_url":{"url":format!("data:image/png;base64,{}", image.png_base64), "detail":"high"}}));
+                        }
+                    } else {
+                        assert_eq!(body["messages"][1]["content"], "same review packet");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn native_adapter_requests_and_parses_structured_json() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
@@ -5639,6 +5870,7 @@ mod tests {
         });
         let output = adapter
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "structured system".into(),
@@ -5743,6 +5975,7 @@ mod tests {
         });
         let output = adapter
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: Some(16_384),
                 reasoning_effort: Some("low".into()),
                 system: "structured system".into(),
@@ -5779,6 +6012,7 @@ mod tests {
         let started = Instant::now();
         let error = adapter
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "structured system".into(),
@@ -5826,6 +6060,7 @@ mod tests {
         });
         let out = adapter
             .complete(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "system".into(),
@@ -5868,6 +6103,7 @@ mod tests {
         });
         let err = adapter
             .complete(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: "system".into(),

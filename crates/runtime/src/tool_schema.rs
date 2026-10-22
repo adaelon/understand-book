@@ -132,6 +132,9 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 {"if":{"required":["assessment"],"properties":{"assessment":{"type":"object"}}},"then":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["submit"]}}}}}
             ]);
         }
+        "presentation.interact" => {
+            operations(schema, "operation", &[("observe", &["reference"], &[]), ("act", &["reference", "based_on", "action"], &[])]);
+        }
         "presentation.author" => {
             operations(
                 schema,
@@ -162,6 +165,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                             "title",
                             "readable_content",
                             "state_contract",
+                            "action_contract",
                             "initial_state",
                         ],
                     ),
@@ -174,6 +178,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                             "based_on",
                             "new_object",
                             "state_contract",
+                            "action_contract",
                             "asset_refs",
                             "libraries",
                             "source_ref_ids",
@@ -202,6 +207,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                     ("key", &["key"], &["selector"]),
                     ("seek", &["semantic_state", "transition_progress"], &[]),
                     ("scroll", &["y"], &[]),
+                    ("interact", &["action"], &[]),
                 ],
             );
             schema["properties"]["source_ref_ids"]["description"]=json!("write: list every source ref used in HTML or readable_content. patch preserves existing source bindings; use write to change them.");

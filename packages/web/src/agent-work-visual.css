@@ -1,0 +1,10 @@
+html, body, #app { width: 100%; height: 100%; margin: 0; }
+body { overflow: hidden; background: var(--canvas-parchment); }
+.work-preview { display: flex; flex-direction: column; width: min(100%, 760px); height: 100%; margin: auto; background: var(--canvas); border-inline: 1px solid var(--line); }
+.work-preview > .right-rail { flex: 1; min-height: 0; width: 100%; border: 0; }
+.work-preview-controls { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.work-preview-controls strong { margin-right: auto; font-weight: 500; }
+.work-preview-controls button { min-height: 28px; padding: 3px 8px; font-size: 12px; }
+.work-preview-controls a, .work-preview-mobile > a { color: var(--brand-green-deep); font-size: 12px; }
+.work-preview-mobile { display: flex; height: 100%; flex-direction: column; align-items: center; gap: 12px; padding: 12px; box-sizing: border-box; }
+.work-preview-mobile iframe { width: 390px; flex: 1; min-height: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); }

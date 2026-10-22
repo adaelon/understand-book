@@ -7,6 +7,7 @@ import { computed, h, render, nextTick, onBeforeUnmount, ref, shallowRef, watch 
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.mjs?url";
 import { TextLayerBuilder } from "pdfjs-dist/web/pdf_viewer.mjs";
+import { appendPdfOcrText } from "../pdf-ocr-text-layer";
 import {
   type MemoryRecord,
   type PaperViewportPosition,
@@ -1022,6 +1023,11 @@ async function renderTextLayer(
       images: null as never,
       textContentParams: { includeMarkedContent: true, disableNormalization: true },
     });
+    if (token === renderToken && renderIdentities.get(pageIndex) === identity) {
+      const ocr = props.sourceMap?.pages.find(info => info.pageIndex === pageIndex)?.ocr_lines;
+      const content = layer.querySelector<HTMLElement>('.textLayer');
+      if (ocr?.length && content) appendPdfOcrText(content, ocr, viewport);
+    }
   } catch (error) {
     if (textLayerTasks.get(pageIndex) === textLayer) {
       textLayerTasks.delete(pageIndex);

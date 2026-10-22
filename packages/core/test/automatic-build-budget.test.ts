@@ -16,7 +16,7 @@ import {
 } from "../src/automatic-build-budget";
 import { resolveContentProfile } from "../src/content-profile";
 import { automaticBuildExtractionPolicy } from "../src/semantic-artifact";
-import { buildWorkUnitCost, createWorkUnitDescriptor, type WorkUnitDescriptorV2 } from "../src/stage-work-unit";
+import { buildWorkUnitCost, createWorkUnitDescriptor, workUnitPlanDigest, type WorkUnitDescriptorV2 } from "../src/stage-work-unit";
 import { automaticBuildNext, automaticBuildPlan } from "../../../skills/build/automatic-build";
 import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
 
@@ -57,6 +57,25 @@ const generousBudget: AutomaticBuildBudgetLimitsV1 = {
 };
 
 describe("automatic build preflight budget and cost scheduler", () => {
+  it("reuses a descriptor digest while recomputing live pending work, budget and available slots", () => {
+    const units = Array.from({ length: 10 }, (_, index) => unit(`cached-${index}`, 100 + index, 1, 0));
+    const digest = workUnitPlanDigest(units);
+    const input = { target_ref: target, stage: "pass1" as const, work_units: units,
+      quality_profile: "full" as const, requested_workers: 8, budget: { ...generousBudget, max_tasks: 2 } };
+    for (const live of [
+      { pending_ids: units.map(unit => unit.work_unit_id), available_agent_slots: 8 },
+      { pending_ids: [units.at(-1)!.work_unit_id], available_agent_slots: 1 },
+    ]) {
+      const fresh = buildAutomaticBuildPreflight({ ...input, ...live });
+      const cached = buildAutomaticBuildPreflight({ ...input, ...live, descriptor_plan_digest: digest });
+      expect(cached).toEqual(fresh);
+      expect(cached.descriptor_plan_digest).toBe(digest);
+      expect(cached.cost_scope.remaining.work_units).toBe(live.pending_ids.length);
+      expect(cached.budget.status).toBe(live.pending_ids.length > 2 ? "exceeded" : "within_budget");
+      expect(cached.dispatch_plan.selected_dispatch_ids.length).toBeLessThanOrEqual(live.available_agent_slots);
+    }
+  });
+
   it("uses remaining work for execution gates while preserving lifetime and scheduled cost", () => {
     const units = Array.from({ length: 10 }, (_, index) => unit(`unit-${index}`, 100 + index, 1, 0));
     const remaining = units.at(-1)!;
@@ -284,7 +303,7 @@ describe("automatic build preflight budget and cost scheduler", () => {
       requested_workers: 3,
       available_agent_slots: 3,
       max_workers: 2,
-      hard_worker_limit: 3,
+      hard_worker_limit: 8,
       concurrency_release: "ap14_safe_concurrency.v1",
     });
     expect(partialHistory.policy_fingerprint).toEqual(policy);

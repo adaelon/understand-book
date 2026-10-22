@@ -43,6 +43,7 @@ impl Replay {
 impl ModelAdapter for Replay {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!("local replay has no model helpers") }
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
         if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
         unreachable!("local replay has no other model helpers")
     }
@@ -222,6 +223,62 @@ fn tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis() {
     let stored_fact=store.teaching_event(&fact).unwrap();
     assert_ne!(stored_fact.binding.session_revision,delivery.binding.session_revision,"mode changes do not erase earlier help");
     assert_eq!(store.teaching_event(&evidence.assistance_refs[0]).unwrap().payload["text"],output["select"]["move"]["hint"]);
+    assert!(store.learner_projection(&state.workspace.book.base.book_id).unwrap().0.unwrap().rows.is_empty());
+}
+
+#[test]
+fn om3_assisted_expression_carries_original_help_into_the_new_question_and_review() {
+    let (_root, mut state) = super::teaching_design_tests::fixture();
+    let first = prepare_agent_chat(&mut state, r#"{"message":"请解释为什么停车时间也在分母里。"}"#, "om3").unwrap();
+    let design = super::teaching_design_tests::design_request("om3-initial", None);
+    let mut support = super::teaching_design_tests::select_request("om3-show-time", "", false);
+    support["move"]["delivery_text"] = json!("同一行程从出发计时到到达，行驶 10 分钟、停车 5 分钟，总时间就是 15 分钟。停车虽然不增加距离，仍在这个时间区间里。");
+    let first_report = super::tutor_building_blocks_tests::om3_replay(&mut state, first, design, support, "assisted-setup");
+    let delivery = first_report["delivery"]["event_id"].as_str().unwrap().to_owned();
+    let design_ref = first_report["accepted_design"]["event_id"].as_str().unwrap().to_owned();
+    let displayed = post(&mut state, "/tutor/display", &json!({"delivery_ref":delivery}).to_string());
+    assert_eq!(displayed.status, 200, "{}", displayed.body);
+    let words = "看了例子我明白：总时间包括停车，所以这里是 15 分钟。";
+    let expression = prepare_agent_chat(&mut state, &json!({"message":words}).to_string(), "om3").unwrap();
+    let fact = format!("usage:{}:user:{}", expression.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap(), expression.turn_ref.turn_id);
+    let evidence = teaching::step(&state.private_context(), &expression.turn_ref, json!({
+        "operation":"evidence","nature":"hypothesis","operation_id":"om3-assisted",
+        "target":super::teaching_design_tests::target(),"design_ref":design_ref,"block_refs":["total-time"],
+        "fact_refs":[fact],"interpretation":"用户看过行程例子后复述总时间包括停车；独立应用未知。",
+        "teaching_implication":"沿用原行程连接新条件；仅当当前目标需要且请求允许时检验未展示的应用。"
+    }), &[], &[super::teaching_design_tests::range()]).unwrap();
+    super::tutor_loop_tests::finish(&mut state, &expression.turn_ref, &super::tutor_loop_tests::outcome(None));
+    let original = state.user.learning_store().unwrap().evidence(evidence["evidence_ref"].as_str().unwrap()).unwrap();
+    let request = "继续，沿用上次例子，直接解释如果停车更久会怎样。";
+    let next = prepare_agent_chat(&mut state, &json!({"message":request}).to_string(), "om3").unwrap();
+    let continuity = &next.tutor.as_ref().unwrap()["learner_context"]["learning_opportunity"]["continuity"];
+    assert!(continuity["previous_work"].as_array().unwrap().iter().any(|work| work["fact_refs"].as_array()
+        .is_some_and(|refs| refs.contains(&json!(fact)))));
+    let mut revised = super::teaching_design_tests::design_request("om3-new-condition", Some(&design_ref));
+    revised["design"]["basis_refs"] = json!([evidence["evidence_ref"]]);
+    revised["design"]["revision_reason"] = json!("已有受助表达可连接新条件；当前要求沿用例子直接讲解，暂不邀请独立应用。");
+    let mut selection = super::teaching_design_tests::select_request("om3-longer-stop", "", false);
+    selection["move"]["kind"] = json!("explain");
+    selection["move"]["interaction_intent"] = json!("direct_explanation");
+    selection["move"]["intent_origin"] = json!("current_request");
+    selection["move"]["intent_quote"] = json!("沿用上次例子，直接解释如果停车更久会怎样");
+    selection["move"]["interpretation_refs"] = json!([evidence["evidence_ref"]]);
+    selection["move"]["participation"] = json!({"choice":"conclude","reason":"沿用受助例子直接回应新条件；独立应用仍未知。"});
+    selection["move"]["delivery_text"] = json!("沿用刚才的行程，路程与行驶时间保持不变。停车从 5 分钟增加到 8 分钟，总时间就从 15 分钟增加到 18 分钟。平均速度用同一路程除以总时间；分子不变、正的分母增大，所以平均速度降低。");
+    let report = super::tutor_building_blocks_tests::om3_replay(&mut state, next, revised, selection, "assisted-next-question");
+    let review = &report["review_input"];
+    assert!(report["main_input"].to_string().contains(evidence["evidence_ref"].as_str().unwrap()),
+        "the original evidence reference must also reach the actual main-model request");
+    assert!(review["learner_view"]["learning_opportunity"]["continuity"]["teaching_implications"].as_array().unwrap()
+        .iter().any(|item| item["evidence_ref"] == evidence["evidence_ref"]));
+    assert!(review["learner_grounding"]["expressions"].as_array().unwrap()
+        .iter().any(|item| item["fact_ref"] == fact && item["text"] == words));
+    assert!(review["learner_grounding"]["delivered_support"].as_array().unwrap()
+        .iter().any(|item| item["delivery_ref"] == delivery && item["answer"] == first_report["delivery"]["payload"]["answer"]));
+    assert!(report["delivery"]["payload"]["move"]["response_expectation"].is_null());
+    let store = state.user.learning_store().unwrap();
+    assert_eq!(serde_json::to_value(store.evidence(evidence["evidence_ref"].as_str().unwrap()).unwrap()).unwrap(),
+        serde_json::to_value(original).unwrap(), "new support preserves the original interpretation and help conditions");
     assert!(store.learner_projection(&state.workspace.book.base.book_id).unwrap().0.unwrap().rows.is_empty());
 }
 

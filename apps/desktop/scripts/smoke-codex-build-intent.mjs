@@ -12,7 +12,7 @@ const repoRoot = path.resolve(desktopRoot, "..", "..");
 const sidecar = process.env.UNDERSTAND_BOOK_BUILD_EXE
   ?? path.join(desktopRoot, "src-tauri", "binaries", "understand-book-build-x86_64-pc-windows-msvc.exe");
 const desktop = process.env.UNDERSTAND_BOOK_DESKTOP_EXE
-  ?? path.join(repoRoot, "target", "debug", "UnderstandBook.exe");
+  ?? path.join(desktopRoot, "maintenance-host", "target", "debug", "understand-book-maintenance.exe");
 const fixture = JSON.parse(readFileSync(
   path.join(repoRoot, "packages", "core", "test", "fixtures", "build-intent.v1.golden.json"),
   "utf8",

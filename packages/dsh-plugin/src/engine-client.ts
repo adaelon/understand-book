@@ -10,7 +10,7 @@ export interface EngineConfig {
 
 function start(config: EngineConfig, args: string[]) {
   const env: NodeJS.ProcessEnv = {};
-  for (const key of ["SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "PATH", "PATHEXT", "UNDERSTAND_BOOK_EMBEDDING_CONFIG"]) {
+  for (const key of ["SystemRoot", "WINDIR", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "PATH", "PATHEXT", "UNDERSTAND_BOOK_EMBEDDING_CONFIG", "UNDERSTAND_BOOK_LIBREOFFICE"]) {
     if (process.env[key] !== undefined) env[key] = process.env[key];
   }
   env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = config.driverRoot;
@@ -50,8 +50,18 @@ export async function engineCommand(config: EngineConfig, args: string[], reques
 /** Video builds remain in the installed Engine so native media tools and Python assets resolve there. */
 export async function videoOperatorCommand(config: EngineConfig, request: unknown,
   onProgress: (progress: unknown) => Promise<void>, signal: AbortSignal): Promise<any> {
+  return mediaOperatorCommand(config, 'video', request, onProgress, signal);
+}
+
+export async function musicOperatorCommand(config: EngineConfig, request: unknown,
+  onProgress: (progress: unknown) => Promise<void>, signal: AbortSignal): Promise<any> {
+  return mediaOperatorCommand(config, 'music', request, onProgress, signal);
+}
+
+async function mediaOperatorCommand(config: EngineConfig, kind: 'video' | 'music', request: unknown,
+  onProgress: (progress: unknown) => Promise<void>, signal: AbortSignal): Promise<any> {
   if (signal.aborted) throw new Error('build_cancelled');
-  const child = start(config, ['video-operator']);
+  const child = start(config, [`${kind}-operator`]);
   const exit = closed(child);
   let buffer = '', result: unknown, failure: Error | undefined;
   let updates = Promise.resolve();
@@ -66,7 +76,7 @@ export async function videoOperatorCommand(config: EngineConfig, request: unknow
       const end = buffer.indexOf('\n'); if (end < 0) break;
       const line = buffer.slice(0,end); buffer = buffer.slice(end+1);
       let event: any; try { event = JSON.parse(line); } catch { continue; }
-      if (event.version !== 'operator_video_event.v1') continue;
+      if (event.version !== `operator_${kind}_event.v1`) continue;
       if (event.progress) updates = updates.then(async()=>{
         await onProgress(event.progress);
         if (!child.stdin.destroyed) child.stdin.write(JSON.stringify({ack:event.sequence})+'\n');
@@ -82,7 +92,7 @@ export async function videoOperatorCommand(config: EngineConfig, request: unknow
     await exit; await updates;
     if (signal.aborted) throw new Error('build_cancelled');
     if (failure) throw failure;
-    if (child.exitCode !== 0 || !result) throw new Error('operator_video_engine_failed');
+    if (child.exitCode !== 0 || !result) throw new Error(`operator_${kind}_engine_failed`);
     return result;
   } finally { signal.removeEventListener('abort',cancel); }
 }

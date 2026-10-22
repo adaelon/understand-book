@@ -213,7 +213,7 @@ it('offers native playback, restores position by media identity and keeps questi
   expect(video.attributes('src')).toBe('/api/videos/lecture/1/media');
   expect(video.element.currentTime).toBe(4); expect(video.element.playbackRate).toBe(1.5);
   expect(wrapper.get('textarea').attributes('disabled')).toBeDefined();
-  expect(wrapper.text()).toContain('全片英文转写与首个发布尚未就绪');
+  expect(wrapper.text()).toContain('视频转写与首个发布尚未就绪');
   video.element.currentTime = 7;
   window.dispatchEvent(new Event('pagehide'));
   expect(JSON.parse(localStorage.getItem('video-position:alice:lecture:1')!).time).toBe(7);

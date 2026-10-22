@@ -1113,6 +1113,7 @@ fn call_generator(
     loop {
         let value = adapter
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: Some(compaction_output_token_limit(profile)),
                 reasoning_effort: profile.matched_model.starts_with("deepseek-").then(|| "low".into()),
                 system: system.to_string(),

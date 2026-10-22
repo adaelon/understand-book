@@ -2,6 +2,9 @@ use crate::agent_run::AppStatePort;
 use super::*;
 use runtime::presentation::*;
 
+#[path = "presentation_interact_tests.rs"]
+mod om4;
+
 #[path = "presentation_ex13_tests.rs"]
 mod ex13;
 
@@ -18,6 +21,69 @@ fn fixture() -> (tempfile::TempDir, AppState, AgentTurnRef) {
     (root, state, turn)
 }
 
+fn learning_artifacts_with_upload_storage(condition: &str) {
+    let (root, mut state, _) = fixture();
+    let service_root = root.path().join("service");
+    let mut users = crate::user_registry::UserRegistry::open(&service_root).unwrap();
+    users.create_user("A").unwrap();
+    let control = crate::control_store::ControlStore::open(users.writer()).unwrap();
+    let now = crate::multi_user_host::now();
+    let upload_capacity = 16 * 1024;
+    if condition != "missing" {
+        let end = if condition == "expired" { now - 1 } else { now + 1000 };
+        control.connection.execute(
+            "INSERT INTO allowance_periods(period_id,user_id,starts_at,expires_at) VALUES('p','A',?,?)",
+            rusqlite::params![now - 1000, end],
+        ).unwrap();
+        crate::cloud_storage::tests::seed(&control.connection, "A", "p", upload_capacity, upload_capacity);
+        if condition == "full" {
+            let path = service_root.join("original.md");
+            std::fs::write(&path, vec![b'x'; upload_capacity as usize]).unwrap();
+            crate::cloud_storage::reserve(&control.connection, "A", "workspace", "original", "original.md", &path, upload_capacity, now).unwrap();
+            crate::cloud_storage::uploaded(&control.connection, "A", "original", now).unwrap();
+        }
+    }
+    let paths = crate::user_storage_paths::UserStoragePaths::for_service(&service_root, "A").unwrap();
+    state.user = crate::user_runtime::UserRuntime::open_service(&paths, users.writer(), "now").unwrap();
+    state.workspace.selected_chat = None;
+    assert_eq!(route_agent_new(&mut state, "now").status, 200);
+    let turn = next_turn(&mut state);
+    let candidate = create(&mut state, &turn, None, "Saved learning page");
+    let reference = persist(&mut state, &turn, &candidate);
+    finish(&mut state, &turn, &reference).unwrap();
+    let scene = PresentationState { observation: None, values: json!({"count":2}), visible_step: None,
+        observed_result: "Two pieces".into(), source_ref_ids: vec!["source-rp2".into()] };
+    let receipt = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene.clone()).unwrap();
+
+    // Reopen the real service user's files and read through the public presentation route.
+    state.user = crate::user_runtime::UserRuntime::open_service(&paths, users.writer(), "later").unwrap();
+    assert_eq!(state.private_context().read_presentation_state(&receipt).unwrap().state, scene);
+    let response = post(&mut state, "/agent/presentation.read", &json!({
+        "session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,
+    }).to_string());
+    assert_eq!(response.status, 200, "{}", response.body);
+    assert_eq!(serde_json::from_str::<Value>(&response.body).unwrap()["title"], "Saved learning page");
+    let space = crate::cloud_storage::summary(&control.connection, "A", now).unwrap();
+    assert_eq!(space["used_bytes"], if condition == "full" { upload_capacity } else { 0 });
+    assert_eq!(space["reserved_bytes"], 0);
+    assert_eq!(space["can_upload"], false);
+}
+
+#[test]
+fn learning_artifacts_save_without_a_storage_plan() {
+    learning_artifacts_with_upload_storage("missing");
+}
+
+#[test]
+fn learning_artifacts_save_after_storage_plan_expiry() {
+    learning_artifacts_with_upload_storage("expired");
+}
+
+#[test]
+fn learning_artifacts_save_when_upload_space_is_full() {
+    learning_artifacts_with_upload_storage("full");
+}
+
 #[test]
 fn rn1_presentation_notes_bind_saved_scene_across_both_command_paths() {
     let (root, mut state, turn) = fixture();
@@ -26,7 +92,7 @@ fn rn1_presentation_notes_bind_saved_scene_across_both_command_paths() {
     let candidate = create(&mut state, &turn, None, "Original scene");
     let reference = persist(&mut state, &turn, &candidate);
     finish(&mut state, &turn, &reference).unwrap();
-    let scene = |count| PresentationState { values: json!({"count":count}), visible_step: Some("step-2".into()), observed_result: "Two pieces".into(), source_ref_ids: vec!["source-rp2".into()] };
+    let scene = |count| PresentationState { observation: None, values: json!({"count":count}), visible_step: Some("step-2".into()), observed_result: "Two pieces".into(), source_ref_ids: vec!["source-rp2".into()] };
     let first = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene(2)).unwrap();
     let second = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene(3)).unwrap();
     let request = |receipt: &PresentationFollowUp| json!({"type":"note","content":"我的发现","note":{"association":{"kind":"presentation","receipt":receipt}}});
@@ -131,7 +197,7 @@ fn rn2_retained_version_state_resources_sources_and_current_chat_survive_delete_
     let reference = persist(&mut state, &turn, &second);
     assert_eq!(reference.revision, 2);
     finish(&mut state, &turn, &reference).unwrap();
-    let scene = |count| PresentationState { values: json!({"count":count}), visible_step: Some("explain".into()), observed_result: "Two of three".into(), source_ref_ids: vec!["source-rp2".into()] };
+    let scene = |count| PresentationState { observation: None, values: json!({"count":count}), visible_step: Some("explain".into()), observed_result: "Two of three".into(), source_ref_ids: vec!["source-rp2".into()] };
     let receipt = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene(2)).unwrap();
     let save = |text| json!({"type":"note","content":text,"note":{"association":{"kind":"presentation","receipt":receipt}}});
     let a = workspace_client::memory(&mut state.user, &state.workspace, "memory/save", &save("First thought"), "first").unwrap();
@@ -241,7 +307,7 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
     let source = state.workspace.book
         .resolve_source(&evidence_range, "zh-CN", None)
         .unwrap();
-    PresentationContent { teaching_binding: None,
+    PresentationContent { action_contract: vec![], teaching_binding: None,
         method_refs: None, method_observations: Default::default(),
         animation_assets: Default::default(),
         title: title.into(),
@@ -251,7 +317,7 @@ fn content(state: &AppState, title: &str) -> PresentationContent {
         )]),
         entrypoint: "index.html".into(),
         readable_content: format!("{title}: two of three pieces of evidence"),
-        source_bindings: vec![SourceBinding { publication_id: None, source_revision: None,
+        source_bindings: vec![SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None,
             source_ref_id: "source-rp2".into(),
             book_id: state.workspace.book.base.book_id.clone(),
@@ -283,7 +349,7 @@ pub(super) fn persist(
     state.private_context().persist_presentation_candidate(&turn.session_id, &turn.turn_id, &candidate.candidate_id)
         .unwrap()
 }
-fn outcome(reference: &PresentationRef) -> OuterOutcome {
+pub(super) fn outcome(reference: &PresentationRef) -> OuterOutcome {
     OuterOutcome {
         teaching_delivery_move_refs: vec![],
         answer: Some("Recall example".into()),
@@ -375,7 +441,7 @@ fn cross_book_presentation_sources_survive_delivery_note_reuse_and_learning() {
     let public: Value = serde_json::from_str(&public.body).unwrap();
     assert_eq!(public["sources"][0]["label"], sources[0].label_snapshot);
     let receipt = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference,
-        PresentationState {values:json!({"count":2}),visible_step:None,observed_result:"补讲".into(),source_ref_ids:vec!["source-rp2".into()]}).unwrap();
+        PresentationState {observation:None,values:json!({"count":2}),visible_step:None,observed_result:"补讲".into(),source_ref_ids:vec!["source-rp2".into()]}).unwrap();
     let note = workspace_client::memory(&mut state.user, &state.workspace, "memory/save",
         &json!({"type":"note","content":"借用时仍有所有者","note":{"association":{"kind":"presentation","receipt":receipt}}}), "saved").unwrap();
     assert_eq!(note["record"]["note"]["source_bindings"], json!(sources));
@@ -1031,6 +1097,98 @@ fn save_scene(
 }
 
 #[test]
+fn om1_semantic_scene_survives_storage_reopen_and_exact_follow_up() {
+    let (_root, mut state, turn) = fixture();
+    let candidate = create(&mut state, &turn, None, "速度对照");
+    let reference = persist(&mut state, &turn, &candidate);
+    finish(&mut state, &turn, &reference).unwrap();
+    let pending = json!({
+        "values":{"controls":[{"key":"speed","type":"number","value":"2"}],
+            "page":{"input_speed_b_m_s":2,"applied_speed_b_m_s":1,"time_s":10,"phase":"awaiting_apply"}},
+        "visible_step":"awaiting_apply","observed_result":"画面：10 秒，A 走 10 米，B 走 10 米。","source_ref_ids":[],
+        "observation":{"summary":"B 的输入为 2 m/s；画面仍按 1 m/s 显示，等待应用。",
+            "state":{"speed_b_m_s":2,"time_s":10,"phase":"awaiting_apply"},
+            "rendered":{"speed_b_m_s":1,"time_s":10,"distance_a_m":10,"distance_b_m":10}}
+    });
+    let save = |state: &mut AppState, scene: &Value| -> PresentationFollowUp {
+        let reply = post(state, "/agent/presentation.state.save", &json!({
+            "session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,"state":scene
+        }).to_string());
+        assert_eq!(reply.status, 200, "{}", reply.body);
+        serde_json::from_str(&reply.body).unwrap()
+    };
+    let receipt = save(&mut state, &pending);
+    let mut reopened = state_named("om1-reopened");
+    reopened.user.history_path = state.user.history_path.clone();
+    reopened.user.agent_history = load_agent_history(&reopened.user.history_path).unwrap();
+    let selected = route_agent_history_select(&mut reopened, &json!({"session_id":turn.session_id}).to_string());
+    assert_eq!(selected.status, 200, "{}", selected.body);
+    let request = json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference});
+    let read = post(&mut reopened, "/agent/presentation.read", &request.to_string());
+    assert_eq!(read.status, 200, "{}", read.body);
+    let restored: Value = serde_json::from_str(&read.body).unwrap();
+    assert_eq!(restored["restored_state"], pending);
+    assert_eq!(restored["restored_state_revision"], receipt.state_revision);
+
+    let mut applied = pending.clone();
+    applied["values"]["page"]["applied_speed_b_m_s"] = json!(2);
+    applied["values"]["page"]["phase"] = json!("ready");
+    applied["visible_step"] = json!("ready");
+    applied["observed_result"] = json!("画面：10 秒，A 走 10 米，B 走 20 米。");
+    applied["observation"]["summary"] = json!("B 的 2 m/s 输入已应用，10 秒走 20 米。");
+    applied["observation"]["state"]["phase"] = json!("ready");
+    applied["observation"]["rendered"]["speed_b_m_s"] = json!(2);
+    applied["observation"]["rendered"]["distance_b_m"] = json!(20);
+    let later = save(&mut reopened, &applied);
+    assert_eq!(later.state_revision, receipt.state_revision + 1);
+    let context = presentation_api::follow_up_context(&reopened.private_context(), &receipt).unwrap();
+    let exact: Value = serde_json::from_str(context.lines().last().unwrap()).unwrap();
+    assert_eq!(exact["state"], pending);
+    assert_eq!(exact["receipt"], json!(receipt));
+    assert_eq!(json!(reopened.private_context().latest_presentation_state(&turn.session_id, &reference).unwrap().unwrap().state), applied);
+
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    reopened.services.adapter = Box::new(ChatRecordingAdapter { seen_messages: seen.clone() });
+    let response = post(&mut reopened, "/agent/chat",
+        &json!({"message":"为什么没有变","presentation_follow_up":receipt}).to_string());
+    assert_eq!(response.status, 200, "{}", response.body);
+    let requests = seen.lock().unwrap();
+    let user = requests[0].iter().rev().find(|message| message.role == runtime::Role::User)
+        .unwrap().content.as_ref().unwrap();
+    assert!(user.contains(&pending["observation"].to_string()), "{user}");
+    assert!(user.contains(pending["observed_result"].as_str().unwrap()), "{user}");
+    assert!(user.contains(&receipt.saved_state_ref), "{user}");
+    assert!(!user.contains(&later.saved_state_ref), "{user}");
+    assert!(!user.contains(applied["observation"]["summary"].as_str().unwrap()), "{user}");
+}
+
+#[test]
+fn om1_missing_observation_replaces_latest_semantics_and_immediate_pages_omit_rendered() {
+    let (_root, mut state, turn) = fixture();
+    let candidate = create(&mut state, &turn, None, "即时对照");
+    let reference = persist(&mut state, &turn, &candidate);
+    finish(&mut state, &turn, &reference).unwrap();
+    let mut scene: PresentationState = serde_json::from_value(json!({
+        "values":{"page":{"speed":2}},"visible_step":null,"observed_result":"B 走 20 米","source_ref_ids":[],
+        "observation":{"summary":"B 在 10 秒内走 20 米","state":{"speed_b_m_s":2,"distance_b_m":20}}
+    })).unwrap();
+    assert!(serde_json::to_value(&scene).unwrap()["observation"].get("rendered").is_none());
+    let original = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene.clone()).unwrap();
+    scene.observation = None;
+    scene.values = json!({"page":null,"controls":[{"key":"speed","type":"number","value":"3"}]});
+    scene.observed_result = "B 走 30 米".into();
+    let saved = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene.clone()).unwrap();
+    let latest = state.private_context().latest_presentation_state(&turn.session_id, &reference).unwrap().unwrap();
+    assert_eq!(latest.receipt, saved);
+    assert_eq!(latest.state, scene);
+    let serialized = serde_json::to_value(&latest.state).unwrap();
+    assert!(serialized.get("observation").is_none());
+    // Historical snapshots without this optional field still deserialize through the same type.
+    assert_eq!(serde_json::from_value::<PresentationState>(serialized).unwrap(), scene);
+    assert!(state.private_context().read_presentation_state(&original).unwrap().state.observation.is_some());
+}
+
+#[test]
 fn presentation_rp6_reopens_exact_version_and_requested_snapshot() {
     let (_root, mut state, turn) = fixture();
     let candidate = create(&mut state, &turn, None, "Original");
@@ -1093,6 +1251,7 @@ fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
             &first.turn_id,
             &reference,
             PresentationState {
+                observation: None,
                 values: json!({"page":{"count":1},"controls":[]}),
                 visible_step: None,
                 observed_result: "Found one piece".into(),
@@ -1128,6 +1287,7 @@ fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
             .unwrap();
         assert_eq!(read.body["title"], "Original");
         let write = port.author_presentation(AuthorRequest::Write {
+                action_contract: vec![],
             teaching_binding: None,
             method_refs: None,
             new_object: false,
@@ -1153,7 +1313,7 @@ fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
             )
             .unwrap();
         assert_eq!(
-            preview.body["status"], "preview_ready_for_inspection",
+            preview.body["status"], "preview_environment_recorded",
             "{}",
             preview.body
         );
@@ -1161,6 +1321,7 @@ fn presentation_rp6_edit_rehearses_inherited_state_and_delivers_new_revision() {
             .as_str()
             .unwrap()
             .contains("Found 1"));
+        super::presentation_author_tests::preview_touch_environments(&mut port,&candidate_id,vec![]);
         updated = port
             .author_presentation(AuthorRequest::Deliver { candidate_id }, &[], &[], &cancel)
             .unwrap()
@@ -1202,6 +1363,7 @@ fn presentation_rp6_author_reads_old_code_and_inherits_only_compatible_frozen_pa
     let reference = persist(&mut state, &first, &original);
     finish(&mut state, &first, &reference).unwrap();
     let scene = |count| PresentationState {
+        observation: None,
         values: json!({"page":{"count":count,"unit":9,"mode":7,"shape":{"old":true}},"controls":[]}),
         visible_step: Some("explain".into()),
         observed_result: "Recall experiment".into(),
@@ -1276,6 +1438,7 @@ fn presentation_rp6_author_reads_old_code_and_inherits_only_compatible_frozen_pa
         }
         assert_eq!(restored, draft.content_files["details.txt"]);
         let written = port.author_presentation(AuthorRequest::Write {
+                action_contract: vec![],
             teaching_binding: None,
             method_refs: None,
             new_object: false,

@@ -14,6 +14,7 @@ import {
   readAutomaticBuildRetryBoundary,
   readAutomaticBuildCandidateRetryFeedback,
   readAutomaticBuildAttemptRecord,
+  readAutomaticBuildPendingFailures,
   readAutomaticBuildAttemptSnapshot,
   recordAutomaticBuildRetryRecovery,
   recordAutomaticBuildAttemptEvent,
@@ -79,6 +80,30 @@ function exhaustPolicyScope(
 }
 
 describe("automatic build per-task attempt store", () => {
+  it("finds pending failures in native and legacy stores without dropping encoded task identities", () => {
+    const { target } = targetFixture();
+    const legacyFile = path.join(target.workspace_dir, ".build", "automatic-build", "attempts.json");
+    mkdirSync(path.dirname(legacyFile), { recursive: true });
+    writeFileSync(legacyFile, JSON.stringify({ version: "automatic_build_attempts.v1",
+      stages: { pass1: { legacy: { failures: 2, updated_at: "2026-07-18T00:00:00.000Z" } } } }));
+    for (const work_unit_id of ["native:1", "completed"]) {
+      recordAutomaticBuildAttemptEvent(target, {
+        stage: "pass1", work_unit_id, attempt: 1, event_id: `${work_unit_id}:failure`, outcome: "failure",
+        failure_diagnostic: createAutomaticBuildFailureDiagnostic({
+          category: "schema", code: "schema_invalid", json_pointer: "/nodes", expected: "valid nodes",
+        }),
+        created_at: "2026-07-19T00:00:00.000Z",
+      });
+    }
+    expect(readAutomaticBuildPendingFailures(target, [
+      { stage: "pass1", pending_tasks: ["untouched", "native:1", "legacy"] },
+      { stage: "profile_sidecar", pending_tasks: ["untouched"] },
+    ])).toEqual([
+      { stage: "pass1", work_unit_id: "native:1", failures: 1 },
+      { stage: "pass1", work_unit_id: "legacy", failures: 2 },
+    ]);
+  });
+
   it("records a terminal event once and rejects a conflicting result", () => {
     const { target } = targetFixture();
     const input = {

@@ -2,6 +2,7 @@ use super::*;
 use crate as runtime;
 use serde_json::{json, Value};
 include!("testdata/book_example_adapter.rs");
+include!("../../read-tools/testdata/math_book.rs");
 
 #[test]
 fn to12_resident_results_export_real_dispatch_and_budget_envelopes() {
@@ -80,6 +81,22 @@ fn to12_resident_results_export_real_dispatch_and_budget_envelopes() {
                 }
                 samples.push(json!({"tool":name,"input":input,"raw":raw_value,"error":is_error,"limit":limit,"envelope":envelope}));
             }
+        }
+    }
+    let math_book = optimization_math_book();
+    for (id, input) in [
+        (BookToolId::Text, json!({"lid":"1.8","end_lid":"1.9"})),
+        (BookToolId::Text, json!({"lid":"1.1","end_lid":"1.3","start_utf16":0})),
+        (BookToolId::Context, json!({"lid":"1.9","k":2})),
+    ] {
+        let name = book_tool_contracts::contract_for(id).aliases.resident.unwrap();
+        let policy = registry.registration(name).unwrap().output_policy;
+        let (raw, _) = dispatch_resident_book_tool(id, input.clone(), &math_book, &adapter);
+        for limit in [100_000, 220] {
+            let draft = crate::tool_result::project_tool_result(name, &input.to_string(), &raw, policy, limit, &math_book);
+            let receipt = tool_receipt(name, &input.to_string(), &draft.model_body_json(), &raw, &math_book);
+            samples.push(json!({"tool":name,"input":input,"raw":serde_json::from_str::<Value>(&raw).unwrap(),
+                "limit":limit,"envelope":draft.into_envelope(receipt)}));
         }
     }
     let input = json!({"lid":"missing"});

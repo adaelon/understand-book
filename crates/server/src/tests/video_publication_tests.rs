@@ -2,6 +2,106 @@ use super::*;
 use super::mu5_tests::Fixture;
 
 #[test]
+fn video_playback_head_and_segments_require_current_publication_access() {
+    let f = Fixture::new();
+    let input = f.root.path().join("playback-video");
+    super::video_draft_tests::fixture(&input);
+    let original = std::fs::read(input.join("media/original.mp4")).unwrap();
+    let mut library = f.access.library.lock().unwrap();
+    let publication = library.publish(&input).unwrap();
+    library.grant("A", &publication.reference).unwrap();
+    let (_, cache) = library.video_directories("A", &publication.reference).unwrap();
+    // The deliberately invalid fixture must not leave a partially prepared cache.
+    assert!(!cache.exists());
+    assert_eq!(std::fs::read(input.join("media/original.mp4")).unwrap(), original);
+    std::fs::create_dir_all(&cache).unwrap();
+    std::fs::write(cache.join("info.json"), r#"{"time_base":[1,16000]}"#).unwrap();
+    std::fs::write(cache.join("index.m3u8"), "#EXTM3U\n#EXT-X-ENDLIST").unwrap();
+    std::fs::write(cache.join("media.mp4"), b"0123456789").unwrap();
+    let reused = crate::video_playback::prepare(f.root.path(), &input).unwrap().unwrap();
+    assert_eq!(std::fs::canonicalize(reused).unwrap(), cache);
+    drop(library);
+    let request = |token: &str, leaf: &str| crate::multi_user_host::dispatch(
+        &f.access, &crate::multi_user_host::Site::new("https://reader.example").unwrap(), "GET", &publication.reference.url(leaf),
+        &crate::multi_user_host::Headers(vec![("Host".into(), "reader.example".into()),
+            ("Cookie".into(), format!("{}={token}", crate::auth::COOKIE))]), "", crate::multi_user_host::now());
+    let head = request(&f.a, "video_playback");
+    assert_eq!(head.status, 200);
+    let head: Value = serde_json::from_slice(&head.body).unwrap();
+    assert_eq!(head["hls"], true);
+    assert_eq!(head["time_base"], json!([1,16000]));
+    assert!(head.get("map").is_none());
+    for leaf in ["video_playback", "video/playback/index.m3u8", "video/playback/media.mp4", "video/media"] {
+        assert_eq!(request(&f.a, leaf).status, 200, "{leaf}");
+        assert_eq!(request(&f.b, leaf).status, 404, "{leaf}");
+    }
+    f.control.connection.execute("DELETE FROM book_grants WHERE owner_user_id='A' AND book_id='vi6'", []).unwrap();
+    assert_eq!(request(&f.a, "video/playback/media.mp4").status, 404);
+}
+
+#[test]
+fn video_catalog_uses_visible_course_name_for_temporary_import_filename() {
+    let mut f = Fixture::new();
+    f.control.set_reader_admin("B", true).unwrap();
+    let input = f.root.path().join("temporary-video-title");
+    super::video_draft_tests::fixture(&input);
+    let source_path = input.join("video_source_manifest.json");
+    let mut source: Value = serde_json::from_slice(&std::fs::read(&source_path).unwrap()).unwrap();
+    source["source"]["original_path"] = json!(r"E:\generated\vi2\external.mp4");
+    std::fs::write(&source_path, source.to_string()).unwrap();
+    let mut library = f.access.library.lock().unwrap();
+    let publication = library.publish(&input).unwrap();
+    library.grant("A", &publication.reference).unwrap();
+    library.grant("B", &publication.reference).unwrap();
+    drop(library);
+    let mut request = json!({"operation_id":"video-title-private","release_id":"video-course","expected_version":0,"visible_to_users":["B"],"manifest":{
+        "name":"CS336 第 2 讲：PyTorch 与资源核算","publisher":"课程运营","public_goal":"理解张量运算","applicability":"课程学习","prerequisites":"Python",
+        "materials":[{"published_book_ref":publication.reference,"required_capabilities":["text","video"]}],"topic_links":[],"suggested_route":[]}});
+    f.ok(&f.b,"POST","/api/admin/workspace-releases",request.clone());
+    let title = |owner: &str| f.access.library.lock().unwrap().list(owner).unwrap().into_iter()
+        .find(|book| book["published_book_ref"] == json!(publication.reference)).unwrap()["title"].clone();
+    assert_eq!(title("A"), "external");
+    assert_eq!(title("B"), "CS336 第 2 讲：PyTorch 与资源核算");
+    request["operation_id"] = json!("video-title-public");
+    request["expected_version"] = json!(1);
+    request["visible_to_users"] = json!(["A","B"]);
+    f.ok(&f.b,"POST","/api/admin/workspace-releases",request);
+    assert_eq!(title("A"), "CS336 第 2 讲：PyTorch 与资源核算");
+}
+
+#[test]
+fn video_catalog_displays_original_title_and_published_frame() {
+    let f = Fixture::new();
+    let input = f.root.path().join("video-library-display");
+    super::video_draft_tests::fixture(&input);
+    let source_path = input.join("video_source_manifest.json");
+    let mut source: Value = serde_json::from_slice(&std::fs::read(&source_path).unwrap()).unwrap();
+    source["source"]["original_path"] = json!(r"E:\courses\CS336_Lecture02_PyTorch.mp4");
+    std::fs::write(&source_path, source.to_string()).unwrap();
+    batch(&input, "visual", "visual_index");
+    let mut library = f.access.library.lock().unwrap();
+    let publication = library.publish(&input).unwrap();
+    library.grant("A", &publication.reference).unwrap();
+    let catalog = library.list("A").unwrap();
+    let video = catalog.iter().find(|book| book["published_book_ref"] == json!(publication.reference)).unwrap();
+    assert_eq!(video["title"], "CS336 Lecture02 PyTorch");
+    assert_eq!(video["media_kind"], "video");
+    assert_eq!(video["cover"]["kind"], "image");
+    assert_eq!(video["cover"]["url"], publication.reference.url("video/cover"));
+    let cover_url = video["cover"]["url"].as_str().unwrap().to_owned();
+    drop(library);
+    let request = |token: &str| crate::multi_user_host::dispatch(
+        &f.access, &crate::multi_user_host::Site::new("https://reader.example").unwrap(), "GET", &cover_url,
+        &crate::multi_user_host::Headers(vec![("Host".into(), "reader.example".into()),
+            ("Cookie".into(), format!("{}={token}", crate::auth::COOKIE))]), "", crate::multi_user_host::now());
+    let response = request(&f.a);
+    assert_eq!(response.status, 200);
+    assert_eq!(response.content_type, "image/png");
+    assert_eq!(response.body, std::fs::read(input.join("video-enrichments/visual/frame.png")).unwrap());
+    assert_eq!(request(&f.b).status, 404);
+}
+
+#[test]
 fn video_publication_discourse_requires_artifact_and_preserves_other_contributions() {
     let f=Fixture::new();let input=f.root.path().join("video-discourse");
     super::video_draft_tests::fixture(&input);
@@ -142,6 +242,15 @@ fn video_publication_graph_support_is_cumulative_and_invalid_sources_block_publi
     assert!(library.load("A",&first.reference).unwrap().book.concept_candidates("x",None,None).is_err());
     batch(&input,"zh","translation");let third=library.publish(&input).unwrap();
     assert!(library.load("A",&third.reference).unwrap().book.concept_candidates("x",None,None).is_ok());
+    // The catalog checks capability dependencies without loading the whole graph.
+    // An unavailable graph frame must not make the original video unreadable.
+    let directory=library.load("A",&third.reference).unwrap().directory().to_path_buf();
+    let frame_path=directory.join("video-enrichments/graph/frame.png");
+    let held=directory.join("graph-frame-held.png");
+    std::fs::rename(&frame_path,&held).unwrap();
+    let material=crate::workspace_publication::Material {published_book_ref:third.reference.clone(),required_capabilities:vec!["text".into(),"video".into(),"translation".into()]};
+    assert_eq!(crate::workspace_publication::material_readiness(&f.control.connection,&material).unwrap()["missing_capabilities"],json!([]));
+    std::fs::rename(held,frame_path).unwrap();
     // New contribution declares a frame that was never supplied in its dependency set.
     graph["nodes"][0]["evidence"][0]["target"]["frames"][0]["actual_pts_ms"]=json!(3000);
     graph["nodes"][0]["id"]=json!("video:bad:x");

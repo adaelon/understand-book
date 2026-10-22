@@ -125,7 +125,7 @@ const questions = [
       </nav>
       <div class="home-nav-actions">
         <a href="./?account=login" class="home-login">登录</a>
-        <a href="#begin" class="home-nav-join">参与内测 <ArrowUpRight :size="15" /></a>
+        <a href="/downloads/UnderstandBookSetup.exe" class="home-nav-join" download>Windows 版 <ArrowDown :size="15" /></a>
       </div>
     </header>
 
@@ -236,6 +236,7 @@ const questions = [
             </figure>
             <a class="home-button home-button-light" href="./?account=register">已有内测码，开始注册 <ArrowUpRight :size="18" /></a>
             <a class="home-begin-login" href="./?account=login">已经有账号？继续阅读 <ArrowRight :size="16" /></a>
+            <a class="home-begin-login" href="/downloads/UnderstandBookSetup.exe" download>下载 Windows 版 · 使用同一账号登录 <ArrowRight :size="16" /></a>
             <p>注册后，阅读材料与使用额度由管理员开通。</p>
           </div>
         </div>

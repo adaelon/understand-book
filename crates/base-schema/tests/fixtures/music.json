@@ -1,0 +1,34 @@
+{
+  "version":"music_source_manifest.v1","book_id":"music-contract-test","title":"Two-note repeated measure",
+  "work":{"work_id":"contract-study","title":"Contract study","composer":"Test fixture","movement":null},
+  "score":{"source":{"score_id":"score-study","revision":"1"},"title":"Study edition","musicxml_path":"score/original.musicxml"},
+  "recording":{"source":{"recording_id":"recording-study","revision":"1"},"title":"Study take","performers":"Test fixture","media_path":"media/original.flac","content_type":"audio/flac","duration_ms":4000,"kind":"performance"},
+  "rights":[{"asset_kind":"score","title":"Test score","url":"test:fixture","license":"MIT","attribution":"Contract test fixture","distribution":"allowed"}],
+  "parts":[{"part_id":"piano","name":"Piano","instrument":"Piano","group":"Keyboard","voices":["1","2"]}],
+  "pages":[{"page_id":"page-1","path":"score/page-1.svg","width":1000,"height":500}],
+  "score_objects":[
+    {"source_id":"score/note/c","part_id":"piano","measure":"1","beat":0,"duration_beats":1,"voice":"1","midi_pitch":60,"rest":false,"tie":"none","page_id":"page-1","svg_element_id":"render-c"},
+    {"source_id":"score/note/g","part_id":"piano","measure":"1","beat":0,"duration_beats":2,"voice":"2","midi_pitch":67,"rest":false,"tie":"none","page_id":"page-1","svg_element_id":"render-g"}
+  ],
+  "occurrences":[
+    {"occurrence_id":"first","order":0,"measure":"1","start_ms":0,"end_ms":2000,"score_object_ids":["score/note/c","score/note/g"]},
+    {"occurrence_id":"repeat","order":1,"measure":"1","start_ms":2000,"end_ms":4000,"score_object_ids":["score/note/c","score/note/g"]}
+  ],
+  "note_alignments":[
+    {"occurrence_id":"first","score_object_id":"score/note/c","start_ms":0,"end_ms":500,"attack":true,"provenance_id":"calibration"},
+    {"occurrence_id":"first","score_object_id":"score/note/g","start_ms":0,"end_ms":1000,"attack":true,"provenance_id":"calibration"},
+    {"occurrence_id":"repeat","score_object_id":"score/note/c","start_ms":2000,"end_ms":2600,"attack":true,"provenance_id":"calibration"},
+    {"occurrence_id":"repeat","score_object_id":"score/note/g","start_ms":2000,"end_ms":2800,"attack":true,"provenance_id":"calibration"}
+  ],
+  "coverage":[{"start_ms":0,"end_ms":4000,"granularity":"note","method":"manual","status":"accepted","provenance_id":"calibration","detail":"Test calibration across both occurrences"}],
+  "provenance":[
+    {"provenance_id":"notation","kind":"score","description":"Two voices on the score","source_url":null,"processor":null},
+    {"provenance_id":"calibration","kind":"human_listening","description":"Test-only annotation, not production musical evidence","source_url":null,"processor":null}
+  ],
+  "events":[
+    {"event_id":"opening","title":"Opening","explanation":"Two voices start together.","listen_for":"Compare the durations.","start_ms":0,"end_ms":2000,"roles":[{"part_id":"piano","role":"two-voice chord"}],"evidence":[{"provenance_id":"notation","score_object_ids":["score/note/c","score/note/g"],"audio":null}],"relations":[{"target_event_id":"return","kind":"repetition","description":"The same measure returns."}],"concept_tags":["duration"]},
+    {"event_id":"return","title":"Return","explanation":"The measure repeats.","listen_for":"Compare the second occurrence.","start_ms":2000,"end_ms":4000,"roles":[],"evidence":[{"provenance_id":"calibration","score_object_ids":[],"audio":{"recording":{"recording_id":"recording-study","revision":"1"},"start_ms":2000,"end_ms":4000}}],"relations":[],"concept_tags":["repeat"]}
+  ],
+  "structure":[{"section_id":"study","parent_id":null,"title":"Study","description":"Both measures","start_ms":0,"end_ms":4000,"event_ids":["opening","return"],"coverage":"detailed"}],
+  "demonstrations":[]
+}

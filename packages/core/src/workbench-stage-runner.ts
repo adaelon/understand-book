@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { extractPdfTextGeometry } from "./pdf-geometry";
-import { validateHybridFoundationV1ArtifactSet } from "./hybrid-foundation";
+import { validateHybridFoundationV1ArtifactSet, writeHybridFoundationArtifacts } from "./hybrid-foundation";
+import { buildPdfNativeFoundation, extractPdfWithOcr } from "./pdf-native-foundation";
 import {
   buildHybridFoundationV2Candidate,
   validateHybridFoundationV2ArtifactSet,
@@ -19,6 +20,7 @@ import {
 import { ReadOnlyBaseZ } from "./zod";
 import {
   acceptSourceReconciliationManualOverride,
+  emptyReconciliationSummary,
   buildReviewedDraftFromDecisions,
   reconcilePaperSource,
   reviewCandidateAndReconcile,
@@ -47,7 +49,7 @@ interface WorkbenchInputManifest {
   version: "workbench_input_manifest.v1";
   book_id: string;
   inputs: {
-    paper_md: { path: string };
+    paper_md?: { path: string };
     paper_pdf: { path: string };
   };
   fingerprint: BuildInputFingerprint;
@@ -233,7 +235,7 @@ async function runSourceReconciliation(
     return;
   }
 
-  const markdownPath = path.resolve(bookDir, manifest.inputs.paper_md.path);
+  const markdownPath = path.resolve(bookDir, manifest.inputs.paper_md!.path);
   const pdfPath = path.resolve(bookDir, manifest.inputs.paper_pdf.path);
   const markdown = readFileSync(markdownPath, "utf8");
   const geometry = await extractPdfTextGeometry(new Uint8Array(readFileSync(pdfPath)));
@@ -467,6 +469,47 @@ async function runPaperProjection(
   appendEvent(job, now, "stage_completed", stage, `${stage} completed without changing source truth`);
 }
 
+async function runPdfTextImport(bookDir: string, manifest: WorkbenchInputManifest, job: BuildJobState, now: string) {
+  const pdf = new Uint8Array(readFileSync(path.resolve(bookDir, manifest.inputs.paper_pdf.path)));
+  const { geometry, ocr } = await extractPdfWithOcr(pdf, { onProgress(message) {
+    appendEvent(job, now, "stage_started", "source_reconciliation", message);
+    writeJsonAtomic(jobPath(bookDir, job.job_id), job);
+  } });
+  const { source, artifacts } = buildPdfNativeFoundation({ book_id: manifest.book_id, pdf, original_pdf_path: manifest.inputs.paper_pdf.path, geometry, ocr });
+  if (!source.trim()) throw new Error("文字提取和图片识别后没有可读正文，请在原文阅读器中查看这份 PDF。");
+  const basePath = path.join(bookDir, "base.json");
+  if (existsSync(basePath)) {
+    const existing = ReadOnlyBaseZ.parse(readJson(basePath));
+    if (sameLidIdentity(existing, artifacts.base)) artifacts.base = mergeHybridFoundationBase(existing, artifacts.base);
+  }
+  const candidateDir = mkdtempSync(path.join(bookDir, ".pdf-text-"));
+  try {
+    writeHybridFoundationArtifacts(candidateDir, source, artifacts);
+    applyHybridFoundationArtifactSet({ book_dir: bookDir, candidate_dir: candidateDir, validate_candidate_artifact_set: validateHybridFoundationV1ArtifactSet,
+      validate_artifact_set(root) {
+        const map = readJson<{ version: string }>(path.join(root, "pdf_source_map.json"));
+        if (map.version === "pdf_source_map.v1") validateHybridFoundationV1ArtifactSet(root);
+        else validateHybridFoundationV2ArtifactSet(root);
+      },
+    });
+  } finally { rmSync(candidateDir, { recursive: true, force: true }); }
+  const stageDir = path.join(bookDir, ".build", "source-reconciliation");
+  mkdirSync(stageDir, { recursive: true });
+  writeJsonAtomic(path.join(stageDir, "report.json"), {
+    version: "source_reconciliation_report.v1", book_id: manifest.book_id, input_fingerprint: manifest.fingerprint,
+    source_mode: "pdf_text", summary: { ...emptyReconciliationSummary(), verified: artifacts.base.lid_nodes.length }, unresolved: [],
+  });
+  writeJsonAtomic(path.join(bookDir, "document_import.json"), { version: "document_import.v1", source_path: path.resolve(bookDir, manifest.inputs.paper_pdf.path),
+    source_format: "pdf", source_snapshot: manifest.inputs.paper_pdf.path, page_count: geometry.pages.length, page_unit: "page",
+    text_extraction: ocr.some(page => page.lines.length) ? "pdf_text_layer_with_ocr" : "pdf_text_layer", ocr_pages: ocr.filter(page => page.lines.length).map(page => page.pageIndex),
+    limitations: ["公式、表格与图片以原 PDF 页面为准。"] });
+  resolveSourceDecisionRequest(job, now);
+  job.status = "done";
+  job.active_run = undefined;
+  appendEvent(job, now, "stage_completed", "source_reconciliation", "PDF 正文与阅读位置已准备好，可以开始阅读和划线。");
+  appendEvent(job, now, "stage_completed", "hybrid_foundation", "PDF positions are bound directly to source text.");
+}
+
 export async function runWorkbenchStage(options: RunWorkbenchStageOptions): Promise<BuildJobState> {
   const bookDir = path.resolve(options.book_dir);
   const now = options.now ?? new Date().toISOString();
@@ -487,7 +530,9 @@ export async function runWorkbenchStage(options: RunWorkbenchStageOptions): Prom
   }, 2_000);
 
   try {
-    if (options.stage === "source_reconciliation") {
+    if (!manifest.inputs.paper_md && (options.stage === "source_reconciliation" || options.stage === "hybrid_foundation")) {
+      await runPdfTextImport(bookDir, manifest, job, now);
+    } else if (options.stage === "source_reconciliation") {
       await runSourceReconciliation(bookDir, manifest, job, now);
     } else if (options.stage === "hybrid_foundation") {
       await runHybridFoundation(bookDir, manifest, job, now, options.hybrid_apply_fault_injector);

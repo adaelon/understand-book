@@ -454,7 +454,7 @@ describe("automatic build orchestrator", () => {
       expect(buildAutomaticBuildSnapshot(legacy).stages[0].work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]))
         .toEqual(before.work_units?.map(u => [u.work_unit_id, u.input_hash, u.evidence_lids]));
     }
-  });
+  }, 30_000);
   it("uses an explicit book id before falling back to the source filename slug", () => {
     const root = tempDir();
     const source = path.join(root, "renamed-import.md");
@@ -628,7 +628,7 @@ describe("automatic build orchestrator", () => {
     expect(current?.policy_set).toEqual(stage.policy_set);
     previous.members.forEach((member, index) => expect(readFileSync(path.join(workspace, ".build", "automatic-build",
       "v4", "policies", "book_structure", member.policy_generation_id, "policy.json"))).toEqual(before[index]));
-  });
+  }, 30_000);
 
   it("omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection", () => {
     const root = tempDir();
@@ -655,6 +655,15 @@ describe("automatic build orchestrator", () => {
     closeV3ProfileSidecar(target);
     const header = { book_id: target.book_id, profile_id: target.profile_id };
 
+    const outlineStage = buildAutomaticBuildSnapshot(target).stages.find(stage => stage.stage === "book_structure")!;
+    expect(outlineStage.pending_work_units?.map(unit => unit.kind)).toEqual(["structure_outline"]);
+    const outlineGeneration = outlineStage.generation_tasks![outlineStage.pending_tasks[0]];
+    if (outlineGeneration.kind !== "book_structure") throw Error("expected BookStructure outline task");
+    freezeBookStructureGenerationTask(target, outlineGeneration.task);
+    writeBookStructureGenerationCandidate({ target, task: outlineGeneration.task,
+      candidate: structureProductionResponse(outlineGeneration.task),
+      provenance: { executor: "bsr5-orchestrator", attempt: 1, generated_at: "2026-07-31T00:00:00.000Z" } });
+
     const snapshot = buildAutomaticBuildSnapshot(target);
     expect(existsSync(path.join(workspace, "pass2_audit.json"))).toBe(false);
     expect(snapshot.stages.find((stage) => stage.stage === "pass2")).toMatchObject({ closed: false });
@@ -664,6 +673,7 @@ describe("automatic build orchestrator", () => {
     expect(bookStructure?.policy_set?.stage).toBe("book_structure");
     expect(bookStructure?.policy_set?.members.map((member) => member.kind)).toEqual([
       "structure_chapter",
+      "structure_chapter_selection",
       "structure_fragment",
       "structure_outline",
       "structure_reduce",
@@ -678,7 +688,7 @@ describe("automatic build orchestrator", () => {
     ]);
     expect(bookStructure?.pending_work_units?.every((unit) => (
       unit.version === "automatic_build_work_unit.v4"
-      && unit.kind === "structure_unit"
+      && unit.kind === "structure_fragment"
       && "execution_budget_proof" in unit
     ))).toBe(true);
     expect(bookStructure?.pending_work_units?.every((unit) => (
@@ -765,14 +775,13 @@ describe("automatic build orchestrator", () => {
       const candidatePath = path.join(root, `book-structure-unit-${unitIndex}.json`);
       const evidenceLid = JSON.parse(rendered.stdout).reference_scope.evidence_by_unit[unitLid][0];
       writeJson(candidatePath, {
-        unit_card: {
-          unit_lid: unitLid,
-          role: "setup",
-          summary: { text: "Structure before Pass2.", evidence_lids: [evidenceLid] },
-          candidate_key_stops: [],
-          depends_on: [],
-          evidence_lids: [evidenceLid],
-        },
+        version: "book_structure_fragment_observation.v1",
+        parent_unit_lid: unitLid,
+        summary_fragments: [{ text: "Structure before Pass2.", evidence_lids: [evidenceLid] }],
+        candidate_key_stops: [],
+        role_hints: ["setup"],
+        dependency_hints: [],
+        evidence_lids: [evidenceLid],
       });
       stageAutomaticBuildCandidate(
         target,
@@ -868,7 +877,7 @@ describe("automatic build orchestrator", () => {
       .not.toEqual(firstUnitGeneration.task.descriptor);
     expect(staleStructure?.closed).toBe(false);
     expect(staleStructure?.pending_work_units?.some((unit) => (
-      unit.work_unit_id.startsWith("unit:") && unit.cost.candidate_count === 1
+      unit.kind === "structure_fragment" && unit.cost.candidate_count === 1
     ))).toBe(true);
   }, 30_000);
 

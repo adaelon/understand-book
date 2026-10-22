@@ -9,6 +9,44 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('bounds a stalled video draft request without submitting or automatically retrying it', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetch = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((_, reject) => {
+        options.signal?.addEventListener('abort', () => reject(options.signal!.reason), { once: true });
+      }));
+      vi.stubGlobal('fetch', fetch);
+      const save = api.videoDraft({ window_id: 'window', action: 'save', draft: { message: 'question', context: {} as never } });
+      const rejected = expect(save).rejects.toThrow('视频提问保存超时，请重试。');
+      await vi.advanceTimersByTimeAsync(15_000);
+      await rejected;
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(fetch.mock.calls[0][0]).toBe('/api/workspaces/w/reader/video_draft');
+      expect(pendingSubmissions()).toEqual([]);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('saves video drafts in one round trip and refreshes only an explicit revision conflict', async () => {
+    let conflict = false;
+    const calls: string[] = [];
+    const draft = { message: 'question', context: { draft_id: 'video-draft' } };
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit) => {
+      calls.push(`${options.method} ${url}`);
+      if (options.method === 'GET') return json({ ...scene, revision: 5 });
+      if (conflict) { conflict = false; return json({ error_code: 'WORKSPACE_REVISION_CONFLICT' }, 409); }
+      const input = JSON.parse(String(options.body));
+      expect(input.draft).toEqual(draft);
+      return json({ ...scene, revision: input.expected_revision + 1, result: { draft } });
+    }));
+    const input = { window_id: 'window', action: 'save' as const, draft: draft as never };
+    expect(await api.videoDraft(input)).toEqual({ draft });
+    expect(calls).toEqual(['POST /api/workspaces/w/reader/video_draft']);
+    conflict = true; calls.length = 0;
+    await api.videoDraft(input);
+    expect(calls).toEqual(['POST /api/workspaces/w/reader/video_draft', 'GET /api/workspaces/w', 'POST /api/workspaces/w/reader/video_draft']);
+    expect(network.value.workspace?.revision).toBe(6);
+  });
+
   it.each([false, true])('SE5 routes all feedback operations with the current attachment (linked=%s)', async linked => {
     installWorkspace(scene, linked ? 'linked-attachment' : 'parent-attachment', linked);
     const reference = { presentation_id: 'p', revision: 2 };
@@ -49,6 +87,22 @@ describe('MU8 authorized browser context', () => {
     const fetch=vi.fn(async () => json(scene)); vi.stubGlobal('fetch',fetch);
     await expect(api.agentRunCreate('',{session_id:'old-chat',client_request_id:'tc5-old',entry_action:'clarify_answer',answer_ref:{turn_id:'old-answer'},expected_chat_head:'old-answer'})).rejects.toMatchObject({errorCode:'CHAT_SELECTION_CHANGED'});
     expect(fetch).toHaveBeenCalledTimes(1); expect(pendingSubmissions()).toEqual([]);
+  });
+  it('preserves the purpose, captured scope and original head when a submission response is lost', async () => {
+    const input = { session_id: 'chat', client_request_id: 'learning-purpose-exam', expected_chat_head: 'previous-turn',
+      entry_action: 'learn_with_purpose' as const, learning_purpose: 'exam' as const, chapter_lid: '1',
+      source_id: 'b', source_revision: 'source-revision', question_quote: null };
+    let saved: unknown;
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('client_request_id=')) return json({ turn_id: 'accepted-purpose', session_id: 'chat', book_id: 'b', dispatch_state: 'completed' });
+      if (url.endsWith('/agent/runs')) { saved = JSON.parse(String(init?.body)); throw new Error('response lost'); }
+      return json(scene);
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect(await api.agentRunCreate('', input)).toMatchObject({ turn_id: 'accepted-purpose' });
+    expect(saved).toMatchObject(input);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/agent/runs'))).toHaveLength(1);
+    expect(pendingSubmissions()).toEqual([]);
   });
   it('does not put selection translation in the reader write queue', async () => {
     let release!: (value: Response) => void;

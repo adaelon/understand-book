@@ -12,7 +12,7 @@ for (const { width, longText } of cases) test(`reading resumption preserves the 
   const title = longText ? '理解复杂系统：从概念到实践——系统边界、反馈回路与时间延迟如何共同影响我们的判断，以及怎样在真实案例中重新检验这些判断' : reference.book_id;
   const question = '正反馈一定会让系统失稳吗？如果同时存在负反馈，应该怎样判断最后的变化？'
     + (longText ? '如果观测时间太短、反馈存在延迟，而且系统的边界还会随着外部条件变化，我们应当先记录哪些现象？能否用一个具体例子，分别说明短期变化和长期趋势，再回到原文核对我们采用的前提是否成立？' : '');
-  await page.addInitScript(() => sessionStorage.setItem('understand-book:workspace:reader', JSON.stringify({ workspace_id: 'this-window' })));
+  await page.addInitScript(() => sessionStorage.setItem('understand-book:workspace:reader', JSON.stringify({ workspace_id: 'this-window', view: 'library' })));
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
     calls.push(`${request.method()} ${path}`);

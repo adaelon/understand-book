@@ -189,8 +189,15 @@ export function auditAutomaticBuildLegacy(
   options: { inspect_current_descriptors?: boolean; snapshot?: ReturnType<typeof buildAutomaticBuildSnapshot> } = {},
 ): AutomaticBuildLegacyAuditV1 {
   const artifacts: AutomaticBuildLegacyArtifactAuditV1[] = [];
-  const descriptorHashes = descriptorInputHashesFromMigrationReceipts(target);
-  if (options.inspect_current_descriptors !== false) {
+  const stageFiles = STAGE_DIRECTORIES
+    .filter(([candidateStage]) => !stage || candidateStage === stage)
+    .map(([candidateStage, relativeDir]) => {
+      const root = path.join(target.workspace_dir, ".build", relativeDir);
+      return { stage: candidateStage, root, files: filesRecursive(root) };
+    });
+  const hasArtifacts = stageFiles.some(item => item.files.length > 0);
+  const descriptorHashes = hasArtifacts ? descriptorInputHashesFromMigrationReceipts(target) : new Map<string, Set<string>>();
+  if (hasArtifacts && options.inspect_current_descriptors !== false) {
     try {
       const snapshot = options.snapshot ?? buildAutomaticBuildSnapshot(target, { quality_profile: "full" });
       for (const stageState of snapshot.stages) {
@@ -210,10 +217,8 @@ export function auditAutomaticBuildLegacy(
       .filter(([, candidates]) => candidates.size === 1)
       .map(([key, candidates]) => [key, { input_hash: [...candidates][0] }] as const),
   );
-  for (const [candidateStage, relativeDir] of STAGE_DIRECTORIES) {
-    if (stage && candidateStage !== stage) continue;
-    const stageRoot = path.join(target.workspace_dir, ".build", relativeDir);
-    for (const file of filesRecursive(stageRoot)) {
+  for (const { stage: candidateStage, root: stageRoot, files } of stageFiles) {
+    for (const file of files) {
       const bytes = readFileSync(file);
       let format: AutomaticBuildLegacyArtifactAuditV1["format"] = "invalid_json";
       let parsed: unknown;

@@ -203,6 +203,18 @@ fn accepted_stage(
 fn tutor_prerequisites(book: &read_tools::Book, root: &std::path::Path) -> serde_json::Value {
     let unavailable = |stage: &str, reason: &str| json!({"status":"preparing","source_id":book.base.book_id,
         "source_revision":book.source_fingerprint(),"blocked_stage":stage,"reason":reason});
+    if root.join(crate::music_media::MANIFEST).exists() {
+        return match crate::music_media::load(root).and_then(|music| {
+            crate::music_media::validate_files(root, &music)?;
+            Ok(music)
+        }) {
+            Ok(music) if music.book_id == book.base.book_id && !music.events.is_empty() && !music.structure.is_empty() =>
+                json!({"status":"ready","source_id":book.base.book_id,"source_revision":book.source_fingerprint(),
+                    "reason":"音乐谱面、事件与整体结构已就绪，可以开始伴听",
+                    "required_stages":{"music_prebuild":{"status":"done"}},"coverage":music.coverage}),
+            _ => unavailable("music_prebuild", "音乐资料的谱面、事件或整体结构尚未准备完成"),
+        };
+    }
     // Book is already loaded by the Reader; Pass1's runtime product is base.json.
     if !root.join("source.txt").is_file()
         || crate::read_book_id_from_base(&root.join("base.json")).as_deref() != Some(book.base.book_id.as_str()) {

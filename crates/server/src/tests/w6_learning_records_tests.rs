@@ -6,7 +6,7 @@ pub(super) fn reference_learning(f: &Fixture, chat: &str, operation: &str) -> (S
     let publication = f.access.library.lock().unwrap().load("A", &f.y).unwrap();
     let range = EvidenceRange { start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![] };
     let resolved = publication.book.resolve_source(&range, "zh-CN", None).unwrap();
-    let binding = SourceBinding { media: None, source_ref_id:format!("w6-source-{operation}"), book_id:f.y.book_id.clone(),
+    let binding = SourceBinding { music: None, media: None, source_ref_id:format!("w6-source-{operation}"), book_id:f.y.book_id.clone(),
         publication_id:Some(f.y.publication_id.clone()),source_revision:Some(publication.book.source_fingerprint().into()),
         evidence_range:Some(range),evidence_text_digest:resolved.evidence_text_digest,
         label_snapshot:resolved.label,preview_snapshot:resolved.preview };
@@ -206,7 +206,7 @@ fn w6_old_source_without_publication_keeps_saved_excerpt_without_guessing_curren
         let session = user.agent_history.sessions.iter().find(|session|session.id == chat).unwrap();
         let turn = &session.turns[0];
         let turn_ref = AgentTurnRef {session_id:chat.clone(),turn_id:turn.turn_id.clone(),user_turn_ordinal:turn.user_turn_ordinal};
-        crate::session_runtime::append(&mut user,&turn_ref,"old-source",crate::session_event::EventBody::SourcesBound {bindings:vec![SourceBinding { media: None,
+        crate::session_runtime::append(&mut user,&turn_ref,"old-source",crate::session_event::EventBody::SourcesBound {bindings:vec![SourceBinding { music: None, media: None,
             source_ref_id:"old-original-source".into(),book_id:f.x.book_id.clone(),publication_id:None,source_revision:None,
             evidence_range:Some(range),evidence_text_digest:source.evidence_text_digest,label_snapshot:source.label.clone(),preview_snapshot:source.preview.clone(),
         }]}).unwrap();
@@ -231,4 +231,114 @@ fn w6_old_source_without_publication_keeps_saved_excerpt_without_guessing_curren
     assert!(detail["recap"]["sources"][0]["published_book_ref"].is_null());
     assert_eq!(std::fs::read_to_string(&path).unwrap(),legacy);
     assert!(f.access.library.lock().unwrap().load("A",&f.x).is_ok(),"a readable current publication must not be guessed as the original");
+}
+
+#[test]
+fn om2_continuity_selected_prefix_keeps_origin_and_latest_correction_after_reopen() {
+    let (f,w,mut input,probe)=setup();
+    input["message"]=json!("我是在看过例子之后才说出速度关系的");
+    assert_eq!(admit(&f,&w,&input).0,202);
+    f.access.runs.run_one(&f.access).unwrap();
+    let chat=w["selected_chat"].as_str().unwrap().to_owned();
+    let (evidence,turn_id)=reference_learning(&f,&chat,"om2-selected");
+    let handle=context(&f,&f.a).user;
+    let original={
+        let user=handle.lock().unwrap();
+        let mut store=user.learning_store().unwrap();
+        let original=store.evidence(&evidence).unwrap();
+        store.correct_evidence(&evidence,"om2-linked-correction","这次表达得到过示例帮助，不代表独立运用。").unwrap();
+        original
+    };
+    drop(handle);
+    let prefix=f.ok(&f.a,"GET",&format!("/api/me/learning-records/{chat}"),Value::Null);
+    let target=f.ok(&f.a,"POST","/api/learning-workspaces",json!({"goal":{"text":"从先前作品继续学习"},"members":[f.x]}));
+    let scope=target["learning_workspace_id"].as_str().unwrap().to_owned();
+    f.ok(&f.a,"POST",&format!("/api/learning-workspaces/{scope}/records"),
+        json!({"session_id":chat,"through_seq":prefix["through_seq"],"goal_revision":1}));
+    let w=f.get(&f.a,&w);
+    let mut later=Fixture::stamp(&w,"page");
+    later["session_id"]=json!(chat); later["client_request_id"]=json!("om2-after-prefix");
+    later["message"]=json!("这条新作答没有被选入");
+    assert_eq!(admit(&f,&w,&later).0,202); f.access.runs.run_one(&f.access).unwrap();
+    let (excluded,_)=reference_learning(&f,&chat,"om2-excluded");
+    let f=reopen(f,&probe);
+    let publication=f.access.library.lock().unwrap().load("A",&f.x).unwrap();
+    let handle=context(&f,&f.a).user;
+    let user=handle.lock().unwrap();
+    user.learning_store_for_workspace(Some(&scope)).unwrap().sync_workspace_goal(1,"om2-goal").unwrap();
+    let private=PrivateBookContext {user:&user,learning_workspace_id:Some(&scope),book:&publication.book,
+        book_dir:publication.directory(),messages:&[],selected_chat:None};
+    let turn=AgentTurnRef {session_id:"om2-target-chat".into(),turn_id:"om2-target-turn".into(),user_turn_ordinal:1};
+    let prepared=teaching::freeze_prepare(&private,&turn,&json!({"message":"继续原来的作品"}),None,"om2").unwrap();
+    let view=&prepared.context.as_ref().unwrap()["learner_context"]["learning_opportunity"]["continuity"];
+    let work=view["previous_work"].as_array().unwrap().iter()
+        .find(|row|row["fact_refs"]==json!([original.action_ref])).unwrap();
+    assert_eq!(work["selection"]["turn_ids"],json!([turn_id]));
+    assert_eq!(work["selection"]["through_seq"],prefix["through_seq"]);
+    assert!(work["selection"]["source_learning_workspace_id"].is_null());
+    assert_eq!(work["published_book_ref"],json!(f.y));
+    assert_eq!(work["source_refs"][0]["publication_id"],f.y.publication_id);
+    assert_eq!(work["evidence_refs"],json!(["correction:om2-linked-correction"]));
+    assert_eq!(work["historical"],true);
+    assert_eq!(work["current_mastery"],false);
+    assert!(!view.to_string().contains(&excluded));
+    assert!(!view.to_string().contains("这条新作答没有被选入"),"{view:#}");
+    assert!(view["teaching_implications"].as_array().unwrap().iter().any(|row|
+        row["evidence_ref"]=="correction:om2-linked-correction" && row["historical"]==true));
+    let read=crate::workspace_record_context::read(&user,&scope,
+        json!({"operation":"read","chat_session_id":chat,"limit":20})).unwrap();
+    assert!(read["records"].as_array().unwrap().iter().any(|row|row["kind"]=="fact"
+        && row["record"]["event_id"]==original.action_ref && row["record"]["payload"]["response"]==input["message"]));
+    assert_eq!(user.learning_store().unwrap().evidence(&evidence).unwrap(),original);
+    assert!(user.learning_store_for_workspace(Some(&scope)).unwrap().evidence(&evidence).is_err());
+    if let Ok(output)=std::env::var("OM2_OUTPUT") {
+        std::fs::write(Path::new(&output).join("linked-context.json"),serde_json::to_vec_pretty(view).unwrap()).unwrap();
+    }
+    drop(user);
+    let other=f.ok(&f.a,"POST","/api/learning-workspaces",json!({"goal":{"text":"另一个目标"},"members":[f.x]}));
+    let user=handle.lock().unwrap();
+    let private=PrivateBookContext {user:&user,learning_workspace_id:other["learning_workspace_id"].as_str(),
+        book:&publication.book,book_dir:publication.directory(),messages:&[],selected_chat:None};
+    let prepared=teaching::freeze_prepare(&private,&turn,&json!({"message":"新任务"}),None,"om2-other").unwrap();
+    let view=&prepared.context.as_ref().unwrap()["learner_context"]["learning_opportunity"]["continuity"];
+    assert!(view["previous_work"].as_array().unwrap().iter().all(|row|row["historical"]==false));
+    assert!(view["teaching_implications"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn om2_continuity_same_workspace_recovers_prior_work_in_a_new_chat() {
+    let f=Fixture::new();
+    let probe=Probe::default(); configure(&f,&probe);
+    let scope=f.ok(&f.a,"POST","/api/learning-workspaces",json!({"goal":{"text":"理解平均速度"},"members":[f.x,f.y]}));
+    let scope=scope["learning_workspace_id"].as_str().unwrap().to_owned();
+    let w=f.ok(&f.a,"POST","/api/workspaces",json!({"published_book_ref":f.x,"learning_workspace_id":scope,"attachment_id":"page"}));
+    let w=f.action(&f.a,&w,"page","chat/new",json!({}));
+    let mut input=Fixture::stamp(&w,"page");
+    input["session_id"]=w["selected_chat"].clone(); input["client_request_id"]=json!("om2-workspace-first");
+    input["message"]=json!("我把路程除以包括停车的总时间");
+    let (status,first)=admit(&f,&w,&input); assert_eq!(status,202); f.access.runs.run_one(&f.access).unwrap();
+    let other=f.ok(&f.a,"POST","/api/workspaces",json!({"published_book_ref":f.y,"learning_workspace_id":scope,"attachment_id":"page"}));
+    let other=f.action(&f.a,&other,"page","chat/new",json!({}));
+    let mut other_input=Fixture::stamp(&other,"page");
+    other_input["session_id"]=other["selected_chat"].clone(); other_input["client_request_id"]=json!("om2-other-book");
+    other_input["message"]=json!("这是另一份资料的作品");
+    assert_eq!(admit(&f,&other,&other_input).0,202); f.access.runs.run_one(&f.access).unwrap();
+    let f=reopen(f,&probe);
+    let w=f.action(&f.a,&f.get(&f.a,&w),"page","attach",json!({}));
+    let w=f.action(&f.a,&w,"page","chat/new",json!({}));
+    let mut input=Fixture::stamp(&w,"page");
+    input["session_id"]=w["selected_chat"].clone(); input["client_request_id"]=json!("om2-workspace-second");
+    input["message"]=json!("从我先前的计算继续");
+    let (status,second)=admit(&f,&w,&input); assert_eq!(status,202);
+    let handle=context(&f,&f.a).user;
+    let user=handle.lock().unwrap();
+    let store=user.learning_store_for_workspace(Some(&scope)).unwrap();
+    let bound=store.teaching_event(&format!("binding:{}",second["turn_id"].as_str().unwrap())).unwrap();
+    let view=&bound.payload["learner_context"]["learning_opportunity"]["continuity"];
+    assert_eq!(view["scope"]["learning_workspace_id"],scope);
+    assert_eq!(view["scope"]["workspace_goal_revision"],1);
+    assert!(view["previous_work"].as_array().unwrap().iter().any(|row|
+        row["binding"]["turn_id"]==first["turn_id"] && row["learner_quote_excerpt"]["text"]=="我把路程除以包括停车的总时间"));
+    assert!(view["previous_work"].as_array().unwrap().iter().all(|row|row["historical"]==false));
+    assert!(!view.to_string().contains("这是另一份资料的作品"));
 }

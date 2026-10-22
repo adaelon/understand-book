@@ -59,6 +59,8 @@ impl ModelSpendStore {
             .map_err(storage)?;
         tx.execute("UPDATE model_call_charges SET state='released',provider_cost_status='confirmed',provider_cost_micro_cny=0,account_debit_micro_cny=0,settled_at=?,evidence_kind='recovery_not_sent',revision=revision+1 WHERE state='reserved'", [crate::multi_user_host::now()]).map_err(storage)?;
         tx.execute("UPDATE model_call_charges SET state='pending',evidence_kind='recovery_outcome_unknown',revision=revision+1 WHERE state='sent'", []).map_err(storage)?;
+        tx.execute("UPDATE service_usage SET state='pending',revision=revision+1 WHERE state='sent'", []).map_err(storage)?;
+        tx.execute("UPDATE web_usage SET state='pending',evidence_json='{\"source\":\"recovery_outcome_unknown\"}',revision=revision+1 WHERE state='sent'", []).map_err(storage)?;
         tx.commit().map_err(storage)?;
         self.ready.store(true, Ordering::Release);
         Ok(())
@@ -283,7 +285,7 @@ fn authorize(
             return Err(SpendStop::PermissionRevoked);
         }
     }
-    let allowed: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM book_grants g JOIN users u ON u.user_id=g.owner_user_id WHERE u.disabled=0 AND g.owner_user_id=? AND g.book_id=? AND g.publication_id=?)",params![owner,publication.book_id,publication.publication_id],|r|r.get(0)).map_err(storage)?;
+    let allowed = crate::course_access::material_allowed(db,owner,publication,crate::multi_user_host::now()).map_err(|_| SpendStop::StorageUnavailable)?;
     if allowed {
         Ok(())
     } else {

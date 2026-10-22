@@ -1,5 +1,13 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-21 已上线视频按需分段播放与启动链路修复，当前 release `video-playback-20261021`、schema 20、验证时 PID 551569。派生媒体先授权再由 nginx 发送，通过 `opt-understand\x2dbook-media.mount` 将播放缓存只读挂载到 `/opt/understand-book/media`，私有数据根保持 0700。Windows 0.3.5 已发布并安装。公网 Edge 完整阅读页首帧本次实测 26.919 秒，之前 90 秒内未出画面；限速对照为 67.490 → 13.986 秒。配置、数据准确性、Windows 验收与回退见 [视频播放发布记录](performance/video-playback-release-20261021/README.md)。以下保留历史发布记录。
+
+2026-10-21 20:32:05 HKT 已上线工作区封面与布局、视频可读标题及学习成果保存范围修复；当前 release `workspace-library-title-20261021`、schema 20、PID 541359。Windows 0.3.4 已发布并完成本机安装。见 [发布、验证与恢复记录](performance/workspace-library-release-20261021/README.md)。以下保留历史发布记录。
+
+2026-10-21 09:22:14 HKT 已上线云端学习配套服务、Reader/Admin 与 Windows 0.3.0 下载，release `cloud-20261021`，schema 19，PID 489592。升级前完整备份、旧业务数据副本比较、公网 API／资源和七条浏览器路径通过。价格、配额、真实课程仍未配置，个人上传未开放；运营准备宿主须在开售前接入。见[发布、验证与恢复记录](performance/cloud-learning-20261020/release-20261021/README.md)。以下为历史发布记录。
+
+2026-10-20 20:34:32 HKT 已上线 OM0–OM6 交互教学与学习接续，release `om6-20261020`，schema18，PID471137。服务、沙箱 worker 与 Reader 同步更新；原数据根保持，停服至恢复入口 14.84 秒，完整备份、API 与静态验收通过。公网七条页面检查完成，沿用既有小地图中文标签接口 501 限制。已有标签页刷新加载新版。见[发布、验证与恢复记录](performance/interactive-teaching-continuity/release-20261020/README.md)。
+
 2026-10-16 17:16 HKT 已上线目录跳转优化与专注阅读白底：跳转关键路径直接提交并携带正文，最近正文缓存、连续点击合并和旧读位/补载结果隔离；专注模式去掉右上角菜单，保留底部阅读工具。release `reader-navigation-20261016`、schema14、PID69724，前后授权材料与制作能力一致。见[实现、实测与恢复记录](performance/reader-navigation-20261016/README.md)。
 
 2026-10-16 16:02 HKT 已上线新版解释模板、三维制作与导出、演示版本/反馈、跨书补讲与理解接续、当日对话压缩修复。release `current-20261016`、schema14、PID64600；主服务、worker与前端目录一并更新。Linux Runtime611通过；前端127通过；Server795项经并行与逐项复验通过。Linux真实三视口WebGL预览与交付通过，无外部模型调用。reader11项/admin12项授权版本、正文、私有隔离和四项制作能力与切换前一致，停服至恢复本机验收11.88秒。见[上线与恢复记录](performance/current-release-20261016/README.md)。下列旧日期段落保留历史。

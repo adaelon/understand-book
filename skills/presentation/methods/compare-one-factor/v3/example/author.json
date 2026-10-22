@@ -1,0 +1,33 @@
+{
+  "title": "快一倍，会远一倍吗？",
+  "initial_state": {"input_speed": 1, "applied_speed": 1, "time_s": 10, "revealed": false, "annotated": false},
+  "state_contract": {
+    "input_speed": "B 待应用速度，米/秒，0..3",
+    "applied_speed": "图中 B 已应用速度，米/秒，0..3",
+    "time_s": "两车共同经过的时间，秒，0..10",
+    "revealed": "距离关系是否已显示，布尔值",
+    "annotated": "共同条件说明是否已显示，布尔值"
+  },
+  "action_contract": [
+    {"kind": "set_parameters", "parameters": ["input_speed", "time_s"]},
+    {"kind": "invoke", "action_id": "apply", "label": "应用速度"},
+    {"kind": "invoke", "action_id": "reset", "label": "重置"},
+    {"kind": "highlight", "region_id": "result"},
+    {"kind": "reveal", "region_id": "relation"},
+    {"kind": "annotate", "region_id": "annotation"}
+  ],
+  "teaching_binding": {
+    "design_ref": "CURRENT_DESIGN_REF",
+    "block_refs": ["distance-time"],
+    "regions": [
+      {"region_id": "result", "block_refs": ["distance-time"], "state_fields": ["applied_speed", "time_s"], "observation": "共同时间下两车实际走过的距离"},
+      {"region_id": "relation", "block_refs": ["distance-time"], "state_fields": ["revealed"], "observation": "速度、共同时间与距离的比例关系"},
+      {"region_id": "annotation", "block_refs": ["distance-time"], "state_fields": ["annotated"], "observation": "同起点、同时间、同尺度的固定条件"}
+    ]
+  },
+  "readable_content": "A 保持 1 米/秒，B 可设为 0–3 米/秒。两车从同一起点出发，共用 0–10 秒的时间和 0–30 米的尺度。输入速度应用后才更新距离图。距离等于速度乘时间；同一正时间下，B 的速度翻倍，其距离也翻倍。可自行改参数、拖动时间、显示关系或提问。",
+  "assumptions": ["构造的匀速运动；无加速、摩擦或碰撞。对照模型不自动证明现实观察数据中的因果关系。"],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

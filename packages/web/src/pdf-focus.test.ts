@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PdfFocusReader } from './pdf-focus';
 import { pdfFocusGeometry } from './pdf-rendering';
 import type { PdfReadingAnchor } from './useReadingContinuity';
+import type { PdfSourceMap } from './api';
 
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({ TextLayer: class {
   constructor(private options: any) {}
@@ -17,19 +18,26 @@ function setup(renderPage?: (number: number) => { promise: Promise<void>; cancel
   const host = document.createElement('div'); document.body.append(host);
   const cleanup = vi.fn();
   const doc = { getPage: vi.fn(async (number: number) => ({
-    getViewport: ({ scale }: any) => ({ width: 612 * scale, height: 792 * scale, scale }), cleanup,
+    getViewport: ({ scale }: any) => ({ width: 612 * scale, height: 792 * scale, scale, convertToViewportPoint: (x: number, y: number) => [x * scale, (792 - y) * scale] }), cleanup,
     streamTextContent: () => new ReadableStream({ start(controller) { controller.enqueue({ items: [] }); controller.close(); } }),
     render: () => renderPage?.(number) ?? ({ promise: Promise.resolve(), cancel() {} }),
   })) };
-  const pages = Array.from({ length: 9 }, (_, pageIndex) => ({ pageIndex, width: 612, height: 792, rotate: 0 as const, view: [0, 0, 612, 792] as [number, number, number, number] }));
+  const pages: PdfSourceMap['pages'] = Array.from({ length: 9 }, (_, pageIndex) => ({ pageIndex, width: 612, height: 792, rotate: 0 as const, view: [0, 0, 612, 792] as [number, number, number, number] }));
   const reader = new PdfFocusReader(host, doc as any, pages, 'test', {
     changed() {}, decorate(_page, layer) { layer.textContent = 'annotation'; }, releaseDecoration(layer) { layer.replaceChildren(); },
     externalResources: () => ({ pages: 0, backingPixels: 0 }),
   });
   readers.push(reader);
-  return { reader, doc, cleanup, host, geometry: pdfFocusGeometry(1440, 900, 1) };
+  return { reader, doc, cleanup, host, pages, geometry: pdfFocusGeometry(1440, 900, 1) };
 }
 describe('PDF complete-spread preparation', () => {
+  it('keeps recovered OCR text selectable when entering focus reading', async () => {
+    const { reader, pages, geometry } = setup();
+    pages[0].ocr_lines = [{ text: 'Recovered scan', bbox: [50, 600, 150, 620], words: [{ text: 'Recovered scan', bbox: [50, 600, 150, 620] }] }];
+    reader.open(anchor(0), geometry);
+    await vi.waitFor(() => expect(reader.pagination.visible()).toBeTruthy());
+    expect(reader.pagination.visible()!.pages[0].text.querySelector('[data-pdf-ocr]')?.textContent).toBe('Recovered scan');
+  });
   it('settles preparation when disposed after publishing the current screen', async () => {
     let painted!: FrameRequestCallback;
     const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { painted = callback; return 1; });

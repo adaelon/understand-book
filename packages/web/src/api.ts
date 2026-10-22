@@ -288,7 +288,7 @@ export interface SourceManifestV2 {
   version: "source_manifest.v2";
   book_id: string;
   canonical_source: {
-    kind: "reconciled_markdown";
+    kind: "reconciled_markdown" | "pdf_text";
     path: "source.txt";
     citation_anchor: "lid";
     sha256: string;
@@ -335,7 +335,7 @@ function parseSourceManifestV2(value: unknown): SourceManifestV2 | null {
   const source = value.canonical_source;
   if (
     !isRecord(source)
-    || source.kind !== "reconciled_markdown"
+    || (source.kind !== "reconciled_markdown" && source.kind !== "pdf_text")
     || source.path !== "source.txt"
     || source.citation_anchor !== "lid"
     || typeof source.sha256 !== "string"
@@ -402,6 +402,7 @@ interface PdfSourceMapBase {
     rotation_applied: false;
   };
   pages: Array<{
+    ocr_lines?: import("../../core/src/pdf-ocr").PdfOcrLine[];
     pageIndex: number;
     page_label?: string;
     width: number;
@@ -937,7 +938,7 @@ export interface WorkbenchInputManifest {
   created_at: string;
   updated_at: string;
   inputs: {
-    paper_md: {
+    paper_md?: {
       path: string;
       sha256: string;
       size_bytes: number;
@@ -1135,6 +1136,7 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
+  music_question?: import('./music-api').MusicQuestionContext | null;
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   published_book_ref?: import('./network-context').PublishedBookRef | null;
   domain?: { workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
@@ -1228,6 +1230,7 @@ export interface LearningEvidenceView {
   source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
 }
 export interface AgentChatMeta {
+  music_question?: import('./music-api').MusicQuestionContext;
   video_window_id?: string;
   video_draft_id?: string;
   session_id?: string;
@@ -1235,6 +1238,7 @@ export interface AgentChatMeta {
   source_id?: string;
   source_revision?: string;
   entry_action?: import("./generated/EntryAction").EntryAction;
+  learning_purpose?: import("./generated/LearningPurpose").LearningPurpose;
   chapter_lid?: string;
   answer_ref?: import("./generated/AnswerRef").AnswerRef;
   teaching_choice?: import("./generated/TeachingChoice").TeachingChoice;
@@ -1271,6 +1275,8 @@ export function mediaSourceStart(media: MediaSourceSnapshot): number {
   return Math.min(...starts);
 }
 export interface SourcePopupView {
+  music?: import('./music-api').MusicSourceSnapshot;
+  music_score_pages?: { page_id: string; url: string }[];
   source_url?: string;
   media?: MediaSourceSnapshot;
   media_url?: string | null;
@@ -1337,7 +1343,12 @@ function qs(params: Record<string, string | undefined>): string {
 }
 
 export const api = {
+  videoPlayback: () => http<import("./video-api").VideoPlayback | null>("GET", "/book/video_playback"),
   videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
+  musicContext: () => http<import('./music-api').MusicContext | null>('GET', '/book/music_context'),
+  musicCalibrationContext: () => http<import('./music-calibration').MusicCalibrationContext | null>('GET', '/build_workbench/music/context'),
+  musicCalibrate: (revision: import('./music-calibration').MusicAlignmentRevision) => http<import('./music-calibration').MusicCalibrationContext>('POST', '/build_workbench/music/calibrate', revision),
+  musicRespond: (body: Record<string, unknown>) => http<{ claimed?: boolean; accepted?: boolean; receipt?: import('./music-api').MusicPlaybackReceipt }>('POST', '/agent/music/respond', body),
   adoptVideoPublication: (publication_id: string) => http<import('./video-adoption').VideoAdoption>('POST', '/reader/adopt_same_source_publication', { publication_id }),
   videoDraft: (input: import("./video-question").DraftCommand) => http<{ draft: import("./video-question").VideoDraft | null }>("POST", "/reader/video_draft", input),
   desktopStatus: () => http<DesktopStatus>("GET", "/desktop/status"),
@@ -1410,11 +1421,15 @@ export const api = {
   paperLexicon: () => http<PaperLexiconProjection>("GET", "/book/paper_lexicon"),
   formulaSemantics: (lid: string) =>
     http<FormulaSemantics>("GET", `/book/formula_semantics${qs({ lid })}`),
-  openBook: (dir: string) => http<{ ok: boolean; book_id: string }>("POST", "/book/open", { dir }),
+  openBook: async (dir: string) => {
+    const result = await http<{ ok: boolean; book_id: string }>("POST", "/book/open", { dir });
+    if (!network.value.enabled) window.dispatchEvent(new Event('local-workspace-opened'));
+    return result;
+  },
   createBook: (payload: {
     book_id: string;
     display_title: string;
-    paper_md_text: string;
+    paper_md_text?: string;
     paper_pdf_base64: string;
   }) => http<BuildWorkbenchSnapshot>("POST", "/book/create", payload),
 
@@ -1578,8 +1593,9 @@ export const api = {
     http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.clear", { session_id, turn_id, reference }),
   presentationFeedbackAttachState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, feedback_revision: number, saved_state: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.attach_state", { session_id, turn_id, reference, feedback_revision, saved_state }),
-  presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState) =>
-    http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state }),
+  presentationInteraction: (body: Record<string, unknown>) => http<{ claimed?: boolean; accepted?: boolean }>("POST", "/agent/presentation.interaction", body),
+  presentationSaveState: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, state: import("./generated/PresentationState").PresentationState, teacher_interaction?: Record<string, unknown>) =>
+    http<import("./generated/PresentationFollowUp").PresentationFollowUp>("POST", "/agent/presentation.state.save", { session_id, turn_id, reference, state, ...(teacher_interaction ? { teacher_interaction } : {}) }),
   presentationObserve: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, text: string, source_ref_ids: string[]) =>
     http<{ accepted: boolean }>("POST", "/agent/presentation.observe", { session_id, turn_id, reference, text, source_ref_ids }),
   agentSourceOpen: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>

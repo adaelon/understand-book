@@ -1,5 +1,6 @@
 import { configDefaults, defineConfig } from "vitest/config";
 import vue from "@vitejs/plugin-vue";
+import { pdfOcrAssets } from "./pdf-ocr-assets.mjs";
 import { fileURLToPath } from "node:url";
 
 // dev proxy:前端 `/api/*` → tiny_http server(同源、无 CORS,承 ADR-0022)。
@@ -9,7 +10,7 @@ const backend = process.env.UNDERSTAND_BOOK_ADDR
   : "http://127.0.0.1:8787";
 
 export default defineConfig({
-  plugins: [vue(), {
+  plugins: [vue(), pdfOcrAssets(), {
     name: "reader-startup-styles",
     apply: "build",
     transformIndexHtml: {

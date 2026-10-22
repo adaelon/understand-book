@@ -1,7 +1,8 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { describe, expect, it, vi } from "vitest";
 import { markdownToBlocks } from "../src/md-adapter";
 import { segment } from "../src/segment";
 import { splitWindows } from "../src/window";
@@ -16,6 +17,28 @@ import {
   routePass1WindowWorkUnits,
   workUnitPlanDigest,
 } from "../src/stage-work-unit";
+
+const digestWrites = vi.hoisted(() => ({ sizes: undefined as number[] | undefined }));
+vi.mock("node:crypto", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  return { ...actual, createHash: (...args: Parameters<typeof actual.createHash>) => {
+    const hash = actual.createHash(...args);
+    const update = hash.update.bind(hash);
+    hash.update = ((data: string, ...rest: unknown[]) => {
+      digestWrites.sizes?.push(Buffer.byteLength(data));
+      return update(data, ...rest as []);
+    }) as typeof hash.update;
+    return hash;
+  } };
+});
+
+// The previous canonical format is durable plan identity, including key and unit order.
+function legacyCanonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(legacyCanonical).join(",")}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map(key => `${JSON.stringify(key)}:${legacyCanonical(object[key])}`).join(",")}}`;
+}
 
 function fixture() {
   const root = mkdtempSync(path.join(tmpdir(), "understand-book-work-unit-"));
@@ -34,6 +57,26 @@ function fixture() {
 }
 
 describe("stage work-unit router framework", () => {
+  it("digests a book-sized descriptor plan without allocating the complete canonical string", () => {
+    const { source, byLid, windows, target } = fixture();
+    const policy = automaticBuildExtractionPolicy("pass1", resolveContentProfile("technical_learning"), "full");
+    const base = routePass1WindowWorkUnits({ target: target.target_ref, windows, byLid, source, policy_fingerprint: policy })[0];
+    const units = Array.from({ length: 6265 }, (_, index) => ({ ...base,
+      work_unit_id: `unit-${index}`, evidence_lids: [`章节.${index}`, "quote\"\\newline\n"] }));
+    const ordered = [...units].sort((a, b) => a.stage.localeCompare(b.stage) || a.work_unit_id.localeCompare(b.work_unit_id));
+    const expected = createHash("sha256").update(legacyCanonical(ordered)).digest("hex");
+    const largestUnit = Math.max(...units.map(unit => Buffer.byteLength(legacyCanonical(unit))));
+    const sizes: number[] = [];
+    digestWrites.sizes = sizes;
+    let actual: string;
+    try { actual = workUnitPlanDigest(units); } finally { digestWrites.sizes = undefined; }
+    expect(actual).toBe(expected);
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(largestUnit);
+    expect(workUnitPlanDigest([])).toBe(createHash("sha256").update("[]").digest("hex"));
+    expect(workUnitPlanDigest([...units].reverse())).toBe(expected);
+    units[0] = { ...units[0], input_hash: "f".repeat(64) };
+    expect(workUnitPlanDigest(units)).not.toBe(expected);
+  });
   it("registers an explicit versioned router for every current semantic stage", () => {
     expect(Object.keys(STAGE_WORK_UNIT_ROUTERS).sort()).toEqual([
       "book_structure",

@@ -39,7 +39,8 @@ pub fn text_schema() -> Value {
     page["properties"]["lid"] = json!({"type":"string"});
     page["required"].as_array_mut().unwrap().push(json!("lid"));
     json!({"type":"object","oneOf":[
-        {"type":"object","properties":{"lid":{"type":"string"},"text":{"type":"string"}},
+        {"type":"object","properties":{"lid":{"type":"string"},"text":{"type":"string"},
+         "math_context":schema_for::<Vec<math_structure::ReadingItem>>()},
          "required":["lid","text"],"additionalProperties":false}, page
     ]})
 }
@@ -50,6 +51,7 @@ pub fn book_output_schema(id: BookToolId) -> Option<Value> {
         BookToolId::Manifest => schema_for::<Manifest>(),
         BookToolId::Text => text_schema(),
         BookToolId::SearchText => schema_for::<SearchTextResult>(),
+        BookToolId::Search => schema_for::<RankedSearchResult>(),
         BookToolId::Context => schema_for::<Context>(),
         BookToolId::Concept => schema_for::<ConceptCandidateSet>(),
         BookToolId::Structure => schema_for::<StructureProjection>(),

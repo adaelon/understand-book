@@ -93,8 +93,9 @@ pub fn source_schema() -> serde_json::Value {
     json!({"type":"object", "properties": {
         "published_book_ref":crate::library::reference_schema(),
         "quote":{"type":"string","minLength":1,"description":"Continuous verbatim text already observed this turn; include enough context to support the claim and uniquely identify the passage. The tool computes LIDs and exact offsets."},
-        "target":{"oneOf":[text,visual,audio,joint]}
-    },"oneOf":[{"required":["quote"]},{"required":["target"]}],"examples":[{"quote":"The alpha threshold activates only when the value is greater than 10."}],"additionalProperties":false})
+        "target":{"oneOf":[text,visual,audio,joint]},
+        "music_target":crate::music::source_target_schema()
+    },"oneOf":[{"required":["quote"]},{"required":["target"]},{"required":["music_target"]}],"examples":[{"quote":"The alpha threshold activates only when the value is greater than 10."}],"additionalProperties":false})
 }
 
 // serde's internally tagged buffering and arbitrary_precision floats must pass through

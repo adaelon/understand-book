@@ -156,7 +156,7 @@ pub(crate) fn balance(
             |r| r.get(0),
         )
         .map_err(crate::allowance_admin::storage)?;
-    let (debit,active,pending): (i64,i64,i64) = db.query_row("SELECT COALESCE(sum(account_debit_micro_cny),0),COALESCE(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0) FROM model_call_charges WHERE period_id=?",[period],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(crate::allowance_admin::storage)?;
+    let (debit,active,pending): (i64,i64,i64) = db.query_row("SELECT COALESCE(sum(account_debit_micro_cny),0),COALESCE(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0) FROM billable_usage WHERE period_id=?",[period],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(crate::allowance_admin::storage)?;
     let available = granted
         .checked_sub(debit)
         .and_then(|v| v.checked_sub(active))

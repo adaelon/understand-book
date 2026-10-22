@@ -10,6 +10,8 @@ pub fn public_arguments(arguments: &str) -> String {
     if let Some(fields) = value.as_object_mut() {
         fields.remove("continuation"); // Also hide malformed top-level candidates.
         fields.remove("participation");
+        fields.remove("coach_ref");
+        fields.remove("coach_adjustment");
         fields.remove("delivery_text");
         if fields.get("move").is_some_and(|v| !v.is_object()) { fields.remove("move"); }
     }
@@ -18,6 +20,8 @@ pub fn public_arguments(arguments: &str) -> String {
         movement.remove("hint");
         movement.remove("explanation");
         movement.remove("participation");
+        movement.remove("coach_ref");
+        movement.remove("coach_adjustment");
         movement.remove("delivery_text");
         // Candidates become public only with the durable answer's delivery.
         movement.remove("continuation");
@@ -63,6 +67,11 @@ pub struct TeachingMove {
     pub move_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub design_ref: Option<String>,
+    /// Automatically bound to the private guidance sampled for this turn.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coach_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coach_adjustment: Option<crate::tutor_coach::CoachAdjustment>,
     #[serde(default)]
     pub block_refs: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -106,6 +115,7 @@ pub struct TeachingMove {
 
 fn target_input_schema() -> Value {
     let mut schema = book_tool_contracts::schema_value::<memory::teaching::TeachingTarget>();
+    schema["properties"]["source_ref_ids"] = json!({"type":"array","items":{"type":"string","minLength":1},"uniqueItems":true,"description":"For music, copy current-turn source.present references after music.read. The host binds exact music targets; use source_bindings:[] when no textual passage is involved. Never author music_bindings or media_bindings."});
     schema["properties"]["expected_performance"]["description"] = json!("The source-grounded connection this support helps the learner explain or use now, under its decisive conditions and available help. Keep the working target reachable from their actual expression; the whole topic need not be completed in this delivery. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in private explanation or assessment. Accept equivalent wording; this is a revisable plan, not an answer phrase to reproduce.");
     let source = &mut schema["properties"]["source_bindings"]["items"];
     source["required"].as_array_mut().unwrap().retain(|field| field != "source_id" && field != "source_revision");
@@ -120,6 +130,7 @@ fn design_input_schema() -> Value {
     schema["properties"]["target"] = target_input_schema();
     schema["properties"]["organizing_model"]["description"] = json!("The subject-matter relationship and current question guiding this plan, not a second learner profile. Any claim about this learner's understanding must follow the actual expressions resolved in learner_grounding; delivered help is not evidence of understanding. Keep unobserved understanding unknown while explaining the current question.");
     schema["properties"]["basis_refs"]["description"] = json!("Actual learner-expression fact refs or current understanding evidence refs whose original expressions can be resolved. Delivered answers, displayed pages and clicks are support context, not understanding bases. An empty list is valid when choosing an explanation without a learner diagnosis.");
+    schema["properties"]["revision_reason"]["description"] = json!("Explain which current request or original expression changes the support, depth or focus. Use basis_refs for actual expression/evidence references from continuity; current explicit requests take precedence over historical teaching_implication or preferences. Preserve historical facts and help conditions.");
     schema["properties"]["blocks"]["items"]["properties"]["purpose"]["description"] = json!("What understanding or useful judgment this connection enables. For chapter guidance, connect it to the selected question rather than listing a topic to cover.");
     schema["properties"]["blocks"]["items"]["properties"]["relation"]["description"] = json!("A usable connection with its decisive conditions. Separate connections that the learner may need help establishing independently, rather than putting a whole topic and its cases inside one block.");
     schema["properties"]["focus_block_refs"]["description"] = json!("Current working scope, chosen from the learner's expressed foothold and unresolved connection. Moves and presentations must stay within it; revise the design before changing focus. Other blocks remain available for later work without being explained now.");
@@ -133,7 +144,7 @@ fn design_input_schema() -> Value {
 
 pub fn spec() -> crate::ToolSpec {
     let mut tool = crate::ToolSpec { name: "tutor.step".into(), description:
-        "Select one source-grounded move after reading original text this turn with book tools. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates."
+        "Select one source-grounded move after reading original text with book tools or prepared music with music.read this turn. Music targets use current-turn source.present IDs in source_ref_ids and source_bindings:[]; the host binds music provenance. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates."
         .into(), parameters: json!({"type":"object","properties":{
             "operation":{"type":"string","enum":["material","trace","design","select","outside","assess","understanding","evidence"]},
             "evidence_ref":{"type":"string","description":"Read one evidence interpretation with operation=understanding; after is the character offset."},
@@ -141,7 +152,7 @@ pub fn spec() -> crate::ToolSpec {
             "nature":{"type":"string","enum":["hypothesis"]},
             "fact_refs":{"type":"array","items":{"type":"string"},"description":"Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis."},
             "target":target_input_schema(),
-            "teaching_implication":{"type":"string","description":"A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. Do not prescribe repeating source wording or a fixed teaching template."},
+            "teaching_implication":{"type":"string","description":"A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. It guides support only within its original scope and yields to the current explicit request. Assisted expression does not establish independent application; untested does not mean unable. Do not prescribe repeating source wording or a fixed teaching template."},
             "interpretation":{"type":"string","description":"What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation."},
             "response_quote":{"type":"string","description":"Exact learner words from the referenced ungraded source-discrimination response."},"sources":{"type":"array","items":{"type":"object","properties":{"lid":{"type":"string"},"quote":{"type":"string"}},"required":["lid","quote"]}},
             "action_ref":{"type":"string","description":"An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract."},
@@ -173,6 +184,8 @@ pub fn spec() -> crate::ToolSpec {
     properties["move"]["properties"]["responds_to"] = book_tool_contracts::schema_value::<memory::teaching_design::TeachingResponseLink>();
     properties["move"]["properties"]["response_expectation"] = book_tool_contracts::schema_value::<memory::teaching_design::ResponseExpectation>();
     properties["move"]["properties"]["participation"] = book_tool_contracts::schema_value::<TeachingParticipation>();
+    properties["move"]["properties"]["coach_adjustment"] = book_tool_contracts::schema_value::<crate::tutor_coach::CoachAdjustment>();
+    properties["move"]["properties"]["coach_adjustment"]["description"] = json!("Only when the latest actual user input or execution facts materially change the automatically supplied coach guidance. Explain the specific change in reason and cite available actual fact_refs. Omit for ordinary implementation or wording choices. Never claim the coach has seen the new user input.");
     // Defaults read existing persisted choices; newly authored support must
     // allocate the supplied connection and explicitly decide what remains open.
     for branch in properties["move"]["properties"]["participation"]["oneOf"].as_array_mut().unwrap() {
@@ -234,6 +247,27 @@ fn input_examples() -> Value {
     conclude["prompt"] = json!("Acknowledge the learner's stated connection between the stop and whole-trip time in this example, without claiming wider independent application.");
     conclude["delivery_text"] = json!("You connected the stop to the time of this whole journey: the journey has not ended while the traveler is stopped, so that interval belongs in its elapsed time. That explains the denominator in this example.");
     conclude["participation"] = json!({"choice":"conclude","reason":"The learner has already supplied the relevant relationship and reason for the current example; no further attempt is needed for this request."});
+    let mut method = explain.clone();
+    method["move_id"] = json!("start-journey-table");
+    method["prompt"] = json!("Help the learner start a paper journey table before asking them to compare journeys.");
+    method["delivery_text"] = json!("Draw two columns on paper: distance and elapsed time. For a 10 km ride lasting 10 minutes, put 10 km and 10 minutes on the first row. For a 5 minute stop, put 0 km and 5 minutes on the next row. Add each column: this journey covers 10 km in 15 minutes, including the stop. These totals supply the distance and time for average speed.");
+    method["participation"] = json!({"choice":"support","reason":"The current obstacle is how to start the table; supply a usable method without diagnosing a conceptual error.",
+        "support":"Place each interval's distance and time on the same row, include the stop, then add each column.","learner_inference":null});
+    let mut framework = explain.clone();
+    framework["move_id"] = json!("compare-journey-options");
+    framework["kind"] = json!("compare");
+    framework["prompt"] = json!("Give a framework for comparing travel plans under the learner's constraints; several plans may be reasonable.");
+    framework["delivery_text"] = json!("Compare plans using the same route distance and all elapsed time, including stops. Shorter stops can reduce total time; faster movement can also reduce it when road and safety conditions permit. Preserve any necessary rest stops. List moving time, stopped time and feasibility for each plan, then explain which constraints make a plan useful. Both changes may be combined; the average-speed relationship alone does not choose a unique plan.");
+    framework["participation"] = json!({"choice":"support","reason":"The learner asks for open plan analysis, so supply comparison criteria and reasons before requesting a decision.",
+        "support":"Compare total times and feasibility under the same distance and accepted constraints; retain multiple justified choices.","learner_inference":null});
+    let mut direct = explain.clone();
+    direct["move_id"] = json!("derive-speed-on-request");
+    direct["interaction_intent"] = json!("direct_explanation");
+    direct["intent_origin"] = json!("current_request");
+    direct["intent_quote"] = json!("This time, derive the formula directly using the previous journey.");
+    direct["prompt"] = json!("Use the earlier journey to derive the whole-trip average-speed formula at the requested depth, even if an earlier preference favored simple examples.");
+    direct["delivery_text"] = json!("Define the average speed as the constant speed that would cover the same total distance d during the same elapsed time T. A constant speed v covers vT, so matching this journey gives vT = d. With T positive, dividing both sides by T gives v = d/T. In the earlier 10 km journey, 10 minutes moving plus 5 stopped gives T = 15 minutes = 0.25 hours, so the whole-trip average is 10/0.25 = 40 km/h. The stop belongs to that elapsed interval even though it adds no distance.");
+    direct["participation"] = json!({"choice":"conclude","reason":"The current explicit request asks for the full derivation with the previous example; complete it without a preliminary test or a new invitation."});
     json!([
         {"operation":"material"},
         {"operation":"trace","after":0},
@@ -246,6 +280,9 @@ fn input_examples() -> Value {
         {"operation":"select","move":help},
         {"operation":"select","move":assessment},
         {"operation":"select","move":conclude},
+        {"operation":"select","move":method},
+        {"operation":"select","move":framework},
+        {"operation":"select","move":direct},
         {"operation":"outside"},
         {"operation":"assess","action_ref":"action:to3-open"},
         {"operation":"understanding"},
@@ -270,6 +307,10 @@ pub fn action_intent(context: &Value) -> Option<(&'static str, &'static str)> {
         InteractionAction::UiEntry { entry_action: EntryAction::ClarifyAnswer } => None,
         InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter } =>
             Some(("neutral", "current_action")),
+        InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose } =>
+            Some((if action.learning_purpose == Some(memory::learning::LearningPurpose::Discover) {
+                "direct_explanation"
+            } else { "neutral" }, "current_action")),
         InteractionAction::UiEntry { entry_action: EntryAction::ContinueAnswer } => {
             match context["default_teaching_intent"].as_str() {
                 Some("direct_explanation") => return Some(("direct_explanation", "session_default")),
@@ -345,20 +386,15 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
     }
     // Project complete requests through exactly the fields/kinds advertised for
     // this state. Program-owned intent/capability must not leak back in examples.
+    // Fact-dependent examples belong in the current learner view: gaining or
+    // consuming a response must not rewrite an otherwise identical tool schema.
     let mut examples = input_examples().as_array().unwrap().clone();
     examples.retain_mut(|example| {
         let operation = example["operation"].as_str().unwrap();
         if !allowed.contains(&operation) || (status != "active" && operation == "evidence" && example["nature"] != "hypothesis") {
             return false;
         }
-        if operation == "assess" {
-            let Some(reference) = context["learner_context"]["pending_assessment_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
-            example["action_ref"] = reference.clone();
-        }
-        if example["nature"] == "hypothesis" {
-            let Some(reference) = context["learner_context"]["uninterpreted_fact_refs"].as_array().and_then(|refs| refs.first()) else { return false; };
-            example["fact_refs"] = json!([reference]);
-        }
+        if operation == "assess" || example["nature"] == "hypothesis" { return false; }
         if let Some(movement) = example.get_mut("move").and_then(Value::as_object_mut) {
             let properties = schema["properties"]["move"]["properties"].as_object().unwrap();
             movement.retain(|key, _| properties.contains_key(key));
@@ -376,6 +412,13 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
     // Reduced descriptions still identify the sample data as illustrative.
     if status != "active" {
         tool.description.push_str(" Examples use an average-speed fixture; replace references and content with actual learner facts and source text. Examples are not evidence.");
+    }
+    if status != "reference" {
+        tool.description.push_str(" Applicable assess/hypothesis examples appear in the current learner view. Angle-bracket references are placeholders, never event IDs.");
+        if status == "active" {
+            tool.description.push_str(" For assess, take the original response ID from pending_assessment_refs in the current learner view or trace.");
+        }
+        tool.description.push_str(" For a hypothesis, choose actual relevant learner-expression IDs from uninterpreted_fact_refs or trace, and read their original words before interpreting them.");
     }
     Some(tool)
 }
@@ -435,15 +478,39 @@ pub(crate) fn learner_view(context: &Value) -> Value {
             fields.insert((*key).into(), value.clone());
         }
     }
+    let status = context["status"].as_str().unwrap_or("inactive");
+    let has_refs = |key: &str| context["learner_context"][key].as_array().is_some_and(|refs| !refs.is_empty());
+    let assessment = status == "active" && has_refs("pending_assessment_refs");
+    let hypothesis = matches!(status, "active" | "observing") && has_refs("uninterpreted_fact_refs");
+    if assessment || hypothesis {
+        let mut examples = input_examples().as_array().unwrap().clone();
+        examples.retain_mut(|example| {
+            if assessment && example["operation"] == "assess" {
+                example["action_ref"] = json!("<pending_assessment_action_ref>");
+                true
+            } else if hypothesis && example["nature"] == "hypothesis" {
+                example["fact_refs"] = json!(["<learner_expression_fact_ref>"]);
+                true
+            } else {
+                false
+            }
+        });
+        fields.insert("tool_input_examples".into(), json!({
+            "tool":"tutor.step",
+            "notice":"Illustrative average-speed examples, not learner facts or evidence. Replace their content and source locations with actual material read this turn. Angle-bracket references are placeholders, never event IDs: use the actual pending_assessment_refs or relevant uninterpreted_fact_refs from this view or trace, and read the learner's original words before interpreting them.",
+            "examples":examples,
+        }));
+    }
     Value::Object(fields)
 }
 
-const GUIDANCE_REVISION: &str = "teaching-design.v10";
+const GUIDANCE_REVISION: &str = "teaching-design.v14";
 const COMMON: &str = "Tutor evidence and request boundaries:
 Follow the current request before session defaults or preferences. Follow current_action.accepted_request within its original source scope; real user_supplement takes precedence. A pure UI click and an assistant answer supply no learner understanding evidence. For answer continuation, advance one useful step from the referenced answer and verify its claims against the original source.
 Continuation displayed/chosen facts and repeated choices describe interaction only, never performance or permanent preferences. clarify_answer requests a smaller step or a different explanation of the referenced answer; it does not diagnose missing prerequisites. continue_answer requests further help, not a claim of difficulty. Answer excerpts are assistant-authored context. Only actual learner expression belongs in uninterpreted_fact_refs; absent choice or returning to reading says nothing about understanding.
 Use learner_grounding as the shared basis for understanding records, design and delivery: expressions contains actual learner words; interpretations contains correctable readings of those words; delivered_support contains help, not learner performance. A learner_correction expression is original user text addressed by evidence_ref; adopt that existing record rather than using its id as an event fact_ref. A question can express uncertainty without asserting its proposed answer. A correct confirmation supports the connection expressed, not an invented stronger claim to correct. Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans, not learner evidence. Withdraw unsupported premises wherever they occur, including organizing_model and participation; do not create another learner profile in a design. User corrections supersede interpretations, never original words. Preserve independent, assisted and revised conditions. Stable preferences use ProfileFact confirmation.
-Read the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. Distinguish source claims from supplementary rules, examples and analogies you supply; preserve their conditions and limits in examples and recaps too. State the property that makes a rule apply to this case; a broad category label is not a substitute for that condition. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none.
+Read the needed original text this turn with book tools; BookStructure and locators are not source evidence. A TeachingTarget declares whole LIDs: read their full text, not only the selected substring. For music, read notation/events with music.read and register music_target with source.present; put its returned IDs in target.source_ref_ids with source_bindings:[] when no text is involved. The host binds these exact music sources; never fabricate text LIDs or author music_bindings. Design blocks may use empty source_bindings when supported by the music target. Distinguish source claims from supplementary rules, examples and analogies you supply; preserve their conditions and limits in examples and recaps too. State the property that makes a rule apply to this case; a broad category label is not a substitute for that condition. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none.
+When math_context or mathematical context links are available, use their evidence and next_calls to read the relevant statement, conditions and invoked result before selecting a teaching connection. uses identifies an invoked result, not a diagnosed learner prerequisite; proves locates an author's proof opening, while asks_to_prove is the exercise's task. Keep the exercise target, available premises and any solution you construct distinct. Do not claim the source supplied your solution or require a learner attempt when direct explanation was requested. An empty assumptions list and an unresolved reference leave the source question open, rather than licensing an unconditional claim.
 Before writing any question used to judge understanding, identify the specific judgment, a supported answer and a brief checkable rationale: which conditions make which relationship apply. The public learning target names what to judge, not the answer to that judgment. State necessary scenario assumptions, and narrow or replace a task whose decisive answer lacks support; imagined settings do not establish new subject-matter rules. Supply the information needed to decide while leaving the target inference to the learner. For choice questions, use comparable alternatives on one judgment axis and plausible distinct reasoning errors, without wording giveaways. A designed distractor is not evidence that this learner holds that misconception.
 When a question fits the current request, choose a reasoning task for the relationship still in doubt and the support available. Honor a request for a different form; do not require a type menu, fixed sequence or coverage quota. Condition change and prediction: change a decisive condition, make what stays fixed clear, and ask the learner to predict the consequence and connect it to that change. Error location and repair: give a plausible argument with a specific faulty connection for the learner to locate and repair; identify an invented argument as hypothetical, not as this learner's belief. Counterexamples and boundaries: ask for a case that satisfies a claim's premises but defeats its conclusion, or an explanation of why an apparent counterexample falls outside its conditions; do not demand a counterexample to a supported valid claim. Choose one manageable task. If the source or delivered explanation already completes that exact prediction, repair or boundary judgment, choose another application before using the answer to judge understanding. Request a brief reason when the next teaching judgment needs it; a correct choice alone leaves that reason unconfirmed.
 When a solution explanation is requested or feedback is permitted, connect the task's decisive conditions to the relevant rule and conclusion. Where useful, explain a plausible wrong approach and the condition or scope under which it would be valid; do not invent a valid case for an inherently invalid step. Address the learner's expressed reasoning; a selected option alone does not establish why they chose it. Accept other supported explanations and keep feedback proportional to the task.";
@@ -453,11 +520,13 @@ Ordinary questions, restatements and corrections can support a correctable under
 For a formal submit/revise response, trace can recover its original action_ref; assess uses the private evaluator when available. Ungraded observations are not scores. Use only operations in this sampling's tool contract. Active teaching chooses its representation in the design: choosing presentation makes the existing authoring workflow available after that design is accepted. Other rich explanation can be discovered with tool.search presentation_authoring.";
 
 const DESIGN: &str = "Design the current learning connection before generating support:
+For a live presentation demonstration, use presentation.interact observe, then chain declared actions from each actual saved receipt. Explain common conditions and the observed difference using that scene. Local demonstration steps can continue without a learner reply; stop for a response only when the next step needs their judgment. Leave the same page operable for their own edits or questions. On failure/cancellation observe again before continuing. The result's teaching.action_ref and assistance_refs record teacher usage and displayed support, never LearnerAction or independent mastery. Reopened delivered_support includes teacher_actions and displayed_help; continuity and learner_grounding retain the input-time help and original scenes. A later independent parameter change is a new observation under the help already received, not proof that earlier help disappeared. Honor a current request to explain the formula directly.
 When workspace_goal.v1 is present, the accepted overarching goal and explicit constraints bound stage planning. Explain how this stage or local prerequisite serves that direction in organizing_model; choose depth and timing accordingly. The phase focus is your revisable plan, not a rewrite of the user's goal. A temporary side question may be answered ordinarily while that goal is retained. An accepted goal revision stops the prior phase; do not resume its old continuation under the new goal.
-For chapter guidance, chapter_scope and material_scope freeze the chapter requested for this session; a later Reader viewport does not change that scope. Use BookStructure and available CognitiveMaterials to locate promising relationships, then read the relevant original text before committing. guide_path can contain other chapters: choose within the frozen chapter. A chapter binding is a locator, not proof that the chapter has been read; target.source_bindings must name only the local full LIDs actually read for this support.
+For chapter guidance, chapter_scope and material_scope freeze the chapter requested for this session; a later Reader viewport does not change that scope. Use BookStructure and available CognitiveMaterials to locate promising relationships, then read the relevant original text before committing. guide_path can contain other chapters: choose within the frozen chapter. A chapter binding is a locator, not proof that the chapter has been read; target.source_bindings must name only the local full LIDs actually read for this support. In music, use the current work/recording and declared detailed coverage as scope; target.source_ref_ids carries read music sources instead of invented text LIDs.
 Choose the first worthwhile question by judgment: what would let this learner explain, distinguish or use something that matters in the chapter, from their actual purpose, curiosity or obstacle? Favor a central relationship with a concrete consequence and enough source support to make progress now. Unknown background permits a revisable concrete entry point. Do not rank topics by novelty, coverage or a numeric score, and do not ask the reader to select from a generated syllabus. Keep unchosen candidate questions temporary; open_question_refs is for actual unresolved learner expressions. In organizing_model state the selected question and why it is worth understanding now; use block purpose for its payoff, a local expected_performance for the next reachable connection, and actual basis_refs for the learner facts used. Reuse an applicable existing design and stable blocks instead of manufacturing a second teaching plan.
 Use organizing_model as the overall direction, not a coverage outline for this answer. Choose target and focus_block_refs from the connection the learner can work on now: what their actual words already connect, and the next missing link. Separate independently difficult connections into reusable blocks; one broad block must not disguise a whole lesson. On an unfamiliar topic, make the current confusion tractable before adding adjacent definitions, all cases or counterfactuals merely because they were read. An explicit request for a complete explanation can justify a broader scope.
 Reuse current_design when this working connection still fits. Otherwise read the source and call design with the local target, relevant relationship blocks, current focus and real basis_refs. Keep stable block IDs for unchanged relationships, cite previous_ref and name the actual expression behind revision_reason. Moves, invitations and presentation regions must stay within the current focus; revise and consume the design in a subsequent sampling before changing it. A design is neither delivered support nor learner evidence.
+Use learning_opportunity.continuity to resume relevant work: previous_work preserves the original expression, input-time assistance, exact attempt assessment and source identity; teaching_implications and open_questions preserve their evidence references and scope. Follow read_more when the chosen support depends on omitted original words or help. Use actual expression fact_refs or current evidence_ref values in basis_refs; move.interpretation_refs takes only adopted evidence_ref values. Explain in revision_reason how the current request changes the support. Do not use a delivery_ref, assessment_ref or saved_state_ref as a learner-expression basis. Current requests determine depth and form even when an older implication suggests another approach; this changes the plan, not the historical evidence. Apply the shared writing rules to operational barriers, open tasks and short responses.
 Choose representation from the actual obstacle, without waiting for the learner to request a page. Text or an inline comparison can establish a short connection. A page can make a relationship usable when the learner needs to keep the same objects visible, compare conditions, inspect a process or change a condition and observe its consequence. State why this representation helps the current confusion; for presentation name the concrete observation, not a topic to illustrate. Revise a text choice when the learner still cannot track the relation it describes, rather than treating the first choice as permanent. A presentation choice activates authoring in the next sampling and must be fulfilled by an actual page before treating it as delivered help. Preserve a useful existing scene for follow-up; a text reply to its observation need not create another page. Do not force a page, an operation, or a question into every delivery.
 When the learner repeatedly cannot use a connection, start with the concrete part they can express and identify the smaller link they cannot yet make. Narrow the working target or change its representation instead of repeating the complete map with new wording. Preserve the actual unresolved question in open_question_refs and use return_to for a detour's original relationship, invitation or scene. learning_opportunity.return_context exposes those saved facts and help: use them to reconnect when the learner's expression warrants it, not to impose an automatic sequence.
 Select with exact design_ref and block_refs. learner_context.current_target retains the latest actually delivered local target within this design; it describes ongoing work, not demonstrated understanding. When support responds to a real learner explanation or doubt, link that original fact in responds_to.fact_refs, including an opening expression without a prior invitation. Also link any pending_response_invitation; continue, address or defer that invitation according to the delivery. interpretation_refs link relevant correctable hypotheses. learning_opportunity pairs responding_to_expressions, actual delivered help, its original reasoning allocation, and learner_expressions made after receiving it. Each expression keeps its own input-time support and help; responding_to_expressions identifies what this help addressed, not an automatic pretest. Earlier support keeps its original relationship and target across a focus change; read whether it supplies a premise for the current connection. Use the actual expression to decide whether to repair the same connection, change the question, or close this local work; neither turn count nor route coverage decides progress. Delivery does not prove the learner can use it; absence from the bounded view does not mean help never existed. A response_expectation carries one self-contained invitation within the move's relationships; ordinary chat can answer without a score. Helping an existing invitation preserves it with responds_to rather than opening a duplicate.";
@@ -472,7 +541,7 @@ Allocate the actual reasoning before writing delivery_text. For support, name th
 To establish independent relationship understanding, use a judgment not already supplied by the source or delivered explanation. If copying or paraphrasing fully satisfies it, that response supports expression or recall only. Asking for the learner's own model remains useful diagnosis; do not turn every such invitation into a test. When independent application matters, choose a suitable changed condition, new context, comparison or apparent counterexample, and leave its application to the learner. Match expected_performance and any frozen scoring criteria to the specific application. Reading and quoting the source remain allowed.
 Resolve the whole request: when the learner requests explanation followed by their own judgment, that requested interaction is guided_inquiry; kind=explain can supply its support. A teacher-initiated invitation does not make neutral user intent guided_inquiry. For an explicit request for a complete explanation, direct answer only, summary or translation, deliver the whole requested content without requiring an answer first. A learner expressing confusion or asking why does not alone request that the teacher perform every subsequent inference. Respect resolved action intent, interpret real supplementary text and preferences, and adapt using applicable understanding records. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal.
 After a learner response, judge the relationships actually expressed, accepting equivalent natural wording. Acknowledge correct connections; an omitted detail remains unconfirmed, not automatically misunderstood. Correct a misconception only when the learner's expressed claim conflicts with the supported relationship; identify that conflict rather than asking for a preferred phrase. Choose the next support from this performance and the help received. If they cannot start, demonstrate one smaller connection. If a reason is missing, supply or confirm that connection within the requested interaction scope. When asked to explain again or when support does not fit, change the entry point or representation using their feedback: a concrete process, example or comparison must expose the needed relationship, not lengthen the same outline. Ask one locating question only if needed to choose useful support. If their explanation or application supports less help on this task, leave more of the next judgment to them; distinguish local performance from copied reasoning and wider transfer. These are judgments, not a fixed sequence or an error-count ladder.
-Select prepares the actual final delivery. A private content review checks the proposed body against the actual learner expression and delivered help before acceptance. If it returns a concrete revision, change the body or its reasoning allocation and select again; repeating an unchanged proposal does not resolve that issue. Write delivery_text as the exact public help, with source references: make the current connection usable from the learner's expressed starting point, and leave adjacent conditions in the design. It is not an outline to expand later. The runtime delivers this accepted body and appends an ordinary response_expectation.public_prompt once; do not duplicate that invitation in delivery_text or include its solution. The private accepted delivery_draft is available in the next sampling. Revise it through select if needed; the final free-text response cannot add an unselected explanation. For invite, identify the precise example part the learner can try. Stop at the user response boundary. Delivery alone does not establish understanding.";
+Select prepares the actual final delivery. A private content review checks the proposed body against the actual learner expression and delivered help before acceptance. If it returns a concrete revision, change the body or its reasoning allocation and select again; repeating an unchanged proposal does not resolve that issue. A revised select is a complete move, not a patch: preserve its required participation and delivery_text, and carry responds_to.invitation_ref for the exact outstanding invitation while explicitly addressing or deferring it. A direct_explanation uses kind=explain, including when the explanation itself contains a comparison; do not combine that intent with kind=compare. Do not drop these fields while changing the wording or move_id. Write delivery_text as the exact public help, with source references: make the current connection usable from the learner's expressed starting point, and leave adjacent conditions in the design. It is not an outline to expand later. The runtime delivers this accepted body and appends an ordinary response_expectation.public_prompt once; do not duplicate that invitation in delivery_text or include its solution. The private accepted delivery_draft is available in the next sampling. After acceptance, normally deliver that accepted body immediately. Non-blocking editorial suggestions can wait for a later user turn; do not repeat select merely to polish an already accepted answer. Revise through select with a new move_id only when a new concrete fact, an actual error, or an unfinished requested operation makes the accepted body inaccurate or incomplete. An accepted selection is immutable: reuse its move_id only for an identical retry. When replacing accepted support, remove its old selected reference from delivery_move_refs; omission or an empty list delivers only the new selection. The final free-text response cannot add an unselected explanation. For invite, identify the precise example part the learner can try. Stop at the user response boundary. Delivery alone does not establish understanding.";
 
 const CONTINUATION: &str = "Optional next-step suggestions:
 When a workspace goal is present, connect the proposed next insight to its accepted direction and constraints. A local detour can support that direction; an unrelated future course cannot silently replace it. Old goal revisions do not authorize current next steps.
@@ -516,7 +585,7 @@ pub(crate) fn instruction_modules(
         format!("resident-agent.tutor.{name}"), GUIDANCE_REVISION, text);
     let mut modules = vec![module("common", COMMON)];
     modules.push(crate::InstructionModule::new(
-        "resident-agent.tutor.writing", "plain-explanation.v1", include_str!("tutor_writing_rules.md")));
+        "resident-agent.tutor.writing", "plain-explanation.v3", include_str!("tutor_writing_rules.md")));
     if status == "reference" { return modules; }
     modules.push(module("discovery", DISCOVERY));
     if status == "active" {
@@ -615,7 +684,6 @@ pub(crate) fn validate_review_grounding(review: &Value, grounding: &Value) -> Re
 enum ReviewRequestStatus { Answered, Unresolved, BoundedAnswer }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct ReviewRequestResolution {
     status: ReviewRequestStatus,
     question_quote: String,
@@ -635,6 +703,61 @@ struct ReviewFinding {
     location: String,
     evidence: String,
     required_change: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReviewImprovement {
+    location: String,
+    evidence: String,
+    learning_impact: String,
+    suggested_change: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReviewReadingPath {
+    actual_sequence: String,
+    understanding_gap: Option<String>,
+    proposed_adjustment: Option<String>,
+}
+
+/// Editorial feedback is useful without being a delivery blocker. Keep its
+/// valid parts, but do not let malformed ancillary feedback discard a genuine
+/// finding or become an instruction to the author.
+fn normalize_review_feedback(review: &mut Value) {
+    let mut warnings = Vec::new();
+    let mut improvements = Vec::new();
+    match review.get("improvements") {
+        None => {}
+        Some(Value::Array(items)) => {
+            for (index, item) in items.iter().enumerate() {
+                let valid = serde_json::from_value::<ReviewImprovement>(item.clone()).is_ok_and(|item|
+                    [&item.location, &item.evidence, &item.learning_impact, &item.suggested_change]
+                        .into_iter().all(|text| !text.trim().is_empty()));
+                if valid { improvements.push(item.clone()); }
+                else { warnings.push(format!("未保留 improvements[{index}]：表达建议须有非空的 location、evidence、learning_impact 和 suggested_change")); }
+            }
+        }
+        Some(_) => warnings.push("未保留 improvements：表达建议必须是数组".into()),
+    }
+    review["improvements"] = json!(improvements);
+    let reading_path = match review.get("reading_path") {
+        None | Some(Value::Null) => Value::Null,
+        Some(value) => {
+            let valid = serde_json::from_value::<ReviewReadingPath>(value.clone()).is_ok_and(|path|
+                !path.actual_sequence.trim().is_empty()
+                    && [&path.understanding_gap, &path.proposed_adjustment].into_iter()
+                        .all(|text| text.as_deref().is_none_or(|text| !text.trim().is_empty())));
+            if valid { value.clone() }
+            else {
+                warnings.push("未保留 reading_path：须说明非空的 actual_sequence，理解缺口与调整须为非空文字或 null".into());
+                Value::Null
+            }
+        }
+    };
+    review["reading_path"] = reading_path;
+    review["review_feedback_warnings"] = json!(warnings);
 }
 
 /// Only delivered prose and actual public page text can witness an explanation.
@@ -708,6 +831,7 @@ pub fn normalize_delivery_review(review: &mut Value, packet: &Value) -> Result<(
     review["reported_decision"] = json!(reported);
     review["decision"] = json!(if needs_revision {"revise"}else{"accept"});
     review["revision"] = revision;
+    normalize_review_feedback(review);
     Ok(())
 }
 
@@ -718,50 +842,107 @@ struct ReviewWork {
     open_questions: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ReviewUnderstanding {
     statement: String,
     sources: Vec<ReviewSourceCitation>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ReviewSourceCitation {
     source_id: String,
     source_revision: String,
     lid: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    end_lid: Option<String>,
     quote: String,
+}
+
+fn review_citation_supported(citation: &ReviewSourceCitation, sources: &Value) -> bool {
+    if citation.source_id.trim().is_empty() || citation.source_revision.trim().is_empty()
+        || citation.lid.trim().is_empty() || citation.quote.trim().is_empty() { return false; }
+    sources.as_array().into_iter().flatten().any(|source| {
+        if source["source_id"].as_str() != Some(&citation.source_id)
+            || source["source_revision"].as_str() != Some(&citation.source_revision) { return false; }
+        let Some(segments) = source["segments"].as_array() else { return false; };
+        segments.iter().enumerate().filter(|(_, segment)| segment["lid"].as_str() == Some(&citation.lid)).any(|(start, segment)| {
+            let Some(end_lid) = citation.end_lid.as_deref().filter(|end| *end != citation.lid) else {
+                return segment["text"].as_str().is_some_and(|text| text.contains(&citation.quote));
+            };
+            // Inline formulas are separate leaves. Join only consecutive,
+            // actually read source spans, anchored at both supplied LIDs.
+            let Some(first) = segment["text"].as_str() else { return false; };
+            let mut text = first.to_owned();
+            let mut previous_end = segment["source_range"]["end"].as_u64();
+            for next in &segments[start + 1..] {
+                let Some(next_start) = next["source_range"]["start"].as_u64() else { return false; };
+                if previous_end != Some(next_start) { return false; }
+                let Some(part) = next["text"].as_str() else { return false; };
+                let last_start = text.len();
+                text.push_str(part);
+                if next["lid"].as_str() == Some(end_lid) {
+                    return text.match_indices(&citation.quote).any(|(offset, quote)|
+                        offset < first.len() && offset + quote.len() > last_start);
+                }
+                previous_end = next["source_range"]["end"].as_u64();
+            }
+            false
+        })
+    })
+}
+
+fn validate_review_understanding(understanding: &ReviewUnderstanding, sources: &Value) -> Result<(), read_tools::ToolError> {
+    if understanding.statement.trim().is_empty() || understanding.sources.is_empty() {
+        return Err(memory::teaching::invalid("教师工作记忆中的理解必须说明具体结论及原文依据；没有可靠结论时保留空数组"));
+    }
+    for citation in &understanding.sources {
+        if !review_citation_supported(citation, sources) {
+            return Err(memory::teaching::invalid(format!(
+                "教师工作记忆的原文依据无效：来源 {} 的版本 {}、LID {} 的引文须来自该位置实际读取的原文；跨连续片段须给出起始 lid 和 end_lid，不能跨未读间隔、其他来源或版本", citation.source_id, citation.source_revision, citation.lid)));
+        }
+    }
+    Ok(())
+}
+
+/// Memory is ancillary to the delivery decision. Invalid memory is omitted,
+/// while valid findings still reach the author and can be repaired this turn.
+pub(crate) fn retain_grounded_review_work(review: &mut Value, sources: &Value) -> Vec<String> {
+    let Some(value) = review.get("agent_work") else { return Vec::new(); };
+    let work = match serde_json::from_value::<ReviewWork>(value.clone()) {
+        Ok(work) => work,
+        Err(error) => {
+            review["agent_work"] = json!({"understanding":[],"open_questions":[]});
+            return vec![format!("未保留格式无效的教师工作记忆：{error}")];
+        }
+    };
+    let mut warnings = Vec::new();
+    let mut retained = Vec::new();
+    for (index, understanding) in work.understanding.into_iter().enumerate() {
+        match validate_review_understanding(&understanding, sources) {
+            Ok(()) => retained.push(understanding),
+            Err(error) => warnings.push(format!("understanding[{index}]: {}",error.message)),
+        }
+    }
+    let questions: Vec<_> = work.open_questions.into_iter().filter(|question| {
+        if question.trim().is_empty() { warnings.push("未保留空的教师工作记忆问题".into()); false } else { true }
+    }).collect();
+    review["agent_work"] = json!({"understanding":retained,"open_questions":questions});
+    warnings
 }
 
 /// Agent understanding remains separate from learner evidence. Validate each
 /// retained citation against the actual read segment, not a source-card preview
 /// or a different paragraph in the same read. Semantic support is still judged
 /// by the reviewer; this check establishes the provenance of its stated basis.
+#[cfg(test)]
 pub(crate) fn validate_review_work(review: &Value, sources: &Value) -> Result<(), read_tools::ToolError> {
     let Some(value) = review.get("agent_work") else { return Ok(()); };
     let work: ReviewWork = serde_json::from_value(value.clone())
         .map_err(|error| memory::teaching::invalid(format!("教学审阅的 agent_work 格式无效：{error}")))?;
     for understanding in work.understanding {
-        if understanding.statement.trim().is_empty() || understanding.sources.is_empty() {
-            return Err(memory::teaching::invalid("教师工作记忆中的理解必须说明具体结论及原文依据；没有可靠结论时保留空数组"));
-        }
-        for citation in understanding.sources {
-            let supported = !citation.source_id.trim().is_empty() && !citation.source_revision.trim().is_empty()
-                && !citation.lid.trim().is_empty() && !citation.quote.trim().is_empty()
-                && sources.as_array().into_iter().flatten().any(|source| {
-                    source["source_id"].as_str() == Some(citation.source_id.as_str())
-                        && source["source_revision"].as_str() == Some(citation.source_revision.as_str())
-                        && source["segments"].as_array().into_iter().flatten().any(|segment| {
-                            segment["lid"].as_str() == Some(citation.lid.as_str())
-                                && segment["text"].as_str().is_some_and(|text| text.contains(citation.quote.as_str()))
-                        })
-                });
-            if !supported {
-                return Err(memory::teaching::invalid(format!(
-                    "教师工作记忆的原文依据无效：来源 {} 的版本 {}、LID {} 的引文须来自该位置实际读取的原文，不能引用其他来源或版本、预览、其他段落或改写后的句子", citation.source_id, citation.source_revision, citation.lid)));
-            }
-        }
+        validate_review_understanding(&understanding, sources)?;
     }
     if work.open_questions.iter().any(|question| question.trim().is_empty()) {
         return Err(memory::teaching::invalid("教师工作记忆的未决问题须说明具体待查内容；没有则保留空数组"));
@@ -770,7 +951,8 @@ pub(crate) fn validate_review_work(review: &Value, sources: &Value) -> Result<()
 }
 
 pub(crate) fn review_instructions() -> &'static str {
-    concat!(include_str!("tutor_review_rules.md"), "\n\n", include_str!("tutor_writing_rules.md"))
+    concat!(include_str!("tutor_review_rules.md"), "\n\n", include_str!("tutor_writing_rules.md"),
+        "\n\n", include_str!("tutor_review_examples.md"))
 }
 
 /// A private judgment about the actual proposed delivery, before select can
@@ -779,9 +961,11 @@ pub fn review_delivery(
     adapter: &dyn crate::ModelAdapter,
     profile: crate::ModelRuntimeProfile,
     packet: Value,
+    images: Vec<crate::presentation_author::PreviewImage>,
 ) -> Result<(Value, u32), crate::AdapterError> {
     let instructions = review_instructions();
-    let input = packet.to_string();
+    let mut packet = crate::tutor_review_input::project(packet);
+    let mut input = packet.to_string();
     let messages = vec![crate::Message::system(instructions), crate::Message::user(&input)];
     // Reasoning and the JSON verdict share this allowance. Reserve the same
     // space locally that we send to the provider (the old 4096 exhausted on
@@ -789,7 +973,14 @@ pub fn review_delivery(
     let output_token_limit = 32_768;
     let mut profile = profile;
     profile.output_reserve_tokens = output_token_limit;
-    let plan = crate::AgentRequestPlan::for_ad_hoc(profile, &messages, &[]);
+    let mut plan = crate::AgentRequestPlan::for_ad_hoc(profile, &messages, &[]);
+    let omitted = crate::orchestrator::attach_presentation_images(&mut plan, images);
+    if !omitted.is_empty() {
+        // Keep the existing JSON packet intact while making budget omissions
+        // visible in the actual structured request, not only its local plan.
+        packet["visual_observation_notice"] = serde_json::json!(plan.input.last().and_then(|message| message.content.as_deref()));
+        input = packet.to_string();
+    }
     if !plan.active_context.fits {
         return Err(crate::AdapterError { spend_stop: None, message: "Teaching delivery review exceeds model context budget".into() });
     }
@@ -802,7 +993,7 @@ pub fn review_delivery(
     let _purpose = crate::run_events::purpose(adapter, "tutor_delivery_review");
     let verdict = adapter.complete_structured_observed(crate::CompletionRequest {
         output_token_limit: Some(output_token_limit), reasoning_effort: None,
-        system: instructions.into(), user: input,
+        system: instructions.into(), user: input, images: plan.preview_images,
     }, &mut usage_observer)?;
     let usage = reported_usage.unwrap_or_else(|| plan.active_context.estimated_input_tokens
         .saturating_add(crate::model_runtime::estimate_text_tokens(&verdict.to_string())));
@@ -830,6 +1021,8 @@ mod t15_tests {
         let saved = serde_json::to_value(&movement).unwrap();
         assert_eq!(saved["target"], sourced["target"]);
         assert!(target_input_schema()["properties"].get("media_bindings").is_none());
+        assert!(target_input_schema()["properties"].get("music_bindings").is_none());
+        assert!(target_input_schema()["properties"].get("source_ref_ids").is_some());
         let mut authored_media = sourced.clone();
         authored_media["target"]["media_bindings"] = json!([]);
         assert!(registration.validate_arguments(&json!({"operation":"select","move":authored_media}).to_string()).is_err());
@@ -841,6 +1034,21 @@ mod t15_tests {
 #[cfg(test)]
 mod review_resolution_tests {
     use super::*;
+
+    #[test]
+    fn review_resolution_music_live_extra_note_does_not_discard_valid_acceptance() {
+        let fixture:Value=serde_json::from_str(include_str!("testdata/music-review-extra-field.json")).unwrap();
+        let mut review=fixture["review"].clone();
+        assert!(review["request_resolution"].get("status_note").is_some());
+        normalize_delivery_review(&mut review,&fixture["packet"]).unwrap();
+        assert_eq!(review["decision"],"accept");
+        let mut invalid=fixture["review"].clone();
+        invalid["request_resolution"]["answer_quotes"]=json!(["This was not in the actual delivered draft."]);
+        assert!(normalize_delivery_review(&mut invalid,&fixture["packet"]).is_err());
+        let mut missing=fixture["review"].clone();
+        missing["request_resolution"].as_object_mut().unwrap().remove("delivered_relation");
+        assert!(normalize_delivery_review(&mut missing,&fixture["packet"]).is_err());
+    }
 
     fn packet() -> Value {
         json!({"original_request":"How does the source compute the observation interval?",
@@ -863,6 +1071,73 @@ mod review_resolution_tests {
         json!({"rule_id":"R1","location":"The delivery's opening sentence",
             "evidence":"The question asks how the interval is computed, but the draft only says that an interval is recorded.",
             "required_change":"Explain that the end time minus the start time produces the observation interval."})
+    }
+
+    fn improvement() -> Value {
+        json!({"location":"The subtraction example",
+            "evidence":"The recorded start and end times are introduced in separate paragraphs before their subtraction.",
+            "learning_impact":"Putting the two values together would reduce the need to remember one while finding the other.",
+            "suggested_change":"Place the start time, end time and subtraction in one comparison while retaining the explanation."})
+    }
+
+    #[test]
+    fn review_resolution_improvement_does_not_block_an_answered_request() {
+        let mut review = accepted();
+        review["improvements"] = json!([improvement()]);
+        review["reading_path"] = json!({"actual_sequence":"Introduce both recorded times, then subtract the start from the end.",
+            "understanding_gap":null,"proposed_adjustment":"Place the two values next to their subtraction."});
+        normalize_delivery_review(&mut review, &packet()).unwrap();
+        assert_eq!(review["decision"], "accept");
+        assert!(review["revision"].is_null());
+        assert_eq!(review["improvements"], json!([improvement()]));
+        assert!(review["reading_path"]["actual_sequence"].is_string());
+        assert_eq!(review["review_feedback_warnings"], json!([]));
+    }
+
+    #[test]
+    fn review_resolution_improvements_cannot_replace_a_required_connection() {
+        let mut review = accepted();
+        review["request_resolution"]["status"] = json!("unresolved");
+        review["improvements"] = json!([improvement()]);
+        normalize_delivery_review(&mut review, &packet()).unwrap();
+        assert_eq!(review["decision"], "revise");
+        assert!(review["revision"].as_str().unwrap().contains("[R1]"));
+        assert_eq!(review["improvements"], json!([improvement()]));
+        assert!(!review["revision"].as_str().unwrap().contains("Place the start time"));
+    }
+
+    #[test]
+    fn review_resolution_invalid_editorial_feedback_is_omitted_without_losing_blockers() {
+        let mut malformed = improvement();
+        malformed["learning_impact"] = json!(" ");
+        for blocked in [false, true] {
+            let mut review = accepted();
+            if blocked { review["findings"] = json!([missing_connection()]); }
+            review["improvements"] = json!([improvement(), malformed, {"suggested_change":"Make it prettier."}]);
+            review["reading_path"] = json!({"actual_sequence":" ","understanding_gap":false});
+            normalize_delivery_review(&mut review, &packet()).unwrap();
+            assert_eq!(review["decision"], if blocked { "revise" } else { "accept" });
+            assert_eq!(review["improvements"], json!([improvement()]));
+            assert!(review["reading_path"].is_null());
+            assert_eq!(review["review_feedback_warnings"].as_array().unwrap().len(), 3);
+            if blocked { assert!(review["revision"].as_str().unwrap().contains("Explain that the end time")); }
+        }
+        let mut review = accepted();
+        review["improvements"] = json!("Make it prettier.");
+        normalize_delivery_review(&mut review, &packet()).unwrap();
+        assert_eq!(review["decision"], "accept");
+        assert_eq!(review["improvements"], json!([]));
+        assert_eq!(review["review_feedback_warnings"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn review_resolution_does_not_require_improvements_for_a_sufficient_answer() {
+        let mut review = accepted();
+        normalize_delivery_review(&mut review, &packet()).unwrap();
+        assert_eq!(review["decision"], "accept");
+        assert_eq!(review["improvements"], json!([]));
+        assert!(review["reading_path"].is_null());
+        assert_eq!(review["review_feedback_warnings"], json!([]));
     }
 
     #[test]
@@ -1102,6 +1377,44 @@ mod review_work_tests {
         let mut missing_identity = reviewed_work();
         missing_identity["agent_work"]["understanding"][0]["sources"][0].as_object_mut().unwrap().remove("source_id");
         assert!(validate_review_work(&missing_identity, &sources).is_err());
+    }
+
+    #[test]
+    fn review_work_cites_contiguous_inline_formula_leaves_without_crossing_unread_text() {
+        let mut sources = json!([{"source_id":"book","source_revision":"current","segments":[
+            {"lid":"2.1","source_range":{"start":0,"end":3},"text":"行数 "},
+            {"lid":"2.2","source_range":{"start":3,"end":6},"text":"$m$"},
+            {"lid":"2.3","source_range":{"start":6,"end":16},"text":" 翻倍，运算量翻倍。"}
+        ]}]);
+        let mut review = reviewed_work();
+        review["agent_work"]["understanding"][0]["sources"][0] = json!({
+            "source_id":"book","source_revision":"current","lid":"2.1","end_lid":"2.3",
+            "quote":"行数 $m$ 翻倍，运算量翻倍。"});
+        assert!(validate_review_work(&review,&sources).is_ok());
+        sources[0]["segments"][1]["source_range"]["start"] = json!(4);
+        assert!(validate_review_work(&review,&sources).is_err(),"an unread gap cannot be joined");
+        sources[0]["segments"][1]["source_range"]["start"] = json!(3);
+        review["agent_work"]["understanding"][0]["sources"][0]["lid"] = json!("2.2");
+        assert!(validate_review_work(&review,&sources).is_err(),"the opening quote must occur at the cited start");
+    }
+
+    #[test]
+    fn invalid_review_memory_does_not_discard_findings_or_supported_memory() {
+        for decision in ["revise","accept"] {
+            let mut review = reviewed_work();
+            review["decision"] = json!(decision);
+            review["findings"] = json!([{"rule_id":"R3","required_change":"Recompute the longest path from the diagram."}]);
+            let mut wrong = review["agent_work"]["understanding"][0].clone();
+            wrong["sources"][0]["lid"] = json!("2.2");
+            review["agent_work"]["understanding"].as_array_mut().unwrap().insert(0,wrong);
+            let findings = review["findings"].clone();
+            let warnings = retain_grounded_review_work(&mut review,&read_sources());
+            assert_eq!(warnings.len(),1);
+            assert_eq!(review["agent_work"]["understanding"].as_array().unwrap().len(),1);
+            assert_eq!(review["findings"],findings);
+            assert_eq!(review["decision"],decision);
+            assert!(validate_review_work(&review,&read_sources()).is_ok());
+        }
     }
 
     #[test]

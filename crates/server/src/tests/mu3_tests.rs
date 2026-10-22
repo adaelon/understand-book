@@ -263,6 +263,34 @@ fn mu3_publications_isolate_same_name_resources_and_require_grants_on_cache_hits
 }
 
 #[test]
+fn mu3_private_pdf_catalog_uses_original_upload_name_for_exact_owner_and_publication() {
+    let root = tempfile::tempdir().unwrap();
+    let input = tempfile::tempdir().unwrap();
+    let writer = ServiceWriter::acquire(root.path()).unwrap();
+    let mut control = ControlStore::open(writer.clone()).unwrap();
+    control.create_user("A").unwrap(); control.create_user("B").unwrap();
+    let mut library = PublishedLibrary::new(ControlStore::open(writer).unwrap());
+    // The prepared PDF text has no Markdown heading; its machine source name is unique.
+    material(input.path(),"source-upload-unique-id",b"page image");
+    let publication = library.publish(input.path()).unwrap();
+    for owner in ["A","B"] { library.grant(owner,&publication.reference).unwrap(); }
+    let original = std::fs::read(input.path().join("source.txt")).unwrap();
+    for (id,reference,target,label,created) in [
+        ("uploaded",publication.reference.clone(),Some("source-upload-unique-id.pdf"),"期末复习讲义.pdf",1),
+        ("reused",publication.reference.clone(),None,"不应重命名已有资料",2),
+        ("other-version",crate::published_library::PublishedBookRef {publication_id:"other-version".into(),..publication.reference.clone()},Some("another.pdf"),"另一版本.pdf",3),
+    ] {
+        let task = json!({"user_id":"A","materials":[{"label":label,"target_input":target,"published_book_ref":reference,"state":"imported"}]});
+        control.connection.execute("INSERT INTO operator_builds(task_id,task_json,created_at) VALUES(?,?,?)",rusqlite::params![id,task.to_string(),created]).unwrap();
+    }
+    let catalog = library.list("A").unwrap();
+    assert_eq!(catalog[0]["title"],"期末复习讲义.pdf");
+    assert_eq!(catalog[0]["published_book_ref"],json!(publication.reference));
+    assert!(library.list("B").unwrap()[0]["title"].is_null(),"another reader cannot inherit the private upload label");
+    assert_eq!(std::fs::read(library.load("A",&publication.reference).unwrap().directory().join("source.txt")).unwrap(),original);
+}
+
+#[test]
 fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
     let root = tempfile::tempdir().unwrap();
     let input = tempfile::tempdir().unwrap();

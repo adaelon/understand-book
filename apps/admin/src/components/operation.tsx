@@ -68,6 +68,15 @@ const fieldNames: Record<string, string> = {
   max_micro_cny: "平台预算上限（元）",
   reserved_per_execution_micro_cny: "每次执行预计占用（元）",
   expected_revision: "提交时的任务版本",
+  product_id: "套餐商品",
+  product_revision: "购买商品版本",
+  tier: "套餐档位",
+  duration: "套餐时长",
+  test_only: "仅供测试",
+  grant_milli_percent: "每期套餐额度",
+  storage_bytes: "个人空间（字节）",
+  max_file_bytes: "单文件上限（字节）",
+  retention_seconds: "到期保留（秒）",
 };
 function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
   return (
@@ -79,7 +88,9 @@ function SubmissionSummary({ body }: { body: Record<string, unknown> }) {
       {Object.entries(body)
         .filter(([key, value]) => fieldNames[key] && !(key === "max_micro_cny" && value == null))
         .map(([key, value]) => {
-          const text = key === "delta_milli_percent" ? milliPercentage(value as number) : key.endsWith("_fen")
+          const text = value == null ? '未填写' : key === "tier" ? ({ basic: '基础版', plus: '进阶版', pro: '专业版' }[String(value)] ?? String(value))
+            : key === "duration" ? ({ day1: '1 天冲刺', day3: '3 天冲刺', day7: '7 天冲刺', month: '按月学习' }[String(value)] ?? String(value))
+            : key === "delta_milli_percent" || key === "grant_milli_percent" ? milliPercentage(value as number) : key.endsWith("_fen")
             ? money(value as number, 2)
             : key.endsWith("_micro_cny")
               ? money(value as number | null)
@@ -257,6 +268,10 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
           )}
           {receipt.workspace_release != null && (() => { const release = receipt.workspace_release as {release_id: string; version: number; readiness_at_publication:{status:string}}; return <p>共享发布 {release.release_id} · v{release.version}：{release.readiness_at_publication.status === 'ready' ? '完整可用' : '尚未完整就绪，请查看版本中的资料与授权情况。'}</p>; })()}
           {receipt.operator_build != null && <p>运营任务已保存，可打开任务查看最新准备状态与费用。</p>}
+          {receipt.entitlement != null && (() => {
+            const plan = receipt.entitlement as { title: string; starts_at: number; expires_at: number };
+            return <p>已开通 {plan.title}：{date(plan.starts_at)} — {date(plan.expires_at)}（香港时间）。</p>;
+          })()}
           {receipt.kind.startsWith("mcp-") && <>
             {receipt.parameters && <SubmissionSummary body={receipt.parameters} />}
             {receipt.call_pack && <p>

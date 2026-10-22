@@ -368,7 +368,7 @@ fn continuation_tc5_browser_api() {
             let mut movement=tc3_move(&fresh);
             let reference=if path.contains("presentation") {
                 let candidate=fresh.private_context().create_presentation_candidate(&run.turn_ref.session_id,&run.turn_ref.turn_id,None,
-                    PresentationContent { teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"平均速度：观察总时间".into(),
+                    PresentationContent { action_contract: vec![], teaching_binding: None, method_refs: None, method_observations: Default::default(), animation_assets:Default::default(),title:"平均速度：观察总时间".into(),
                         content_files:BTreeMap::from([("index.html".into(),"<h2>总路程固定为 120 公里</h2><label>总时间 <input id=hours type=range min=1 max=6 value=2></label><p>观察时间变长后的平均速度。</p>".into())]),
                         entrypoint:"index.html".into(),readable_content:"总路程固定；增加总时间时，每小时对应的路程减少。".into(),
                         source_bindings:vec![],assumptions:vec![],state_contract:json!({}),initial_state:json!({"hours":2}) }).unwrap();
@@ -582,6 +582,7 @@ fn continuation_tc4_network_choice_recovers_preparation_boundaries() {
             assert_eq!(probe.0.load(Ordering::SeqCst), 0); continue;
         }
         assert_eq!(status,202,"{point}: {accepted}");
+        drive_network_coach(&f);
         assert!(f.access.runs.run_one(&f.access).unwrap());
         assert!(!f.access.runs.run_one(&f.access).unwrap());
         let calls = probe.0.load(Ordering::SeqCst);
@@ -626,6 +627,7 @@ fn continuation_tc4_network_two_choices_conflicts_and_unknown_execution() {
     let mut changed = original.clone(); changed["teaching_choice"]["option_id"] = json!("different");
     assert_eq!(admit(&f,&w,changed).1["error_code"], "REQUEST_KEY_CONFLICT");
     *f.access.runs.fail_after.lock().unwrap() = Some("claimed");
+    drive_network_coach(&f);
     assert!(f.access.runs.run_one(&f.access).is_err());
     *f.access.runs.fail_after.lock().unwrap() = None;
     f.access.runs.recover(&f.access).unwrap();
@@ -659,6 +661,7 @@ struct ContinuationDelivery {
 impl ModelAdapter for ContinuationDelivery {
     fn complete(&self,_:CompletionRequest)->Result<ParsedResponse,AdapterError> {unreachable!()}
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
         if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
         unreachable!()
     }
@@ -721,6 +724,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     f.access.runs.configure_fake(move || Box::new(TutorRequestRecorder { samples:collected.clone(),directory:None,
         inner:Box::new(tc4_delivery(target.clone(),previous.clone())) }));
     let (status,accepted) = admit(&f,&w,input.clone()); assert_eq!(status,202,"{accepted}");
+    drive_network_coach(&f);
     assert!(f.access.runs.run_one(&f.access).unwrap());
     assert!(!f.access.runs.run_one(&f.access).unwrap());
     assert_eq!(admit(&f,&w,input.clone()).1["turn_id"],accepted["turn_id"]);
@@ -737,6 +741,10 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
 
 impl ModelAdapter for Tc4CrashProbe {
     fn complete(&self, _:CompletionRequest) -> Result<ParsedResponse,AdapterError> { unreachable!() }
+    fn complete_structured(&self, request:CompletionRequest) -> Result<Value,AdapterError> {
+        if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
+        unreachable!()
+    }
     fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn,AdapterError> {
         self.0.0.fetch_add(1,Ordering::SeqCst);
         panic!("TC4 host disappears after provider started");
@@ -1352,6 +1360,10 @@ fn activity(state: &mut AppState, object_only: bool) -> (AgentTurnRef, String) {
 struct Probe(Arc<AtomicUsize>);
 impl ModelAdapter for Probe {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
+    fn complete_structured(&self, request:CompletionRequest) -> Result<Value,AdapterError> {
+        if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
+        unreachable!()
+    }
     fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         self.0.fetch_add(1, Ordering::SeqCst);
         Ok(AssistantTurn { provider_continuation:None,text:Some(scenario()["answer"].as_str().unwrap().into()),
@@ -1481,7 +1493,7 @@ impl ModelAdapter for TutorRequestRecorder {
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
         if !request.system.starts_with("Teaching delivery acceptance review.") { return self.inner.complete_structured(request); }
         let value=json!({"kind":"structured_completion","instructions":request.system,"input":[{"role":runtime::Role::User,"content":request.user}],
-            "tools":[],"output_token_limit":request.output_token_limit,"reasoning_effort":request.reasoning_effort});
+            "tools":[],"images":request.images,"output_token_limit":request.output_token_limit,"reasoning_effort":request.reasoning_effort});
         let index={let mut samples=self.samples.lock().unwrap();let index=samples.len();samples.push(value.clone());index};
         if let Some(dir)=&self.directory {
             std::fs::write(dir.join(format!("request-{index:02}.json")),serde_json::to_vec_pretty(&value).unwrap()).unwrap();
@@ -1585,6 +1597,12 @@ fn network_fixture() -> (super::mu5_tests::Fixture, Value, Value, Probe) {
 }
 fn admit(f: &super::mu5_tests::Fixture, w: &Value, input: Value) -> (u16, Value) {
     f.call(&f.a, "POST", &format!("/api/workspaces/{}/agent/runs", w["workspace_id"].as_str().unwrap()), input)
+}
+
+// These in-process fixtures do not spawn the host's background coach worker.
+fn drive_network_coach(f: &super::mu5_tests::Fixture) {
+    let handle=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
+    while crate::teaching_coach::tick_network(&f.access,&handle,&runtime::run_context::CancellationToken::default()).unwrap() {}
 }
 
 #[test]

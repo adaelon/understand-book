@@ -134,6 +134,7 @@ fn q2_transport_costs_share_parent_but_keep_workspace_and_account_wide_ownership
         adapter.set_spend_context(scope.clone(), Some(f.access.spend.port_with_attribution(scope, f.x.clone(), attribution, Default::default())));
         adapter.set_model_purpose(purpose);
         assert_eq!(adapter.complete_structured(CompletionRequest {
+            images: Vec::new(),
             system: "fixture".into(), user: "fixture".into(), output_token_limit: Some(100), reasoning_effort: None,
         }).unwrap()["ok"], true);
     }
@@ -143,6 +144,7 @@ fn q2_transport_costs_share_parent_but_keep_workspace_and_account_wide_ownership
     );
     adapter.set_model_purpose("prebuild");
     adapter.complete_structured(CompletionRequest {
+        images: Vec::new(),
         system: "fixture".into(), user: "fixture".into(), output_token_limit: Some(100), reasoning_effort: None,
     }).unwrap();
     worker.join().unwrap();

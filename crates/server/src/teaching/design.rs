@@ -27,11 +27,11 @@ fn require_scene_fact(state: &PrivateBookContext<'_>, binding: &TeachingBinding,
     Ok(fact)
 }
 
-pub(super) fn prepare(state: &PrivateBookContext<'_>, bind: &TeachingEvent, request: &Value, ranges: &[EvidenceRange]) -> Result<TeachingDesign, TeachingSelectionPreflightError> {
+pub(super) fn prepare(state: &PrivateBookContext<'_>, bind: &TeachingEvent, request: &Value, evidence: &[SourceBinding], ranges: &[EvidenceRange]) -> Result<TeachingDesign, TeachingSelectionPreflightError> {
     let binding = &bind.binding;
     let operation = request["operation_id"].as_str().filter(|id|!id.trim().is_empty()).ok_or_else(||invalid("设计修订需要 operation_id"))?;
     let mut input = request["design"].clone();
-    input["target"] = json!(bind_target(input["target"].clone(), binding)?);
+    input["target"] = json!(bind_target(input["target"].clone(), binding, evidence)?);
     for block in input["blocks"].as_array_mut().into_iter().flatten() {
         for source in block["source_bindings"].as_array_mut().into_iter().flatten() {
             if source.get("source_id").is_none() { source["source_id"]=json!(binding.source_id); }
@@ -56,12 +56,12 @@ pub(super) fn prepare(state: &PrivateBookContext<'_>, bind: &TeachingEvent, requ
     Ok(design)
 }
 
-pub(super) fn accept(state: &PrivateBookContext<'_>, bind: &TeachingEvent, request: &Value, ranges: &[EvidenceRange], now: &str) -> Result<Value, ToolError> {
-    let design=prepare(state,bind,request,ranges).map_err(|failure|failure.error)?;
+pub(super) fn accept(state: &PrivateBookContext<'_>, bind: &TeachingEvent, request: &Value, evidence: &[SourceBinding], ranges: &[EvidenceRange], now: &str) -> Result<Value, ToolError> {
+    let design=prepare(state,bind,request,evidence,ranges).map_err(|failure|failure.error)?;
     let binding=&bind.binding;
     let id=format!("design:{}:{}",binding.turn_id,request["operation_id"].as_str().unwrap());
     if let Ok(existing)=event(state,&id) {
-        return Ok(json!({"design_ref":existing.event_id,"design":design,"learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None)?}));
+        return Ok(json!({"design_ref":existing.event_id,"design":design,"learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None,&[])?}));
     }
     let mut causes = vec![bind.event_id.clone()];
     if let Some(id) = &design.previous_ref { read_design(state,binding,id)?; causes.push(id.clone()); }
@@ -84,7 +84,7 @@ pub(super) fn accept(state: &PrivateBookContext<'_>, bind: &TeachingEvent, reque
     }
     causes.sort(); causes.dedup();
     let saved = append(state,binding,id,TeachingFact::DesignRevised,causes,json!({"design":design}),now)?;
-    Ok(json!({"design_ref":saved.event_id,"design":design,"learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None)?,"instruction":"This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding."}))
+    Ok(json!({"design_ref":saved.event_id,"design":design,"learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None,&[])?,"instruction":"This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding."}))
 }
 
 pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent, movement: &TeachingMove) -> Result<TeachingDesign, ToolError> {
@@ -248,16 +248,21 @@ pub(super) fn support_context(state: &PrivateBookContext<'_>, delivery: &Teachin
     let responding_to=delivery.payload["move"]["responds_to"]["fact_refs"].as_array().into_iter().flatten()
         .filter_map(Value::as_str).map(|id|store.teaching_event(id)).collect::<Result<Vec<_>,_>>()?;
     let responding_to_expressions=expression_contexts(state,&delivery.binding,responding_to)?;
-    let displayed_help=store.teaching_activity_events(&delivery.event_id)?.into_iter().rev()
+    let activity=store.teaching_activity_events(&delivery.event_id)?;
+    let teacher_actions=activity.iter().filter(|fact|fact.payload["usage"]["kind"]=="teacher_presentation_action")
+        .rev().take(6).map(|fact|json!({"fact_ref":fact.event_id,"actor":"teacher","action":fact.payload["action"],
+            "before_receipt":fact.payload["before_receipt"],"after_receipt":fact.payload["scene"]["receipt"]})).collect::<Vec<_>>();
+    let displayed_help=activity.into_iter().rev()
         .filter(|fact|fact.kind==TeachingFact::HelpDisplayed).take(4).map(|fact|Ok(json!({
-            "fact_ref":fact.event_id,"text_preview":preview(&fact.payload["text"],600),"scene":scene_context(state,&fact)?})))
+            "fact_ref":fact.event_id,"text_preview":preview(&fact.payload["text"],600),"scene":scene_context(state,&fact)?,
+            "actor":fact.payload["actor"],"action_ref":fact.payload["action_ref"],"before_receipt":fact.payload["before_receipt"]})))
         .collect::<Result<Vec<Value>,ToolError>>()?;
     Ok(json!({"delivery_ref":delivery.event_id,"design_ref":delivery.payload["move"]["design_ref"],
         "block_refs":delivery.payload["move"]["block_refs"],"target":delivery.payload["move"]["target"],
         "participation":participation,"answer_preview":preview(&delivery.payload["answer"],1200),
         "response_expectation":delivery.payload["move"]["response_expectation"],"presentation":delivery.payload["move"]["presentation"],
         "presentation_support":presentation_context(&delivery.payload["presentation"]),
-        "displayed_help":displayed_help,"responding_to_expressions":responding_to_expressions,"learner_expressions":expressions}))
+        "displayed_help":displayed_help,"teacher_actions":teacher_actions,"responding_to_expressions":responding_to_expressions,"learner_expressions":expressions}))
 }
 
 /// Resolve only the return links the teacher actually saved. These are earlier
@@ -326,7 +331,7 @@ pub(super) fn freeze_input_support(state: &PrivateBookContext<'_>, binding: &Tea
             pending_activity_help(state,action)?.first().map(|id|referenced_delivery(state,id)).transpose()?
                 .or(state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)?)
         } else { state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)? };
-    let (help,support)=if let Some(invitation)=&invitation {
+    let (mut help,mut support)=if let Some(invitation)=&invitation {
         let prior=state.user.learning_store_for_workspace(state.learning_workspace_id)?.teaching_activity_events(&invitation.event_id)?;
         let help:Vec<_>=prior.iter().filter(|fact|fact.kind==TeachingFact::HelpDisplayed).map(|fact|fact.event_id.clone()).collect();
         let support:Vec<_>=std::iter::once(invitation.event_id.clone()).chain(prior.iter().filter(|fact|fact.kind==TeachingFact::MessageDelivered).map(|fact|fact.event_id.clone())).collect();
@@ -341,6 +346,20 @@ pub(super) fn freeze_input_support(state: &PrivateBookContext<'_>, binding: &Tea
         }
         (help,support.into_iter().map(|delivery|delivery.event_id).collect())
     };
+    // A follow-up can revisit an older page after another chat explanation.
+    // Include help from that exact page alongside the current chat support.
+    if let Some(receipt)=request.get("presentation_follow_up").filter(|value|value.is_object()) {
+        let receipt:runtime::presentation::PresentationFollowUp=serde_json::from_value(receipt.clone()).map_err(|e|invalid(e.to_string()))?;
+        for delivery in state.user.learning_store_for_workspace(state.learning_workspace_id)?
+            .teaching_deliveries(&receipt.session_id,&receipt.turn_id)?.into_iter().filter(|fact|
+                fact.binding.tutor_session_id==binding.tutor_session_id
+                    && fact.payload["move"]["presentation"]==json!(receipt.reference)) {
+            if !support.contains(&delivery.event_id) { support.push(delivery.event_id.clone()); }
+            for fact in state.user.learning_store_for_workspace(state.learning_workspace_id)?.teaching_activity_events(&delivery.event_id)? {
+                if fact.kind==TeachingFact::HelpDisplayed && !help.contains(&fact.event_id) { help.push(fact.event_id); }
+            }
+        }
+    }
     if support.is_empty() { return Ok(()); }
     for fact in facts.iter_mut().filter(|fact|fact.binding.turn_id==binding.turn_id && (fact.kind==TeachingFact::LearnerAction
         || fact.kind==TeachingFact::UsageObserved && matches!(fact.payload["usage"]["kind"].as_str(),Some("user_message"|"reading_action")))) {

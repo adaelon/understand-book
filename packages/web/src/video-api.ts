@@ -22,3 +22,7 @@ export type PublishedVideo = { time_base: [number, number]; publication: import(
   coverage?: import('../../core/src/generated/VideoCoverage').VideoCoverage[];
   translations?: import('../../core/src/generated/TranscriptTranslation').TranscriptTranslation[];
   translation_progress?: { tasks: { id: string; segment_ids: string[]; status: 'pending' | 'running' | 'accepted' | 'failed'; attempts: number; failure: string | null }[] } | null };
+
+export type VideoPlayback = Pick<PublishedVideo, 'time_base' | 'publication' | 'material' | 'source'> & {
+  hls: boolean; title?: string; cover_url?: string | null;
+};

@@ -137,7 +137,7 @@ it('keeps every non-current session reachable and requires an explicit resume', 
 it('shows new learning without a session and retains drafts when state loads', async () => {
   const w = setup(null);
   expect(w.get('#tutor-new').isVisible()).toBe(true);
-  await button(w, '带我推导一遍').trigger('click');
+  await w.get('textarea').setValue('请带我一步步推导');
   expect(w.get('textarea').element.value).toContain('一步步推导');
   await w.setProps({ state: state() });
   expect(w.get('#tutor-new').isVisible()).toBe(true);

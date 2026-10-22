@@ -107,6 +107,20 @@ impl UserRegistry {
     pub(crate) fn loaded_users(&self) -> Vec<UserHandle> {
         self.users.values().cloned().collect()
     }
+    pub(crate) fn pending_coach_owners(&self) -> Result<std::collections::VecDeque<String>, ToolError> {
+        let fail = |e: rusqlite::Error| crate::user_storage_paths::error("TUTOR_COACH_RECOVERY_FAILED","unavailable",&e.to_string());
+        let mut query = self.control.connection.prepare("SELECT user_id FROM users WHERE disabled=0 ORDER BY user_id").map_err(fail)?;
+        let owners = query.query_map([], |r| r.get::<_,String>(0)).map_err(fail)?;
+        let mut pending=std::collections::VecDeque::new();
+        for owner in owners {
+            let owner=owner.map_err(fail)?;
+            let path=self.control.writer.paths(&owner)?.learning;
+            if !path.is_file() {continue;}
+            let store=memory::learning::LearningStore::open(&path,true)?;
+            if !store.coach_job_workspaces()?.is_empty() {pending.push_back(owner);}
+        }
+        Ok(pending)
+    }
     /// Startup discovers durable work without loading every account into RAM.
     pub(crate) fn pending_review_owners(
         &self,

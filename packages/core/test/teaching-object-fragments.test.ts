@@ -90,21 +90,33 @@ describe("large teaching object fragments", () => {
         source_bindings: candidate.coverage[0].source_bindings, candidate_refs: [], participants: [], component_keys: [] }],
         coverage: candidate.coverage.map(c => ({ ...c, object_keys: ["speed"] })) } : candidate);
     }
-    let task = tasks(input).tasks.at(-1)!;
-    const keys = task.alignment!.proposal.objects.map(o => o.key);
-    write(task, { kind: "inspect", key: keys[1] });
-    task = tasks(input).tasks.at(-1)!;
-    expect(task.descriptor.input_budget_proof.estimated_rendered_tokens).toBeLessThanOrEqual(6000);
-    const pendingId = task.descriptor.work_unit_id;
-    expect(tasks(input).tasks.at(-1)!.descriptor.work_unit_id).toBe(pendingId);
-    const passage = input.source.passages[0];
-    for (let start = 0; start < passage.text.length; start += 2000) {
-      write(task, { kind: "read", lid: passage.lid, start, end: Math.min(start + 2000, passage.text.length) });
-      task = tasks(input).tasks.at(-1)!;
+    const pending = () => {
+      const routed = tasks(input);
+      return routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id));
+    };
+    // Each parallel lane must finish its own reads and decision before the reducer closes.
+    for (let round = 0; round < 8; round++) {
+      let task = pending();
+      if (!task) break;
+      if (JSON.parse(task.rendered_input).focus.kind === "finish") {
+        write(task, { kind: "finish" });
+        continue;
+      }
+      const keys = task.alignment!.proposal.objects.map(o => o.key);
+      for (const key of keys) {
+        write(task, { kind: "inspect", key });
+        task = pending()!;
+      }
+      expect(task.descriptor.input_budget_proof.estimated_rendered_tokens).toBeLessThanOrEqual(6000);
+      expect(pending()!.descriptor.work_unit_id).toBe(task.descriptor.work_unit_id);
+      const passage = input.source.passages[0];
+      for (let start = 0; start < passage.text.length; start += 2000) {
+        write(task, { kind: "read", lid: passage.lid, start, end: Math.min(start + 2000, passage.text.length) });
+        task = pending()!;
+      }
+      write(task, { kind: "resolve", keys, object: task.alignment!.proposal.objects[0] });
     }
-    write(task, { kind: "resolve", keys, object: task.alignment!.proposal.objects[0] });
-    task = tasks(input).tasks.at(-1)!;
-    write(task, { kind: "finish" });
+    expect(pending()).toBeUndefined();
     closeTeachingStage(input, "formal_objects");
     const file = path.join(input.target.workspace_dir, "formal_objects.json"), firstBytes = readFileSync(file, "utf8");
     expect(JSON.parse(firstBytes).active_refs).toHaveLength(1);

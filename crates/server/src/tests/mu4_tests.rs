@@ -371,7 +371,7 @@ fn mu4_real_host_login_cookie_rotation_csrf_logout_and_no_static_fallback() {
         "HttpOnly",
         "SameSite=Lax",
         "Path=/",
-        "Max-Age=43200",
+        "Max-Age=2592000",
     ] {
         assert!(cookie.contains(part));
     }
@@ -936,7 +936,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
             },
             created_by_turn_id: "turn-same".into(),
             based_on: None,
-            content: PresentationContent { teaching_binding: None,
+            content: PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: format!("{id}-private-title"),

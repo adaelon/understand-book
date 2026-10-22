@@ -53,7 +53,7 @@ export interface SourceManifestV2 {
   version: "source_manifest.v2";
   book_id: string;
   canonical_source: {
-    kind: "reconciled_markdown";
+    kind: "reconciled_markdown" | "pdf_text";
     path: "source.txt";
     citation_anchor: "lid";
     sha256: string;
@@ -85,6 +85,7 @@ export interface SourceManifestInput {
 }
 
 export interface SourceManifestV2Input {
+  canonical_source_kind?: SourceManifestV2["canonical_source"]["kind"];
   book_id: string;
   source_sha256: string;
   original_pdf_path?: string;
@@ -200,7 +201,7 @@ export function buildSourceManifestV2(input: SourceManifestV2Input): SourceManif
     version: "source_manifest.v2",
     book_id: bookId,
     canonical_source: {
-      kind: "reconciled_markdown",
+      kind: input.canonical_source_kind ?? "reconciled_markdown",
       path: "source.txt",
       citation_anchor: "lid",
       sha256: sourceSha256,

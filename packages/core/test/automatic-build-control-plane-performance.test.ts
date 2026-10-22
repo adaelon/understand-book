@@ -186,7 +186,7 @@ describe("B1 representative control plane", () => {
       if (generation?.kind !== "profile_sidecar_fast_path") throw new Error("B1 requires a frozen independent sidecar task");
       const packet = generation.task.packet;
       const candidate = packet.unit_kind === "profile_sidecar_discourse"
-        ? { discourse_items: packet.visible_lids.map((lid) => ({ lid, mode: "informative", relations: [] })) }
+        ? { discourse_items: packet.discourse_lids.map((lid) => ({ lid, mode: "informative", relations: [] })) }
         : { formula_semantics: packet.formula_lids.map((lid) => ({
           formula_lid: lid, context_lids: packet.visible_lids.filter((other) => other !== lid),
           composition: { source_lid: lid, meaning: "The value increases with its input.", terms: [], evidence_lids: [lid] },

@@ -25,6 +25,19 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const diskFailure = vi.hoisted(() => ({ failNextWrite: false }));
+const candidateDigest = vi.hoisted(() => ({ bytes: undefined as Buffer | undefined, updates: 0 }));
+vi.mock("node:crypto", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  return { ...actual, createHash: (...args: Parameters<typeof actual.createHash>) => {
+    const hash = actual.createHash(...args);
+    const update = hash.update.bind(hash);
+    hash.update = ((data: Parameters<typeof hash.update>[0], ...rest: unknown[]) => {
+      if (candidateDigest.bytes && Buffer.isBuffer(data) && data.equals(candidateDigest.bytes)) candidateDigest.updates++;
+      return update(data, ...rest as []);
+    }) as typeof hash.update;
+    return hash;
+  } };
+});
 vi.mock("node:fs", async importOriginal => {
   const actual = await importOriginal<typeof import("node:fs")>();
   return { ...actual, writeFileSync: (...args: Parameters<typeof actual.writeFileSync>) => {
@@ -92,6 +105,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  candidateDigest.bytes = undefined;
+  candidateDigest.updates = 0;
   if (priorRegistryRoot === undefined) {
     delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
   } else {
@@ -700,10 +715,27 @@ describe("automatic build public executor session S3", () => {
       now: "2026-08-08T06:20:02.000Z",
     });
     const snapshot = readAutomaticBuildAttemptSnapshot(value.target);
+    candidateDigest.bytes = readFileSync(candidate);
+    candidateDigest.updates = 0;
     expect(submitAutomaticBuildExecutorCandidate(action.opaque_session_ref, candidate, {
       now: "2026-08-08T06:20:03.000Z",
     })).toEqual(first);
+    expect(candidateDigest.updates).toBe(0);
     expect(readAutomaticBuildAttemptSnapshot(value.target)).toEqual(snapshot);
+
+    const withBom = path.join(value.root, "candidate-bom.json");
+    writeFileSync(withBom, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), candidateDigest.bytes]));
+    expect(submitAutomaticBuildExecutorCandidate(action.opaque_session_ref, withBom, {
+      now: "2026-08-08T06:20:03.500Z",
+    })).toEqual(first);
+    expect(candidateDigest.updates).toBe(0);
+
+    // Preserve byte identity: equal JSON values with different whitespace are still a conflict.
+    const whitespace = path.join(value.root, "candidate-whitespace.json");
+    writeFileSync(whitespace, `${readFileSync(candidate, "utf8")} `);
+    expect(() => submitAutomaticBuildExecutorCandidate(action.opaque_session_ref, whitespace, {
+      now: "2026-08-08T06:20:03.750Z",
+    })).toThrow(/candidate.*different|conflict/i);
 
     const conflict = path.join(value.root, "candidate-conflict.json");
     writeFileSync(conflict, "{\"different\":true}\n", "utf8");
@@ -2229,22 +2261,26 @@ describe("TO6 executor lifecycle examples", () => {
   it("TO6 executes advertised examples over the real stdio transport", async () => {
     const value = v3Fixture("to6-stdio");
     const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-    const child = spawn(process.execPath, ["--import", "tsx", "skills/build/build-executor-mcp.ts",
+    const connect = () => {
+      const child = spawn(process.execPath, ["--import", "tsx", "skills/build/build-executor-mcp.ts",
       "--bootstrap-version", BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
       "--protocol-generation", BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol], {
       cwd: repoRoot, windowsHide: true, stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env, UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT: value.registryRoot },
-    });
-    const closed = once(child, "close");
-    let stderr = "";
-    child.stderr.on("data", chunk => { stderr += chunk; });
-    const lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+      });
+      const closed = once(child, "close");
+      let stderr = "";
+      child.stderr.on("data", chunk => { stderr += chunk; });
+      const lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+      return { child, closed, lines, stderr: () => stderr };
+    };
+    let connection = connect();
     const exchanges: Array<{ request: unknown; response: unknown }> = [];
     const rpc = async (method: string, params: unknown = {}) => {
       const request = { jsonrpc: "2.0", id: exchanges.length + 1, method, params };
-      child.stdin.write(`${JSON.stringify(request)}\n`);
-      const line = await lines.next();
-      if (line.done) throw new Error(`TO6 stdio ended before response: ${stderr}`);
+      connection.child.stdin.write(`${JSON.stringify(request)}\n`);
+      const line = await connection.lines.next();
+      if (line.done) throw new Error(`TO6 stdio ended before response: ${connection.stderr()}`);
       const response = JSON.parse(line.value);
       exchanges.push({ request, response });
       expect(response.id).toBe(request.id);
@@ -2254,7 +2290,7 @@ describe("TO6 executor lifecycle examples", () => {
     try {
       expect(await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {},
         clientInfo: { name: "to6-test", version: "1" } })).toMatchObject({ capabilities: { tools: { listChanged: false } } });
-      const listed = await rpc("tools/list");
+      let listed = await rpc("tools/list");
       const call = async (name: BuildExecutorToolNameV1, bindings: Record<string, unknown>) => {
         const schema = listed.tools.find((tool: { name: string }) => tool.name === name).inputSchema;
         expect(schema).toEqual(BUILD_EXECUTOR_TOOL_CONTRACTS_V3.find(tool => tool.name === name)!.input_schema);
@@ -2270,6 +2306,14 @@ describe("TO6 executor lifecycle examples", () => {
       expect(wrongVersion.isError).toBe(true);
       expect(JSON.parse(wrongVersion.content[0].text)).toMatchObject({ diagnostic_code: "protocol_incompatible", phase: "open" });
       expectNoAttempts(value);
+      // A protocol mismatch terminates this connection; a corrected open uses a fresh one.
+      connection.child.stdin.end();
+      expect((await connection.closed)[0], connection.stderr()).toBe(0);
+      await connection.lines.return?.();
+      connection = connect();
+      await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {},
+        clientInfo: { name: "to6-test", version: "1" } });
+      listed = await rpc("tools/list");
       const opened = expectDeliverInput(await call("executor.open", { opaque_handoff_ref: value.envelope.opaque_handoff_ref }));
       const refs = { opaque_session_ref: opened.input_manifest.opaque_session_ref, generation_input_ref: opened.input_manifest.generation_input_ref };
       let last: number | undefined;
@@ -2286,15 +2330,15 @@ describe("TO6 executor lifecycle examples", () => {
       expect(done.action).toEqual({ kind: "DONE", status: "committed" });
       expect(readAutomaticBuildAttemptSnapshot(value.target).stages[value.envelope.manifest.stage]?.[value.envelope.manifest.ordered_work_unit_ids[0]])
         .toMatchObject({ semantic_attempt: 1, failures: 0, submit_revision: 1 });
-      child.stdin.end();
-      expect((await closed)[0], stderr).toBe(0);
+      connection.child.stdin.end();
+      expect((await connection.closed)[0], connection.stderr()).toBe(0);
       if (process.env.TO6_CAPTURE_DIR) {
         mkdirSync(process.env.TO6_CAPTURE_DIR, { recursive: true });
         writeFileSync(path.join(process.env.TO6_CAPTURE_DIR, "stdio.json"), `${JSON.stringify({ exchanges }, null, 2)}\n`);
       }
     } finally {
-      if (child.exitCode === null) child.kill();
-      await lines.return?.();
+      if (connection.child.exitCode === null) connection.child.kill();
+      await connection.lines.return?.();
     }
   }, 30_000);
 

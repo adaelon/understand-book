@@ -63,6 +63,37 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn music_source_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        crate::music_interact::source_context(self.scope)
+    }
+    fn read_music(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: read_tools::music::MusicRead) -> Result<read_tools::music::MusicReadResult, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        let declared = crate::music_interact::publication(&self.scope.book_dir)?;
+        if reference.is_some_and(|r| r != &declared) { return Err(runtime::music::unavailable()); }
+        let manifest = self.scope.book.load_music_source(&self.scope.book_dir)?;
+        read_tools::music::read(&manifest, &declared, &request)
+    }
+    fn interact_music(&mut self, request: runtime::music::MusicInteractRequest, cancellation: &CancellationToken) -> Result<runtime::music::MusicPlaybackReceipt, ToolError> {
+        let stream = self.port.with_app(|state| {
+            self.scope.check_workspace(state)?;
+            state.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()).ok_or_else(runtime::music::unavailable)
+        })?;
+        crate::music_interact::execute(&stream, request, cancellation,
+            |commands, request| commands.prepare(self.scope, self.turn_ref, request),
+            || self.port.with_app(|state| self.scope.check_workspace(state)))
+    }
+
+    fn interact_presentation(&mut self, request: runtime::presentation_interact::InteractRequest, cancellation: &CancellationToken) -> Result<Value, ToolError> {
+        let stream = self.port.with_app(|state| {
+            self.scope.check_workspace(state)?;
+            state.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()).ok_or_else(runtime::presentation_interact::unavailable)
+        })?;
+        crate::presentation_interact::execute(&stream, request, cancellation,
+            |commands, request| self.with_private(|state| crate::presentation_interact::prepare(commands, state, self.turn_ref, request)),
+            || self.port.with_app(|state| self.scope.check_workspace(state)))
+    }
+
     fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
         crate::video_frames::require_reference(self.scope, Some(reference))?;
@@ -124,6 +155,9 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
     }
     fn tutor_working_state(&mut self) -> Result<Value, ToolError> {
         self.with_private(|state| teaching::agent_working_state(state,self.turn_ref))
+    }
+    fn tutor_coach_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.with_private(|state| crate::teaching_coach::turn_context(state.user, state.learning_workspace_id, self.turn_ref))
     }
     fn persist_goal(&mut self, goal: &runtime::goal::ResidentGoal) -> Result<(), ToolError> {
         self.port.with_app(|state| {
@@ -239,6 +273,7 @@ impl<P: UserStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
 }
 
 pub(crate) struct PreparedAgentChat {
+    pub exam_calendar: Option<Value>,
     pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub tutor: Option<Value>,
     pub goal: Option<runtime::goal::ResidentGoal>,
@@ -291,7 +326,41 @@ pub(crate) fn execute_prepared(
     prepared: PreparedAgentChat,
     cancellation: CancellationToken,
 ) -> ExecutionReport {
-    execute_observed(port, adapter, prepared, cancellation, None, None)
+    let turn=prepared.turn_ref.clone();
+    let workspace=prepared.scope.learning_workspace_id.clone();
+    if let Err(error)=crate::teaching_coach::drive_inline(port,adapter,workspace.as_deref(),&turn,false,&cancellation) {
+        return ExecutionReport::saved(err_reply(&error));
+    }
+    let report=execute_observed(port, adapter, prepared, cancellation.clone(), None, None);
+    if let Err(error)=crate::teaching_coach::drive_inline(port,adapter,workspace.as_deref(),&turn,true,&cancellation) {
+        eprintln!("Teaching coach persistence: {}",error.error_code);
+    }
+    report
+}
+
+/// Test-only streaming entry point with the same inline coach envelope as execute_prepared.
+#[cfg(test)]
+pub(crate) fn execute_prepared_with_stream_for_test(
+    port: &impl AppStatePort,
+    adapter: &dyn ModelAdapter,
+    prepared: PreparedAgentChat,
+    cancellation: CancellationToken,
+    stream: &Arc<RunStream>,
+) -> ExecutionReport {
+    let turn = prepared.turn_ref.clone();
+    let workspace = prepared.scope.learning_workspace_id.clone();
+    if let Err(error) = crate::teaching_coach::drive_inline(
+        port, adapter, workspace.as_deref(), &turn, false, &cancellation,
+    ) {
+        return ExecutionReport::saved(err_reply(&error));
+    }
+    let report = execute_observed(port, adapter, prepared, cancellation.clone(), Some(stream), None);
+    if let Err(error) = crate::teaching_coach::drive_inline(
+        port, adapter, workspace.as_deref(), &turn, true, &cancellation,
+    ) {
+        eprintln!("Teaching coach persistence: {}", error.error_code);
+    }
+    report
 }
 
 /// Shared model/cancellation/history-redaction envelope for local and network Runs.
@@ -323,6 +392,7 @@ pub(crate) fn execute_model(
         .zip(prepared.scope.goal.as_ref())
         .map(|(id, goal)| runtime::workspace_goal::WorkspaceGoalContext {
             learning_workspace_id: id.clone(), goal: goal.clone(),
+            exam_calendar: prepared.exam_calendar.clone(),
         });
     context.accepted_workspace_goal = prepared.accepted_workspace_goal.clone();
     context.goal = prepared.goal.clone();
@@ -441,7 +511,15 @@ fn execute_observed(
     let FinishedRun { result, cancelled, summary, messages: persisted_messages } = execute_model(
         adapter, &prepared, cancellation, stream, event_sink,
         observation_run.as_ref().map(|r| r.event_anchor()).unwrap_or_else(std::time::Instant::now),
-        |adapter, prepared, context| run_precommitted_agent_chat(port, adapter, prepared, context),
+        |adapter, prepared, context| {
+            while !port.with_app(|state| crate::teaching_coach::prepare_execution(&state.user,
+                prepared.scope.learning_workspace_id.as_deref(), &prepared.turn_ref))? {
+                context.cancellation.check()?;
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            context.cancellation.check()?;
+            run_precommitted_agent_chat(port, adapter, prepared, context)
+        },
     );
     let observation_outcome = result.as_ref().ok().cloned();
     let observation_error_code = result
@@ -763,6 +841,8 @@ impl RunCoordinator {
                                 AgentAssistantStatus::PendingAssistant => "interrupted",
                             };
                             RunStream::from_snapshot(RunSnapshot {
+                                music_command: None,
+                                presentation_command: None,
                                 descriptor: RunDescriptor {
                                     book_id: session.book_id.clone(),
                                     session_id: session.id.clone(),

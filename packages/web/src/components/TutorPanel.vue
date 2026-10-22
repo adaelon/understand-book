@@ -6,21 +6,21 @@ import type { TutorState } from '../generated/TutorState';
 import type { TutorAction } from '../generated/TutorAction';
 import type { TutorSessionMode } from '../generated/TutorSessionMode';
 import UnderstandingSpace from './UnderstandingSpace.vue';
+import LearningPurposeEntry from './LearningPurposeEntry.vue';
+import type { LearningPurpose } from '../generated/LearningPurpose';
+import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
 
-const props = defineProps<{ state: TutorState | null; busy: boolean; error: string; pending: boolean; sourceId?: string; label: string;
-  readiness?: { status: string; limitations: string[]; reason: string } | null; readinessError?: string; initialView?: 'current' | 'understanding' | 'history' }>();
-const emit = defineEmits<{ (e: 'action', action: TutorAction): void; (e: 'retry'): void; (e: 'close'): void; (e: 'refreshReadiness'): void }>();
+const props = defineProps<{ state: TutorState | null; busy: boolean; error: string; pending: boolean; sourceId?: string; label: string; musicMode?: boolean;
+  readiness?: { status: string; limitations: string[]; reason: string } | null; readinessError?: string; initialView?: 'current' | 'understanding' | 'history';
+  learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean; learningPurposeBusy?: boolean }>();
+const emit = defineEmits<{ (e: 'action', action: TutorAction): void; (e: 'retry'): void; (e: 'close'): void; (e: 'refreshReadiness'): void;
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void }>();
 type View = 'current' | 'understanding' | 'history' | 'new';
 const tabs = [{ id: 'current', label: '当前学习' }, { id: 'understanding', label: '我的理解' }, { id: 'history', label: '历史会话' }] as const;
 const modes: { value: TutorSessionMode | null; label: string; description: string; icon: typeof BookOpen }[] = [
   { value: null, label: '按需调整', description: '跟随当前问题', icon: SlidersHorizontal },
   { value: 'direct_explanation', label: '直接讲解', description: '完整说明当前问题', icon: BookOpen },
   { value: 'guided_inquiry', label: '引导思考', description: '尝试、示范与按需帮助', icon: Route },
-];
-const suggestions = [
-  { label: '讲清这一节', intent: '我想把当前这一节的核心概念真正弄明白。' },
-  { label: '带我推导一遍', intent: '请带我一步步推导当前内容，让我能自己解释其中的逻辑。' },
-  { label: '换个例子解释', intent: '请用一个具体例子，帮我理解当前内容。' },
 ];
 const statusLabels = { active: '进行中', paused: '已暂停', ended: '已结束' };
 const sessions = computed(() => Object.values(props.state?.sessions ?? {}).filter((session): session is TutorSession => !!session));
@@ -136,27 +136,29 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
           <section v-show="view === 'current'" id="tutor-current" role="tabpanel" aria-labelledby="tutor-tab-current" class="tutor-content">
             <template v-if="selectedSession">
               <div class="goal-eyebrow"><span>{{ selectedSession.id === currentSession?.id ? '当前目标' : '历史目标' }}</span><span class="session-status" :data-status="selectedSession.status"><span class="status-dot" />{{ statusLabels[selectedSession.status] }}</span></div>
-              <div class="session-goal"><p class="material-label"><BookOpen aria-hidden="true" />{{ belongsToSource(selectedSession) ? '当前书籍' : '其他书籍' }}</p><h3 ref="goalHeading" tabindex="-1">{{ selectedSession.user_intent }}</h3><p>接着当前问题继续，也可以随时换一种讲法。</p></div>
-              <p v-if="!belongsToSource(selectedSession)" class="scope-notice">请回到本次学习的书籍继续，或为当前书籍开始新目标。</p>
+              <div class="session-goal"><p class="material-label"><BookOpen aria-hidden="true" />{{ belongsToSource(selectedSession) ? musicMode ? '当前作品' : '当前书籍' : musicMode ? '其他材料' : '其他书籍' }}</p><h3 ref="goalHeading" tabindex="-1">{{ selectedSession.user_intent }}</h3><p>接着当前问题继续，也可以随时换一种讲法。</p></div>
+              <p v-if="!belongsToSource(selectedSession)" class="scope-notice">{{ musicMode ? '请回到本次聆听的作品继续，或为当前作品开始新目标。' : '请回到本次学习的书籍继续，或为当前书籍开始新目标。' }}</p>
               <div class="teaching-section"><div class="section-label">本次学习的默认教法<span>随时可以调整</span></div><div class="teaching-modes" role="group" aria-label="默认教法">
                 <button v-for="mode in modes" :key="mode.label" class="teaching-mode" :aria-pressed="selectedSession.default_teaching_intent === mode.value" :disabled="locked" @click="emit('action', { kind: 'set_mode', session_id: selectedSession.id, mode: mode.value })"><component :is="mode.icon" class="mode-icon" aria-hidden="true" /><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small><span v-if="selectedSession.default_teaching_intent === mode.value" class="mode-check"><Check aria-hidden="true" /></span></button>
               </div><p class="teaching-note">引导思考时，你可以自己尝试，也可以请我示范一小步或补充解释。想先看完整说明，可以在对话中说“这次直接讲解”，只调整本轮。</p></div>
-              <p class="source-note"><FileText aria-hidden="true" />从原文出发，结合你的回答继续讲解。</p>
+              <p class="source-note"><FileText aria-hidden="true" />{{ musicMode ? '从录音和乐谱出发，结合你的回答继续讲解。' : '从原文出发，结合你的回答继续讲解。' }}</p>
             </template>
-            <div v-else class="tutor-empty"><BookOpen aria-hidden="true" /><h3>从一个问题，开始新的理解</h3><p>写下这次想弄懂的内容，也可以回到阅读页直接提问。</p><button class="primary-action" @click="changeView('new')">新建学习目标<ArrowRight aria-hidden="true" /></button></div>
+            <div v-else class="tutor-empty"><BookOpen aria-hidden="true" /><h3>从一个问题，开始新的理解</h3><p>{{ musicMode ? '写下这次想听懂的内容，也可以回到伴听页直接提问。' : '写下这次想弄懂的内容，也可以回到阅读页直接提问。' }}</p><button class="primary-action" @click="changeView('new')">新建学习目标<ArrowRight aria-hidden="true" /></button></div>
           </section>
           <section v-show="view === 'new'" id="tutor-new" class="tutor-content" aria-label="新的学习目标">
             <button v-if="currentSession" class="text-button back-button" @click="openTab('current')"><ArrowLeft aria-hidden="true" />返回当前学习</button>
             <div class="new-heading"><h3>这次，想弄懂什么？</h3><p>从一个问题开始，也可以描述你想达到的目标。</p></div>
-            <form id="tutor-start-form" @submit.prevent="start"><label for="tutor-intent">你的学习目标</label><textarea id="tutor-intent" v-model="intent" rows="4" :disabled="locked" placeholder="例如：我想弄懂这一节，能用自己的话解释，再独立做一个例子。" /></form>
-            <div class="intent-suggestions" aria-label="学习目标示例"><button v-for="suggestion in suggestions" :key="suggestion.label" :disabled="locked" @click="intent = suggestion.intent">{{ suggestion.label }}</button></div>
-            <div class="learning-scope"><BookOpen aria-hidden="true" />学习范围<strong>{{ sourceId ? '当前书籍' : '请先打开一本书' }}</strong></div>
+            <LearningPurposeEntry :music-mode="musicMode" :available="!!learningPurposeAvailable" :ready="ready && !!state && !locked"
+              :enabled="!!state?.control.enabled" :busy="locked || !!learningPurposeBusy" :scope-options="learningScopeOptions" :show-custom="false"
+              @choose="(purpose, scope) => emit('learning-purpose', purpose, scope)" />
+            <form id="tutor-start-form" @submit.prevent="start"><label for="tutor-intent">你的学习目标</label><textarea id="tutor-intent" v-model="intent" rows="4" :disabled="locked" :placeholder="musicMode ? '例如：我想听懂这首作品，重听时能指出主题和声部的变化。' : '例如：我想弄懂这一节，能用自己的话解释，再独立做一个例子。'" /></form>
+            <div class="learning-scope"><BookOpen aria-hidden="true" />学习范围<strong>{{ sourceId ? musicMode ? '当前作品' : '当前书籍' : musicMode ? '请先打开一首作品' : '请先打开一本书' }}</strong></div>
           </section>
           <section v-show="view === 'understanding'" id="tutor-understanding" role="tabpanel" aria-labelledby="tutor-tab-understanding" class="tutor-content"><UnderstandingSpace :key="sourceId" /></section>
           <section v-show="view === 'history'" id="tutor-history" role="tabpanel" aria-labelledby="tutor-tab-history" class="tutor-content">
             <div class="new-heading"><h3>每一次学习，都有来处</h3><p>回到之前的问题，继续还没结束的思考。</p></div>
             <div v-if="!history.length" class="tutor-empty"><History aria-hidden="true" /><h3>还没有历史会话</h3><p>暂停、结束或切换过的学习，会留在这里。</p></div>
-            <button v-for="session in history" :key="session.id" class="history-session" @click="inspectSession(session)"><span class="history-icon"><BookOpen aria-hidden="true" /></span><span class="history-copy"><strong>{{ session.user_intent }}</strong><small>{{ statusLabels[session.status] }} · {{ belongsToSource(session) ? '当前书籍' : '其他书籍' }}<span v-if="session.id === currentSession?.id"> · 当前</span></small></span><ChevronRight aria-hidden="true" /></button>
+            <button v-for="session in history" :key="session.id" class="history-session" @click="inspectSession(session)"><span class="history-icon"><BookOpen aria-hidden="true" /></span><span class="history-copy"><strong>{{ session.user_intent }}</strong><small>{{ statusLabels[session.status] }} · {{ belongsToSource(session) ? musicMode ? '当前作品' : '当前书籍' : musicMode ? '其他材料' : '其他书籍' }}<span v-if="session.id === currentSession?.id"> · 当前</span></small></span><ChevronRight aria-hidden="true" /></button>
           </section>
           <div v-if="confirmEnd && selectedSession" class="end-confirmation" role="group" aria-label="确认结束学习"><p>结束这次学习？记录仍会保留。</p><div><button :disabled="locked" @click="confirmEnd = false">取消</button><button class="primary-action" :disabled="locked" @click="emit('action', { kind: 'end', session_id: selectedSession.id })">结束学习</button></div></div>
         </div>

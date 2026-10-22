@@ -2,6 +2,7 @@ import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from 
 import { readExternalBuildCostBinding, type ExternalBuildCostBinding } from "../../packages/core/src/external-build-cost";
 import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
+import { routeIncrementalAutomaticBuildSnapshot } from "../../packages/core/src/automatic-build-incremental";
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
 import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
 import { transitionBuildPlan } from "../../packages/core/src/build-intent";
@@ -11,9 +12,11 @@ import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../packages/core/src/dsh-build
 import { inspectAutomaticBuildTaskClaim } from "../../packages/core/src/automatic-build-lease";
 import { createHash, randomBytes } from "node:crypto";
 import {
+  closeSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -60,19 +63,25 @@ import { validateBuildIntentAny } from "../../packages/core/src/build-intent-v2"
 import {
   resolveAutomaticBuildTarget,
   prepareAutomaticBuildSnapshot,
+  prepareProfileDiscourseInputs,
+  prepareBookStructureInputs,
   type AutomaticBuildStage,
   type BuildTargetRefV2,
   type AutomaticBuildAsyncPreparationResult,
   type AutomaticBuildTarget,
 } from "../../packages/core/src/build-orchestrator";
 import { isAutomaticBuildTaskPolicyBindingV2 } from "../../packages/core/src/semantic-artifact";
-import { canonicalAutomaticBuildJson } from "../../packages/core/src/automatic-build-protocol";
+import {
+  AUTOMATIC_BUILD_MAX_WORKERS,
+  canonicalAutomaticBuildJson,
+  type AutomaticBuildWorkerCount,
+} from "../../packages/core/src/automatic-build-protocol";
 import {
   createAutomaticBuildAttemptScope,
   prepareAutomaticBuildRetryRecovery,
   readAutomaticBuildRetryBoundary,
   recordAutomaticBuildRetryRecovery,
-  readAutomaticBuildAttemptRecord,
+  readAutomaticBuildPendingFailures,
 } from "../../packages/core/src/automatic-build-task-store";
 import {
   validateAutomaticBuildRetryBoundary,
@@ -209,6 +218,7 @@ export interface AutomaticBuildUserDecisionProjectionV1 {
   violations?: Array<{ code: string; actual: number; limit: number }>;
   confidence?: "high" | "medium" | "low";
   gate_status?: string;
+  os_error?: { code?: string; syscall?: string };
 }
 
 export interface AutomaticBuildCompletionSummaryV1 {
@@ -257,7 +267,7 @@ export interface AutomaticBuildStepResponseV1 {
 export interface AutomaticBuildStepRequestV1 {
   version: "automatic_build_step_request.v1";
   invocation_ref: string;
-  available_agent_slots: 0 | 1 | 2 | 3;
+  available_agent_slots: 0 | AutomaticBuildWorkerCount;
   decision?: { request_id: string; choice_id: string };
   bootstrap_failure?: { opaque_handoff_ref: string };
   open_call_correction?: AutomaticBuildOpenCallCorrectionV1;
@@ -289,7 +299,7 @@ export interface AutomaticBuildInvocationCreateV1 {
   root_dir: string;
   build_plan_path: string;
   quality_profile: "full";
-  max_parallel: 1 | 2 | 3;
+  max_parallel: AutomaticBuildWorkerCount;
   created_at: string;
   budget?: AutomaticBuildBudgetLimitsV1;
   wall_budget?: AutomaticBuildWallBudgetV1;
@@ -405,10 +415,17 @@ type AutomaticBuildPrivateArtifactWaveV1 =
   | { state: "spawn"; executors: Array<{ opaque_handoff_ref: string }> };
 
 interface DecisionEffect {
-  bypass_budget?: true;
+  approved_budget?: {
+    evaluation: AutomaticBuildPreflightEvaluationEvidenceV2;
+    limits: AutomaticBuildBudgetLimitsV1;
+  };
   bypass_wall_budget?: true;
   accepted_plan_budget_evidence?: AutomaticBuildPlanBudgetEvaluationV2;
 }
+
+const MODEL_BUDGET_LIMIT_KEYS = [
+  "max_tasks", "max_total_score", "max_estimated_total_tokens", "max_batch_score", "max_parallel_cost",
+] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -533,7 +550,9 @@ function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
     throw new Error("automatic build invocation create version or quality profile is invalid");
   }
   const maxParallel = nonNegativeSafeInteger(value.max_parallel, "max_parallel");
-  if (maxParallel < 1 || maxParallel > 3) throw new Error("max_parallel must be 1, 2, or 3");
+  if (maxParallel < 1 || maxParallel > AUTOMATIC_BUILD_MAX_WORKERS) {
+    throw new Error(`max_parallel must be between 1 and ${AUTOMATIC_BUILD_MAX_WORKERS}`);
+  }
   const createdAt = boundedString(value.created_at, "created_at", 128);
   if (!Number.isFinite(new Date(createdAt).getTime())) throw new Error("created_at is invalid");
   const costProfile = value.version === "automatic_build_invocation_create.v2"
@@ -547,7 +566,7 @@ function validateCreateInput(value: unknown): AutomaticBuildInvocationCreate {
     root_dir: boundedString(value.root_dir, "root_dir"),
     build_plan_path: boundedString(value.build_plan_path, "build_plan_path"),
     quality_profile: "full" as const,
-    max_parallel: maxParallel as 1 | 2 | 3,
+    max_parallel: maxParallel as AutomaticBuildWorkerCount,
     created_at: createdAt,
     ...(externalCost ? { external_cost: externalCost } : {}),
     ...(value.budget === undefined ? {} : { budget: validateBudget(value.budget)! }),
@@ -580,7 +599,9 @@ function validateStepRequest(value: unknown): AutomaticBuildStepRequestV1 {
     throw new Error("automatic build step request version or invocation ref is invalid");
   }
   const availableAgentSlots = nonNegativeSafeInteger(value.available_agent_slots, "available_agent_slots");
-  if (availableAgentSlots > 3) throw new Error("available_agent_slots must be between 0 and 3");
+  if (availableAgentSlots > AUTOMATIC_BUILD_MAX_WORKERS) {
+    throw new Error(`available_agent_slots must be between 0 and ${AUTOMATIC_BUILD_MAX_WORKERS}`);
+  }
   let decision: AutomaticBuildStepRequestV1["decision"];
   let bootstrapFailure: AutomaticBuildStepRequestV1["bootstrap_failure"];
   let openFailure: AutomaticBuildStepRequestV1["executor_open_failure"];
@@ -618,7 +639,7 @@ function validateStepRequest(value: unknown): AutomaticBuildStepRequestV1 {
   return {
     version: value.version,
     invocation_ref: value.invocation_ref,
-    available_agent_slots: availableAgentSlots as 0 | 1 | 2 | 3,
+    available_agent_slots: availableAgentSlots as 0 | AutomaticBuildWorkerCount,
     ...(decision ? { decision } : {}),
     ...(bootstrapFailure ? { bootstrap_failure: bootstrapFailure } : {}),
     ...(openFailure ? { executor_open_failure: openFailure } : {}),
@@ -658,13 +679,26 @@ function writeCreateOnly(file: string, value: unknown): void {
   const target = path.join(realParent, path.basename(resolved));
   const bytes = Buffer.from(`${canonicalAutomaticBuildJson(value)}\n`, "utf8");
   if (bytes.byteLength > MAX_RECORD_BYTES) throw new Error("automatic build record exceeds its byte limit");
+  let descriptor: number;
   try {
-    writeFileSync(target, bytes, { flag: "wx", mode: 0o600 });
+    descriptor = openSync(target, "wx", 0o600);
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
     const existing = readFileSync(target);
     if (!existing.equals(bytes)) throw new Error("automatic build create-only record conflicts");
+    return;
+  }
+  try {
+    try {
+      writeFileSync(descriptor, bytes);
+    } finally {
+      closeSync(descriptor);
+    }
+  } catch (error) {
+    // Only this call's newly created file may be removed after an incomplete write.
+    try { unlinkSync(target); } catch { /* Preserve the original write error. */ }
+    throw error;
   }
 }
 
@@ -873,10 +907,9 @@ function transitionStateKey(
 ): string {
   // A failed single-unit dispatch leaves the pending list unchanged. Its next
   // attempt must not reuse the completed run's clock. Keep untouched legacy keys.
-  const failedAttempts = state.plan_result.snapshot.stages.flatMap(stage => stage.pending_tasks.flatMap(workUnitId => {
-    const attempt = readAutomaticBuildAttemptRecord(state.plan_result.snapshot.target, stage.stage, workUnitId);
-    return attempt?.failures ? [{ stage: stage.stage, work_unit_id: workUnitId, failures: attempt.failures }] : [];
-  }));
+  const failedAttempts = readAutomaticBuildPendingFailures(
+    state.plan_result.snapshot.target, state.plan_result.snapshot.stages,
+  );
   return sha256({
     version: "automatic_build_driver_transition_state.v1",
     invocation_ref: state.invocation.invocation_ref,
@@ -943,17 +976,21 @@ function loadDriverState(
   }
   const plan = readBuildPlan(input.build_plan_path);
   if (invocationExecutionProfile(input).harness_kind === "deepseek_harness" && (plan.private_artifacts.length || plan.intent_id)) throw new Error("DSH private plans are unsupported");
+  const routed = routeIncrementalAutomaticBuildSnapshot(target, {
+    quality_profile: input.quality_profile, execution_profile: invocationExecutionProfile(input),
+    public_stage_closure: plan.public_stage_closure, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
+  }, undefined, invocation.invocation_ref);
   const planResult = automaticBuildPlan(input.target_input, input.root_dir, {
     execution_profile: invocationExecutionProfile(input),
     book_id: invocation.initial_target_ref.book_id,
     requested_workers: input.max_parallel,
     available_agent_slots: availableAgentSlots,
     quality_profile: input.quality_profile,
-    budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : input.budget,
+    budget: input.budget,
     wall_budget: effect.bypass_wall_budget ? undefined : input.wall_budget,
     executor_provenance: input.executor_provenance,
     build_plan: plan,
-  });
+  }, routed);
   return { invocation, plan, plan_result: planResult };
 }
 
@@ -1609,6 +1646,53 @@ function readDecisionReceipt(
   };
 }
 
+function acceptedDecisionEffect(
+  invocation: AutomaticBuildInvocationRecord,
+  boundary: DecisionBoundaryV1,
+): DecisionEffect {
+  const effect: DecisionEffect = {
+    ...(boundary.plan_budget_evidence ? { accepted_plan_budget_evidence: boundary.plan_budget_evidence } : {}),
+    ...(boundary.reason === "low_confidence_wall_budget" || boundary.reason === "wall_budget_exceeded"
+      ? { bypass_wall_budget: true as const } : {}),
+  };
+  if (boundary.reason === "budget_exceeded" && boundary.state.preflight_evaluation) {
+    const limits = { ...(invocation.input.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET) };
+    let raised = false;
+    for (const code of MODEL_BUDGET_LIMIT_KEYS) {
+      const violation = boundary.projection?.violations?.find(item => item.code === code);
+      if (!violation) continue;
+      limits[code] = Math.max(limits[code], Math.ceil(violation.actual));
+      raised = true;
+    }
+    if (raised) effect.approved_budget = { evaluation: boundary.state.preflight_evaluation, limits };
+  }
+  return effect;
+}
+
+function currentExecutionBudget(state: DriverState, effect: DecisionEffect): AutomaticBuildBudgetLimitsV1 | undefined {
+  const preflight = state.plan_result.preflight;
+  // Approval covers the shown forecast. Keep planning on the original budget so
+  // its durable boundary can be replayed, and apply only the approved increases.
+  return preflight && effect.approved_budget && sameAutomaticBuildBudgetEvidence(
+    effect.approved_budget.evaluation, automaticBuildPreflightEvaluationEvidence(preflight),
+  ) ? effect.approved_budget.limits : state.invocation.input.budget;
+}
+
+function modelBudgetApprovalCovers(approved: DecisionBoundaryV1, current: DecisionBoundaryV1): boolean {
+  if (approved.reason !== "budget_exceeded" || current.reason !== "budget_exceeded"
+    || approved.plan_budget_evidence || current.plan_budget_evidence
+    || approved.stage !== current.stage
+    || approved.state.build_plan_digest !== current.state.build_plan_digest
+    || !current.state.descriptor_plan_digest
+    || approved.state.descriptor_plan_digest !== current.state.descriptor_plan_digest) return false;
+  const violations = current.projection?.violations;
+  return !!violations?.length && violations.every(violation => {
+    const previous = approved.projection?.violations?.find(item => item.code === violation.code);
+    return MODEL_BUDGET_LIMIT_KEYS.some(code => code === violation.code)
+      && previous?.limit === violation.limit && violation.actual <= previous.actual;
+  });
+}
+
 function effectForAcceptedBoundary(
   invocation: AutomaticBuildInvocationRecord,
   boundary: DecisionBoundaryV1,
@@ -1621,19 +1705,26 @@ function effectForAcceptedBoundary(
   const choices = choicesFor(boundary.reason);
   const requestId = requestIdFor(invocation, boundary, choices);
   const receipt = readDecisionReceipt(invocation, requestId);
-  if (!receipt || !choices.some((choice) => choice.choice_id === receipt.choice_id)
-    || canonicalAutomaticBuildJson(receipt.state) !== canonicalAutomaticBuildJson(boundary.state)) {
-    return undefined;
+  if (receipt && choices.some((choice) => choice.choice_id === receipt.choice_id)
+    && canonicalAutomaticBuildJson(receipt.state) === canonicalAutomaticBuildJson(boundary.state)) {
+    return acceptedDecisionEffect(invocation, boundary);
   }
-  return {
-    ...(boundary.reason === "budget_exceeded" ? { bypass_budget: true as const } : {}),
-    ...(boundary.plan_budget_evidence ? {
-      accepted_plan_budget_evidence: boundary.plan_budget_evidence,
-    } : {}),
-    ...(boundary.reason === "low_confidence_wall_budget" || boundary.reason === "wall_budget_exceeded"
-      ? { bypass_wall_budget: true as const }
-      : {}),
-  };
+  // Committing siblings reduces remaining work without changing the descriptor
+  // plan. An already approved ceiling still covers that smaller forecast.
+  if (boundary.reason !== "budget_exceeded" || boundary.plan_budget_evidence) return undefined;
+  const directory = path.join(registryRoot(), "decisions", invocation.invocation_ref);
+  if (!existsSync(directory)) return undefined;
+  for (const file of readdirSync(directory)) {
+    const previousId = file.endsWith(".json") ? file.slice(0, -5) : "";
+    if (!REQUEST_ID.test(previousId)) continue;
+    const previousReceipt = readDecisionReceipt(invocation, previousId);
+    if (previousReceipt?.choice_id !== "continue_current") continue;
+    const previous = readDecisionRequest(previousId);
+    if (previous.invocation_ref === invocation.invocation_ref && modelBudgetApprovalCovers(previous, boundary)) {
+      return acceptedDecisionEffect(invocation, boundary);
+    }
+  }
+  return undefined;
 }
 
 function currentAttemptScopeDigest(
@@ -1804,15 +1895,7 @@ function applyDecision(
   if (request.reason === "plan_changed" || request.reason === "plan_confirmation_required") {
     authorizePlan(invocation, request.request_id, decision.choice_id, identity.build_plan_digest);
   }
-  return {
-    ...(request.reason === "budget_exceeded" ? { bypass_budget: true as const } : {}),
-    ...(request.plan_budget_evidence ? {
-      accepted_plan_budget_evidence: request.plan_budget_evidence,
-    } : {}),
-    ...(request.reason === "low_confidence_wall_budget" || request.reason === "wall_budget_exceeded"
-      ? { bypass_wall_budget: true as const }
-      : {}),
-  };
+  return acceptedDecisionEffect(invocation, request);
 }
 
 function dispatchHandoffRefs(
@@ -2319,7 +2402,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       requested_workers: invocation.input.max_parallel,
       available_agent_slots: input.available_agent_slots,
       quality_profile: invocation.input.quality_profile,
-      budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : invocation.input.budget,
+      budget: invocation.input.budget,
       wall_budget: effect.bypass_wall_budget ? undefined : invocation.input.wall_budget,
       executor_provenance: invocation.input.executor_provenance,
       execution_profile: invocationExecutionProfile(invocation.input),
@@ -2349,9 +2432,10 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     }
   }
 
+  let refreshState = Boolean(unopenedFailure);
   for (let transition = 0; transition < MAX_TRANSITIONS; transition += 1) {
-    // A new transition follows a state change; the initial pure decision shares its read.
-    if (transition > 0 || unopenedFailure) current = loadDriverState(invocation, input.available_agent_slots, effect);
+    if (refreshState) current = loadDriverState(invocation, input.available_agent_slots, effect);
+    refreshState = true;
     const planAction = current.plan_result.next_action;
     if (planAction.kind === "needs_user" && planAction.reason === "preparation_required" && current.plan.retrieval) {
       const prepared = yield { target: current.plan_result.snapshot.target, plan: current.plan, stage: planAction.stage as DriverRetrievalPreparation["stage"],
@@ -2369,9 +2453,13 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     const preparation = current.plan_result.snapshot.stages.find(stage => stage.preparation_required
       && current.plan.public_stage_closure.includes(stage.stage));
     if (preparation?.policy_set) {
-      const prepared = prepareAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparation.policy_set.stage,
-        { quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input),
-          public_stage_closure: current.plan.public_stage_closure, reuse: current.plan.reuse });
+      const preparationOptions = { quality_profile: invocation.input.quality_profile,
+        execution_profile: invocationExecutionProfile(invocation.input),
+        public_stage_closure: current.plan.public_stage_closure, reuse: current.plan.reuse,
+        retrieval: current.plan.retrieval?.selection };
+      const prepared = preparation.policy_set.stage === "profile_sidecar"
+        ? routeIncrementalAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparationOptions, "profile_sidecar", invocation.invocation_ref)
+        : prepareAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparation.policy_set.stage, preparationOptions);
       if (prepared.status === "blocked") {
         return finish(issueBoundary(invocation, boundaryFromAction(automaticBuildRecoveryAction(prepared.recovery), stateIdentity(current))));
       }
@@ -2389,7 +2477,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
         owner: `automatic-build-driver:${invocation.invocation_ref}`,
         now: transitionNow(current, input.available_agent_slots, effect),
         quality_profile: invocation.input.quality_profile,
-        budget: effect.bypass_budget ? DEFAULT_AUTOMATIC_BUILD_BUDGET : invocation.input.budget,
+        budget: currentExecutionBudget(current, effect),
         wall_budget: effect.bypass_wall_budget ? undefined : invocation.input.wall_budget,
         executor_provenance: invocation.input.executor_provenance,
         available_agent_slots: input.available_agent_slots,
@@ -2410,6 +2498,8 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       const accepted = effectForAcceptedBoundary(invocation, boundary);
       if (accepted) {
         effect = { ...effect, ...accepted };
+        // Replaying approval changes execution limits, not the book snapshot.
+        refreshState = false;
         continue;
       }
       return finish(issueBoundary(invocation, boundary));
@@ -2598,7 +2688,7 @@ function dshControllerCommand(value: Record<string, unknown>, step: DriverStep =
     return { recorded: true };
   }
   return step({ version: "automatic_build_step_request.v1", invocation_ref: ref,
-    available_agent_slots: value.available_agent_slots as 0 | 1 | 2 | 3,
+    available_agent_slots: value.available_agent_slots as 0 | AutomaticBuildWorkerCount,
     ...(value.decision === undefined ? {} : { decision: value.decision as AutomaticBuildStepRequestV1["decision"] }) });
 }
 
@@ -2624,13 +2714,44 @@ export async function automaticBuildStepWithPreparation(input: AutomaticBuildSte
   return next.value;
 }
 
-export function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
+function validateDshPreparation(value: Record<string, unknown>): { workers: number; pass2: "enabled" | "disabled"; target: string; root: string } {
+  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor"]);
+  if (value.build_tutor !== undefined && typeof value.build_tutor !== "boolean") throw new Error("build_tutor must be boolean");
+  const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
+  if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
+  const pass2 = value.pass2 === undefined ? "disabled" : value.pass2;
+  if (pass2 !== "enabled" && pass2 !== "disabled") throw new Error("DSH Pass2 must be enabled or disabled");
+  return { workers, pass2, target: boundedString(value.target_input, "target_input"), root: boundedString(value.root_dir, "root_dir") };
+}
+
+export async function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
+  if (isRecord(value) && (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2")) {
+    const input = validateDshPreparation(value);
+    const { prepareDocumentInput } = await import("../../packages/core/src/document-import");
+    await prepareDocumentInput(input.target, input.root, { signal });
+  }
   return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs, completedRefs) => automaticBuildStepWithPreparation(request, refs, { signal }, completedRefs)));
 }
 
 export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep = automaticBuildStep): unknown {
   if (!isRecord(value) || typeof value.version !== "string") {
     throw new Error("build.step requires a versioned JSON request");
+  }
+  if (value.version === "automatic_build_prepare_request.v1") {
+    exactKeys(value, ["version", "invocation_ref"], ["stage"]);
+    const stage = value.stage ?? "profile_sidecar";
+    if (stage !== "profile_sidecar" && stage !== "book_structure") throw new Error("unsupported input preparation stage");
+    const invocation = readInvocation(boundedString(value.invocation_ref, "invocation_ref", 1024));
+    const plan = readBuildPlan(invocation.input.build_plan_path);
+    const result = !isPlanAuthorized(invocation, plan.plan_digest)
+      ? { status: "skipped", reason: "plan_requires_confirmation" }
+      : !plan.public_stage_closure.includes(stage)
+        ? { status: "skipped", reason: `${stage}_not_selected` }
+        : stage === "book_structure"
+          ? prepareBookStructureInputs(resolveInvocationTarget(invocation), invocation.input.quality_profile,
+            { retrieval: plan.retrieval?.selection, execution_profile: invocationExecutionProfile(invocation.input) })
+          : prepareProfileDiscourseInputs(resolveInvocationTarget(invocation), invocation.input.quality_profile);
+    return { version: "automatic_build_prepare.v1", ...result };
   }
   if (value.version === "automatic_build_refill_request.v1") {
     return automaticBuildRefill(value, {
@@ -2684,12 +2805,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     return { build_plan_path: file, plan: confirmed, review_markdown: buildRetrievalReview(confirmed) };
   }
   if (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2") {
-    exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor"]);
-    if (value.build_tutor !== undefined && typeof value.build_tutor !== 'boolean') throw new Error('build_tutor must be boolean');
-    const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
-    if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
-    const pass2 = value.pass2 === undefined ? "disabled" : value.pass2;
-    if (pass2 !== "enabled" && pass2 !== "disabled") throw new Error("DSH Pass2 must be enabled or disabled");
+    const { workers, pass2 } = validateDshPreparation(value);
     let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
       boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
@@ -2742,6 +2858,12 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
 
 /** Keep raw errors in the local driver registry, outside the root's semantic boundary. */
 export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBuildStepResponseV1 | AutomaticBuildRequestErrorV1 {
+  if (error instanceof Error && "code" in error && error.code === "document_preparation_unavailable") {
+    return finalizeResponse({ version: "automatic_build_step.v1", action: {
+      kind: "NEEDS_USER", request_id: `abreq1_${randomBytes(32).toString("hex")}`, reason: "build_engine_failed", choices: [],
+      message: error.message, projection: { category: "build_engine_failed", code: "document_preparation_unavailable" },
+    } });
+  }
   const costCode = error instanceof Error && error.message.startsWith("external_build_personal_payment_unsupported")
     ? "external_build_personal_payment_unsupported" : error instanceof Error && error.message.startsWith("external_build_cost_host_unsupported")
       ? "external_build_cost_host_unsupported" : undefined;
@@ -2772,13 +2894,19 @@ export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBu
     return finalizeResponse({ version: "automatic_build_step.v1",
       action: { kind: "WAIT", reason: "backoff", retry_after_ms: 50 } });
   }
+  // OS error tokens explain storage failures without exposing paths or input text.
+  const osError: { code?: string; syscall?: string } = {};
+  if (isRecord(error)) {
+    if (typeof error.code === "string" && /^E[A-Z0-9]{1,31}$/u.test(error.code)) osError.code = error.code;
+    if (typeof error.syscall === "string" && /^[a-z][a-z0-9_]{0,31}$/u.test(error.syscall)) osError.syscall = error.syscall;
+  }
   const requestId = `abreq1_${randomBytes(32).toString("hex")}`;
   const diagnostic = {
     version: "automatic_build_driver_failure.v1",
     request_id: requestId,
     created_at: new Date().toISOString(),
     error: error instanceof Error ? {
-      name: error.name.slice(0, 128), message: error.message.slice(0, 2048), stack: error.stack?.slice(0, 8192),
+      name: error.name.slice(0, 128), message: error.message.slice(0, 2048), stack: error.stack?.slice(0, 8192), ...osError,
     } : { name: "NonErrorThrown", message: String(error).slice(0, 2048) },
   };
   let saved = false;
@@ -2800,7 +2928,8 @@ export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBu
       message: saved
         ? "The build engine failed. A bounded local diagnostic is stored under this request ID; maintenance is required before continuing."
         : "The build engine failed and its local diagnostic could not be saved. Maintenance is required before continuing.",
-      projection: { category: "internal", code: saved ? "build_step_failed" : "build_step_failed_diagnostic_unavailable" },
+      projection: { category: "internal", code: saved ? "build_step_failed" : "build_step_failed_diagnostic_unavailable",
+        ...(!saved && Object.keys(osError).length ? { os_error: osError } : {}) },
     },
   });
 }

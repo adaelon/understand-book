@@ -197,6 +197,7 @@ fn mcp_contract_initialize_and_all_tool_schemas_explain_the_reading_path() {
         "mcp_usage",
         "book_text",
         "book_search_text",
+        "book_search",
         "book_context",
         "book_concept",
         "book_structure",
@@ -297,8 +298,10 @@ fn mcp_contract_local_and_resident_keep_common_semantics_without_remote_fields()
         let tool = local["tools"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap();
         assert_eq!(tool["inputSchema"], schema, "{name}");
         let description = tool["description"].as_str().unwrap();
-        assert!(description.contains(contract.use_when), "{name}");
-        assert!(description.contains(&contract.do_not_use_when.replace("book.text", "book_text")), "{name}");
+        let mcp_aliases = |text: &str| text.replace("book.text", "book_text")
+            .replace("book.structure", "book_structure").replace("book.search_text", "book_search_text");
+        assert!(description.contains(&mcp_aliases(contract.use_when)), "{name}");
+        assert!(description.contains(&mcp_aliases(contract.do_not_use_when)), "{name}");
         assert!(!description.contains("book.text"), "{name}");
         for remote_term in ["published_book_ref", "charged_units", "source_url"] {
             assert!(!tool.to_string().contains(remote_term), "{name}: {remote_term}");
@@ -470,6 +473,7 @@ fn mcp_contract_remote_advertised_examples_execute_unchanged() {
                     assert_eq!(result["sources"][0]["end_lid"], "1.2");
                 }
                 "book_search_text" => assert_eq!(result["data"]["occurrences"][0]["start_lid"], if input["order"] == "document" { "1.1" } else { "1.2" }),
+                "book_search" => assert!(!result["data"]["hits"].as_array().unwrap().is_empty()),
                 "book_concept" => assert_eq!(result["data"]["returned_count"], 2),
                 "book_context" => assert!(!result["data"]["items"].as_array().unwrap().is_empty()),
                 "book_structure" => assert_eq!(result["data"]["available"], true),
@@ -478,7 +482,7 @@ fn mcp_contract_remote_advertised_examples_execute_unchanged() {
             count += 1;
         }
     }
-    assert_eq!(count, 6);
+    assert_eq!(count, 7);
     assert_eq!(f.count(), count);
     let denied = f.tool(2, "book_text", tools.as_array().unwrap().iter().find(|t| t["name"] == "book_text").unwrap()["inputSchema"]["examples"][0].clone());
     assert_eq!(denied["isError"], true);

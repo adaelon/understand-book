@@ -72,10 +72,18 @@ fn se2_author_reads_registered_files_and_reports_exact_errors() {
                 reconstructed.push_str(text);
                 assert_eq!(result["chunk_characters"], text.chars().count());
                 assert_eq!(result["offset"], offset);
-                offset += text.chars().count();
-                assert_eq!(result["end_offset"], offset);
-                if offset == expected.chars().count() {
-                    break;
+                let end = offset + text.chars().count();
+                assert_eq!(result["end_offset"], end);
+                match result["next_offset"].as_u64() {
+                    Some(next) => {
+                        assert_eq!(next as usize, end, "explicit page length must continue at the actual returned end");
+                        assert!(end < expected.chars().count());
+                        offset = next as usize;
+                    }
+                    None => {
+                        assert_eq!(end, expected.chars().count(), "only the whole file's EOF ends method pagination");
+                        break;
+                    }
                 }
             }
             assert_eq!(reconstructed, expected);
@@ -96,7 +104,9 @@ fn se2_author_reads_registered_files_and_reports_exact_errors() {
         }
         let mut eof = base.clone();
         eof["offset"] = card.body["total_characters"].clone();
-        assert_eq!(invoke(&mut port, eof).unwrap().body["text"], "");
+        let eof = invoke(&mut port, eof).unwrap().body;
+        assert_eq!(eof["text"], "");
+        assert_eq!(eof["next_offset"], Value::Null);
     }
     assert!(port.previewed.is_empty() && port.plots.is_empty() && port.animations.is_empty());
 }

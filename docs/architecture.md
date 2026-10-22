@@ -2,6 +2,36 @@
 
 ## Components
 
+Published videos additionally have a derived HLS fMP4 delivery cache (`server::video_playback`).
+Publication preserves the original streams and presentation time base; the original remains the
+source for screenshots and evidence. `/video_playback` supplies the small startup projection before
+`/video_context` and question drafts complete. `VideoReaderPane` uses hls.js/MSE for byte-range
+segments and retains the same element when transcripts arrive. Every playlist/segment request
+passes publication authorization before `X-Accel-Redirect`; nginx serves a dedicated read-only bind
+mount of the delivery cache. The private service root and original uploads retain their permissions.
+See [video playback release](performance/video-playback-release-20261021/README.md).
+
+Windows 0.3.1 keeps original files in a native local library (`local_materials.rs`) and bundles an offline
+reader. `PersonalMaterials.vue` selects native import on desktop, with no account-storage request.
+An explicit cloud-copy action streams bounded native chunks through the existing personal preparation
+API and its cloud entitlement checks. Local reading does not run the server, Agent or Build Engine;
+cloud learning retains the existing unified account. See [ADR-0173](adr/0173-cloud-learning-subscriptions-and-exam-sprints.md).
+
+PDF import starts with the PDF text layer. `pdf-native-source` emits canonical text and character spans
+in one pass; `pdf-native-foundation` produces the existing LID, source-map and selection-map contracts
+with `canonical_source.kind = pdf_text`. Empty pages remain in the page map. The PDF-only Workbench
+import runs this preparation automatically and needs no Markdown reconciliation decision.
+The Markdown + PDF route retains its existing reconciliation and alignment behavior.
+
+`pdf-ocr` locates pages without text and raster regions lacking sufficient text coverage. A lazy local
+Tesseract worker recognizes those regions; native text keeps ownership of overlapping positions.
+Recovered words carry PDF coordinates into source spans and the ordinary/focus readers' selectable
+text layers. The browser and the offline desktop bundle English and simplified Chinese models.
+The local reader displays the original immediately, caches prepared pages under each material's
+`reading/pages`, writes `source.txt`, and saves page positions and PDF annotations in
+`reading/annotations.json`. These operations do not depend on semantic preparation or cloud services.
+Implementation, limits and verification: [PDF text import](implementation-pdf-text-import-20261022.md).
+
 ```mermaid
 flowchart LR
   Web[Web reader] --> Host[server::host HTTP workers]
@@ -55,6 +85,7 @@ flowchart LR
 - **read-tools source resolver** validates internal evidence ranges against canonical UTF-16 text and derives deterministic labels, previews, digests, and bounded local context. It does not alter any public `book.*` result.
 - **Pass1 production v3 router** preserves source/LID identity while selecting a byte-identical whole/group path or exact-cover model-input fragments. Every model unit and stitch dependency is proof/policy/hash bound; only a root final may emit a task-private `Pass1Artifact` candidate. Quality-v2 must prove the complete public-contributor closure before the existing transaction publishes `base.json`.
 - **Profile-sidecar production v3 router** selects a whole-unit semantic fast path or exact-cover discourse fragments with bounded deterministic reduction. Its task-private final is route- and receipt-bound; quality-v2 excludes intermediates from the public denominator and gates transactional publication of discourse/formula sidecars.
+- **Automatic build incremental profile index** persists derived routes per invocation once technical-learning Pass1 is closed and profile-sidecar preparation is complete. Driver steps enumerate current artifact names, read changed results, and reroute only affected discourse parents. Source, policy, migration, or public-artifact changes invalidate the index; final-stage publication still uses the full close path. Claims, attempts, retries, and budgets remain live. ([ADR-0121 §2](adr/0121-bounded-build-state-reads-and-executor-lifecycle.md#2-驱动器状态复用))
 - **Automatic build recovery boundary** owns the allowlisted `automatic_build_recovery.v1` protocol, projects only target identity and bounded work-unit/LID references, and canonicalizes the result without source text, prompts, paths, stderr, or stacks. BR7 callers consume only `ready(value)` or `blocked(recovery)`; unexpected failures remain outside the envelope.
 - **Automatic build routing audit** requires the canonical six semantic stages and verifies every eligible descriptor against its exact rendered bytes and budget proof. A smaller selected executor context blocks without changing reserves; audit and recovery projection create no task, lease, dispatch, or attempt. Exact migration receipts may trigger a deterministic replan, while generation conflicts and active v2 generation leases stop at the same recovery boundary. BR8 activates v3/quality-v2 for Pass1 and profile-sidecar; later stages retain their compatibility routes until their own release slices.
 - **Automatic build close coordinator** consumes only the strict batch publication result, validates the committed receipt and current public bytes, rebuilds the snapshot, recomputes quality/coverage/freshness, and then writes a transaction-bound create-only close result with `next=replan`. Missing/invalid receipts and post-publication drift become bounded recovery; metrics run only after verified close. Paper-reading-guide keeps a separate verification-only result and never fabricates a semantic receipt. ([ADR-0100 §4–§6](adr/0100-budget-routable-model-work-units-and-truthful-build-recovery.md))
@@ -137,7 +168,7 @@ passed pre-close quality/coverage
   |  automatic_build_recovery.v1(publication_receipt_invalid | stage_close_postcondition_failed)
 ```
 
-PH5 hybrid foundation construction first partitions each PDF page into top-to-bottom horizontal bands from normalized geometry, then applies the existing single/two-column order inside each band. Paragraph alignment keeps the 240-word local window as its primary path; after a miss it may resume only on one unique 6+ token anchor on the current or following page. Ambiguous or farther candidates remain unmapped, and recovered entries carry explicit lower-confidence provenance.
+For supplied Markdown, PH5 hybrid foundation construction first partitions each PDF page into top-to-bottom horizontal bands from normalized geometry, then applies the existing single/two-column order inside each band. Paragraph alignment keeps the 240-word local window as its primary path; after a miss it may resume only on one unique 6+ token anchor on the current or following page. Ambiguous or farther candidates remain unmapped, and recovered entries carry explicit lower-confidence provenance. PDF-only import uses the direct character bindings described above.
 
 Formula geometry is a separate, versioned projection stage. Inside each bounded semantic unit, proven text/code children establish non-overlapping local windows; formula signatures are then enumerated only within their window and only when every matched glyph belongs to one PDF page/column lane. Multiple formulas sharing a window bind only through one unique complete monotonic chain. Standalone and one-sided formulas can therefore produce region evidence without invented paragraph boxes, while repeated, cross-lane, or boundary-conflicting candidates remain explicitly unmapped. This stage never creates source assignments; formula token-to-glyph evidence is owned by the following structural formula stage.
 

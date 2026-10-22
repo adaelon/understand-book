@@ -86,7 +86,7 @@ if (shadowGeneration) {
     allowed_evidence_lids: [...packet.visible_lids],
     formula_lids: [...packet.formula_lids],
   });
-  const artifact = buildProfileSidecarSemanticArtifact(packet, output);
+  const artifact = buildProfileSidecarSemanticArtifact(packet, output, { source, byLid });
 
   const bookId = deriveBookId(book, override);
   const dir = `.understand-book/${bookId}/.build/profile-sidecar`;

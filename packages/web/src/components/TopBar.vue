@@ -5,6 +5,7 @@ import brandLogo from '../assets/brand/understand-book-logo.svg';
 
 const props = defineProps<{
   videoMode?: boolean;
+  musicMode?: boolean;
   typographyAvailable?: boolean;
   focusAvailable?: boolean;
   focusReading?: boolean;
@@ -67,7 +68,7 @@ function closeMobileAfterAction(event: MouseEvent) {
     <div class="topbar-actions">
       <span v-if="!videoMode" class="progress">{{ progressPct }}%</span>
       <button v-if="guideChapterTitle" class="ghost-pill guide-chapter-button" :disabled="guideChapterBusy || chatUnavailable" @click="emit('guide-chapter')">{{ guideChapterEnabled ? '带我读这一章' : '开启学习并带我读这一章' }}：{{ guideChapterTitle }}</button>
-      <button v-if="focusAvailable" class="ghost-pill topbar-focus" :aria-pressed="!!focusReading" @click="emit('toggle-focus')">{{ focusReading ? '退出专注' : videoMode ? '专注观看' : '专注阅读' }}</button>
+      <button v-if="focusAvailable" class="ghost-pill topbar-focus" :aria-pressed="!!focusReading" @click="emit('toggle-focus')">{{ focusReading ? '退出专注' : musicMode ? '专注聆听' : videoMode ? '专注观看' : '专注阅读' }}</button>
       <button v-if="typographyAvailable" data-typography-trigger class="ghost-pill" @click="emit('open-typography')">阅读设置</button>
       <button v-if="!videoMode" class="ghost-pill" :class="{ active: leftRailOpen }" @click="emit('toggle-left-rail')">目录</button>
       <button class="ghost-pill" :disabled="chatUnavailable" @click="emit('new-chat')">新对话</button>

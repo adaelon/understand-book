@@ -505,6 +505,56 @@ impl WorkspaceRegistry {
         Ok((work, scene.workspace.publication.as_ref().ok_or_else(missing)?.reference.clone()))
     }
 
+    pub(crate) fn latest_resumption(
+        &self,
+        owner: &str,
+        user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>,
+    ) -> Result<Value, ToolError> {
+        let course_refs = crate::course_access::material_refs(&self.control.connection,owner,crate::multi_user_host::now())?;
+        let id: Option<String> = self.control.connection.query_row(
+            "SELECT w.workspace_id FROM reader_workspaces w
+             WHERE w.owner_user_id=?1 AND w.checkpoint IS NOT NULL
+             AND (EXISTS(SELECT 1 FROM book_grants g WHERE g.owner_user_id=w.owner_user_id AND g.book_id=w.book_id AND g.publication_id=w.publication_id)
+                  OR EXISTS(SELECT 1 FROM json_each(?2) m WHERE json_extract(m.value,'$.book_id')=w.book_id AND json_extract(m.value,'$.publication_id')=w.publication_id))
+             ORDER BY w.checkpoint_seq DESC LIMIT 1",
+            params![owner,course_refs], |row| row.get(0),
+        ).optional().map_err(|_| storage())?;
+        match id {
+            Some(id) => self.resumption(owner, &id, user, library),
+            None => Ok(Value::Null),
+        }
+    }
+
+    fn resumption(
+        &self,
+        owner: &str,
+        id: &str,
+        user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>,
+    ) -> Result<Value, ToolError> {
+        // Preview the committed scene without loading/attaching a resident workspace.
+        let record = self.record(owner, id)?;
+        let publication = library.lock().unwrap().load(owner, &record.reference)?;
+        let lid = &record.checkpoint.reader.top_lid;
+        let position = publication.book.source_label(&read_tools::EvidenceRange {
+            start_lid: lid.clone(), end_lid: lid.clone(), ranges: vec![],
+        }, "zh").ok();
+        let excerpt = publication.book.text(lid, None).ok()
+            .map(|text| text.chars().take(140).collect::<String>());
+        let chat = user.agent_history.sessions.iter().find(|session|
+            Some(&session.id) == record.selected_chat.as_ref()
+                && session.matches_scope(record.checkpoint.learning_workspace_id.as_deref(), &record.reference.book_id));
+        let question = chat.and_then(|session| session.turns.iter().rev().find(|turn|
+            turn.published_book_ref.as_ref() == Some(&record.reference)
+                && !turn.user.trim().is_empty()))
+            .map(|turn| turn.user.chars().take(240).collect::<String>());
+        Ok(json!({"workspace_id":id, "published_book_ref":record.reference,
+            "learning_workspace_id":record.checkpoint.learning_workspace_id,
+            "selected_chat":chat.map(|session| &session.id), "position_label":position,
+            "position_excerpt":excerpt, "last_question":question}))
+    }
+
     pub(crate) fn request(
         &mut self,
         context: &AuthorizedContext,
@@ -517,26 +567,7 @@ impl WorkspaceRegistry {
     ) -> Result<Value, ToolError> {
         let owner = context.user_id();
         if action == "resumption" {
-            // Read the committed scene without loading/attaching a resident workspace.
-            let record = self.record(owner, id)?;
-            let publication = library.lock().unwrap().load(owner, &record.reference)?;
-            let lid = &record.checkpoint.reader.top_lid;
-            let position = publication.book.source_label(&read_tools::EvidenceRange {
-                start_lid: lid.clone(), end_lid: lid.clone(), ranges: vec![],
-            }, "zh").ok();
-            let excerpt = publication.book.text(lid, None).ok()
-                .map(|text| text.chars().take(140).collect::<String>());
-            let chat = user.agent_history.sessions.iter().find(|session|
-                Some(&session.id) == record.selected_chat.as_ref()
-                    && session.matches_scope(record.checkpoint.learning_workspace_id.as_deref(), &record.reference.book_id));
-            let question = chat.and_then(|session| session.turns.iter().rev().find(|turn|
-                turn.published_book_ref.as_ref() == Some(&record.reference)
-                    && !turn.user.trim().is_empty()))
-                .map(|turn| turn.user.chars().take(240).collect::<String>());
-            return Ok(json!({"workspace_id":id, "published_book_ref":record.reference,
-                "learning_workspace_id":record.checkpoint.learning_workspace_id,
-                "selected_chat":chat.map(|session| &session.id), "position_label":position,
-                "position_excerpt":excerpt, "last_question":question}));
+            return self.resumption(owner, id, user, library);
         }
         // Attach compares the client's last persisted version before a cold reload increments it.
         if matches!(action, "attach" | "takeover" | "fork") {
@@ -605,6 +636,15 @@ impl WorkspaceRegistry {
         if action == "agent/source.resolve" {
             let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
             let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            if let Some(music) = &binding.music {
+                let reference = &music.target.publication;
+                let loaded = library.lock().unwrap().load(owner, reference);
+                let mut popup = crate::music_source::popup(&binding,
+                    loaded.as_ref().map(|p| (p.book.as_ref(), p.directory())).map_err(|e| crate::user_storage_paths::error(&e.error_code, &e.category, &e.message)),
+                    reference.url("music/audio"));
+                if scene.workspace.publication.as_ref().map(|p| &p.reference) != Some(reference) { popup["can_open_in_reader"] = json!(false); }
+                let mut value = view(&scene); value["result"] = popup; return Ok(value);
+            }
             if let Some(media) = &binding.media {
                 let loaded = library.lock().unwrap().load(owner, &media.publication);
                 let popup = crate::video_source::popup(&binding, loaded.as_ref().map(|p| (p.book.as_ref(), p.directory())).map_err(|e| crate::user_storage_paths::error(&e.error_code, &e.category, &e.message)), media.publication.url("video/media"));
@@ -856,6 +896,14 @@ impl WorkspaceRegistry {
             ))?;
             let mut value = view(&scene); value["result"] = result; return Ok(value);
         }
+        if action == "presentation/interaction" {
+            let result = crate::presentation_interact::respond(&scene.workspace, &private_context(user, &scene.workspace), input)?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
+        if action == "music/respond" {
+            let result = crate::music_interact::respond(&scene.workspace, input)?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if matches!(action, "presentation/read" | "presentation/observe") {
             let session = input["session_id"].as_str().ok_or_else(invalid)?;
             let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
@@ -1048,9 +1096,11 @@ impl WorkspaceRegistry {
                     input["session_id"].as_str().ok_or_else(invalid)?,
                     input["turn_id"].as_str().ok_or_else(invalid)?,
                 )?;
-                let reply = crate::presentation_api::save_state(
+                let reply = crate::presentation_api::save_browser_state(
+                    &scene.workspace,
                     &private_context(user, &scene.workspace),
                     &input.to_string(),
+                    now,
                 );
                 if reply.status != 200 {
                     return Err(invalid());
@@ -1251,6 +1301,7 @@ impl NetworkRunPort {
                 message,
             ),
             question_quote: None,
+            music_question: None,
             presentation_follow_up: w.presentation.clone(),
         };
         scope.check_user(&user)?;
@@ -1373,6 +1424,68 @@ impl crate::presentation_author::AuthorStorage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn music_source_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        crate::music_interact::source_context(&self.scope)
+    }
+    fn read_music(&mut self, reference: Option<&base_schema::PublishedBookRef>, request: read_tools::music::MusicRead) -> Result<read_tools::music::MusicReadResult, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        if let Some(reference) = reference {
+            let publication = self.media_publication(reference)?;
+            let manifest = publication.book.load_music_source(publication.directory())?;
+            read_tools::music::read(&manifest, reference, &request)
+        } else {
+            let reference = self.scope.publication.as_ref().ok_or_else(runtime::music::unavailable)?.reference.clone();
+            let manifest = self.scope.book.load_music_source(&self.scope.book_dir)?;
+            read_tools::music::read(&manifest, &reference, &request)
+        }
+    }
+    fn interact_music(&mut self, request: runtime::music::MusicInteractRequest, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::music::MusicPlaybackReceipt, ToolError> {
+        self.authorized()?;
+        let scene = self.scene.as_ref().ok_or_else(stale)?;
+        let stream = {
+            let scene = scene.lock().unwrap();
+            self.scope.check_scene(&scene.workspace)?;
+            scene.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()).ok_or_else(runtime::music::unavailable)?
+        };
+        crate::music_interact::execute(&stream, request, cancellation,
+            |commands, request| commands.prepare(&self.scope, &self.turn, request),
+            || { self.authorized()?; self.scope.check_scene(&scene.lock().unwrap().workspace) })
+    }
+
+    fn web_available(&self) -> bool {
+        crate::web_search::available()
+    }
+
+    fn web_call(&mut self, name: &str, arguments: Value, cancellation: &runtime::run_context::CancellationToken) -> Result<Value, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        // Network I/O never retains Reader locks; charging keeps the original
+        // Run's account and attribution even when its visible scene changes.
+        let result = crate::web_search::call(&self.scope, &self.access.spend, name, arguments, cancellation)?;
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        Ok(result)
+    }
+
+    fn interact_presentation(&mut self, request: runtime::presentation_interact::InteractRequest, cancellation: &runtime::run_context::CancellationToken) -> Result<Value, ToolError> {
+        self.authorized()?;
+        let scene = self.scene.as_ref().ok_or_else(stale)?;
+        let stream = {
+            let scene = scene.lock().unwrap();
+            self.scope.check_scene(&scene.workspace)?;
+            scene.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()).ok_or_else(runtime::presentation_interact::unavailable)?
+        };
+        let result = crate::presentation_interact::execute(&stream, request, cancellation,
+            |commands, request| self.private(|state| crate::presentation_interact::prepare(commands, state, &self.turn, request)),
+            || { self.authorized()?; self.scope.check_scene(&scene.lock().unwrap().workspace) });
+        // The saved browser result uses the same workspace action path as human saves.
+        // Do not advance effect authority past unrelated user navigation.
+        result
+    }
+
     fn workspace_records_available(&self) -> bool { self.scope.learning_workspace_id.is_some() }
     fn workspace_records(&mut self, request: Value) -> Result<Value, ToolError> {
         self.authorized()?;
@@ -1429,10 +1542,10 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         self.scope.check_user(&self.user.lock().unwrap())?;
         let result = if let Some(reference) = reference {
             let publication = self.media_publication(reference)?;
-            let result = crate::video_audio::review_audio(&publication.book, publication.directory(), reference, &self.scope.turn_id, request, cancellation, &crate::video_audio::AudioConfig::from_env()?)?;
+            let result = crate::video_audio::review_audio_metered(&publication.book, publication.directory(), reference, &self.scope.turn_id, request, cancellation, &crate::video_audio::AudioConfig::from_env()?,Some((&self.access.spend,&self.scope)))?;
             self.media_publication(reference)?;
             result
-        } else { crate::video_audio::review_for_run(&self.scope, request, cancellation)? };
+        } else { crate::video_audio::review_for_run_metered(&self.scope, request, cancellation,Some(&self.access.spend))? };
         self.authorized()?;
         self.scope.check_user(&self.user.lock().unwrap())?;
         Ok(result)
@@ -1572,6 +1685,9 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
     }
     fn tutor_working_state(&mut self) -> Result<Value, ToolError> {
         self.private(|p| crate::teaching::agent_working_state(p,&self.turn))
+    }
+    fn tutor_coach_context(&mut self) -> Result<Option<Value>, ToolError> {
+        self.private(|p| crate::teaching_coach::turn_context(p.user,p.learning_workspace_id,&self.turn))
     }
     fn tutor_assessment_accept(&mut self, action: &str, items: Value) -> Result<Value, ToolError> {
         self.private(|p| crate::teaching::assessment_accept(p, &self.turn, action, items))

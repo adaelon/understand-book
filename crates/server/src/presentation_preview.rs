@@ -231,15 +231,17 @@ impl Cdp<'_> {
                 expected_page, saved["visible_step"], actual["values"]["page"], actual["visible_step"]
             ) }));
         }
-        // With no custom state, controls may be enough to recompute the page.
-        // Verify that result instead of treating two null page values as proof.
-        if expected_page.is_null() && actual["observed_result"] != saved["observed_result"] {
+        // Saved state equality is not enough: the restorer must also repaint
+        // controls and visible results. Playback intentionally reopens paused.
+        let paused_playback = saved["values"]["page"]["playing"] == true;
+        if !paused_playback && (actual["values"]["controls"] != saved["values"]["controls"]
+            || actual["observed_result"] != saved["observed_result"]) {
             let before = saved["observed_result"].as_str().unwrap_or_default();
             let after = actual["observed_result"].as_str().unwrap_or_default();
             let common = before.chars().zip(after.chars()).take_while(|(a, b)| a == b).count();
             let excerpt = |text: &str| text.chars().skip(common.saturating_sub(80)).take(400).collect::<String>();
             return Ok(Some(PreviewIssue { kind: "state_restore_mismatch".into(), message: format!(
-                "Reopening restored the controls but changed the rendered result. Before: {:?}; after: {:?}. Persist the state behind this result with registerStateReader(() => ({{values: state}})) and restore it from saved.values.page with registerStateRestorer, or recompute the same result from restored controls. Returning state directly does not save it as custom page state; reading.page_state shows the raw callback return, not the saved values.page.",
+                "Reopening changed native controls or the rendered result. Before: {:?}; after: {:?}. Persist the state behind this result with registerStateReader(() => ({{values: state}})) and restore it from saved.values.page with registerStateRestorer, then update controls, labels and computed results from the restored state. Returning state directly does not save it as custom page state; reading.page_state shows the raw callback return, not the saved values.page.",
                 excerpt(before), excerpt(after)
             ) }));
         }
@@ -284,6 +286,7 @@ impl Cdp<'_> {
           visible_text: (()=>{const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node,text='';while((node=walker.nextNode())&&text.length<16000){const parent=node.parentElement;if(!node.textContent.trim()||parent.closest('script,style,noscript')||getComputedStyle(parent).visibility==='hidden')continue;const range=document.createRange();range.selectNodeContents(node);if([...range.getClientRects()].some(r=>r.width&&r.height&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth))text+=node.textContent.trim()+'\n';}return text.slice(0,16000);})(),
           text: document.body.innerText.slice(0, 16000),
           semantic_text: (()=>{const copy=document.body.cloneNode(true);copy.querySelectorAll('script,style,[data-source-ref]').forEach(e=>e.remove());return [copy.textContent,...[...document.querySelectorAll('[alt],[title],[aria-label],input,textarea,select')].filter(e=>!e.closest('[data-source-ref]')).map(e=>[e.getAttribute('alt'),e.getAttribute('title'),e.getAttribute('aria-label'),e.value].filter(Boolean).join(' '))].join('\n');})(),
+          action_problems: window.__presentationPreviewActions?.inspect() ?? [],
           source_ref_ids: [...document.querySelectorAll('[data-source-ref]')].map(e=>e.getAttribute('data-source-ref')),
           unsupported_assets: [...document.querySelectorAll('script[src],script[type=module],link[rel=stylesheet],img:not([src^="data:"]),video[src]:not([src^="data:"]),video source[src]:not([src^="data:"]),video[poster]:not([poster^="data:"]),iframe,object,embed')].map(e=>e.outerHTML.slice(0,200)),
           controls: [...document.querySelectorAll('input,select,textarea,button,output')].slice(0,128).map(e => ({
@@ -303,9 +306,16 @@ impl Cdp<'_> {
           const controls=[...document.querySelectorAll('button,a[href],[role=button],input,select,textarea')].slice(0,128).map((e,index)=>{{
             const r=e.getBoundingClientRect();return {{index,tag:e.tagName,id:e.id,width:r.width,height:r.height,hidden:!r.width||!r.height,small_touch:{}&&(r.width<44||r.height<44)}};
           }});
-          return {{horizontal_overflow:document.documentElement.scrollWidth>width+1,scroll_width:document.documentElement.scrollWidth,client_width:width,controls}};
+          const ids=new Map();
+          document.querySelectorAll('[id]').forEach(e=>{{if(e.id)ids.set(e.id,(ids.get(e.id)||0)+1)}});
+          return {{horizontal_overflow:document.documentElement.scrollWidth>width+1,scroll_width:document.documentElement.scrollWidth,client_width:width,controls,
+            duplicate_ids:[...ids].filter(([,count])=>count>1).map(([id,count])=>({{id,count}}))}};
         }})()"#, matches!(environment.input, PreviewInput::Touch)))?;
         let mut issues = Vec::new();
+        for duplicate in audit["duplicate_ids"].as_array().into_iter().flatten() {
+            issues.push(PreviewIssue { kind:"duplicate_dom_id".into(), message:format!(
+                "DOM id {} occurs {} times. Give sections, controls and graphics unique IDs; getElementById and saved-control restoration must resolve the intended element.",duplicate["id"],duplicate["count"]) });
+        }
         if audit["horizontal_overflow"].as_bool() == Some(true) {
             issues.push(PreviewIssue {
                 kind: "geometry_overflow".into(),
@@ -383,6 +393,9 @@ impl Cdp<'_> {
 
     fn interact(&mut self, action: &PreviewAction, input: PreviewInput) -> Result<(), String> {
         match action {
+            PreviewAction::Interact { action } => {
+                self.evaluate(&format!("window.__presentationPreviewActions.execute({{operation:'act',action:{}}},{{}},new AbortController().signal)", serde_json::to_string(action).unwrap()))?;
+            }
             PreviewAction::Scroll { y } => {
                 self.evaluate(&format!("window.scrollTo({{left:scrollX,top:Math.min({y},Math.max(0,document.scrollingElement.scrollHeight-innerHeight)),behavior:'instant'}})"))?;
             }

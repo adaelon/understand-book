@@ -39,7 +39,7 @@ describe("profile sidecar semantic-unit routers", () => {
       policy_fingerprint: input.policy,
     });
     const discourse = Object.values(plan.packets).filter((packet) => packet.unit_kind === "profile_sidecar_discourse");
-    const visible = discourse.flatMap((packet) => packet.visible_lids);
+    const visible = discourse.flatMap((packet) => packet.discourse_lids);
 
     expect(discourse.length).toBeGreaterThan(0);
     expect(new Set(visible).size).toBe(visible.length);
@@ -231,5 +231,6 @@ describe("profile sidecar semantic-unit routers", () => {
     expect(existsSync(formulaPath)).toBe(true);
     expect(JSON.parse(readFileSync(discoursePath, "utf8")).items).toHaveLength(1);
     expect(JSON.parse(readFileSync(formulaPath, "utf8")).items).toHaveLength(1);
-  }, 20_000);
+    expect(JSON.parse(readFileSync(path.join(root, ".understand-book", "profile-sidecar-semantic-units", "math_structure.json"), "utf8")).items).toEqual([]);
+  }, 30_000);
 });

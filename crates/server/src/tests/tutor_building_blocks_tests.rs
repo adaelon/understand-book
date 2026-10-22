@@ -155,6 +155,101 @@ fn tutor_tb1_fixture_replays_distinct_starts_and_source() {
     }
 }
 
+/// Fixed teaching choices exercise real prepare/design/select/review/storage.
+/// The adapter records actual requests; its acceptance is not a semantic verdict.
+pub(super) fn om3_replay(
+    state: &mut AppState,
+    run: agent_run::PreparedAgentChat,
+    design: Value,
+    mut selection: Value,
+    name: &str,
+) -> Value {
+    let turn = run.turn_ref.clone();
+    let frozen = run.tutor.as_ref().unwrap().clone();
+    let design_ref = format!("design:{}:{}", turn.turn_id, design["operation_id"].as_str().unwrap());
+    selection["move"]["design_ref"] = json!(design_ref);
+    let body = selection["move"]["delivery_text"].as_str().unwrap().to_owned();
+    let call = |id: &str, name: &str, arguments: Value| AssistantTurn {
+        provider_continuation: None, text: None, usage_total_tokens: Some(1),
+        tool_calls: vec![ToolCall { id: id.into(), name: name.into(), arguments: arguments.to_string() }],
+    };
+    let samples = Arc::new(Mutex::new(Vec::new()));
+    let adapter = super::tutor_continuation_tests::TutorRequestRecorder {
+        samples: samples.clone(), directory: None,
+        inner: Box::new(ChatStubAdapter::scripted(vec![
+            call("read", "book.text", json!({"lid":"1.1","end_lid":"1.1"})),
+            call("design", "tutor.step", design),
+            call("select", "tutor.step", selection),
+            AssistantTurn { provider_continuation: None, text: Some(body.clone()), usage_total_tokens: Some(1), tool_calls: vec![] },
+        ])),
+    };
+    let result = agent_run::execute_prepared(
+        &agent_run::BorrowedAppPort(RefCell::new(state)), &adapter, run, Default::default());
+    assert_eq!(result.reply.status, 200, "{}", result.reply.body);
+    let outcome: Value = serde_json::from_str(&result.reply.body).unwrap();
+    assert_eq!(outcome["incomplete"], false, "{outcome}");
+    let captured = samples.lock().unwrap();
+    let reviews: Vec<_> = captured.iter().filter(|sample| sample["kind"] == "structured_completion").collect();
+    assert_eq!(reviews.len(), 1, "the scripted selection must reach the real private review once");
+    let review: Value = serde_json::from_str(reviews[0]["input"][0]["content"].as_str().unwrap()).unwrap();
+    assert_eq!(review["frozen_input"]["current_request"], frozen["current_request"]);
+    assert_eq!(review["frozen_input"]["confirmed_preferences"], frozen["confirmed_preferences"]);
+    assert!(review["learner_view"]["learning_opportunity"]["continuity"].is_object(),
+        "review must receive the same continuity evidence used to choose support");
+    assert!(captured[0]["input"].to_string().contains(frozen["current_request"].as_str().unwrap()),
+        "the actual first main-model request must carry the current words");
+    assert_eq!(review["proposed_delivery"]["text"], body);
+    assert_eq!(review["current_design"]["design_ref"], design_ref);
+    let store = state.user.learning_store().unwrap();
+    let deliveries = store.teaching_deliveries(&turn.session_id, &turn.turn_id).unwrap();
+    assert_eq!(deliveries.len(), 1);
+    assert_eq!(deliveries[0].payload["answer"], body);
+    let selected = store.teaching_event(&deliveries[0].causal_refs[0]).unwrap();
+    assert_eq!(selected.payload["move"]["delivery_text"], body);
+    assert!(store.teaching_turn_events(&deliveries[0].binding.tutor_session_id, &turn.turn_id).unwrap()
+        .iter().all(|event| event.kind != memory::teaching::TeachingFact::LearnerAction),
+        "teacher support does not create a learner submission");
+    let report = json!({
+        "prepare": frozen, "main_input": captured[0]["input"],
+        "main_instructions": captured[0]["instructions"],
+        "review_input": review, "review_instructions": reviews[0]["instructions"],
+        "delivery": deliveries[0], "selection": selected, "accepted_design": store.teaching_event(&design_ref).unwrap(),
+        "outcome": outcome,
+    });
+    if let Ok(directory) = std::env::var("OM3_OUTPUT") {
+        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::write(Path::new(&directory).join(format!("{name}.json")),
+            serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    }
+    report
+}
+
+#[test]
+fn om3_operational_barrier_delivers_a_method_without_a_new_test() {
+    let (_root, mut state) = super::teaching_design_tests::fixture();
+    let request = "我不会填行程表，简单些，先示范在哪里写距离、时间和停车，不要先考我。";
+    let run = prepare_agent_chat(&mut state, &json!({"message":request}).to_string(), "om3").unwrap();
+    let fact = format!("usage:{}:user:{}", run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap(), run.turn_ref.turn_id);
+    let mut design = super::teaching_design_tests::design_request("om3-method", None);
+    design["design"]["basis_refs"] = json!([fact]);
+    design["design"]["revision_reason"] = json!("当前请求要先示范填表；给出可以开始的操作，不从不会操作推断概念错误。");
+    let mut selected = runtime::tutor::spec().parameters["examples"].as_array().unwrap().iter()
+        .find(|example| example["move"]["move_id"] == "start-journey-table").unwrap().clone();
+    selected["move"]["interaction_intent"] = json!("direct_explanation");
+    selected["move"]["intent_origin"] = json!("current_request");
+    selected["move"]["intent_quote"] = json!("简单些，先示范在哪里写距离、时间和停车，不要先考我");
+    selected["move"]["responds_to"] = json!({"fact_refs":[fact],"disposition":"addressed"});
+    let report = om3_replay(&mut state, run, design, selected, "operational-barrier");
+    let movement = &report["selection"]["payload"]["move"];
+    assert_eq!(movement["participation"]["choice"], "support");
+    assert!(movement["response_expectation"].is_null());
+    assert!(movement["assessment"].is_null());
+    assert_eq!(report["review_input"]["current_design"]["design"]["basis_refs"], json!([fact]));
+    assert!(report["review_input"]["learner_grounding"]["interpretations"].as_array().unwrap().is_empty());
+    assert!(state.user.learning_store().unwrap().learner_projection(&state.workspace.book.base.book_id).unwrap()
+        .0.unwrap().rows.is_empty(), "a worked method supplies no independent-performance evidence");
+}
+
 #[derive(Default)]
 struct Totals {
     calls: usize,
@@ -191,6 +286,7 @@ fn tutor_tb2_sol_outputs_replay_through_real_delivery() {
     impl ModelAdapter for RecordedTeaching {
         fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!("no model helpers in replay") }
         fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            if let Some(guidance)=super::tutor_loop_tests::fixture_coach_guidance(&request) { return Ok(guidance); }
             if let Some(review)=super::tutor_loop_tests::fixture_delivery_review(&request) { return Ok(review); }
             unreachable!("no other model helpers in replay")
         }
@@ -518,6 +614,7 @@ fn tutor_tb1_auxiliary_request_is_bounded_before_provider_dispatch() {
             calls: Default::default(),
         };
         let result = recorder.complete(CompletionRequest {
+            images: Vec::new(),
             output_token_limit: requested,
             reasoning_effort: None,
             system: "query".into(),
@@ -533,6 +630,7 @@ fn tutor_tb1_auxiliary_request_is_bounded_before_provider_dispatch() {
         // through both recording layers, rather than enter ParsedResponse parsing.
         let result = outer
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: requested,
                 reasoning_effort: None,
                 system: "query".into(),

@@ -38,3 +38,9 @@ const result = spawnSync(
 );
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
+// Keep the LGPL renderer replaceable, with its exact corresponding source and notices.
+const musicResources = spawnSync(process.execPath,
+  [path.join(desktopRoot, 'scripts/prepare-music-resources.mjs'), path.join(outputDir, 'resources/music/verovio')],
+  { cwd:repoRoot, stdio:'inherit', windowsHide:true });
+if (musicResources.error) throw musicResources.error;
+if (musicResources.status !== 0) process.exit(musicResources.status ?? 1);

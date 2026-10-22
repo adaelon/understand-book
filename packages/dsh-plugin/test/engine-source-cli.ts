@@ -34,4 +34,6 @@ else if (operation === "build.step") {
   process.stdout.write(JSON.stringify(result));
 }
 else if (operation === 'video-operator') await (await import('../../../skills/build/video-operator-cli.ts')).runOperatorVideoCli();
+else if (operation === 'music-operator') await (await import('../../../skills/build/music-operator-cli.ts')).runOperatorMusicCli();
+else if (operation === 'music-calibrate') (await import('../../../skills/build/music-calibration-cli.ts')).runMusicCalibrationCli(args);
 else throw new Error("unsupported source test operation");

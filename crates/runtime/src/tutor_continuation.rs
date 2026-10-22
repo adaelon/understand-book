@@ -70,7 +70,7 @@ impl TeachingContinuation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
-pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter }
+pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter, LearnWithPurpose }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
@@ -104,6 +104,9 @@ pub enum InteractionAction {
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ResolvedInteraction {
     pub action: InteractionAction,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub learning_purpose: Option<memory::learning::LearningPurpose>,
     pub user_supplement: String,
     pub accepted_request: String,
     pub answer_ref: Option<AnswerRef>,
@@ -127,6 +130,12 @@ impl ResolvedInteraction {
                 matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
             InteractionAction::UiEntry { entry_action: EntryAction::ContinueAnswer } => intent == "neutral",
             InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter } => intent == "neutral",
+            InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose } =>
+                if self.learning_purpose == Some(memory::learning::LearningPurpose::Discover) {
+                    intent == "direct_explanation" && kind == "explain"
+                } else {
+                    matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral")
+                },
             InteractionAction::UiChoice { .. } => matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
         }
     }

@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { UsagePage } from './usage';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/api';
+import type { UsageMetrics } from '@/lib/types';
 
 const read = vi.hoisted(() => vi.fn());
 vi.mock('@/components/data', async (original) => ({
@@ -17,6 +18,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 let root: Root | undefined;
 let host: HTMLDivElement;
+function costBreakdown(metrics: UsageMetrics) {
+  const empty={request_count:0,confirmed_cost_micro_cny:0,estimated_cost_micro_cny:0,estimated_cost_requests:0,account_debit_micro_cny:0,platform_covered_micro_cny:0,active_reserved_micro_cny:0,active_requests:0,pending_micro_cny:0,pending_requests:0,unknown_cost_requests:0,reconciliation_requests:0,provider_cost_complete:true,provider_cost_micro_cny:0};
+  return {model:{...empty,...metrics,provider_cost_micro_cny:metrics.confirmed_cost_micro_cny},service:empty,web_search:empty,web_fetch:empty};
+}
 afterEach(async () => {
   if (root) { await act(async () => root!.unmount()); root = undefined; host.remove(); }
   read.mockReset();
@@ -32,7 +37,7 @@ it('refreshes both report snapshots from either refresh action after a late sett
   const fetcher = vi.fn(async (url: string) => {
     const metrics = { request_count:1,confirmed_cost_micro_cny:confirmed,account_debit_micro_cny:confirmed,active_reserved_micro_cny:0,active_requests:0,pending_micro_cny:0,pending_requests:0,unknown_cost_requests:0 };
     const tasks = {items:[],total:0,limit:20,offset:0};
-    if (url.startsWith('/api/admin/cost-summary?')) return Response.json({as_of:1792281600,account:{...metrics,platform_covered_micro_cny:0,reconciliation_requests:0,provider_cost_complete:true,provider_cost_micro_cny:confirmed,period_groups:[]},platform:null,accounts:[],workspaces:[],account_level:[],tasks:{...tasks,total:1,items:[{...metrics,platform_covered_micro_cny:0,reconciliation_requests:0,cost_owner:'account',user_id:'A',parent_task_ref:'lesson',learning_workspace_ids:['workspace'],related_learning_workspace_ids:[],purposes:['answer']}]}});
+    if (url.startsWith('/api/admin/cost-summary?')) return Response.json({as_of:1792281600,account:{...metrics,estimated_cost_micro_cny:0,estimated_cost_requests:0,platform_covered_micro_cny:0,reconciliation_requests:0,provider_cost_complete:true,provider_cost_micro_cny:confirmed,period_groups:[],cost_breakdown:costBreakdown(metrics)},platform:null,accounts:[],workspaces:[],account_level:[],tasks:{...tasks,total:1,items:[{...metrics,platform_covered_micro_cny:0,reconciliation_requests:0,cost_breakdown:costBreakdown(metrics),cost_owner:'account',user_id:'A',parent_task_ref:'lesson',learning_workspace_ids:['workspace'],related_learning_workspace_ids:[],purposes:['answer']}]}});
     if (url.startsWith('/api/admin/charges?')) return Response.json({items:[{call_id:'late-call',purpose:'answer',state:'settled',provider_cost_micro_cny:confirmed,account_debit_micro_cny:confirmed,created_at:1792281600}],total:1,limit:20,offset:0});
     if (url.startsWith('/api/admin/usage?')) {
       const summary={...metrics,receipt_original_fen:0,receipt_correction_fen:0,receipt_net_fen:0,active_users:0,returning_users:0,completed_runs:0};
@@ -77,7 +82,7 @@ it('renders a platform task and opens its charges without an account link', asyn
   const summary = { ...metrics,receipt_original_fen:0,receipt_correction_fen:0,receipt_net_fen:0,active_users:0,returning_users:0,completed_runs:0 };
   read.mockImplementation((path: string) => ({
     isPending:false,error:null,refetch:vi.fn(),
-    data:path.startsWith('/admin/cost-summary?') ? {as_of:1792281600,account:{...metrics,platform_covered_micro_cny:0,reconciliation_requests:0,provider_cost_complete:true,provider_cost_micro_cny:5000,period_groups:[]},platform:null,accounts:[],workspaces:[],account_level:[],tasks:{items:[],total:0,limit:20,offset:0}} : path.startsWith('/admin/usage?') ? {
+    data:path.startsWith('/admin/cost-summary?') ? {as_of:1792281600,account:{...metrics,estimated_cost_micro_cny:0,estimated_cost_requests:0,platform_covered_micro_cny:0,reconciliation_requests:0,provider_cost_complete:true,provider_cost_micro_cny:5000,period_groups:[],cost_breakdown:costBreakdown(metrics)},platform:null,accounts:[],workspaces:[],account_level:[],tasks:{items:[],total:0,limit:20,offset:0}} : path.startsWith('/admin/usage?') ? {
       from:'2026-10-18',to:'2026-10-18',today_date:'2026-10-18',as_of:1792281600,today:summary,summary,
       tasks:{items:[{...metrics,user_id:null,cost_owner:'platform',reference_kind:'operator_task',reference:'public-build'}],total:1,limit:20,offset:0},
     } : {items:[{call_id:'platform-call',state:'settled',model:'fixture',purpose:'prebuild',created_at:1792281600,provider_cost_micro_cny:5000,account_debit_micro_cny:0}],total:1,limit:20,offset:0},

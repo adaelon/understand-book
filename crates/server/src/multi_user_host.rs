@@ -250,6 +250,46 @@ pub(crate) fn start_with_access(
     {
         let (access, stop) = (access.clone(), stop.clone());
         handles.push(thread::spawn(move || {
+            let cancellation=runtime::run_context::CancellationToken::with_host_stop(stop.clone());
+            let mut backlog=access.users.lock().unwrap().pending_coach_owners().unwrap_or_else(|error| {
+                eprintln!("Teaching coach recovery: {}",error.error_code); Default::default()
+            });
+            let mut recovered=std::collections::BTreeSet::new();
+            while !stop.load(Ordering::Acquire) {
+                let mut users=access.users.lock().unwrap().loaded_users();
+                if let Some(owner)=backlog.pop_front() {
+                    match access.users.lock().unwrap().load_for_review(&owner,&now().to_string()) {
+                        Ok(handle) => if !users.iter().any(|user|Arc::ptr_eq(user,&handle)) {users.push(handle);},
+                        Err(error) if error.error_code=="USER_RUNTIME_CAPACITY" => backlog.push_back(owner),
+                        Err(error) => eprintln!("Teaching coach recovery: {}",error.error_code),
+                    }
+                }
+                let mut progressed=false;
+                for handle in users {
+                    if cancellation.is_cancelled() {break;}
+                    let owner=handle.lock().unwrap().user_id().unwrap().to_owned();
+                    if recovered.insert(owner.clone()) {
+                        if let Err(error)=crate::teaching_coach::recover_user(&handle.lock().unwrap()) {
+                            recovered.remove(&owner);
+                            eprintln!("Teaching coach recovery: {}",error.error_code);
+                            continue;
+                        }
+                    }
+                    match crate::teaching_coach::tick_network(&access,&handle,&cancellation) {
+                        Ok(changed) => progressed |= changed,
+                        Err(error) => eprintln!("Teaching coach: {}",error.error_code),
+                    }
+                    // Keep pending work discoverable if this idle user is evicted.
+                    if handle.lock().unwrap().learning_store().and_then(|store|store.coach_job_workspaces()).is_ok_and(|scopes|!scopes.is_empty())
+                        && !backlog.contains(&owner) {backlog.push_back(owner);}
+                }
+                if !progressed {thread::sleep(Duration::from_millis(100));}
+            }
+        }));
+    }
+    {
+        let (access, stop) = (access.clone(), stop.clone());
+        handles.push(thread::spawn(move || {
             let cancellation = runtime::run_context::CancellationToken::with_host_stop(stop.clone());
             let mut backlog = access.users.lock().unwrap().pending_review_owners().unwrap_or_else(|e| {
                 eprintln!("Memory review recovery: {}",e.error_code); Default::default()
@@ -292,6 +332,9 @@ pub(crate) fn start_with_access(
                     .evict_idle(std::time::Instant::now())
                 {
                     eprintln!("Workspace maintenance: {}", e.error_code);
+                }
+                if let Err(e) = crate::cloud_storage::maintenance(&access, now()) {
+                    eprintln!("Cloud storage maintenance: {}", e.error_code);
                 }
                 last = std::time::Instant::now();
             }
@@ -385,7 +428,37 @@ pub(crate) fn start_with_access(
 }
 
 fn respond(request: tiny_http::Request, reply: HttpReply) {
-    if let Some(path) = reply.media { crate::video_media::serve(request, &path); return; }
+    if let Some(path) = reply.media {
+        if let Some(root) = std::env::var_os("UNDERSTAND_BOOK_MEDIA_ACCEL_ROOT").filter(|_| reply.content_type != "application/octet-stream") {
+            if let Some(uri) = crate::video_media::accel_uri(&path, std::path::Path::new(&root)) {
+                let response = Response::empty(200)
+                    .with_header(Header::from_bytes("X-Accel-Redirect", uri).unwrap())
+                    .with_header(Header::from_bytes("Content-Type", crate::video_media::content_type(&path)).unwrap())
+                    .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap());
+                let _ = request.respond(response);
+                return;
+            }
+        }
+        if reply.content_type == "application/octet-stream" {
+            match std::fs::File::open(path) {
+                Ok(file) => {
+                    let mut response = Response::from_file(file).with_chunked_threshold(usize::MAX);
+                    for (name, value) in reply.extra_headers.into_iter().chain([
+                        ("Content-Type".into(), reply.content_type),
+                        ("Cache-Control".into(), "no-store".into()),
+                        ("X-Content-Type-Options".into(), "nosniff".into()),
+                    ]) {
+                        if let Ok(header) = Header::from_bytes(name, value) { response.add_header(header); }
+                    }
+                    let _ = request.respond(response);
+                }
+                Err(_) => { let _ = request.respond(Response::empty(404)); }
+            }
+        } else {
+            crate::video_media::serve(request, &path);
+        }
+        return;
+    }
     let remote_mcp = request.url().split('?').next() == Some("/mcp");
     let mut response = Response::from_data(reply.body).with_status_code(reply.status);
     if remote_mcp && reply.status == 405 {
@@ -516,6 +589,12 @@ pub(crate) fn dispatch(
             reply.cookie = Some(auth::cookie(&token, false));
             return Ok(reply);
         }
+        if path == "/auth/desktop/exchange" {
+            expect_method(method, "POST")?;
+            if !crate::parse_query(url).1.is_empty() { return Err(invalid()); }
+            return access.auth.desktop_exchange(serde_json::from_str(body).map_err(|_| invalid())?, now)
+                .map(|session| HttpReply::json(json!(session)));
+        }
         let token = token.ok_or_else(auth::unauthenticated)?;
         let principal = access.auth.authenticate(token, now)?;
         if !matches!(method, "GET" | "HEAD")
@@ -552,6 +631,34 @@ pub(crate) fn dispatch(
         let capability = authorization::capability(path)?;
         // Account management does not load private Reader state.
         match capability {
+            Capability::DesktopAuthorize => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() { return Err(invalid()); }
+                return access.auth.desktop_authorize(&principal, serde_json::from_value(input).map_err(|_| invalid())?, now)
+                    .map(|authorization| HttpReply::json(json!(authorization)));
+            }
+            Capability::CloudPlans => {
+                expect_method(method, "GET")?;
+                if !query.is_empty() || !input.is_null() { return Err(invalid()); }
+                let control = access.admin.control.lock().unwrap();
+                return crate::cloud_plans::summary(&control.connection, principal.user_id(), now).map(HttpReply::json);
+            }
+            Capability::CloudStorage => {
+                if !query.is_empty() || (method == "GET" && !input.is_null()) { return Err(invalid()); }
+                return crate::cloud_storage::request(access, principal.user_id(), method, input, now).map(HttpReply::json);
+            }
+            Capability::CloudStorageDownload => {
+                expect_method(method, "GET")?;
+                if query.len() != 1 || !input.is_null() { return Err(invalid()); }
+                let storage_id = query.get("storage_id").ok_or_else(invalid)?;
+                let (path, filename) = crate::cloud_storage::download(access, principal.user_id(), storage_id)?;
+                let encoded: String = url::form_urlencoded::byte_serialize(filename.as_bytes()).collect();
+                let mut reply = HttpReply::json(Value::Null);
+                reply.content_type = "application/octet-stream".into();
+                reply.media = Some(path);
+                reply.extra_headers.push(("Content-Disposition".into(), format!("attachment; filename*=UTF-8''{}", encoded.replace('+', "%20"))));
+                return Ok(reply);
+            }
             Capability::WorkspaceReleaseUse(ref id,version) => {
                 expect_method(method,"POST")?;
                 if !query.is_empty(){return Err(invalid());}
@@ -733,11 +840,21 @@ pub(crate) fn dispatch(
                 if !matches!(method, "GET" | "HEAD") {
                     return Err(method_error());
                 }
-                if leaf == "video/media" {
-                    let publication = library.load(context.user_id(), &reference)?;
-                    let (manifest, _) = publication.book.load_video_source(publication.directory())?;
+                if leaf == "video_playback" {
+                    // A regular book returns null without opening or parsing its content.
+                    return Ok(HttpReply::json(library.video_playback(context.user_id(), &reference)?));
+                }
+                if leaf.starts_with("music/") {
                     let mut reply = HttpReply::json(json!({}));
-                    reply.media = Some(publication.directory().join(manifest.source.imported_path));
+                    reply.media = Some(library.music_asset(context.user_id(), &reference, &leaf)?);
+                    return Ok(reply);
+                }
+                if leaf == "video/media" || leaf.starts_with("video/playback/") {
+                    let (directory, cache) = library.video_directories(context.user_id(), &reference)?;
+                    let mut reply = HttpReply::json(json!({}));
+                    reply.media = Some(if leaf == "video/media" {
+                        directory.join(crate::video_playback::source(&directory)?.source.imported_path)
+                    } else { crate::video_playback::file(&cache, &leaf)? });
                     return Ok(reply);
                 }
                 if matches!(leaf.as_str(), "pdf/original" | "original.pdf") {
@@ -758,14 +875,14 @@ pub(crate) fn dispatch(
                         cookie: None, extra_headers, observation: None, waiting: None, media: None,
                     });
                 }
-                let reply = if leaf.starts_with("assets/")
+                let reply = if leaf.starts_with("assets/") || leaf == "video/cover"
                     || matches!(leaf.as_str(), "pdf/original" | "original.pdf")
                 {
                     let asset = library
                         .asset(
                             context.user_id(),
                             &reference,
-                            if leaf.starts_with("assets/") {
+                            if leaf.starts_with("assets/") || leaf == "video/cover" {
                                 &leaf
                             } else {
                                 "original.pdf"
@@ -892,6 +1009,13 @@ pub(crate) fn dispatch(
                     access.runs.delete_chat(access, &context, id)?,
                 ))
             }
+            Capability::ReadingResumption => {
+                expect_method(method, "GET")?;
+                let user = context.user.lock().unwrap();
+                access.workspaces.lock().unwrap()
+                    .latest_resumption(context.user_id(), &user, &access.library)
+                    .map(HttpReply::json)
+            }
             Capability::NewWorkspace => {
                 expect_method(method, "POST")?;
                 let user = context.user.lock().unwrap();
@@ -981,6 +1105,8 @@ pub(crate) fn dispatch(
                         // Read again after selecting the live stream: completion may have crossed the first read.
                         let value = reader_run_view(access, &context, context.turn(&id)?)?;
                         let snapshot = crate::agent_stream::RunSnapshot {
+                            music_command: None,
+                            presentation_command: None,
                             descriptor: crate::agent_stream::RunDescriptor {
                                 book_id: value["book_id"].as_str().unwrap().into(),
                                 session_id: value["session_id"].as_str().unwrap().into(),
@@ -1063,7 +1189,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout | Capability::Allowance | Capability::AccountUsage | Capability::CostSummary | Capability::WorkspaceRelease(_, _) | Capability::WorkspaceReleaseUse(_,_) | Capability::WorkspaceInstance(_,_) | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) | Capability::LearningWorkspace(_, _) => unreachable!(),
+            Capability::Me | Capability::Logout | Capability::Allowance | Capability::CloudPlans | Capability::CloudStorage | Capability::CloudStorageDownload | Capability::DesktopAuthorize | Capability::AccountUsage | Capability::CostSummary | Capability::WorkspaceRelease(_, _) | Capability::WorkspaceReleaseUse(_,_) | Capability::WorkspaceInstance(_,_) | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) | Capability::LearningWorkspace(_, _) => unreachable!(),
         }
     })();
     match result {

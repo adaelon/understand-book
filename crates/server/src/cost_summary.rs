@@ -14,6 +14,8 @@ use std::collections::{BTreeMap, BTreeSet};
 struct Metrics {
     request_count: i64,
     confirmed_cost_micro_cny: i64,
+    estimated_cost_micro_cny: i64,
+    estimated_cost_requests: i64,
     account_debit_micro_cny: i64,
     active_reserved_micro_cny: i64,
     active_requests: i64,
@@ -29,6 +31,8 @@ impl Metrics {
         add!(
             request_count,
             confirmed_cost_micro_cny,
+            estimated_cost_micro_cny,
+            estimated_cost_requests,
             account_debit_micro_cny,
             active_reserved_micro_cny,
             active_requests,
@@ -42,7 +46,7 @@ impl Metrics {
     }
     fn value(&self) -> Value {
         let mut value = json!(self);
-        let complete = self.unknown_cost_requests == 0 && self.reconciliation_requests == 0;
+        let complete = self.unknown_cost_requests == 0 && self.reconciliation_requests == 0 && self.estimated_cost_requests == 0;
         value["provider_cost_complete"] = json!(complete);
         value["provider_cost_micro_cny"] = if complete {
             json!(self.confirmed_cost_micro_cny)
@@ -57,6 +61,7 @@ impl Metrics {
 struct Summary {
     metrics: Metrics,
     periods: BTreeMap<(String, String), Metrics>,
+    kinds: BTreeMap<String, Metrics>,
 }
 struct PeriodProjection {
     basis: Option<AllowanceBasis>,
@@ -66,6 +71,7 @@ struct PeriodProjection {
 impl Summary {
     fn add(&mut self, row: &Partition) -> Result<(), ToolError> {
         self.metrics.add(&row.metrics)?;
+        self.kinds.entry(row.entry_kind.clone()).or_default().add(&row.metrics)?;
         if let (Some(owner), Some(period)) = (&row.owner, &row.period) {
             self.periods
                 .entry((owner.clone(), period.clone()))
@@ -76,6 +82,9 @@ impl Summary {
     }
     fn value(&self, bases: &BTreeMap<String, PeriodProjection>) -> Value {
         let mut value = self.metrics.value();
+        value["cost_breakdown"] = json!(["model","service","web_search","web_fetch"].into_iter()
+            .map(|kind|(kind,self.kinds.get(kind).cloned().unwrap_or_default().value()))
+            .collect::<BTreeMap<_,_>>());
         value["period_groups"] = json!(self
             .periods
             .iter()
@@ -101,6 +110,7 @@ impl Summary {
 }
 
 struct Partition {
+    entry_kind: String,
     cost_owner: String,
     owner: Option<String>,
     parent: String,
@@ -128,15 +138,17 @@ fn partitions(
     // SQL reduces actual sends to ownership/period partitions before any display rounding.
     let mut stmt = db.prepare("SELECT cost_owner,user_id,coalesce(parent_task_ref,run_ref,task_ref),learning_workspace_id,period_id,
         json_group_array(related_learning_workspace_ids),json_group_array(DISTINCT purpose),max(max(created_at,coalesce(settled_at,created_at))),
-        count(*),coalesce(sum(provider_cost_micro_cny),0),coalesce(sum(account_debit_micro_cny),0),
+        count(*),coalesce(sum(CASE WHEN provider_cost_status='confirmed' THEN provider_cost_micro_cny ELSE 0 END),0),coalesce(sum(account_debit_micro_cny),0),
         coalesce(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0),
         count(CASE WHEN state IN ('reserved','sent') THEN 1 END),
         coalesce(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0),
         count(CASE WHEN state='pending' OR (state='released' AND provider_cost_status='pending') OR needs_reconciliation=1 THEN 1 END),
         count(CASE WHEN provider_cost_status='pending' THEN 1 END),count(CASE WHEN needs_reconciliation=1 THEN 1 END),
-        coalesce(sum(CASE WHEN provider_cost_status='confirmed' THEN provider_cost_micro_cny-coalesce(account_debit_micro_cny,0) ELSE 0 END),0)
-        FROM model_call_charges WHERE (?1 IS NULL OR user_id=?1) AND (?2 IS NULL OR (created_at>=?2 AND created_at<?3))
-        GROUP BY cost_owner,user_id,coalesce(parent_task_ref,run_ref,task_ref),learning_workspace_id,period_id").map_err(api_storage)?;
+        coalesce(sum(CASE WHEN provider_cost_status='confirmed' THEN max(provider_cost_micro_cny-coalesce(account_debit_micro_cny,0),0) ELSE 0 END),0),
+        coalesce(sum(CASE WHEN provider_cost_status='estimated' THEN provider_cost_micro_cny ELSE 0 END),0),
+        count(CASE WHEN provider_cost_status='estimated' THEN 1 END),entry_kind
+        FROM billable_usage WHERE (?1 IS NULL OR user_id=?1) AND (?2 IS NULL OR (created_at>=?2 AND created_at<?3))
+        GROUP BY cost_owner,user_id,coalesce(parent_task_ref,run_ref,task_ref),learning_workspace_id,period_id,entry_kind").map_err(api_storage)?;
     let rows = stmt
         .query_map(
             params![owner, range.map(|r| r.start), range.map(|r| r.end)],
@@ -161,7 +173,10 @@ fn partitions(
                         unknown_cost_requests: r.get(15)?,
                         reconciliation_requests: r.get(16)?,
                         platform_covered_micro_cny: r.get(17)?,
+                        estimated_cost_micro_cny: r.get(18)?,
+                        estimated_cost_requests: r.get(19)?,
                     },
+                    r.get::<_, String>(20)?,
                 ))
             },
         )
@@ -180,6 +195,7 @@ fn partitions(
                 purposes,
                 latest_at,
                 metrics,
+                entry_kind,
             )| {
                 let related: Vec<String> = serde_json::from_str(&related).map_err(api_storage)?;
                 let mut related_ids = BTreeSet::new();
@@ -188,6 +204,7 @@ fn partitions(
                         .extend(serde_json::from_str::<Vec<String>>(&group).map_err(api_storage)?);
                 }
                 Ok(Partition {
+                    entry_kind,
                     cost_owner,
                     owner,
                     parent,
@@ -282,7 +299,7 @@ impl ModelSpendStore {
         // Goals are current display labels only. Cost ownership always comes from the charge.
         let mut labels = tx.prepare("SELECT w.owner_user_id,w.learning_workspace_id,w.archived,
             (SELECT goal_text FROM learning_workspace_goals g WHERE g.owner_user_id=w.owner_user_id AND g.learning_workspace_id=w.learning_workspace_id ORDER BY revision DESC LIMIT 1)
-            FROM learning_workspaces w WHERE (?1 IS NULL OR w.owner_user_id=?1) AND EXISTS(SELECT 1 FROM model_call_charges c WHERE c.user_id=w.owner_user_id AND c.learning_workspace_id=w.learning_workspace_id)").map_err(api_storage)?;
+            FROM learning_workspaces w WHERE (?1 IS NULL OR w.owner_user_id=?1) AND EXISTS(SELECT 1 FROM billable_usage c WHERE c.user_id=w.owner_user_id AND c.learning_workspace_id=w.learning_workspace_id)").map_err(api_storage)?;
         let labels = labels
             .query_map([owner], |r| {
                 Ok((

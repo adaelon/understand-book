@@ -7,6 +7,10 @@ struct GoalProbe {
     update: Option<Value>,
 }
 impl ModelAdapter for GoalProbe {
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        super::super::tutor_loop_tests::fixture_coach_guidance(&request)
+            .ok_or_else(||AdapterError {spend_stop:None,message:"Only coach guidance is expected".into()})
+    }
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         Err(AdapterError { spend_stop:None, message:"Only the resident request is expected".into() })
     }
@@ -142,6 +146,12 @@ fn w4_goal_edit_stops_old_continuation_and_next_question_starts_new_stage() {
     let bound = learning.teaching_event(&format!("binding:{}",current.turn_id)).unwrap();
     assert_eq!(bound.payload["workspace_goal_revision"],2);
     assert_eq!(bound.binding.turn_id,current.turn_id);
+    let continuity=&bound.payload["learner_context"]["learning_opportunity"]["continuity"];
+    assert_eq!(continuity["scope"]["workspace_goal_revision"],2);
+    assert_eq!(continuity["scope"]["tutor_session_id"],*current_id);
+    assert!(continuity["previous_work"].as_array().unwrap().iter()
+        .all(|row|row["binding"]["turn_id"]==current.turn_id),"a changed goal does not rebind old-stage work");
+    assert!(continuity["scope"]["design_ref"].is_null());
 }
 
 #[test]
@@ -158,6 +168,10 @@ fn w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision()
     let adapter = probe.clone();
     f.access.runs.configure_fake(move ||Box::new(adapter.clone()));
     let admitted = send(&f,&scene,"partial-goal-commit",message);
+    // This in-process fixture must drive the host-owned bootstrap dependency.
+    let handle = f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
+    while crate::teaching_coach::tick_network(&f.access,&handle,&runtime::run_context::CancellationToken::default()).unwrap() {}
+    drop(handle);
     let learning_path = f.access.users.lock().unwrap().paths("A").unwrap().learning;
     let db = rusqlite::Connection::open(learning_path).unwrap();
     db.execute_batch("CREATE TRIGGER fail_goal_receipt BEFORE INSERT ON tutor_events WHEN json_extract(NEW.request,'$.action.kind')='sync_workspace_goal' AND json_extract(NEW.request,'$.action.revision')=2 BEGIN SELECT RAISE(ABORT,'fixture goal receipt failure'); END;").unwrap();

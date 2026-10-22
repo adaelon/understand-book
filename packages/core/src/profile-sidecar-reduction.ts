@@ -1550,8 +1550,12 @@ export function writeProfileSidecarSemanticFastPathCandidate(input: {
     allowed_evidence_lids: [...replayed.packet.visible_lids],
     formula_lids: [...replayed.packet.formula_lids],
   });
+  if (replayed.descriptor.input_basis.kind !== "source_slices") throw new Error("profile sidecar source slices are required");
   const payload = {
-    ...buildProfileSidecarSemanticArtifact(replayed.packet, output),
+    ...buildProfileSidecarSemanticArtifact(replayed.packet, output, {
+      source: input.source,
+      byLid: new Map(replayed.descriptor.input_basis.slices.map((slice) => [slice.parent_lid, { span: slice.core_span_utf16 }])),
+    }),
     content_hash: replayed.descriptor.input_hash,
   };
   const envelope = buildSemanticArtifactEnvelopeV3({
@@ -1573,6 +1577,7 @@ export function writeProfileSidecarSemanticFastPathCandidate(input: {
     output_counts: {
       discourse_items: payload.discourse_items.length,
       formula_semantics: payload.formula_semantics.length,
+      math_items: payload.math_items.length,
     },
   };
 }
@@ -1695,6 +1700,7 @@ export function buildProfileSidecarDiscourseFinalCandidate(input: {
     content_hash: task.descriptor.input_hash,
     discourse_items: parsed.discourse_items,
     formula_semantics: [],
+    math_items: [],
   };
 }
 
@@ -1757,18 +1763,20 @@ export function buildProfileSidecarProductionCandidate(input: {
   const payload = artifact.payload as Record<string, unknown>;
   assertExactKeys(
     payload,
-    ["content_hash", "discourse_items", "formula_semantics"],
+    ["content_hash", "discourse_items", "formula_semantics", "math_items"],
     "profile sidecar fast-path public artifact",
   );
   if (payload.content_hash !== replayed.descriptor.input_hash
     || !Array.isArray(payload.discourse_items)
-    || !Array.isArray(payload.formula_semantics)) {
+    || !Array.isArray(payload.formula_semantics)
+    || !Array.isArray(payload.math_items)) {
     throw new Error("profile sidecar fast-path public artifact does not match its current descriptor");
   }
   return {
     content_hash: payload.content_hash,
     discourse_items: payload.discourse_items as ProfileSidecarArtifact["discourse_items"],
     formula_semantics: payload.formula_semantics as ProfileSidecarArtifact["formula_semantics"],
+    math_items: payload.math_items as ProfileSidecarArtifact["math_items"],
   };
 }
 

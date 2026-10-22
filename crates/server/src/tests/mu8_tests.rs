@@ -126,7 +126,7 @@ fn seed_presentation(f: &Fixture) -> Value {
     let book = f.access.library.lock().unwrap().load("A", &f.x).unwrap().book.clone();
     let evidence_range = read_tools::EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
     let resolved = book.resolve_source(&evidence_range, "zh-CN", None).unwrap();
-    let binding = SourceBinding { publication_id: None, source_revision: None,
+    let binding = SourceBinding { music: None, publication_id: None, source_revision: None,
             media: None, source_ref_id: "mu8-source".into(), book_id: f.x.book_id.clone(), evidence_range: Some(evidence_range),
         evidence_text_digest: resolved.evidence_text_digest, label_snapshot: "MU8 原文".into(), preview_snapshot: resolved.preview };
     {
@@ -171,7 +171,7 @@ fn seed_presentation(f: &Fixture) -> Value {
             },
             created_by_turn_id: port.scope.turn_id.clone(),
             based_on: None,
-            content: PresentationContent { teaching_binding: None,
+            content: PresentationContent { action_contract: vec![], teaching_binding: None,
                 method_refs: None, method_observations: Default::default(),
                 animation_assets: Default::default(),
                 title: "A scene".into(),

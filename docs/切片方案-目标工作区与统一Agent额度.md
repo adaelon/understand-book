@@ -4,6 +4,8 @@
 
 行为合同以[设计方案](设计方案-目标工作区与统一Agent额度.md)为准，术语见 [CONTEXT](../CONTEXT.md)，决策见 [ADR-0170](adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md) 与 [ADR-0171](adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)。接手入口为[本线 checkpoint](../SESSION_CHECKPOINT_WORKSPACE_QUOTA.md)。
 
+后续商业化实施由[云端学习与考试冲刺计划](实施计划-云端学习与考试冲刺.md)承接。已完成的工作区、额度与共享发布作为其底座，原 E2 的真实模型、成本和发布准备接入新计划 C11；本文件保留原实施事实。
+
 ## 1. 工作树与实施方式
 
 落档基线为 HEAD `402d9be` 的当前工作树，已有跨书补讲、发布、呈现、缓存及其他未提交修改。下面的路径是接点，新增文件会明确标注；每片开始核对其当前实现并只修改所需部分。表中“待开始”不代表已有相邻功能需要重写。

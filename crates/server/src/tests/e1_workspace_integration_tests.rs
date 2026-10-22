@@ -67,7 +67,8 @@ fn evidence(f:&Fixture,w:&Value,name:&str)->String {
     super::w6_learning_records_tests::reference_learning(f,w["selected_chat"].as_str().unwrap(),name).0
 }
 fn report(case:&str,value:Value) {
-    let directory=std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/performance/workspace-e1-20261018");
+    let Some(directory)=std::env::var_os("E1_OUTPUT").filter(|path|!path.is_empty()) else { return };
+    let directory=std::path::PathBuf::from(directory);
     std::fs::create_dir_all(&directory).unwrap();
     std::fs::write(directory.join(format!("scenario-{case}.json")),serde_json::to_vec_pretty(&value).unwrap()).unwrap();
 }
@@ -117,6 +118,7 @@ fn e1_a_two_workspaces_tool_loop_private_revision_background_and_restart() {
 }
 
 fn prepare_personal(f:&Fixture,w:&str,id:&str,period:&str,provider:&str) {
+    crate::cloud_storage::tests::seed(&f.control.connection,"A",period,1024*1024,1024*1024);
     let endpoint=format!("/api/learning-workspaces/{w}/preparations");
     let bytes=b"# Transactions\n\nAtomic change.";
     f.ok(&f.a,"POST",&endpoint,json!({"action":"upload","upload_id":id,"filename":"transactions.md","total":bytes.len(),"offset":0,"chunk_base64":base64::engine::general_purpose::STANDARD.encode(bytes)}));
@@ -187,7 +189,7 @@ fn e1_b_shared_video_two_users_personal_preparation_selected_update_and_original
     let frame=run.read_video_frames(Some(&video),request,&Default::default()).unwrap();assert_eq!(frame.images.len(),2);assert_eq!(frame.publication,video);
     let media=run.media_source_snapshot(serde_json::from_value(frame.projection()["frames"][0]["source_target"].clone()).unwrap()).unwrap();
     let revision=f.access.library.lock().unwrap().load("A",&video).unwrap().book.source_fingerprint().to_string();
-    let binding=SourceBinding {source_ref_id:"e1-video-source".into(),book_id:video.book_id.clone(),publication_id:Some(video.publication_id.clone()),source_revision:Some(revision),evidence_range:None,evidence_text_digest:String::new(),label_snapshot:"原始画面".into(),preview_snapshot:"A frame.".into(),media:Some(media)};
+    let binding=SourceBinding { music: None,source_ref_id:"e1-video-source".into(),book_id:video.book_id.clone(),publication_id:Some(video.publication_id.clone()),source_revision:Some(revision),evidence_range:None,evidence_text_digest:String::new(),label_snapshot:"原始画面".into(),preview_snapshot:"A frame.".into(),media:Some(media)};
     let turn=AgentTurnRef {session_id:run.scope.chat_session_id.clone(),turn_id:run.scope.turn_id.clone(),user_turn_ordinal:1};
     let handle=context(&f,&f.a).user;
     crate::session_runtime::append(&mut handle.lock().unwrap(),&turn,"e1-media",crate::session_event::EventBody::SourcesBound {bindings:vec![binding.clone()]}).unwrap();
@@ -231,9 +233,10 @@ fn e1_d_existing_period_and_legacy_chat_upgrade_select_once_and_preserve_evidenc
     let charges=f.ok(&f.a,"GET","/api/account/usage",Value::Null);
     // Recreate the supported pre-external-build v15 control boundary, leaving
     // existing allowance records and the original unscoped learning files intact.
+    f.control.connection.execute_batch(include_str!("remove_schema19.sql")).unwrap();
     f.control.connection.execute_batch("DROP TABLE workspace_release_instance_private_materials; DROP TABLE workspace_release_instance_operations; DROP TABLE workspace_release_instance_history; DROP TABLE workspace_release_instances; DROP TABLE workspace_release_archives; DROP TABLE operator_builds; DROP TABLE workspace_releases; DROP TABLE external_build_calls; DROP TABLE external_build_executions; DROP TABLE build_budget_confirmations; DROP TABLE build_task_budgets; DROP TABLE allowance_offers; PRAGMA user_version=15;").unwrap();
     let f=reopen(f,&Probe::default());provider.configure(&f);
-    assert_eq!(f.control.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),18);
+    assert_eq!(f.control.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),crate::control_store::CONTROL_SCHEMA_VERSION);
     assert_eq!(f.ok(&f.a,"GET","/api/account/usage",Value::Null),charges);
     f.ok(&f.b,"POST","/api/admin/users/A/allowance-basis",json!({"operation_id":"e1-legacy-basis","period_id":period,"revision":1,"basis":{"version":"e1-old-basis","basis_micro_cny":1000000}}));
     let scope=space(&f,"只接续选定的旧学习记录");
@@ -252,7 +255,7 @@ fn e1_d_existing_period_and_legacy_chat_upgrade_select_once_and_preserve_evidenc
     let f=reopen(f,&Probe::default());
     assert_eq!(f.ok(&f.a,"GET",&endpoint,Value::Null)["records"].as_array().unwrap().len(),1);assert_eq!(std::fs::read(path).unwrap(),original);
     assert_eq!(provider.requests.lock().unwrap().len(),2);
-    report("d",json!({"status":"passed","upgraded_control_schema":18,"original_charges_retained":charges["total"],"original_jsonl_unchanged":true,"original_evidence_unchanged":true,"selected_record_count":1,"duplicate_link_no_new_fact":true,"unselected_record_excluded":true,"provider_calls_before_upgrade":2,"provider_calls_for_upgrade_and_link":0}));
+    report("d",json!({"status":"passed","upgraded_control_schema":crate::control_store::CONTROL_SCHEMA_VERSION,"original_charges_retained":charges["total"],"original_jsonl_unchanged":true,"original_evidence_unchanged":true,"selected_record_count":1,"duplicate_link_no_new_fact":true,"unselected_record_excluded":true,"provider_calls_before_upgrade":2,"provider_calls_for_upgrade_and_link":0}));
 }
 
 #[test]

@@ -9,6 +9,7 @@ const GUIDE: &str = include_str!("../../../../skills/presentation/methods/discre
 fn write_example() -> AuthorRequest {
     let readable = GUIDE.lines().find_map(|line| line.strip_prefix("- readable_content：")).unwrap();
     AuthorRequest::Write {
+                action_contract: vec![],
         teaching_binding: None,
         method_refs: None,
         new_object: false, libraries: vec![], based_on: None,

@@ -18,6 +18,18 @@ it('explains the two recorded Embedding failures without rewriting their diagnos
   expect(agentFailureMessage({ error_code: 'UNAVAILABLE', category: 'provider', message: '连接暂时不可用' })).toBe('连接暂时不可用');
 });
 describe("Resident run reducer", () => {
+  it("keeps commentary between tool steps through replay, cancellation and snapshot recovery", () => {
+    const message = { ...activity, step_id: 2, kind: "commentary", name: "agent.commentary", label: "已读完这一节，接下来制作演示。", status: "succeeded" as const, started_ms: null };
+    let state = reduceRun(initialRun(descriptor), event(1, "tool.finished", { ...activity, status: "succeeded" }));
+    state = reduceRun(state, event(2, "commentary.finished", message));
+    state = reduceRun(state, event(3, "tool.started", { ...activity, step_id: 3, name: "presentation.author" }));
+    expect(state.activities.map(item => item.step_id)).toEqual([1, 2, 3]);
+    expect(reduceRun(state, event(2, "commentary.finished", message))).toBe(state);
+    const stopped = reduceRun(state, event(4, "run.cancelled", { ...state, execution_state: "cancelled", persistence_state: "saved" }));
+    const restored = reduceRun(initialRun(descriptor), event(4, "run.snapshot", stopped));
+    expect(restored.activities[1]).toEqual(message);
+    expect(restored.execution_state).toBe("cancelled");
+  });
   it("merges live and snapshot activities without duplicate steps or stale replacement", () => {
     const started = reduceRun(initialRun(descriptor), event(2, "tool.started", activity));
     const finished = reduceRun(started, event(3, "tool.finished", { ...activity, status: "succeeded", duration_ms: 10 }));

@@ -40,6 +40,10 @@ fn advertised_book_examples_dispatch_and_bind_only_observed_source() {
                         assert_eq!(result["source_lids"], json!(["1.1","1.2"]));
                     }
                 }
+                BookToolId::Search => {
+                    assert_eq!(result["version"], "search_ranked.v1");
+                    assert!(!result["hits"].as_array().unwrap().is_empty());
+                }
                 BookToolId::SearchText => {
                     assert_eq!(result["occurrences"][0]["start_lid"], if input["order"] == "document" { "1.1" } else { "1.2" });
                     if input["order"] == "document" {
@@ -57,7 +61,7 @@ fn advertised_book_examples_dispatch_and_bind_only_observed_source() {
             count += 1;
         }
     }
-    assert_eq!(count, 8);
+    assert_eq!(count, 9);
     ledger.present(&book, &source.to_string()).unwrap();
     let binding = &ledger.bindings()[0];
     assert_eq!(binding.evidence_range.as_ref().unwrap().start_lid, "1.1");

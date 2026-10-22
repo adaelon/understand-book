@@ -15,6 +15,7 @@ node_modules/
 **/node_modules/
 dist/
 packages/web/dist-multi/
+apps/desktop/local-reader/
 .pnpm-store/
 apps/desktop/src-tauri/resources/web-dist/*
 !apps/desktop/src-tauri/resources/web-dist/.gitkeep

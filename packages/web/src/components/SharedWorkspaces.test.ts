@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, expect, it, vi } from 'vitest';
 import SharedWorkspaceCatalog from './SharedWorkspaceCatalog.vue';
 import SharedWorkspaceInstance from './SharedWorkspaceInstance.vue';
+import SharedWorkspaceManifest from './SharedWorkspaceManifest.vue';
 import { installIdentity, network, type LearningWorkspace } from '../network-context';
 import type { SharedInstance, SharedRelease, SharedUpdatePreview } from '../shared-workspaces';
 
@@ -22,7 +23,86 @@ function setupFetch(handler: (url: string, body: any) => Promise<Response> | Res
 async function click(wrapper: ReturnType<typeof mount>, text: string) {
   const button = wrapper.findAll('button').find(item => item.text() === text); expect(button, text).toBeTruthy(); await button!.trigger('click'); await flushPromises();
 }
-afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
+
+it('ends a stalled catalog request and lets the reader retry', async () => {
+  vi.useFakeTimers();
+  installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
+  let signal: AbortSignal | undefined;
+  const fetch = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    signal = init.signal ?? undefined;
+    signal?.addEventListener('abort', () => reject(signal!.reason), { once: true });
+  }));
+  vi.stubGlobal('fetch', fetch);
+  const wrapper = mount(SharedWorkspaceCatalog, { props: { books } });
+  try {
+    await flushPromises();
+    expect(wrapper.text()).toContain('正在读取共享工作区');
+    await vi.advanceTimersByTimeAsync(15_000); await flushPromises();
+    expect(signal?.aborted).toBe(true);
+    expect(wrapper.get('[role="alert"]').text()).toContain('读取超时');
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+    expect(wrapper.get('button').attributes('disabled')).toBeUndefined();
+    fetch.mockImplementationOnce(async () => Response.json({ items: [release()], total: 1, limit: 12, offset: 0 }));
+    await click(wrapper, '刷新共享工作区');
+    expect(wrapper.text()).toContain('数学基础');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+});
+
+it('cancels catalog reads when the account changes or the catalog closes', async () => {
+  installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    if (init.signal) {
+      const signal = init.signal; signals.push(signal);
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    }
+  })));
+  const wrapper = mount(SharedWorkspaceCatalog, { props: { books } });
+  try {
+    await flushPromises();
+    installIdentity({ user_id: 'other', csrf_token: 'other-csrf' }); await flushPromises();
+    expect(signals).toHaveLength(2);
+    expect(signals[0].aborted).toBe(true);
+    expect(signals[1].aborted).toBe(false);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+  } finally { wrapper.unmount(); }
+  expect(signals[1].aborted).toBe(true);
+});
+
+it('shows course external resources as outbound guides without claiming they are prepared sources', () => {
+  const value = release();
+  value.manifest.external_resources = [{ title:'课程原站',url:'https://example.org/course',description:'按章节前往原站观看' }];
+  const wrapper = mount(SharedWorkspaceManifest,{props:{release:value,books}});
+  try {
+    const section=wrapper.get('[aria-label="外部链接导览"]');
+    expect(section.text()).toContain('未作为已解析的工作区资料');
+    expect(section.get('a').attributes()).toMatchObject({href:'https://example.org/course',target:'_blank',rel:'noopener noreferrer'});
+    expect(value.manifest.materials).toHaveLength(1);
+  } finally { wrapper.unmount(); }
+});
+
+it('creates an exam instance with explicit date and scope while retaining a direct question without diagnosis', async () => {
+  let submitted: any;
+  setupFetch((url, body) => {
+    if (url.includes('?limit=')) return Response.json({ items: [release()], total: 1, limit: 12, offset: 0 });
+    if (url.endsWith('/use')) { submitted = body; return Response.json({ workspace: space(), instance: instance() }); }
+    return Response.json(release());
+  });
+  const wrapper = mount(SharedWorkspaceCatalog, { props: { books } });
+  try {
+    await flushPromises(); await click(wrapper, '查看目标与路线');
+    await wrapper.get('input[type=checkbox]').setValue(true);
+    await wrapper.get('input[type=date]').setValue('2026-10-23');
+    await wrapper.findAll('textarea')[1].setValue('老师要求前三章');
+    await wrapper.get('input[value=question]').setValue(true);
+    await wrapper.findAll('textarea')[2].setValue('如何判断这个极限？');
+    await wrapper.get('form').trigger('submit'); await flushPromises();
+    expect(submitted.exam_sprint).toMatchObject({ exam_date:'2026-10-23',syllabus:'老师要求前三章',entry_mode:'question' });
+    expect(wrapper.emitted('started')?.[0][1]).toBe('如何判断这个极限？');
+  } finally { wrapper.unmount(); }
+});
 
 it('requires a confirmed personal goal, preserves it on retry and reuses the original operation', async () => {
   let attempts = 0; const calls: any[] = [];

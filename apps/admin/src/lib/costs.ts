@@ -4,11 +4,17 @@ export interface CostPeriod {
   user_id: string; period_id: string; allowance_basis: AllowanceBasis | null;
   percentages: { debited: Percentage; active_reserved: Percentage; pending: Percentage } | null;
 }
-export interface CostSummary extends UsageMetrics {
+export interface CostCategoryMetrics extends UsageMetrics {
+  estimated_cost_micro_cny: number; estimated_cost_requests: number;
   platform_covered_micro_cny: number; reconciliation_requests: number;
   provider_cost_complete: boolean; provider_cost_micro_cny: number | null;
+}
+export interface CostSummary extends CostCategoryMetrics {
+  cost_breakdown: Record<CostCategory, CostCategoryMetrics>;
   period_groups: CostPeriod[];
 }
+export const costCategories = [['model', '模型'], ['web_search', '搜索'], ['web_fetch', '网页读取'], ['service', '其他服务']] as const;
+export type CostCategory = typeof costCategories[number][0];
 export interface CostTask extends CostSummary {
   cost_owner: 'account' | 'platform'; user_id: string | null; parent_task_ref: string;
   learning_workspace_ids: string[]; related_learning_workspace_ids: string[]; purposes: string[];

@@ -96,6 +96,7 @@ pub fn preview_environment_name(viewport: PreviewViewport) -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PreviewAction {
+    Interact { action: crate::presentation_interact::PresentationAction },
     /// Absolute document reading position in CSS pixels; the browser clamps at the bottom.
     Scroll {
         y: u32,

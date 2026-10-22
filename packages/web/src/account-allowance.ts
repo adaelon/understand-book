@@ -35,7 +35,10 @@ export interface AccountUsage {
   run_ref: string | null;
   task_ref: string | null;
   purpose: string;
-  model: string;
+  model: string | null;
+  entry_kind?: 'model' | 'service' | 'web_search' | 'web_fetch';
+  service_kind?: string;
+  quantity_ms?: number | null;
   state: 'reserved' | 'sent' | 'pending' | 'settled' | 'released';
   reserved_micro_cny: number;
   account_debit_micro_cny: number | null;
@@ -65,8 +68,8 @@ export const usageState = { reserved: '正在预留', sent: '调用中', pending
 export function usageOccupation(item: AccountUsage): string {
   return ['reserved', 'sent', 'pending'].includes(item.state) ? allowancePercent(item.allowance_percentages?.reserved) : '0%';
 }
-const purposes: Record<string, string> = { outer: '学习对话', main: '学习对话', memory: '记忆整理', memory_update: '记忆整理', memory_compaction: '记忆整理', compaction: '对话整理', context_compaction: '对话整理', build: '资料准备', book_build: '资料准备', prebuild: '预构建回答' };
-export function usagePurpose(purpose: string): string { return purposes[purpose] ?? (purpose.includes('memory') ? '记忆整理' : purpose.includes('build') ? '资料准备' : purpose.includes('compact') ? '对话整理' : '学习服务'); }
+const purposes: Record<string, string> = { web_search: '搜索', web_fetch: '网页读取', video_transcription: '视频转写', outer: '学习对话', main: '学习对话', memory: '记忆整理', memory_update: '记忆整理', memory_compaction: '记忆整理', compaction: '对话整理', context_compaction: '对话整理', build: '资料准备', book_build: '资料准备', prebuild: '预构建回答' };
+export function usagePurpose(purpose: string): string { return purpose === 'video_audio_review' ? '原声复核' : purposes[purpose] ?? (purpose.includes('memory') ? '记忆整理' : purpose.includes('build') ? '资料准备' : purpose.includes('compact') ? '对话整理' : '学习服务'); }
 
 const spendReasons: Record<string, string> = {
   ALLOWANCE_INSUFFICIENT: '本期可用额度不足以开始下一次 AI 调用。',

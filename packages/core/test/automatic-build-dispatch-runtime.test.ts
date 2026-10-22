@@ -2,13 +2,16 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { issueAutomaticBuildOpaqueHandoff } from "../src/automatic-build-executor-session";
+import { automaticBuildDriverFailureResponse } from "../../../skills/build/automatic-build-driver";
 import {
   advanceAutomaticBuildDispatch,
   finishAutomaticBuildDispatch,
   finishAutomaticBuildDispatchIfTerminal,
   inspectAutomaticBuildDispatchRecoveryGeneration,
   recordAutomaticBuildDispatchBootstrapFailure,
+  recordAutomaticBuildDispatchTerminalSession,
   inspectAutomaticBuildDispatch,
   persistAutomaticBuildDispatch as persistAutomaticBuildDispatchRuntime,
   prepareAutomaticBuildDispatch,
@@ -183,12 +186,14 @@ describe("automatic build executor dispatch runtime", () => {
     }).status).toBe("leased");
     const refill = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "new-plan-with-additional-ready-work", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-02T01:00:00.200Z",
     });
     expect(refill.selected_manifests).toEqual([plan.dispatches[1]]);
     // Once the original lease expires, that work becomes dispatchable again.
     const recovered = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "new-plan-with-additional-ready-work", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-02T02:00:00.000Z",
     });
     expect(recovered.selected_manifests).toEqual([plan.dispatches[0]]);
@@ -202,6 +207,7 @@ describe("automatic build executor dispatch runtime", () => {
     });
     const held = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "changed-ready-work-during-delivery", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-02T01:00:00.200Z",
       held_work_unit_ids: manifest.ordered_work_unit_ids,
     });
@@ -209,6 +215,7 @@ describe("automatic build executor dispatch runtime", () => {
     // The same plan remains usable when the caller releases that executor.
     const released = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "changed-ready-work-during-delivery", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-02T01:01:00.000Z",
     });
     expect(released.selected_manifests).toEqual([plan.dispatches[0]]);
@@ -228,6 +235,7 @@ describe("automatic build executor dispatch runtime", () => {
     }
     const refill = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "changed-ready-work", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 2, created_at: "2026-09-02T01:00:00.200Z",
       ...(ownership === "held" ? { held_work_unit_ids: manifest.ordered_work_unit_ids } : {}),
     });
@@ -236,6 +244,7 @@ describe("automatic build executor dispatch runtime", () => {
     expect(refill.waiting_reason).toBe(ownership === "held" ? "active_executors" : "active_leases");
     const released = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: "changed-ready-work", current_dispatch_plan: plan,
+      max_parallel: 3,
       available_new_executor_slots: 2, created_at: "2026-09-02T02:00:00.000Z",
     });
     expect(released.selected_manifests).toEqual([manifest]);
@@ -273,6 +282,7 @@ describe("automatic build executor dispatch runtime", () => {
     });
     const selected = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: accepted, current_dispatch_plan: current,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-12T13:38:08.000Z",
     });
     expect(selected.selected_manifests).not.toContainEqual(plan.dispatches[0]);
@@ -287,6 +297,7 @@ describe("automatic build executor dispatch runtime", () => {
     });
     const next = selectAutomaticBuildDispatchHandoff(target, {
       accepted_plan_digest: accepted, current_dispatch_plan: nextPlan,
+      max_parallel: 3,
       available_new_executor_slots: 1, created_at: "2026-09-12T13:39:08.000Z",
     });
     expect(next.selected_manifests.flatMap(item => item.ordered_work_unit_ids))
@@ -338,6 +349,44 @@ describe("automatic build executor dispatch runtime", () => {
       semantic_attempt: 1,
       lease_epoch: 2,
     });
+  });
+
+  it.each(["terminal", "bootstrap"] as const)("reconciles %s-first startup release observations once per recovery generation", (firstKind) => {
+    const { target, manifest } = fixture();
+    const now = "2026-10-21T02:00:00.000Z";
+    const persisted = persistAutomaticBuildDispatch(target, manifest, {
+      owner: `startup-release:${manifest.dispatch_id}`, created_at: now,
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    }).persisted;
+    const project = () => inspectAutomaticBuildDispatchRecoveryGeneration(target, "profile_sidecar",
+      manifest.dispatch_id, { now, dispatch_run_id: persisted.dispatch_run_id });
+    const initial = project();
+    for (let epoch = 0; epoch < 2; epoch++) {
+      const identity = project().recovery_identity;
+      const ref = `startup-release-${epoch}`;
+      const terminal = () => recordAutomaticBuildDispatchTerminalSession(target, "profile_sidecar", identity, ref, now);
+      const bootstrap = () => recordAutomaticBuildDispatchBootstrapFailure(target, "profile_sidecar", identity, ref, now);
+      if (firstKind === "terminal") expect(terminal()).toBe(true);
+      else bootstrap();
+      const released = workspaceFileSnapshot(target.workspace_dir);
+      bootstrap();
+      expect(terminal()).toBe(false);
+      bootstrap();
+      expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(released);
+      expect(project()).toEqual({ ...initial, recovery_identity: {
+        ...initial.recovery_identity,
+        version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: epoch + 1,
+      } });
+      expect(() => recordAutomaticBuildDispatchBootstrapFailure(target, "profile_sidecar", identity,
+        "different-handoff", now)).toThrow("bootstrap failure conflicts");
+    }
+    const replacement = project();
+    recordAutomaticBuildDispatchBootstrapFailure(target, "profile_sidecar", initial.recovery_identity,
+      "startup-release-0", now);
+    expect(recordAutomaticBuildDispatchTerminalSession(target, "profile_sidecar", initial.recovery_identity,
+      "startup-release-0", now)).toBe(false);
+    expect(project()).toEqual(replacement);
+    expect(listAutomaticBuildStoredAttempts(target, "profile_sidecar")).toEqual([]);
   });
 
   it("projects a semantic retry as attempt two and lease epoch one without claiming it", () => {
@@ -407,6 +456,51 @@ describe("automatic build executor dispatch runtime", () => {
     expect(second.recovery_identity.current_work_unit_id).toBe(manifest.ordered_work_unit_ids[1]);
     expect(second.recovery_identity).not.toEqual(first.recovery_identity);
     expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(before);
+  });
+
+  it("waits and reissues after a work unit commits between recovery inspection and handoff publication", () => {
+    const { root, target, descriptors, manifest, bindings } = fixture(2);
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(root, "driver-registry"));
+    try {
+      const persisted = persistAutomaticBuildDispatch(target, manifest, {
+        owner: "handoff-publication-progress", created_at: "2026-09-02T01:20:00.000Z",
+        reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+      }).persisted;
+      const inspect = () => inspectAutomaticBuildDispatchRecoveryGeneration(
+        target, "profile_sidecar", manifest.dispatch_id,
+        { now: "2026-09-02T01:20:00.300Z", dispatch_run_id: persisted.dispatch_run_id },
+      );
+      const publish = (recovery_identity: ReturnType<typeof inspect>["recovery_identity"]) =>
+        issueAutomaticBuildOpaqueHandoff({
+          target, kind: "public_dispatch",
+          owner_identity: { version: "automatic_build_dispatch_owner_identity.v1", stage: "profile_sidecar",
+            dispatch_id: manifest.dispatch_id, dispatch_run_id: persisted.dispatch_run_id },
+          recovery_identity, executor_handoff: persisted.executor_handoff,
+          issued_at: "2026-09-02T01:20:00.300Z",
+        });
+      const first = inspect();
+      const original = publish(first.recovery_identity);
+      const claimed = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+        descriptors, task_bindings: bindings, dispatch_run_id: persisted.dispatch_run_id,
+        now: "2026-09-02T01:20:00.200Z",
+      });
+      if (claimed.status !== "leased") throw new Error("expected first work-unit lease");
+      commit(target, claimed, 0);
+      const committed = workspaceFileSnapshot(target.workspace_dir);
+
+      let response: unknown;
+      try { publish(first.recovery_identity); }
+      catch (error) { response = automaticBuildDriverFailureResponse(error); }
+      expect(response).toEqual({ version: "automatic_build_step.v1",
+        action: { kind: "WAIT", reason: "backoff", retry_after_ms: 50 } });
+      const current = inspect();
+      expect(current.dispatch_slot_ref).toBe(first.dispatch_slot_ref);
+      expect(current.recovery_identity.current_work_unit_id).toBe(manifest.ordered_work_unit_ids[1]);
+      const replacement = publish(current.recovery_identity);
+      expect(replacement.opaque_handoff_ref).not.toBe(original.opaque_handoff_ref);
+      expect(publish(current.recovery_identity)).toEqual(replacement);
+      expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(committed);
+    } finally { vi.unstubAllEnvs(); }
   });
 
   it("reads a legacy dispatch manifest binding without inventing a V3 attempt scope", () => {

@@ -1,4 +1,5 @@
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "./build-execution-profile";
+import { AUTOMATIC_BUILD_MAX_WORKERS } from "./automatic-build-protocol";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -761,6 +762,7 @@ export function selectAutomaticBuildDispatchHandoff(
   input: {
     accepted_plan_digest: string;
     current_dispatch_plan: AutomaticBuildExecutorDispatchPlanV1;
+    max_parallel: number;
     available_new_executor_slots: number;
     created_at: string;
     held_work_unit_ids?: string[];
@@ -790,7 +792,11 @@ export function selectAutomaticBuildDispatchHandoff(
     input.created_at,
   );
   const state = dispatchPlanRuntimeState(target, persistedPlan, input.created_at, currentPending);
-  const totalCapacity = Math.min(3, state.active_dispatch_ids.length + input.available_new_executor_slots);
+  const totalCapacity = Math.min(
+    AUTOMATIC_BUILD_MAX_WORKERS,
+    input.max_parallel,
+    state.active_dispatch_ids.length + input.available_new_executor_slots,
+  );
   const dispatchRunId = automaticBuildDispatchRunId(persistedPlan.created_at);
   const held = new Set(input.held_work_unit_ids ?? []);
   let waitingReason: "active_executors" | "active_leases" | undefined;
@@ -1107,7 +1113,14 @@ function recordAutomaticBuildDispatchStartupRelease(
   const record = { version, opaque_handoff_ref: opaqueHandoffRef,
     recovery_identity: identity };
   if (existsSync(file)) {
-    if (stableJson(readJson(file)) !== stableJson(record)) throw new Error("bootstrap failure conflicts");
+    const existing = readJson<typeof record>(file);
+    // Refill may release a terminal child before its queued startup failure arrives.
+    // Both observations release the same handoff generation, regardless of arrival order.
+    if ((existing.version !== "automatic_build_bootstrap_failure.v1"
+      && existing.version !== "automatic_build_terminal_session.v1")
+      || stableJson({ ...existing, version }) !== stableJson(record)) {
+      throw new Error("bootstrap failure conflicts");
+    }
     return false;
   }
   const current = inspectAutomaticBuildDispatchRecoveryGeneration(target, stage, identity.dispatch_id,

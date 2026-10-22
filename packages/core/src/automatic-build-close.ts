@@ -32,7 +32,7 @@ import {
 } from "./semantic-artifact";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
-type AutomaticBuildPublicationStage = Exclude<PublicationStage, "video_transcript" | "video_enrichment">;
+type AutomaticBuildPublicationStage = Exclude<PublicationStage, "video_transcript" | "video_enrichment" | "music_prebuild">;
 const CLOSE_STAGES: AutomaticBuildPublicationStage[] = [
   "pass1",
   "paper_metadata",
@@ -72,7 +72,7 @@ const PUBLICATION_PATH_ALLOWLIST: Record<AutomaticBuildPublicationStage, Readonl
   ]),
   paper_metadata: new Set(["paper_metadata.json"]),
   paper_lexicon: new Set(["paper_lexicon.json"]),
-  profile_sidecar: new Set(["discourse_index.json", "formula_semantics.json"]),
+  profile_sidecar: new Set(["discourse_index.json", "formula_semantics.json", "math_structure.json"]),
   pass2: new Set(["base.json", "long_range_candidates.json", "pass2_audit.json"]),
   book_structure: new Set(["book_structure.json"]),
 };

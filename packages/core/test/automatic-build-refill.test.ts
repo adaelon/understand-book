@@ -44,6 +44,20 @@ describe("single-operation refill", () => {
     expect(next.ready_executors).toEqual([launch("D", "C"), launch("E", "B")]);
   });
 
+  it("starts a reserved replacement before draining a sibling final without releasing or duplicating the replacement", () => {
+    const runtime = engine({ kind: "SPAWN_EXECUTORS", executors: [launch("D", "C")] });
+    const first = automaticBuildRefill(request(), runtime);
+    first.live_by_slot.C = owned("D");
+    runtime.step.mockReturnValue({ version: "automatic_build_step.v1",
+      action: { kind: "SPAWN_EXECUTORS", executors: [launch("D", "C"), launch("E", "B")] } });
+    const next = automaticBuildRefill({ ...request(), live_by_slot: first.live_by_slot,
+      completed_refs: first.completed_refs, terminal_children: ["B", "C"] }, runtime);
+    expect(runtime.step).toHaveBeenLastCalledWith({ version: "automatic_build_step_request.v1",
+      invocation_ref: "invocation", available_agent_slots: 1 }, ["ref-A", "ref-D"], ["ref-C", "ref-B"]);
+    expect(next.live_by_slot).toEqual({ A: owned("A"), C: owned("D") });
+    expect(next.ready_executors).toEqual([launch("E", "B")]);
+  });
+
   it("caps launches by host capacity and confirmed invocation concurrency", () => {
     const runtime = engine({ kind: "SPAWN_EXECUTORS", executors: [launch("D"), launch("E")] }, 1);
     const result = automaticBuildRefill({ ...request(), live_by_slot: {} }, runtime);
@@ -52,6 +66,33 @@ describe("single-operation refill", () => {
     const full = automaticBuildRefill({ ...request(), capacity_limit: 2 }, runtime);
     expect(full.available_agent_slots).toBe(0);
     expect(full.ready_executors).toEqual([]);
+  });
+
+  it("launches eight workers and refills only the completed slot", () => {
+    const children = Array.from({ length: 8 }, (_, index) => `worker-${index}`);
+    const runtime = engine({ kind: "SPAWN_EXECUTORS", executors: children.map(child => launch(child)) }, 8);
+    const first = automaticBuildRefill({ ...request(), capacity_limit: 8, live_by_slot: {},
+      terminal_children: [] }, runtime);
+    expect(first.available_agent_slots).toBe(8);
+    expect(first.ready_executors).toHaveLength(8);
+    const live = Object.fromEntries(children.map(child => [child, owned(child)]));
+    runtime.step.mockReturnValue({ version: "automatic_build_step.v1", action: {
+      kind: "SPAWN_EXECUTORS", executors: [launch("replacement", "worker-7"), launch("overflow")] } });
+    const refill = automaticBuildRefill({ ...request(), capacity_limit: 8, live_by_slot: live,
+      terminal_children: ["worker-7"] }, runtime);
+    expect(refill.available_agent_slots).toBe(1);
+    expect(Object.keys(refill.live_by_slot)).toHaveLength(7);
+    expect(refill.completed_refs).toEqual(["ref-worker-7"]);
+    expect(refill.ready_executors).toEqual([launch("replacement", "worker-7")]);
+  });
+
+  it("keeps an eight-worker invocation within the host's three available slots", () => {
+    const runtime = engine({ kind: "SPAWN_EXECUTORS",
+      executors: Array.from({ length: 8 }, (_, index) => launch(`worker-${index}`)) }, 8);
+    const result = automaticBuildRefill({ ...request(), live_by_slot: {}, terminal_children: [] }, runtime);
+    expect(result.available_agent_slots).toBe(3);
+    expect(result.ready_executors).toHaveLength(3);
+    expect(() => automaticBuildRefill({ ...request(), capacity_limit: 9 }, runtime)).toThrow();
   });
 
   it("forwards a queued observation unchanged and retains engine WAIT with released ownership", () => {

@@ -699,7 +699,7 @@ describe("BR8 production v3 routing release", () => {
   }, 30_000);
 
   it("keeps a small profile whole-unit input byte-identical while committing v3", () => {
-    const fixture = createSyntheticRoutabilityFixture(200);
+    const fixture = createSyntheticRoutabilityFixture(200, "Theorem 1. Assume x is positive. Then x is nonzero.");
     closeSyntheticPass1(fixture);
     const buildPlan = confirmedStandardBuildPlan(fixture.source_file, fixture.root);
     const plan = automaticBuildPlan(fixture.source_file, fixture.root, {
@@ -752,12 +752,21 @@ describe("BR8 production v3 routing release", () => {
     expect(input.stdout).toBe(renderProfileSidecarModelInput(packet));
 
     const candidateSource = path.join(fixture.root, "profile-fast-path-candidate.json");
+    const mathItem = {
+      anchor_lid: packet.math_anchor_lids[0],
+      kind: "theorem",
+      label: "Theorem 1",
+      evidence_lids: packet.discourse_lids,
+      assumptions: [{ quote: "Assume x is positive.", evidence_lids: packet.discourse_lids }],
+      references: [],
+    };
     writeFileSync(candidateSource, JSON.stringify({
       discourse_items: [{
         lid: packet.visible_lids[0],
         mode: "informative",
         relations: [],
       }],
+      math_items: [mathItem],
     }), "utf8");
     const candidate = stageAutomaticBuildCandidate(
       fixture.target,
@@ -820,6 +829,14 @@ describe("BR8 production v3 routing release", () => {
       "utf8",
     ))).toMatchObject({
       items: [expect.objectContaining({ lid: packet.visible_lids[0] })],
+    });
+    expect(JSON.parse(readFileSync(
+      path.join(fixture.target.workspace_dir, "math_structure.json"),
+      "utf8",
+    ))).toMatchObject({
+      version: "math_structure.v1",
+      header: { profile_id: "technical_learning" },
+      items: [mathItem],
     });
   }, 30_000);
 });

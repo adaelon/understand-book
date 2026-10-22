@@ -43,12 +43,23 @@ it('publishes only explicitly entered public fields and selected exact versions,
   await check('first-book · exact-v1');await check('second-book · exact-v2');await check('资料理解');await submit();
   expect(writes()).toHaveLength(1);const body=JSON.parse(writes()[0][1].body);
   expect(body).toMatchObject({release_id:'exam',expected_version:0,visible_to_users:['A','B'],manifest:{public_goal:'准备期末考试',materials:[{published_book_ref:first,required_capabilities:['text','tutor']},{published_book_ref:second,required_capabilities:['text']}]}});
-  expect(Object.keys(body.manifest).sort()).toEqual(['applicability','materials','name','prerequisites','public_goal','publisher','suggested_route','topic_links'].sort());expect(body.learning_workspace_id).toBeUndefined();
+  expect(Object.keys(body.manifest).sort()).toEqual(['applicability','external_resources','materials','name','prerequisites','public_goal','publisher','suggested_route','topic_links'].sort());expect(body.learning_workspace_id).toBeUndefined();
   expect(text()).toContain('尚未完整就绪');await click('查看版本');expect(text()).toContain('缺少能力 tutor');expect(text()).toContain('授权未齐全 second-book · exact-v2');
 });
 it('revises the selected public version against latest revision without mutating the old manifest',async()=>{
   await mount();await click('修订为新版本');await fill('public_goal','新版公开目标');await submit();
   const body=JSON.parse(writes()[0][1].body);expect(body.expected_version).toBe(2);expect(body.release_id).toBe('learning');expect(body.manifest.public_goal).toBe('新版公开目标');expect(original.manifest.public_goal).toBe('学习深度学习');
+});
+it('uses music playback and score capabilities when publishing an existing music material',async()=>{
+  const previous=fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async(url:string,init?:RequestInit)=>url.startsWith('/api/admin/books?')
+    ?Response.json({books:[{published_book_ref:first,material_kind:'music'}],total:1})
+    :previous(url,init));
+  await mount();await click('发布新工作区');await fill('release_id','music-course');await fill('name','音乐伴听');await fill('publisher','课程组');await fill('public_goal','听懂音乐');await fill('applicability','入门');await fill('prerequisites','无');await fill('visible_to_users','A');await check('first-book · exact-v1');
+  const checked=[...document.querySelectorAll('label')].filter(label=>label.querySelector<HTMLInputElement>('input')?.checked).map(label=>label.textContent);
+  expect(checked).toContain('音乐播放');expect(checked).toContain('可查乐谱');expect(checked).not.toContain('阅读原文');
+  await submit();
+  expect(JSON.parse(writes()[0][1].body).manifest.materials).toEqual([{published_book_ref:first,required_capabilities:['music','music_score']}]);
 });
 it('retains the entire publication operation through disconnect and retries the original identity',async()=>{
   mutate=async()=>{throw new TypeError('connection lost');};await mount();await click('修订为新版本');await submit();const body=JSON.parse(writes()[0][1].body);expect(text()).toContain('有一笔操作待核对');
@@ -58,4 +69,18 @@ it('retains the entire publication operation through disconnect and retries the 
 it('archives the shared entry through an operation receipt while explaining existing instances remain',async()=>{
   await mount();await click('归档共享入口');expect(text()).toContain('已开始学习的工作区和旧来源继续保留');await submit();
   expect(writes()[0][0]).toBe('/api/admin/workspace-releases/learning/archive');expect(JSON.parse(writes()[0][1].body)).toMatchObject({archived:true});
+});
+it('publishes a course to selected subscription tiers without creating a reader whitelist',async()=>{
+  await mount();await click('发布新工作区');await fill('release_id','subscribed-course');await fill('name','课程');await fill('publisher','课程组');await fill('public_goal','复习');await fill('applicability','期末');await fill('prerequisites','无');
+  await check('基础版');await check('进阶版');await check('专业版');await check('first-book · exact-v1');await submit();
+  expect(writes()).toHaveLength(1);
+  const body=JSON.parse(writes()[0][1].body);
+  expect(body.allowed_tiers).toEqual(['basic','plus','pro']);expect(body.visible_to_users).toEqual([]);
+});
+
+it('keeps external course links as explicit guide metadata without adding a prepared material',async()=>{
+  await mount();await click('修订为新版本');await click('添加外部链接');await fill('external_title_0','课程原站');await fill('external_url_0','https://example.org/course');await fill('external_description_0','按章节前往原站观看');await submit();
+  const body=JSON.parse(writes()[0][1].body);
+  expect(body.manifest.external_resources).toEqual([{title:'课程原站',url:'https://example.org/course',description:'按章节前往原站观看'}]);
+  expect(body.manifest.materials).toEqual(original.manifest.materials);
 });

@@ -71,7 +71,7 @@ impl ModelAdapter for RecordingAdapter {
     }
     fn complete_structured_observed(&self, req: CompletionRequest, observer: &mut dyn ModelObserver) -> Result<Value, runtime::AdapterError> {
         let n = self.completions.fetch_add(1, SeqCst);
-        save(self.root.join(format!("completion-{n:02}-request.json")), &json!({"system":req.system,"user":req.user,"output_token_limit":req.output_token_limit,"reasoning_effort":req.reasoning_effort}));
+        save(self.root.join(format!("completion-{n:02}-request.json")), &json!({"system":req.system,"user":req.user,"images":req.images,"output_token_limit":req.output_token_limit,"reasoning_effort":req.reasoning_effort}));
         let start = Instant::now(); let mut usage = None;
         let result = self.inner.complete_structured_observed(req, &mut |delta: ModelDelta| {
             if let ModelDelta::Usage(value) = &delta { usage = Some(value.clone()); }

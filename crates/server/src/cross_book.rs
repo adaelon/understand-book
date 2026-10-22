@@ -17,6 +17,7 @@ pub(crate) fn check_member(members: Option<&[base_schema::PublishedBookRef]>, re
 }
 
 pub(crate) fn read(library: &Mutex<PublishedLibrary>, owner: &str, members: Option<&[base_schema::PublishedBookRef]>, name: &str, mut arguments: Value) -> Result<LibraryReadResult, ToolError> {
+    if name == "library.search" { return crate::workspace_retrieval::search(library, owner, members, arguments); }
     let service = McpRead::resident(library);
     let (mut body, source) = if name == "library.list" {
         (service.list_for_workspace(owner, members, arguments)?, None)
@@ -129,8 +130,11 @@ pub(crate) fn learning(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, refe
         .cloned().ok_or_else(||invalid("来源未在本轮读取，或不属于指定参考书版本"))).collect::<Result<Vec<_>,_>>()?;
     let media_bindings:Vec<_>=cited.iter().filter_map(|source|source.media.as_ref())
         .map(|media|memory::teaching::TeachingMediaBinding {source_id:bind.source_id.clone(),source_revision:bind.source_revision.clone(),target:media.target.clone()}).collect();
+    let music_bindings:Vec<_>=cited.iter().filter_map(|source|source.music.as_ref())
+        .map(|music|memory::teaching::TeachingMusicBinding {source_id:bind.source_id.clone(),source_revision:bind.source_revision.clone(),target:music.target.clone()}).collect();
     let target=TeachingTarget {learning_focus:required("learning_focus")?.into(),expected_performance:required("expected_performance")?.into(),
         capability:required("capability")?.into(),object_refs:vec![],media_bindings:(!media_bindings.is_empty()).then_some(media_bindings),
+        music_bindings:(!music_bindings.is_empty()).then_some(music_bindings),
         source_bindings:cited.iter().flat_map(|s| {
             let ranges = s.evidence_range.iter().map(|r|(r.start_lid.clone(),r.end_lid.clone()))
                 .chain(s.media.iter().flat_map(|media| runtime::video_source::members(&media.target)).filter_map(|target| {
@@ -183,6 +187,17 @@ pub(crate) fn record_delivery(user:&UserRuntime, session:&crate::AgentChatSessio
 }
 
 pub(crate) fn source_view(library: &Mutex<PublishedLibrary>, owner: &str, binding: &runtime::orchestrator::SourceBinding, open: bool) -> Result<Value, ToolError> {
+    if let Some(music) = &binding.music {
+        let reference = &music.target.publication;
+        let loaded = library.lock().unwrap().load(owner, reference);
+        let mut popup = crate::music_source::popup(binding, loaded.as_ref().map(|p|(p.book.as_ref(),p.directory()))
+            .map_err(|e|crate::user_storage_paths::error(&e.error_code,&e.category,&e.message)), reference.url("music/audio"));
+        // This cross-material source stays in its original popup; the current
+        // Reader is not silently replaced by a different publication.
+        popup["can_open_in_reader"] = json!(false);
+        if open { popup["opened"] = json!(false); }
+        return Ok(popup);
+    }
     if let Some(media) = &binding.media {
         let loaded = library.lock().unwrap().load(owner, &media.publication);
         return Ok(crate::video_source::popup(binding, loaded.as_ref().map(|p|(p.book.as_ref(),p.directory()))

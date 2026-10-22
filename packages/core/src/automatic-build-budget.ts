@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { AUTOMATIC_BUILD_MAX_WORKERS } from "./automatic-build-protocol";
 import { validateBuildPlanV1, type BuildPlanV1 } from "./build-intent";
 import type { EmbeddingCall } from "./embedding-provider";
 
@@ -201,7 +202,7 @@ export interface AutomaticBuildPreflightV2 {
     requested_workers: number;
     available_agent_slots: number;
     max_workers: number;
-    hard_worker_limit: 3;
+    hard_worker_limit: typeof AUTOMATIC_BUILD_MAX_WORKERS;
     concurrency_release: "ap14_safe_concurrency.v1";
     max_batch_score: number;
     max_parallel_cost: number;
@@ -643,6 +644,8 @@ export function buildAutomaticBuildPreflight(input: {
   target_ref: BuildTargetRefV2;
   stage: AutomaticBuildStage;
   work_units: WorkUnitDescriptor[];
+  /** Supplied only by routing that has already established this descriptor plan's identity. */
+  descriptor_plan_digest?: string;
   task_bindings?: Record<string, AutomaticBuildTaskPolicyBinding>;
   pending_ids: string[];
   quality_profile: ExtractionQualityProfile;
@@ -724,7 +727,7 @@ export function buildAutomaticBuildPreflight(input: {
   const outputTokensUpper = outputItems * 192 + eligible.length * 128;
   const totalLower = inputDistribution.total + outputTokensLower;
   const totalUpper = inputDistribution.total + outputTokensUpper;
-  const descriptorPlanDigest = workUnitPlanDigest(input.work_units);
+  const descriptorPlanDigest = input.descriptor_plan_digest ?? workUnitPlanDigest(input.work_units);
   const executorProvenance = validateExecutorProvenance(input.executor_provenance);
   const historicalPerformance = validatePerformanceHistory(input.historical_performance);
   const matchingSamples = (kind: WorkUnitKind): AutomaticBuildPerformanceSampleV1[] => {
@@ -758,6 +761,7 @@ export function buildAutomaticBuildPreflight(input: {
     target_ref: input.target_ref,
     stage: input.stage,
     work_units: input.work_units,
+    descriptor_plan_digest: descriptorPlanDigest,
     pending_ids: input.pending_ids,
     predicted_service_ms: predictedService,
     available_agent_slots: availableAgentSlots,
@@ -768,16 +772,18 @@ export function buildAutomaticBuildPreflight(input: {
     target_ref: input.target_ref,
     stage: input.stage,
     work_units: input.work_units,
+    descriptor_plan_digest: descriptorPlanDigest,
     pending_ids: eligible.map((unit) => unit.work_unit_id),
     predicted_service_ms: predictedService,
     ...(input.task_bindings ? { task_bindings: input.task_bindings } : {}),
   });
-  const plannedWorkers = Math.min(input.requested_workers, 3);
+  const plannedWorkers = Math.min(input.requested_workers, AUTOMATIC_BUILD_MAX_WORKERS);
   const scheduledDispatches = dispatchPlan.dispatches.slice(0, plannedWorkers);
   const scheduledIds = new Set(scheduledDispatches.flatMap((dispatch) => dispatch.ordered_work_unit_ids));
   const scheduledUnits = pendingEligible.filter((unit) => scheduledIds.has(unit.work_unit_id));
+  const pendingScores = new Map(pendingEligible.map(unit => [unit.work_unit_id, unit.cost.score]));
   const dispatchScore = (dispatch: AutomaticBuildExecutorDispatchManifestV1) => dispatch.ordered_work_unit_ids
-    .reduce((sum, id) => sum + (pendingEligible.find((unit) => unit.work_unit_id === id)?.cost.score ?? 0), 0);
+    .reduce((sum, id) => sum + (pendingScores.get(id) ?? 0), 0);
   const violations: AutomaticBuildBudgetViolationV1[] = [];
   const remainingScore = pendingEligible.reduce((sum, unit) => sum + unit.cost.score, 0);
   const remainingUpperTokens = upperTokenEstimate(pendingEligible);
@@ -863,7 +869,7 @@ export function buildAutomaticBuildPreflight(input: {
     ? confidence.level === "low" ? "low_confidence" as const : "exceeded" as const
     : "within_budget" as const;
   const historicalUsage = validateHistoricalUsage(input.historical_metrics);
-  const workerLimit = Math.min(input.requested_workers, availableAgentSlots, 3);
+  const workerLimit = Math.min(input.requested_workers, availableAgentSlots, AUTOMATIC_BUILD_MAX_WORKERS);
   const parallelBatch = selectAutomaticBuildCostBatch(pendingEligible, {
     max_tasks: workerLimit,
     max_total_score: Math.min(budget.max_batch_score, budget.max_parallel_cost),
@@ -923,7 +929,7 @@ export function buildAutomaticBuildPreflight(input: {
       requested_workers: input.requested_workers,
       available_agent_slots: availableAgentSlots,
       max_workers: parallelBatch.units.length,
-      hard_worker_limit: 3,
+      hard_worker_limit: AUTOMATIC_BUILD_MAX_WORKERS,
       concurrency_release: "ap14_safe_concurrency.v1",
       max_batch_score: budget.max_batch_score,
       max_parallel_cost: budget.max_parallel_cost,

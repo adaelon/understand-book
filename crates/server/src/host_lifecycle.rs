@@ -126,6 +126,7 @@ mod tests {
         };
         let error = adapter
             .complete_structured(CompletionRequest {
+                images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
                 system: String::new(),
@@ -178,6 +179,7 @@ mod tests {
         .unwrap();
         let adapter = ServiceAdapter::from_config(config, stop.clone());
         let request = CompletionRequest {
+            images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,
             system: "test".into(),

@@ -4,6 +4,7 @@ import { api as sharedApi, type AssetManifest, type SourcePopupView } from '../a
 import { bindSceneApi } from '../network-context';
 import { renderSourceMarkdown } from '../md';
 import MediaSourcePreview from './MediaSourcePreview.vue';
+import MusicSourcePreview from './MusicSourcePreview.vue';
 import { markMarkdownDomSourceRanges } from '../markdown-source-map';
 import 'katex/dist/katex.min.css';
 
@@ -59,7 +60,8 @@ const rendered = computed(() => {
 </script>
 
 <template>
-  <MediaSourcePreview v-if="source.media" :key="source.source_ref_id" :source="source" />
+  <MusicSourcePreview v-if="source.music" :key="source.source_ref_id" :source="source" />
+  <MediaSourcePreview v-else-if="source.media" :key="source.source_ref_id" :source="source" />
   <div v-else-if="source.stale" class="source-excerpt source-snapshot">{{ source.highlighted_quote }}</div>
   <div v-else class="source-excerpt" @error.capture="imageFailed" v-html="rendered"></div>
 </template>

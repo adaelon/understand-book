@@ -2,8 +2,13 @@
 import { nextTick, ref, watch } from 'vue';
 import { Target } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
-const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string; workspaceScoped?: boolean }>();
-const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void }>();
+import LearningPurposeEntry from './LearningPurposeEntry.vue';
+import type { LearningPurpose } from '../generated/LearningPurpose';
+import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
+const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string; workspaceScoped?: boolean;
+  learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean }>();
+const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void;
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void }>();
 const editing = ref(false);
 const draft = ref('');
 const requestedGoal = ref<string | null>(null);
@@ -29,6 +34,10 @@ function save() {
   if (props.busy || !props.available || !draft.value.trim()) return;
   requestedGoal.value = draft.value.trim(); emit('goal', requestedGoal.value);
 }
+function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
+  editing.value = false;
+  emit('learning-purpose', purpose, scope);
+}
 </script>
 <template>
   <section v-if="session || otherSession || editing" class="conversation-learning-goal" aria-label="本次学习目标">
@@ -48,6 +57,8 @@ function save() {
     <div v-if="editing" class="goal-editor-overlay" @click.self="cancelEdit">
     <form role="dialog" aria-modal="true" aria-label="调整目标" @submit.prevent="save" @keydown="onEditorKeydown">
       <h3>{{ workspaceScoped ? '调整当前阶段' : '调整目标' }}</h3>
+      <LearningPurposeEntry :available="!!learningPurposeAvailable" :ready="ready && available" :enabled="enabled" :busy="busy"
+        :scope-options="learningScopeOptions" :show-custom="false" @choose="choosePurpose" />
       <label>{{ workspaceScoped ? '阶段焦点' : '学习目标' }}<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
       <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">保存目标</button><button type="button" :disabled="busy" @click="cancelEdit">取消</button></div>
       <p v-if="error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">重试</button></p>

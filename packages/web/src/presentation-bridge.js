@@ -1,7 +1,11 @@
-function (config, staticCapture) {
+function (config, staticCapture, createActions) {
   const send = message => parent.postMessage({ channel: config.channel, ...message }, "*");
   let observer;
   let stateReader;
+  let actionHandler;
+  const parameterEdits = {};
+  const parameters = (config.actionContract ?? []).filter(entry => entry.kind === "set_parameters").flatMap(entry => entry.parameters);
+  let interaction;
   let stateRestorer;
   let restoring = true;
   let commitTimer;
@@ -19,6 +23,7 @@ function (config, staticCapture) {
   window.presentation = Object.freeze({
     initialState: config.initialState,
     restoredState: config.restoredState ?? null,
+    registerActionHandler: handler => { actionHandler = handler; },
     registerStateReader: reader => { stateReader = reader; },
     registerStateRestorer: restorer => { stateRestorer = restorer; },
     commitState: () => scheduleCommit(),
@@ -44,6 +49,44 @@ function (config, staticCapture) {
   window.addEventListener("unhandledrejection", () => send({ kind: "error" }));
   window.addEventListener("message", event => {
     if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === 'interaction-cancel') {
+      if (interaction?.id === event.data.request_id) interaction.controller.abort();
+      return;
+    }
+    if (event.data.kind === 'interaction') {
+      const id = event.data.request_id;
+      if (restoring || interaction) {
+        send({ kind: 'interaction-result', request_id: id, status: 'failed', reason: 'The page is not ready for an operation.' });
+        return;
+      }
+      const current = { id, controller: new AbortController() };
+      interaction = current;
+      clearTimeout(commitTimer);
+      let before = {};
+      try { before = { ...stateReader?.()?.values }; } catch {}
+      const actions = createActions(config.actionContract, () => stateReader?.(), () => actionHandler, () => parameterEdits);
+      actions.execute(event.data.request, event.data.expected_values, current.controller.signal, event.data.expected_edits).then(status => {
+        if (!current.controller.signal.aborted) {
+          const action = event.data.request.action;
+          const after = stateReader?.()?.values ?? {};
+          const support = status !== 'applied' || action?.kind === 'highlight' ? [] :
+            (config.teachingBinding?.regions ?? []).filter(region =>
+              ['reveal', 'annotate'].includes(action.kind) ? region.region_id === action.region_id :
+                region.state_fields.some(key => before[key] !== after[key])
+            ).flatMap(region => {
+              const node = teachingRegion(region.region_id);
+              const text = node?.getClientRects().length ? visibleText(node).trim() : '';
+              return text ? [{ region_id: region.region_id, text }] : [];
+            });
+          capture(id, false, { status, support });
+        }
+      }).catch(failure => {
+        const result = { status: current.controller.signal.aborted ? 'cancelled' : 'failed', reason: String(failure.message ?? failure) };
+        if (current.controller.signal.aborted) send({ kind: 'interaction-result', request_id: id, ...result });
+        else capture(id, false, result);
+      }).finally(() => { if (interaction === current) interaction = undefined; });
+      return;
+    }
     if (event.data.kind === 'locate-region') {
       const region = teachingRegion(event.data.region_id);
       if (region) {
@@ -99,7 +142,7 @@ function (config, staticCapture) {
     observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
     return refs;
   }
-  function capture(request_id, exporting = false) {
+  function capture(request_id, exporting = false, result) {
     if (restoring || !observer) { pendingCaptures.set(request_id, exporting); return; }
     const sourceRefs = normalizeSources();
     const controls = Array.from(document.querySelectorAll("input, textarea, select"))
@@ -109,15 +152,19 @@ function (config, staticCapture) {
       ...(node.type === "checkbox" || node.type === "radio" ? { checked: node.checked } : {}),
       }));
     try {
-    const custom = stateReader ? stateReader() : {};
+    // A failed reader must not reuse an earlier semantic scene or hide the DOM
+    // that is still visible now. Read afresh for every capture.
+    let custom = {};
+    try { custom = stateReader ? stateReader() ?? {} : {}; } catch {}
     // One synchronous browser read freezes parameters and actual rendered semantics together.
-    send({ kind: exporting ? "static-result" : "state", request_id, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden' && node.type !== 'hidden').map((node, index) => ({
+    send({ kind: result ? "interaction-result" : exporting ? "static-result" : "state", request_id, ...result, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden' && node.type !== 'hidden').map((node, index) => ({
       label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
       value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
     })) } : {}), state: {
-      values: { controls, page: custom.values ?? null },
+      values: { controls, page: custom.values ?? null, parameter_edits: { ...parameterEdits } },
       visible_step: custom.visible_step ?? document.querySelector("[data-presentation-step]")?.getAttribute("data-presentation-step") ?? null,
       observed_result: visibleText(document.body).trim(), source_ref_ids: sourceRefs,
+      ...(custom.observation ? { observation: custom.observation } : {}),
     } });
     } catch (error) {
       if (exporting) send({ kind: "static-error", request_id, message: error instanceof Error ? error.message : String(error) });
@@ -133,7 +180,7 @@ function (config, staticCapture) {
     return [label, ...Array.from(node.childNodes, visibleText)].join(" ");
   }
   function scheduleCommit() {
-    if (restoring) return;
+    if (restoring || interaction) return;
     clearTimeout(commitTimer);
     commitTimer = setTimeout(() => capture(), 0);
   }
@@ -177,6 +224,23 @@ function (config, staticCapture) {
     }
     restoring = false;
     observer = new MutationObserver(normalizeSources);
+    // Only human control edits invalidate an observation. Timer/playback updates
+    // still appear in the snapshot, but do not masquerade as conflicting edits.
+    for (const kind of ['input', 'change', 'click']) document.addEventListener(kind, event => {
+      if (!event.isTrusted || interaction || !parameters.length) return;
+      let before;
+      try { before = { ...stateReader?.()?.values }; } catch { return; }
+      queueMicrotask(() => {
+        let after;
+        try { after = stateReader?.()?.values ?? {}; } catch { return; }
+        for (const key of parameters) {
+          const target = event.target;
+          if (before[key] !== after[key] || ((kind === 'input' || kind === 'change') && target instanceof Element && target.getAttribute('data-presentation-parameter') === key)) {
+            parameterEdits[key] = (parameterEdits[key] ?? 0) + 1;
+          }
+        }
+      });
+    }, true);
     document.addEventListener("change", scheduleCommit);
     document.addEventListener("focusin", event => publishEditing(isEditingTarget(event.target)));
     document.addEventListener("focusout", () => queueMicrotask(() => publishEditing(isEditingTarget(document.activeElement))));

@@ -862,7 +862,7 @@ mod tests {
             evidence_id:"question-understanding".into(), action_ref:"question".into(), delivery_ref:None,
             session_id:"ordinary".into(), source_id:"book".into(), source_revision:"source-v1".into(), map_revision:None,
             object_id:None, object_revision:None, nature:EvidenceNature::Hypothesis,
-            target:Some(crate::teaching::TeachingTarget { media_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
+            target:Some(crate::teaching::TeachingTarget { media_bindings:None, music_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
                 capability:"explanation".into(), source_bindings:vec![crate::teaching::TeachingSourceBinding {source_id:"book".into(), source_revision:"source-v1".into(),start_lid:"L1".into(),end_lid:"L2".into()}],object_refs:vec![] }),
             design_ref:None, block_refs:vec![], fact_refs:vec!["question".into()], teaching_implication:"结合方向导数解释".into(),
             label:"梯度方向".into(),capability:"explanation".into(),assistance_refs:vec![],attempt:1,assessment_ref:None,

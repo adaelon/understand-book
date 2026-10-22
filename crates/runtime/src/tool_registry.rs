@@ -20,18 +20,25 @@ pub enum ToolHandlerId {
     Book(BookToolId),
     BookTextBatch,
     LibraryList,
+    LibrarySearch,
     LibraryRead,
     LibraryLearning,
     Artifact(ArtifactToolId),
     ToolSearch,
+    AgentProgress,
     GoalUpdate,
     WorkspaceGoalUpdate,
     WorkspaceRecordsRead,
     TutorStep,
     SourcePresent,
     PresentationAuthor,
+    PresentationInteract,
     VideoReadFrames,
     VideoSearch,
+    MusicRead,
+    MusicInteract,
+    WebSearch,
+    WebFetch,
     VideoReviewAudio,
     ProfileManifest,
     ProfileMarkUsed,
@@ -51,16 +58,19 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 43] = [
+    pub const ALL: [ToolHandlerId; 51] = [
         ToolHandlerId::LibraryList,
+        ToolHandlerId::LibrarySearch,
         ToolHandlerId::LibraryRead,
         ToolHandlerId::LibraryLearning,
         ToolHandlerId::Book(BookToolId::Query),
         ToolHandlerId::Book(BookToolId::Synthesize),
         ToolHandlerId::Book(BookToolId::SearchText),
+        ToolHandlerId::Book(BookToolId::Search),
         ToolHandlerId::Book(BookToolId::Text),
         ToolHandlerId::BookTextBatch,
         ToolHandlerId::ToolSearch,
+        ToolHandlerId::AgentProgress,
         ToolHandlerId::GoalUpdate,
         ToolHandlerId::WorkspaceGoalUpdate,
         ToolHandlerId::WorkspaceRecordsRead,
@@ -70,8 +80,13 @@ impl ToolHandlerId {
         ToolHandlerId::Artifact(ArtifactToolId::Read),
         ToolHandlerId::SourcePresent,
         ToolHandlerId::PresentationAuthor,
+        ToolHandlerId::PresentationInteract,
         ToolHandlerId::VideoReadFrames,
         ToolHandlerId::VideoSearch,
+        ToolHandlerId::MusicRead,
+        ToolHandlerId::MusicInteract,
+        ToolHandlerId::WebSearch,
+        ToolHandlerId::WebFetch,
         ToolHandlerId::VideoReviewAudio,
         ToolHandlerId::Book(BookToolId::Context),
         ToolHandlerId::Book(BookToolId::Concept),
@@ -106,17 +121,24 @@ impl ToolHandlerId {
             ToolHandlerId::Artifact(id) => artifact_aliases(id).resident,
             ToolHandlerId::BookTextBatch => "book.text_batch",
             ToolHandlerId::LibraryList => "library.list",
+            ToolHandlerId::LibrarySearch => "library.search",
             ToolHandlerId::LibraryRead => "library.read",
             ToolHandlerId::LibraryLearning => "library.learning",
             ToolHandlerId::ToolSearch => "tool.search",
+            ToolHandlerId::AgentProgress => "agent.progress",
             ToolHandlerId::GoalUpdate => "goal.update",
             ToolHandlerId::WorkspaceGoalUpdate => "workspace.goal.update",
             ToolHandlerId::WorkspaceRecordsRead => "workspace.records.read",
             ToolHandlerId::TutorStep => "tutor.step",
+            ToolHandlerId::PresentationInteract => "presentation.interact",
             ToolHandlerId::PresentationAuthor => "presentation.author",
             ToolHandlerId::VideoReadFrames => "video.read_frames",
             ToolHandlerId::VideoReviewAudio => "video.review_audio",
             ToolHandlerId::VideoSearch => "video.search",
+            ToolHandlerId::MusicRead => "music.read",
+            ToolHandlerId::MusicInteract => "music.interact",
+            ToolHandlerId::WebSearch => "web.search",
+            ToolHandlerId::WebFetch => "web.fetch",
             ToolHandlerId::SourcePresent => "source.present",
             ToolHandlerId::ProfileManifest => "profile.manifest",
             ToolHandlerId::ProfileMarkUsed => "profile.mark_used",
@@ -214,6 +236,7 @@ impl LegacyToolCapability {
 #[serde(rename_all = "snake_case")]
 pub enum ToolCapability {
     Discovery,
+    ProgressReporting,
     SourceRead,
     LexicalLocate,
     SemanticEvidence,
@@ -223,6 +246,7 @@ pub enum ToolCapability {
     ArtifactRead,
     SourcePresentation,
     PresentationAuthoring,
+    PresentationInteraction,
     ProfileRead,
     ProfileTrace,
     MemoryRead,
@@ -230,11 +254,14 @@ pub enum ToolCapability {
     ReaderRead,
     ReaderWrite,
     GoalManagement,
+    WebSearch,
+    WebRead,
 }
 
 impl ToolCapability {
-    pub const ALL: [ToolCapability; 17] = [
+    pub const ALL: [ToolCapability; 21] = [
         Self::Discovery,
+        Self::ProgressReporting,
         Self::SourceRead,
         Self::LexicalLocate,
         Self::SemanticEvidence,
@@ -244,6 +271,7 @@ impl ToolCapability {
         Self::ArtifactRead,
         Self::SourcePresentation,
         Self::PresentationAuthoring,
+        Self::PresentationInteraction,
         Self::ProfileRead,
         Self::ProfileTrace,
         Self::MemoryRead,
@@ -251,18 +279,22 @@ impl ToolCapability {
         Self::ReaderRead,
         Self::ReaderWrite,
         Self::GoalManagement,
+        Self::WebSearch,
+        Self::WebRead,
     ];
 
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Discovery => "discovery",
             Self::SourceRead => "source_read",
+            Self::ProgressReporting => "progress_reporting",
             Self::LexicalLocate => "lexical_locate",
             Self::SemanticEvidence => "semantic_evidence",
             Self::StructuralIndex => "structural_index",
             Self::Synthesis => "synthesis",
             Self::NavigationPlan => "navigation_plan",
             Self::ArtifactRead => "artifact_read",
+            Self::PresentationInteraction => "presentation_interaction",
             Self::PresentationAuthoring => "presentation_authoring",
             Self::SourcePresentation => "source_presentation",
             Self::ProfileRead => "profile_read",
@@ -272,6 +304,8 @@ impl ToolCapability {
             Self::ReaderRead => "reader_read",
             Self::ReaderWrite => "reader_write",
             Self::GoalManagement => "goal_management",
+            Self::WebSearch => "web_search",
+            Self::WebRead => "web_read",
         }
     }
 }
@@ -536,17 +570,23 @@ impl ToolRegistration {
 
     pub fn activity_label(&self) -> &'static str {
         match self.spec.name.as_str() {
+            "agent.progress" => "说明工作进展",
             "book.query" => "检索书内证据",
             "book.synthesize" => "综合原文",
             "book.text" => "读取原文",
             "book.text_batch" => "读取多处原文",
             "book.search_text" => "搜索原文",
+            "book.search" => "查找相关段落",
+            "library.search" => "检索工作区资料",
             "book.structure" => "查看书籍结构",
             "source.present" => "整理来源",
+            "presentation.interact" => "操作当前演示",
             "presentation.author" => "制作与预览内容",
             "video.review_audio" => "复核短原音频",
             "video.read_frames" => "读取视频画面",
             "video.search" => "检索视频画面",
+            "web.search" => "搜索外部资料",
+            "web.fetch" => "读取网页",
             "tool.search" => "查找可用工具",
             "tutor.step" => "选择教学动作",
             "goal.update" => "更新当前任务",
@@ -556,6 +596,8 @@ impl ToolRegistration {
             "reader.highlight" => "添加高亮",
             "reader.gotoLid" | "reader.scroll" => "调整阅读位置",
             "reader.state" => "查看阅读状态",
+            "music.read" => "查看音乐与乐谱",
+            "music.interact" => "调整伴听播放",
             name if name.starts_with("artifact.") => "读取学习成果",
             name if name.starts_with("memory.") || name.starts_with("profile.") => "处理阅读记忆",
             name if name.starts_with("reader.") => "更新阅读器",
@@ -608,6 +650,12 @@ impl ToolRegistration {
                     crate::book_text_batch::parse(arguments)
                         .map_err(|message| ToolArgumentError { message })?;
                 }
+                if self.handler == ToolHandlerId::WebSearch {
+                    crate::web::parse_search(value.clone()).map_err(|error| ToolArgumentError { message: error.message })?;
+                }
+                if self.handler == ToolHandlerId::WebFetch {
+                    crate::web::parse_fetch(value.clone()).map_err(|error| ToolArgumentError { message: error.message })?;
+                }
                 if self.handler == ToolHandlerId::TutorStep {
                     if let Some(continuation) = value["move"].get("continuation").filter(|v| !v.is_null()) {
                         let continuation: crate::tutor_continuation::TeachingContinuation =
@@ -629,8 +677,13 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn without_web(mut self) -> Self {
+        self.registrations.retain(|r| !matches!(r.handler, ToolHandlerId::WebSearch | ToolHandlerId::WebFetch));
+        self.by_name = self.registrations.iter().enumerate().map(|(i,r)|(r.spec.name.clone(),i)).collect();
+        self
+    }
     pub(crate) fn without_library(mut self) -> Self {
-        self.registrations.retain(|r| !matches!(r.handler, ToolHandlerId::LibraryList | ToolHandlerId::LibraryRead | ToolHandlerId::LibraryLearning));
+        self.registrations.retain(|r| !matches!(r.handler, ToolHandlerId::LibraryList | ToolHandlerId::LibrarySearch | ToolHandlerId::LibraryRead | ToolHandlerId::LibraryLearning));
         self.by_name = self.registrations.iter().enumerate().map(|(i,r)|(r.spec.name.clone(),i)).collect();
         self
     }
@@ -883,7 +936,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::EvidenceProjection,
             Parallelism::ReadOnlyEligible,
         ),
-        Handler::LibraryList | Handler::LibraryRead => (
+        Handler::LibraryList | Handler::LibrarySearch | Handler::LibraryRead => (
             ToolValidatorId::JsonSchema, ResultPolicy::EvidenceProjection, Parallelism::SequentialOnly,
         ),
         Handler::ToolSearch => (
@@ -896,12 +949,12 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::MemoryProjection,
             Parallelism::SequentialOnly,
         ),
-        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::TutorStep => (
+        Handler::AgentProgress | Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::TutorStep => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio => (
+        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::EvidenceProjection,
             Parallelism::SequentialOnly,
@@ -992,7 +1045,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
                 vec![Legacy::BookRead, Legacy::BookQuery],
                 vec![Capability::SourceRead, Capability::Synthesis],
             ),
-            BookToolId::SearchText => {
+            BookToolId::SearchText | BookToolId::Search => {
                 migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate])
             }
             BookToolId::Text => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
@@ -1036,13 +1089,20 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         }
         Handler::BookTextBatch => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::LibraryList | Handler::LibraryRead => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
+        Handler::LibrarySearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate, Capability::SemanticEvidence]),
         Handler::ToolSearch => migration(vec![Legacy::Discovery], vec![Capability::Discovery]),
+        Handler::AgentProgress => migration(vec![], vec![Capability::ProgressReporting]),
         Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
         Handler::LibraryLearning => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryRead, Capability::MemoryWrite]),
         Handler::WorkspaceRecordsRead => migration(vec![Legacy::MemoryRead], vec![Capability::MemoryRead]),
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
         Handler::VideoReadFrames | Handler::VideoReviewAudio => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::VideoSearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate]),
+        Handler::MusicRead => migration(vec![Legacy::BookRead, Legacy::BookSearch], vec![Capability::SourceRead, Capability::LexicalLocate, Capability::StructuralIndex]),
+        Handler::MusicInteract => migration(vec![Legacy::ReaderWrite], vec![Capability::PresentationInteraction, Capability::ReaderRead]),
+        Handler::WebSearch => migration(vec![], vec![Capability::WebSearch]),
+        Handler::WebFetch => migration(vec![], vec![Capability::WebRead]),
+        Handler::PresentationInteract => migration(vec![Legacy::ReaderWrite], vec![Capability::PresentationInteraction]),
         Handler::PresentationAuthor => migration(
             vec![Legacy::SourcePresentation],
             vec![Capability::PresentationAuthoring],
@@ -1156,6 +1216,11 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
                 vec![Precondition::BookAvailable, Precondition::LocatedLid],
                 all_profiles(),
                 Cost::High,
+            ),
+            BookToolId::Search => shape(
+                vec![Scope::Passage, Scope::Section, Scope::Document],
+                vec![Operation::Explain, Operation::Compare, Operation::ReadSource],
+                Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low,
             ),
             BookToolId::SearchText => shape(
                 vec![
@@ -1289,9 +1354,14 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             Cost::Low,
         ),
         Handler::LibraryList | Handler::LibraryRead => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::ReadSource, Operation::Compare], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::LibrarySearch => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::ReadSource, Operation::Compare], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Medium),
         Handler::TutorStep => shape(vec![Scope::Document], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::LibraryLearning => shape(vec![Scope::Corpus], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::WorkspaceRecordsRead => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::Summarize], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::AgentProgress => shape(
+            vec![Scope::Document], vec![Operation::Explain], Effect::ReadOnly,
+            vec![Precondition::BookAvailable], all_profiles(), Cost::Low,
+        ),
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => shape(
             vec![Scope::Document],
             vec![Operation::Explain],
@@ -1337,12 +1407,25 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
+        Handler::WebSearch => shape(vec![Scope::Passage, Scope::Section, Scope::Document, Scope::Corpus],
+            vec![Operation::LocateLiteral, Operation::Explain, Operation::Compare, Operation::Summarize],
+            Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Medium),
+        Handler::WebFetch => shape(vec![Scope::Passage, Scope::Section, Scope::Document, Scope::Corpus],
+            vec![Operation::ReadSource, Operation::Explain, Operation::Compare, Operation::Summarize],
+            Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Medium),
         Handler::VideoReadFrames | Handler::VideoReviewAudio => shape(vec![Scope::Selection, Scope::Passage, Scope::Section],
             vec![Operation::ReadSource, Operation::Explain, Operation::Compare], Effect::ReadOnly,
             vec![Precondition::BookAvailable], all_profiles(), Cost::High),
         Handler::VideoSearch => shape(vec![Scope::Passage, Scope::Section, Scope::Document],
             vec![Operation::LocateLiteral, Operation::Compare], Effect::ReadOnly,
             vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::MusicRead => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document],
+            vec![Operation::ReadSource, Operation::LocateLiteral, Operation::Explain, Operation::Compare, Operation::Summarize],
+            Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::MusicInteract => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document],
+            vec![Operation::ReadSource, Operation::Explain, Operation::Compare, Operation::MutateReader],
+            Effect::PresentationWrite, vec![Precondition::BookAvailable, Precondition::ReaderWritePermission], all_profiles(), Cost::Low),
+        Handler::PresentationInteract => shape(vec![Scope::Passage, Scope::Section, Scope::Document], vec![Operation::Explain, Operation::Compare], Effect::PresentationWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::PresentationAuthor => shape(
             vec![
                 Scope::Selection,
@@ -1549,6 +1632,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
 
     match handler {
         Handler::LibraryList | Handler::LibraryRead => ("Find supplementary source material in the reader's authorized library for a specific knowledge gap.", "Keep the original reading task; do not treat other materials as current-book navigation or infer understanding from a read."),
+        Handler::LibrarySearch => ("Find related passages across frozen workspace materials with lexical and available semantic retrieval, then follow returned source reads.", "Requires a learning workspace. Search previews are not read evidence; bounded results cannot establish complete coverage. For one article prefer book.search or direct reading."),
         Handler::LibraryLearning => ("Read this learner's reference-book understanding and record source-grounded interpretations of actual user feedback.", "Private learning memory belongs to the current reader. Read, explain, then update only from the user's real expression; no automatic mastery."),
         Handler::BookTextBatch => (
             "Read several already-located source ranges together for comparison or evidence gathering; the runtime enables this tool after multiple source locations are known.",
@@ -1557,6 +1641,10 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::ToolSearch => (
             "Discover a deferred Resident capability that is absent from the current sampled tool surface.",
             "Do not use when visible tools can complete the task or to execute a matched tool in the same sampling.",
+        ),
+        Handler::AgentProgress => (
+            "Briefly explain the next action, meaningful completed work or a changed approach alongside actual work.",
+            "Do not expose private reasoning, internal locators, source markers, teaching content or unreviewed answers; updates are not evidence or delivery.",
         ),
         Handler::WorkspaceRecordsRead => (
             "Read original chats, facts and corrections explicitly linked to this workspace when they matter to the current request.",
@@ -1583,9 +1671,14 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Read bounded artifact records returned by artifact.search or its continuation.",
             "Do not invent opaque refs or treat artifact records as canonical book evidence.",
         ),
+        Handler::WebSearch => ("Find external primary sources for a specific knowledge gap, incomplete mechanism, comparison or current fact. 网页搜索、外部资料、机制关系、最新文档。", "Do not search for confirmation of an assumed conclusion, treat summaries as page evidence, or use ranking scores as proof."),
+        Handler::WebFetch => ("Read the relevant external source and its conditions at a known URL. 网页正文、官方文档、成立条件。", "Do not duplicate content already read, mistake blocked pages for evidence, or convert external pages into book LIDs."),
         Handler::VideoReviewAudio => ("Review short original audio and uncertain spoken words with Whisper. 原音频、听核、复核、讲者措辞、听不清、underflow、overflow。", "Machine recognition with uncertainties; compare saved transcript and actual frames; never edit source text or claim the main model heard audio."),
         Handler::VideoReadFrames => ("Read actual video frames, crops, original PTS and corresponding English transcript. 视频画面、代码、公式、取帧、裁剪。", "Samples only; paths and descriptions do not establish a visual observation."),
         Handler::VideoSearch => ("Locate visual units and source-backed teaching roles; follow explanations, examples and limitations to supporting material. 视频视觉检索、讲解结构、解释、示例、反例、条件限定、前文图示、代码、概念、重复画面、覆盖缺口。", "Candidates only; read discourse text_reads with book.text and read_hints with video.read_frames before source.present. Search unindexed current frames directly with the frame reader."),
+        Handler::MusicRead => ("Read prepared music, score notation, part roles, events, provenance, alignment and coverage. 音乐 乐谱 乐器 声部 主题 伴奏 贝多芬 舒伯特 伴听", "Prepared material is not live audio observation. Bind original recording and score revisions; preserve uncertainty and coverage."),
+        Handler::MusicInteract => ("Observe and control the current music player: play, pause, seek, loop, focus, speed or labelled synthesis. 音乐 播放 暂停 循环 声部 高亮", "Observe before acting; only an applied browser receipt confirms completion. Playback is not proof of learner understanding or model hearing."),
+        Handler::PresentationInteract => ("Observe and operate a declared action in the currently open presentation, then read its saved result.", "Do not use to modify content or claim learner understanding; use only the returned actions and exact observation receipt."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
@@ -2128,15 +2221,22 @@ mod tests {
                 &["source_read", "synthesis"],
             ),
             ("book.search_text", &["book_search"], &["lexical_locate"]),
+            ("book.search", &["book_search"], &["lexical_locate"]),
             ("book.text", &["book_read"], &["source_read"]),
             ("video.read_frames", &["book_read"], &["source_read"]),
             ("video.review_audio", &["book_read"], &["source_read"]),
             ("video.search", &["book_search"], &["lexical_locate"]),
+            ("music.read", &["book_read", "book_search"], &["source_read", "lexical_locate", "structural_index"]),
+            ("music.interact", &["reader_write"], &["presentation_interaction", "reader_read"]),
+            ("web.search", &[], &["web_search"]),
+            ("web.fetch", &[], &["web_read"]),
             ("book.text_batch", &["book_read"], &["source_read"]),
             ("library.list", &["book_read"], &["source_read"]),
+            ("library.search", &["book_search"], &["lexical_locate", "semantic_evidence"]),
             ("library.read", &["book_read"], &["source_read"]),
             ("library.learning", &["memory_write"], &["memory_read", "memory_write"]),
             ("tool.search", &["discovery"], &["discovery"]),
+            ("agent.progress", &[], &["progress_reporting"]),
             ("artifact.list", &["artifact_read"], &["artifact_read"]),
             ("artifact.search", &["artifact_read"], &["artifact_read"]),
             ("artifact.read", &["artifact_read"], &["artifact_read"]),
@@ -2144,6 +2244,11 @@ mod tests {
                 "presentation.author",
                 &["source_presentation"],
                 &["presentation_authoring"],
+            ),
+            (
+                "presentation.interact",
+                &["reader_write"],
+                &["presentation_interaction"],
             ),
             (
                 "source.present",

@@ -97,6 +97,8 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
     if (checkHarnessCapabilities(ctx).status !== "available") throw new Error("build_harness_unsupported");
     const runtime = await resolveExecutorRuntime(ctx, { ...agent.options, maxTokens: config.maxOutputTokens }, config.safetyMarginTokens, signal);
     const result = await command({ version: "dsh_build_prepare.v2", ...input, max_parallel: input.max_parallel ?? 1 }, signal) as OperatorBuildPlan & {version:string};
+    const failure = result as unknown as {action?:{projection?:{code?:string};message?:string}};
+    if (failure.action?.projection?.code === "document_preparation_unavailable") throw new Error(failure.action.message ?? "资料转换暂不可用。");
     if (result.version !== "dsh_build_prepared.v2" || result.plan.private_artifacts.length) throw new Error("build_plan_unsupported");
     return { build_plan_path: result.build_plan_path, workspace_dir: result.workspace_dir, plan: result.plan,
       review_markdown: result.review_markdown, model_runtime: runtime };

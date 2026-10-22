@@ -90,6 +90,7 @@ const OPTIONAL: &[&str] = &[
     "video_translation_progress.json",
     "formula_semantics.json",
     "discourse_index.json",
+    "math_structure.json",
     "book_structure.json",
     "paper_metadata.json",
     "paper_lexicon.json",
@@ -178,6 +179,20 @@ fn dependencies(input: &Path, stage: &Path) -> Result<(), ToolError> {
     for file in OPTIONAL {
         if fs::symlink_metadata(input.join(file)).is_ok() {
             copy_file(&input.join(file), stage, file)?;
+        }
+    }
+    if input.join(crate::music_media::MANIFEST).exists() {
+        let manifest = crate::music_media::load(input)?;
+        if ![base_schema::MusicAssetKind::Recording, base_schema::MusicAssetKind::Score].iter()
+            .all(|kind| manifest.rights.iter().any(|right| right.asset_kind == *kind && right.distribution == base_schema::MusicDistribution::Allowed))
+            || manifest.rights.iter().any(|right| right.distribution != base_schema::MusicDistribution::Allowed) {
+            return Err(error("MUSIC_DISTRIBUTION_UNAVAILABLE", "validation", "当前音乐素材仅允许本地使用，不能进入共享发布"));
+        }
+        crate::music_media::validate_files(input, &manifest)?;
+        copy_file(&input.join(crate::music_media::MANIFEST), stage, crate::music_media::MANIFEST)?;
+        for file in crate::music_media::files(&manifest) { copy_file(&input.join(file), stage, file)?; }
+        for file in ["music/build-report.json", "music/NOTICE.txt"] {
+            if input.join(file).is_file() { copy_file(&input.join(file), stage, file)?; }
         }
     }
     if input.join("video_source_manifest.json").exists() {
@@ -430,7 +445,7 @@ impl PublishedLibrary {
             "SELECT directory,manifest FROM book_publications WHERE book_id=? ORDER BY rowid DESC LIMIT 1", [&book_id],
             |r| Ok((r.get(0)?, r.get(1)?))).optional().map_err(|_| storage())?;
         crate::video_publication::assemble(input, previous.as_ref().map(|(dir,_)| Path::new(dir)), stage.path())?;
-        let previous_publication = if stage.path().join("video_source_manifest.json").exists() {
+        let previous_publication = if stage.path().join("video_source_manifest.json").exists() || stage.path().join(crate::music_media::MANIFEST).exists() {
             previous.as_ref().map(|(_, m)| serde_json::from_str::<PublicationManifest>(m)
                 .map(|m| m.reference).map_err(|_| invalid())).transpose()?
         } else { None };
@@ -524,6 +539,15 @@ impl PublishedLibrary {
         drop(stmt);
         for directory in previous {
             let old = Path::new(&directory);
+            if old.join(crate::music_media::MANIFEST).exists() || stage.path().join(crate::music_media::MANIFEST).exists() {
+                let before = crate::music_media::load(old)?;
+                let after = crate::music_media::load(stage.path())?;
+                after.validate_successor(&before).map_err(|_| invalid())?;
+                if !equal_files(&old.join(&before.recording.media_path), &stage.path().join(&after.recording.media_path))?
+                    || !equal_files(&old.join(&before.score.musicxml_path), &stage.path().join(&after.score.musicxml_path))? {
+                    return Err(error("BOOK_CONTENT_CHANGED", "conflict", "更换录音或谱本需建立新的音乐资料"));
+                }
+            }
             let video_path = "video_source_manifest.json";
             if old.join(video_path).exists() || stage.path().join(video_path).exists() {
                 let before: base_schema::VideoSourceManifest = serde_json::from_value(read_json(&old.join(video_path))?).map_err(|_|invalid())?;
@@ -583,7 +607,9 @@ impl PublishedLibrary {
             previous_publication,
             source_fingerprint: book.source_fingerprint().into(),
             files,
-            capabilities: if stage.path().join("video_source_manifest.json").exists() {
+            capabilities: if stage.path().join(crate::music_media::MANIFEST).exists() {
+                crate::music_media::capabilities(&crate::music_media::load(stage.path())?)
+            } else if stage.path().join("video_source_manifest.json").exists() {
                 json!({"english_searchable":true,"semantic":"pending","video":true,
                     "coverage":read_json(&stage.path().join("video_source_manifest.json"))?["coverage"]})
             } else { source["capabilities"].clone() },
@@ -640,6 +666,11 @@ impl PublishedLibrary {
             }
             crate::video_media::link_publication(input,&destination,&reference)?;
         }
+        // Cache only committed original identities. A preparation failure leaves
+        // the original publication readable; maintenance can retry the derivative.
+        if let Err(error) = crate::video_playback::prepare(self.control.writer.root(), &destination) {
+            eprintln!("Video playback preparation: {}", error.message);
+        }
         Ok(manifest)
     }
 
@@ -681,8 +712,9 @@ impl PublishedLibrary {
     pub(crate) fn video_successor(&mut self, owner: &str, current: &PublishedBookRef) -> Result<Option<Arc<PublishedBook>>, ToolError> {
         self.authorize(owner, current)?;
         let candidates: Vec<String> = {
-            let mut query = self.control.connection.prepare("SELECT p.publication_id FROM book_publications p JOIN book_grants g USING(book_id,publication_id) WHERE g.owner_user_id=? AND p.book_id=? ORDER BY p.rowid DESC").map_err(|_|storage())?;
-            let rows = query.query_map(params![owner,current.book_id], |r| r.get(0)).map_err(|_|storage())?;
+            let course_refs = crate::course_access::material_refs(&self.control.connection,owner,crate::multi_user_host::now())?;
+            let mut query = self.control.connection.prepare("SELECT p.publication_id FROM book_publications p WHERE p.book_id=?2 AND (EXISTS(SELECT 1 FROM book_grants g WHERE g.owner_user_id=?1 AND g.book_id=p.book_id AND g.publication_id=p.publication_id) OR EXISTS(SELECT 1 FROM json_each(?3) m WHERE json_extract(m.value,'$.book_id')=p.book_id AND json_extract(m.value,'$.publication_id')=p.publication_id)) ORDER BY p.rowid DESC").map_err(|_|storage())?;
+            let rows = query.query_map(params![owner,current.book_id,course_refs], |r| r.get(0)).map_err(|_|storage())?;
             rows.collect::<Result<_,_>>().map_err(|_|storage())?
         };
         for id in candidates {
@@ -698,9 +730,28 @@ impl PublishedLibrary {
     }
     /// Public catalog projection: no filesystem paths or other users' grants.
     pub fn list(&self, owner: &str) -> Result<Vec<Value>, ToolError> {
-        let mut query = self.control.connection.prepare("SELECT p.manifest, COALESCE(d.publication_id=p.publication_id,0), p.directory FROM book_publications p JOIN book_grants g USING(book_id,publication_id) JOIN users u ON u.user_id=g.owner_user_id LEFT JOIN book_defaults d USING(book_id) WHERE g.owner_user_id=? AND u.disabled=0 ORDER BY p.book_id,p.publication_id").map_err(|_| storage())?;
+        // Prepared private uploads keep the original filename in their task receipt.
+        // Reusing an existing publication is not a rename of that public material.
+        let mut titles_query = self.control.connection.prepare(
+            "SELECT json_extract(m.value,'$.published_book_ref.book_id'),
+                    json_extract(m.value,'$.published_book_ref.publication_id'),
+                    json_extract(m.value,'$.label')
+             FROM operator_builds b,json_each(b.task_json,'$.materials') m
+             WHERE json_extract(b.task_json,'$.user_id')=?1
+               AND json_type(m.value,'$.target_input')='text'
+               AND json_type(m.value,'$.published_book_ref')='object'
+               AND json_type(m.value,'$.label')='text'
+             ORDER BY b.created_at DESC,b.task_id",
+        ).map_err(|_|storage())?;
+        let mut display_titles = BTreeMap::new();
+        for row in titles_query.query_map([owner], |r|Ok((PublishedBookRef{book_id:r.get(0)?,publication_id:r.get(1)?},r.get::<_,String>(2)?))).map_err(|_|storage())? {
+            let (reference,title) = row.map_err(|_|storage())?;
+            display_titles.entry(reference).or_insert(title);
+        }
+        let course_refs = crate::course_access::material_refs(&self.control.connection,owner,crate::multi_user_host::now())?;
+        let mut query = self.control.connection.prepare("SELECT p.manifest, COALESCE(d.publication_id=p.publication_id,0), p.directory FROM book_publications p JOIN users u ON u.user_id=?1 LEFT JOIN book_defaults d USING(book_id) WHERE u.disabled=0 AND (EXISTS(SELECT 1 FROM book_grants g WHERE g.owner_user_id=?1 AND g.book_id=p.book_id AND g.publication_id=p.publication_id) OR EXISTS(SELECT 1 FROM json_each(?2) m WHERE json_extract(m.value,'$.book_id')=p.book_id AND json_extract(m.value,'$.publication_id')=p.publication_id)) ORDER BY p.book_id,p.publication_id").map_err(|_| storage())?;
         let rows = query
-            .query_map([owner], |r| {
+            .query_map(params![owner,course_refs], |r| {
                 Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?, r.get::<_, String>(2)?))
             })
             .map_err(|_| storage())?;
@@ -708,8 +759,26 @@ impl PublishedLibrary {
             let (manifest, is_default, directory) = row.map_err(|_| storage())?;
             let manifest: PublicationManifest = serde_json::from_str(&manifest).map_err(|_| invalid())?;
             let cover = crate::book_cover::published(Path::new(&directory), &manifest);
-            let title = crate::book_title::read(Path::new(&directory), None);
+            let mut title = crate::book_title::read(Path::new(&directory), display_titles.get(&manifest.reference).map(String::as_str));
+            // Prepared course videos may retain the temporary import name external.mp4.
+            // An accessible single-material course supplies an unambiguous display name.
+            if manifest.capabilities["video"] == true && title.as_deref() == Some("external") {
+                let tier = crate::course_access::current_tier(&self.control.connection, owner, crate::multi_user_host::now())?;
+                let course_title: Option<String> = self.control.connection.query_row(
+                    "SELECT json_extract(r.manifest_json,'$.name') FROM workspace_releases r
+                     WHERE json_array_length(r.manifest_json,'$.materials')=1
+                       AND json_extract(r.manifest_json,'$.materials[0].published_book_ref.book_id')=?2
+                       AND json_extract(r.manifest_json,'$.materials[0].published_book_ref.publication_id')=?3
+                       AND (EXISTS(SELECT 1 FROM json_each(r.visible_to_users_json) WHERE value=?1)
+                         OR EXISTS(SELECT 1 FROM course_release_access a,json_each(a.allowed_tiers_json) t WHERE a.release_id=r.release_id AND a.version=r.version AND t.value=?4)
+                         OR EXISTS(SELECT 1 FROM workspace_release_instance_history h JOIN workspace_release_instances i USING(owner_user_id,learning_workspace_id) WHERE i.owner_user_id=?1 AND i.release_id=r.release_id AND h.version=r.version))
+                     ORDER BY r.created_at DESC,r.version DESC,r.release_id LIMIT 1",
+                    params![owner,manifest.reference.book_id,manifest.reference.publication_id,tier], |r| r.get(0),
+                ).optional().map_err(|_| storage())?;
+                if course_title.is_some() { title = course_title; }
+            }
             Ok(json!({"published_book_ref":manifest.reference,"is_default":is_default,
+                "media_kind":if manifest.capabilities["music"] == true { "music" } else if manifest.capabilities["video"] == true { "video" } else { "book" },
                 "source_fingerprint":manifest.source_fingerprint,"teaching_readiness":manifest.teaching_readiness,"cover":cover,"title":title}))
         }).collect()
     }
@@ -727,38 +796,34 @@ impl PublishedLibrary {
         after: Option<&PublishedBookRef>,
         limit: usize,
     ) -> Result<Vec<(PublicationManifest, bool, String)>, ToolError> {
+        let course_refs = crate::course_access::material_refs(&self.control.connection,owner,crate::multi_user_host::now())?;
         let mut query = self.control.connection.prepare(
             "SELECT p.manifest,COALESCE(d.publication_id=p.publication_id,0),p.directory
-             FROM book_publications p JOIN book_grants g USING(book_id,publication_id)
-             JOIN users u ON u.user_id=g.owner_user_id LEFT JOIN book_defaults d USING(book_id)
-             WHERE g.owner_user_id=? AND u.disabled=0 AND (p.book_id,p.publication_id)>(?,?)
-             AND (? IS NULL OR EXISTS (SELECT 1 FROM json_each(?) m
+             FROM book_publications p JOIN users u ON u.user_id=?1 LEFT JOIN book_defaults d USING(book_id)
+             WHERE u.disabled=0 AND (EXISTS(SELECT 1 FROM book_grants g WHERE g.owner_user_id=?1 AND g.book_id=p.book_id AND g.publication_id=p.publication_id)
+                 OR EXISTS(SELECT 1 FROM json_each(?2) c WHERE json_extract(c.value,'$.book_id')=p.book_id AND json_extract(c.value,'$.publication_id')=p.publication_id))
+             AND (p.book_id,p.publication_id)>(?3,?4)
+             AND (?5 IS NULL OR EXISTS (SELECT 1 FROM json_each(?5) m
                  WHERE json_extract(m.value,'$.book_id')=p.book_id
                    AND json_extract(m.value,'$.publication_id')=p.publication_id))
-             ORDER BY p.book_id,p.publication_id LIMIT ?",
+             ORDER BY p.book_id,p.publication_id LIMIT ?6",
         ).map_err(|_| storage())?;
         let members = members.map(serde_json::to_string).transpose().map_err(|_| invalid())?;
         let rows = query.query_map(
-            params![owner, after.map_or("", |r| r.book_id.as_str()),
-                after.map_or("", |r| r.publication_id.as_str()), members, members, limit as i64],
+            params![owner, course_refs, after.map_or("", |r| r.book_id.as_str()),
+                after.map_or("", |r| r.publication_id.as_str()), members, limit as i64],
             |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?, row.get::<_, String>(2)?)),
         ).map_err(|_| storage())?;
         rows.map(|row| {
             let (manifest, is_default, directory) = row.map_err(|_| storage())?;
             let manifest: PublicationManifest = serde_json::from_str(&manifest).map_err(|_| invalid())?;
-            let name = if manifest.files.contains_key("paper_metadata.json") {
-                read_json(&Path::new(&directory).join("paper_metadata.json"))?["title"]["value"]
-                    .as_str()
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| manifest.reference.book_id.clone())
-            } else {
-                manifest.reference.book_id.clone()
-            };
+            let name = crate::book_title::read(Path::new(&directory), None)
+                .unwrap_or_else(|| manifest.reference.book_id.clone());
             Ok((manifest, is_default, name))
         }).collect()
     }
     pub fn authorize(&self, owner: &str, reference: &PublishedBookRef) -> Result<(), ToolError> {
-        let allowed: bool = self.control.connection.query_row("SELECT EXISTS(SELECT 1 FROM book_grants g JOIN users u ON u.user_id=g.owner_user_id WHERE u.disabled=0 AND g.owner_user_id=? AND g.book_id=? AND g.publication_id=?)", params![owner, reference.book_id, reference.publication_id], |r| r.get(0)).map_err(|_| storage())?;
+        let allowed = crate::course_access::material_allowed(&self.control.connection,owner,reference,crate::multi_user_host::now())?;
         if allowed {
             Ok(())
         } else {
@@ -794,6 +859,27 @@ impl PublishedLibrary {
         }
         self.resident_usage();
     }
+    pub(crate) fn retrieval_cache_directory(&self) -> PathBuf {
+        self.control.writer.root().join("shared-cache").join("workspace-retrieval")
+    }
+    pub(crate) fn video_directories(&self, owner: &str, reference: &PublishedBookRef) -> Result<(PathBuf, PathBuf), ToolError> {
+        self.authorize(owner, reference)?;
+        let (directory, _) = self.record(reference)?;
+        let cache = crate::video_playback::cache_directory(self.control.writer.root(), &reference.book_id)?;
+        Ok((directory, cache))
+    }
+
+    pub(crate) fn video_playback(&self, owner: &str, reference: &PublishedBookRef) -> Result<Value, ToolError> {
+        self.authorize(owner, reference)?;
+        let (directory, manifest) = self.record(reference)?;
+        let cache = crate::video_playback::cache_directory(self.control.writer.root(), &reference.book_id)?;
+        let mut value = crate::video_playback::projection(&directory, &cache, reference)?;
+        if !value.is_null() {
+            value["cover_url"] = json!(crate::book_cover::published(&directory, &manifest).map(|cover| cover.url));
+        }
+        Ok(value)
+    }
+
     pub fn load(
         &mut self,
         owner: &str,
@@ -809,10 +895,17 @@ impl PublishedLibrary {
         let book = if let Some(book) = existing {
             book
         } else {
+            // Publication manifests may predate new lazy indexes. Reserve the current
+            // Book's complete budget before admitting it into the resident cache.
+            let book = Arc::new(
+                Book::load(directory.to_str().ok_or_else(unavailable)?)
+                    .map_err(|_| unavailable())?,
+            );
+            let resident_bytes = book.resident_budget_bytes();
             loop {
                 let (count, bytes) = self.resident_usage();
                 if count < self.max_books
-                    && bytes.saturating_add(manifest.resident_bytes) <= self.max_bytes
+                    && bytes.saturating_add(resident_bytes) <= self.max_bytes
                 {
                     break;
                 }
@@ -827,16 +920,12 @@ impl PublishedLibrary {
                 };
                 self.residents.get_mut(&victim).unwrap().cached = None;
             }
-            let book = Arc::new(
-                Book::load(directory.to_str().ok_or_else(unavailable)?)
-                    .map_err(|_| unavailable())?,
-            );
             self.residents.insert(
                 reference.clone(),
                 ResidentEntry {
                     book: Arc::downgrade(&book),
                     cached: Some(book.clone()),
-                    bytes: manifest.resident_bytes,
+                    bytes: resident_bytes,
                     touched: self.clock,
                 },
             );
@@ -872,6 +961,17 @@ impl PublishedLibrary {
         let file = directory.join("original.pdf");
         regular_file(&file)?;
         crate::pdf_bytes::read(&file, range).map_err(|_| unavailable())
+    }
+
+    pub(crate) fn music_asset(&self, owner: &str, reference: &PublishedBookRef, leaf: &str) -> Result<PathBuf, ToolError> {
+        self.authorize(owner, reference)?;
+        let (directory, manifest) = self.record(reference)?;
+        if manifest.capabilities["music"] != true { return Err(unavailable()); }
+        let path = crate::music_media::path(&directory, leaf)?;
+        let relative = path.strip_prefix(&directory).map_err(|_| unavailable())?.to_string_lossy().replace('\\', "/");
+        if !manifest.files.contains_key(&relative) { return Err(unavailable()); }
+        regular_file(&path)?;
+        Ok(path)
     }
 
     pub fn asset(
@@ -962,10 +1062,12 @@ fn asset(
     manifest: &PublicationManifest,
     path: &str,
 ) -> Result<crate::BinaryReply, ToolError> {
+    let video_cover = path == "video/cover";
+    let path = if video_cover { crate::book_cover::video_frame(manifest).ok_or_else(unavailable)? } else { path };
     relative(path)?;
     // Runtime JSON/text uses typed endpoints. Never expose arbitrary admitted metadata.
     if !manifest.files.contains_key(path)
-        || !(path.starts_with("assets/") || path == "original.pdf")
+        || !(video_cover || path.starts_with("assets/") || path == "original.pdf")
     {
         return Err(unavailable());
     }

@@ -154,7 +154,7 @@ export const STAGE_WORK_UNIT_ROUTERS: Record<WorkUnitStage, StageWorkUnitRouterR
   pass1: { stage: "pass1", router_version: "pass1_window.v1", kind: "pass1_window", compatibility_mode: true },
   paper_metadata: { stage: "paper_metadata", router_version: "paper_metadata_candidate.v2", kind: "metadata_region", compatibility_mode: false },
   paper_lexicon: { stage: "paper_lexicon", router_version: "paper_lexicon_cluster.v4", kind: "lexicon_candidate_batch", compatibility_mode: false },
-  profile_sidecar: { stage: "profile_sidecar", router_version: "profile_sidecar_semantic_units.v2", kind: "profile_sidecar_discourse", compatibility_mode: false },
+  profile_sidecar: { stage: "profile_sidecar", router_version: "profile_sidecar_semantic_units.v4", kind: "profile_sidecar_discourse", compatibility_mode: false },
   pass2: { stage: "pass2", router_version: "pass2_candidate_window.v1", kind: "pass2_candidate_batch", compatibility_mode: true },
   book_structure: { stage: "book_structure", router_version: "book_structure_unit.v1", kind: "structure_unit", compatibility_mode: true },
 };
@@ -756,5 +756,11 @@ function stableJson(value: unknown): string {
 export function workUnitPlanDigest(units: WorkUnitDescriptor[]): string {
   const ordered = [...units].sort((left, right) => left.stage.localeCompare(right.stage)
     || left.work_unit_id.localeCompare(right.work_unit_id));
-  return createHash("sha256").update(stableJson(ordered)).digest("hex");
+  // Preserve the canonical array bytes without retaining a second copy of the full plan.
+  const hash = createHash("sha256").update("[");
+  for (let index = 0; index < ordered.length; index += 1) {
+    if (index) hash.update(",");
+    hash.update(stableJson(ordered[index]));
+  }
+  return hash.update("]").digest("hex");
 }

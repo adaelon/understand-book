@@ -175,7 +175,7 @@ fn teaching_delivery_review_live_scope_regression() {
     let original:Value=serde_json::from_slice(&std::fs::read(std::env::var("TEACHING_REVIEW_PACKET").unwrap()).unwrap()).unwrap();
     let packet:Value=serde_json::from_str(original["request"]["user"].as_str().unwrap()).unwrap();
     let adapter=SubagentAdapter {directory:directory.clone(),sequence:Default::default()};
-    let (verdict,usage)=runtime::tutor::review_delivery(&adapter,adapter.model_runtime_profile(),packet).unwrap();
+    let (verdict,usage)=runtime::tutor::review_delivery(&adapter,adapter.model_runtime_profile(),packet,Vec::new()).unwrap();
     save(&directory.join("review-result.json"),&json!({"verdict":verdict,"estimated_or_reported_tokens":usage}));
     save(&directory.join("complete.json"),&json!({"finished":true,"model_calls":adapter.sequence.get()}));
     assert_eq!(verdict["decision"],"revise","the recorded opening adds a condition before its prerequisite is usable");

@@ -559,6 +559,7 @@ mod tests {
     }
     fn request() -> CompletionRequest {
         CompletionRequest {
+            images: Vec::new(),
             system: "fixture".into(),
             user: "fixture".into(),
             output_token_limit: None,

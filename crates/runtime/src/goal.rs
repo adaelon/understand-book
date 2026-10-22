@@ -92,10 +92,40 @@ pub enum GoalUpdate {
     },
 }
 
-fn explicit_text_only(request: &str) -> bool {
-    let request = request.to_lowercase();
+const PRESENTATION_TERMS: &[&str] = &[
+    "富文本演示", "演示页", "网页", "页面", "html", "web page", "interactive page",
+];
+const PRESENTATION_VERBS: &[&str] = &[
+    "做", "制作", "生成", "创建", "演示", "展示", "修改", "make", "create", "show", "present", "edit",
+];
+
+fn request_clauses(request: &str) -> impl Iterator<Item = &str> {
+    request.split(['，', ',', '。', '.', '；', ';', '！', '!', '？', '?', '\n'])
+}
+
+fn text_only_clause(request: &str) -> bool {
     ["只要文字", "只用文字", "改成文字", "不需要演示", "不要演示", "不用网页", "无需页面", "text only", "no page"]
         .iter().any(|phrase| request.contains(phrase))
+        || ["不要", "不需要", "不用", "无需", "不必", "别"].iter().any(|negation| {
+            ["", "做", "制作", "生成", "创建", "展示", "演示"].iter().any(|verb| {
+                ["富文本演示", "演示页", "网页", "页面", "交互页面", "交互页", "html"].iter()
+                    .any(|object| request.contains(&format!("{negation}{verb}{object}")))
+            })
+        })
+}
+
+fn presentation_requested(request: &str) -> bool {
+    // Scope a refusal to its clause so a separate positive request remains deliverable.
+    request_clauses(request).any(|clause| {
+        !text_only_clause(clause)
+            && PRESENTATION_TERMS.iter().any(|term| clause.contains(term))
+            && PRESENTATION_VERBS.iter().any(|verb| clause.contains(verb))
+    })
+}
+
+fn explicit_text_only(request: &str) -> bool {
+    let request = request.to_lowercase();
+    !presentation_requested(&request) && request_clauses(&request).any(text_only_clause)
 }
 
 impl ResidentGoal {
@@ -114,11 +144,7 @@ impl ResidentGoal {
 
     pub fn new(id: String, turn_id: String, user_request: String) -> Self {
         let request = user_request.to_lowercase();
-        let text_only = explicit_text_only(&request);
-        let presentation = !text_only && ["富文本演示", "演示页", "网页", "页面", "html", "web page", "interactive page"]
-            .iter().any(|term| request.contains(term))
-            && ["做", "制作", "生成", "创建", "演示", "展示", "修改", "make", "create", "show", "present", "edit"]
-                .iter().any(|verb| request.contains(verb));
+        let presentation = presentation_requested(&request);
         Self {
             id,
             revision: 1,
@@ -379,5 +405,56 @@ mod tests {
         let mut content = content;
         content.basis_turn_id = "t3".into();
         assert!(page.apply_update(GoalUpdate::Revise { basis_turn_id: "t3".into(), basis_quote: "改成文字即可".into(), interpretation: "Text".into(), requirements: vec![content] }, "t3", "改成文字即可").unwrap());
+    }
+
+    #[test]
+    fn exam_requests_that_decline_interactive_pages_have_no_presentation_gap() {
+        for request in [
+            "根据工作区已经确认的考试日期和范围，给我今天30分钟的复习安排。不要先做诊断，不要制作交互页面；说明先练什么以及为什么。用中文简洁回答。",
+            "我刚修改了工作区的考试日期和范围。请按当前设置重新安排今天30分钟，只安排考试范围内的内容。不要先做诊断，不要制作交互页面。",
+            "我现在不会这道题，请直接讲这题，不要先给我诊断或先修测验：样例视频有两秒，我的陈述只涉及第一秒，为什么不能把整段视频当作精确证据窗口？请直接用这道题解释。不要制作交互页面。",
+            "请实际查这个工作区的原创讲义和样例视频字幕，用中文回答：讲义为什么要求保留原始来源引用？视频字幕说动态图案持续多久，应回看哪个时间窗口？分别给能跳回讲义原文和视频时段的来源引用。只依据文字和字幕，不需要分析画面，也不要制作交互页面。",
+            "请直接讲题，不需要生成页面。",
+            "无需创建网页，讲清楚计算步骤。",
+        ] {
+            let goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+            assert_eq!(goal.requirements[0].verification, GoalVerification::Content, "{request}");
+            assert_eq!(goal.objective_gap(0, 0), None, "{request}");
+        }
+    }
+
+    #[test]
+    fn declining_one_page_does_not_erase_a_separate_positive_page_request() {
+        for request in [
+            "请制作交互页面解释这道题。",
+            "不要先做诊断，请制作交互页面解释这道题。",
+            "不要制作交互页面，改为制作静态网页。",
+            "不要演示，给我创建一个网页。",
+        ] {
+            let goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+            assert_eq!(goal.requirements[0].verification, GoalVerification::PresentationDelivery, "{request}");
+            assert!(goal.objective_gap(0, 0).is_some(), "{request}");
+            assert!(!explicit_text_only(request), "{request}");
+        }
+    }
+
+    #[test]
+    fn explicit_page_refusal_can_revise_an_existing_presentation_goal() {
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), "请制作交互页面".into());
+        let request = "不要制作交互页面，请直接讲这道题。";
+        let update = GoalUpdate::Revise {
+            basis_turn_id: "t2".into(),
+            basis_quote: "不要制作交互页面".into(),
+            interpretation: "直接讲题".into(),
+            requirements: vec![GoalRequirement {
+                id: "content".into(), description: "讲清楚这道题".into(),
+                basis_turn_id: "t2".into(), verification: GoalVerification::Content,
+            }],
+        };
+        assert!(goal.apply_update(update.clone(), "t2", "不要制作交互页面，改为制作静态网页。").is_err());
+        assert_eq!(goal.requirements[0].verification, GoalVerification::PresentationDelivery);
+        assert!(goal.apply_update(update, "t2", request).unwrap());
+        assert_eq!(goal.requirements[0].verification, GoalVerification::Content);
+        assert_eq!(goal.objective_gap(0, 0), None);
     }
 }

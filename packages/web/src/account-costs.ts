@@ -4,7 +4,17 @@ export interface AccountCostSummary {
   request_count: number;
   unknown_cost_requests: number;
   pending_requests: number;
+  cost_breakdown: Record<AccountCostCategory, AccountCostCategoryMetrics>;
   period_groups: (AccountUsageGroup & { starts_at: number | null; expires_at: number | null })[];
+}
+export const accountCostCategories = [['model', '模型'], ['web_search', '搜索'], ['web_fetch', '网页读取'], ['service', '其他服务']] as const;
+export type AccountCostCategory = typeof accountCostCategories[number][0];
+export interface AccountCostCategoryMetrics {
+  request_count: number;
+  unknown_cost_requests: number;
+  pending_requests: number;
+  estimated_cost_requests: number;
+  reconciliation_requests: number;
 }
 export interface AccountCostTask extends AccountCostSummary {
   cost_owner: 'account'; user_id: string; parent_task_ref: string; latest_at: number;

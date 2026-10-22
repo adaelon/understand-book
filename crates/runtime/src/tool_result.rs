@@ -326,6 +326,14 @@ fn project_text(arguments: &str, raw: &Value, limit: usize, book: &Book) -> Tool
     } else {
         Value::Null
     };
+    // Re-scope annotations to delivered text, never to the untruncated canonical result.
+    if cut > 0 {
+        let math = book.math_reading_context(&[base_schema::Span { start, end }]);
+        if !math.is_empty() {
+            body["math_context"] = json!(math);
+            if json_len(&body) > limit { body.as_object_mut().unwrap().remove("math_context"); }
+        }
+    }
     if cut == 0 {
         body = bounded_value(
             json!({"projection":"budget_exhausted","message":"No source text delivered; retry the continuation when model-body budget is available."}),
@@ -391,6 +399,90 @@ fn project_search(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft
         model_body: bounded_value(body, limit, &["section_counts"]),
         truncated: true,
         continuation,
+        evidence_arguments: arguments.into(),
+    }
+}
+
+/// Ranked search delivers candidate locators, never source evidence or an
+/// exhaustive collection. A hit and its exact reading calls are one atomic unit.
+fn project_ranked_search(tool: &str, arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
+    let nested = tool == "library.read";
+    let hits_path = if nested { "/data/hits" } else { "/hits" };
+    let mut body = raw.clone();
+    let original_count = body.pointer(hits_path).and_then(Value::as_array).map_or(0, Vec::len);
+    body["exhaustive"] = json!(false);
+    if nested {
+        body["data"]["exhaustive"] = json!(false);
+        // Remote source links are locators too; search does not deliver text.
+        body.as_object_mut().unwrap().remove("sources");
+        for hit in body["data"]["hits"].as_array_mut().into_iter().flatten() {
+            for call in hit.get_mut("next_calls").and_then(Value::as_array_mut).into_iter().flatten() {
+                if call["tool"] == "book.text" || call["name"] == "book.text" {
+                    let mut args = call["arguments"].clone();
+                    args["operation"] = json!("text");
+                    args["published_book_ref"] = raw["published_book_ref"].clone();
+                    *call = json!({"name":"library.read","arguments":args});
+                }
+            }
+        }
+    }
+    loop {
+        let hits = body.pointer(hits_path).and_then(Value::as_array).cloned().unwrap_or_default();
+        let mut calls = Vec::new();
+        for hit in &hits {
+            if let Some(hit_calls) = hit.get("next_calls").and_then(Value::as_array).filter(|calls| !calls.is_empty()) {
+                for call in hit_calls {
+                    if !calls.contains(call) { calls.push(call.clone()); }
+                }
+            } else if nested {
+                // MCP can keep the executable calls on its envelope instead of
+                // inside data. Match the exact candidate range, not just a LID:
+                // multiple chunks can start in the same paragraph.
+                for call in raw["next_calls"].as_array().into_iter().flatten() {
+                    let args = &call["arguments"];
+                    if args["operation"] == "text"
+                        && args["published_book_ref"] == raw["published_book_ref"]
+                        && args["lid"] == hit["start_lid"]
+                        && args["start_utf16"] == hit["source_range_utf16"]["start"]
+                        && !calls.contains(call)
+                    {
+                        calls.push(call.clone());
+                    }
+                }
+            }
+        }
+        body["next_calls"] = json!(calls);
+        if nested && body["data"].get("next_calls").is_some() {
+            body["data"]["next_calls"] = body["next_calls"].clone();
+        }
+        let kept = hits.len();
+        let truncated = kept < original_count;
+        body["delivery"] = json!({
+            "status":if truncated {"partial"} else {"complete"},
+            "returned_count":kept,
+            "omitted_count":original_count - kept,
+            "evidence":"locators_only",
+        });
+        if (original_count == 0 || kept > 0) && json_len(&body) <= limit {
+            return ToolResultDraft {
+                status: if truncated { ToolResultStatus::Partial } else { ToolResultStatus::Ok },
+                model_body: body,
+                truncated,
+                // Reading a candidate is optional follow-up work. There is no
+                // cursor that can exhaust the ranked retrieval through paging.
+                continuation: None,
+                evidence_arguments: arguments.into(),
+            };
+        }
+        if kept == 0 { break; }
+        body.pointer_mut(hits_path).and_then(Value::as_array_mut).unwrap().pop();
+    }
+    ToolResultDraft {
+        status: ToolResultStatus::Partial,
+        model_body: semantic_budget_failure(raw, limit),
+        truncated: true,
+        continuation: Some(refine_continuation(tool, arguments,
+            "No complete search candidate fits the result budget. Narrow the query or scope, or retry in a fresh turn with sufficient budget. Ranked search is not exhaustive and has no paging continuation.")),
         evidence_arguments: arguments.into(),
     }
 }
@@ -893,7 +985,12 @@ fn project_preview(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraf
 fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> ToolResultDraft {
     let source: Vec<char> = raw["text"].as_str().unwrap_or_default().chars().collect();
     let offset = raw["offset"].as_u64().unwrap_or_default() as usize;
-    let total = raw.get("end_offset").unwrap_or(&raw["total_characters"]).as_u64().unwrap_or_default() as usize;
+    // Method length is a page size; ordinary editable reads retain their
+    // explicit range end. A clipped method page must still lead to file EOF.
+    let method_read = raw["status"] == "method_read";
+    let total = if method_read { &raw["total_characters"] }
+        else { raw.get("end_offset").unwrap_or(&raw["total_characters"]) }
+        .as_u64().unwrap_or_default() as usize;
     let mut body = raw.clone();
     // A file read asks for editable source. Repeating the page's full prose in
     // each bounded chunk starved real EX11 revisions of code. The metadata read
@@ -908,6 +1005,7 @@ fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> To
     while low < high {
         let count = (low + high + 1) / 2;
         body["text"] = json!(source[..count].iter().collect::<String>());
+        if method_read { body["end_offset"] = json!(offset + count); }
         body["next_offset"] = json!((offset + count < total).then_some(offset + count));
         body["chunk_characters"] = json!(count);
         if json_len(&body) <= limit { low = count; } else { high = count - 1; }
@@ -923,12 +1021,13 @@ fn project_presentation_source(arguments: &str, raw: &Value, limit: usize) -> To
         };
     }
     body["text"] = json!(source[..low].iter().collect::<String>());
+    if method_read { body["end_offset"] = json!(offset + low); }
     body["next_offset"] = json!((offset + low < total).then_some(offset + low));
     body["chunk_characters"] = json!(low);
     let continuation = (offset + low < total).then(|| {
         let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
         next["offset"] = json!(offset + low);
-        if raw.get("end_offset").is_some() { next["length"] = json!(total - offset - low); }
+        if !method_read && raw.get("end_offset").is_some() { next["length"] = json!(total - offset - low); }
         ToolContinuation::NextCall {
             tool: "presentation.author".into(), arguments: next,
             reason: "continue editable source at the first omitted character".into(),
@@ -1035,6 +1134,21 @@ pub(crate) fn project_tool_result(
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
     }
+    if matches!(tool, "music.read" | "music.interact") && json_len(&raw) > limit {
+        // Music locators and player receipts are atomic. A shortened ID or a
+        // clipped event would authorize a citation/action the model never read.
+        let guidance = if tool == "music.read" {
+            "The prepared music result does not fit this request. Read a smaller original-time range, fewer parts, or a lower limit; no source from this result was observed."
+        } else { "The actual browser receipt did not fit the model budget. Observe again before taking another action; do not infer completion." };
+        let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
+        if tool == "music.read" { next["limit"] = json!((next["limit"].as_u64().unwrap_or(20) / 2).max(1)); }
+        return ToolResultDraft { status: ToolResultStatus::Partial,
+            model_body: bounded_value(json!({"error_code":"MUSIC_RESULT_BUDGET","category":"budget","message":guidance}),limit,&[]),
+            truncated:true, continuation:Some(ToolContinuation::RefineCall { tool:tool.into(),arguments:next,guidance:guidance.into() }), evidence_arguments:arguments.into() };
+    }
+    if matches!(tool, "web.search" | "web.fetch") {
+        return crate::web::project_result(tool, arguments, &raw, limit);
+    }
     if tool == "tutor.step" && serde_json::from_str::<Value>(arguments).is_ok_and(|v| matches!(v["operation"].as_str(), Some("design"|"evidence"|"assess"))) {
         // Full results remain in the trace and have already refreshed the runtime.
         // Supply current derived state in replaceable fragments, not snapshots in
@@ -1056,6 +1170,11 @@ pub(crate) fn project_tool_result(
     if tool == "book.text_batch" {
         return project_text_batch(arguments, &raw, limit, book);
     }
+    if matches!(tool, "book.search" | "library.search")
+        || (tool == "library.read" && serde_json::from_str::<Value>(arguments).is_ok_and(|v| v["operation"] == "search"))
+    {
+        return project_ranked_search(tool, arguments, &raw, limit);
+    }
     if tool == "library.read" && serde_json::from_str::<Value>(arguments).is_ok_and(|v| v["operation"] == "text") {
         return project_library_text(arguments, &raw, limit, book);
     }
@@ -1075,6 +1194,15 @@ pub(crate) fn project_tool_result(
                 raw["next_start_utf16"].as_u64().and_then(|start| next_text_call(arguments,start as usize,"continue the native text page"))
             } else if tool == "book.search_text" {
                 next_search_cursor(tool,arguments,&raw)
+            } else if tool == "presentation.author" && raw["status"] == "method_read" {
+                raw["next_offset"].as_u64().map(|offset| {
+                    let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
+                    next["offset"] = json!(offset);
+                    ToolContinuation::NextCall {
+                        tool: tool.into(), arguments: next,
+                        reason: "continue method source at the first unread character".into(),
+                    }
+                })
             } else { None },
             model_body: raw,
             truncated: false,
@@ -1195,6 +1323,9 @@ fn project_library_text(arguments: &str, raw: &Value, limit: usize, book: &Book)
     let budget = limit.saturating_sub(json_len(&body) + 256);
     let draft = project_text(&args.to_string(), &raw["data"], budget, book);
     body["data"] = draft.model_body;
+    if let Ok(reference) = serde_json::from_value(raw["published_book_ref"].clone()) {
+        crate::library::scope_math_read_calls(&mut body["data"], &reference);
+    }
     // Projected raw-text coordinates, not the original full page, delimit what was observed.
     if let Some(end) = body["data"]["source_range"]["end"].as_u64() {
         for source in body["sources"].as_array_mut().into_iter().flatten() {
@@ -1208,6 +1339,11 @@ fn project_library_text(arguments: &str, raw: &Value, limit: usize, book: &Book)
     } else { native_next };
     body["next_calls"] = json!(next.iter().collect::<Vec<_>>());
     body["complete"] = json!(next.is_none());
+    if json_len(&body) > limit {
+        // Publication-scoped calls can make optional annotations larger. Keep
+        // delivered source ahead of annotations, as in the local projection.
+        if let Some(data) = body["data"].as_object_mut() { data.remove("math_context"); }
+    }
     if json_len(&body) > limit {
         return ToolResultDraft { status:ToolResultStatus::Partial,
             model_body:json!({"projection":"budget_exhausted"}), truncated:true,
@@ -1270,6 +1406,42 @@ pub(crate) struct ActiveToolResultLedger {
 }
 
 impl ActiveToolResultLedger {
+    /// Supply a reviewer only the external page segments already sampled by the
+    /// answering model. Search locators, failed pages and retired bodies are not
+    /// evidence. Keep whole delivered segments within the existing body budget.
+    pub fn web_review_evidence(&self, messages: &[Message]) -> Value {
+        let current_start = messages.iter().rposition(|m| m.role == Role::User).unwrap_or(0);
+        let mut pages = Vec::new();
+        let mut seen = HashSet::new();
+        let mut omitted = false;
+        for message in messages[current_start..].iter().rev().filter(|m| m.role == Role::Tool) {
+            let Some(result) = message.tool_call_id.as_ref().and_then(|id| self.by_call_id.get(id)) else { continue; };
+            let tool = result.envelope.receipt.tool.as_str();
+            if !result.sampled || !matches!(tool, "web.search" | "web.fetch") { continue; }
+            if !result.retain_model_body { omitted = true; continue; }
+            let body = &result.envelope.model_body;
+            let candidates: Vec<&Value> = if tool == "web.search" {
+                body["results"].as_array().map(|v| v.iter().collect()).unwrap_or_default()
+            } else { vec![body] };
+            for page in candidates {
+                let (Some(url), Some(text)) = (page["url"].as_str(), page["content"].as_str()) else { continue; };
+                if page["content_status"] != "available" || text.trim().is_empty() { continue; }
+                let offset = if tool == "web.search" { 0 } else { page["offset"].as_u64().unwrap_or(0) };
+                let end_offset = offset + text.chars().count() as u64;
+                if !seen.insert((url.to_owned(), offset, end_offset)) { continue; }
+                let source = json!({"url":url,"title":page["title"],"date":page["date"],
+                    "observed_at":body["observed_at"],"offset":offset,"end_offset":end_offset,"text":text});
+                pages.push(source);
+                if json_len(&json!({"pages":&pages,"omitted":true})) > ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES {
+                    pages.pop();
+                    omitted = true;
+                }
+            }
+        }
+        pages.reverse();
+        json!({"pages":pages,"omitted":omitted})
+    }
+
     pub fn project_result(&mut self, tool: &str, arguments: &str, raw: &str, mut policy: ToolOutputPolicy, book: &Book) -> ToolResultDraft {
         // An editable file can use the fresh-result batch allowance. Admission
         // never rewrites a body that was already sent to the model.
@@ -1398,6 +1570,32 @@ impl ActiveToolResultLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn web_review_uses_only_sampled_available_segments_with_original_conditions() {
+        let mut ledger = ActiveToolResultLedger::default();
+        let mut messages = vec![Message::user("Explain this mechanism")];
+        for (id, tool, body) in [
+            ("search", "web.search", json!({"results":[{"url":"https://example.com/summary","summary":"Unverified summary","content_status":"summary_only"}]})),
+            ("blocked", "web.fetch", json!({"url":"https://example.com/login","content":"Sign in","content_status":"blocked"})),
+            ("read", "web.fetch", json!({"url":"https://example.com/doc","title":"Primary source","content":"The result applies only under condition A.","content_status":"available","offset":400})),
+        ] {
+            ledger.insert(id, ToolResultEnvelope { version:TOOL_RESULT_ENVELOPE_VERSION.into(), status:ToolResultStatus::Ok,
+                model_body:body, receipt:receipt(tool), truncated:false, continuation:None });
+            messages.push(Message {role:Role::Tool,content:None,tool_calls:vec![],tool_call_id:Some(id.into()),provider_continuation:None});
+        }
+        assert!(ledger.web_review_evidence(&messages)["pages"].as_array().unwrap().is_empty());
+        ledger.mark_projected_fresh_results_sampled();
+        let evidence = ledger.web_review_evidence(&messages);
+        assert_eq!(evidence["pages"].as_array().unwrap().len(), 1);
+        assert_eq!(evidence["pages"][0]["text"], "The result applies only under condition A.");
+        assert_eq!(evidence["pages"][0]["offset"], 400);
+        assert!(evidence["pages"][0].get("lid").is_none());
+        ledger.retire_sampled_bodies();
+        let retired = ledger.web_review_evidence(&messages);
+        assert!(retired["pages"].as_array().unwrap().is_empty());
+        assert_eq!(retired["omitted"], true);
+    }
 
     fn author_save(ledger: &mut ActiveToolResultLedger, messages: &mut Vec<Message>, id: &str, args: Value, body: Value) {
         let call = ToolCall { id:id.into(), name:"presentation.author".into(), arguments:args.to_string() };
@@ -1793,6 +1991,139 @@ mod tests {
         assert!(draft.continuation.is_some());
     }
 
+    fn ranked_search_hit(index: usize) -> Value {
+        let start = index * 400;
+        json!({
+            "rank":index + 1,"score":10.0 / (index + 1) as f64,
+            "start_lid":"1.1","end_lid":"1.1",
+            "source_range_utf16":{"start":start,"end":start + 400},
+            "ranges":[{"lid":"1.1","start_utf16":start,"end_utf16":start + 400}],
+            "heading_path":["Full heading that must not be shortened"],
+            "excerpt":format!("Candidate {index}: {}", "相关段落".repeat(60)),
+            "matched_terms":["term","another term"],
+            "next_calls":[{"tool":"book.text","arguments":{"lid":"1.1","start_utf16":start,"max_chars":400}}],
+        })
+    }
+
+    #[test]
+    fn ranked_search_projection_keeps_candidates_and_read_calls_atomic() {
+        let hits: Vec<_> = (0..8).map(ranked_search_hit).collect();
+        let raw = json!({"version":"search_ranked.v1","query":"related content","total_candidates":42,"hits":hits});
+        let draft = project_tool_result("book.search", r#"{"query":"related content"}"#, &raw.to_string(),
+            policy(ToolResultPolicy::EvidenceProjection, 2200), 2200, &two_leaf_book());
+        let kept = draft.model_body["hits"].as_array().unwrap();
+        assert!(!kept.is_empty() && kept.len() < hits.len());
+        assert_eq!(kept, &hits[..kept.len()], "No excerpt, coordinate or read call may be partially shortened");
+        let calls: Vec<_> = kept.iter().flat_map(|hit| hit["next_calls"].as_array().unwrap().iter().cloned()).collect();
+        assert_eq!(draft.model_body["next_calls"], json!(calls));
+        assert_eq!(draft.model_body["total_candidates"], 42);
+        assert_eq!(draft.model_body["exhaustive"], false);
+        assert_eq!(draft.model_body["delivery"]["evidence"], "locators_only");
+        assert!(draft.model_body.get("text").is_none());
+        assert!(draft.model_body.get("next_cursor").is_none());
+        assert!(draft.continuation.is_none(), "Ranked candidates have no exhaustive paging continuation");
+        assert_eq!(draft.status, ToolResultStatus::Partial);
+        assert!(draft.truncated);
+        assert!(draft.model_body_json().len() <= 2200);
+    }
+
+    #[test]
+    fn workspace_ranked_search_projection_preserves_publication_identity() {
+        let hits: Vec<_> = (0..8).map(|index| {
+            let mut hit = ranked_search_hit(index);
+            let reference = json!({"book_id":format!("material-{index}"),"publication_id":format!("publication-{index}-{}", "p".repeat(50))});
+            hit["published_book_ref"] = reference.clone();
+            hit["source_revision"] = json!(format!("source-{index}"));
+            hit["title"] = json!(format!("Material {index}"));
+            let mut args = hit["next_calls"][0]["arguments"].clone();
+            args["published_book_ref"] = reference;
+            args["operation"] = json!("text");
+            hit["next_calls"] = json!([{"name":"library.read","arguments":args}]);
+            hit
+        }).collect();
+        let calls: Vec<_> = hits.iter().flat_map(|hit| hit["next_calls"].as_array().unwrap().iter().cloned()).collect();
+        let retrieval = json!({"lexical":"bm25","semantic":{"status":"disabled","reason":"not configured"}});
+        let scope = json!({"workspace_id":"workspace-1","materials":8});
+        let raw = json!({"version":"workspace_search.v1","query":"related content","retrieval":retrieval,
+            "scope":scope,"exhaustive":false,"hits":hits,"next_calls":calls});
+        let draft = project_tool_result("library.search", r#"{"query":"related content"}"#, &raw.to_string(),
+            policy(ToolResultPolicy::EvidenceProjection, 2600), 2600, &two_leaf_book());
+        let kept = draft.model_body["hits"].as_array().unwrap();
+        assert!(!kept.is_empty() && kept.len() < hits.len());
+        assert_eq!(kept, &hits[..kept.len()]);
+        assert_eq!(draft.model_body["next_calls"], json!(&calls[..kept.len()]));
+        assert_eq!(draft.model_body["retrieval"], retrieval);
+        assert_eq!(draft.model_body["scope"], scope);
+        assert!(draft.model_body_json().len() <= 2600);
+        assert!(draft.continuation.is_none());
+    }
+
+    #[test]
+    fn library_read_ranked_search_filters_envelope_calls_by_exact_candidate_range() {
+        let reference = json!({"book_id":"supplement","publication_id":"edition-2"});
+        let mut hits: Vec<_> = (0..8).map(ranked_search_hit).collect();
+        let calls: Vec<_> = hits.iter_mut().map(|hit| {
+            let mut args = hit["next_calls"][0]["arguments"].clone();
+            args["published_book_ref"] = reference.clone();
+            args["operation"] = json!("text");
+            hit.as_object_mut().unwrap().remove("next_calls");
+            json!({"name":"library.read","arguments":args})
+        }).collect();
+        let raw = json!({"operation":"search","published_book_ref":reference,
+            "data":{"version":"search_ranked.v1","query":"related content","hits":hits},
+            "next_calls":calls,"sources":[{"excerpt":"This search locator is not source evidence"}],"complete":true});
+        let args = json!({"operation":"search","published_book_ref":reference,"query":"related content"});
+        let draft = project_tool_result("library.read", &args.to_string(), &raw.to_string(),
+            policy(ToolResultPolicy::EvidenceProjection, 2400), 2400, &two_leaf_book());
+        let kept = draft.model_body["data"]["hits"].as_array().unwrap();
+        assert!(!kept.is_empty() && kept.len() < hits.len());
+        assert_eq!(kept, &hits[..kept.len()]);
+        assert_eq!(draft.model_body["published_book_ref"], reference);
+        assert_eq!(draft.model_body["next_calls"], json!(&calls[..kept.len()]));
+        assert!(draft.model_body.get("sources").is_none());
+        assert_eq!(draft.model_body["data"]["exhaustive"], false);
+        assert!(draft.continuation.is_none());
+        assert!(draft.model_body_json().len() <= 2400);
+    }
+
+    #[test]
+    fn library_read_ranked_search_scopes_nested_calls_before_delivery() {
+        let reference = json!({"book_id":"supplement","publication_id":"edition-2"});
+        let hit = ranked_search_hit(0);
+        let raw = json!({"operation":"search","published_book_ref":reference,
+            "data":{"version":"search_ranked.v1","query":"related content","hits":[hit]},"next_calls":[]});
+        let args = json!({"operation":"search","published_book_ref":reference,"query":"related content"});
+        let draft = project_tool_result("library.read", &args.to_string(), &raw.to_string(),
+            policy(ToolResultPolicy::EvidenceProjection, 8000), 8000, &two_leaf_book());
+        assert_eq!(draft.status, ToolResultStatus::Ok);
+        assert!(!draft.truncated);
+        let call = &draft.model_body["data"]["hits"][0]["next_calls"][0];
+        assert_eq!(call["name"], "library.read");
+        assert_eq!(call["arguments"]["published_book_ref"], reference);
+        assert_eq!(call["arguments"]["operation"], "text");
+        assert_eq!(call["arguments"]["max_chars"], 400);
+        assert_eq!(draft.model_body["next_calls"], json!([call]));
+    }
+
+    #[test]
+    fn ranked_search_projection_omits_oversized_hit_without_read_hints_or_paging() {
+        for tool in ["book.search", "library.search"] {
+            let raw = json!({"version":"search_ranked.v1","query":"related content","hits":[ranked_search_hit(0)]});
+            let draft = project_tool_result(tool, r#"{"query":"related content"}"#, &raw.to_string(),
+                policy(ToolResultPolicy::EvidenceProjection, 450), 450, &two_leaf_book());
+            assert_eq!(draft.status, ToolResultStatus::Partial);
+            assert!(draft.truncated);
+            assert_eq!(draft.model_body["projection"], "semantic_budget_exceeded");
+            assert!(draft.model_body.get("hits").is_none());
+            assert!(draft.model_body.get("next_calls").is_none());
+            assert!(draft.model_body_json().len() <= 450);
+            let Some(ToolContinuation::RefineCall { guidance, .. }) = draft.continuation else {
+                panic!("No complete hit should suggest narrowing, not paging or reading an omitted hit");
+            };
+            assert!(guidance.contains("Narrow the query or scope"));
+        }
+    }
+
     #[test]
     fn tool_result_projection_native_search_cursor_is_not_context_truncation() {
         let source = "needle needle";
@@ -2112,27 +2443,32 @@ mod tests {
     }
 
     #[test]
-    fn se2_method_projection_reassembles_actual_source_with_exact_range() {
+    fn se2_method_projection_reassembles_actual_source_with_contiguous_pages() {
         let source = include_str!("../../../skills/presentation/methods/discrete-update/v1/example/index.html");
         let chars: Vec<_> = source.chars().collect();
-        for end in [chars.len(), 1200] {
+        for page_size in [chars.len(), 1200, 6000] {
             let mut args = json!({"operation":"read_method","method_id":"discrete-update","revision":1,
-                "file":"example/index.html","offset":0,"length":end});
+                "file":"example/index.html","offset":0,"length":page_size});
             let mut reconstructed = String::new();
             loop {
                 let offset = args["offset"].as_u64().unwrap() as usize;
+                let end = (offset + page_size).min(chars.len());
                 let raw = json!({"status":"method_read","method_id":"discrete-update","revision":1,
                     "file":"example/index.html","offset":offset,"end_offset":end,
-                    "total_characters":chars.len(),"chunk_characters":end-offset,"next_offset":null,
+                    "total_characters":chars.len(),"chunk_characters":end-offset,
+                    "next_offset":(end < chars.len()).then_some(end),
                     "text":chars[offset..end].iter().collect::<String>()});
                 let draft = project_tool_result("presentation.author", &args.to_string(), &raw.to_string(),
                     policy(ToolResultPolicy::EvidenceProjection, 900), 900, &two_leaf_book());
                 assert!(json_len(&draft.model_body) <= 900);
                 assert_eq!(draft.model_body["method_id"], "discrete-update");
                 assert_eq!(draft.model_body["revision"], 1);
-                assert_eq!(draft.model_body["end_offset"], end);
                 let text = draft.model_body["text"].as_str().expect("contiguous method source");
                 assert!(!text.is_empty());
+                let actual_end = offset + text.chars().count();
+                assert!(text.chars().count() <= page_size);
+                assert_eq!(draft.model_body["end_offset"], actual_end);
+                assert_eq!(draft.model_body["next_offset"], json!((actual_end < chars.len()).then_some(actual_end)));
                 reconstructed.push_str(text);
                 match draft.continuation {
                     Some(ToolContinuation::NextCall { arguments, .. }) => {
@@ -2141,14 +2477,40 @@ mod tests {
                         assert_eq!(arguments["method_id"], args["method_id"]);
                         assert_eq!(arguments["revision"], args["revision"]);
                         assert_eq!(arguments["offset"], reconstructed.chars().count());
-                        assert_eq!(arguments["offset"].as_u64().unwrap()+arguments["length"].as_u64().unwrap(), end as u64);
+                        assert_eq!(arguments["length"], page_size, "continuation preserves the requested page size");
                         args = arguments;
                     }
                     None => break,
-                    _ => panic!("expected an exact next range"),
+                    _ => panic!("expected the next contiguous method page"),
                 }
             }
-            assert_eq!(reconstructed, chars[..end].iter().collect::<String>());
+            assert_eq!(reconstructed, source, "all method pages must reassemble the file through EOF");
+        }
+    }
+
+    #[test]
+    fn se2_method_projection_fitting_6000_character_page_still_continues_to_eof() {
+        for (offset, count, next_offset) in [(0, 6000, Some(6000)), (12000, 7, None)] {
+            let args = json!({"operation":"read_method","method_id":"discrete-update","revision":1,
+                "file":"example/index.html","offset":offset,"length":6000});
+            let raw = json!({"status":"method_read","method_id":"discrete-update","revision":1,
+                "file":"example/index.html","offset":offset,"end_offset":offset + count,
+                "total_characters":12007,"chunk_characters":count,"next_offset":next_offset,
+                "text":"a".repeat(count)});
+            let draft = project_tool_result("presentation.author", &args.to_string(), &raw.to_string(),
+                policy(ToolResultPolicy::EvidenceProjection, 6500), 6500, &two_leaf_book());
+            assert!(!draft.truncated, "the complete page fits the result budget");
+            assert_eq!(draft.model_body, raw);
+            match (next_offset, draft.continuation) {
+                (Some(offset), Some(ToolContinuation::NextCall { tool, arguments, .. })) => {
+                    assert_eq!(tool, "presentation.author");
+                    let mut expected = args;
+                    expected["offset"] = json!(offset);
+                    assert_eq!(arguments, expected, "only offset changes, not the requested page size or file identity");
+                }
+                (None, None) => {},
+                _ => panic!("a full-sized method page must continue until the actual EOF"),
+            }
         }
     }
 

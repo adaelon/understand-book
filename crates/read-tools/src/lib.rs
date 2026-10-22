@@ -16,9 +16,13 @@ use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::char::{canonical_combining_class, compose, decompose_compatible};
 
 mod video;
+pub mod music;
 pub mod video_search;
 mod video_discourse;
 pub mod video_graph;
+pub mod math_structure;
+mod ranked_search;
+pub use ranked_search::{RankedSearchHit, RankedSearchResult};
 
 /// Versioned normalized-search semantics. Dependency or Unicode-data upgrades must change this
 /// value because it is bound into every search cursor's canonical request digest.
@@ -37,12 +41,14 @@ pub struct Book {
     node_idx: HashMap<String, usize>,
     formula_semantics: Vec<FormulaSemantics>,
     discourse_index: Vec<TechnicalLearningDiscourseItem>,
+    math_structure: Option<math_structure::Index>,
     video_discourse: Vec<video_discourse::Item>,
     book_structure: Option<BookStructureSidecar>,
     paper_metadata: Option<PaperMetadataSidecar>,
     paper_lexicon: Option<PaperLexiconSidecar>,
     paper_minimap_artifacts: PaperMinimapArtifacts,
     experimental_read_access: Option<ExperimentalReadAccess>,
+    ranked_search_index: std::sync::OnceLock<Result<ranked_search::Index, ranked_search::IndexError>>,
 }
 
 struct SourcePassage<'a> {
@@ -1445,6 +1451,8 @@ pub struct TextPage {
     pub source_range: Span,
     pub requested_range: Span,
     pub next_start_utf16: Option<usize>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub math_context: Vec<math_structure::ReadingItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
@@ -1794,6 +1802,14 @@ pub enum Via {
         family: Option<String>,
         direction: String,
         confidence: f32,
+        evidence_lids: Vec<String>,
+    },
+    Mathematical {
+        source_lid: String,
+        target_lid: String,
+        #[serde(rename = "type")]
+        relation_type: String,
+        direction: String,
         evidence_lids: Vec<String>,
     },
 }
@@ -3390,6 +3406,8 @@ impl Book {
             .with_paper_lexicon(paper_lexicon)
             .with_paper_minimap_artifacts(paper_minimap_artifacts);
         book.video_discourse = video_discourse;
+        book.math_structure = math_structure::load(std::path::Path::new(dir), &book.base)
+            .map_err(|e| format!("读取 math_structure.json 失败: {e}"))?;
         if std::path::Path::new(dir).join("video_source_manifest.json").exists() {
             book.load_video_source(std::path::Path::new(dir)).map_err(|e| e.message)?;
         }
@@ -3419,12 +3437,14 @@ impl Book {
             node_idx,
             formula_semantics: Vec::new(),
             discourse_index: Vec::new(),
+            math_structure: None,
             video_discourse: Vec::new(),
             book_structure: None,
             paper_metadata: None,
             paper_lexicon: None,
             paper_minimap_artifacts: PaperMinimapArtifacts::default(),
             experimental_read_access: None,
+            ranked_search_index: std::sync::OnceLock::new(),
         }
     }
 
@@ -3471,7 +3491,7 @@ impl Book {
     /// and a serialization-based allowance for all parsed public structures.
     pub fn resident_budget_bytes(&self) -> u64 {
         let structures = serde_json::json!([
-            self.base, self.formula_semantics, self.discourse_index, self.video_discourse, self.book_structure,
+            self.base, self.formula_semantics, self.discourse_index, self.math_structure, self.video_discourse, self.book_structure,
             self.paper_metadata, self.paper_lexicon
         ]);
         let parsed = serde_json::to_vec(&structures).map(|v| v.len() as u64).unwrap_or(u64::MAX / 16);
@@ -3481,6 +3501,7 @@ impl Book {
         (std::mem::size_of::<Self>() as u64)
             .saturating_add((self.source_u16.capacity() * 2 + indexes) as u64)
             .saturating_add(parsed.saturating_add(minimap).saturating_mul(8))
+            .saturating_add(ranked_search::reserved_bytes(self))
     }
 
     pub fn with_formula_semantics(mut self, formula_semantics: Vec<FormulaSemantics>) -> Book {
@@ -3504,6 +3525,17 @@ impl Book {
 
     pub fn discourse_item(&self, lid: &str) -> Option<&TechnicalLearningDiscourseItem> {
         self.discourse_index.iter().find(|item| item.lid == lid)
+    }
+
+    pub fn math_structure_items(&self, lid: &str) -> Vec<&math_structure::Item> {
+        self.math_structure.iter().flat_map(|index| &index.items)
+            .filter(|item| item.anchor_lid == lid || item.evidence_lids.iter().any(|evidence| evidence == lid))
+            .collect()
+    }
+
+    pub fn with_math_structure(mut self, index: Option<math_structure::Index>) -> Book {
+        self.math_structure = index;
+        self
     }
 
     pub fn with_book_structure(mut self, book_structure: Option<BookStructureSidecar>) -> Book {
@@ -5829,9 +5861,12 @@ impl Book {
             result["lid"] = serde_json::json!(input.lid);
             Ok(result)
         } else {
-            Ok(
-                serde_json::json!({"lid":input.lid,"text":self.text(&input.lid,input.end_lid.as_deref())?}),
-            )
+            let mut result = serde_json::json!({"lid":input.lid,"text":self.text(&input.lid,input.end_lid.as_deref())?});
+            let range = Span { start: self.node(&input.lid)?.span.start,
+                end: self.node(input.end_lid.as_deref().unwrap_or(&input.lid))?.span.end };
+            let math = self.math_reading_context(&[range]);
+            if !math.is_empty() { result["math_context"] = serde_json::json!(math); }
+            Ok(result)
         }
     }
 
@@ -5899,6 +5934,7 @@ impl Book {
             source_range: Span { start, end },
             next_start_utf16: (end < requested_range.end).then_some(end),
             requested_range,
+            math_context: self.math_reading_context(&[Span { start, end }]),
         })
     }
 
@@ -7167,6 +7203,10 @@ impl Book {
             }
         };
 
+        for item in self.math_context_items(lid) {
+            push(item, &mut items, &mut seen);
+        }
+
         if let Some(p) = parent_lid(lid) {
             if let Some(&pi) = self.lid_idx.get(&p) {
                 push(self.tree_item(&p, "parent"), &mut items, &mut seen);
@@ -7318,6 +7358,16 @@ impl Book {
                 evidence_lids.clone(),
                 format!("discourse: {relation_type}"),
                 nav_category_of(relation_type),
+            ),
+            Via::Mathematical { relation_type, direction, evidence_lids, .. } => (
+                relation_type.clone(), 1.0_f32, evidence_lids.clone(),
+                format!("math source relation: {relation_type} ({direction})"),
+                match (relation_type.as_str(), direction.as_str()) {
+                    ("uses" | "proves", "outgoing") => NavCategory::Back,
+                    ("proves", "incoming") => NavCategory::Forward,
+                    ("uses" | "asks_to_prove", "incoming") => NavCategory::Concretize,
+                    _ => NavCategory::Cross,
+                },
             ),
         };
         let dist = self.lid_tree_distance(at, &it.lid);
@@ -8172,6 +8222,8 @@ fn context_item_key(it: &ContextItem) -> String {
             "{}|discourse|{}|{}|{}|{}",
             it.lid, source_lid, target_lid, relation_type, direction
         ),
+        Via::Mathematical { source_lid, target_lid, relation_type, direction, .. } =>
+            format!("{}|math|{source_lid}|{target_lid}|{relation_type}|{direction}", it.lid),
     }
 }
 #[cfg(test)]
