@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "finished_at_utc": "2026-10-19T14:13:36.790822+00:00",
+  "removed_temporary_paths": [
+    "/opt/understand-book/acceptance/presentation-repair-20261019/build.swap",
+    "/opt/understand-book/acceptance/presentation-repair-20261019/preflight-copy"
+  ],
+  "free_before_bytes": 9525600256,
+  "free_after_bytes": 10431152128,
+  "total_bytes": 41956249600,
+  "used_bytes": 29718122496,
+  "service": "active",
+  "release": "/opt/understand-book/releases/presentation-repair-20261019",
+  "backup_retained": true
+}

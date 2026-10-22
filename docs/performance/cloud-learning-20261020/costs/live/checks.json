@@ -1,0 +1,145 @@
+[
+  {
+    "id": "three-days",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": false,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": false
+    },
+    "all_passed": false,
+    "exam_calendars": [
+      {
+        "as_of": 1792510191,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-23",
+        "remaining_days": 3,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 1
+      },
+      {
+        "as_of": 1792510191,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-23",
+        "remaining_days": 3,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 1
+      }
+    ],
+    "semantic_review": "required"
+  },
+  {
+    "id": "changed-date-scope",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": false,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": false
+    },
+    "all_passed": false,
+    "exam_calendars": [
+      {
+        "as_of": 1792510203,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792510203,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792510203,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      }
+    ],
+    "semantic_review": "required"
+  },
+  {
+    "id": "direct-question",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": false,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": false
+    },
+    "all_passed": false,
+    "exam_calendars": [
+      {
+        "as_of": 1792510227,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792510227,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792510227,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      }
+    ],
+    "semantic_review": "required"
+  },
+  {
+    "id": "text-video-sources",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": false,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": false,
+      "text_source_opens": false,
+      "video_source_opens": false,
+      "source_resolutions_succeeded": false
+    },
+    "all_passed": false,
+    "exam_calendars": [
+      {
+        "as_of": 1792510247,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 3
+      },
+      {
+        "as_of": 1792510247,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 3
+      },
+      {
+        "as_of": 1792510247,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 3
+      }
+    ],
+    "semantic_review": "required"
+  }
+]

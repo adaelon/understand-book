@@ -1,0 +1,367 @@
+{
+  "arm": "D",
+  "started_at": "2026-10-22T12:35:54.484977+00:00",
+  "status": "complete",
+  "source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source",
+  "old_c_source": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\common-source",
+  "saved_executable": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\binaries\\author-D.exe",
+  "test_logs": [
+    "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\runtime-presentation-coach.log",
+    "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\runtime-three-arm.log",
+    "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\server-presentation-planning.log"
+  ],
+  "compile_evidence_logs": [
+    "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\server-presentation-planning.log"
+  ],
+  "source_comparison": {
+    "method": "direct byte comparison; no hashes",
+    "old_c_file_count": 1040,
+    "candidate_file_count": 1040,
+    "changed_files": [
+      "crates/runtime/src/orchestrator.rs",
+      "crates/runtime/src/orchestrator_presentation_coach_tests.rs",
+      "crates/runtime/src/run_context.rs",
+      "crates/server/src/agent_run.rs",
+      "crates/server/src/lib.rs",
+      "crates/server/src/run_admission.rs",
+      "crates/server/src/tests/presentation_se8_tests.rs",
+      "crates/server/src/tests/session_runtime_tests.rs"
+    ],
+    "added_files": [],
+    "removed_files": [],
+    "fixed_files_compared": [
+      "crates/runtime/src/tutor_coach/presentation.rs",
+      "crates/runtime/src/tutor_coach/presentation_trial.rs",
+      "skills/presentation/README.md",
+      "skills/presentation/SKILL.md",
+      "skills/presentation/capabilities.md",
+      "skills/presentation/engineering.md",
+      "skills/presentation/examples/continuous-scene.md",
+      "skills/presentation/methods/LICENSE.huashu-art-motion.txt",
+      "skills/presentation/methods/README.md",
+      "skills/presentation/methods/SOURCES.md",
+      "skills/presentation/methods/_shared/linked-v1.css",
+      "skills/presentation/methods/_shared/linked-v1.js",
+      "skills/presentation/methods/catalog.json",
+      "skills/presentation/methods/chart-reveal/v1/card.md",
+      "skills/presentation/methods/chart-reveal/v1/checks.md",
+      "skills/presentation/methods/chart-reveal/v1/example/README.md",
+      "skills/presentation/methods/chart-reveal/v1/example/author.json",
+      "skills/presentation/methods/chart-reveal/v1/example/index.html",
+      "skills/presentation/methods/chart-reveal/v2/card.md",
+      "skills/presentation/methods/chart-reveal/v2/checks.md",
+      "skills/presentation/methods/chart-reveal/v2/example/README.md",
+      "skills/presentation/methods/chart-reveal/v2/example/author.json",
+      "skills/presentation/methods/chart-reveal/v2/example/index.html",
+      "skills/presentation/methods/chart-reveal/v2/topic.js",
+      "skills/presentation/methods/chart-reveal/v3/card.md",
+      "skills/presentation/methods/chart-reveal/v3/checks.md",
+      "skills/presentation/methods/chart-reveal/v3/counterexamples.md",
+      "skills/presentation/methods/chart-reveal/v3/example/README.md",
+      "skills/presentation/methods/chart-reveal/v3/example/author.json",
+      "skills/presentation/methods/chart-reveal/v3/example/index.html",
+      "skills/presentation/methods/compare-one-factor/v1/card.md",
+      "skills/presentation/methods/compare-one-factor/v1/checks.md",
+      "skills/presentation/methods/compare-one-factor/v1/example/README.md",
+      "skills/presentation/methods/compare-one-factor/v1/example/author.json",
+      "skills/presentation/methods/compare-one-factor/v1/example/index.html",
+      "skills/presentation/methods/compare-one-factor/v2/card.md",
+      "skills/presentation/methods/compare-one-factor/v2/checks.md",
+      "skills/presentation/methods/compare-one-factor/v2/example/README.md",
+      "skills/presentation/methods/compare-one-factor/v2/example/author.json",
+      "skills/presentation/methods/compare-one-factor/v2/example/index.html",
+      "skills/presentation/methods/compare-one-factor/v2/topic.js",
+      "skills/presentation/methods/compare-one-factor/v3/card.md",
+      "skills/presentation/methods/compare-one-factor/v3/checks.md",
+      "skills/presentation/methods/compare-one-factor/v3/example/README.md",
+      "skills/presentation/methods/compare-one-factor/v3/example/author.json",
+      "skills/presentation/methods/compare-one-factor/v3/example/index.html",
+      "skills/presentation/methods/discrete-update/v1/card.md",
+      "skills/presentation/methods/discrete-update/v1/checks.md",
+      "skills/presentation/methods/discrete-update/v1/example/README.md",
+      "skills/presentation/methods/discrete-update/v1/example/index.html",
+      "skills/presentation/methods/discrete-update/v2/card.md",
+      "skills/presentation/methods/discrete-update/v2/checks.md",
+      "skills/presentation/methods/discrete-update/v2/example/README.md",
+      "skills/presentation/methods/discrete-update/v2/example/author.json",
+      "skills/presentation/methods/discrete-update/v2/example/index.html",
+      "skills/presentation/methods/discrete-update/v3/card.md",
+      "skills/presentation/methods/discrete-update/v3/checks.md",
+      "skills/presentation/methods/discrete-update/v3/example/README.md",
+      "skills/presentation/methods/discrete-update/v3/example/author.json",
+      "skills/presentation/methods/discrete-update/v3/example/index.html",
+      "skills/presentation/methods/discrete-update/v3/topic.js",
+      "skills/presentation/methods/evidence-chain/v1/card.md",
+      "skills/presentation/methods/evidence-chain/v1/checks.md",
+      "skills/presentation/methods/evidence-chain/v1/example/README.md",
+      "skills/presentation/methods/evidence-chain/v1/example/author.json",
+      "skills/presentation/methods/evidence-chain/v1/example/index.html",
+      "skills/presentation/methods/evidence-chain/v2/card.md",
+      "skills/presentation/methods/evidence-chain/v2/checks.md",
+      "skills/presentation/methods/evidence-chain/v2/example/README.md",
+      "skills/presentation/methods/evidence-chain/v2/example/author.json",
+      "skills/presentation/methods/evidence-chain/v2/example/index.html",
+      "skills/presentation/methods/evidence-chain/v2/topic.js",
+      "skills/presentation/methods/index.html",
+      "skills/presentation/methods/object-transform/v1/card.md",
+      "skills/presentation/methods/object-transform/v1/checks.md",
+      "skills/presentation/methods/object-transform/v1/example/README.md",
+      "skills/presentation/methods/object-transform/v1/example/author.json",
+      "skills/presentation/methods/object-transform/v1/example/index.html",
+      "skills/presentation/methods/object-transform/v2/card.md",
+      "skills/presentation/methods/object-transform/v2/checks.md",
+      "skills/presentation/methods/object-transform/v2/example/README.md",
+      "skills/presentation/methods/object-transform/v2/example/author.json",
+      "skills/presentation/methods/object-transform/v2/example/index.html",
+      "skills/presentation/methods/object-transform/v2/topic.js",
+      "skills/presentation/methods/part-whole/v1/card.md",
+      "skills/presentation/methods/part-whole/v1/checks.md",
+      "skills/presentation/methods/part-whole/v1/example/README.md",
+      "skills/presentation/methods/part-whole/v1/example/author.json",
+      "skills/presentation/methods/part-whole/v1/example/index.html",
+      "skills/presentation/methods/part-whole/v2/card.md",
+      "skills/presentation/methods/part-whole/v2/checks.md",
+      "skills/presentation/methods/part-whole/v2/example/README.md",
+      "skills/presentation/methods/part-whole/v2/example/author.json",
+      "skills/presentation/methods/part-whole/v2/example/index.html",
+      "skills/presentation/methods/part-whole/v2/topic.js",
+      "skills/presentation/methods/process-reveal/v1/card.md",
+      "skills/presentation/methods/process-reveal/v1/checks.md",
+      "skills/presentation/methods/process-reveal/v1/example/README.md",
+      "skills/presentation/methods/process-reveal/v1/example/author.json",
+      "skills/presentation/methods/process-reveal/v1/example/index.html",
+      "skills/presentation/methods/process-reveal/v2/card.md",
+      "skills/presentation/methods/process-reveal/v2/checks.md",
+      "skills/presentation/methods/process-reveal/v2/example/README.md",
+      "skills/presentation/methods/process-reveal/v2/example/author.json",
+      "skills/presentation/methods/process-reveal/v2/example/index.html",
+      "skills/presentation/methods/process-reveal/v2/topic.js",
+      "skills/presentation/methods/scale-zoom/v1/card.md",
+      "skills/presentation/methods/scale-zoom/v1/checks.md",
+      "skills/presentation/methods/scale-zoom/v1/example/README.md",
+      "skills/presentation/methods/scale-zoom/v1/example/author.json",
+      "skills/presentation/methods/scale-zoom/v1/example/index.html",
+      "skills/presentation/methods/scale-zoom/v2/card.md",
+      "skills/presentation/methods/scale-zoom/v2/checks.md",
+      "skills/presentation/methods/scale-zoom/v2/example/README.md",
+      "skills/presentation/methods/scale-zoom/v2/example/author.json",
+      "skills/presentation/methods/scale-zoom/v2/example/index.html",
+      "skills/presentation/methods/scale-zoom/v2/topic.js",
+      "skills/presentation/methods/spatial-linked-views/v1/adaptations/spring-author.json",
+      "skills/presentation/methods/spatial-linked-views/v1/adaptations/spring.html",
+      "skills/presentation/methods/spatial-linked-views/v1/card.md",
+      "skills/presentation/methods/spatial-linked-views/v1/checks.md",
+      "skills/presentation/methods/spatial-linked-views/v1/example/README.md",
+      "skills/presentation/methods/spatial-linked-views/v1/example/author.json",
+      "skills/presentation/methods/spatial-linked-views/v1/example/index.html",
+      "skills/presentation/methods/spatial-linked-views/v1/gear-model.js",
+      "skills/presentation/methods/spatial-linked-views/v1/gear.js",
+      "skills/presentation/methods/spatial-linked-views/v1/preview.html",
+      "skills/presentation/methods/spatial-linked-views/v1/runtime.js",
+      "skills/presentation/methods/spatial-linked-views/v1/shell.html",
+      "skills/presentation/methods/spatial-linked-views/v1/spring-model.js",
+      "skills/presentation/methods/spatial-linked-views/v1/spring.js",
+      "skills/presentation/methods/spatial-linked-views/v1/style.css",
+      "skills/presentation/methods/vendor/THREE-LICENSE.txt",
+      "skills/presentation/methods/vendor/three-0.180.0.min.js",
+      "skills/presentation/phases/global.md",
+      "skills/presentation/phases/local.md",
+      "skills/presentation/phases/review.md",
+      "skills/presentation/references/continuous-scene.md",
+      "skills/presentation/references/editing.md",
+      "skills/presentation/references/konva.md",
+      "skills/presentation/references/manim.md",
+      "skills/presentation/references/state.md",
+      "skills/presentation/references/static-plot.md",
+      "skills/presentation/references/three.md"
+    ],
+    "fixed_files_count": 144,
+    "fixed_files_changed": []
+  },
+  "command": [
+    "cargo",
+    "test",
+    "--manifest-path",
+    "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\Cargo.toml",
+    "--target-dir",
+    "E:\\allwork\\download\\agent\\understand-book\\target",
+    "-j",
+    "1",
+    "--config",
+    "profile.test.package.runtime.debug=0",
+    "--config",
+    "profile.test.package.server.debug=0",
+    "-p",
+    "server",
+    "--lib",
+    "--no-run",
+    "--message-format=json"
+  ],
+  "stdout_log": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\build-logs\\build-D.jsonl",
+  "stderr_log": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\build-logs\\build-D.stderr.log",
+  "build_returncode": 0,
+  "compiler_artifacts": [
+    {
+      "reason": "compiler-artifact",
+      "package_id": "path+file:///E:/allwork/download/agent/understand-book/tmp/coach-first-20261022/common-source/crates/runtime#0.0.0",
+      "manifest_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\runtime\\Cargo.toml",
+      "target": {
+        "kind": [
+          "lib"
+        ],
+        "crate_types": [
+          "lib"
+        ],
+        "name": "runtime",
+        "src_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\runtime\\src\\lib.rs",
+        "edition": "2021",
+        "doc": true,
+        "doctest": true,
+        "test": true
+      },
+      "profile": {
+        "opt_level": "0",
+        "debuginfo": 0,
+        "debug_assertions": true,
+        "overflow_checks": true,
+        "test": false
+      },
+      "features": [],
+      "filenames": [
+        "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libruntime-ff300934fddad701.rlib",
+        "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libruntime-ff300934fddad701.rmeta"
+      ],
+      "executable": null,
+      "fresh": true
+    },
+    {
+      "reason": "compiler-artifact",
+      "package_id": "path+file:///E:/allwork/download/agent/understand-book/tmp/coach-first-20261022/common-source/crates/server#0.0.0",
+      "manifest_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\server\\Cargo.toml",
+      "target": {
+        "kind": [
+          "lib"
+        ],
+        "crate_types": [
+          "lib"
+        ],
+        "name": "server",
+        "src_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\server\\src\\lib.rs",
+        "edition": "2021",
+        "doc": true,
+        "doctest": true,
+        "test": true
+      },
+      "profile": {
+        "opt_level": "0",
+        "debuginfo": 0,
+        "debug_assertions": true,
+        "overflow_checks": true,
+        "test": true
+      },
+      "features": [],
+      "filenames": [
+        "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\server-3114a4e29a3412d6.exe",
+        "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\server-3114a4e29a3412d6.pdb"
+      ],
+      "executable": "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\server-3114a4e29a3412d6.exe",
+      "fresh": true
+    }
+  ],
+  "compiler_artifact_fresh": {
+    "runtime": true,
+    "server": true
+  },
+  "actual_rebuild_evidence": {
+    "runtime": {
+      "kind": "directed_test_compiler_artifact",
+      "log": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\server-presentation-planning.log",
+      "artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///E:/allwork/download/agent/understand-book/tmp/coach-first-20261022/common-source/crates/runtime#0.0.0",
+        "manifest_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\runtime\\Cargo.toml",
+        "target": {
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "name": "runtime",
+          "src_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\runtime\\src\\lib.rs",
+          "edition": "2021",
+          "doc": true,
+          "doctest": true,
+          "test": true
+        },
+        "profile": {
+          "opt_level": "0",
+          "debuginfo": 0,
+          "debug_assertions": true,
+          "overflow_checks": true,
+          "test": false
+        },
+        "features": [],
+        "filenames": [
+          "E:/allwork/download/agent/understand-book/target\\debug\\deps\\libruntime-ff300934fddad701.rlib",
+          "E:/allwork/download/agent/understand-book/target\\debug\\deps\\libruntime-ff300934fddad701.rmeta"
+        ],
+        "executable": null,
+        "fresh": false
+      }
+    },
+    "server": {
+      "kind": "directed_test_compiler_artifact",
+      "log": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\logs\\server-presentation-planning.log",
+      "artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///E:/allwork/download/agent/understand-book/tmp/coach-first-20261022/common-source/crates/server#0.0.0",
+        "manifest_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\server\\Cargo.toml",
+        "target": {
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "name": "server",
+          "src_path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source\\crates\\server\\src\\lib.rs",
+          "edition": "2021",
+          "doc": true,
+          "doctest": true,
+          "test": true
+        },
+        "profile": {
+          "opt_level": "0",
+          "debuginfo": 0,
+          "debug_assertions": true,
+          "overflow_checks": true,
+          "test": true
+        },
+        "features": [],
+        "filenames": [
+          "E:/allwork/download/agent/understand-book/target\\debug\\deps\\server-3114a4e29a3412d6.exe",
+          "E:/allwork/download/agent/understand-book/target\\debug\\deps\\server-3114a4e29a3412d6.pdb"
+        ],
+        "executable": "E:/allwork/download/agent/understand-book/target\\debug\\deps\\server-3114a4e29a3412d6.exe",
+        "fresh": false
+      }
+    }
+  },
+  "source_changes_during_build": [],
+  "binary_comparison": {
+    "method": "direct byte comparison; no hashes",
+    "old_c_executable": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\binaries\\author-C.exe",
+    "candidate_bytes": 96999936,
+    "old_c_bytes": 96973312,
+    "byte_identical_to_old_c": false
+  },
+  "source_patch": {
+    "path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\build-logs\\old-C-to-D.patch",
+    "base": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\common-source",
+    "candidate": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\common-source",
+    "scope": "Actual changed files only; patch base is the frozen C experiment source"
+  },
+  "source_executable": "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\server-3114a4e29a3412d6.exe",
+  "finished_at": "2026-10-22T12:36:01.810677+00:00"
+}

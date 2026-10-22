@@ -1,0 +1,1960 @@
+{
+  "native_run": {
+    "elapsed_ms": 477403,
+    "http_status": 200,
+    "model_calls": 15
+  },
+  "incomplete": false,
+  "outcome_error": null,
+  "presentation_operations": [
+    "prepare",
+    "prepare",
+    "write",
+    "preview",
+    "preview",
+    "preview",
+    "search",
+    "search",
+    "read",
+    "patch",
+    "read",
+    "patch",
+    "preview",
+    "preview",
+    "preview",
+    "search",
+    "search",
+    "patch",
+    "preview",
+    "preview",
+    "preview",
+    "deliver"
+  ],
+  "first_write": {
+    "call_id": "call_02_aXbYZwhrhnYEh5eKtGSB0055",
+    "response_file": "response-003.json",
+    "tool_call_index": 2,
+    "operation": "write",
+    "candidate_id": "candidate-1792668506341546700-2",
+    "archive": "first-write.json"
+  },
+  "delivery_attempts": [
+    {
+      "call_id": "call_00_5b2HdA48YwcbDikgUre59092",
+      "response_file": "response-013.json",
+      "tool_call_index": 0,
+      "operation": "deliver",
+      "candidate_id": "candidate-1792668639460723600-8",
+      "reference": {
+        "presentation_id": "presentation-1792668639460719200-7",
+        "revision": 1
+      },
+      "result_status": "version_saved",
+      "result_evidence": {
+        "request_file": "request-014.json",
+        "value": {
+          "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+          "reference": {
+            "presentation_id": "presentation-1792668639460719200-7",
+            "revision": 1
+          },
+          "status": "version_saved"
+        }
+      }
+    }
+  ],
+  "first_delivery_reference": {
+    "presentation_id": "presentation-1792668639460719200-7",
+    "revision": 1
+  },
+  "first_delivery_version_file": "history.presentations/versions/presentation-1792668639460719200-7/1.json",
+  "final_version_reference": {
+    "presentation_id": "presentation-1792668639460719200-7",
+    "revision": 1
+  },
+  "first_delivery_matches_final_version": true,
+  "method_observations": {
+    "catalog": {
+      "methods": [
+        {
+          "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "discrete-update",
+          "name": "追踪一次离散更新",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+          "revision": 3,
+          "root": "skills/presentation/methods/discrete-update/v3",
+          "status": "adopted"
+        },
+        {
+          "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "object-transform",
+          "name": "保持身份的对象变换",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+          "revision": 2,
+          "root": "skills/presentation/methods/object-transform/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "compare-one-factor",
+          "name": "固定条件，只改变一个因素",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+          "revision": 3,
+          "root": "skills/presentation/methods/compare-one-factor/v3",
+          "status": "adopted"
+        },
+        {
+          "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "compare-one-factor",
+          "name": "固定条件，只改变一个因素",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+          "revision": 2,
+          "root": "skills/presentation/methods/compare-one-factor/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "part-whole",
+          "name": "整体与部分保持对应",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+          "revision": 2,
+          "root": "skills/presentation/methods/part-whole/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "process-reveal",
+          "name": "沿关系逐步展开过程",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+          "revision": 2,
+          "root": "skills/presentation/methods/process-reveal/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "evidence-chain",
+          "name": "从证据走到有边界的结论",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+          "revision": 2,
+          "root": "skills/presentation/methods/evidence-chain/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "counterexamples.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "chart-reveal",
+          "name": "先看见数量关系，再核对参数",
+          "needs": [
+            "state"
+          ],
+          "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+          "revision": 3,
+          "root": "skills/presentation/methods/chart-reveal/v3",
+          "status": "adopted"
+        },
+        {
+          "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "chart-reveal",
+          "name": "先建立尺度，再揭示数据",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+          "revision": 2,
+          "root": "skills/presentation/methods/chart-reveal/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md"
+          ],
+          "id": "scale-zoom",
+          "name": "保留定位的尺度缩放",
+          "needs": [
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+          "revision": 2,
+          "root": "skills/presentation/methods/scale-zoom/v2",
+          "status": "adopted"
+        },
+        {
+          "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+          "entrypoint": "example/index.html",
+          "files": [
+            "card.md",
+            "example/index.html",
+            "example/README.md",
+            "example/author.json",
+            "checks.md",
+            "runtime.js",
+            "adaptations/spring.html",
+            "adaptations/spring-author.json"
+          ],
+          "id": "spatial-linked-views",
+          "name": "三维结构与图解共用一个模型",
+          "needs": [
+            "three",
+            "state",
+            "continuous_scene"
+          ],
+          "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+          "revision": 1,
+          "root": "skills/presentation/methods/spatial-linked-views/v1",
+          "status": "adopted"
+        }
+      ],
+      "revision": 6
+    },
+    "reads": [],
+    "supplied_files": []
+  },
+  "coach": {
+    "purpose_recording_complete": true,
+    "coach_call_count": 1,
+    "identified_coach_call_count": 1,
+    "coach_calls": [
+      {
+        "request_file": "request-001.json",
+        "response_file": "response-001.json",
+        "purpose": "tutor_presentation_plan",
+        "input": {
+          "current_request_context": {
+            "author_proposal": {
+              "focus": "关键局部是先做\"计算图 + 步进器 + 汇合于 u\"这一段：图要同时承担前向数值、边上局部导数、以及 u 处两份贡献相加三件事，且不靠满图符号表达。",
+              "framework": "以同一张计算图（x、y → u → v → L，且 x、u 各自有第二条出边）贯穿全页，先把三层信息固定成三种视觉身份：节点里的前向数值、边上的局部导数（蓝）、节点收到的梯度与每份贡献（橙）。阅读路径：(1) 摆清模型与\"u 被用两次、x 被用两次\"的事实；(2) 输入滑杆选一组 x、y，页首始终显示当前输入与当前步；(3) 前向四步得到 u、v、L 的数值；(4) 反向按逆拓扑序从 ∂L/∂L=1 出发，先 v、再 u 的两份贡献，在 u 汇合得 19，然后分头传回 x、y，最后在 x 汇合 57+16=73；(5) 解释为什么相加：一次 Δu 小扰动看两条渠道的变化率相加，再把到同一终点的路径全部列出并说明\"汇合=提前合并路径\"；(6) 漏掉 3u 的直接贡献会错多少，并说明误差会被后续局部导数放大；(7) 把 L 展开成 x、y 的多项式逐项求导，与反向结果并排比较；(8) 三句话小结。默认打开时处于\"全部算完\"的状态，保证不操作也能完整读懂。",
+              "needs": [
+                "state"
+              ]
+            },
+            "current_source_evidence": [],
+            "current_user_request": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+            "current_web_evidence": {
+              "omitted": false,
+              "pages": []
+            },
+            "prior_coach_guidance": null,
+            "tutor_context": {
+              "confirmed_preferences": null,
+              "constraints": null,
+              "current_action": null,
+              "current_design": null,
+              "learner_context": {
+                "current_target": null,
+                "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+                "entries": [],
+                "evidence_watermark": 0,
+                "interpretations": [],
+                "learner_grounding": {
+                  "delivered_support": [],
+                  "expressions": [
+                    {
+                      "assistance_refs": null,
+                      "fact_ref": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                      "invitation_context_ref": null,
+                      "presentations": [],
+                      "response_origin": null,
+                      "scene": null,
+                      "support_delivery_refs": null,
+                      "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n"
+                    }
+                  ],
+                  "interpretations": [],
+                  "unavailable_basis_refs": [],
+                  "unknown_when_absent": true
+                },
+                "learning_opportunity": {
+                  "continuity": {
+                    "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+                    "content_char_budget": 6000,
+                    "open_questions": [],
+                    "previous_work": [
+                      {
+                        "action_ref": null,
+                        "assessment_ref": null,
+                        "assessment_status": "unassessed",
+                        "assistance_refs": [],
+                        "attempt": null,
+                        "binding": {
+                          "chat_session_id": "chat_2026-10-16T04:00:00Z_0",
+                          "control_revision": 0,
+                          "session_revision": 0,
+                          "source_id": "sample-book",
+                          "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                          "turn_id": "turn_1a986d9fd8e2f279",
+                          "tutor_session_id": "observation:sample-book"
+                        },
+                        "delivery_ref": null,
+                        "evidence_refs": [],
+                        "fact_refs": [
+                          "usage:observation:sample-book:user:turn_1a986d9fd8e2f279"
+                        ],
+                        "help": [],
+                        "help_truncated": false,
+                        "historical": false,
+                        "learner_quote_excerpt": {
+                          "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+                          "truncated": false
+                        },
+                        "presentation_receipt": null,
+                        "published_book_ref": null,
+                        "response_origin": null,
+                        "saved_state_ref": null,
+                        "source_refs": [],
+                        "support_delivery_refs": []
+                      }
+                    ],
+                    "read_more": [
+                      {
+                        "arguments": {
+                          "event_id": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                          "operation": "trace"
+                        },
+                        "tool": "tutor.step"
+                      }
+                    ],
+                    "scope": {
+                      "design_ref": null,
+                      "focus_block_refs": null,
+                      "learning_workspace_id": null,
+                      "source_id": "sample-book",
+                      "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                      "tutor_session_id": "observation:sample-book",
+                      "workspace_goal_revision": null
+                    },
+                    "teaching_implications": [],
+                    "truncated": false
+                  },
+                  "delivered_support": [],
+                  "design_ref": null,
+                  "focus_block_refs": [],
+                  "interpretation_refs": [],
+                  "pending_response_invitation": null,
+                  "return_context": null,
+                  "unknown_when_absent": true
+                },
+                "path_progress": [],
+                "pending_activity": null,
+                "pending_assessment_refs": [],
+                "pending_response_invitation": null,
+                "projection_watermark": null,
+                "recent_facts": [
+                  {
+                    "action": null,
+                    "answer_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "assistance_count": 0,
+                    "attempt": null,
+                    "binding": {
+                      "chat_session_id": "chat_2026-10-16T04:00:00Z_0",
+                      "control_revision": 0,
+                      "session_revision": 0,
+                      "source_id": "sample-book",
+                      "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                      "turn_id": "turn_1a986d9fd8e2f279",
+                      "tutor_session_id": "observation:sample-book"
+                    },
+                    "block_refs": null,
+                    "causal_refs": [],
+                    "continuation": null,
+                    "design_ref": null,
+                    "event_id": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                    "help_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "interaction": null,
+                    "invitation_context_ref": null,
+                    "kind": "usage_observed",
+                    "move_id": null,
+                    "occurred_at": "2026-10-16T04:00:00Z",
+                    "original_ref": {
+                      "book_id": "sample-book",
+                      "kind": "chat_turn",
+                      "session_id": "chat_2026-10-16T04:00:00Z_0",
+                      "turn_id": "turn_1a986d9fd8e2f279"
+                    },
+                    "presentation_follow_up": null,
+                    "prompt_preview": {
+                      "text": "null",
+                      "truncated": false
+                    },
+                    "responds_to": null,
+                    "response_expectation": null,
+                    "response_origin": null,
+                    "response_preview": {
+                      "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+                      "truncated": false
+                    },
+                    "scene_receipt": null,
+                    "scene_visible_step": null,
+                    "support_delivery_refs": null,
+                    "target": null,
+                    "usage": {
+                      "kind": "user_message"
+                    }
+                  }
+                ],
+                "stale": true,
+                "uninterpreted_fact_refs": [
+                  "usage:observation:sample-book:user:turn_1a986d9fd8e2f279"
+                ],
+                "unknown_when_absent": true
+              },
+              "learning_purpose": null,
+              "status": "observing"
+            },
+            "workspace_goal": null
+          },
+          "method_catalog": {
+            "methods": [
+              {
+                "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "discrete-update",
+                "name": "追踪一次离散更新",
+                "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+                "revision": 3
+              },
+              {
+                "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "object-transform",
+                "name": "保持身份的对象变换",
+                "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+                "revision": 2
+              },
+              {
+                "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "compare-one-factor",
+                "name": "固定条件，只改变一个因素",
+                "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+                "revision": 3
+              },
+              {
+                "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "compare-one-factor",
+                "name": "固定条件，只改变一个因素",
+                "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+                "revision": 2
+              },
+              {
+                "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "part-whole",
+                "name": "整体与部分保持对应",
+                "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+                "revision": 2
+              },
+              {
+                "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "process-reveal",
+                "name": "沿关系逐步展开过程",
+                "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+                "revision": 2
+              },
+              {
+                "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "evidence-chain",
+                "name": "从证据走到有边界的结论",
+                "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+                "revision": 2
+              },
+              {
+                "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "counterexamples.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "chart-reveal",
+                "name": "先看见数量关系，再核对参数",
+                "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+                "revision": 3
+              },
+              {
+                "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "chart-reveal",
+                "name": "先建立尺度，再揭示数据",
+                "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+                "revision": 2
+              },
+              {
+                "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md"
+                ],
+                "id": "scale-zoom",
+                "name": "保留定位的尺度缩放",
+                "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+                "revision": 2
+              },
+              {
+                "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+                "entrypoint": "example/index.html",
+                "files": [
+                  "card.md",
+                  "example/index.html",
+                  "example/README.md",
+                  "example/author.json",
+                  "checks.md",
+                  "runtime.js",
+                  "adaptations/spring.html",
+                  "adaptations/spring-author.json"
+                ],
+                "id": "spatial-linked-views",
+                "name": "三维结构与图解共用一个模型",
+                "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+                "revision": 1
+              }
+            ],
+            "revision": 6
+          }
+        },
+        "input_context_keys": [
+          "author_proposal",
+          "current_source_evidence",
+          "current_user_request",
+          "current_web_evidence",
+          "prior_coach_guidance",
+          "tutor_context",
+          "workspace_goal"
+        ],
+        "raw_output": {
+          "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+          "methods": [
+            {
+              "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+              "method_id": "process-reveal",
+              "revision": 2
+            }
+          ],
+          "needs_read": [],
+          "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+          "reading_path": [
+            "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+            "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+            "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+            "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+            "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+            "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+            "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+            "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+          ],
+          "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+        },
+        "error": null,
+        "response_missing": false,
+        "usage": {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 640,
+          "input_tokens": 5029,
+          "output_tokens": 4789,
+          "reasoning_output_tokens": 3878,
+          "total_tokens": 9818
+        },
+        "elapsed_ms": 25788
+      }
+    ],
+    "prepare_calls": [
+      {
+        "call_id": "call_01_Y9H2QtjVUpNwgybbHs1K6013",
+        "response_file": "response-000.json",
+        "result_source": {
+          "request_file": "request-002.json"
+        },
+        "result_status": "authoring_context_prepared",
+        "error_code": null,
+        "coach_receipt": {
+          "status": "ready"
+        },
+        "receipt_contains_full_plan": false
+      },
+      {
+        "call_id": "call_00_S3IsJvgk7A6x3ukPryDm4776",
+        "response_file": "response-002.json",
+        "result_source": {
+          "request_file": "request-003.json"
+        },
+        "result_status": "authoring_context_prepared",
+        "error_code": null,
+        "coach_receipt": {
+          "status": "ready"
+        },
+        "receipt_contains_full_plan": false
+      }
+    ],
+    "prepare_count": 2,
+    "prepare_count_with_coach_status": 2,
+    "repeated_prepare_without_extra_coach_call": true,
+    "handoff_samples": [
+      {
+        "request_file": "request-002.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-003.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-004.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-005.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-006.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-007.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-008.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-009.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-010.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-011.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-012.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-013.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      },
+      {
+        "request_file": "request-014.json",
+        "ordered_message_handoffs": [
+          {
+            "location": "/messages/11/content",
+            "handoff": {
+              "plan": {
+                "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+                "methods": [
+                  {
+                    "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+                    "method_id": "process-reveal",
+                    "revision": 2
+                  }
+                ],
+                "needs_read": [],
+                "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+                "reading_path": [
+                  "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+                  "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+                  "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+                  "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+                  "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+                  "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+                  "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+                  "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+                ],
+                "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+              },
+              "status": "ready"
+            },
+            "delivery_form": "sampling_guidance_definition"
+          }
+        ],
+        "ordered_message_count": 1,
+        "instruction_handoffs": [],
+        "coach_asset_declarations": [
+          {
+            "asset_id": "resident-agent.presentation.coach",
+            "revision": "coach-handoff.v1"
+          }
+        ],
+        "actual_definition_in_ordered_messages": true
+      }
+    ],
+    "distinct_sampled_handoffs": [
+      {
+        "plan": {
+          "learning_goal": "理解在同一个计算图中，被重复使用的中间量 u（以及 x）为什么会从多条下游路径收到多份梯度贡献；这些贡献必须在汇合节点相加后再继续回传。读者应能分清前向数值、边上的局部导数和节点收到的梯度，说明反向传播为何按逆拓扑序进行，并解释漏掉一条贡献为什么会低估输入梯度，最后用 L(x,y) 展开求导做独立核对。",
+          "methods": [
+            {
+              "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+              "method_id": "process-reveal",
+              "revision": 2
+            }
+          ],
+          "needs_read": [],
+          "purpose": "用同一计算图完整演示前向数值、局部导数与反向梯度，使读者从 u 的两份贡献和 x 的两份贡献理解为何相加，并能通过漏项反例和多项式展开核对输入梯度。",
+          "reading_path": [
+            "进入页面先看到固定计算图与页首状态条：当前 x=2、y=3，当前阶段或步数，以及当前显示的数值；默认无需操作也能看到完整例子。",
+            "先沿图确认依赖关系：u 同时通向 v 和输出中的 3u，x 同时进入 u 和 v；读者把节点前向数值、边上的局部导数、节点收到的梯度分成三种不同视觉身份。",
+            "逐步查看前向：用同一组 x、y 依次得到 u、v、L 的数值，每步只改变当前量并保留已有量，确认数值是由图上的实际运算产生的。",
+            "从 L 的 ∂L/∂L=1 开始按逆拓扑序反向：先看到 L 对 v 的贡献和 L 对 u 的直接贡献，再经 v 传回 u 的另一份贡献；在 u 处并列显示两份贡献并求和，此时不提前把 u 的局部导数乘出去。",
+            "从 u 继续分两路回传，同时在 v→x 的直接路径上保留另一份贡献；在 x 处并列显示两份贡献并求和，在 y 处显示单路贡献，说明单路、零贡献和负贡献都遵循同一规则。",
+            "停在 u 的汇合处，用一次 Δu 小扰动解释两条渠道的变化率为何相加；再把从 L 到 x 的所有路径完整列出，说明汇合只是提前合并共享后缀，并不意味着可以漏掉路径。",
+            "在固定 x、y 下切换“漏掉 3u 直接贡献”的对照，观察 u 的总梯度和继续传到输入的梯度怎样变小；然后展开 L(x,y) 逐项求导，与图中 ∂L/∂x、∂L/∂y 并排核对。",
+            "最后用三句话收束：反向按逆拓扑序进行；同一节点收到的多份贡献先相加再继续回传；漏掉任一路径都会使输入梯度缺少对应项。"
+          ],
+          "reason": "用户请求的核心障碍不是缺少数据图表，而是无法把同一计算图上的前向值、局部导数、多路贡献和汇合后的总梯度对应起来，因此“沿关系逐步展开过程”最贴合：它能让读者按实际依赖顺序追踪同一组输入和同一条计算链，并保留分支与汇合。用户明确要求区分三类量、允许逐步查看前向和反向、显示当前输入与当前步，这些都可以由步骤器承担；同时用户要求不操作也能读懂、要处理零贡献和负贡献、还要做漏项反例与展开式核对。不采用整体与部分方法，因为梯度贡献可以是负数且并非互不重叠的非负部分；不采用数值图表方法，因为这里没有跨类别数量比较。用户请求已给出完整模型、初值和交互范围，当前材料证据为空，因此不需要另行定位待读正文。"
+        },
+        "status": "ready"
+      }
+    ],
+    "private_handoff_entered_author_request": true,
+    "sampling_guidance_definition_requests": [
+      "request-002.json",
+      "request-003.json",
+      "request-004.json",
+      "request-005.json",
+      "request-006.json",
+      "request-007.json",
+      "request-008.json",
+      "request-009.json",
+      "request-010.json",
+      "request-011.json",
+      "request-012.json",
+      "request-013.json",
+      "request-014.json"
+    ],
+    "asset_declared_without_definition_requests": [],
+    "duplicate_handoff_message_requests": [],
+    "selected_methods": [
+      {
+        "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+        "method_id": "process-reveal",
+        "revision": 2
+      }
+    ],
+    "forced_supply": {
+      "samples": [],
+      "runtime_receipts": [],
+      "actual_definition_count": 0,
+      "distinct_supplied_files": [],
+      "runtime_recorded_file_count": 0,
+      "interpretation": "Actual system-message definitions are distinct from tool reads and asset manifests. Runtime receipts confirm successful sampling but contain no request ordinal; before-write coverage uses ordered requests and separately preserves response errors and receipt presence. Neither is page-quality evidence."
+    },
+    "selected_method_file_coverage": [
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+        "catalog_entry_found": true,
+        "selected_by_coach": true,
+        "declared_first_delivery": false,
+        "files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "tool_read_files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "forced_supply_files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "tool_read_files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "forced_supply_files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "files_before_first_delivery": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ]
+      }
+    ],
+    "declared_method_file_coverage": [],
+    "all_recommended_or_declared_method_coverage": [
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "adaptation": "用同一张固定的 x、y→u→v→L 计算图贯穿前向与反向，并按逆拓扑序逐步高亮当前节点；每一步同时保留节点前向数值、边上局部导数和已收到的梯度贡献，在 u 与 x 处把多份贡献并列展示后再求和。因为图中存在分支与汇合，步骤器要显示并行分支和汇合点，不能把反向过程排成一条错误直线；默认应让不操作时也能看到完整例子，静态文字解释要能独立于动画成立。",
+        "catalog_entry_found": true,
+        "selected_by_coach": true,
+        "declared_first_delivery": false,
+        "files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "tool_read_files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "forced_supply_files": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "tool_read_files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "forced_supply_files_before_first_write": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ],
+        "files_before_first_delivery": [
+          {
+            "file": "card.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/index.html",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/README.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "example/author.json",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          },
+          {
+            "file": "checks.md",
+            "observed_ranges": [],
+            "total_character_values": [],
+            "observed_characters": 0,
+            "full_file_observed": false
+          }
+        ]
+      }
+    ],
+    "complete_method_input_diagnostics": {
+      "complete_selected_declared_methods_before_first_write": [],
+      "at_least_one_complete_method": false,
+      "page_relationship_review": "Inspect actual page for visible useful adaptation. Input coverage never gates this experiment and does not prove quality.",
+      "auxiliary_method_gaps": "Retain all recommended or declared method coverage; gaps are reported but do not exclude samples."
+    },
+    "method_reads": [],
+    "method_read_call_count": 0,
+    "nonempty_method_read_calls_sampled": 0,
+    "interpretation": "Recorded input/output and body coverage only. Asset declarations do not prove handoff delivery; require actual presentation_coach.v1 definition in ordered_messages. Method recommendation, read, declaration and useful adaptation are distinct; no inferred teaching quality."
+  },
+  "method_refs_first_delivery": [],
+  "method_refs_final_version": [],
+  "write_count": 1,
+  "patch_count": 3,
+  "preview_count": 9
+}

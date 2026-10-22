@@ -1,0 +1,1238 @@
+{
+  "results": [
+    {
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "command_id": "01a158bc-99dc-7d53-ab9a-e8842e428e6c",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490117617070400-2",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 1,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490117617070400-2",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 10,
+            "speed_b_m_s": 1,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 1,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 1 m/s；画面按 1 m/s 显示 10 秒、10 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "1"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 1,
+            "input_speed_b_m_s": 1,
+            "phase": "ready",
+            "revealed": false,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "observed"
+    },
+    {
+      "action": {
+        "kind": "set_parameters",
+        "values": {
+          "input_speed_b_m_s": 2
+        }
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490117617070400-2",
+      "command_id": "01a158bc-9a6a-7521-8460-d45639b6e184",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490117759715700-3",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 2,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490117759715700-3",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 10,
+            "speed_b_m_s": 1,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "awaiting_apply",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 1 m/s 显示 10 秒、10 米。等待应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    等待应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 1,
+            "input_speed_b_m_s": 2,
+            "phase": "awaiting_apply",
+            "revealed": false,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "awaiting_apply"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "action": {
+        "action_id": "apply",
+        "kind": "invoke"
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490117759715700-3",
+      "command_id": "01a158bc-9b07-7541-a72b-2330d8f08fac",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490118417224000-4",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 3,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490118417224000-4",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": false,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "action": {
+        "kind": "set_parameters",
+        "values": {
+          "input_speed_b_m_s": 4
+        }
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490118417224000-4",
+      "command_id": "01a158bc-9ea6-7180-a584-441275dc2f03",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "reason": "Parameter input_speed_b_m_s is outside its control range.",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490118840620700-5",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 4,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490118840620700-5",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": false,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "failed"
+    },
+    {
+      "action": {
+        "kind": "highlight",
+        "region_id": "result"
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490118417224000-4",
+      "command_id": "01a158bc-9f39-7810-bbf7-146bb3e77bcf",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490118999967300-6",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 5,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490118999967300-6",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": false,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "action": {
+        "kind": "reveal",
+        "region_id": "relation"
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490118999967300-6",
+      "command_id": "01a158bc-9fd1-7ad0-86f3-4799d80c6785",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490119144372000-7",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 6,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490119144372000-7",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": false,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "action": {
+        "kind": "annotate",
+        "region_id": "annotation"
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490119144372000-7",
+      "command_id": "01a158bc-a05f-7121-ad92-02d4bb3424fb",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490119283925700-8",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 7,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490119283925700-8",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。 \n    比较时保持共同时间不变。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": true,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "action": {
+        "kind": "set_parameters",
+        "values": {
+          "input_speed_b_m_s": 1
+        }
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490119283925700-8",
+      "command_id": "01a158bc-a122-7b61-858a-48f291730712",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490119477336300-9",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 8,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490119477336300-9",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 20,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "awaiting_apply",
+            "playing": false,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 3 m/s；画面按 2 m/s 显示 10 秒、20 米。等待应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    等待应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。 \n    比较时保持共同时间不变。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "3"
+            }
+          ],
+          "page": {
+            "annotated": true,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 3,
+            "phase": "awaiting_apply",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {
+            "input_speed_b_m_s": 1
+          }
+        },
+        "visible_step": "awaiting_apply"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "conflict"
+    },
+    {
+      "action": {
+        "action_id": "apply",
+        "kind": "invoke"
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490119477336300-9",
+      "command_id": "01a158bc-a1af-7f13-8c3a-e28131df3421",
+      "page_id": "8a6c989a-e241-43ab-9bd3-4d95fb1fbd67",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490120119990000-10",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 9,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490120119990000-10",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 30,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 3 m/s；画面按 3 m/s 显示 10 秒、30 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 30.0 米；已应用 B 速度 3 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。 \n    比较时保持共同时间不变。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "3"
+            }
+          ],
+          "page": {
+            "annotated": true,
+            "applied_speed_b_m_s": 3,
+            "input_speed_b_m_s": 3,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {
+            "input_speed_b_m_s": 1
+          }
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "reason": "The original page is closed or has changed. Open it and observe again.",
+      "status": "unavailable"
+    },
+    {
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "command_id": "01a158bc-a704-7272-adfb-d82f6f6aede2",
+      "page_id": "7098fbfe-abd6-499b-9bac-4aa0aff92b23",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490120987650400-11",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 10,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490120987650400-11",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 30,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "ready",
+            "playing": false,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 3 m/s；画面按 3 m/s 显示 10 秒、30 米。结果已应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 30.0 米；已应用 B 速度 3 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。 \n    比较时保持共同时间不变。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "3"
+            }
+          ],
+          "page": {
+            "annotated": true,
+            "applied_speed_b_m_s": 3,
+            "input_speed_b_m_s": 3,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "ready"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "observed"
+    },
+    {
+      "action": {
+        "kind": "set_parameters",
+        "values": {
+          "input_speed_b_m_s": 2
+        }
+      },
+      "actor": "teacher",
+      "available_actions": [
+        {
+          "kind": "set_parameters",
+          "parameters": [
+            "input_speed_b_m_s"
+          ]
+        },
+        {
+          "action_id": "apply",
+          "kind": "invoke",
+          "label": "应用"
+        },
+        {
+          "action_id": "reset",
+          "kind": "invoke",
+          "label": "重置"
+        },
+        {
+          "kind": "highlight",
+          "region_id": "result"
+        },
+        {
+          "kind": "reveal",
+          "region_id": "relation"
+        },
+        {
+          "kind": "annotate",
+          "region_id": "annotation"
+        }
+      ],
+      "based_on": "state-1792490120987650400-11",
+      "command_id": "01a158bc-a7a6-77f3-b27e-3566197ad023",
+      "page_id": "7098fbfe-abd6-499b-9bac-4aa0aff92b23",
+      "receipt": {
+        "reference": {
+          "presentation_id": "presentation-1792490090857216300-0",
+          "revision": 1
+        },
+        "saved_state_ref": "state-1792490121147177400-12",
+        "session_id": "chat_2026-09-16T16:00:00Z_0",
+        "state_revision": 11,
+        "turn_id": "turn_5a0bb81d510ddce2"
+      },
+      "reference": {
+        "presentation_id": "presentation-1792490090857216300-0",
+        "revision": 1
+      },
+      "saved_state_ref": "state-1792490121147177400-12",
+      "state": {
+        "observation": {
+          "rendered": {
+            "distance_a_m": 10,
+            "distance_b_m": 30,
+            "speed_b_m_s": 3,
+            "time_s": 10
+          },
+          "state": {
+            "phase": "awaiting_apply",
+            "playing": false,
+            "speed_b_m_s": 2,
+            "time_s": 10
+          },
+          "summary": "B 的输入速度为 2 m/s；画面按 3 m/s 显示 10 秒、30 米。等待应用"
+        },
+        "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    等待应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 30.0 米；已应用 B 速度 3 m/s。 \n    同一时间内，速度翻倍，距离也翻倍。 \n    比较时保持共同时间不变。",
+        "source_ref_ids": [],
+        "values": {
+          "controls": [
+            {
+              "key": "speed",
+              "type": "number",
+              "value": "2"
+            }
+          ],
+          "page": {
+            "annotated": true,
+            "applied_speed_b_m_s": 3,
+            "input_speed_b_m_s": 2,
+            "phase": "awaiting_apply",
+            "revealed": true,
+            "time_s": 10
+          },
+          "parameter_edits": {}
+        },
+        "visible_step": "awaiting_apply"
+      },
+      "state_contract": {
+        "annotated": "annotation shown, boolean",
+        "applied_speed_b_m_s": "B displayed speed in m/s, 0..3",
+        "input_speed_b_m_s": "B input speed in m/s, 0..3",
+        "phase": "ready, awaiting_apply or cancelled",
+        "revealed": "relation shown, boolean",
+        "time_s": "Shared time in seconds, 0..10"
+      },
+      "status": "applied"
+    },
+    {
+      "category": "cancelled",
+      "error_code": "AGENT_RUN_CANCELLED",
+      "message": "Agent run was cancelled"
+    }
+  ],
+  "original": {
+    "action_contract": [
+      {
+        "kind": "set_parameters",
+        "parameters": [
+          "input_speed_b_m_s"
+        ]
+      },
+      {
+        "action_id": "apply",
+        "kind": "invoke",
+        "label": "应用"
+      },
+      {
+        "action_id": "reset",
+        "kind": "invoke",
+        "label": "重置"
+      },
+      {
+        "kind": "highlight",
+        "region_id": "result"
+      },
+      {
+        "kind": "reveal",
+        "region_id": "relation"
+      },
+      {
+        "kind": "annotate",
+        "region_id": "annotation"
+      }
+    ],
+    "animation_assets": {},
+    "assumptions": [],
+    "content_files": {
+      "index.html": "<!doctype html>\n<html lang=\"zh-CN\">\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>速度输入与显示结果</title>\n<style>\n  body { margin: 0; padding: 24px; color: #233e40; background: #f5f4ed; font: 16px/1.6 sans-serif; }\n  main { max-width: 620px; margin: auto; }\n  label { display: block; margin: 12px 0; }\n  input, button { font: inherit; min-height: 44px; }\n  input { width: 90px; }\n  button { margin: 4px; padding: 4px 12px; }\n  svg { display: block; width: 100%; }\n</style>\n<main>\n  <h1>改了输入，画面为什么还没变？</h1>\n  <p>A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。</p>\n  <label>B 的输入速度（m/s） <input data-presentation-parameter=\"input_speed_b_m_s\" id=\"speed\" type=\"number\" min=\"0\" max=\"3\" step=\".5\" value=\"1\"></label>\n  <button data-presentation-action=\"apply\" id=\"apply\">应用</button><button id=\"cancel\" disabled>取消计算</button>\n  <button id=\"play\">播放</button><button id=\"pause\">暂停</button><button data-presentation-action=\"reset\" id=\"reset\">重置</button>\n  <p id=\"phase\"></p>\n  <svg viewBox=\"0 0 360 100\" role=\"img\" aria-label=\"共同时间下的距离对照\">\n    <text x=\"4\" y=\"30\">A</text><rect id=\"a\" x=\"30\" y=\"12\" height=\"20\" fill=\"#18857e\"></rect>\n    <text x=\"4\" y=\"75\">B</text><rect id=\"b\" x=\"30\" y=\"57\" height=\"20\" fill=\"#c38a35\"></rect>\n  </svg>\n  <p id=\"result\"></p>\n  <p id=\"relation\" hidden>同一时间内，速度翻倍，距离也翻倍。</p>\n  <p id=\"annotation\" hidden>比较时保持共同时间不变。</p>\n</main>\n<script>\n  const defaults = { input_speed_b_m_s: 1, applied_speed_b_m_s: 1, time_s: 10, phase: 'ready', revealed: false, annotated: false };\n  const model = { ...defaults, ...window.presentation?.initialState, playing: false };\n  const $ = id => document.getElementById(id);\n  let calculation, playback, rejectCalculation;\n  function cancelCalculation() { clearTimeout(calculation); rejectCalculation?.(new Error(\"Calculation cancelled\")); rejectCalculation = undefined; }\n  const result = () => ({\n    speed_b_m_s: model.applied_speed_b_m_s, time_s: model.time_s,\n    distance_a_m: model.time_s, distance_b_m: model.applied_speed_b_m_s * model.time_s,\n  });\n  const commit = () => window.presentation?.commitState();\n  function stop() { clearInterval(playback); model.playing = false; }\n  function render() {\n    const shown = result();\n    $('speed').value = model.input_speed_b_m_s;\n    $('relation').hidden = !model.revealed; $('annotation').hidden = !model.annotated;\n    $('phase').textContent = { ready: '结果已应用', awaiting_apply: '等待应用', calculating: '计算中，仍显示旧结果', cancelled: '计算已取消，仍显示旧结果' }[model.phase];\n    $('result').textContent = `画面：${shown.time_s.toFixed(1)} 秒，A 走 ${shown.distance_a_m.toFixed(1)} 米，B 走 ${shown.distance_b_m.toFixed(1)} 米；已应用 B 速度 ${shown.speed_b_m_s} m/s。`;\n    $('a').setAttribute('width', shown.distance_a_m * 10);\n    $('b').setAttribute('width', shown.distance_b_m * 10);\n    $('cancel').disabled = model.phase !== 'calculating';\n  }\n  function setSpeed(value) {\n    cancelCalculation();\n    model.input_speed_b_m_s = Number(value);\n    model.phase = model.input_speed_b_m_s === model.applied_speed_b_m_s ? 'ready' : 'awaiting_apply';\n    render();\n  };\n  $('speed').oninput = () => setSpeed($('speed').value);\n  function apply(signal) {\n    cancelCalculation(); stop();\n    const speed = model.input_speed_b_m_s;\n    model.phase = 'calculating'; render();\n    return new Promise((resolve, reject) => {\n      const abort = () => { cancelCalculation(); model.phase = 'cancelled'; render(); };\n      rejectCalculation = failure => { signal?.removeEventListener('abort', abort); reject(failure); };\n      signal?.addEventListener('abort', abort, { once: true });\n      calculation = setTimeout(() => {\n        signal?.removeEventListener('abort', abort); rejectCalculation = undefined;\n        model.applied_speed_b_m_s = speed; model.phase = 'ready'; render(); commit(); resolve();\n      }, 500);\n    });\n  };\n  $('apply').onclick = () => { void apply().catch(() => {}); };\n  $('cancel').onclick = () => { cancelCalculation(); model.phase = 'cancelled'; render(); commit(); };\n  $('play').onclick = () => {\n    stop(); model.playing = true;\n    if (model.time_s === 10) model.time_s = 0;\n    render();\n    playback = setInterval(() => {\n      model.time_s = Math.min(10, Math.round((model.time_s + .1) * 10) / 10);\n      if (model.time_s === 10) { stop(); render(); commit(); } else render();\n    }, 100);\n  };\n  $('pause').onclick = () => { stop(); render(); commit(); };\n  function reset() { cancelCalculation(); stop(); Object.assign(model, defaults); render(); commit(); }\n  $('reset').onclick = reset;\n  window.presentation?.registerActionHandler?.(async (action, { signal } = {}) => {\n    if (action.kind === 'set_parameters') setSpeed(action.values.input_speed_b_m_s);\n    else if (action.kind === 'invoke' && action.action_id === 'apply') await apply(signal);\n    else if (action.kind === 'invoke' && action.action_id === 'reset') reset();\n    else if (action.kind === 'reveal') { model.revealed = true; render(); }\n    else if (action.kind === 'annotate') { model.annotated = true; render(); }\n  });\n  window.presentation?.registerStateReader(() => ({\n    values: { input_speed_b_m_s: model.input_speed_b_m_s, applied_speed_b_m_s: model.applied_speed_b_m_s, time_s: model.time_s, phase: model.phase, revealed: model.revealed, annotated: model.annotated },\n    visible_step: model.phase,\n    observation: {\n      summary: `B 的输入速度为 ${model.input_speed_b_m_s} m/s；画面按 ${model.applied_speed_b_m_s} m/s 显示 ${model.time_s} 秒、${result().distance_b_m} 米。${$('phase').textContent}`,\n      state: { speed_b_m_s: model.input_speed_b_m_s, time_s: model.time_s, phase: model.phase, playing: model.playing },\n      rendered: result(),\n    },\n  }));\n  window.presentation?.registerStateRestorer(saved => {\n    clearTimeout(calculation); stop();\n    Object.assign(model, saved.values.page);\n    if (model.phase === 'calculating') model.phase = 'awaiting_apply';\n    render();\n  });\n  render();\n</script>\n</html>\n"
+    },
+    "entrypoint": "index.html",
+    "initial_state": {
+      "annotated": false,
+      "applied_speed_b_m_s": 1,
+      "input_speed_b_m_s": 1,
+      "phase": "ready",
+      "revealed": false,
+      "time_s": 10
+    },
+    "readable_view": {
+      "parts": [
+        {
+          "kind": "markdown",
+          "text": "A 每秒走 1 米；B 速度改变后需要应用，两车使用共同时间。"
+        }
+      ],
+      "sources": []
+    },
+    "reference": {
+      "presentation_id": "presentation-1792490090857216300-0",
+      "revision": 1
+    },
+    "restored_state": {
+      "observation": {
+        "rendered": {
+          "distance_a_m": 10,
+          "distance_b_m": 20,
+          "speed_b_m_s": 2,
+          "time_s": 10
+        },
+        "state": {
+          "phase": "ready",
+          "playing": false,
+          "speed_b_m_s": 2,
+          "time_s": 10
+        },
+        "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+      },
+      "observed_result": "改了输入，画面为什么还没变？ \n    A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。 \n    B 的输入速度（m/s）   \n    应用  取消计算 \n    播放  暂停  重置 \n    结果已应用 \n   共同时间下的距离对照 \n      A  \n      B  \n   \n    画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+      "source_ref_ids": [],
+      "values": {
+        "controls": [
+          {
+            "key": "speed",
+            "type": "number",
+            "value": "2"
+          }
+        ],
+        "page": {
+          "annotated": false,
+          "applied_speed_b_m_s": 2,
+          "input_speed_b_m_s": 2,
+          "phase": "ready",
+          "revealed": false,
+          "time_s": 10
+        },
+        "parameter_edits": {}
+      },
+      "visible_step": "ready"
+    },
+    "restored_state_revision": 3,
+    "sources": [],
+    "title": "速度对照"
+  }
+}

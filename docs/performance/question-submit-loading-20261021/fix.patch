@@ -1,0 +1,423 @@
+--- a/packages/web/src/video-question.ts
++++ b/packages/web/src/video-question.ts
+@@ -11,13 +11,23 @@
+ export function createVideoQuestion(windowId: string, command: (input: DraftCommand) => Promise<{ draft: VideoDraft | null }>, capture: (id: string) => VideoQuestionContext) {
+   const draft = ref<VideoDraft | null>(null), error = ref(''), restoring = ref(false);
+   let writes = Promise.resolve(), revision = 0;
++  let queuedSave: { input: DraftCommand; version: number } | null = null;
+   function enqueue(input: DraftCommand) {
+-    const version = revision;
++    // Only the latest edit matters while a save is waiting. Release remains an
++    // ordering barrier so cancelling and binding another frame cannot be merged.
++    if (input.action === 'save' && queuedSave) {
++      queuedSave.input = input;
++      queuedSave.version = revision;
++      return;
++    }
++    const queued = { input, version: revision };
++    queuedSave = input.action === 'save' ? queued : null;
+     writes = writes.catch(() => {}).then(async () => {
+-      await command(input);
+-      if (version === revision) error.value = '';
++      if (queuedSave === queued) queuedSave = null;
++      await command(queued.input);
++      if (queued.version === revision) error.value = '';
+     }).catch(failure => {
+-      if (version === revision) error.value = (failure as Error).message;
++      if (queued.version === revision) error.value = (failure as Error).message;
+       throw failure;
+     });
+     void writes.catch(() => {});
+@@ -92,6 +102,8 @@
+     input(draft.value.message);
+   }
+   async function submission() {
++    // A second click after a failed save is an explicit retry of the same draft.
++    if (error.value && draft.value) input(draft.value.message);
+     await writes;
+     if (!draft.value) throw new Error('请先绑定当前视频画面');
+     return { video_window_id: windowId, video_draft_id: draft.value.context.draft_id };
+--- a/packages/web/src/video-question.test.ts
++++ b/packages/web/src/video-question.test.ts
+@@ -15,6 +15,57 @@
+     return { draft: drafts.get(input.window_id) ?? null };
+   });
+ }
++
++it('coalesces edits behind an in-flight save and sends the latest text with the original frame', async () => {
++  let complete!: (value: { draft: VideoDraft | null }) => void;
++  const command = storage();
++  command.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
++  const scene = createVideoQuestion('a', command, question);
++  scene.input('这'); await vi.waitFor(() => expect(command).toHaveBeenCalledOnce());
++  for (const message of ['这里', '这里的资源', '这里的资源管理和书中一样吗？']) scene.input(message);
++  const submitted = scene.submission();
++  complete({ draft: null }); await submitted;
++  expect(command.mock.calls.map(([input]) => input.draft?.message)).toEqual(['这', '这里的资源管理和书中一样吗？']);
++  await scene.restore();
++  expect(scene.draft.value?.message).toBe('这里的资源管理和书中一样吗？');
++  expect(scene.draft.value?.context.frame.actual_pts_ms).toBe(492000);
++});
++
++it('preserves cancellation between coalesced drafts and reports a failed latest save', async () => {
++  let complete!: (value: { draft: VideoDraft | null }) => void;
++  const command = storage();
++  command.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
++  const scene = createVideoQuestion('a', command, question);
++  scene.input('first'); await vi.waitFor(() => expect(command).toHaveBeenCalledOnce());
++  const first = scene.draft.value!.context.draft_id;
++  scene.input('edited first'); scene.clear(); scene.input('second'); scene.input('latest second');
++  const submitted = scene.submission();
++  complete({ draft: null }); await submitted;
++  expect(command.mock.calls.map(([input]) => input.action)).toEqual(['save', 'save', 'release', 'save']);
++  expect(command.mock.calls[2][0].draft_id).toBe(first);
++  await scene.restore();
++  expect(scene.draft.value?.message).toBe('latest second');
++  expect(scene.draft.value?.context.draft_id).not.toBe(first);
++  command.mockRejectedValueOnce(new Error('save unavailable'));
++  scene.input('final edit');
++  await expect(scene.submission()).rejects.toThrow('save unavailable');
++  expect(scene.draft.value?.message).toBe('final edit');
++  expect(scene.error.value).toBe('save unavailable');
++});
++
++it('retries an unchanged draft after a failed save only when the user sends again', async () => {
++  const command = storage(), capture = vi.fn(question), scene = createVideoQuestion('a', command, capture);
++  command.mockRejectedValueOnce(new Error('offline'));
++  scene.input('same question');
++  const id = scene.draft.value!.context.draft_id;
++  await expect(scene.submission()).rejects.toThrow('offline');
++  expect(command).toHaveBeenCalledOnce();
++  await expect(scene.submission()).resolves.toMatchObject({ video_draft_id: id });
++  expect(command).toHaveBeenCalledTimes(2);
++  expect(capture).toHaveBeenCalledOnce();
++  expect(command.mock.calls[1][0].draft?.message).toBe('same question');
++  expect(scene.error.value).toBe('');
++});
+ 
+ it('replaces a selected screenshot with the crop and preserves it across save failure and restore', async () => {
+   const command = storage(), scene = createVideoQuestion('a', command, question);
+--- a/packages/web/src/App.vue
++++ b/packages/web/src/App.vue
+@@ -1,5 +1,5 @@
+ <script setup lang="ts">
+-import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, toRaw, watch } from "vue";
++import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toRaw, watch } from "vue";
+ import { createYeyeFeedback } from './yeye-feedback';
+ import ShareImagePanel from './components/ShareImagePanel.vue';
+ import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
+@@ -4349,16 +4349,9 @@
+       ranges: visible.ranges.map(r => ({ lid: r.lid, range: { start: r.start, end: r.end } })) };
+   }
+   let videoMeta: { video_window_id?: string; video_draft_id?: string } = {};
+-  if (publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice) {
+-    try {
+-      // A plain workspace draft can arrive from another material before the video loads.
+-      if (!videoQuestion.draft.value || videoQuestion.draft.value.message !== msg) videoQuestion.input(msg);
+-      videoMeta = await videoQuestion.submission();
+-    }
+-    catch (error) { fail(error); return; }
+-  }
++  const saveVideoDraft = publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice;
+   const questionAnchorLid = goalMeta.chapter_lid ?? (goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? readingAnchorLid.value);
+-  const turn: ChatTurn = {
++  const turn = reactive<ChatTurn>({
+     teachingRef: goalMeta.teaching_ref,
+     videoQuestion: videoQuestion.draft.value ? JSON.parse(JSON.stringify(videoQuestion.draft.value.context)) : undefined,
+     presentationFollowUp,
+@@ -4366,11 +4359,12 @@
+     user: displayUser,
+     outcome: null,
+     pending: true,
++    runStatus: saveVideoDraft ? '正在保存视频提问…' : '正在提交问题…',
+     questionAnchorLid,
+     questionQuote: draft ? localQuestionQuoteView(draft) : null,
+     questionSelection: draft ? { ...draft } : null,
+     effectLabels: [],
+-  };
++  });
+   const submissionSessionId = activeChatSessionId.value;
+   const submission = ++submissionSequence;
+   const submissionIdentity = network.value.identity;
+@@ -4378,8 +4372,19 @@
+   chat.value.push(turn);
+   acceptingRun.value = true;
+   banner.value = "";
++  let requestStarted = false;
+   try {
++    if (saveVideoDraft) {
++      // A plain workspace draft can arrive from another material before the video loads.
++      if (!videoQuestion.draft.value || videoQuestion.draft.value.message !== msg) videoQuestion.input(msg);
++      videoMeta = await videoQuestion.submission();
++      if (disposed || submission !== submissionSequence) return;
++      turn.videoQuestion = JSON.parse(JSON.stringify(videoQuestion.draft.value!.context));
++    }
++    turn.runStatus = '正在提交问题…';
+     await flushFocusPosition();
++    if (disposed || submission !== submissionSequence) return;
++    requestStarted = true;
+     const result = await api.agentRunCreate(msg, {
+       presentation_follow_up: presentationFollowUp,
+       ...videoMeta,
+@@ -4397,7 +4402,7 @@
+       activeChatSessionId.value = result.session_id;
+       residentRun.observe(result);
+     } else if ('kind' in result && result.kind === 'activity_help') {
+-      chat.value = chat.value.filter(candidate => toRaw(candidate) !== turn);
++      chat.value = chat.value.filter(candidate => toRaw(candidate) !== toRaw(turn));
+       activityHelpLocation.value = result.activity ? { ...result.activity, delivery_refs: result.delivery_refs } : null;
+       banner.value = '这段内容属于当前待答题，请使用原题的提示或直接讲解；未提供帮助时可返回原文阅读。';
+       await nextTick();
+@@ -4412,7 +4417,10 @@
+     if (disposed || submission !== submissionSequence) return;
+     turn.pending = false;
+     const stop = error instanceof ApiError ? spendNotice({ error_code: error.errorCode, category: error.category, message: error.message }, 'unsubmitted') : undefined;
+-    if (stop) {
++    if (!requestStarted) {
++      // Saving a draft has not submitted a model request; retain it for a retry.
++      turn.error = (error as Error).message;
++    } else if (stop) {
+       turn.spendStop = stop;
+       turn.error = stop.message;
+       restoreAllowanceDraft(turn, submittedDraft);
+@@ -4430,6 +4438,7 @@
+       try { applyAgentHistory(await api.agentHistory()); } catch { /* Keep the explicit unknown state. */ }
+     }
+   } finally {
++    if (!turn.turnId) turn.runStatus = undefined;
+     if (submission === submissionSequence) acceptingRun.value = false;
+   }
+ }
+@@ -5452,7 +5461,7 @@
+         @question-image="setQuestionImage"
+         @question-image-loading="prepareQuestionImage"
+         :video-error="videoQuestion.error.value"
+-        :question-input-blocked="videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && !videoFrameReady && !videoQuestion.draft.value)"
++        :question-input-blocked="videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && (acceptingRun || (!videoFrameReady && !videoQuestion.draft.value)))"
+         @update:agent-input="onAgentInput"
+         @cancel-video-draft="cancelVideoDraft"
+         :history-loading="agentHistoryLoading"
+--- a/packages/web/src/App.startup.test.ts
++++ b/packages/web/src/App.startup.test.ts
+@@ -606,6 +606,66 @@
+   });
+ });
+ 
++it.each([false, true])('acknowledges video send before draft persistence and prevents duplicate sends (save fails=%s)', async failed => {
++  const video = { media_id: 'v', media_revision: '1' };
++  const publication = { book_id: book, publication_id: 'original' };
++  const material = { book_id: book, video, transcript: { transcript_id: 't', transcript_revision: '1', video } };
++  const draft = { message: '原草稿', context: { draft_id: 'd', publication, material,
++    frame: { video, actual_pts_ms: 274000, width: 1920, height: 1080 }, region: null, range: null } };
++  api.videoContext.mockResolvedValue({ time_base: [1, 1000], publication, material,
++    source: { video, original_path: 'lesson.mp4', duration_ms: 510000, width: 1920, height: 1080 }, map: { segments: [] } });
++  const save = deferred<{ draft: typeof draft }>(), admission = deferred<unknown>();
++  api.videoDraft.mockImplementation(input => input.action === 'get' ? Promise.resolve({ draft }) : save.promise);
++  api.agentRunCreate.mockReturnValue(admission.promise);
++  const wrapper = start(); await flushPromises();
++  const rail = wrapper.getComponent({ name: 'RightRail' });
++  rail.vm.$emit('update:agentInput', '这里的资源管理和书中一样吗？');
++  rail.vm.$emit('send-agent'); await flushPromises();
++  expect(rail.props('sending')).toBe(true);
++  expect(rail.props('questionInputBlocked')).toBe(true);
++  expect(rail.props('chat')).toHaveLength(1);
++  expect(rail.props('chat')[0].runStatus).toBe('正在保存视频提问…');
++  expect(api.agentRunCreate).not.toHaveBeenCalled();
++  rail.vm.$emit('send-agent'); await flushPromises();
++  if (failed) save.reject(new Error('保存暂不可用'));
++  else save.resolve({ draft });
++  await flushPromises();
++  if (failed) {
++    expect(api.agentRunCreate).not.toHaveBeenCalled();
++    expect(rail.props('sending')).toBe(false);
++    expect(rail.props('agentInput')).toBe('这里的资源管理和书中一样吗？');
++    expect(rail.props('chat')[0]).toMatchObject({ pending: false, error: '保存暂不可用' });
++    expect(rail.props('chat')[0].submissionUnknown).toBeUndefined();
++    api.videoDraft.mockResolvedValue({ draft });
++    rail.vm.$emit('send-agent'); await flushPromises();
++    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
++    admission.resolve({ answer: '重试后的回答', effects: [] }); await flushPromises();
++    expect(rail.props('sending')).toBe(false);
++  } else {
++    expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
++    expect(rail.props('chat')).toHaveLength(1);
++    expect(rail.props('chat')[0].runStatus).toBe('正在提交问题…');
++    admission.resolve({ answer: '回答', effects: [] }); await flushPromises();
++    expect(rail.props('sending')).toBe(false);
++    expect(rail.props('chat')[0].runStatus).toBeUndefined();
++  }
++});
++
++it('shows book submission immediately and removes an activity-help-only placeholder', async () => {
++  const admission = deferred<unknown>(); api.agentRunCreate.mockReturnValue(admission.promise);
++  const wrapper = start(); await flushPromises();
++  const rail = wrapper.getComponent({ name: 'RightRail' });
++  (rail.vm as unknown as { focusActivityHelp: () => void }).focusActivityHelp = vi.fn();
++  rail.vm.$emit('update:agentInput', '解释书中的这段内容');
++  rail.vm.$emit('send-agent'); await flushPromises();
++  expect(rail.props('sending')).toBe(true);
++  expect(rail.props('chat')[0].runStatus).toBe('正在提交问题…');
++  expect(api.videoDraft).not.toHaveBeenCalled();
++  admission.resolve({ kind: 'activity_help', delivery_refs: [] }); await flushPromises();
++  expect(rail.props('chat')).toEqual([]);
++  expect(rail.props('sending')).toBe(false);
++});
++
+ it('VI6 opens a local published video without interpreting preparation as a build workbench', async () => {
+   api.desktopStatus.mockResolvedValue({ desktop_host:false, reader_only:false, active_book:true });
+   const video = { media_id:'v',media_revision:'1' };
+--- a/packages/web/src/network-client.ts
++++ b/packages/web/src/network-client.ts
+@@ -111,7 +111,7 @@
+ }
+ export function workspaceAction<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
+   const key = sceneKey();
+-  const optimistic = action === 'reader/goto' || action === 'reader/position';
++  const optimistic = action === 'reader/goto' || action === 'reader/position' || action === 'reader/video_draft';
+   const navigation = action === 'reader/goto' ? { key, superseded: false } : null;
+   if (navigation && queuedNavigation?.key === key) queuedNavigation.superseded = true;
+   // A different command is an ordering barrier: never drop navigation across it.
+@@ -122,8 +122,10 @@
+     if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
+     const n = network.value, w = n.workspace;
+     if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', '请先选择材料');
++    const controller = action === 'reader/video_draft' ? new AbortController() : undefined;
++    const timeout = controller ? setTimeout(() => controller.abort(new Error('视频提问保存超时，请重试。')), 15_000) : undefined;
+     const refresh = async () => {
+-      const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
++      const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`, undefined, controller?.signal);
+       if (latest.generation !== w.generation) {
+         installWorkspace(latest);
+         throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读内容已更新，请重试当前操作。');
+@@ -133,18 +135,22 @@
+     };
+     const post = (stamp: NetworkWorkspace) => networkFetch<NetworkWorkspace & { result?: T }>('POST', `/workspaces/${w.workspace_id}/${action}`, {
+       ...body, attachment_id: n.attachment, generation: stamp.generation, expected_revision: stamp.revision,
+-    });
+-    // Reader commands carry an absolute target. The server rejects a stale CAS
++    }, controller?.signal);
++    // Reader positions and video drafts carry an absolute target. The server rejects a stale CAS
+     // before mutation; only that explicit conflict permits one refresh/retry.
+-    let value;
+-    try { value = await post(optimistic ? w : await refresh()); }
+-    catch (error) {
+-      if (!optimistic || !(error instanceof ApiError) || error.errorCode !== 'WORKSPACE_REVISION_CONFLICT') throw error;
+-      value = await post(await refresh());
+-    }
+-    if (value.workspace_id) installWorkspace(value, n.attachment, n.linked,
+-      action === 'chat/new' || action === 'chat/select' ? 'chat' : action === 'reader/adopt_same_source_publication' ? 'enrichment' : undefined);
+-    return value as T;
++    try {
++      let value;
++      try { value = await post(optimistic ? w : await refresh()); }
++      catch (error) {
++        if (!optimistic || !(error instanceof ApiError) || error.errorCode !== 'WORKSPACE_REVISION_CONFLICT') throw error;
++        value = await post(await refresh());
++      }
++      if (value.workspace_id) installWorkspace(value, n.attachment, n.linked,
++        action === 'chat/new' || action === 'chat/select' ? 'chat' : action === 'reader/adopt_same_source_publication' ? 'enrichment' : undefined);
++      return value as T;
++    } finally {
++      clearTimeout(timeout);
++    }
+   });
+   writes = result;
+   return result;
+--- a/packages/web/src/network-client.test.ts
++++ b/packages/web/src/network-client.test.ts
+@@ -9,6 +9,44 @@
+ beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
+ afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
+ describe('MU8 authorized browser context', () => {
++  it('bounds a stalled video draft request without submitting or automatically retrying it', async () => {
++    vi.useFakeTimers();
++    try {
++      const fetch = vi.fn((_url: string, options: RequestInit) => new Promise<Response>((_, reject) => {
++        options.signal?.addEventListener('abort', () => reject(options.signal!.reason), { once: true });
++      }));
++      vi.stubGlobal('fetch', fetch);
++      const save = api.videoDraft({ window_id: 'window', action: 'save', draft: { message: 'question', context: {} as never } });
++      const rejected = expect(save).rejects.toThrow('视频提问保存超时，请重试。');
++      await vi.advanceTimersByTimeAsync(15_000);
++      await rejected;
++      expect(fetch).toHaveBeenCalledOnce();
++      expect(fetch.mock.calls[0][0]).toBe('/api/workspaces/w/reader/video_draft');
++      expect(pendingSubmissions()).toEqual([]);
++    } finally { vi.useRealTimers(); }
++  });
++
++  it('saves video drafts in one round trip and refreshes only an explicit revision conflict', async () => {
++    let conflict = false;
++    const calls: string[] = [];
++    const draft = { message: 'question', context: { draft_id: 'video-draft' } };
++    vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit) => {
++      calls.push(`${options.method} ${url}`);
++      if (options.method === 'GET') return json({ ...scene, revision: 5 });
++      if (conflict) { conflict = false; return json({ error_code: 'WORKSPACE_REVISION_CONFLICT' }, 409); }
++      const input = JSON.parse(String(options.body));
++      expect(input.draft).toEqual(draft);
++      return json({ ...scene, revision: input.expected_revision + 1, result: { draft } });
++    }));
++    const input = { window_id: 'window', action: 'save' as const, draft: draft as never };
++    expect(await api.videoDraft(input)).toEqual({ draft });
++    expect(calls).toEqual(['POST /api/workspaces/w/reader/video_draft']);
++    conflict = true; calls.length = 0;
++    await api.videoDraft(input);
++    expect(calls).toEqual(['POST /api/workspaces/w/reader/video_draft', 'GET /api/workspaces/w', 'POST /api/workspaces/w/reader/video_draft']);
++    expect(network.value.workspace?.revision).toBe(6);
++  });
++
+   it.each([false, true])('SE5 routes all feedback operations with the current attachment (linked=%s)', async linked => {
+     installWorkspace(scene, linked ? 'linked-attachment' : 'parent-attachment', linked);
+     const reference = { presentation_id: 'p', revision: 2 };
+--- /dev/null
++++ b/packages/web/src/video-question.performance.test.ts
+@@ -0,0 +1,48 @@
++// @vitest-environment happy-dom
++import { writeFileSync } from 'node:fs';
++import { afterEach, expect, it, vi } from 'vitest';
++import { api } from './api';
++import { createVideoQuestion } from './video-question';
++import { installIdentity, installWorkspace, network, type NetworkWorkspace } from './network-context';
++
++afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
++
++it('bounds the submission wait after typing over a slow connection', async () => {
++  vi.useFakeTimers(); vi.setSystemTime(0);
++  sessionStorage.clear();
++  const video = { media_id: 'v', media_revision: '1' };
++  const publication = { book_id: 'b', publication_id: 'p' };
++  let workspace = { workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'chat',
++    published_book_ref: publication, reader: {} } as NetworkWorkspace;
++  installIdentity({ user_id: 'submit-benchmark', csrf_token: 'test' }); installWorkspace(workspace);
++  const requests: { method: string; url: string; at_ms: number }[] = [];
++  let savedMessage = '';
++  vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit) => {
++    requests.push({ method: options.method!, url, at_ms: Date.now() });
++    await new Promise(resolve => setTimeout(resolve, 500));
++    const input = options.body ? JSON.parse(String(options.body)) : {};
++    if (url.endsWith('/reader/video_draft')) {
++      savedMessage = input.draft.message;
++      workspace = { ...workspace, revision: workspace.revision + 1 };
++      return new Response(JSON.stringify({ ...workspace, result: { draft: input.draft } }));
++    }
++    if (url.endsWith('/agent/runs')) return new Response(JSON.stringify({ book_id: 'b', session_id: 'chat', turn_id: 't', dispatch_state: 'queued' }));
++    return new Response(JSON.stringify(workspace));
++  }));
++  const scene = createVideoQuestion('window', input => api.videoDraft(input), draft_id => ({ draft_id, publication,
++    material: { book_id: 'b', video, transcript: { transcript_id: 't', transcript_revision: '1', video } },
++    frame: { video, actual_pts_ms: 274000, width: 1920, height: 1080 }, region: null, range: null }));
++  const message = '这里提到的资源管理和ai infra这本书的思想是不是差不多呢';
++  for (let i = 1; i <= message.length; i++) { scene.input(message.slice(0, i)); await vi.advanceTimersByTimeAsync(80); }
++  const clickedAt = Date.now();
++  const submitted = scene.submission().then(meta => api.agentRunCreate(message, meta));
++  await vi.runAllTimersAsync(); await submitted;
++  const report = { scenario: '500 ms per HTTP request, 80 ms between input events; simulated network, no model',
++    input_events: message.length, clicked_at_ms: clickedAt, submitted_at_ms: requests.find(r => r.url.endsWith('/agent/runs'))!.at_ms,
++    click_to_submit_ms: requests.find(r => r.url.endsWith('/agent/runs'))!.at_ms - clickedAt,
++    click_to_accepted_ms: Date.now() - clickedAt, http_requests: requests.length,
++    draft_saves: requests.filter(r => r.url.endsWith('/reader/video_draft')).length, final_message_matches: savedMessage === message, requests };
++  if (process.env.QUESTION_SUBMIT_REPORT) writeFileSync(process.env.QUESTION_SUBMIT_REPORT, JSON.stringify(report, null, 2) + '\n');
++  expect(savedMessage).toBe(message);
++  expect(report.click_to_submit_ms).toBeLessThanOrEqual(1500);
++});

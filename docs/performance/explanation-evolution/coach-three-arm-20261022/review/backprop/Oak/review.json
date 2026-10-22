@@ -1,0 +1,49 @@
+{
+  "alias":"Oak",
+  "status":"reviewed",
+  "method":"Actual Reader iframe in Edge headless; complete visible text, real slider/button interaction and screenshots only; no page source or generation conditions read.",
+  "operations":["Read full default page and scroll entire 960×720 reading path", "Replay all 13 steps; go back twice and change both inputs", "Check all six oracle states", "Use the step slider and all four lower zero-example/reset presets", "At 320×420 and 640×240 inspect graph, controls, step explanation, ledgers, path expansion and independent check; change slider and use previous/next", "After ordinary next-button clicks measure where the current step explanation and ledger actually appear"],
+  "observed_complete_states":[
+    {"x":2,"y":3,"u":6,"v":8,"L":82,"g_v":16,"g_u":19,"g_x":73,"g_y":38},
+    {"x":-1,"y":2,"u":-2,"v":-3,"L":3,"g_v":-6,"g_u":-3,"g_x":-12,"g_y":3},
+    {"x":2,"y":-1,"u":-2,"v":0,"L":-6,"g_v":0,"g_u":3,"g_x":-3,"g_y":6},
+    {"x":0,"y":2,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":6,"g_y":0},
+    {"x":0,"y":0,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":0,"g_y":0},
+    {"x":1,"y":-2.5,"u":-2.5,"v":-1.5,"L":-5.25,"g_v":-3,"g_u":0,"g_x":-3,"g_y":0}
+  ],
+  "strengths":[
+    "All six core numerical states, negative-value substitutions and independently expanded derivatives are correct. The finite-step difference is explicitly identified as approximate rather than required to equal the analytic derivative.",
+    "The five complete input-to-output paths are enumerated and then regrouped into the two immediate contributions at x. This explains how u's accumulation prevents either missing or double-counting its shared uses.",
+    "Each node ledger distinguishes no contribution, a partial recorded amount, missing count and complete total. At u's first contribution it says 暂记3，还差1笔，先不往回传; after both contributions it becomes 19 and only then propagates to inputs.",
+    "The default page includes full forward arithmetic, every local factor and contribution, the small-perturbation reason for addition, omitted-contribution consequences and polynomial differentiation.",
+    "The zero/negative section correctly treats a contribution as incoming gradient times local derivative. It explicitly explains cancellation at x=1,y=-2.5, keeps all paths and preserves the direct x contribution -3. Zero-valued omitted contributions are correctly recognized as numerically undetectable in that state.",
+    "Input changes preserve the step and update computed values, detailed steps, ledgers, path totals, zero explanations and independent check. The lower example buttons intentionally jump to the final step as described. All controls are operable at the tested viewport sizes, with no whole-page horizontal overflow."
+  ],
+  "issues":[
+    {
+      "id":"Oak-1",
+      "severity":"state-dependent explanation inconsistency",
+      "location":"After 把五条路径摊开, the paragraph regrouping x's paths; opening of section 8",
+      "visible_claim":"所以\"u 收到 3 和 16、合计 19\"与\"x 收到 57 和 16、合计 73\"说的是同一件事的两个层次",
+      "evidence":"After selecting v=0 (x=2,y=-1), the same paragraph first correctly says the two paths through u total -3 and the direct-v path is 0, then retains the unlabelled default values 3+16=19 and 57+16=73. The current ledgers instead contain u=3+0 and x=-3+0. Section 8 likewise still begins 前面的73和38是沿图算出来的 while the current graph results are -3 and 6. Core numerical tables update correctly; these prose fragments do not.",
+      "files":["zero-exception.png","interaction-results.json"]
+    },
+    {
+      "id":"Oak-2",
+      "severity":"minor mathematical overstatement in summary",
+      "location":"9. 把这件事压成四句, final bullet",
+      "visible_claim":"漏一笔，或没到齐就下传，都会得到…错数；展开求导和差分能把它抓出来",
+      "evidence":"At x=2,y=-1, the page correctly explains earlier that omitting x→v's zero contribution, or propagating u's 3 before its zero contribution arrives, leaves the same input gradients; even its finite difference in x is exactly -3. The final universal statement contradicts that supported and explicitly demonstrated exception. The earlier exception handling is good.",
+      "files":["zero-exception.png","final-summary.png"]
+    },
+    {
+      "id":"Oak-3",
+      "severity":"guided-interaction usability issue",
+      "location":"Next-step controls versus current step explanation and node ledgers",
+      "evidence":"Ordinary next-button clicks update the step badge but leave the reader at the control panel, far from the actual current calculation. At step 9 in a 960×720 viewport, the u 汇合 explanation begins at viewport y≈1900 and the ledger at y≈2294; at 320×420 they begin around y≈2633 and y≈3079. To read the changed arithmetic or partial ledger, then advance again, the reader must repeatedly scroll between distant regions. The controls themselves remain usable and unobstructed.",
+      "files":["step9-after-click-960.png","step9-after-click-320.png","step9-after-click-640.png","step-visibility.json"]
+    }
+  ],
+  "judgment":"The numerical and conceptual coverage is strong: shared identity, grouped versus complete paths, accumulation timing, cancellation and independent differentiation are all explained concretely. Remaining issues are stale default numbers in surrounding prose, an overgeneralized final sentence and a cumbersome step-by-step reading path. No all-page comparison has been made.",
+  "limitations":"Initial delivery observation, no learner study and no learning-gain inference."
+}

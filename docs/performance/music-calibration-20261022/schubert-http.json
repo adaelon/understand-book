@@ -1,0 +1,46 @@
+{
+  "workspace": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-calibration-qa\\schubert",
+  "origin": "http://127.0.0.1:4195",
+  "title": "舒伯特 · 音乐瞬间第 3 首",
+  "rights": [
+    {
+      "asset_kind": "recording",
+      "distribution": "allowed"
+    },
+    {
+      "asset_kind": "score",
+      "distribution": "allowed"
+    },
+    {
+      "asset_kind": "font",
+      "distribution": "allowed"
+    }
+  ],
+  "audio_range": {
+    "status": 206,
+    "bytes": 32,
+    "matches_original": true
+  },
+  "score_page": {
+    "status": 200,
+    "svg": true
+  },
+  "save": {
+    "status": 200,
+    "history_before": 0,
+    "history_after": 1,
+    "candidate_times_unchanged": true,
+    "pending_retained": true,
+    "refreshed": true
+  },
+  "incomplete_note_acceptance_status": 400,
+  "different_source_status": 400,
+  "failed_save_preserved_manifest": true,
+  "original_audio_unchanged": true,
+  "publication_immutable": {
+    "context": null,
+    "save_status": 400,
+    "asset_status": 404
+  },
+  "human_listening_performed": false
+}

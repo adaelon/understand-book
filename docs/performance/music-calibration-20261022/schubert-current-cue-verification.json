@@ -1,0 +1,36 @@
+{
+  "old_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+  },
+  "new_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16258-5b0f-7873-b42e-04d9425d8551"
+  },
+  "previous_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+  },
+  "input_workspace": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-schubert-current-cue",
+  "published_directory": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-acceptance-service\\library\\published\\music-schubert-d780-3-vetter\\01a16258-5b0f-7873-b42e-04d9425d8551",
+  "cue_event_id": "two-staves",
+  "cue": "这一遍只跟上方的旋律线条，先不用同时照顾下方的节奏。",
+  "manifest_changes": [
+    "events[two-staves].listen_for"
+  ],
+  "original_media_score_guide_bytes_unchanged": true,
+  "demonstration_audio_bytes_unchanged": true,
+  "old_published_files_byte_equal_after_publish": true,
+  "all_alignment_coverage_pending": true,
+  "occurrence_count": 78,
+  "note_alignment_count": 900,
+  "grants_inherited": [],
+  "publish_command": [
+    "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\publish_book.exe",
+    "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-acceptance-service",
+    "import",
+    "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-schubert-current-cue"
+  ],
+  "publish_exit_code": 0,
+  "model_calls": 0
+}

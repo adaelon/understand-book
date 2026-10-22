@@ -1,0 +1,14 @@
+{
+  "phase": "published-before-fullscreen-fix",
+  "surfaces": [],
+  "checks": [],
+  "errors": [],
+  "assets": [
+    "http://127.0.0.1:6677/assets/reader-Bzz6yoFM.js"
+  ],
+  "audio": {
+    "duration": 101,
+    "ready_state": 4,
+    "source": "http://127.0.0.1:6677/api/books/music-schubert-d780-3-vetter/publications/01a1625b-808a-77d2-9cfb-1ecc62bd219f/music/audio"
+  }
+}

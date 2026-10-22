@@ -1,0 +1,4 @@
+
+> @understand-book/dsh-plugin@0.1.0-rc.2 typecheck E:\allwork\download\agent\understand-book\packages\dsh-plugin
+> tsc --noEmit
+

@@ -1,0 +1,64 @@
+{
+  "arm": "baseline",
+  "repetition": 1,
+  "position": 2,
+  "index": 6,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-06.json",
+  "ordinal": 3,
+  "started_utc": "2026-10-22T03:20:37.362835+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 42770,
+    "completion_tokens": 1109,
+    "total_tokens": 43879,
+    "prompt_tokens_details": {
+      "cached_tokens": 9088
+    },
+    "prompt_cache_hit_tokens": 9088,
+    "prompt_cache_miss_tokens": 33682
+  },
+  "response_id": "6717d425-5376-4a8a-bfe4-9a85d349f2c1",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_g8m2Xvu4IwLKZTTu8jHc7397",
+          "type": "function",
+          "function": {
+            "name": "tutor_step",
+            "arguments": "{\"operation\": \"select\", \"move\": {\"move_id\": \"explain-l2-penalty\", \"design_ref\": \"design:generalization-2\", \"block_refs\": [\"generalization\"], \"capability\": \"relational_understanding\", \"kind\": \"explain\", \"prompt\": \"用文字讲清 L2 正则化目标 J(w)=L_train+lambda*平方权重和，并完整算出 lambda 从 0 变为 0.01 时两个候选模型的目标值变化，说明正则化是否等于故意让模型变笨。\", \"interaction_intent\": \"direct_explanation\", \"intent_origin\": \"current_request\", \"intent_quote\": \"那正则化是不是故意让模型变笨？先用文字讲清楚 L_train 加 lambda 乘平方权重和；两个模型的损失为 0.05、0.09，平方权重和为 10、1，lambda 从 0 变为 0.01 会怎样？\", \"object_ids\": [], \"participation\": {\"choice\": \"conclude\", \"reason\": \"用户明确要求先完整讲清公式与算例，并已说明不要被考；本轮直接给出完整解释，不另开任务。\"}, \"delivery_text\": \"正则化调整的是训练时优化的目标，并不以让模型变笨为目的。L2 正则化把训练目标改成 J(w) = L_train(w) + lambda × Σ w_j²。这里 L_train 是模型在训练集上的损失，Σ w_j² 是全部权重的平方和，用来衡量权重整体有多大；lambda ≥ 0 是惩罚强度，它决定“权重变大”这件事在目标里被算得多贵。lambda = 0 时惩罚项不起作用，J 就等于 L_train，训练只追求拟合训练数据；lambda 变大时，同样的权重会带来更大的惩罚，优化过程更倾向于选择权重较小的解。\\n\\n用你给的两个候选模型算一遍。甲：L_train = 0.05，平方权重和 = 10；乙：L_train = 0.09，平方权重和 = 1。\\n\\nlambda = 0 时，惩罚项都是 0：甲的 J = 0.05 + 0 × 10 = 0.05，乙的 J = 0.09 + 0 × 1 = 0.09。按这个目标，甲更优，因为它把训练数据拟合得更紧。\\n\\nlambda = 0.01 时，惩罚项开始计入：甲的 J = 0.05 + 0.01 × 10 = 0.05 + 0.10 = 0.15；乙的 J = 0.09 + 0.01 × 1 = 0.09 + 0.01 = 0.10。此时乙的 J 更小，排序反过来了。\\n\\n变化的原因可以逐项看：甲的惩罚项从 0 涨到 0.10，乙只从 0 涨到 0.01。甲在训练损失上领先 0.04，但它的权重平方和比乙大 9，在 lambda = 0.01 下这 9 的差距折成 0.09 的惩罚差，超过了 0.04 的领先，所以甲的总目标反而更高。lambda 越大，这个折算比例越高，大权重模型越吃亏。\\n\\n所以正则化改变的是“什么样的解算好”这个偏好：它让训练损失不再是唯一标准，权重过大也要付代价。训练误差因此可能上升，这是有意的取舍，并不等于模型变差。适当的惩罚可以降低模型对训练样本中噪声的敏感程度，从而改善泛化；惩罚过强则可能让模型连训练数据中的主要关系都学不好，变成欠拟合。\\n\\n这个算例只说明惩罚改变了优化中的偏好，并不单独证明乙在验证集上的误差更低。lambda 取多少，通常由验证集或交叉验证来选，测试集留到最终评估，不用于反复挑选 lambda。判断模型是否真的更好，仍要看同一验证集上的表现，最后在未参与调参的测试集上确认。 [[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\", \"target\": {\"capability\": \"relational_understanding\", \"expected_performance\": \"解释验证误差与训练目标为何不能混同\", \"learning_focus\": \"区分训练拟合、验证表现与正则化惩罚\", \"source_bindings\": [{\"start_lid\": \"1.1\", \"end_lid\": \"1.1\", \"source_id\": \"overfitting\", \"source_revision\": \"c7835a6592d6ec8da01fb0e77b09bb5674ecb3b9aada9e84ed673afdacce1269\"}]}}}"
+          }
+        }
+      ]
+    }
+  ],
+  "first_delta_ms": 1475.461,
+  "first_text_ms": null,
+  "first_reasoning_ms": null,
+  "first_tool_ms": 1475.461,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 182.51,
+  "streaming": true,
+  "duration_ms": 6290.16,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": false,
+  "measured_usage": {
+    "input_tokens": 42770,
+    "cached_input_tokens": 9088,
+    "uncached_input_tokens": 33682,
+    "output_tokens": 1109
+  },
+  "cost": {
+    "input_cny": "0.06772752",
+    "output_cny": "0.008872",
+    "total_cny": "0.07659952",
+    "total_rounded_micro_cny": 76600
+  }
+}

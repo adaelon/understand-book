@@ -1,0 +1,2543 @@
+{
+  "missing_handler": {
+    "candidate_id": "candidate-1792489791899446600-14",
+    "category": "execution",
+    "environment": {
+      "height": 720,
+      "input": "mouse",
+      "width": 960
+    },
+    "environment_name": "desktop-content",
+    "error_code": "PRESENTATION_PREVIEW_FAILED",
+    "errors": [
+      {
+        "environment": "desktop-content",
+        "kind": "result_mismatch",
+        "message": "Action declaration does not match the live page: [\"Register registerActionHandler for declared actions.\",\"Register registerActionHandler for declared actions.\",\"Register registerActionHandler for declared actions.\",\"Register registerActionHandler for declared actions.\",\"Register registerActionHandler for declared actions.\"]",
+        "step": 0
+      }
+    ],
+    "missing_environments": [
+      "narrow-content",
+      "short-content",
+      "desktop-content"
+    ],
+    "observations": [
+      {
+        "action": null,
+        "dom": {
+          "action_problems": [
+            "Register registerActionHandler for declared actions.",
+            "Register registerActionHandler for declared actions.",
+            "Register registerActionHandler for declared actions.",
+            "Register registerActionHandler for declared actions.",
+            "Register registerActionHandler for declared actions."
+          ],
+          "controls": [
+            {
+              "checked": false,
+              "id": "speed",
+              "tag": "INPUT",
+              "text": "",
+              "value": "1"
+            },
+            {
+              "id": "apply",
+              "tag": "BUTTON",
+              "text": "应用",
+              "value": ""
+            },
+            {
+              "id": "cancel",
+              "tag": "BUTTON",
+              "text": "取消计算",
+              "value": ""
+            },
+            {
+              "id": "play",
+              "tag": "BUTTON",
+              "text": "播放",
+              "value": ""
+            },
+            {
+              "id": "pause",
+              "tag": "BUTTON",
+              "text": "暂停",
+              "value": ""
+            },
+            {
+              "id": "reset",
+              "tag": "BUTTON",
+              "text": "重置",
+              "value": ""
+            }
+          ],
+          "elements": [
+            {
+              "height": 444.234375,
+              "id": "",
+              "tag": "MAIN",
+              "width": 620,
+              "x": 170,
+              "y": 24
+            },
+            {
+              "height": 172.21875,
+              "id": "",
+              "tag": "svg",
+              "width": 620,
+              "x": 170,
+              "y": 260.03125
+            },
+            {
+              "height": 0,
+              "id": "",
+              "tag": "SCRIPT",
+              "width": 0,
+              "x": 0,
+              "y": 0
+            }
+          ],
+          "scroll": {
+            "max_y": 0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n1\n共同时间下的距离对照",
+          "source_ref_ids": [],
+          "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+          "unsupported_assets": [],
+          "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n"
+        },
+        "issues": [],
+        "layout": {
+          "contentSize": {
+            "height": 720,
+            "width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "cssContentSize": {
+            "height": 720,
+            "width": 960,
+            "x": 0,
+            "y": 0
+          },
+          "cssLayoutViewport": {
+            "clientHeight": 720,
+            "clientWidth": 960,
+            "pageX": 0,
+            "pageY": 0
+          },
+          "cssVisualViewport": {
+            "clientHeight": 720,
+            "clientWidth": 960,
+            "offsetX": 0,
+            "offsetY": 0,
+            "pageX": 0,
+            "pageY": 0,
+            "scale": 1,
+            "zoom": 1
+          },
+          "layoutViewport": {
+            "clientHeight": 720,
+            "clientWidth": 960,
+            "pageX": 0,
+            "pageY": 0
+          },
+          "visualViewport": {
+            "clientHeight": 720,
+            "clientWidth": 960,
+            "offsetX": 0,
+            "offsetY": 0,
+            "pageX": 0,
+            "pageY": 0,
+            "scale": 1,
+            "zoom": 1
+          }
+        },
+        "scene": null,
+        "scroll": {
+          "max_y": 0.0,
+          "viewport_height": 720,
+          "viewport_width": 960,
+          "x": 0.0,
+          "y": 0.0
+        },
+        "step": 0
+      }
+    ],
+    "recorded_environments": [],
+    "status": "preview_failed"
+  },
+  "valid": [
+    {
+      "candidate_id": "candidate-1792489764383166100-7",
+      "environment": {
+        "height": 420,
+        "input": "touch",
+        "width": 320
+      },
+      "environment_name": "narrow-content",
+      "errors": [],
+      "missing_environments": [
+        "short-content",
+        "desktop-content"
+      ],
+      "observations": [
+        {
+          "action": null,
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "1"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 502.328125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 257,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 71.375,
+                "id": "",
+                "tag": "svg",
+                "width": 257,
+                "x": 24,
+                "y": 393.375
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 141,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n1\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 141.0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 0
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "set_parameters",
+              "values": {
+                "input_speed_b_m_s": 2
+              }
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 502.328125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 257,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 71.375,
+                "id": "",
+                "tag": "svg",
+                "width": 257,
+                "x": 24,
+                "y": 393.375
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 141,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  等待应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n等待应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n等待应用\nA\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 141.0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 1
+        },
+        {
+          "action": {
+            "action": {
+              "action_id": "apply",
+              "kind": "invoke"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 502.328125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 257,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 71.375,
+                "id": "",
+                "tag": "svg",
+                "width": 257,
+                "x": 24,
+                "y": 393.375
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 141,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 561,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 141.0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 2
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "reveal",
+              "region_id": "relation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 563.90625,
+                "id": "",
+                "tag": "MAIN",
+                "width": 257,
+                "x": 24,
+                "y": -178
+              },
+              {
+                "height": 71.375,
+                "id": "",
+                "tag": "svg",
+                "width": 257,
+                "x": 24,
+                "y": 191.375
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 202,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0,
+              "y": 202
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。",
+            "unsupported_assets": [],
+            "visible_text": "B 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 622,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 622,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 202
+            },
+            "cssVisualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 202,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 202
+            },
+            "visualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 202,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 202.0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0.0,
+            "y": 202.0
+          },
+          "step": 3
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "annotate",
+              "region_id": "annotation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 599.890625,
+                "id": "",
+                "tag": "MAIN",
+                "width": 257,
+                "x": 24,
+                "y": -214
+              },
+              {
+                "height": 71.375,
+                "id": "",
+                "tag": "svg",
+                "width": 257,
+                "x": 24,
+                "y": 155.375
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 238,
+              "viewport_height": 420,
+              "viewport_width": 320,
+              "x": 0,
+              "y": 238
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。\n\n比较时保持共同时间不变。",
+            "unsupported_assets": [],
+            "visible_text": "应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n比较时保持共同时间不变。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 658,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 658,
+              "width": 305,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 238
+            },
+            "cssVisualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 238,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "pageX": 0,
+              "pageY": 238
+            },
+            "visualViewport": {
+              "clientHeight": 420,
+              "clientWidth": 305,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 238,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 238.0,
+            "viewport_height": 420,
+            "viewport_width": 320,
+            "x": 0.0,
+            "y": 238.0
+          },
+          "step": 4
+        }
+      ],
+      "reading": {
+        "action_step": 4,
+        "controls": [
+          {
+            "checked": false,
+            "id": "speed",
+            "name": "",
+            "type": "number",
+            "value": "2"
+          }
+        ],
+        "page_state": {
+          "observation": {
+            "rendered": {
+              "distance_a_m": 10,
+              "distance_b_m": 20,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "state": {
+              "phase": "ready",
+              "playing": false,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+          },
+          "values": {
+            "annotated": true,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "visible_step": "ready"
+        },
+        "scene": null,
+        "scroll": {
+          "max_y": 238,
+          "viewport_height": 420,
+          "viewport_width": 320,
+          "x": 0,
+          "y": 238
+        },
+        "selector": "#result",
+        "text": "画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。"
+      },
+      "recorded_environments": [
+        "narrow-content"
+      ],
+      "status": "preview_environment_recorded"
+    },
+    {
+      "candidate_id": "candidate-1792489764383166100-7",
+      "environment": {
+        "height": 240,
+        "input": "touch",
+        "width": 640
+      },
+      "environment_name": "short-content",
+      "errors": [],
+      "missing_environments": [
+        "desktop-content"
+      ],
+      "observations": [
+        {
+          "action": null,
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "1"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 432.28125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 577,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 160.265625,
+                "id": "",
+                "tag": "svg",
+                "width": 577,
+                "x": 24,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 251,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n1\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 251.0,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 0
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "set_parameters",
+              "values": {
+                "input_speed_b_m_s": 2
+              }
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 432.28125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 577,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 160.265625,
+                "id": "",
+                "tag": "svg",
+                "width": 577,
+                "x": 24,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 251,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  等待应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n等待应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n等待应用\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 251.0,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 1
+        },
+        {
+          "action": {
+            "action": {
+              "action_id": "apply",
+              "kind": "invoke"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 432.28125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 577,
+                "x": 24,
+                "y": 24
+              },
+              {
+                "height": 160.265625,
+                "id": "",
+                "tag": "svg",
+                "width": 577,
+                "x": 24,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 251,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 491,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 251.0,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 2
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "reveal",
+              "region_id": "relation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 468.265625,
+                "id": "",
+                "tag": "MAIN",
+                "width": 577,
+                "x": 24,
+                "y": -263
+              },
+              {
+                "height": 160.265625,
+                "id": "",
+                "tag": "svg",
+                "width": 577,
+                "x": 24,
+                "y": -26.96875
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 287,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0,
+              "y": 287
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。",
+            "unsupported_assets": [],
+            "visible_text": "A\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 527,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 527,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 287
+            },
+            "cssVisualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 287,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 287
+            },
+            "visualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 287,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 287.0,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0.0,
+            "y": 287.0
+          },
+          "step": 3
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "annotate",
+              "region_id": "annotation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 504.25,
+                "id": "",
+                "tag": "MAIN",
+                "width": 577,
+                "x": 24,
+                "y": -299
+              },
+              {
+                "height": 160.265625,
+                "id": "",
+                "tag": "svg",
+                "width": 577,
+                "x": 24,
+                "y": -62.96875
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 323,
+              "viewport_height": 240,
+              "viewport_width": 640,
+              "x": 0,
+              "y": 323
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。\n\n比较时保持共同时间不变。",
+            "unsupported_assets": [],
+            "visible_text": "B\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n比较时保持共同时间不变。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 563,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 563,
+              "width": 625,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 323
+            },
+            "cssVisualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 323,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "pageX": 0,
+              "pageY": 323
+            },
+            "visualViewport": {
+              "clientHeight": 240,
+              "clientWidth": 625,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 323,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 323.0,
+            "viewport_height": 240,
+            "viewport_width": 640,
+            "x": 0.0,
+            "y": 323.0
+          },
+          "step": 4
+        }
+      ],
+      "reading": {
+        "action_step": 4,
+        "controls": [
+          {
+            "checked": false,
+            "id": "speed",
+            "name": "",
+            "type": "number",
+            "value": "2"
+          }
+        ],
+        "page_state": {
+          "observation": {
+            "rendered": {
+              "distance_a_m": 10,
+              "distance_b_m": 20,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "state": {
+              "phase": "ready",
+              "playing": false,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+          },
+          "values": {
+            "annotated": true,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "visible_step": "ready"
+        },
+        "scene": null,
+        "scroll": {
+          "max_y": 323,
+          "viewport_height": 240,
+          "viewport_width": 640,
+          "x": 0,
+          "y": 323
+        },
+        "selector": "#result",
+        "text": "画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。"
+      },
+      "recorded_environments": [
+        "narrow-content",
+        "short-content"
+      ],
+      "status": "preview_environment_recorded"
+    },
+    {
+      "candidate_id": "candidate-1792489764383166100-7",
+      "environment": {
+        "height": 720,
+        "input": "mouse",
+        "width": 960
+      },
+      "environment_name": "desktop-content",
+      "errors": [],
+      "missing_environments": [],
+      "observations": [
+        {
+          "action": null,
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "1"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 444.234375,
+                "id": "",
+                "tag": "MAIN",
+                "width": 620,
+                "x": 170,
+                "y": 24
+              },
+              {
+                "height": 172.21875,
+                "id": "",
+                "tag": "svg",
+                "width": 620,
+                "x": 170,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n1\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 0.0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 0
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "set_parameters",
+              "values": {
+                "input_speed_b_m_s": 2
+              }
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 444.234375,
+                "id": "",
+                "tag": "MAIN",
+                "width": 620,
+                "x": 170,
+                "y": 24
+              },
+              {
+                "height": 172.21875,
+                "id": "",
+                "tag": "svg",
+                "width": 620,
+                "x": 170,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  等待应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n等待应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n等待应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 10.0 米；已应用 B 速度 1 m/s。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 0.0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 1
+        },
+        {
+          "action": {
+            "action": {
+              "action_id": "apply",
+              "kind": "invoke"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 444.234375,
+                "id": "",
+                "tag": "MAIN",
+                "width": 620,
+                "x": 170,
+                "y": 24
+              },
+              {
+                "height": 172.21875,
+                "id": "",
+                "tag": "svg",
+                "width": 620,
+                "x": 170,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 0.0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 2
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "reveal",
+              "region_id": "relation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 480.21875,
+                "id": "",
+                "tag": "MAIN",
+                "width": 620,
+                "x": 170,
+                "y": 24
+              },
+              {
+                "height": 172.21875,
+                "id": "",
+                "tag": "svg",
+                "width": 620,
+                "x": 170,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 0.0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 3
+        },
+        {
+          "action": {
+            "action": {
+              "kind": "annotate",
+              "region_id": "annotation"
+            },
+            "kind": "interact"
+          },
+          "dom": {
+            "action_problems": [],
+            "controls": [
+              {
+                "checked": false,
+                "id": "speed",
+                "tag": "INPUT",
+                "text": "",
+                "value": "2"
+              },
+              {
+                "id": "apply",
+                "tag": "BUTTON",
+                "text": "应用",
+                "value": ""
+              },
+              {
+                "id": "cancel",
+                "tag": "BUTTON",
+                "text": "取消计算",
+                "value": ""
+              },
+              {
+                "id": "play",
+                "tag": "BUTTON",
+                "text": "播放",
+                "value": ""
+              },
+              {
+                "id": "pause",
+                "tag": "BUTTON",
+                "text": "暂停",
+                "value": ""
+              },
+              {
+                "id": "reset",
+                "tag": "BUTTON",
+                "text": "重置",
+                "value": ""
+              }
+            ],
+            "elements": [
+              {
+                "height": 516.203125,
+                "id": "",
+                "tag": "MAIN",
+                "width": 620,
+                "x": 170,
+                "y": 24
+              },
+              {
+                "height": 172.21875,
+                "id": "",
+                "tag": "svg",
+                "width": 620,
+                "x": 170,
+                "y": 260.03125
+              },
+              {
+                "height": 0,
+                "id": "",
+                "tag": "SCRIPT",
+                "width": 0,
+                "x": 0,
+                "y": 0
+              }
+            ],
+            "scroll": {
+              "max_y": 0,
+              "viewport_height": 720,
+              "viewport_width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "semantic_text": "\n  改了输入，画面为什么还没变？\n  A 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n  B 的输入速度（m/s） \n  应用取消计算\n  播放暂停重置\n  结果已应用\n  \n    A\n    B\n  \n  画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n  同一时间内，速度翻倍，距离也翻倍。\n  比较时保持共同时间不变。\n\n\n\n\n2\n共同时间下的距离对照",
+            "source_ref_ids": [],
+            "text": "改了输入，画面为什么还没变？\n\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\n\nB 的输入速度（m/s） \n应用取消计算 播放暂停重置\n\n结果已应用\n\nA\nB\n\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n\n同一时间内，速度翻倍，距离也翻倍。\n\n比较时保持共同时间不变。",
+            "unsupported_assets": [],
+            "visible_text": "改了输入，画面为什么还没变？\nA 的速度固定为 1 m/s。B 的速度在应用完成后更新，两辆车使用同一时钟。\nB 的输入速度（m/s）\n应用\n取消计算\n播放\n暂停\n重置\n结果已应用\nA\nB\n画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。\n同一时间内，速度翻倍，距离也翻倍。\n比较时保持共同时间不变。\n"
+          },
+          "issues": [],
+          "layout": {
+            "contentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssContentSize": {
+              "height": 720,
+              "width": 960,
+              "x": 0,
+              "y": 0
+            },
+            "cssLayoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "cssVisualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            },
+            "layoutViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "pageX": 0,
+              "pageY": 0
+            },
+            "visualViewport": {
+              "clientHeight": 720,
+              "clientWidth": 960,
+              "offsetX": 0,
+              "offsetY": 0,
+              "pageX": 0,
+              "pageY": 0,
+              "scale": 1,
+              "zoom": 1
+            }
+          },
+          "scene": null,
+          "scroll": {
+            "max_y": 0.0,
+            "viewport_height": 720,
+            "viewport_width": 960,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "step": 4
+        }
+      ],
+      "reading": {
+        "action_step": 4,
+        "controls": [
+          {
+            "checked": false,
+            "id": "speed",
+            "name": "",
+            "type": "number",
+            "value": "2"
+          }
+        ],
+        "page_state": {
+          "observation": {
+            "rendered": {
+              "distance_a_m": 10,
+              "distance_b_m": 20,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "state": {
+              "phase": "ready",
+              "playing": false,
+              "speed_b_m_s": 2,
+              "time_s": 10
+            },
+            "summary": "B 的输入速度为 2 m/s；画面按 2 m/s 显示 10 秒、20 米。结果已应用"
+          },
+          "values": {
+            "annotated": true,
+            "applied_speed_b_m_s": 2,
+            "input_speed_b_m_s": 2,
+            "phase": "ready",
+            "revealed": true,
+            "time_s": 10
+          },
+          "visible_step": "ready"
+        },
+        "scene": null,
+        "scroll": {
+          "max_y": 0,
+          "viewport_height": 720,
+          "viewport_width": 960,
+          "x": 0,
+          "y": 0
+        },
+        "selector": "#result",
+        "text": "画面：10.0 秒，A 走 10.0 米，B 走 20.0 米；已应用 B 速度 2 m/s。"
+      },
+      "recorded_environments": [
+        "desktop-content",
+        "narrow-content",
+        "short-content"
+      ],
+      "status": "preview_ready_for_inspection"
+    }
+  ]
+}

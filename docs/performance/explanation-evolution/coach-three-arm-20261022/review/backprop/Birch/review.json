@@ -1,0 +1,66 @@
+{
+  "alias":"Birch",
+  "status":"reviewed",
+  "method":"Actual Reader iframe visible DOM, real controls and screenshots in Microsoft Edge headless; no source or generation metadata read.",
+  "operations":["Read entire default page and scroll full 960×720 reading path", "Replay steps 0 through 11 and go back twice", "Change both sliders while preserving an intermediate step", "Inspect all six oracle states plus x=2,y=-2.5 to test the negative-local-derivative claim", "Inspect responsive edge-list alternative at 320×420, change slider and restore, and use previous/next", "Inspect and operate controls at 640×240"],
+  "observed_complete_states":[
+    {"x":2,"y":3,"u":6,"v":8,"L":82,"g_v":16,"g_u":19,"g_x":73,"g_y":38},
+    {"x":-1,"y":2,"u":-2,"v":-3,"L":3,"g_v":-6,"g_u":-3,"g_x":-12,"g_y":3},
+    {"x":2,"y":-1,"u":-2,"v":0,"L":-6,"g_v":0,"g_u":3,"g_x":-3,"g_y":6},
+    {"x":0,"y":2,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":6,"g_y":0},
+    {"x":0,"y":0,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":0,"g_y":0},
+    {"x":1,"y":-2.5,"u":-2.5,"v":-1.5,"L":-5.25,"g_v":-3,"g_u":0,"g_x":-3,"g_y":0},
+    {"x":2,"y":-2.5,"u":-5,"v":-3,"L":-6,"g_v":-6,"g_u":-3,"g_x":1.5,"g_y":-6}
+  ],
+  "strengths":[
+    "All six required final states and the additional supported negative-sign state compute correctly. Direct differentiation in x,y and the numerical central-difference check agree.",
+    "Shared u and the direct x→v route are explicit. The diagram separates local derivative factors from returned contributions, shows the partial contribution already received by x and waits for u's sum before propagating onward.",
+    "The default page is a complete readable example. An input/step status strip, a clear complete-result default, a per-step explanation and an accumulated computation record explain the sequence.",
+    "Input changes preserve the step and recompute the graph, records, perturbation example, path table, omission table and independent check. Pending values use ?, rather than zero. Cancellation retains both -3 and +3 and the direct x contribution -3.",
+    "The zero-contribution omission note explicitly says that omitting a zero-valued contribution does not change the number while the path still belongs in the calculation.",
+    "At 320×420 the wide diagram is replaced by a labelled readable edge list with local derivatives, returned values and total-gradient chips. Controls and text remain operable/readable; there is no whole-page horizontal overflow. At 640×240 controls are reachable without overlay obstruction."
+  ],
+  "issues":[
+    {
+      "id":"Birch-1",
+      "severity":"substantive teaching error",
+      "location":"负数和零贡献的意思",
+      "visible_claim":"当 y 为负时它就是负数，u 支路给 x 的贡献也带负号",
+      "evidence":"At the supported input x=2,y=-2.5, the page itself computes g_u=-3 and local derivative y=-2.5, so the contribution to x through u is +7.5, not negative. At the required cancellation state y=-2.5 but the contribution is 0. The incoming gradient must also be considered.",
+      "files":["negative-fixed-example.png","local-sign-counterexample.png","negative-local-positive-contribution-omission.png","interaction-results.json"]
+    },
+    {
+      "id":"Birch-2",
+      "severity":"state-dependent explanation error",
+      "location":"漏掉一条贡献，会错在哪里 opening paragraph",
+      "visible_claim":"只把 u 支路的贡献算进去。你会得到一个比正确值小的数",
+      "evidence":"At x=-1,y=2 the table correctly shows u-only=-6 and correct=-12, so omitting the direct negative contribution gives a larger number. At x=2,y=-1, u-only and correct are both -3, so it is not smaller there either. The dynamic table and zero note are correct, but the fixed opening claim contradicts them.",
+      "files":["negative-omission.png","negative-fixed-example.png","interaction-results.json"]
+    },
+    {
+      "id":"Birch-3",
+      "severity":"mathematical display error",
+      "location":"Current-input forward L calculation in the computation record and step 3",
+      "visible_claim":"L = v² + 3u = -3² + 3×-2 = 3",
+      "evidence":"For x=-1,y=2 the actual value L=3 is correct, but the displayed substituted expression needs (-3)². Conventionally -3²=-9, so the written equality evaluates to -15. The same missing parentheses occur at cancellation (-1.5²) and the additional negative-sign input.",
+      "files":["negative-forward-record.png","mobile-record.png","interaction-results.json"]
+    },
+    {
+      "id":"Birch-4",
+      "severity":"incorrect explanatory sentence",
+      "location":"Fixed x=-1,y=2 example in 负数和零贡献的意思",
+      "visible_claim":"把 x、y 代入展开式 L = (xy + x)² + 3xy 也得到 -12",
+      "evidence":"Substitution into L at (-1,2) gives 3. -12 is the x derivative, which requires differentiating that expression first. This sentence confuses evaluating the output with evaluating its derivative, despite the separate independent-check section being correct.",
+      "files":["negative-fixed-example.png","initial-dom.json"]
+    },
+    {
+      "id":"Birch-5",
+      "severity":"minor step-state clarity issue",
+      "location":"Step 10 / 11 传回输入",
+      "evidence":"The edge and computation record both state that y has received 19×2=38, but the y node and summary still show dL/dy=? until step 11. Since y has only this one path, the displayed pending marker no longer matches the already completed calculation. x legitimately still awaits its explicit sum.",
+      "files":["step-10.png","interaction-results.json"]
+    }
+  ],
+  "judgment":"The shared-node sequence, state handling and responsive reading path are substantially complete. Numeric outputs are correct. The main defects are wrong negative-sign generalizations and mathematical text formatting; the omission opening and fixed negative example also contradict correct numbers elsewhere. No all-page comparison yet.",
+  "limitations":"Initial-delivery review, not a learner experiment; no measured-learning claim."
+}

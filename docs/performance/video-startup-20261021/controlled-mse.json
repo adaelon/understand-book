@@ -1,0 +1,73 @@
+{
+  "environment": "Windows Edge, localhost, CDP 1500 ms latency and 128 KiB/s; real file prefixes, original full lengths",
+  "scope": "First-frame and first second only. Full-duration seeking is not validated.",
+  "runs": [
+    {
+      "kind": "fragmented-mse",
+      "data_milestones": [
+        {
+          "at_ms": 3705,
+          "bytes": 262584
+        },
+        {
+          "at_ms": 5638,
+          "bytes": 525084
+        }
+      ],
+      "requests": [
+        {
+          "at_ms": 108,
+          "range": "bytes=0-1635"
+        },
+        {
+          "at_ms": 108,
+          "range": "bytes=24012-569652"
+        }
+      ],
+      "first_frame_ms": 6452,
+      "bytes_at_first_frame": 549386,
+      "playing_ms": 7535,
+      "media": {
+        "duration": 4641.376145,
+        "width": 1920,
+        "height": 1080,
+        "time": 1.050375
+      },
+      "status": "passed",
+      "events": [
+        {
+          "event": "loadedmetadata",
+          "time": 5929.5999999940395,
+          "ready": 1
+        },
+        {
+          "event": "loadeddata",
+          "time": 6559,
+          "ready": 4
+        },
+        {
+          "event": "playing",
+          "time": 6564,
+          "ready": 4
+        }
+      ],
+      "bytes_received": 549581
+    }
+  ],
+  "server_requests": [
+    {
+      "variant": "fragmented",
+      "range": "bytes=0-1635",
+      "start": 0,
+      "end": 1635,
+      "available": 2097152
+    },
+    {
+      "variant": "fragmented",
+      "range": "bytes=24012-569652",
+      "start": 24012,
+      "end": 569652,
+      "available": 2097152
+    }
+  ]
+}

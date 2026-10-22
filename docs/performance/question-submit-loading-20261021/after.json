@@ -1,0 +1,53 @@
+{
+  "scenario": "500 ms per HTTP request, 80 ms between input events; simulated network, no model",
+  "input_events": 31,
+  "clicked_at_ms": 2480,
+  "submitted_at_ms": 3500,
+  "click_to_submit_ms": 1020,
+  "click_to_accepted_ms": 1520,
+  "http_requests": 8,
+  "draft_saves": 6,
+  "final_message_matches": true,
+  "requests": [
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 0
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 500
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 1000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 1500
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 2000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 2500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 3000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/agent/runs",
+      "at_ms": 3500
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 1,
+  "position": 3,
+  "index": 3,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-03.json",
+  "ordinal": 8,
+  "started_utc": "2026-10-22T03:18:55.237025+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 21339,
+    "completion_tokens": 657,
+    "total_tokens": 21996,
+    "prompt_tokens_details": {
+      "cached_tokens": 14208
+    },
+    "prompt_cache_hit_tokens": 14208,
+    "prompt_cache_miss_tokens": 7131
+  },
+  "response_id": "ef432b0c-9d71-40d0-9f8e-d0185c858f1b",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标中更昂贵，并不保证验证误差单调下降。[[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合的关系**\n\n- 惩罚太弱时，模型可能把训练样本中特有的噪声也当成规律，于是训练误差继续下降，而未见样本上的误差反而上升。[[source:source_ref_c52685f9e6cb9140]]\n- 惩罚适当，可能降低模型对训练噪声的敏感程度，从而改善泛化。[[source:source_ref_679b2138443382f8]]\n- 惩罚过强，模型连训练数据中的主要关系都学不好，就会欠拟合；欠拟合常表现为训练误差和验证误差都较高。[[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n\n所以，随着 lambda 增大，验证误差通常先降后升，呈 U 形；最优点在中间，不在两端。这是把上述两条原则合起来得到的推论，材料本身没有画出这条曲线。\n\n**验证集在其中的作用**\n\nlambda 是超参数，通常由验证集或交叉验证来选择，测试集不用于反复挑选 lambda。[[source:source_ref_679b2138443382f8]] 训练误差上升本身不是变差的证据：增加正则化强度后训练误差可能上升，只要验证表现改善，就不等于模型变差。[[source:source_ref_679b2138443382f8]] 选定 lambda 后，最终仍要在未参与调参的测试集上评估；验证误差不是对所有未来数据的保证。[[source:source_ref_c52685f9e6cb9140]]\n\n**比较页面应让你观察什么**\n\n1. **横轴是 lambda，纵轴是误差，两条曲线并列**：一条训练误差，一条验证误差，使用同一数据划分和同一误差指标。[[source:source_ref_c52685f9e6cb9140]]\n2. **验证曲线的最低点**：它对应被选中的 lambda，而不是训练曲线的最低点。\n3. **左端**：训练误差低、验证误差高，说明惩罚不足，模型在拟合噪声。[[source:source_ref_c52685f9e6cb9140]]\n4. **右端**：两条曲线都抬高，说明惩罚过强，模型欠拟合。[[source:source_ref_679b2138443382f8]]\n5. **训练误差单调下降而验证误差回升的区段**：这是过拟合的直观信号，也是“训练误差越低越好”这一直觉失效的地方。[[source:source_ref_c52685f9e6cb9140]]\n6. **测试集单独标出，不参与选择**：它只作为最终评估点，不随 lambda 调参反复使用。[[source:source_ref_679b2138443382f8]]\n\n如果你需要，我可以把这个比较做成一个可拖动 lambda 的页面，让你直接看到验证曲线的最低点如何移动。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 832.25,
+  "first_text_ms": 832.25,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 146.082,
+  "streaming": true,
+  "duration_ms": 3709.994,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 21339,
+    "cached_input_tokens": 14208,
+    "uncached_input_tokens": 7131,
+    "output_tokens": 657
+  },
+  "cost": {
+    "input_cny": "0.01483032",
+    "output_cny": "0.005256",
+    "total_cny": "0.02008632",
+    "total_rounded_micro_cny": 20087
+  }
+}

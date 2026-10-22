@@ -1,0 +1,629 @@
+{
+  "design": {
+    "basis_refs": [
+      "usage:tutor-begin-1:user:turn_f3f677221eb81f2b"
+    ],
+    "blocks": [
+      {
+        "block_id": "distance-time",
+        "purpose": "让学习者看清：图上距离由已应用的速度和共同时间共同决定，输入框里的新数值在应用前不参与计算。",
+        "relation": "距离等于速度乘时间。页面把输入速度和应用速度分开保存：只有点“应用速度”后，输入值才写入应用速度，距离图才按新速度重算；在此之前，距离仍按上一次应用的速度计算。",
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    ],
+    "connections": [],
+    "focus_block_refs": [
+      "distance-time"
+    ],
+    "open_question_refs": [],
+    "organizing_model": "当前问题是操作层面的：输入速度已改为 2 米/秒，但页面状态显示 applied_speed 仍为 1、input_speed 为 2，visible_step 为 awaiting_apply，所以距离仍按 1 米/秒乘 10 秒得 10 米。要解释画面并给出让新结果出现的操作，需要说明输入值与已应用值的区别，以及距离等于速度乘时间这一关系。",
+    "previous_ref": "design:turn_f3f678221eb820de:om5",
+    "representation": {
+      "kind": "text",
+      "reason": "当前障碍是页面状态与操作步骤，用文字对照输入速度、应用速度和距离即可说清，无需新建页面。"
+    },
+    "revision_reason": "学习者当前请求从比较两车速度转为解释“改了速度但距离没变”的画面并询问如何让新结果出现；原设计聚焦整段行程平均速度，与本轮操作问题不符，故把焦点收回到距离等于速度乘时间及输入值与已应用值的区别。",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "能说明图上距离仍为 10 米是因为新速度尚未应用、距离按已应用速度 1 米/秒乘 10 秒计算，并指出点击“应用速度”后距离将变为 20 米。",
+      "learning_focus": "输入速度与已应用速度的区别及距离计算",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  },
+  "design_ref": "design:turn_f3f677221eb81f2b:om6-apply",
+  "instruction": "This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding.",
+  "learner_context_update": {
+    "current_design": {
+      "design": {
+        "basis_refs": [
+          "usage:tutor-begin-1:user:turn_f3f677221eb81f2b"
+        ],
+        "blocks": [
+          {
+            "block_id": "distance-time",
+            "purpose": "让学习者看清：图上距离由已应用的速度和共同时间共同决定，输入框里的新数值在应用前不参与计算。",
+            "relation": "距离等于速度乘时间。页面把输入速度和应用速度分开保存：只有点“应用速度”后，输入值才写入应用速度，距离图才按新速度重算；在此之前，距离仍按上一次应用的速度计算。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "focus_block_refs": [
+          "distance-time"
+        ],
+        "open_question_refs": [],
+        "organizing_model": "当前问题是操作层面的：输入速度已改为 2 米/秒，但页面状态显示 applied_speed 仍为 1、input_speed 为 2，visible_step 为 awaiting_apply，所以距离仍按 1 米/秒乘 10 秒得 10 米。要解释画面并给出让新结果出现的操作，需要说明输入值与已应用值的区别，以及距离等于速度乘时间这一关系。",
+        "previous_ref": "design:turn_f3f678221eb820de:om5",
+        "representation": {
+          "kind": "text",
+          "reason": "当前障碍是页面状态与操作步骤，用文字对照输入速度、应用速度和距离即可说清，无需新建页面。"
+        },
+        "revision_reason": "学习者当前请求从比较两车速度转为解释“改了速度但距离没变”的画面并询问如何让新结果出现；原设计聚焦整段行程平均速度，与本轮操作问题不符，故把焦点收回到距离等于速度乘时间及输入值与已应用值的区别。",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "能说明图上距离仍为 10 米是因为新速度尚未应用、距离按已应用速度 1 米/秒乘 10 秒计算，并指出点击“应用速度”后距离将变为 20 米。",
+          "learning_focus": "输入速度与已应用速度的区别及距离计算",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "design_ref": "design:turn_f3f677221eb81f2b:om6-apply"
+    },
+    "current_target": {
+      "capability": "explanation",
+      "expected_performance": "能说明图上距离仍为 10 米是因为新速度尚未应用、距离按已应用速度 1 米/秒乘 10 秒计算，并指出点击“应用速度”后距离将变为 20 米。",
+      "learning_focus": "输入速度与已应用速度的区别及距离计算",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+    "entries": [],
+    "evidence_watermark": 0,
+    "interpretations": [],
+    "learner_grounding": {
+      "delivered_support": [
+        {
+          "action_ref": null,
+          "actor": null,
+          "answer": "Compare total distance and total time.",
+          "before_receipt": null,
+          "delivery_ref": "delivery:turn_f3f678221eb820de:compare-speed",
+          "feedback": null,
+          "kind": "message_delivered",
+          "move": {
+            "actions": [],
+            "block_refs": [
+              "distance-time"
+            ],
+            "capability": "explanation",
+            "design_ref": "design:turn_f3f678221eb820de:om5",
+            "intent_origin": "neutral",
+            "intent_quote": null,
+            "interaction_intent": "neutral",
+            "interpretation_refs": [],
+            "kind": "compare",
+            "move_id": "compare-speed",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": {
+              "presentation_id": "presentation-1792495402778007900-3",
+              "revision": 1
+            },
+            "prompt": "共同时间保持 10 秒，先看 A、B 各走 10 米，再改变 B。",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Distinguish moving time from total elapsed time",
+              "learning_focus": "Whole-trip average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "presentation": {
+            "based_on": null,
+            "candidate_id": "candidate-1792495402778010600-4",
+            "content": {
+              "action_contract": [
+                {
+                  "kind": "set_parameters",
+                  "parameters": [
+                    "input_speed",
+                    "time_s"
+                  ]
+                },
+                {
+                  "action_id": "apply",
+                  "kind": "invoke",
+                  "label": "应用速度"
+                },
+                {
+                  "action_id": "reset",
+                  "kind": "invoke",
+                  "label": "重置"
+                },
+                {
+                  "kind": "highlight",
+                  "region_id": "result"
+                },
+                {
+                  "kind": "reveal",
+                  "region_id": "relation"
+                },
+                {
+                  "kind": "annotate",
+                  "region_id": "annotation"
+                }
+              ],
+              "assumptions": [
+                "构造的匀速运动；无加速、摩擦或碰撞。对照模型不自动证明现实观察数据中的因果关系。"
+              ],
+              "entrypoint": "index.html",
+              "method_observations": {
+                "catalog": null,
+                "reads": []
+              },
+              "readable_content": "A 保持 1 米/秒，B 可设为 0–3 米/秒。两车从同一起点出发，共用 0–10 秒的时间和 0–30 米的尺度。输入速度应用后才更新距离图。距离等于速度乘时间；同一正时间下，B 的速度翻倍，其距离也翻倍。可自行改参数、拖动时间、显示关系或提问。",
+              "source_bindings": [],
+              "teaching_binding": {
+                "block_refs": [
+                  "distance-time"
+                ],
+                "design_ref": "design:turn_f3f678221eb820de:om5",
+                "regions": [
+                  {
+                    "block_refs": [
+                      "distance-time"
+                    ],
+                    "observation": "共同时间下两车实际走过的距离",
+                    "region_id": "result",
+                    "state_fields": [
+                      "applied_speed",
+                      "time_s"
+                    ]
+                  },
+                  {
+                    "block_refs": [
+                      "distance-time"
+                    ],
+                    "observation": "速度、共同时间与距离的比例关系",
+                    "region_id": "relation",
+                    "state_fields": [
+                      "revealed"
+                    ]
+                  },
+                  {
+                    "block_refs": [
+                      "distance-time"
+                    ],
+                    "observation": "同起点、同时间、同尺度的固定条件",
+                    "region_id": "annotation",
+                    "state_fields": [
+                      "annotated"
+                    ]
+                  }
+                ]
+              },
+              "title": "快一倍，会远一倍吗？"
+            },
+            "created_by_turn_id": "turn_f3f678221eb820de",
+            "owner": {
+              "book_id": "sample-book",
+              "session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6"
+            },
+            "reference": {
+              "presentation_id": "presentation-1792495402778007900-3",
+              "revision": 1
+            }
+          },
+          "presentations": null,
+          "scene": null,
+          "text": null
+        }
+      ],
+      "expressions": [
+        {
+          "assistance_refs": [],
+          "fact_ref": "usage:tutor-begin-1:user:turn_f3f677221eb81f2b",
+          "invitation_context_ref": null,
+          "presentations": [],
+          "response_origin": null,
+          "scene": {
+            "owner": {
+              "book_id": "sample-book",
+              "session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6"
+            },
+            "receipt": {
+              "reference": {
+                "presentation_id": "presentation-1792495402778007900-3",
+                "revision": 1
+              },
+              "saved_state_ref": "state-1792495403017748300-5",
+              "session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6",
+              "state_revision": 1,
+              "turn_id": "turn_f3f678221eb820de"
+            },
+            "state": {
+              "observation": {
+                "rendered": {
+                  "distance_a_m": 10,
+                  "distance_b_m": 10,
+                  "speed_b_m_s": 1
+                },
+                "state": {
+                  "speed_b_m_s": 2
+                },
+                "summary": "共同时间 10 秒"
+              },
+              "observed_result": "A 走 10 米，B 走 10 米。",
+              "source_ref_ids": [],
+              "values": {
+                "page": {
+                  "annotated": false,
+                  "applied_speed": 1,
+                  "input_speed": 2,
+                  "revealed": false,
+                  "time_s": 10
+                }
+              },
+              "visible_step": "awaiting_apply"
+            }
+          },
+          "support_delivery_refs": [
+            "delivery:turn_f3f678221eb820de:compare-speed"
+          ],
+          "text": "我把 B 的速度从 1 调到 2 米/秒了，为什么图上还是 10 米？先解释现在的画面，再告诉我怎么让它显示新结果。"
+        }
+      ],
+      "interpretations": [],
+      "unavailable_basis_refs": [],
+      "unknown_when_absent": true
+    },
+    "learning_opportunity": {
+      "continuity": {
+        "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+        "content_char_budget": 6000,
+        "open_questions": [],
+        "previous_work": [
+          {
+            "action_ref": null,
+            "assessment_ref": null,
+            "assessment_status": "unassessed",
+            "assistance_refs": [],
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "turn_id": "turn_f3f677221eb81f2b",
+              "tutor_session_id": "tutor-begin-1"
+            },
+            "delivery_ref": null,
+            "evidence_refs": [],
+            "fact_refs": [
+              "usage:tutor-begin-1:user:turn_f3f677221eb81f2b"
+            ],
+            "help": [
+              {
+                "content_excerpt": {
+                  "text": "Compare total distance and total time.",
+                  "truncated": false
+                },
+                "fact_ref": "delivery:turn_f3f678221eb820de:compare-speed"
+              }
+            ],
+            "help_truncated": false,
+            "historical": false,
+            "learner_quote_excerpt": {
+              "text": "我把 B 的速度从 1 调到 2 米/秒了，为什么图上还是 10 米？先解释现在的画面，再告诉我怎么让它显示新结果。",
+              "truncated": false
+            },
+            "presentation_receipt": {
+              "reference": {
+                "presentation_id": "presentation-1792495402778007900-3",
+                "revision": 1
+              },
+              "saved_state_ref": "state-1792495403017748300-5",
+              "session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6",
+              "state_revision": 1,
+              "turn_id": "turn_f3f678221eb820de"
+            },
+            "published_book_ref": null,
+            "response_origin": null,
+            "saved_state_ref": "state-1792495403017748300-5",
+            "source_refs": [
+              {
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                },
+                "publication_id": null,
+                "source_id": "sample-book",
+                "source_ref_id": null,
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+              }
+            ],
+            "support_delivery_refs": [
+              "delivery:turn_f3f678221eb820de:compare-speed"
+            ]
+          }
+        ],
+        "read_more": [
+          {
+            "arguments": {
+              "event_id": "usage:tutor-begin-1:user:turn_f3f677221eb81f2b",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          },
+          {
+            "arguments": {
+              "event_id": "delivery:turn_f3f678221eb820de:compare-speed",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          }
+        ],
+        "scope": {
+          "design_ref": "design:turn_f3f677221eb81f2b:om6-apply",
+          "focus_block_refs": [
+            "distance-time"
+          ],
+          "learning_workspace_id": null,
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "tutor_session_id": "tutor-begin-1",
+          "workspace_goal_revision": null
+        },
+        "teaching_implications": [],
+        "truncated": false
+      },
+      "delivered_support": [
+        {
+          "answer_preview": {
+            "text": "Compare total distance and total time.",
+            "truncated": false
+          },
+          "block_refs": [
+            "distance-time"
+          ],
+          "delivery_ref": "delivery:turn_f3f678221eb820de:compare-speed",
+          "design_ref": "design:turn_f3f678221eb820de:om5",
+          "displayed_help": [],
+          "learner_expressions": [
+            {
+              "assistance_refs": [],
+              "expression_preview": {
+                "text": "我把 B 的速度从 1 调到 2 米/秒了，为什么图上还是 10 米？先解释现在的画面，再告诉我怎么让它显示新结果。",
+                "truncated": false
+              },
+              "fact_ref": "usage:tutor-begin-1:user:turn_f3f677221eb81f2b",
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_f3f677221eb81f2b"
+              ],
+              "interpretations": [],
+              "invitation_context_ref": null,
+              "response_origin": null,
+              "scene": {
+                "evidence_boundary": "This saved browser scene records controls and rendered results, not that the learner noticed, explained or understood them. Unedited page prefill is not an independent learner expression.",
+                "observed_result_preview": {
+                  "text": "A 走 10 米，B 走 10 米。",
+                  "truncated": false
+                },
+                "presentation": {
+                  "evidence_boundary": "Delivered page content is available support, not proof that the learner read or understood it.",
+                  "readable_content_preview": {
+                    "text": "A 保持 1 米/秒，B 可设为 0–3 米/秒。两车从同一起点出发，共用 0–10 秒的时间和 0–30 米的尺度。输入速度应用后才更新距离图。距离等于速度乘时间；同一正时间下，B 的速度翻倍，其距离也翻倍。可自行改参数、拖动时间、显示关系或提问。",
+                    "truncated": false
+                  },
+                  "reference": {
+                    "presentation_id": "presentation-1792495402778007900-3",
+                    "revision": 1
+                  },
+                  "teaching_binding": {
+                    "block_refs": [
+                      "distance-time"
+                    ],
+                    "design_ref": "design:turn_f3f678221eb820de:om5",
+                    "regions": [
+                      {
+                        "block_refs": [
+                          "distance-time"
+                        ],
+                        "observation": "共同时间下两车实际走过的距离",
+                        "region_id": "result",
+                        "state_fields": [
+                          "applied_speed",
+                          "time_s"
+                        ]
+                      },
+                      {
+                        "block_refs": [
+                          "distance-time"
+                        ],
+                        "observation": "速度、共同时间与距离的比例关系",
+                        "region_id": "relation",
+                        "state_fields": [
+                          "revealed"
+                        ]
+                      },
+                      {
+                        "block_refs": [
+                          "distance-time"
+                        ],
+                        "observation": "同起点、同时间、同尺度的固定条件",
+                        "region_id": "annotation",
+                        "state_fields": [
+                          "annotated"
+                        ]
+                      }
+                    ]
+                  },
+                  "title": "快一倍，会远一倍吗？"
+                },
+                "receipt": {
+                  "reference": {
+                    "presentation_id": "presentation-1792495402778007900-3",
+                    "revision": 1
+                  },
+                  "saved_state_ref": "state-1792495403017748300-5",
+                  "session_id": "chat-01a1590d-3c7c-74b2-81da-598fce6a24e6",
+                  "state_revision": 1,
+                  "turn_id": "turn_f3f678221eb820de"
+                },
+                "source_ref_ids": [],
+                "values_preview": {
+                  "text": "{\"page\":{\"annotated\":false,\"applied_speed\":1,\"input_speed\":2,\"revealed\":false,\"time_s\":10}}",
+                  "truncated": false
+                },
+                "visible_step": "awaiting_apply"
+              },
+              "support_delivery_refs": [
+                "delivery:turn_f3f678221eb820de:compare-speed"
+              ]
+            }
+          ],
+          "participation": {
+            "choice": "support",
+            "learner_inference": null,
+            "reason": "The fixture delivers an explanation without requesting a new response.",
+            "support": "The complete journey includes stopped time as well as moving time."
+          },
+          "presentation": {
+            "presentation_id": "presentation-1792495402778007900-3",
+            "revision": 1
+          },
+          "presentation_support": {
+            "evidence_boundary": "Delivered page content is available support, not proof that the learner read or understood it.",
+            "readable_content_preview": {
+              "text": "A 保持 1 米/秒，B 可设为 0–3 米/秒。两车从同一起点出发，共用 0–10 秒的时间和 0–30 米的尺度。输入速度应用后才更新距离图。距离等于速度乘时间；同一正时间下，B 的速度翻倍，其距离也翻倍。可自行改参数、拖动时间、显示关系或提问。",
+              "truncated": false
+            },
+            "reference": {
+              "presentation_id": "presentation-1792495402778007900-3",
+              "revision": 1
+            },
+            "teaching_binding": {
+              "block_refs": [
+                "distance-time"
+              ],
+              "design_ref": "design:turn_f3f678221eb820de:om5",
+              "regions": [
+                {
+                  "block_refs": [
+                    "distance-time"
+                  ],
+                  "observation": "共同时间下两车实际走过的距离",
+                  "region_id": "result",
+                  "state_fields": [
+                    "applied_speed",
+                    "time_s"
+                  ]
+                },
+                {
+                  "block_refs": [
+                    "distance-time"
+                  ],
+                  "observation": "速度、共同时间与距离的比例关系",
+                  "region_id": "relation",
+                  "state_fields": [
+                    "revealed"
+                  ]
+                },
+                {
+                  "block_refs": [
+                    "distance-time"
+                  ],
+                  "observation": "同起点、同时间、同尺度的固定条件",
+                  "region_id": "annotation",
+                  "state_fields": [
+                    "annotated"
+                  ]
+                }
+              ]
+            },
+            "title": "快一倍，会远一倍吗？"
+          },
+          "responding_to_expressions": [],
+          "response_expectation": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Distinguish moving time from total elapsed time",
+            "learning_focus": "Whole-trip average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teacher_actions": []
+        }
+      ],
+      "design_ref": "design:turn_f3f677221eb81f2b:om6-apply",
+      "focus_block_refs": [
+        "distance-time"
+      ],
+      "interpretation_refs": [],
+      "pending_response_invitation": null,
+      "return_context": null,
+      "unknown_when_absent": true
+    },
+    "path_progress": [],
+    "pending_activity": null,
+    "pending_assessment_refs": [],
+    "pending_response_invitation": null,
+    "projection_watermark": 0,
+    "stale": false,
+    "uninterpreted_fact_refs": [
+      "usage:tutor-begin-1:user:turn_f3f677221eb81f2b",
+      "usage:tutor-begin-1:user:turn_f3f678221eb820de"
+    ],
+    "unknown_when_absent": true
+  }
+}

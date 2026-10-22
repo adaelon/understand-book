@@ -1,0 +1,293 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1792645982445378300-7",
+    "revision": 1
+  },
+  "candidate_id": "candidate-1792645982445386700-8",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-10-16T04:00:00Z_0"
+  },
+  "created_by_turn_id": "turn_1a986d9fd8e2f279",
+  "based_on": null,
+  "content": {
+    "action_contract": [
+      {
+        "kind": "set_parameters",
+        "parameters": [
+          "p",
+          "d",
+          "f"
+        ]
+      }
+    ],
+    "method_refs": [],
+    "method_observations": {
+      "catalog": {
+        "methods": [
+          {
+            "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "discrete-update",
+            "name": "追踪一次离散更新",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+            "revision": 3,
+            "root": "skills/presentation/methods/discrete-update/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "object-transform",
+            "name": "保持身份的对象变换",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+            "revision": 2,
+            "root": "skills/presentation/methods/object-transform/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+            "revision": 3,
+            "root": "skills/presentation/methods/compare-one-factor/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/compare-one-factor/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "part-whole",
+            "name": "整体与部分保持对应",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+            "revision": 2,
+            "root": "skills/presentation/methods/part-whole/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "process-reveal",
+            "name": "沿关系逐步展开过程",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+            "revision": 2,
+            "root": "skills/presentation/methods/process-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "evidence-chain",
+            "name": "从证据走到有边界的结论",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+            "revision": 2,
+            "root": "skills/presentation/methods/evidence-chain/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "counterexamples.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先看见数量关系，再核对参数",
+            "needs": [
+              "state"
+            ],
+            "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+            "revision": 3,
+            "root": "skills/presentation/methods/chart-reveal/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先建立尺度，再揭示数据",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/chart-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "scale-zoom",
+            "name": "保留定位的尺度缩放",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+            "revision": 2,
+            "root": "skills/presentation/methods/scale-zoom/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md",
+              "runtime.js",
+              "adaptations/spring.html",
+              "adaptations/spring-author.json"
+            ],
+            "id": "spatial-linked-views",
+            "name": "三维结构与图解共用一个模型",
+            "needs": [
+              "three",
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+            "revision": 1,
+            "root": "skills/presentation/methods/spatial-linked-views/v1",
+            "status": "adopted"
+          }
+        ],
+        "revision": 6
+      },
+      "reads": []
+    },
+    "animation_assets": {},
+    "title": "报警的零件，大多真的有缺陷吗？",
+    "content_files": {
+      "index.html": "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>报警的零件，大多真的有缺陷吗？</title>\n<style>\n:root{\n  --canvas:#fbfaf7; --ink:#1b2430; --surface:#ffffff; --line:#d9d4c9; --accent:#1f6feb;\n  --c-true:#1f6feb; --c-miss:#c2455e; --c-false:#e0972f; --c-ok:#cbd4de;\n}\n*{box-sizing:border-box}\nhtml,body{margin:0}\nbody{background:var(--canvas);color:var(--ink);font:16px/1.72 -apple-system,\"Segoe UI\",\"Noto Sans SC\",system-ui,sans-serif;padding:18px 14px 44px;-webkit-text-size-adjust:100%}\n.wrap{max-width:840px;margin:0 auto}\nh1{font-size:clamp(21px,5.6vw,29px);line-height:1.34;margin:0 0 10px}\n.lead{margin:0 0 8px;color:#3b4655}\nh2{font-size:clamp(17px,4.4vw,20px);line-height:1.45;margin:32px 0 10px;padding-top:16px;border-top:1px solid var(--line)}\nh3{font-size:15.5px;margin:18px 0 6px}\np{margin:0 0 10px}\nul{margin:0 0 10px;padding-left:1.2em}\nli{margin:0 0 6px}\nb,strong{font-weight:700}\n.grid{border-collapse:collapse;width:100%;table-layout:fixed;font-variant-numeric:tabular-nums}\n.grid th,.grid td{border:1px solid var(--line);padding:7px 4px;text-align:center;vertical-align:middle;font-size:13.5px;overflow-wrap:break-word}\n.grid th{background:#f4f2ec;font-weight:600}\n.grid th.hDef{background:#e8efff}\n.grid th.hGood{background:#fdf2df}\n.grid td.rHead,.grid th.rHead{background:#f4f2ec;font-weight:600}\n.grid td.sum{background:#faf8f3}\n.v{display:block;font-size:17px;font-weight:700;line-height:1.28}\n.k{display:block;font-size:10.5px;color:#5a6675;line-height:1.3;font-weight:400}\n.tag{display:block;font-size:10px;color:#4d5a6a;font-weight:400;line-height:1.35;margin-top:2px}\n.bar{display:flex;width:100%;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}\n.bar i{display:block;height:100%;min-width:0}\n.barCap{font-size:12.5px;color:#5a6675;margin:0 0 6px}\n.legend{display:grid;gap:5px;margin:10px 0 0;font-size:13.5px}\n.legend div{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}\n.sw{width:13px;height:13px;border-radius:3px;flex:0 0 13px;align-self:center}\n.legend b{font-variant-numeric:tabular-nums}\n.read{font-size:clamp(17px,4.6vw,20px);font-weight:700;margin:14px 0 6px;line-height:1.5}\n.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;margin:14px 0}\n.card h3{margin:0 0 6px}\n.mini{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums;margin:6px 0 0}\n.mini th,.mini td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}\n.mini th{color:#4d5a6a;font-weight:600;font-size:12.5px}\n.mini td.num{text-align:right;white-space:nowrap;font-weight:700}\n.cmp{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}\n.cmp th,.cmp td{border:1px solid var(--line);padding:6px 5px;text-align:center}\n.cmp th{background:#f4f2ec;font-size:12.5px;font-weight:600}\n.cmp td:first-child,.cmp th:first-child{text-align:left}\n.ctrl{display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:center;margin:0 0 16px}\n.ctrl label{font-weight:600}\n.ctrl output{font-weight:700;font-variant-numeric:tabular-nums;font-size:16px}\n.ctrl input[type=range]{grid-column:1/-1;width:100%;height:44px;margin:0;accent-color:var(--accent)}\n.ctrl .hint{grid-column:1/-1;font-size:12.5px;color:#5a6675;margin:0}\n.presets{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0}\nbutton{font:inherit;font-size:13.5px;min-height:44px;min-width:44px;padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}\nbutton:active{background:#eef2f8}\n.note{font-size:13px;color:#5a6675}\n.lever{font-size:14px;margin:0 0 8px}\n@media (max-width:430px){\n  .grid th,.grid td{padding:5px 2px;font-size:12px}\n  .v{font-size:15px}\n  .tag{font-size:9.5px}\n  .k{font-size:10px}\n}\n</style>\n</head>\n<body>\n<div class=\"wrap\">\n  <h1>报警的零件，大多真的有缺陷吗？</h1>\n  <p class=\"lead\">一批 10000 件零件，每件只有“有缺陷”或“无缺陷”两种真实状态；检测器对每件只给出“报警”或“不报警”。下面数的是长期平均的期望件数，所以数可以带小数。先把这批零件数成四格，再只看报了警的那一堆。</p>\n\n  <h2>一、先把这 10000 件数成四格</h2>\n  <p class=\"note\" id=\"gridNote\">当前 p=1%、d=95%、f=5%。三个比例各自作用在固定的一群人身上，四格就是这群人分出来的四份。</p>\n  <table class=\"grid\">\n    <caption class=\"barCap\" style=\"text-align:left\">期望件数（每件只落在其中一格）</caption>\n    <thead>\n      <tr>\n        <th class=\"rHead\">检测器</th>\n        <th class=\"hDef\">有缺陷<span class=\"tag\">d 的分母 · <b id=\"hDef\">100</b> 件</span></th>\n        <th class=\"hGood\">无缺陷<span class=\"tag\">f 的分母 · <b id=\"hGood\">9900</b> 件</span></th>\n        <th>合计</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr>\n        <td class=\"rHead\">报警<span class=\"tag\">可信度的分母</span></td>\n        <td><span class=\"v\" id=\"cTA\">95</span><span class=\"k\">正确报警</span></td>\n        <td><span class=\"v\" id=\"cFA\">495</span><span class=\"k\">误报</span></td>\n        <td class=\"sum\"><span class=\"v\" id=\"rAlarm\">590</span><span class=\"k\">全部报警</span></td>\n      </tr>\n      <tr>\n        <td class=\"rHead\">不报警</td>\n        <td><span class=\"v\" id=\"cM\">5</span><span class=\"k\">漏检</span></td>\n        <td><span class=\"v\" id=\"cCR\">9405</span><span class=\"k\">正确放行</span></td>\n        <td class=\"sum\"><span class=\"v\" id=\"rNoAlarm\">9410</span><span class=\"k\">没报警</span></td>\n      </tr>\n      <tr>\n        <td class=\"rHead\">合计</td>\n        <td class=\"sum\"><span class=\"v\" id=\"cDef\">100</span><span class=\"k\">有缺陷</span></td>\n        <td class=\"sum\"><span class=\"v\" id=\"cGood\">9900</span><span class=\"k\">无缺陷</span></td>\n        <td class=\"sum\"><span class=\"v\">10000</span><span class=\"k\">整批</span></td>\n      </tr>\n    </tbody>\n  </table>\n  <p style=\"margin-top:10px\">四格的算法都是从整批出发连乘出来的：先用 p 把 10000 件切成两列，再用 d 切“有缺陷”那一列、用 f 切“无缺陷”那一列。</p>\n  <ul>\n    <li><b>有缺陷件</b> = 10000 ÷ 100 × p = <span class=\"num\" id=\"qDef\">100</span> 件；<b>无缺陷件</b> = 10000 − 有缺陷件 = <span class=\"num\" id=\"qGood\">9900</span> 件。</li>\n    <li><b>正确报警</b> = 有缺陷件 × d = <span class=\"num\" id=\"qTA\">95</span> 件；<b>漏检</b> = 有缺陷件 − 正确报警 = <span class=\"num\" id=\"qM\">5</span> 件。</li>\n    <li><b>误报</b> = 无缺陷件 × f = <span class=\"num\" id=\"qFA\">495</span> 件；<b>正确放行</b> = 无缺陷件 − 误报 = <span class=\"num\" id=\"qCR\">9405</span> 件。</li>\n    <li><b>全部报警</b> = 正确报警 + 误报 = <span class=\"num\" id=\"qTA2\">95</span> + <span class=\"num\" id=\"qFA2\">495</span> = <span class=\"num\" id=\"qTot\">590</span> 件；这 590 件就是报警可信度的分母。</li>\n  </ul>\n\n  <h2>二、三个比例，三个分母</h2>\n  <p>你分不清的那两句话，区别就在分母上。下面三行把所有数固定在当前这组参数上，右边的分数就是每个比例的出处。</p>\n  <table class=\"mini\">\n    <thead>\n      <tr><th>说法</th><th>算式</th><th style=\"text-align:right\">结果</th></tr>\n    </thead>\n    <tbody>\n      <tr>\n        <td>检出率 d<br><span class=\"note\">有缺陷件中会报警的比例</span></td>\n        <td><span id=\"dNum\">95</span> ÷ <span id=\"dDen\">100</span><br><span class=\"note\">分母：有缺陷件</span></td>\n        <td class=\"num\" id=\"dVal\">95%</td>\n      </tr>\n      <tr>\n        <td>误报率 f<br><span class=\"note\">无缺陷件中会报警的比例</span></td>\n        <td><span id=\"fNum\">495</span> ÷ <span id=\"fDen\">9900</span><br><span class=\"note\">分母：无缺陷件</span></td>\n        <td class=\"num\" id=\"fVal\">5%</td>\n      </tr>\n      <tr>\n        <td>报警可信度<br><span class=\"note\">一次报警里真有缺陷的比例（有的教材叫精确率）</span></td>\n        <td><span id=\"pNum\">95</span> ÷ <span id=\"pDen\">590</span><br><span class=\"note\">分母：全部报警件</span></td>\n        <td class=\"num\" id=\"pVal\">16.1%</td>\n      </tr>\n    </tbody>\n  </table>\n  <p style=\"margin-top:10px\">前两行沿着列往下数：从一群人出发，数出其中报警的有多少。第三行横着数：从已经报警的那一堆出发，回头看其中真有缺陷的有多少。方向反过来，分母就跟着换。</p>\n\n  <h2>三、整批的分段：谁占满了这批货</h2>\n  <p class=\"barCap\">整批 10000 件 · 四段相加 = 10000</p>\n  <div class=\"bar\" id=\"barAll\" role=\"img\" aria-label=\"整批 10000 件的四段构成\">\n    <i id=\"sgTA\" style=\"background:var(--c-true)\"></i>\n    <i id=\"sgM\" style=\"background:var(--c-miss)\"></i>\n    <i id=\"sgFA\" style=\"background:var(--c-false)\"></i>\n    <i id=\"sgCR\" style=\"background:var(--c-ok)\"></i>\n  </div>\n  <div class=\"legend\">\n    <div><span class=\"sw\" style=\"background:var(--c-true)\"></span>有缺陷 · 报警（正确报警）<b id=\"lTA\">95</b> 件</div>\n    <div><span class=\"sw\" style=\"background:var(--c-miss)\"></span>有缺陷 · 不报警（漏检）<b id=\"lM\">5</b> 件</div>\n    <div><span class=\"sw\" style=\"background:var(--c-false)\"></span>无缺陷 · 报警（误报）<b id=\"lFA\">495</b> 件</div>\n    <div><span class=\"sw\" style=\"background:var(--c-ok)\"></span>无缺陷 · 不报警（正确放行）<b id=\"lCR\">9405</b> 件</div>\n  </div>\n  <p style=\"margin-top:10px\" id=\"barAllNote\">整批里只有 1% 是有缺陷的，所以左边两段被挤成一条细缝。这条细缝正好是整篇的问题所在：它很短，可是报警主要从右边那段长条里冒出来。要看清楚，就把报警件单独摊开。</p>\n\n  <h2>四、只数报警的那一堆</h2>\n  <p class=\"barCap\" id=\"barBCap\">只数报了警的 590 件 · 两段相加 = 全部报警</p>\n  <div class=\"bar\" id=\"barAlarm\" role=\"img\" aria-label=\"报警件的构成：正确报警与误报\">\n    <i id=\"sgT2\" style=\"background:var(--c-true)\"></i>\n    <i id=\"sgF2\" style=\"background:var(--c-false)\"></i>\n  </div>\n  <div class=\"legend\">\n    <div><span class=\"sw\" style=\"background:var(--c-true)\"></span>真有缺陷<b id=\"l2T\">95</b> 件</div>\n    <div><span class=\"sw\" style=\"background:var(--c-false)\"></span>其实无缺陷（误报）<b id=\"l2F\">495</b> 件</div>\n  </div>\n  <p class=\"read\" id=\"precLine\">报警可信度 = 95 ÷ 590 = 16.1%</p>\n  <p id=\"precRest\">意思是：随手拿起一件报了警的零件，它在长期平均里属于“真有缺陷”的部分占 16.1%，其余 83.9% 是冤枉的。</p>\n  <div class=\"card\">\n    <h3>“误报率 5%”和“报警里只有 5% 是误报”是不是同一句话？</h3>\n    <p>不是。这两句话的分子可以是同一个数，分母却换了对象。</p>\n    <p><b>误报率 5%</b>：<span id=\"fRateFrac\">495 ÷ 9900</span>。分母是没有缺陷的 <span id=\"fRateDen\">9900</span> 件，这句话在说这群健康零件里有多少被冤枉报警。</p>\n    <p><b>报警里误报占 <span id=\"fShare\">83.9%</span></b>：<span id=\"fShareFrac\">495 ÷ 590</span>。分母是全部报警的 <span id=\"fShareDen\">590</span> 件，这句话在说报警这堆货里有多少是冤枉的。</p>\n    <p id=\"fWhy\">5% 之所以这么小、83.9% 之所以这么大，是因为 495 件误报摊在 9900 件健康零件上只占一点点，摊在 590 件报警上就占了大半。</p>\n  </div>\n\n  <h2>五、三个参数交给你</h2>\n  <p>拖动滑块，上面的表格、两条分段和所有读数会一起重算。整批始终 10000 件；d 与 f 按定义各自作用在自己那群人身上，不随 p 改变。</p>\n  <div class=\"ctrl\">\n    <label for=\"pIn\">缺陷率 p</label>\n    <output id=\"pOut\" for=\"pIn\">1%</output>\n    <input type=\"range\" id=\"pIn\" data-presentation-parameter=\"p\" min=\"0\" max=\"10\" step=\"0.1\" value=\"1\">\n    <p class=\"hint\">这批零件里有多大比例真有缺陷。它决定“有缺陷”那一列有多长。</p>\n  </div>\n  <div class=\"ctrl\">\n    <label for=\"dIn\">检出率 d</label>\n    <output id=\"dOut\" for=\"dIn\">95%</output>\n    <input type=\"range\" id=\"dIn\" data-presentation-parameter=\"d\" min=\"0\" max=\"100\" step=\"1\" value=\"95\">\n    <p class=\"hint\">有缺陷件中会报警的比例。它只在“有缺陷”那一列里移动件数。</p>\n  </div>\n  <div class=\"ctrl\">\n    <label for=\"fIn\">误报率 f</label>\n    <output id=\"fOut\" for=\"fIn\">5%</output>\n    <input type=\"range\" id=\"fIn\" data-presentation-parameter=\"f\" min=\"0\" max=\"10\" step=\"0.1\" value=\"5\">\n    <p class=\"hint\">无缺陷件中会报警的比例。它只在“无缺陷”那一列里移动件数。</p>\n  </div>\n  <div class=\"presets\">\n    <button type=\"button\" data-preset=\"init\">回到初始值</button>\n    <button type=\"button\" data-preset=\"sparse\">缺陷更少的批次</button>\n    <button type=\"button\" data-preset=\"lowf\">只把误报降到 1%</button>\n    <button type=\"button\" data-preset=\"fulld\">只把检出率拉满</button>\n    <button type=\"button\" data-preset=\"zero\">没有缺陷也不误报</button>\n    <button type=\"button\" data-preset=\"zerof\">没有缺陷但仍误报 5%</button>\n  </div>\n\n  <h2>六、为什么缺陷变少，报警就变得不可信</h2>\n  <p>拿两批零件对比，两批用同一个检测器：d 都是 95%，f 都是 5%，只有缺陷率不同。</p>\n  <table class=\"cmp\">\n    <thead>\n      <tr><th>同一台检测器</th><th>这批 p=1%</th><th>那批 p=0.1%</th></tr>\n    </thead>\n    <tbody>\n      <tr><td>有缺陷件</td><td>100</td><td>10</td></tr>\n      <tr><td>正确报警（= 有缺陷件 × 95%）</td><td>95</td><td>9.5</td></tr>\n      <tr><td>误报（≈ 无缺陷件 × 5%）</td><td>495</td><td>499.5</td></tr>\n      <tr><td>全部报警</td><td>590</td><td>509</td></tr>\n      <tr><td><b>报警可信度</b></td><td><b>16.1%</b></td><td><b>1.87%</b></td></tr>\n    </tbody>\n  </table>\n  <p style=\"margin-top:10px\">缺陷率从 1% 降到 0.1%，有缺陷件从 100 件掉到 10 件，正确报警跟着从 95 件掉到 9.5 件；无缺陷件从 9900 件变成 9990 件，误报几乎没动，从 495 件变成 499.5 件。分子缩小了十倍，分母却主要被那近 500 件误报撑着，于是 95÷590 变成 9.5÷509，可信度从 16.1% 掉到 1.87%。</p>\n  <p>这台检测器的 d 和 f 一个百分点都没变。变的是它们各自乘上的那群人有多大：正确报警乘在少数缺陷件上，误报乘在几乎整批的健康零件上。缺陷越少，这个落差越大，报警里真缺陷的份额就越低。这就是“灵敏的检测器仍然带来大量误报”的来历——灵敏说的是它在缺陷件里的表现，大量说的是它在健康件里的绝对件数。</p>\n  <p class=\"note\">点上面的“缺陷更少的批次”，可以把这条对比换成你自己动手核对。</p>\n\n  <h2>七、降误报和提高检出，各自在改什么</h2>\n  <p><b>提高 d</b>：把“有缺陷”那一列里原本漏掉的一些件改判成报警。这一步只动这一列（当前 <span id=\"leverDScope\">100</span> 件有缺陷件），误报一件不动；分子变大，分母同步变大。</p>\n  <p><b>降低 f</b>：把“无缺陷”那一列里被冤枉的一些件改判成不报警。这一步只动这一列（当前 <span id=\"leverFScope\">9900</span> 件无缺陷件），正确报警一件不动；分母变小，分子不动。</p>\n  <p>两句话都在说“改一个百分点”，挪动的件数却差得很远，因为两个百分点乘的人群大小不同。下面用当前这组参数各走一步：</p>\n  <div class=\"card\">\n    <p class=\"lever\" id=\"leverD\">—</p>\n    <p class=\"lever\" id=\"leverF\">—</p>\n    <p class=\"lever\" id=\"leverWhy\" style=\"margin-bottom:0\">—</p>\n  </div>\n  <p class=\"note\">每一步都以当前参数为基准，其余两个参数保持不变。d 到 100% 或 f 到 0% 时，对应的那一步就没有空间可走了。</p>\n\n  <h2>八、一件都不报警时，这个比例怎么理解</h2>\n  <p id=\"zeroNow\">—</p>\n  <p>把 p 拖到 0% 并且 f 拖到 0%（预设“没有缺陷也不误报”），这批零件里既没有缺陷件，也没有任何报警：分子是 0，分母也是 0。算术里 0 ÷ 0 没有结果，所以“报警件中有缺陷的比例”这时没有对象可数，说成 0% 或者 100% 都不对——它不是零，是没有定义。</p>\n  <p>如果 p 是 0% 但 f 还是 5%（预设“没有缺陷但仍误报”），报警会来 495 件，全是误报。分子 0、分母 495，这个比例算得出来，等于 0%：每一次报警的把握都是零。</p>\n  <p>两种情形的分界只在分母：分母不为零，比例就算得出来（哪怕等于 0%）；分母为零，比例就没有定义。</p>\n\n  <h2>九、把这几句带走</h2>\n  <ul>\n    <li>d 沿着“有缺陷”这一列往下数，报警可信度横着从“报警”这一行往回数。方向不同，分母就不同。</li>\n    <li>一次报警的把握 = 正确报警 ÷ 全部报警，而全部报警 = 有缺陷件 × d + 无缺陷件 × f。</li>\n    <li>缺陷率下降时，正确报警按缺陷件数缩小，误报按无缺陷件数几乎不变，所以报警可信度下降；d 与 f 都没有变。</li>\n    <li>提高 d 只在有缺陷那一列移件，降低 f 只在无缺陷那一列移件。同样一个百分点，挪动多少件取决于那一列有多长。</li>\n    <li>f=5% 讲的是健康零件里被冤枉的比例；“报警里 5% 是误报”讲的是报警堆里的构成。两者分母不同，数字自然不同。</li>\n  </ul>\n</div>\n<script>\n(function(){\n  var P = window.presentation || {};\n  var N = 10000;\n  var INIT = {p:1, d:95, f:5};\n  var LIM = {p:[0,10], d:[0,100], f:[0,10]};\n  var st = {p:INIT.p, d:INIT.d, f:INIT.f};\n  var PRESETS = {\n    init:{p:1,d:95,f:5},\n    sparse:{p:0.1,d:95,f:5},\n    lowf:{p:1,d:95,f:1},\n    fulld:{p:1,d:100,f:5},\n    zero:{p:0,d:95,f:0},\n    zerof:{p:0,d:95,f:5}\n  };\n  function $(id){ return document.getElementById(id); }\n  function clamp(k, v){\n    if (!isFinite(v)) return st[k];\n    var lo = LIM[k][0], hi = LIM[k][1];\n    return Math.min(hi, Math.max(lo, v));\n  }\n  function nf(x){\n    if (!isFinite(x)) return '—';\n    if (Math.abs(x - Math.round(x)) < 1e-9) return String(Math.round(x));\n    return x.toFixed(1);\n  }\n  function pnum(x){\n    if (!isFinite(x)) return '—';\n    if (Math.abs(x) < 1e-9) return '0';\n    var v = x < 10 ? x.toFixed(2) : x.toFixed(1);\n    return v.indexOf('.') >= 0 ? v.replace(/\\.?0+$/, '') : v;\n  }\n  function compute(s){\n    var def = N * s.p / 100;\n    var good = N - def;\n    var tDef = def * s.d / 100;\n    var miss = def - tDef;\n    var fa = good * s.f / 100;\n    var cr = good - fa;\n    var tot = tDef + fa;\n    return {def:def, good:good, tDef:tDef, miss:miss, fa:fa, cr:cr, tot:tot};\n  }\n  function setSeg(id, val, total){\n    var el = $(id);\n    if (!el) return;\n    var w = total > 0 ? (val / total) * 100 : 0;\n    el.style.width = Math.max(0, w).toFixed(4) + '%';\n    el.style.display = val > 0 ? 'block' : 'none';\n  }\n  function syncInputs(){\n    if ($('pIn')) $('pIn').value = st.p;\n    if ($('dIn')) $('dIn').value = st.d;\n    if ($('fIn')) $('fIn').value = st.f;\n    $('pOut').textContent = nf(st.p) + '%';\n    $('dOut').textContent = nf(st.d) + '%';\n    $('fOut').textContent = nf(st.f) + '%';\n    $('gridNote').textContent = '当前 p=' + nf(st.p) + '%、d=' + nf(st.d) + '%、f=' + nf(st.f) + '%。三个比例各自作用在固定的一群人身上，四格就是这群人分出来的四份。';\n  }\n  function render(){\n    var r = compute(st);\n    var prec = r.tot > 0 ? r.tDef / r.tot * 100 : NaN;\n\n    $('cTA').textContent = nf(r.tDef);\n    $('cFA').textContent = nf(r.fa);\n    $('cM').textContent = nf(r.miss);\n    $('cCR').textContent = nf(r.cr);\n    $('rAlarm').textContent = nf(r.tot);\n    $('rNoAlarm').textContent = nf(r.miss + r.cr);\n    $('cDef').textContent = nf(r.def);\n    $('cGood').textContent = nf(r.good);\n    $('hDef').textContent = nf(r.def);\n    $('hGood').textContent = nf(r.good);\n\n    $('qDef').textContent = nf(r.def);\n    $('qGood').textContent = nf(r.good);\n    $('qTA').textContent = nf(r.tDef);\n    $('qM').textContent = nf(r.miss);\n    $('qFA').textContent = nf(r.fa);\n    $('qCR').textContent = nf(r.cr);\n    $('qTA2').textContent = nf(r.tDef);\n    $('qFA2').textContent = nf(r.fa);\n    $('qTot').textContent = nf(r.tot);\n\n    $('dNum').textContent = nf(r.tDef);\n    $('dDen').textContent = nf(r.def);\n    $('dVal').textContent = nf(st.d) + '%';\n    $('fNum').textContent = nf(r.fa);\n    $('fDen').textContent = nf(r.good);\n    $('fVal').textContent = nf(st.f) + '%';\n    $('pNum').textContent = nf(r.tDef);\n    $('pDen').textContent = nf(r.tot);\n    $('pVal').textContent = r.tot > 0 ? pnum(prec) + '%' : '未定义（0 ÷ 0）';\n\n    setSeg('sgTA', r.tDef, N);\n    setSeg('sgM', r.miss, N);\n    setSeg('sgFA', r.fa, N);\n    setSeg('sgCR', r.cr, N);\n    $('lTA').textContent = nf(r.tDef);\n    $('lM').textContent = nf(r.miss);\n    $('lFA').textContent = nf(r.fa);\n    $('lCR').textContent = nf(r.cr);\n\n    setSeg('sgT2', r.tDef, r.tot);\n    setSeg('sgF2', r.fa, r.tot);\n    $('l2T').textContent = nf(r.tDef);\n    $('l2F').textContent = nf(r.fa);\n    $('barBCap').textContent = '只数报了警的 ' + nf(r.tot) + ' 件 · 两段相加 = 全部报警';\n    $('barAlarm').setAttribute('aria-label', '报警件的构成：真有缺陷 ' + nf(r.tDef) + ' 件，误报 ' + nf(r.fa) + ' 件');\n    $('barAll').setAttribute('aria-label', '整批 10000 件的四段构成：正确报警 ' + nf(r.tDef) + ' 件，漏检 ' + nf(r.miss) + ' 件，误报 ' + nf(r.fa) + ' 件，正确放行 ' + nf(r.cr) + ' 件');\n\n    $('precLine').textContent = r.tot > 0\n      ? '报警可信度 = ' + nf(r.tDef) + ' ÷ ' + nf(r.tot) + ' = ' + pnum(prec) + '%'\n      : '报警可信度 = 0 ÷ 0：这批没有报警，比例未定义';\n\n    $('fRateFrac').textContent = nf(r.fa) + ' ÷ ' + nf(r.good);\n    $('fRateDen').textContent = nf(r.good);\n    $('fShare').textContent = r.tot > 0 ? pnum(r.fa / r.tot * 100) + '%' : '—（没有报警）';\n    $('fShareFrac').textContent = nf(r.fa) + ' ÷ ' + nf(r.tot);\n    $('fShareDen').textContent = nf(r.tot);\n\n    $('precRest').textContent = r.tot > 0\n      ? '意思是：随手拿起一件报了警的零件，它在长期平均里属于“真有缺陷”的部分占 ' + pnum(prec) + '%，其余 ' + pnum(100 - prec) + '% 是冤枉的。'\n      : '这批零件里没有任何报警，随手拿不到“一件报了警的零件”，这句话在这里没有对象。';\n\n    if (r.tot <= 0) {\n      $('fWhy').textContent = '这批零件没有任何报警，也就无从比较这两个比例。';\n    } else if (r.fa <= 0) {\n      $('fWhy').textContent = '这批参数下一件误报都没有：' + nf(r.fa) + ' 件误报摊在 ' + nf(r.good) + ' 件健康零件上是 0%，报警堆里也就没有冤枉的。';\n    } else {\n      $('fWhy').textContent = pnum(r.fa / r.good * 100) + '% 之所以这么小、' + pnum(r.fa / r.tot * 100) + '% 之所以这么大，是因为 ' + nf(r.fa) + ' 件误报摊在 ' + nf(r.good) + ' 件健康零件上只占一点点，摊在 ' + nf(r.tot) + ' 件报警上就占了大半。';\n    }\n\n    $('leverDScope').textContent = nf(r.def);\n    $('leverFScope').textContent = nf(r.good);\n    $('barAllNote').textContent = (r.def > 0\n      ? '整批里只有 ' + nf(st.p) + '% 是有缺陷的，所以左边两段被挤成一条细缝。这条细缝正好是整篇的问题所在：它很短，可是报警主要从右边那段长条里冒出来。要看清楚，就把报警件单独摊开。'\n      : '这批零件里没有缺陷件，左边两段全是空的，报警只可能从右边那段长条里冒出来。');\n\n    if (st.d >= 100) {\n      $('leverD').textContent = '把 d 再提高 1 个百分点这一步已经做不了：d 已经是 100%，有缺陷件全部报警。';\n    } else {\n      var t2 = r.def * (st.d + 1) / 100;\n      var tot2 = t2 + r.fa;\n      $('leverD').textContent = '只把 d 提高 1 个百分点（p、f 不变）：正确报警 ' + nf(r.tDef) + ' → ' + nf(t2) + ' 件（多 ' + nf(t2 - r.tDef) + ' 件），全部报警 ' + nf(r.tot) + ' → ' + nf(tot2) + ' 件，报警可信度 ' + (r.tot > 0 ? pnum(prec) + '%' : '未定义') + ' → ' + (tot2 > 0 ? pnum(t2 / tot2 * 100) + '%' : '未定义') + '。';\n    }\n    if (st.f <= 0) {\n      $('leverF').textContent = '把 f 再降低 1 个百分点这一步已经做不了：f 已经是 0%，没有误报。';\n    } else {\n      var fa2 = r.good * (st.f - 1) / 100;\n      var tot3 = r.tDef + fa2;\n      $('leverF').textContent = '只把 f 降低 1 个百分点（p、d 不变）：误报 ' + nf(r.fa) + ' → ' + nf(fa2) + ' 件（少 ' + nf(r.fa - fa2) + ' 件），全部报警 ' + nf(r.tot) + ' → ' + nf(tot3) + ' 件，报警可信度 ' + (r.tot > 0 ? pnum(prec) + '%' : '未定义') + ' → ' + (tot3 > 0 ? pnum(r.tDef / tot3 * 100) + '%' : '未定义') + '。';\n    }\n    $('leverWhy').textContent = '同样是一步，为什么要挪动的件数差这么多：这一步里 d 作用在 ' + nf(r.def) + ' 件有缺陷件上，f 作用在 ' + nf(r.good) + ' 件无缺陷件上。';\n\n    $('zeroNow').textContent = r.tot > 0\n      ? '当前这组参数下有 ' + nf(r.tot) + ' 件报警，其中真有缺陷 ' + nf(r.tDef) + ' 件，所以可信度算得出来：' + pnum(prec) + '%。'\n      : '当前这组参数下一件都不报警（全部报警 = 0），可信度是 0 ÷ 0，未定义。';\n  }\n  function commit(){\n    if (typeof P.commitState === 'function') P.commitState();\n  }\n  function applyPreset(name){\n    var v = PRESETS[name];\n    if (!v) return;\n    st.p = v.p; st.d = v.d; st.f = v.f;\n    syncInputs(); render(); commit();\n  }\n  ['p','d','f'].forEach(function(k){\n    var el = $(k + 'In');\n    if (!el) return;\n    el.addEventListener('input', function(){\n      st[k] = clamp(k, parseFloat(el.value));\n      syncInputs(); render();\n    });\n    el.addEventListener('change', function(){\n      st[k] = clamp(k, parseFloat(el.value));\n      syncInputs(); render(); commit();\n    });\n  });\n  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(b){\n    b.addEventListener('click', function(){ applyPreset(b.getAttribute('data-preset')); });\n  });\n  if (typeof P.registerActionHandler === 'function') {\n    P.registerActionHandler(function(action){\n      if (action && action.kind === 'set_parameters' && action.values) {\n        ['p','d','f'].forEach(function(k){\n          if (typeof action.values[k] === 'number') st[k] = clamp(k, action.values[k]);\n        });\n        syncInputs(); render(); commit();\n      }\n      return Promise.resolve();\n    });\n  }\n  if (typeof P.registerStateReader === 'function') {\n    P.registerStateReader(function(){\n      var r = compute(st);\n      var summary = r.tot > 0\n        ? 'p=' + nf(st.p) + '%、d=' + nf(st.d) + '%、f=' + nf(st.f) + '%：报警 ' + nf(r.tot) + ' 件，其中真有缺陷 ' + nf(r.tDef) + ' 件，报警可信度 ' + pnum(r.tDef / r.tot * 100) + '%。'\n        : 'p=' + nf(st.p) + '%、d=' + nf(st.d) + '%、f=' + nf(st.f) + '%：这批没有任何报警，报警可信度是 0 ÷ 0，未定义。';\n      return {\n        values:{p:st.p, d:st.d, f:st.f},\n        visible_step:null,\n        observation:{\n          summary:summary,\n          state:{\n            p_percent:st.p, d_percent:st.d, f_percent:st.f,\n            defective:r.def, nondefective:r.good,\n            true_alarm:r.tDef, missed:r.miss, false_alarm:r.fa, correct_reject:r.cr,\n            total_alarm:r.tot,\n            alarm_credibility_percent:(r.tot > 0 ? r.tDef / r.tot * 100 : null)\n          }\n        }\n      };\n    });\n  }\n  if (typeof P.registerStateRestorer === 'function') {\n    P.registerStateRestorer(function(saved){\n      var v = (saved && saved.values && (saved.values.page || saved.values)) || {};\n      ['p','d','f'].forEach(function(k){\n        if (typeof v[k] === 'number') st[k] = clamp(k, v[k]);\n      });\n      syncInputs(); render();\n    });\n  }\n  syncInputs();\n  render();\n})();\n</script>\n</body>\n</html>"
+    },
+    "entrypoint": "index.html",
+    "readable_content": "一篇关于质检报警可信度的入门讲解，配三个滑块（缺陷率 p、检出率 d、误报率 f），默认 p=1%、d=95%、f=5%，整批固定 10000 件，件数按长期平均的期望值计算，可以带小数。\n\n第一节用一张 2×2 计数表把整批分成四格：有缺陷 100 件（报警 95 件为正确报警，5 件漏检）、无缺陷 9900 件（报警 495 件为误报，9405 件正确放行），报警合计 590 件；并在列头标出 d 的分母是 100、f 的分母是 9900，在“报警”这一行标出该行合计是报警可信度的分母。随后列出四个格子的连乘算法。\n\n第二节是“三个比例，三个分母”的对照表：检出率 d = 95 ÷ 100，分母是有缺陷件；误报率 f = 495 ÷ 9900，分母是无缺陷件；报警可信度 = 95 ÷ 590 = 16.1%，分母是全部报警件。文字说明前两行沿列往下数、第三行横着数。\n\n第三节是整批 10000 件的四色分段条（正确报警、漏检、误报、正确放行），说明缺陷件只占 1%、被挤成一条细缝，报警却主要从健康零件那段长条里冒出来。\n\n第四节只数报警的 590 件，做 100% 堆叠条：真有缺陷 95 件、误报 495 件，读出报警可信度 16.1%，并回答“误报率 5% 是否意味着报警里只有 5% 是误报”：误报率的分母是 9900 件健康零件，“报警里误报占 83.9%”的分母是 590 件报警，分子同是 495 件。\n\n第五节给出三个滑块与六个预设（初始值；缺陷更少 p=0.1%；误报降到 1%；检出率拉满；p=0 且 f=0；p=0 但 f=5%），表格、两条分段与全部读数同步重算。\n\n第六节用同一台检测器对比 p=1% 与 p=0.1% 两批：正确报警 95→9.5 件、误报 495→499.5 件、报警合计 590→509 件、可信度 16.1%→1.87%，并解释缺陷率下降时分子按缺陷件数缩小、误报按健康件数几乎不变。\n\n第七节区分两个动作：提高 d 只在有缺陷那一列把漏检改判为报警（分子与分母同步变大），降低 f 只在无缺陷那一列把误报改判为放行（分母变小、分子不动）；卡片按当前参数实算各走一步后的件数与可信度，并指出 d 作用在多少件有缺陷件上、f 作用在多少件无缺陷件上。\n\n第八节处理零报警：p=0 且 f=0 时 0 ÷ 0 没有定义，不能读成 0% 或 100%；p=0 但 f=5% 时报 495 件全是误报，比例算得出来等于 0%。第九节给出五条结论。\n\n全部数值来自页面自身的计算，随滑块与预设变化；页内不含随机模拟。",
+    "source_bindings": [],
+    "assumptions": [
+      "整批固定 10000 件，件数按长期平均的期望值计算，因此可以带小数",
+      "d 与 f 不随 p 改变，检测器在两群人身上的表现互不影响",
+      "只考虑检测器的一次输出，不含复检、多检测器或成本",
+      "示例对比（p=1% 与 p=0.1%）固定取 d=95%、f=5%，用于说明缺陷率的作用"
+    ],
+    "state_contract": {
+      "d": "检出率，有缺陷件中会报警的百分比，取值 0–100；分母是有缺陷件",
+      "f": "误报率，无缺陷件中会报警的百分比，取值 0–10；分母是无缺陷件",
+      "p": "缺陷率，占整批 10000 件的百分比，取值 0–10；决定“有缺陷”这一列的件数"
+    },
+    "initial_state": {
+      "d": 95,
+      "f": 5,
+      "p": 1
+    }
+  }
+}

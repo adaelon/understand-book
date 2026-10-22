@@ -1,0 +1,156 @@
+{
+  "previous_release": "/opt/understand-book/releases/om6-20261020",
+  "release": "/opt/understand-book/releases/cloud-20261021",
+  "base_commit": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
+  "files": [
+    "Cargo.lock",
+    "apps/desktop/src-tauri/Cargo.toml",
+    "packages/web/src/home.ts",
+    "crates/runtime/src/delivery_fallback.rs",
+    "crates/runtime/src/goal.rs",
+    "crates/runtime/src/workspace_goal.rs",
+    "crates/runtime/src/workspace_goal_tests.rs",
+    "crates/runtime/src/tutor_review_rules.md",
+    "crates/server/src/account_allowance.rs",
+    "crates/server/src/admin_api.rs",
+    "crates/server/src/admin_store.rs",
+    "crates/server/src/agent_run.rs",
+    "crates/server/src/allowance_admin.rs",
+    "crates/server/src/authorization.rs",
+    "crates/server/src/charge_admin.rs",
+    "crates/server/src/control_store.rs",
+    "crates/server/src/cost_summary.rs",
+    "crates/server/src/external_build_costs.rs",
+    "crates/server/src/learning_workspace.rs",
+    "crates/server/src/lib.rs",
+    "crates/server/src/model_spend_store.rs",
+    "crates/server/src/operator_builds.rs",
+    "crates/server/src/personal_preparations.rs",
+    "crates/server/src/presentation_store.rs",
+    "crates/server/src/published_library.rs",
+    "crates/server/src/run_admission.rs",
+    "crates/server/src/user_runtime.rs",
+    "crates/server/src/video_audio.rs",
+    "crates/server/src/workspace_publication.rs",
+    "crates/server/src/workspace_release_instances.rs",
+    "crates/server/src/cloud_plans.rs",
+    "crates/server/src/cloud_plans.sql",
+    "crates/server/src/cloud_plans_tests.rs",
+    "crates/server/src/cloud_storage.rs",
+    "crates/server/src/cloud_storage.sql",
+    "crates/server/src/course_access.rs",
+    "crates/server/src/course_access.sql",
+    "crates/server/src/desktop_auth.rs",
+    "crates/server/src/desktop_auth.sql",
+    "crates/server/src/exam_sprints.rs",
+    "crates/server/src/exam_sprints.sql",
+    "crates/server/src/service_usage.rs",
+    "crates/server/src/service_usage.sql",
+    "crates/server/src/tests/b2_preparation_tests.rs",
+    "crates/server/src/tests/c4_service_usage_tests.rs",
+    "crates/server/src/tests/cloud_browser_host.rs",
+    "crates/server/src/tests/cloud_course_e2e_tests.rs",
+    "crates/server/src/tests/cloud_host_tests.rs",
+    "crates/server/src/tests/cloud_storage_tests.rs",
+    "crates/server/src/tests/e1_workspace_integration_tests.rs",
+    "crates/server/src/tests/s1_workspace_publication_tests.rs",
+    "crates/server/src/tests/s2_workspace_instance_tests.rs",
+    "crates/server/src/tests/teaching_design_tests.rs",
+    "crates/server/src/tests/remove_schema19.sql",
+    "apps/admin/src/components/operation.tsx",
+    "apps/admin/src/lib/cloud-plans.test.ts",
+    "apps/admin/src/lib/cloud-plans.ts",
+    "apps/admin/src/lib/costs.ts",
+    "apps/admin/src/lib/operator-builds.ts",
+    "apps/admin/src/lib/types.ts",
+    "apps/admin/src/lib/workspace-releases.ts",
+    "apps/admin/src/pages/allowance.test.tsx",
+    "apps/admin/src/pages/allowance.tsx",
+    "apps/admin/src/pages/charges-service.test.tsx",
+    "apps/admin/src/pages/charges.tsx",
+    "apps/admin/src/pages/cloud-plans.tsx",
+    "apps/admin/src/pages/cost-summary.tsx",
+    "apps/admin/src/pages/operator-builds.tsx",
+    "apps/admin/src/pages/workspace-releases.test.tsx",
+    "apps/admin/src/pages/workspace-releases.tsx",
+    "packages/web/src/App.vue",
+    "packages/web/src/account-allowance.ts",
+    "packages/web/src/personal-preparations.ts",
+    "packages/web/src/shared-workspaces.ts",
+    "packages/web/src/cloud-plans.ts",
+    "packages/web/src/desktop-auth.ts",
+    "packages/web/src/exam-sprints.ts",
+    "packages/web/src/components/AccountAllowance.vue",
+    "packages/web/src/components/CloudPlans.vue",
+    "packages/web/src/components/DesktopAuthorization.vue",
+    "packages/web/src/components/DesktopSignIn.vue",
+    "packages/web/src/components/ExamSprintPanel.vue",
+    "packages/web/src/components/PersonalPreparations.vue",
+    "packages/web/src/components/SharedWorkspaceCatalog.vue",
+    "packages/web/src/components/SharedWorkspaceManifest.vue",
+    "packages/web/src/components/VideoReaderPane.vue",
+    "packages/web/src/components/ProductHome.vue",
+    "crates/runtime/src/orchestrator.rs",
+    "crates/runtime/src/library.rs",
+    "crates/server/src/auth.rs",
+    "crates/server/src/multi_user_host.rs",
+    "crates/server/src/workspace_registry.rs",
+    "packages/web/src/NetworkApp.vue"
+  ],
+  "excluded_unrelated_hunks": [
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -997,6 +997,30 @@"
+    },
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -1581,9 +1605,14 @@"
+    },
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -8513,6 +8679,7 @@"
+    },
+    {
+      "file": "crates/runtime/src/library.rs",
+      "hunk": "@@ -21,6 +27,18 @@"
+    },
+    {
+      "file": "crates/server/src/multi_user_host.rs",
+      "hunk": "@@ -891,6 +948,13 @@"
+    },
+    {
+      "file": "crates/server/src/workspace_registry.rs",
+      "hunk": "@@ -505,6 +505,56 @@"
+    },
+    {
+      "file": "crates/server/src/workspace_registry.rs",
+      "hunk": "@@ -517,26 +567,7 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -182,17 +196,25 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -234,6 +256,7 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -322,6 +345,7 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -358,7 +382,9 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -383,7 +409,7 @@"
+    },
+    {
+      "file": "packages/web/src/NetworkApp.vue",
+      "hunk": "@@ -414,6 +440,7 @@"
+    }
+  ],
+  "commercial_configuration": "unconfigured",
+  "courses": "unconfigured"
+}

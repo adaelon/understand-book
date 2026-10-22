@@ -1,0 +1,12 @@
+{
+  "head": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
+  "source_snapshot": "before/",
+  "production_release": "search-cache-20261021",
+  "course": "cs336-pytorch",
+  "origin_catalog_seconds": 18.172,
+  "catalog_total": 1,
+  "service_rchar_delta": 2357978074,
+  "service_disk_read_bytes_delta": 2197929984,
+  "public_request_timeout_seconds": 21.48,
+  "source_directory": "D:/codex-build/understand-book-vi18/production/service/library/published/19ac880d-a788-43f4-9725-6c56f4980189/01a129cf-c1b7-72c2-bac7-40f9740fda6f"
+}

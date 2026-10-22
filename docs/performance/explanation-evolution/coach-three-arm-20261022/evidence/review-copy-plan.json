@@ -1,0 +1,2013 @@
+{
+  "reviews": [
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/review.json",
+      "destination": "backprop/Birch/review.json",
+      "label": "反向传播 · Birch · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/review.md",
+      "destination": "backprop/Birch/review.md",
+      "label": "反向传播 · Birch · 报告"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/review.json",
+      "destination": "backprop/Cedar/review.json",
+      "label": "反向传播 · Cedar · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/review.md",
+      "destination": "backprop/Cedar/review.md",
+      "label": "反向传播 · Cedar · 报告"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/review.json",
+      "destination": "backprop/Maple/review.json",
+      "label": "反向传播 · Maple · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/review.md",
+      "destination": "backprop/Maple/review.md",
+      "label": "反向传播 · Maple · 报告"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/review.json",
+      "destination": "backprop/Oak/review.json",
+      "label": "反向传播 · Oak · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/review.md",
+      "destination": "backprop/Oak/review.md",
+      "label": "反向传播 · Oak · 报告"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/review.json",
+      "destination": "backprop/Pine/review.json",
+      "label": "反向传播 · Pine · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/review.md",
+      "destination": "backprop/Pine/review.md",
+      "label": "反向传播 · Pine · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/report.md",
+      "destination": "ridge/Amber/report.md",
+      "label": "岭回归 · Amber · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/review.json",
+      "destination": "ridge/Amber/review.json",
+      "label": "岭回归 · Amber · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/report.md",
+      "destination": "ridge/Coral/report.md",
+      "label": "岭回归 · Coral · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/review.json",
+      "destination": "ridge/Coral/review.json",
+      "label": "岭回归 · Coral · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/report.md",
+      "destination": "ridge/Jade/report.md",
+      "label": "岭回归 · Jade · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/review.json",
+      "destination": "ridge/Jade/review.json",
+      "label": "岭回归 · Jade · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/report.md",
+      "destination": "ridge/Onyx/report.md",
+      "label": "岭回归 · Onyx · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/review.json",
+      "destination": "ridge/Onyx/review.json",
+      "label": "岭回归 · Onyx · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/report.md",
+      "destination": "ridge/Opal/report.md",
+      "label": "岭回归 · Opal · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/review.json",
+      "destination": "ridge/Opal/review.json",
+      "label": "岭回归 · Opal · 结构化记录"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/report.md",
+      "destination": "ridge/Pearl/report.md",
+      "label": "岭回归 · Pearl · 报告"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/review.json",
+      "destination": "ridge/Pearl/review.json",
+      "label": "岭回归 · Pearl · 结构化记录"
+    }
+  ],
+  "attachments": [
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/both-zero-graph.png",
+      "destination": "review/backprop/Birch/both-zero-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/cancellation-graph.png",
+      "destination": "review/backprop/Birch/cancellation-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/cancellation-omission.png",
+      "destination": "review/backprop/Birch/cancellation-omission.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/default-graph.png",
+      "destination": "review/backprop/Birch/default-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/initial-960.png",
+      "destination": "review/backprop/Birch/initial-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/initial-dom.json",
+      "destination": "review/backprop/Birch/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/interaction-results.json",
+      "destination": "review/backprop/Birch/interaction-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/local-sign-counterexample.png",
+      "destination": "review/backprop/Birch/local-sign-counterexample.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/mobile-graph-metrics.json",
+      "destination": "review/backprop/Birch/mobile-graph-metrics.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/mobile-record.png",
+      "destination": "review/backprop/Birch/mobile-record.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/mobile-step-explanation.png",
+      "destination": "review/backprop/Birch/mobile-step-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/mobile-visible-text.txt",
+      "destination": "review/backprop/Birch/mobile-visible-text.txt"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-fixed-example.png",
+      "destination": "review/backprop/Birch/negative-fixed-example.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-forward-record.png",
+      "destination": "review/backprop/Birch/negative-forward-record.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-graph.png",
+      "destination": "review/backprop/Birch/negative-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-local-positive-contribution-graph.png",
+      "destination": "review/backprop/Birch/negative-local-positive-contribution-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-local-positive-contribution-omission.png",
+      "destination": "review/backprop/Birch/negative-local-positive-contribution-omission.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/negative-omission.png",
+      "destination": "review/backprop/Birch/negative-omission.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-1200.png",
+      "destination": "review/backprop/Birch/read-960-1200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-1800.png",
+      "destination": "review/backprop/Birch/read-960-1800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-2400.png",
+      "destination": "review/backprop/Birch/read-960-2400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-3000.png",
+      "destination": "review/backprop/Birch/read-960-3000.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-3600.png",
+      "destination": "review/backprop/Birch/read-960-3600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/read-960-600.png",
+      "destination": "review/backprop/Birch/read-960-600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-0.png",
+      "destination": "review/backprop/Birch/size-320-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-1.png",
+      "destination": "review/backprop/Birch/size-320-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-2.png",
+      "destination": "review/backprop/Birch/size-320-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-controls.png",
+      "destination": "review/backprop/Birch/size-320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-graph.png",
+      "destination": "review/backprop/Birch/size-320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-320-inputs.png",
+      "destination": "review/backprop/Birch/size-320-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-0.png",
+      "destination": "review/backprop/Birch/size-640-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-1.png",
+      "destination": "review/backprop/Birch/size-640-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-2.png",
+      "destination": "review/backprop/Birch/size-640-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-controls.png",
+      "destination": "review/backprop/Birch/size-640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-graph.png",
+      "destination": "review/backprop/Birch/size-640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/size-640-inputs.png",
+      "destination": "review/backprop/Birch/size-640-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/step-0.png",
+      "destination": "review/backprop/Birch/step-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/step-10.png",
+      "destination": "review/backprop/Birch/step-10.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/step-6.png",
+      "destination": "review/backprop/Birch/step-6.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/step-8.png",
+      "destination": "review/backprop/Birch/step-8.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/zero-v-graph.png",
+      "destination": "review/backprop/Birch/zero-v-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Birch/zero-x-graph.png",
+      "destination": "review/backprop/Birch/zero-x-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/backward-u-arrows.png",
+      "destination": "review/backprop/Cedar/backward-u-arrows.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/backward-v-arrow.png",
+      "destination": "review/backprop/Cedar/backward-v-arrow.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/backward-x-arrow.png",
+      "destination": "review/backprop/Cedar/backward-x-arrow.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/both-zero-graph.png",
+      "destination": "review/backprop/Cedar/both-zero-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/cancellation-accumulation.png",
+      "destination": "review/backprop/Cedar/cancellation-accumulation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/cancellation-graph.png",
+      "destination": "review/backprop/Cedar/cancellation-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/cancellation-hint.png",
+      "destination": "review/backprop/Cedar/cancellation-hint.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/default-graph.png",
+      "destination": "review/backprop/Cedar/default-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/focused-visible-text.txt",
+      "destination": "review/backprop/Cedar/focused-visible-text.txt"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/initial-960.png",
+      "destination": "review/backprop/Cedar/initial-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/initial-dom.json",
+      "destination": "review/backprop/Cedar/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/interaction-results.json",
+      "destination": "review/backprop/Cedar/interaction-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/negative-graph.png",
+      "destination": "review/backprop/Cedar/negative-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/omission-explanation.png",
+      "destination": "review/backprop/Cedar/omission-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-1200.png",
+      "destination": "review/backprop/Cedar/read-960-1200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-1800.png",
+      "destination": "review/backprop/Cedar/read-960-1800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-2400.png",
+      "destination": "review/backprop/Cedar/read-960-2400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-3000.png",
+      "destination": "review/backprop/Cedar/read-960-3000.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-3600.png",
+      "destination": "review/backprop/Cedar/read-960-3600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-4200.png",
+      "destination": "review/backprop/Cedar/read-960-4200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-4800.png",
+      "destination": "review/backprop/Cedar/read-960-4800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-5400.png",
+      "destination": "review/backprop/Cedar/read-960-5400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/read-960-600.png",
+      "destination": "review/backprop/Cedar/read-960-600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/selftest-sign-claim.png",
+      "destination": "review/backprop/Cedar/selftest-sign-claim.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-0.png",
+      "destination": "review/backprop/Cedar/size-320-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-1.png",
+      "destination": "review/backprop/Cedar/size-320-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-2.png",
+      "destination": "review/backprop/Cedar/size-320-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-3.png",
+      "destination": "review/backprop/Cedar/size-320-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-controls.png",
+      "destination": "review/backprop/Cedar/size-320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-graph.png",
+      "destination": "review/backprop/Cedar/size-320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-320-inputs.png",
+      "destination": "review/backprop/Cedar/size-320-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-0.png",
+      "destination": "review/backprop/Cedar/size-640-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-1.png",
+      "destination": "review/backprop/Cedar/size-640-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-2.png",
+      "destination": "review/backprop/Cedar/size-640-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-3.png",
+      "destination": "review/backprop/Cedar/size-640-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-controls.png",
+      "destination": "review/backprop/Cedar/size-640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-graph.png",
+      "destination": "review/backprop/Cedar/size-640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/size-640-inputs.png",
+      "destination": "review/backprop/Cedar/size-640-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/zero-contribution-claim.png",
+      "destination": "review/backprop/Cedar/zero-contribution-claim.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/zero-v-graph.png",
+      "destination": "review/backprop/Cedar/zero-v-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/zero-v-hint.png",
+      "destination": "review/backprop/Cedar/zero-v-hint.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Cedar/zero-x-graph.png",
+      "destination": "review/backprop/Cedar/zero-x-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/both-zero-contradiction.png",
+      "destination": "review/backprop/Maple/both-zero-contradiction.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/both-zero-graph.png",
+      "destination": "review/backprop/Maple/both-zero-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/both-zero-omission-detail.png",
+      "destination": "review/backprop/Maple/both-zero-omission-detail.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/both-zero-omitted.png",
+      "destination": "review/backprop/Maple/both-zero-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/cancellation-graph.png",
+      "destination": "review/backprop/Maple/cancellation-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/cancellation-omitted.png",
+      "destination": "review/backprop/Maple/cancellation-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/cancellation-perturbation.png",
+      "destination": "review/backprop/Maple/cancellation-perturbation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/default-graph.png",
+      "destination": "review/backprop/Maple/default-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/default-omitted.png",
+      "destination": "review/backprop/Maple/default-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/initial-960.png",
+      "destination": "review/backprop/Maple/initial-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/initial-dom.json",
+      "destination": "review/backprop/Maple/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/interaction-results.json",
+      "destination": "review/backprop/Maple/interaction-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/mobile-backward-row.png",
+      "destination": "review/backprop/Maple/mobile-backward-row.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/mobile-graph-right.png",
+      "destination": "review/backprop/Maple/mobile-graph-right.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/mobile-pan.json",
+      "destination": "review/backprop/Maple/mobile-pan.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/mobile-perturbation.png",
+      "destination": "review/backprop/Maple/mobile-perturbation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/negative-forward-formula.png",
+      "destination": "review/backprop/Maple/negative-forward-formula.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/negative-graph.png",
+      "destination": "review/backprop/Maple/negative-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/negative-omitted.png",
+      "destination": "review/backprop/Maple/negative-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-1200.png",
+      "destination": "review/backprop/Maple/read-960-1200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-1800.png",
+      "destination": "review/backprop/Maple/read-960-1800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-2400.png",
+      "destination": "review/backprop/Maple/read-960-2400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-3000.png",
+      "destination": "review/backprop/Maple/read-960-3000.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-3600.png",
+      "destination": "review/backprop/Maple/read-960-3600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-4200.png",
+      "destination": "review/backprop/Maple/read-960-4200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-4800.png",
+      "destination": "review/backprop/Maple/read-960-4800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-5400.png",
+      "destination": "review/backprop/Maple/read-960-5400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/read-960-600.png",
+      "destination": "review/backprop/Maple/read-960-600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-0.png",
+      "destination": "review/backprop/Maple/size-320-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-1.png",
+      "destination": "review/backprop/Maple/size-320-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-2.png",
+      "destination": "review/backprop/Maple/size-320-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-3.png",
+      "destination": "review/backprop/Maple/size-320-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-4.png",
+      "destination": "review/backprop/Maple/size-320-4.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-controls.png",
+      "destination": "review/backprop/Maple/size-320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-graph.png",
+      "destination": "review/backprop/Maple/size-320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-320-inputs.png",
+      "destination": "review/backprop/Maple/size-320-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-0.png",
+      "destination": "review/backprop/Maple/size-640-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-1.png",
+      "destination": "review/backprop/Maple/size-640-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-2.png",
+      "destination": "review/backprop/Maple/size-640-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-3.png",
+      "destination": "review/backprop/Maple/size-640-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-4.png",
+      "destination": "review/backprop/Maple/size-640-4.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-controls.png",
+      "destination": "review/backprop/Maple/size-640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-graph.png",
+      "destination": "review/backprop/Maple/size-640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/size-640-inputs.png",
+      "destination": "review/backprop/Maple/size-640-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/stale-u-explanation.png",
+      "destination": "review/backprop/Maple/stale-u-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/step-0-graph.png",
+      "destination": "review/backprop/Maple/step-0-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/step-4-graph.png",
+      "destination": "review/backprop/Maple/step-4-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/step-6-graph.png",
+      "destination": "review/backprop/Maple/step-6-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/step-8-graph.png",
+      "destination": "review/backprop/Maple/step-8-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/zero-v-graph.png",
+      "destination": "review/backprop/Maple/zero-v-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/zero-v-omitted.png",
+      "destination": "review/backprop/Maple/zero-v-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/zero-x-graph.png",
+      "destination": "review/backprop/Maple/zero-x-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Maple/zero-x-omitted.png",
+      "destination": "review/backprop/Maple/zero-x-omitted.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/both-zero-ledger.png",
+      "destination": "review/backprop/Oak/both-zero-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/cancellation-comparison.png",
+      "destination": "review/backprop/Oak/cancellation-comparison.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/cancellation-ledger.png",
+      "destination": "review/backprop/Oak/cancellation-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/cancellation-zero-explanation.png",
+      "destination": "review/backprop/Oak/cancellation-zero-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/default-ledger.png",
+      "destination": "review/backprop/Oak/default-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/final-summary.png",
+      "destination": "review/backprop/Oak/final-summary.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/initial-960.png",
+      "destination": "review/backprop/Oak/initial-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/initial-dom.json",
+      "destination": "review/backprop/Oak/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/interaction-results.json",
+      "destination": "review/backprop/Oak/interaction-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/negative-comparison.png",
+      "destination": "review/backprop/Oak/negative-comparison.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/negative-ledger.png",
+      "destination": "review/backprop/Oak/negative-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/negative-zero-explanation.png",
+      "destination": "review/backprop/Oak/negative-zero-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-1200.png",
+      "destination": "review/backprop/Oak/read-960-1200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-1800.png",
+      "destination": "review/backprop/Oak/read-960-1800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-2400.png",
+      "destination": "review/backprop/Oak/read-960-2400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-3000.png",
+      "destination": "review/backprop/Oak/read-960-3000.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-3600.png",
+      "destination": "review/backprop/Oak/read-960-3600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-4200.png",
+      "destination": "review/backprop/Oak/read-960-4200.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-4800.png",
+      "destination": "review/backprop/Oak/read-960-4800.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-5400.png",
+      "destination": "review/backprop/Oak/read-960-5400.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-600.png",
+      "destination": "review/backprop/Oak/read-960-600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-6000.png",
+      "destination": "review/backprop/Oak/read-960-6000.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/read-960-6600.png",
+      "destination": "review/backprop/Oak/read-960-6600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-0.png",
+      "destination": "review/backprop/Oak/size-320-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-1.png",
+      "destination": "review/backprop/Oak/size-320-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-2.png",
+      "destination": "review/backprop/Oak/size-320-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-3.png",
+      "destination": "review/backprop/Oak/size-320-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-controls.png",
+      "destination": "review/backprop/Oak/size-320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-graph.png",
+      "destination": "review/backprop/Oak/size-320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-320-inputs.png",
+      "destination": "review/backprop/Oak/size-320-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-0.png",
+      "destination": "review/backprop/Oak/size-640-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-1.png",
+      "destination": "review/backprop/Oak/size-640-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-2.png",
+      "destination": "review/backprop/Oak/size-640-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-3.png",
+      "destination": "review/backprop/Oak/size-640-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-controls.png",
+      "destination": "review/backprop/Oak/size-640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-graph.png",
+      "destination": "review/backprop/Oak/size-640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/size-640-inputs.png",
+      "destination": "review/backprop/Oak/size-640-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step-1-ledger.png",
+      "destination": "review/backprop/Oak/step-1-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step-11-ledger.png",
+      "destination": "review/backprop/Oak/step-11-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step-7-ledger.png",
+      "destination": "review/backprop/Oak/step-7-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step-9-ledger.png",
+      "destination": "review/backprop/Oak/step-9-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step-visibility.json",
+      "destination": "review/backprop/Oak/step-visibility.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step9-after-click-320.png",
+      "destination": "review/backprop/Oak/step9-after-click-320.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step9-after-click-640.png",
+      "destination": "review/backprop/Oak/step9-after-click-640.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/step9-after-click-960.png",
+      "destination": "review/backprop/Oak/step9-after-click-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/zero-exception.png",
+      "destination": "review/backprop/Oak/zero-exception.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/zero-v-comparison.png",
+      "destination": "review/backprop/Oak/zero-v-comparison.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/zero-v-ledger.png",
+      "destination": "review/backprop/Oak/zero-v-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/zero-v-zero-explanation.png",
+      "destination": "review/backprop/Oak/zero-v-zero-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Oak/zero-x-ledger.png",
+      "destination": "review/backprop/Oak/zero-x-ledger.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/both-zero-complete.png",
+      "destination": "review/backprop/Pine/both-zero-complete.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/cancellation-complete.png",
+      "destination": "review/backprop/Pine/cancellation-complete.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/focus-results.json",
+      "destination": "review/backprop/Pine/focus-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/initial-960.png",
+      "destination": "review/backprop/Pine/initial-960.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/initial-dom.json",
+      "destination": "review/backprop/Pine/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/interaction-results.json",
+      "destination": "review/backprop/Pine/interaction-results.json"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/local-sign-claim.png",
+      "destination": "review/backprop/Pine/local-sign-claim.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/mobile-controls.png",
+      "destination": "review/backprop/Pine/mobile-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/mobile-expansion.png",
+      "destination": "review/backprop/Pine/mobile-expansion.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/mobile-formula-scroll.png",
+      "destination": "review/backprop/Pine/mobile-formula-scroll.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/mobile-graph.png",
+      "destination": "review/backprop/Pine/mobile-graph.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/mobile-inputs.png",
+      "destination": "review/backprop/Pine/mobile-inputs.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/negative-complete.png",
+      "destination": "review/backprop/Pine/negative-complete.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/negative-values.png",
+      "destination": "review/backprop/Pine/negative-values.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-1150.png",
+      "destination": "review/backprop/Pine/read-960-1150.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-1750.png",
+      "destination": "review/backprop/Pine/read-960-1750.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-2350.png",
+      "destination": "review/backprop/Pine/read-960-2350.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-2950.png",
+      "destination": "review/backprop/Pine/read-960-2950.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-3550.png",
+      "destination": "review/backprop/Pine/read-960-3550.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-4150.png",
+      "destination": "review/backprop/Pine/read-960-4150.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-4750.png",
+      "destination": "review/backprop/Pine/read-960-4750.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-5350.png",
+      "destination": "review/backprop/Pine/read-960-5350.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/read-960-600.png",
+      "destination": "review/backprop/Pine/read-960-600.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-0.png",
+      "destination": "review/backprop/Pine/size-320-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-1.png",
+      "destination": "review/backprop/Pine/size-320-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-2.png",
+      "destination": "review/backprop/Pine/size-320-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-3.png",
+      "destination": "review/backprop/Pine/size-320-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-4.png",
+      "destination": "review/backprop/Pine/size-320-4.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-5.png",
+      "destination": "review/backprop/Pine/size-320-5.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-controls.png",
+      "destination": "review/backprop/Pine/size-320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-320-top.png",
+      "destination": "review/backprop/Pine/size-320-top.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-0.png",
+      "destination": "review/backprop/Pine/size-640-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-1.png",
+      "destination": "review/backprop/Pine/size-640-1.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-2.png",
+      "destination": "review/backprop/Pine/size-640-2.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-3.png",
+      "destination": "review/backprop/Pine/size-640-3.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-4.png",
+      "destination": "review/backprop/Pine/size-640-4.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-5.png",
+      "destination": "review/backprop/Pine/size-640-5.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-controls.png",
+      "destination": "review/backprop/Pine/size-640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/size-640-top.png",
+      "destination": "review/backprop/Pine/size-640-top.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/step-0.png",
+      "destination": "review/backprop/Pine/step-0.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/step-5.png",
+      "destination": "review/backprop/Pine/step-5.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/step-8.png",
+      "destination": "review/backprop/Pine/step-8.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/step12-completion-claim.png",
+      "destination": "review/backprop/Pine/step12-completion-claim.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/zero-v-complete.png",
+      "destination": "review/backprop/Pine/zero-v-complete.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/zero-v-contradiction.png",
+      "destination": "review/backprop/Pine/zero-v-contradiction.png"
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Pine/zero-x-complete.png",
+      "destination": "review/backprop/Pine/zero-x-complete.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-center.png",
+      "destination": "review/ridge/Amber/320-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-controls.png",
+      "destination": "review/ridge/Amber/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-global.png",
+      "destination": "review/ridge/Amber/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-graph.png",
+      "destination": "review/ridge/Amber/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-operated.png",
+      "destination": "review/ridge/Amber/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-table.png",
+      "destination": "review/ridge/Amber/320-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/320-top.png",
+      "destination": "review/ridge/Amber/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-center.png",
+      "destination": "review/ridge/Amber/640-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-controls.png",
+      "destination": "review/ridge/Amber/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-global.png",
+      "destination": "review/ridge/Amber/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-graph.png",
+      "destination": "review/ridge/Amber/640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-operated.png",
+      "destination": "review/ridge/Amber/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-table.png",
+      "destination": "review/ridge/Amber/640-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/640-top.png",
+      "destination": "review/ridge/Amber/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-center.png",
+      "destination": "review/ridge/Amber/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-degenerate-0-controls.png",
+      "destination": "review/ridge/Amber/desktop-degenerate-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-degenerate-0-plots.png",
+      "destination": "review/ridge/Amber/desktop-degenerate-0-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-degenerate-2-controls.png",
+      "destination": "review/ridge/Amber/desktop-degenerate-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-degenerate-2-plots.png",
+      "destination": "review/ridge/Amber/desktop-degenerate-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-degenerate.png",
+      "destination": "review/ridge/Amber/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-global.png",
+      "destination": "review/ridge/Amber/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-initial.png",
+      "destination": "review/ridge/Amber/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-0-controls.png",
+      "destination": "review/ridge/Amber/desktop-normal-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-0-plots.png",
+      "destination": "review/ridge/Amber/desktop-normal-0-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-10-controls.png",
+      "destination": "review/ridge/Amber/desktop-normal-10-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-10-plots.png",
+      "destination": "review/ridge/Amber/desktop-normal-10-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-2-controls.png",
+      "destination": "review/ridge/Amber/desktop-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-normal-2-plots.png",
+      "destination": "review/ridge/Amber/desktop-normal-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-returned-normal-2-controls.png",
+      "destination": "review/ridge/Amber/desktop-returned-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-returned-normal-2-plots.png",
+      "destination": "review/ridge/Amber/desktop-returned-normal-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/desktop-solution.png",
+      "destination": "review/ridge/Amber/desktop-solution.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/initial-dom.json",
+      "destination": "review/ridge/Amber/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Amber/interaction-evidence.json",
+      "destination": "review/ridge/Amber/interaction-evidence.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-center-equation-right.png",
+      "destination": "review/ridge/Coral/320-center-equation-right.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-center.png",
+      "destination": "review/ridge/Coral/320-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-controls.png",
+      "destination": "review/ridge/Coral/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-global.png",
+      "destination": "review/ridge/Coral/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-graph.png",
+      "destination": "review/ridge/Coral/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-operated.png",
+      "destination": "review/ridge/Coral/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-table-right.png",
+      "destination": "review/ridge/Coral/320-table-right.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-table.png",
+      "destination": "review/ridge/Coral/320-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/320-top.png",
+      "destination": "review/ridge/Coral/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-center.png",
+      "destination": "review/ridge/Coral/640-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-controls.png",
+      "destination": "review/ridge/Coral/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-global.png",
+      "destination": "review/ridge/Coral/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-graph.png",
+      "destination": "review/ridge/Coral/640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-operated.png",
+      "destination": "review/ridge/Coral/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-table.png",
+      "destination": "review/ridge/Coral/640-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/640-top.png",
+      "destination": "review/ridge/Coral/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-center.png",
+      "destination": "review/ridge/Coral/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-0-controls.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-0-plot.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-0-summary.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-0-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-2-controls.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-2-plot.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate-2-summary.png",
+      "destination": "review/ridge/Coral/desktop-degenerate-2-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-degenerate.png",
+      "destination": "review/ridge/Coral/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-expansion.png",
+      "destination": "review/ridge/Coral/desktop-expansion.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-global.png",
+      "destination": "review/ridge/Coral/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-initial.png",
+      "destination": "review/ridge/Coral/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-0-controls.png",
+      "destination": "review/ridge/Coral/desktop-normal-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-0-plot.png",
+      "destination": "review/ridge/Coral/desktop-normal-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-0-summary.png",
+      "destination": "review/ridge/Coral/desktop-normal-0-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-10-controls.png",
+      "destination": "review/ridge/Coral/desktop-normal-10-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-10-plot.png",
+      "destination": "review/ridge/Coral/desktop-normal-10-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-10-summary.png",
+      "destination": "review/ridge/Coral/desktop-normal-10-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-2-controls.png",
+      "destination": "review/ridge/Coral/desktop-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-2-plot.png",
+      "destination": "review/ridge/Coral/desktop-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-normal-2-summary.png",
+      "destination": "review/ridge/Coral/desktop-normal-2-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-proof.png",
+      "destination": "review/ridge/Coral/desktop-proof.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-returned-normal-2-controls.png",
+      "destination": "review/ridge/Coral/desktop-returned-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-returned-normal-2-plot.png",
+      "destination": "review/ridge/Coral/desktop-returned-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/desktop-returned-normal-2-summary.png",
+      "destination": "review/ridge/Coral/desktop-returned-normal-2-summary.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/horizontal-reading.json",
+      "destination": "review/ridge/Coral/horizontal-reading.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/initial-dom.json",
+      "destination": "review/ridge/Coral/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Coral/interaction-evidence.json",
+      "destination": "review/ridge/Coral/interaction-evidence.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-center.png",
+      "destination": "review/ridge/Jade/320-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-controls.png",
+      "destination": "review/ridge/Jade/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-global.png",
+      "destination": "review/ridge/Jade/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-graph.png",
+      "destination": "review/ridge/Jade/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-operated.png",
+      "destination": "review/ridge/Jade/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-table.png",
+      "destination": "review/ridge/Jade/320-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/320-top.png",
+      "destination": "review/ridge/Jade/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-center.png",
+      "destination": "review/ridge/Jade/640-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-controls.png",
+      "destination": "review/ridge/Jade/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-global.png",
+      "destination": "review/ridge/Jade/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-graph.png",
+      "destination": "review/ridge/Jade/640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-operated.png",
+      "destination": "review/ridge/Jade/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-table.png",
+      "destination": "review/ridge/Jade/640-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/640-top.png",
+      "destination": "review/ridge/Jade/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-center.png",
+      "destination": "review/ridge/Jade/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-0-controls.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-0-plot.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-2-controls.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-2-plot.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-check-instructions.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-check-instructions.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate-explanation.png",
+      "destination": "review/ridge/Jade/desktop-degenerate-explanation.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-degenerate.png",
+      "destination": "review/ridge/Jade/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-derivative.png",
+      "destination": "review/ridge/Jade/desktop-derivative.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-global.png",
+      "destination": "review/ridge/Jade/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-initial.png",
+      "destination": "review/ridge/Jade/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-0-controls.png",
+      "destination": "review/ridge/Jade/desktop-normal-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-0-plot.png",
+      "destination": "review/ridge/Jade/desktop-normal-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-10-controls.png",
+      "destination": "review/ridge/Jade/desktop-normal-10-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-10-plot.png",
+      "destination": "review/ridge/Jade/desktop-normal-10-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-2-controls.png",
+      "destination": "review/ridge/Jade/desktop-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-normal-2-plot.png",
+      "destination": "review/ridge/Jade/desktop-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-returned-normal-2-controls.png",
+      "destination": "review/ridge/Jade/desktop-returned-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-returned-normal-2-plot.png",
+      "destination": "review/ridge/Jade/desktop-returned-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-static-graph-0.png",
+      "destination": "review/ridge/Jade/desktop-static-graph-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/desktop-static-graph-1.png",
+      "destination": "review/ridge/Jade/desktop-static-graph-1.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/initial-dom.json",
+      "destination": "review/ridge/Jade/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Jade/interaction-evidence.json",
+      "destination": "review/ridge/Jade/interaction-evidence.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-center.png",
+      "destination": "review/ridge/Onyx/320-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-controls.png",
+      "destination": "review/ridge/Onyx/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-global.png",
+      "destination": "review/ridge/Onyx/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-graph.png",
+      "destination": "review/ridge/Onyx/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-operated.png",
+      "destination": "review/ridge/Onyx/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/320-top.png",
+      "destination": "review/ridge/Onyx/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-center.png",
+      "destination": "review/ridge/Onyx/640-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-controls.png",
+      "destination": "review/ridge/Onyx/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-global.png",
+      "destination": "review/ridge/Onyx/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-graph.png",
+      "destination": "review/ridge/Onyx/640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-operated.png",
+      "destination": "review/ridge/Onyx/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/640-top.png",
+      "destination": "review/ridge/Onyx/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/comparison-equality.txt",
+      "destination": "review/ridge/Onyx/comparison-equality.txt"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/degenerate-visible-geometry.json",
+      "destination": "review/ridge/Onyx/degenerate-visible-geometry.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-center.png",
+      "destination": "review/ridge/Onyx/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-0-a1-controls.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-0-a1-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-0-a1-plot.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-0-a1-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-0-controls.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-0-plot.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-2-controls.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-2-plot.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate-profile.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate-profile.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-degenerate.png",
+      "destination": "review/ridge/Onyx/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-global.png",
+      "destination": "review/ridge/Onyx/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-initial.png",
+      "destination": "review/ridge/Onyx/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-intercept.png",
+      "destination": "review/ridge/Onyx/desktop-intercept.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-0-controls.png",
+      "destination": "review/ridge/Onyx/desktop-normal-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-0-plot.png",
+      "destination": "review/ridge/Onyx/desktop-normal-0-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-10-controls.png",
+      "destination": "review/ridge/Onyx/desktop-normal-10-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-10-plot.png",
+      "destination": "review/ridge/Onyx/desktop-normal-10-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-2-controls.png",
+      "destination": "review/ridge/Onyx/desktop-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-2-plot.png",
+      "destination": "review/ridge/Onyx/desktop-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-normal-comparison-equality.png",
+      "destination": "review/ridge/Onyx/desktop-normal-comparison-equality.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-returned-normal-2-controls.png",
+      "destination": "review/ridge/Onyx/desktop-returned-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/desktop-returned-normal-2-plot.png",
+      "destination": "review/ridge/Onyx/desktop-returned-normal-2-plot.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/initial-dom.json",
+      "destination": "review/ridge/Onyx/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/interaction-evidence.json",
+      "destination": "review/ridge/Onyx/interaction-evidence.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-degenerate-0-fresh.png",
+      "destination": "review/ridge/Onyx/profile-degenerate-0-fresh.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-degenerate-2-after-0.png",
+      "destination": "review/ridge/Onyx/profile-degenerate-2-after-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-direct-return-normal-0.png",
+      "destination": "review/ridge/Onyx/profile-direct-return-normal-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-direct-return-normal-2.png",
+      "destination": "review/ridge/Onyx/profile-direct-return-normal-2.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-return-normal-2-after-degenerate-2.png",
+      "destination": "review/ridge/Onyx/profile-return-normal-2-after-degenerate-2.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-second-degenerate-0.png",
+      "destination": "review/ridge/Onyx/profile-second-degenerate-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Onyx/profile-state-transitions.json",
+      "destination": "review/ridge/Onyx/profile-state-transitions.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-controls.png",
+      "destination": "review/ridge/Opal/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-global.png",
+      "destination": "review/ridge/Opal/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-graph.png",
+      "destination": "review/ridge/Opal/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-operated.png",
+      "destination": "review/ridge/Opal/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-table-left.png",
+      "destination": "review/ridge/Opal/320-table-left.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-table-right.png",
+      "destination": "review/ridge/Opal/320-table-right.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/320-top.png",
+      "destination": "review/ridge/Opal/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/640-controls.png",
+      "destination": "review/ridge/Opal/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/640-global.png",
+      "destination": "review/ridge/Opal/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/640-operated.png",
+      "destination": "review/ridge/Opal/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/640-top.png",
+      "destination": "review/ridge/Opal/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/degenerate-visible-geometry.json",
+      "destination": "review/ridge/Opal/degenerate-visible-geometry.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-center.png",
+      "destination": "review/ridge/Opal/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-conclusion.png",
+      "destination": "review/ridge/Opal/desktop-conclusion.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-degenerate-graph.png",
+      "destination": "review/ridge/Opal/desktop-degenerate-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-degenerate.png",
+      "destination": "review/ridge/Opal/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-global.png",
+      "destination": "review/ridge/Opal/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-initial.png",
+      "destination": "review/ridge/Opal/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-main-graph.png",
+      "destination": "review/ridge/Opal/desktop-main-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-profile.png",
+      "destination": "review/ridge/Opal/desktop-profile.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-degenerate-0.png",
+      "destination": "review/ridge/Opal/desktop-state-degenerate-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-degenerate-2.png",
+      "destination": "review/ridge/Opal/desktop-state-degenerate-2.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-main-0.png",
+      "destination": "review/ridge/Opal/desktop-state-main-0.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-main-10.png",
+      "destination": "review/ridge/Opal/desktop-state-main-10.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-main-2.png",
+      "destination": "review/ridge/Opal/desktop-state-main-2.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/desktop-state-returned-main-2.png",
+      "destination": "review/ridge/Opal/desktop-state-returned-main-2.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/initial-dom.json",
+      "destination": "review/ridge/Opal/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Opal/interaction-evidence.json",
+      "destination": "review/ridge/Opal/interaction-evidence.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-center.png",
+      "destination": "review/ridge/Pearl/320-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-comparison-table.png",
+      "destination": "review/ridge/Pearl/320-comparison-table.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-controls.png",
+      "destination": "review/ridge/Pearl/320-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-global.png",
+      "destination": "review/ridge/Pearl/320-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-graph.png",
+      "destination": "review/ridge/Pearl/320-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-operated.png",
+      "destination": "review/ridge/Pearl/320-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/320-top.png",
+      "destination": "review/ridge/Pearl/320-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-center.png",
+      "destination": "review/ridge/Pearl/640-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-controls.png",
+      "destination": "review/ridge/Pearl/640-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-global.png",
+      "destination": "review/ridge/Pearl/640-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-graph.png",
+      "destination": "review/ridge/Pearl/640-graph.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-operated.png",
+      "destination": "review/ridge/Pearl/640-operated.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/640-top.png",
+      "destination": "review/ridge/Pearl/640-top.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-center.png",
+      "destination": "review/ridge/Pearl/desktop-center.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-0-controls.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-0-plots.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-0-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-2-controls.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-2-plots.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-2-slope-caption.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-2-slope-caption.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate-minimum-card.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate-minimum-card.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-degenerate.png",
+      "destination": "review/ridge/Pearl/desktop-degenerate.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-global.png",
+      "destination": "review/ridge/Pearl/desktop-global.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-initial.png",
+      "destination": "review/ridge/Pearl/desktop-initial.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-0-controls.png",
+      "destination": "review/ridge/Pearl/desktop-normal-0-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-0-plots.png",
+      "destination": "review/ridge/Pearl/desktop-normal-0-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-10-controls.png",
+      "destination": "review/ridge/Pearl/desktop-normal-10-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-10-plots.png",
+      "destination": "review/ridge/Pearl/desktop-normal-10-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-2-controls.png",
+      "destination": "review/ridge/Pearl/desktop-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-normal-2-plots.png",
+      "destination": "review/ridge/Pearl/desktop-normal-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-objective.png",
+      "destination": "review/ridge/Pearl/desktop-objective.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-returned-normal-2-controls.png",
+      "destination": "review/ridge/Pearl/desktop-returned-normal-2-controls.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-returned-normal-2-plots.png",
+      "destination": "review/ridge/Pearl/desktop-returned-normal-2-plots.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/desktop-solution.png",
+      "destination": "review/ridge/Pearl/desktop-solution.png"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/initial-dom.json",
+      "destination": "review/ridge/Pearl/initial-dom.json"
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Pearl/interaction-evidence.json",
+      "destination": "review/ridge/Pearl/interaction-evidence.json"
+    }
+  ],
+  "statistics": {
+    "alias_count": 11,
+    "review_count": 22,
+    "attachment_count": 453,
+    "file_count": 475,
+    "aliases": [
+      {
+        "topic": "backprop",
+        "alias": "Birch",
+        "review_count": 2,
+        "attachment_count": 42,
+        "file_count": 44
+      },
+      {
+        "topic": "backprop",
+        "alias": "Cedar",
+        "review_count": 2,
+        "attachment_count": 42,
+        "file_count": 44
+      },
+      {
+        "topic": "backprop",
+        "alias": "Maple",
+        "review_count": 2,
+        "attachment_count": 53,
+        "file_count": 55
+      },
+      {
+        "topic": "backprop",
+        "alias": "Oak",
+        "review_count": 2,
+        "attachment_count": 50,
+        "file_count": 52
+      },
+      {
+        "topic": "backprop",
+        "alias": "Pine",
+        "review_count": 2,
+        "attachment_count": 46,
+        "file_count": 48
+      },
+      {
+        "topic": "ridge",
+        "alias": "Amber",
+        "review_count": 2,
+        "attachment_count": 33,
+        "file_count": 35
+      },
+      {
+        "topic": "ridge",
+        "alias": "Coral",
+        "review_count": 2,
+        "attachment_count": 43,
+        "file_count": 45
+      },
+      {
+        "topic": "ridge",
+        "alias": "Jade",
+        "review_count": 2,
+        "attachment_count": 37,
+        "file_count": 39
+      },
+      {
+        "topic": "ridge",
+        "alias": "Onyx",
+        "review_count": 2,
+        "attachment_count": 44,
+        "file_count": 46
+      },
+      {
+        "topic": "ridge",
+        "alias": "Opal",
+        "review_count": 2,
+        "attachment_count": 28,
+        "file_count": 30
+      },
+      {
+        "topic": "ridge",
+        "alias": "Pearl",
+        "review_count": 2,
+        "attachment_count": 35,
+        "file_count": 37
+      }
+    ]
+  }
+}

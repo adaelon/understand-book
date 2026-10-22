@@ -1,0 +1,892 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delivered presentation</title></head><body style="margin:0"><iframe title="Delivered presentation" sandbox="allow-scripts" style="border:0;display:block;width:100%;height:100vh" srcdoc="&lt;!doctype html>&lt;html lang=&quot;zh-CN&quot;>&lt;head>&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'&quot;>&lt;style>:root { color-scheme: light dark; --canvas: #faf9f5; --ink: #252523; --surface: #efe9de; --line: #e6dfd8; --accent: #a9583e; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; background: var(--canvas); color: var(--ink); font: 16px/1.65 system-ui, &quot;Microsoft YaHei&quot;, sans-serif; overflow-wrap: anywhere; }
+h1, h2, h3 { line-height: 1.3; margin: 0 0 .6em; }
+h1 { font-size: 1.45em; } h2 { font-size: 1.2em; }
+p { margin: .65em 0; }
+button, input, select, textarea { font: inherit; max-width: 100%; }
+button, select, textarea, input:not([type=range]) { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .4em .7em; }
+button { cursor: pointer; } :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Source entrances stay compact even when an authored page styles all buttons. */
+button[data-source-ref] { display: inline-flex !important; align-items: center; width: auto !important; min-width: 0 !important; min-height: 24px !important; height: auto !important; padding: 2px 6px !important; margin: 0 2px !important; color: var(--accent); font-size: 12px !important; line-height: 1.4 !important; white-space: nowrap !important; vertical-align: baseline; }
+@media (pointer: coarse) { button[data-source-ref] { min-width: 44px !important; min-height: 44px !important; } }
+img, svg, canvas, video { max-width: 100%; height: auto; }
+pre { overflow-x: auto; padding: 12px; background: var(--surface); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; } td, th { text-align: left; padding: .6em; border-bottom: 1px solid var(--line); }
+.comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.card, .callout { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+&lt;/style>&lt;script>// Shared by the Reader and the server's real-browser presentation preview.
+function sourceChipLabel(sources, id) {
+  const index = sources.findIndex(source => source.source_ref_id === id);
+  if (index &lt; 0) return '来源不可用';
+  const label = sources[index].label;
+  const title = (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label).split(' / ').at(-1).trim();
+  const chars = Array.from(title);
+  return `${chars.length > 14 ? chars.slice(0, 14).join('') + '…' : title} [${index + 1}]`;
+}
+
+(function (config, staticCapture, createActions) {
+  const send = message => parent.postMessage({ channel: config.channel, ...message }, &quot;*&quot;);
+  let observer;
+  let stateReader;
+  let actionHandler;
+  const parameterEdits = {};
+  const parameters = (config.actionContract ?? []).filter(entry => entry.kind === &quot;set_parameters&quot;).flatMap(entry => entry.parameters);
+  let interaction;
+  let stateRestorer;
+  let restoring = true;
+  let commitTimer;
+  let hostGeneration;
+  let editing = false;
+  let zoom = 1;
+  const pendingCaptures = new Map();
+  const pendingHelp = new Map();
+  let helpRequest = 0;
+  function teachingRegion(regionId) {
+    if (!config.teachingBinding?.regions.some(region => region.region_id === regionId)) return null;
+    return Array.from(document.querySelectorAll('[data-teaching-region], [id]'))
+      .find(node => node.getAttribute('data-teaching-region') === regionId || node.id === regionId) ?? null;
+  }
+  window.presentation = Object.freeze({
+    initialState: config.initialState,
+    restoredState: config.restoredState ?? null,
+    registerActionHandler: handler => { actionHandler = handler; },
+    registerStateReader: reader => { stateReader = reader; },
+    registerStateRestorer: restorer => { stateRestorer = restorer; },
+    commitState: () => scheduleCommit(),
+    // Opens the host action form; only an explicit host submission records a learner action.
+    requestTeachingAction: (moveId, response) => send({ kind: &quot;teaching-action&quot;, move_id: moveId, response }),
+    // Only teaching help explicitly revealed on the page is reported. Moving
+    // sliders, expanding ordinary prose or locating a region is not an answer.
+    reportTeachingHelp: (moveId, kind, regionId) => new Promise((resolve, reject) => {
+      const region = teachingRegion(regionId);
+      const bounds = region?.getBoundingClientRect();
+      const text = region ? visibleText(region).trim() : '';
+      if (!region || !bounds || !text || !['hint', 'explanation'].includes(kind)
+        || bounds.bottom &lt;= 0 || bounds.top >= innerHeight || bounds.right &lt;= 0 || bounds.left >= innerWidth) {
+        reject(new Error('帮助区域尚未显示。')); return;
+      }
+      const requestId = ++helpRequest;
+      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error('帮助展示记录未确认。')); }, 15000);
+      pendingHelp.set(requestId, { resolve, reject, timer });
+      send({ kind: 'teaching-help', request_id: requestId, move_id: moveId, help_kind: kind, region_id: regionId, text });
+    }),
+  });
+  window.addEventListener(&quot;error&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;unhandledrejection&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === 'interaction-cancel') {
+      if (interaction?.id === event.data.request_id) interaction.controller.abort();
+      return;
+    }
+    if (event.data.kind === 'interaction') {
+      const id = event.data.request_id;
+      if (restoring || interaction) {
+        send({ kind: 'interaction-result', request_id: id, status: 'failed', reason: 'The page is not ready for an operation.' });
+        return;
+      }
+      const current = { id, controller: new AbortController() };
+      interaction = current;
+      clearTimeout(commitTimer);
+      let before = {};
+      try { before = { ...stateReader?.()?.values }; } catch {}
+      const actions = createActions(config.actionContract, () => stateReader?.(), () => actionHandler, () => parameterEdits);
+      actions.execute(event.data.request, event.data.expected_values, current.controller.signal, event.data.expected_edits).then(status => {
+        if (!current.controller.signal.aborted) {
+          const action = event.data.request.action;
+          const after = stateReader?.()?.values ?? {};
+          const support = status !== 'applied' || action?.kind === 'highlight' ? [] :
+            (config.teachingBinding?.regions ?? []).filter(region =>
+              ['reveal', 'annotate'].includes(action.kind) ? region.region_id === action.region_id :
+                region.state_fields.some(key => before[key] !== after[key])
+            ).flatMap(region => {
+              const node = teachingRegion(region.region_id);
+              const text = node?.getClientRects().length ? visibleText(node).trim() : '';
+              return text ? [{ region_id: region.region_id, text }] : [];
+            });
+          capture(id, false, { status, support });
+        }
+      }).catch(failure => {
+        const result = { status: current.controller.signal.aborted ? 'cancelled' : 'failed', reason: String(failure.message ?? failure) };
+        if (current.controller.signal.aborted) send({ kind: 'interaction-result', request_id: id, ...result });
+        else capture(id, false, result);
+      }).finally(() => { if (interaction === current) interaction = undefined; });
+      return;
+    }
+    if (event.data.kind === 'locate-region') {
+      const region = teachingRegion(event.data.region_id);
+      if (region) {
+        region.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        region.animate([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+          { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+      }
+      send({ kind: 'region-located', region_id: event.data.region_id, located: !!region });
+      return;
+    }
+    if (event.data.kind === 'teaching-help-recorded') {
+      const pending = pendingHelp.get(event.data.request_id);
+      if (pending) {
+        clearTimeout(pending.timer); pendingHelp.delete(event.data.request_id);
+        if (event.data.error) pending.reject(new Error(event.data.error)); else pending.resolve();
+      }
+      return;
+    }
+    if (event.data.kind === &quot;zoom&quot; &amp;&amp; Number.isFinite(event.data.scale) &amp;&amp; event.data.scale >= .5 &amp;&amp; event.data.scale &lt;= 1.5) {
+      const next = event.data.scale;
+      if (next !== zoom) {
+        const x = window.scrollX / zoom, y = window.scrollY / zoom;
+        document.documentElement.style.zoom = String(next);
+        zoom = next;
+        window.scrollTo(x * zoom, y * zoom);
+      }
+      return;
+    }
+    if (event.data.kind === &quot;theme&quot;) {
+      if (Number.isInteger(event.data.generation)) hostGeneration = event.data.generation;
+      for (const [name, value] of Object.entries(event.data.values)) document.documentElement.style.setProperty(name, value);
+    }
+    if (event.data.kind === &quot;snapshot&quot;) capture(event.data.request_id);
+    if (event.data.kind === &quot;export-static&quot;) {
+      const id = event.data.request_id;
+      Promise.all([document.fonts.ready, ...Array.from(document.images, image => image.decode())])
+        .then(() => capture(id, true), () => send({ kind: &quot;static-error&quot;, request_id: id, message: &quot;图解图片资源加载失败，请重新加载后重试。&quot; }));
+    }
+  });
+  // The host owns source labels and actions; ordinary page rendering stays local.
+  function normalizeSources() {
+    observer.disconnect();
+    const refs = [];
+    document.querySelectorAll(&quot;[data-source-ref]&quot;).forEach(node => {
+      const id = node.getAttribute(&quot;data-source-ref&quot;);
+      refs.push(id);
+      const source = config.sources.find(source => source.source_ref_id === id);
+      node.textContent = sourceChipLabel(config.sources, id);
+      node.setAttribute(&quot;title&quot;, source ? source.label : &quot;来源不可用&quot;);
+      node.setAttribute(&quot;aria-label&quot;, source ? `${node.textContent}：${source.label}` : &quot;来源不可用&quot;);
+      if (node instanceof HTMLButtonElement) node.disabled = !source;
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    return refs;
+  }
+  function capture(request_id, exporting = false, result) {
+    if (restoring || !observer) { pendingCaptures.set(request_id, exporting); return; }
+    const sourceRefs = normalizeSources();
+    const controls = Array.from(document.querySelectorAll(&quot;input, textarea, select&quot;))
+      .map((node, index) => ({
+      key: node.id || node.name || `control-${index}`, type: node.type,
+      value: node instanceof HTMLSelectElement &amp;&amp; node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value,
+      ...(node.type === &quot;checkbox&quot; || node.type === &quot;radio&quot; ? { checked: node.checked } : {}),
+      }));
+    try {
+    // A failed reader must not reuse an earlier semantic scene or hide the DOM
+    // that is still visible now. Read afresh for every capture.
+    let custom = {};
+    try { custom = stateReader ? stateReader() ?? {} : {}; } catch {}
+    // One synchronous browser read freezes parameters and actual rendered semantics together.
+    send({ kind: result ? &quot;interaction-result&quot; : exporting ? &quot;static-result&quot; : &quot;state&quot;, request_id, ...result, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') &amp;&amp; node.getClientRects().length > 0 &amp;&amp; getComputedStyle(node).visibility !== 'hidden' &amp;&amp; node.type !== 'hidden').map((node, index) => ({
+      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
+      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
+    })) } : {}), state: {
+      values: { controls, page: custom.values ?? null, parameter_edits: { ...parameterEdits } },
+      visible_step: custom.visible_step ?? document.querySelector(&quot;[data-presentation-step]&quot;)?.getAttribute(&quot;data-presentation-step&quot;) ?? null,
+      observed_result: visibleText(document.body).trim(), source_ref_ids: sourceRefs,
+      ...(custom.observation ? { observation: custom.observation } : {}),
+    } });
+    } catch (error) {
+      if (exporting) send({ kind: &quot;static-error&quot;, request_id, message: error instanceof Error ? error.message : String(error) });
+      else throw error;
+    }
+  }
+  function visibleText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (!(node instanceof Element) || node.matches(&quot;script, style, [data-source-ref]&quot;)) return &quot;&quot;;
+    const style = getComputedStyle(node);
+    if (style.display === &quot;none&quot; || style.visibility === &quot;hidden&quot;) return &quot;&quot;;
+    const label = [node.getAttribute(&quot;alt&quot;), node.getAttribute(&quot;aria-label&quot;)].filter(Boolean).join(&quot; &quot;);
+    return [label, ...Array.from(node.childNodes, visibleText)].join(&quot; &quot;);
+  }
+  function scheduleCommit() {
+    if (restoring || interaction) return;
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(() => capture(), 0);
+  }
+  function isEditingTarget(node) {
+    return node instanceof Element &amp;&amp; !!node.closest(&quot;input, textarea, select, [contenteditable]:not([contenteditable='false'])&quot;);
+  }
+  function publishEditing(next) {
+    if (!Number.isInteger(hostGeneration) || editing === next) return;
+    editing = next;
+    send({ kind: &quot;editing-focus&quot;, generation: hostGeneration, editing });
+  }
+  document.addEventListener(&quot;click&quot;, event => {
+    const node = event.target instanceof Element ? event.target.closest(&quot;[data-source-ref], a&quot;) : null;
+    if (!node) return;
+    event.preventDefault();
+    const id = node.getAttribute(&quot;data-source-ref&quot;);
+    if (config.sources.some(source => source.source_ref_id === id)) send({ kind: &quot;source&quot;, source_ref_id: id });
+  }, true);
+  document.addEventListener(&quot;submit&quot;, event => event.preventDefault(), true);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    // Run after the page's own DOMContentLoaded handlers installed its controls.
+    setTimeout(async () => {
+    try {
+    restoring = true;
+    if (config.restoredState) {
+      const controls = config.restoredState.values?.controls ?? [];
+      document.querySelectorAll(&quot;input, textarea, select&quot;).forEach((node, index) => {
+        const saved = controls.find(control => control.key === (node.id || node.name || `control-${index}`) &amp;&amp; control.type === node.type);
+        if (!saved) return;
+        if (node instanceof HTMLSelectElement &amp;&amp; node.multiple) {
+          Array.from(node.options).forEach(option => { option.selected = saved.value.includes(option.value); });
+        } else if (node.type !== &quot;file&quot;) node.value = saved.value;
+        if (&quot;checked&quot; in saved) node.checked = saved.checked;
+        node.dispatchEvent(new Event(&quot;input&quot;, { bubbles: true }));
+        node.dispatchEvent(new Event(&quot;change&quot;, { bubbles: true }));
+      });
+      if (stateRestorer) await stateRestorer(config.restoredState);
+      if (!stateRestorer &amp;&amp; (config.restoredState.values?.page != null || config.restoredState.visible_step != null)) {
+        send({ kind: &quot;restore-partial&quot; });
+      }
+    }
+    restoring = false;
+    observer = new MutationObserver(normalizeSources);
+    // Only human control edits invalidate an observation. Timer/playback updates
+    // still appear in the snapshot, but do not masquerade as conflicting edits.
+    for (const kind of ['input', 'change', 'click']) document.addEventListener(kind, event => {
+      if (!event.isTrusted || interaction || !parameters.length) return;
+      let before;
+      try { before = { ...stateReader?.()?.values }; } catch { return; }
+      queueMicrotask(() => {
+        let after;
+        try { after = stateReader?.()?.values ?? {}; } catch { return; }
+        for (const key of parameters) {
+          const target = event.target;
+          if (before[key] !== after[key] || ((kind === 'input' || kind === 'change') &amp;&amp; target instanceof Element &amp;&amp; target.getAttribute('data-presentation-parameter') === key)) {
+            parameterEdits[key] = (parameterEdits[key] ?? 0) + 1;
+          }
+        }
+      });
+    }, true);
+    document.addEventListener(&quot;change&quot;, scheduleCommit);
+    document.addEventListener(&quot;focusin&quot;, event => publishEditing(isEditingTarget(event.target)));
+    document.addEventListener(&quot;focusout&quot;, () => queueMicrotask(() => publishEditing(isEditingTarget(document.activeElement))));
+    window.addEventListener(&quot;blur&quot;, () => publishEditing(false));
+    document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) publishEditing(false); });
+    document.addEventListener(&quot;click&quot;, event => {
+      if (!(event.target instanceof Element) || event.target.closest(&quot;[data-source-ref], a&quot;)) return;
+      if (event.target.closest(&quot;button, summary, [role=button], [data-presentation-step]&quot;)) scheduleCommit();
+    });
+    normalizeSources();
+    send({ kind: &quot;ready&quot; });
+    const captures = Array.from(pendingCaptures);
+    pendingCaptures.clear();
+    captures.forEach(([id, mode]) => capture(id, mode));
+    } catch {
+      restoring = true;
+      send({ kind: &quot;error&quot; });
+    }
+    });
+  });
+})({&quot;channel&quot;:&quot;rsi-render&quot;,&quot;sources&quot;:[],&quot;initialState&quot;:{&quot;dataset&quot;:&quot;main&quot;,&quot;lambda&quot;:2},&quot;restoredState&quot;:null}, (// Runs inside the existing opaque-origin frame. Freeze pixels and DOM synchronously
+// with the bridge's state read; decoding/rasterization happens later in the host.
+function () {
+  if (document.fonts.status !== 'loaded') throw new Error('图解字体尚未就绪，请稍后重试。');
+  const root = document.body;
+  const width = root.offsetWidth, height = Math.max(root.offsetHeight, root.scrollHeight);
+  if (!width || !height) throw new Error('当前图解没有可导出的画面。');
+  if ([...document.fonts].some(face => face.status === 'error')) throw new Error('图解字体加载失败，请重试。');
+  const rules = [], resources = new Set();
+  let serial = 0;
+  const copyStyle = (style, target) => {
+    for (const name of style) target.style.setProperty(name, style.getPropertyValue(name));
+    target.style.animation = 'none'; target.style.transition = 'none'; target.style.caretColor = 'transparent';
+  };
+  function clone(node) {
+    if (!(node instanceof Element)) return node.cloneNode(true);
+    if (node.matches('script,style,link,[data-presentation-mask]')) return document.createTextNode('');
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden') return document.createTextNode('');
+    if (node.matches('video,audio,iframe,object,embed') || node.shadowRoot)
+      throw new Error('当前图解包含尚不支持静态输出的媒体或嵌入内容。');
+    if (node instanceof HTMLElement &amp;&amp; /auto|scroll/.test(style.overflow + style.overflowX + style.overflowY)
+        &amp;&amp; (node.scrollWidth > node.clientWidth + 2 || node.scrollHeight > node.clientHeight + 2))
+      throw new Error('图解含滚动区域，请展开内容后重新导出，避免遗漏。');
+    for (const property of ['background-image', 'mask-image', 'list-style-image']) {
+      for (const match of style.getPropertyValue(property).matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)) {
+        if (match[1].startsWith('#')) continue;
+        if (!match[1].startsWith('data:')) throw new Error('图解包含未就绪的图片资源，请使用版本内资源。');
+        resources.add(match[1]);
+      }
+    }
+    if (node instanceof SVGImageElement) {
+      const href = node.href.baseVal;
+      if (!href.startsWith('data:')) throw new Error('SVG 图片资源无法嵌入，请使用版本内资源。');
+      resources.add(href);
+    }
+    let target;
+    if (node instanceof HTMLCanvasElement) {
+      if (!node.getContext('2d')) {
+        const gl = node.getContext('webgl2') || node.getContext('webgl');
+        if (!gl || gl.isContextLost()) throw new Error('三维画布尚未就绪，请重新加载图解。');
+        if (!gl.getContextAttributes().preserveDrawingBuffer)
+          throw new Error('三维画布未保留画面；制作时请开启 preserveDrawingBuffer 后重新导出。');
+      }
+      target = document.createElement('img');
+      try { target.src = node.toDataURL('image/png'); } catch { throw new Error('Canvas 资源无法读取，请重新加载图解。'); }
+    } else {
+      if (node instanceof HTMLImageElement &amp;&amp; (!node.complete || !node.naturalWidth))
+        throw new Error('图解图片资源尚未就绪或加载失败，请重试。');
+      target = node.cloneNode(false);
+      if (node instanceof HTMLTextAreaElement) target.textContent = node.value;
+      else for (const child of node.childNodes) target.append(clone(child));
+      // Serialize live control state while retaining the actual control's appearance and size.
+      if (node instanceof HTMLInputElement) {
+        target.setAttribute('value', node.value);
+        target.toggleAttribute('checked', node.checked);
+      } else if (node instanceof HTMLOptionElement) target.toggleAttribute('selected', node.selected);
+    }
+    copyStyle(style, target);
+    if (node instanceof HTMLCanvasElement) { target.style.width = style.width; target.style.height = style.height; }
+    for (const attr of [...target.attributes]) if (attr.name.startsWith('on')) target.removeAttribute(attr.name);
+    for (const pseudo of ['::before', '::after']) {
+      const value = getComputedStyle(node, pseudo);
+      if (!value.content || value.content === 'none' || value.content === 'normal') continue;
+      const id = `static-${++serial}`; target.classList.add(id);
+      const holder = document.createElement('span'); copyStyle(value, holder);
+      rules.push(`.${id}${pseudo}{${holder.style.cssText}}`);
+    }
+    return target;
+  }
+  const body = clone(root);
+  body.style.margin = '0'; body.style.width = `${width}px`; body.style.height = `${height}px`;
+  // Keep authored control/pseudo-element styling alongside the frozen computed styles.
+  const authoredRules = [];
+  for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
+    if (rule instanceof CSSFontFaceRule) {
+      if ([...rule.style.getPropertyValue('src').matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)].some(match => !match[1].startsWith('data:')))
+        throw new Error('图解字体资源无法嵌入，请使用版本内字体。');
+    }
+    authoredRules.push(rule.cssText);
+  }
+  const style = document.createElement('style'); style.textContent = [...authoredRules, ...rules].join('\n'); body.prepend(style);
+  if (root.scrollWidth > width + 2) throw new Error('图解超出当前画布，请展开演示后重新导出。');
+  return { width, height, resources: [...resources], svg: `&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;${width}&quot; height=&quot;${height}&quot;>&lt;foreignObject width=&quot;100%&quot; height=&quot;100%&quot;>${new XMLSerializer().serializeToString(body)}&lt;/foreignObject>&lt;/svg>` };
+}), (function (contract, read, handler, edits = () => ({})) {
+  const entries = contract ?? [];
+  const region = id => Array.from(document.querySelectorAll('[data-teaching-region],[id]'))
+    .find(node => node.getAttribute('data-teaching-region') === id || node.id === id);
+  const control = key => Array.from(document.querySelectorAll('input,select,textarea'))
+    .find(node => node.getAttribute('data-presentation-parameter') === key);
+  const invocation = id => Array.from(document.querySelectorAll('[data-presentation-action]'))
+    .find(node => node.getAttribute('data-presentation-action') === id);
+  function inspect() {
+    const problems = [];
+    for (const entry of entries) {
+      if (entry.kind !== 'highlight' &amp;&amp; typeof handler() !== 'function') problems.push('Register registerActionHandler for declared actions.');
+      if (entry.kind === 'set_parameters') {
+        for (const key of entry.parameters) {
+          if (!control(key) || !(key in (read()?.values ?? {}))) problems.push(`Parameter ${key} needs a bound control and reader value.`);
+        }
+      } else if (entry.kind === 'invoke') {
+        if (!invocation(entry.action_id)) problems.push(`Action ${entry.action_id} needs a bound control.`);
+      } else if (!region(entry.region_id)) problems.push(`Region ${entry.region_id} does not exist.`);
+    }
+    return problems;
+  }
+  function locate(target) {
+    target.scrollIntoView({ block: 'center', behavior: 'instant' });
+    target.animate?.([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+      { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+  }
+  async function execute(request, expected, signal, expectedEdits) {
+    signal?.throwIfAborted();
+    const problems = inspect();
+    if (problems.length) throw new Error(problems.join(' '));
+    if (request.operation === 'observe') return 'observed';
+    const action = request.action;
+    const declared = entries.some(entry => entry.kind === action.kind &amp;&amp; (
+      action.kind === 'set_parameters' ? Object.keys(action.values).length > 0 &amp;&amp; Object.keys(action.values).every(key => entries.filter(item => item.kind === 'set_parameters').flatMap(item => item.parameters).includes(key))
+        : action.kind === 'invoke' ? entry.action_id === action.action_id : entry.region_id === action.region_id));
+    if (!declared) throw new Error('This action is not declared by this content version.');
+    const values = read()?.values ?? {};
+    if (Object.entries(expected ?? {}).some(([key, value]) => values[key] !== value
+      &amp;&amp; (!expectedEdits || (edits()[key] ?? 0) !== (expectedEdits[key] ?? 0)))) return 'conflict';
+    if (action.kind === 'set_parameters') {
+      for (const [key, value] of Object.entries(action.values)) {
+        const node = control(key);
+        if (!node || node.disabled || (values[key] !== null &amp;&amp; typeof value !== typeof values[key])) throw new Error(`Parameter ${key} is unavailable or has the wrong type.`);
+        if (typeof value === 'number' &amp;&amp; (!Number.isFinite(value)
+          || (node.min !== '' &amp;&amp; node.min != null &amp;&amp; value &lt; Number(node.min))
+          || (node.max !== '' &amp;&amp; node.max != null &amp;&amp; value > Number(node.max)))) throw new Error(`Parameter ${key} is outside its control range.`);
+      }
+    }
+    if (action.kind === 'invoke' &amp;&amp; invocation(action.action_id)?.disabled) throw new Error('This operation is currently disabled.');
+    if (action.kind === 'highlight') locate(region(action.region_id));
+    else await handler()(action, { signal });
+    signal?.throwIfAborted();
+    if (action.kind === 'set_parameters' &amp;&amp; Object.entries(action.values).some(([key, value]) => read()?.values?.[key] !== value)) {
+      throw new Error('The handler did not apply the requested parameters.');
+    }
+    if (['reveal', 'annotate'].includes(action.kind)) {
+      const target = region(action.region_id);
+      if (!target || !target.getClientRects().length || getComputedStyle(target).visibility === 'hidden' || !target.innerText?.trim()) {
+        throw new Error('The requested content has not become visible.');
+      }
+      locate(target);
+    }
+    return 'applied';
+  }
+  return { inspect, execute, locate };
+}));
+// Shared Reader/preview lifecycle. Returning never resumes a demo implicitly.
+(() => {
+  let hostVisible = true;
+  const pauseAll = () => document.querySelectorAll(&quot;video&quot;).forEach(video => video.pause());
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== &quot;rsi-render&quot; || event.data.kind !== &quot;visibility&quot;) return;
+    hostVisible = event.data.visible;
+    if (!hostVisible) pauseAll();
+  });
+  document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) pauseAll(); });
+  window.addEventListener(&quot;pagehide&quot;, pauseAll);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    const visibility = new WeakMap();
+    const installed = new WeakSet();
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      visibility.set(entry.target, entry.isIntersecting);
+      if (!entry.isIntersecting) entry.target.pause();
+    }));
+    const visit = (node, action) => {
+      if (!(node instanceof Element)) return;
+      if (node.matches(&quot;video&quot;)) action(node);
+      node.querySelectorAll(&quot;video&quot;).forEach(action);
+    };
+    const install = video => {
+      observer.observe(video);
+      if (installed.has(video)) return;
+      installed.add(video);
+      video.controls = false; video.playsInline = true; video.autoplay = false; video.pause();
+      video.addEventListener(&quot;play&quot;, () => {
+        if (document.hidden || !hostVisible || visibility.get(video) === false) { video.pause(); return; }
+        document.querySelectorAll(&quot;video&quot;).forEach(other => { if (other !== video) other.pause(); });
+      });
+    };
+    visit(document.body, install);
+    new MutationObserver(records => records.forEach(record => {
+      record.addedNodes.forEach(node => visit(node, install));
+      record.removedNodes.forEach(node => visit(node, video => {
+        if (!video.isConnected) { video.pause(); observer.unobserve(video); }
+      }));
+    })).observe(document.body, { subtree: true, childList: true });
+  });
+})();
+&lt;/script>
+&lt;meta charset=&quot;utf-8&quot;>
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+&lt;title>带惩罚的直线拟合：从目标函数推出最优斜率与截距&lt;/title>
+&lt;style>
+:root{--canvas:#faf7f2;--ink:#26221d;--surface:#fffdf9;--line:#ddd3c6;--accent:#a8402c;--muted:#6d5b46;--green:#2f6f5e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;font-size:16px;line-height:1.75}
+main{max-width:820px;margin:0 auto;padding:26px 16px 72px}
+h1{font-size:1.5rem;line-height:1.45;margin:0 0 12px}
+h2{font-size:1.12rem;margin:34px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:1rem;margin:18px 0 6px;color:#3d372f}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:6px 0}
+.lede{font-size:1.02rem;color:#3d372f}
+.chip{display:inline-block;font-size:.72rem;padding:1px 8px;border-radius:999px;background:#efe6da;color:var(--muted);margin-left:6px;vertical-align:2px;letter-spacing:.03em}
+.eqn{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:9px 14px;margin:14px 0;overflow-x:auto;font-family:Georgia,'Times New Roman',serif;font-size:1.02rem;line-height:2}
+.note{background:#f6f0e7;border-radius:8px;padding:8px 14px;margin:14px 0;font-size:.95rem}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:.93rem}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top;overflow-wrap:break-word}
+th{background:#f6f0e7;font-weight:600}
+td.q{font-variant-numeric:tabular-nums}
+figure{margin:18px 0}
+.figrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.figcell{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px}
+.figcell svg{width:100%;height:auto;display:block}
+figcaption{font-size:.9rem;color:var(--muted);margin-top:8px}
+.pgrid{stroke:#e7dfd3;stroke-width:1}
+.paxis{stroke:#b9ad9d;stroke-width:1.2}
+.iso{fill:none;stroke:#c9bfb0;stroke-width:1}
+.iso2{fill:none;stroke:#7aa596;stroke-width:1.2;stroke-dasharray:4 3}
+.ppath{stroke:#8a7f72;stroke-width:1.3;stroke-dasharray:5 4;fill:none}
+.pvalley{stroke:var(--accent);stroke-width:2.6;fill:none}
+.pmark-open{fill:none;stroke:#5d7280;stroke-width:1.5}
+.pmark-solid{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+.pgreen{stroke:var(--green);stroke-width:1.8;fill:none}
+.panel text{fill:#6d5b46;font-size:11px;font-family:inherit}
+.plab{fill:#3f3a33;font-size:11px}
+.plab2{fill:var(--green);font-size:10px}
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;margin:16px 0}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.tab{min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#f3ece2;color:var(--ink);font:inherit;font-size:.88rem;cursor:pointer}
+.tab[aria-pressed='true']{background:var(--accent);border-color:var(--accent);color:#fff}
+.srow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.srow label{font-family:Georgia,serif;font-size:1.05rem}
+input[type=range]{width:100%;min-height:44px;accent-color:var(--accent)}
+#lam-out{font-variant-numeric:tabular-nums;min-width:3.2em;text-align:right;font-size:.95rem}
+#plot{width:100%;height:auto;display:block;background:var(--surface);border-radius:6px}
+#plot .grid{stroke:#ece5d9;stroke-width:1}
+#plot .axis{stroke:#b9ad9d;stroke-width:1.2}
+#plot .fit{stroke:var(--accent);stroke-width:2.4;stroke-linecap:round;fill:none}
+#plot .fan{stroke:#c98d7c;stroke-width:1.3;fill:none}
+#plot .res{stroke:#8a7f72;stroke-width:1.1;stroke-dasharray:3 3;fill:none}
+#plot .pt{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+#plot .meanpt{fill:none;stroke:var(--green);stroke-width:1.8}
+#plot text{fill:#5b5045;font-size:11px;font-family:inherit}
+#plot .lbl{fill:var(--green);font-size:10px}
+.legend{font-size:.82rem;color:var(--muted);margin:6px 2px 0}
+.reads{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:8px;margin-top:10px}
+.cell{background:#f6f0e7;border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.cell .k{display:block;font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+.cell .v{font-size:1rem;font-variant-numeric:tabular-nums;font-weight:600}
+#r-formula{font-size:.9rem;margin-top:10px;font-family:Georgia,serif}
+#r-status{font-size:.9rem;margin-top:6px;color:#3d372f}
+#lab-note{font-size:.86rem;color:var(--muted);margin-top:6px}
+@media (max-width:520px){h1{font-size:1.32rem}main{padding:20px 12px 60px}}
+@media (max-width:560px){h1{font-size:1.3rem}main{padding:20px 12px 60px}table{font-size:.86rem}th,td{padding:5px 6px}.figrow{gap:8px}.eqn{font-size:.96rem;padding:8px 10px}.reads{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}}
+&lt;/style>
+&lt;/head>
+&lt;body>
+&lt;main>
+&lt;h1>带惩罚的直线拟合：从目标函数推出最优斜率与截距&lt;/h1>
+&lt;p class=&quot;lede&quot;>这一页用你给的五个点做同一件事：先写出目标函数，把它改写成一眼能看出哪部分管截距、哪部分管斜率的形式，解出 a 与 b 关于 λ 的完整表达式，再用配方说明它为什么是全局最小值、什么时候唯一。最后用同一组数字做交互核对，并把五个 x 都等于 2 的退化数据单独推一遍。文中所有数值都按误差平方的&lt;strong>总和&lt;/strong>计算，不除以 5；公式、图形与交互读数共用同一组常量。&lt;/p>
+
+&lt;div class=&quot;note&quot;>&lt;strong>固定示例（第 1–5 节与第 7 节前半共用）&lt;/strong>：观测点 x=(0,1,2,3,4)，y=(−1,0,2,2,5)，n=5，目标为 Σᵢ₌₁⁵[yᵢ−(a·xᵢ+b)]²+λa²，λ≥0。&lt;br>由这五个点算出的全部常量：x̄=2，ȳ=1.6，S&lt;sub>xx&lt;/sub>=10，S&lt;sub>xy&lt;/sub>=14，S&lt;sub>yy&lt;/sub>=21.2。&lt;/div>
+
+&lt;h2>1 先把目标写清楚&lt;span class=&quot;chip&quot;>固定示例&lt;/span>&lt;/h2>
+&lt;table>
+&lt;thead>&lt;tr>&lt;th>xᵢ&lt;/th>&lt;th>0&lt;/th>&lt;th>1&lt;/th>&lt;th>2&lt;/th>&lt;th>3&lt;/th>&lt;th>4&lt;/th>&lt;/tr>&lt;/thead>
+&lt;tbody>
+&lt;tr>&lt;th>yᵢ&lt;/th>&lt;td class=&quot;q&quot;>−1&lt;/td>&lt;td class=&quot;q&quot;>0&lt;/td>&lt;td class=&quot;q&quot;>2&lt;/td>&lt;td class=&quot;q&quot;>2&lt;/td>&lt;td class=&quot;q&quot;>5&lt;/td>&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;div class=&quot;eqn&quot;>J(a, b) = Σ&lt;sub>i=1&lt;/sub>&lt;sup>5&lt;/sup> [ y&lt;sub>i&lt;/sub> − (a·x&lt;sub>i&lt;/sub> + b) ]² + λ a² ， λ ≥ 0&lt;/div>
+&lt;p>动笔之前把三件事定下来，后面每一步都要用到它们。&lt;/p>
+&lt;ul>
+&lt;li>&lt;strong>求和不是平均。&lt;/strong>Σ 里是五项直接相加。如果目标改成平均值（整体除以 5），最优 (a, b) 一点不会变，但报出的 SSE 与 J 都会小 5 倍。本页所有读数都是总和口径。&lt;/li>
+&lt;li>&lt;strong>罚项只含 a。&lt;/strong>λa² 里没有 b。这一条后面会决定：关于截距的方程完全不受 λ 影响，于是每个 λ 的最优直线都经过均值点。&lt;/li>
+&lt;li>&lt;strong>每个 λ 是一个新的目标函数。&lt;/strong>λ 变了，被最小化的函数就变了，所以最优斜率是一个函数 a*(λ)，不是一个数。不同 λ 的 J 值不能直接比大小。&lt;/li>
+&lt;/ul>
+&lt;p>先把五个点压缩成五个常量。这一步只是算术，但后面每个公式都只用它们：&lt;/p>
+&lt;div class=&quot;eqn&quot;>
+x̄ = (0+1+2+3+4)/5 = 2&lt;br>
+ȳ = (−1+0+2+2+5)/5 = 1.6&lt;br>
+S&lt;sub>xx&lt;/sub> = Σ(x&lt;sub>i&lt;/sub>−x̄)² = 4+1+0+1+4 = 10&lt;br>
+S&lt;sub>xy&lt;/sub> = Σ(x&lt;sub>i&lt;/sub>−x̄)(y&lt;sub>i&lt;/sub>−ȳ) = 5.2+1.6+0+0.4+6.8 = 14&lt;br>
+S&lt;sub>yy&lt;/sub> = Σ(y&lt;sub>i&lt;/sub>−ȳ)² = 6.76+2.56+0.16+0.16+11.56 = 21.2
+&lt;/div>
+&lt;p>S&lt;sub>xx&lt;/sub> 度量 x 围绕自己平均值的分散程度，S&lt;sub>xy&lt;/sub> 度量 y 与 x 同向变动的强度，S&lt;sub>yy&lt;/sub> 度量 y 本身的总波动。三者都是“总和”口径，量纲里带着 n。&lt;/p>
+
+&lt;h2>2 把平方和拆成“整体水平”与“围绕均值的形状”&lt;span class=&quot;chip&quot;>固定示例&lt;/span>&lt;/h2>
+&lt;p>对任意的 a、b，下面这个恒等式成立：&lt;/p>
+&lt;div class=&quot;eqn&quot;>
+Σ&lt;sub>i&lt;/sub> [ y&lt;sub>i&lt;/sub> − (a x&lt;sub>i&lt;/sub> + b) ]² = 5 ( ȳ − a x̄ − b )² + ( S&lt;sub>yy&lt;/sub> − 2a S&lt;sub>xy&lt;/sub> + a² S&lt;sub>xx&lt;/sub> )
+&lt;/div>
+&lt;p>推导只有两步。记 r = ȳ − a x̄ − b（它对每个 i 是同一个常数），记 u&lt;sub>i&lt;/sub> = (y&lt;sub>i&lt;/sub> − ȳ) − a(x&lt;sub>i&lt;/sub> − x̄)，则 y&lt;sub>i&lt;/sub> − (a x&lt;sub>i&lt;/sub> + b) = u&lt;sub>i&lt;/sub> + r，展开：&lt;/p>
+&lt;div class=&quot;eqn&quot;>Σ (u&lt;sub>i&lt;/sub> + r)² = Σ u&lt;sub>i&lt;/sub>² + 2r Σ u&lt;sub>i&lt;/sub> + 5 r²&lt;/div>
+&lt;p>关键就在中间那一项：Σ u&lt;sub>i&lt;/sub> = Σ(y&lt;sub>i&lt;/sub> − ȳ) − a Σ(x&lt;sub>i&lt;/sub> − x̄) = 0 − a·0 = 0。于是 2r Σ u&lt;sub>i&lt;/sub> 整块为零，剩下的 Σ u&lt;sub>i&lt;/sub>² + 5r² 展开就是上面的恒等式。&lt;/p>
+&lt;p>&lt;strong>为什么这个改写成立&lt;/strong>：x̄ 与 ȳ 恰好是这五个数的算术平均，所以每个中心化量 (x&lt;sub>i&lt;/sub>−x̄)、(y&lt;sub>i&lt;/sub>−ȳ) 加起来都是 0；r 又不随 i 变化，可以提到求和号外，它唯一能乘上的东西就是 Σ u&lt;sub>i&lt;/sub>，而那是 0。也就是说，“整体水平”和“围绕均值的形状”在这个数据集里是正交的两块，改动其中一块不会牵动另一块。用数值验一下（a=0，b=0）：左边 Σyᵢ²=34，右边 5(1.6)²+21.2=12.8+21.2=34。&lt;/p>
+&lt;div class=&quot;note&quot;>&lt;strong>哪一类交叉项消失，哪一类不消失&lt;/strong>（这里容易记错）。消失的是 r 与中心化部分之间的 2r Σ u&lt;sub>i&lt;/sub>。不消失的是 Σ u&lt;sub>i&lt;/sub>² 里面的 −2a S&lt;sub>xy&lt;/sub>：S&lt;sub>xy&lt;/sub>=14≠0，这一项随 a 变化，正是后面斜率的来源。如果把这二者混作一谈，就会得出“斜率和 y 与 x 的协方差无关”这种错误结论。&lt;/div>
+
+&lt;h2>3 两个一阶条件：一个管截距，一个管斜率&lt;span class=&quot;chip&quot;>固定示例&lt;/span>&lt;/h2>
+&lt;p>先对 b 求偏导。罚项里没有 b，所以导数只有误差项：&lt;/p>
+&lt;div class=&quot;eqn&quot;>∂J/∂b = −2 Σ [ y&lt;sub>i&lt;/sub> − (a x&lt;sub>i&lt;/sub> + b) ] = −2·5 ( ȳ − a x̄ − b )&lt;/div>
+&lt;p>令它为零，得到&lt;/p>
+&lt;div class=&quot;eqn&quot;>b = ȳ − a x̄ = 1.6 − 2a&lt;/div>
+&lt;p>这个式子里没有 λ。它的含义不是“某个 λ 下的巧合”：对每一个 λ，最优直线都必须让残差之和为零，也就是必须经过点 (x̄, ȳ) = (2, 1.6)。第 6 节会看到，退化数据在 λ=0 时解不唯一，但每一条最优直线仍然过这个点。&lt;/p>
+&lt;p>再对 a 求偏导。这次要把罚项算进去：&lt;/p>
+&lt;div class=&quot;eqn&quot;>∂J/∂a = −2 Σ x&lt;sub>i&lt;/sub> [ y&lt;sub>i&lt;/sub> − (a x&lt;sub>i&lt;/sub> + b) ] + 2λ a&lt;/div>
+&lt;p>用上面的 b 把括号里的残差写成 (y&lt;sub>i&lt;/sub> − ȳ) − a(x&lt;sub>i&lt;/sub> − x̄)。又因为 Σ 残差 = 0，把 x&lt;sub>i&lt;/sub> 换成 x&lt;sub>i&lt;/sub> − x̄ 不改变这个和：&lt;/p>
+&lt;div class=&quot;eqn&quot;>Σ x&lt;sub>i&lt;/sub>·残差&lt;sub>i&lt;/sub> = x̄ Σ残差&lt;sub>i&lt;/sub> + Σ (x&lt;sub>i&lt;/sub> − x̄)·残差&lt;sub>i&lt;/sub> = Σ (x&lt;sub>i&lt;/sub> − x̄)·残差&lt;sub>i&lt;/sub> = S&lt;sub>xy&lt;/sub> − a S&lt;sub>xx&lt;/sub>&lt;/div>
+&lt;p>代入并令 ∂J/∂a = 0：−2(S&lt;sub>xy&lt;/sub> − a S&lt;sub>xx&lt;/sub>) + 2λa = 0，即 S&lt;sub>xy&lt;/sub> = a(S&lt;sub>xx&lt;/sub> + λ)。解出&lt;/p>
+&lt;div class=&quot;eqn&quot;>
+a*(λ) = S&lt;sub>xy&lt;/sub> / (S&lt;sub>xx&lt;/sub> + λ) = 14 / (10 + λ)&lt;br>
+b*(λ) = ȳ − x̄ a*(λ) = 1.6 − 28/(10 + λ)
+&lt;/div>
+&lt;p>λ 只出现在斜率那个分母里；截距不含独立信息，它被“经过均值点”这条约束牵着走。代进去算几个值：&lt;/p>
+&lt;table>
+&lt;thead>&lt;tr>&lt;th>λ&lt;/th>&lt;th>a* = 14/(10+λ)&lt;/th>&lt;th>b* = 1.6 − 2a*&lt;/th>&lt;th>拟合直线 ŷ = a*x + b*&lt;/th>&lt;/tr>&lt;/thead>
+&lt;tbody>
+&lt;tr>&lt;td class=&quot;q&quot;>0&lt;/td>&lt;td class=&quot;q&quot;>1.400&lt;/td>&lt;td class=&quot;q&quot;>−1.200&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 1.4x − 1.2&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>0.5&lt;/td>&lt;td class=&quot;q&quot;>1.333&lt;/td>&lt;td class=&quot;q&quot;>−1.067&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 1.333x − 1.067&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>1&lt;/td>&lt;td class=&quot;q&quot;>1.273&lt;/td>&lt;td class=&quot;q&quot;>−0.945&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 1.273x − 0.945&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>2&lt;/td>&lt;td class=&quot;q&quot;>1.167&lt;/td>&lt;td class=&quot;q&quot;>−0.733&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 1.167x − 0.733&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>5&lt;/td>&lt;td class=&quot;q&quot;>0.933&lt;/td>&lt;td class=&quot;q&quot;>−0.267&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 0.933x − 0.267&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>10&lt;/td>&lt;td class=&quot;q&quot;>0.700&lt;/td>&lt;td class=&quot;q&quot;>0.200&lt;/td>&lt;td class=&quot;q&quot;>ŷ = 0.7x + 0.2&lt;/td>&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>λ=0 时 a*=14/10=1.4，正是普通最小二乘解。λ 增大时 a* 单调下降趋向 0，b* 从 −1.2 单调上升趋向 1.6：斜率被压平的同时，直线绕 (2, 1.6) 向水平位置转动，所以截距必须跟着上移。λ 趋于无穷时，最优直线就是水平线 ŷ ≡ 1.6。&lt;/p>
+
+&lt;h2>4 为什么是全局最小，以及什么时候唯一&lt;span class=&quot;chip&quot;>固定示例&lt;/span>&lt;/h2>
+&lt;p>把第 2 节的恒等式右端对 a 配方：先把 (a 的二次项) 收成完全平方，(10+λ)a² − 28a 与常数 21.2 合起来给出&lt;/p>
+&lt;div class=&quot;eqn&quot;>
+J(a, b) = 5 ( ȳ − x̄ a − b )² + (10 + λ) ( a − a* )² + J&lt;sub>min&lt;/sub>&lt;br>
+J&lt;sub>min&lt;/sub> = S&lt;sub>yy&lt;/sub> − S&lt;sub>xy&lt;/sub>²/(S&lt;sub>xx&lt;/sub> + λ) = 21.2 − 196/(10 + λ)
+&lt;/div>
+&lt;p>λ=2 时可以逐项核：右边是 5(1.6−2a−b)² + 12(a−7/6)² + 73/15。你也可以把它当作一条恒等式在任何 (a,b) 上验算，比如取 a=0、b=0：左边 J=34，右边 5(1.6)²+12(7/6)²+73/15 = 12.8+16.333+4.867 = 34。&lt;/p>
+&lt;p>从这个形式一次读出三件事，这正是“不要停在令导数为零”的地方。&lt;/p>
+&lt;ol>
+&lt;li>&lt;strong>有下界。&lt;/strong>两个平方项都非负，系数 5&amp;gt;0、10+λ≥10&amp;gt;0，所以对任何 (a, b) 都有 J(a,b) ≥ J&lt;sub>min&lt;/sub>。J&lt;sub>min&lt;/sub> 是一个显式的下界，推导里不需要先假设最小值存在。&lt;/li>
+&lt;li>&lt;strong>下界被取到。&lt;/strong>取 a = a*、b = ȳ − x̄a* = b* 时两项同时为 0，J = J&lt;sub>min&lt;/sub>。所以 (a*, b*) 是全局最小值点，最小值就是 J&lt;sub>min&lt;/sub>。&lt;/li>
+&lt;li>&lt;strong>取到的点只有一个。&lt;/strong>上面两个等号同时成立，当且仅当 a = a* 且 b = b*。唯一性依赖的量写得很清楚：10 + λ &amp;gt; 0。本数据 S&lt;sub>xx&lt;/sub>=10&amp;gt;0，所以每一个 λ≥0 都唯一；若 S&lt;sub>xx&lt;/sub>=0 且 λ=0，这个系数就变成 0，唯一性随之失效（第 6 节）。&lt;/li>
+&lt;/ol>
+&lt;p>另一个角度是曲率：∂²J/∂b² = 2n = 10，而把 b 优化掉之后关于 a 的曲率是 2(S&lt;sub>xx&lt;/sub>+λ) = 2(10+λ)。两者都为正，目标严格凸，驻点就是全局最小点。配方比“凸性 + 驻点”多给了一样东西：最小值本身，以及每项各占多少。&lt;/p>
+&lt;p>把 (a*, b*) 代回去，最小值可以拆成“拟合误差 + 罚金”两部分：&lt;/p>
+&lt;div class=&quot;eqn&quot;>
+SSE(λ) = 21.2 − 196(10 + 2λ)/(10 + λ)² ， 罚金 = λ a*(λ)² ， J&lt;sub>min&lt;/sub> = SSE + 罚金
+&lt;/div>
+&lt;table>
+&lt;thead>&lt;tr>&lt;th>λ&lt;/th>&lt;th>SSE(λ)（未加惩罚的误差平方和）&lt;/th>&lt;th>λa*²（罚金）&lt;/th>&lt;th>J&lt;sub>min&lt;/sub>&lt;/th>&lt;/tr>&lt;/thead>
+&lt;tbody>
+&lt;tr>&lt;td class=&quot;q&quot;>0&lt;/td>&lt;td class=&quot;q&quot;>1.6&lt;/td>&lt;td class=&quot;q&quot;>0&lt;/td>&lt;td class=&quot;q&quot;>1.6&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>2&lt;/td>&lt;td class=&quot;q&quot;>193/90 ≈ 2.144&lt;/td>&lt;td class=&quot;q&quot;>49/18 ≈ 2.722&lt;/td>&lt;td class=&quot;q&quot;>73/15 ≈ 4.867&lt;/td>&lt;/tr>
+&lt;tr>&lt;td class=&quot;q&quot;>10&lt;/td>&lt;td class=&quot;q&quot;>6.5&lt;/td>&lt;td class=&quot;q&quot;>4.9&lt;/td>&lt;td class=&quot;q&quot;>11.4&lt;/td>&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;p>λ 增大时，a* 下降、SSE 上升、J&lt;sub>min&lt;/sub> 上升；在本页 0–10 的范围内罚金 λa*² 也随 λ 上升（它在 λ = S&lt;sub>xx&lt;/sub> = 10 处达到最大 4.9）。J&lt;sub>min&lt;/sub> 变大代表“斜率被约束得更紧”的代价，不是算错：目标函数本身换了，不同 λ 的 J 不在同一把尺子上。&lt;/p>
+
+&lt;figure>
+&lt;div class=&quot;figrow&quot;>
+&lt;div class=&quot;figcell&quot;>&lt;svg id=&quot;panelA&quot; class=&quot;panel&quot; viewBox=&quot;0 0 320 280&quot; role=&quot;img&quot; aria-label=&quot;常规数据 lambda=2 时目标函数的等值线，谷底为最优解&quot;>&lt;/svg>&lt;/div>
+&lt;div class=&quot;figcell&quot;>&lt;svg id=&quot;panelB&quot; class=&quot;panel&quot; viewBox=&quot;0 0 320 280&quot; role=&quot;img&quot; aria-label=&quot;退化数据 lambda=0 时目标函数的等值线是一条平坦的带&quot;>&lt;/svg>&lt;/div>
+&lt;/div>
+&lt;figcaption>&lt;strong>左&lt;/strong>：常规数据、λ=2 时 J(a,b) 的等值线。每圈上 J 相同；谷底唯一的点是 (a*, b*) = (7/6, −11/15)。虚线是第 3 节 ∂J/∂b = 0 给出的关系 b = 1.6 − 2a，所以每个 λ 的最优解都落在这条线上（图中标出 λ=0 与 λ=10 的点）。&lt;strong>右&lt;/strong>：退化数据（五个 x 都等于 2）、λ=0。等值线变成与虚线平行的直带，并且一直伸向远方，虚线整条都是谷底——最小值不唯一。绿色虚线是同一组数据在 λ=2 时的等值线：它被弯成了闭合曲线（虽然很扁），所以最低点重新变成唯一的一个，位置是 (0, 1.6)。&lt;/figcaption>
+&lt;/figure>
+
+&lt;h2>5 交互核对&lt;span class=&quot;chip&quot;>固定示例 + 退化示例&lt;/span>&lt;/h2>
+&lt;p>这一块是给你核对第 3、4 节用的：数据与公式不动，只改 λ。拖动滑块（0 到 10，步长 0.5，初始 2），或者切换到五个 x 都等于 2 的那组数据。&lt;/p>
+&lt;div class=&quot;lab&quot; id=&quot;lab&quot;>
+&lt;div class=&quot;tabs&quot;>
+&lt;button type=&quot;button&quot; class=&quot;tab&quot; id=&quot;ds-main&quot; aria-pressed=&quot;true&quot;>常规数据：x = 0,1,2,3,4&lt;/button>
+&lt;button type=&quot;button&quot; class=&quot;tab&quot; id=&quot;ds-deg&quot; aria-pressed=&quot;false&quot;>退化数据：五个 x 都等于 2&lt;/button>
+&lt;/div>
+&lt;div class=&quot;srow&quot;>
+&lt;label for=&quot;lam&quot;>λ&lt;/label>
+&lt;input type=&quot;range&quot; id=&quot;lam&quot; min=&quot;0&quot; max=&quot;10&quot; step=&quot;0.5&quot; value=&quot;2&quot; aria-label=&quot;惩罚强度 lambda&quot;>
+&lt;output id=&quot;lam-out&quot;>2.0&lt;/output>
+&lt;/div>
+&lt;svg id=&quot;plot&quot; viewBox=&quot;0 0 400 300&quot; role=&quot;img&quot; aria-label=&quot;散点、拟合直线与残差&quot;>&lt;/svg>
+&lt;p class=&quot;legend&quot;>实心圆：五个观测点　实线：当前的拟合直线　虚线：观测点到直线的残差　空心方框：均值点 (2, 1.6)&lt;/p>
+&lt;div class=&quot;reads&quot;>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>斜率 a*&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-a&quot;>1.167&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>截距 b*&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-b&quot;>−0.733&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>SSE（未加惩罚）&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-sse&quot;>2.144&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>罚金 λa*²&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-pen&quot;>2.722&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>目标 J = SSE + 罚金&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-J&quot;>4.867&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>配方给出的最小值&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-jmin&quot;>4.867&lt;/span>&lt;/div>
+&lt;div class=&quot;cell&quot;>&lt;span class=&quot;k&quot;>直线在 x̄ = 2 处的预测&lt;/span>&lt;span class=&quot;v&quot; id=&quot;r-mean&quot;>1.6&lt;/span>&lt;/div>
+&lt;/div>
+&lt;p id=&quot;r-formula&quot;>a* = 14/(10 + λ) = 1.167，b* = 1.6 − 2a* = −0.733&lt;/p>
+&lt;p id=&quot;r-status&quot;>唯一最优解：直线过 (2, 1.6)。&lt;/p>
+&lt;p id=&quot;lab-note&quot;>实线是 λ = 2.0 时的最优直线；虚线是五个观测点到这条直线的残差。&lt;/p>
+&lt;/div>
+&lt;p>三处核对最有价值：&lt;/p>
+&lt;ul>
+&lt;li>λ=2 时面板应给出 a*=1.167、b*=−0.733，与第 3 节表格一致；把 λ 拖到 0 应回到 1.4 与 −1.2。&lt;/li>
+&lt;li>“配方给出的最小值”与“目标 J”必须始终相等。它们是同一件事的两条计算路径：一条直接算 SSE + λa²，一条用 21.2 − 196/(10+λ)。不相等就说明代数或代码错了一处。&lt;/li>
+&lt;li>“直线在 x̄ = 2 处的预测”任何 λ 下都是 1.6。拖动滑块看它不动，就是第 3 节那条与 λ 无关的方程在起作用。&lt;/li>
+&lt;/ul>
+
+&lt;h2>6 退化数据：五个 x 都等于 2&lt;span class=&quot;chip&quot;>退化示例&lt;/span>&lt;/h2>
+&lt;p>现在 x 换成 (2,2,2,2,2)，y 仍是 (−1,0,2,2,5)。均值和 y 的波动不变：x̄=2，ȳ=1.6，S&lt;sub>yy&lt;/sub>=21.2。但 x 没有任何变化，于是&lt;/p>
+&lt;div class=&quot;eqn&quot;>S&lt;sub>xx&lt;/sub> = Σ(x&lt;sub>i&lt;/sub>−x̄)² = 0 ， S&lt;sub>xy&lt;/sub> = Σ(x&lt;sub>i&lt;/sub>−x̄)(y&lt;sub>i&lt;/sub>−ȳ) = 0&lt;/div>
+&lt;p>第 2 节的恒等式因此只剩两块：&lt;/p>
+&lt;div class=&quot;eqn&quot;>J(a, b) = 5 ( 1.6 − 2a − b )² + λ a² + 21.2&lt;/div>
+&lt;h3>λ = 0：整条直线都是最优解&lt;/h3>
+&lt;p>此时 J = 5(1.6 − 2a − b)² + 21.2 ≥ 21.2，等号成立当且仅当 b = 1.6 − 2a。a 可以是任意实数：最小值的集合是整条直线 {(a, 1.6 − 2a)}，图上就是所有经过 (2, 1.6) 的直线。&lt;/p>
+&lt;p>所以可以确定的和不能确定的要说清楚：斜率的取值没有确定，b 也不能单独确定，只能说“b 随 a 一起由 b = 1.6 − 2a 决定”。每一条这样的直线给出同样的 SSE = 21.2，而这个 21.2 正好是“所有预测都取 ȳ = 1.6”的误差 Σ(y&lt;sub>i&lt;/sub> − ȳ)²。原因很直接：x 全是 2，任何直线的预测都是 a·2 + b = 1.6，残差全是 y&lt;sub>i&lt;/sub> − 1.6，与 a 无关。&lt;/p>
+&lt;p>代数上同一件事也能看见：把 S&lt;sub>xx&lt;/sub>=S&lt;sub>xy&lt;/sub>=0 代入第 3 节的公式，得 a* = 0/(0 + λ)。λ=0 时是 0/0，公式本身失效——这个 0/0 就是“解不唯一”的症状。&lt;/p>
+&lt;h3>λ &amp;gt; 0：唯一解，但拟合没有变好&lt;/h3>
+&lt;p>J 比上面多了一项 λa² ≥ 0，等号只在 a=0 时成立；再由 b = 1.6 − 2a 得 b=1.6。唯一最优解是水平线 ŷ ≡ 1.6，最小值 J = 21.2，和 λ=0 时的最小值相同。&lt;/p>
+&lt;div class=&quot;note&quot;>&lt;strong>这一句别读错：&lt;/strong>λ&amp;gt;0 并没有让拟合变好。SSE 仍是 21.2，最小值仍是 21.2。惩罚做的事是在这一族“拟合一样好”的直线里指定了一条——斜率最小的那条 a=0。它改变的是“给你哪条”，不是“误差多大”。&lt;/div>
+&lt;p>于是可以回答“正则化在 x 没有变化时解决了什么”：解决的是&lt;strong>解的可辨识性&lt;/strong>。没有惩罚时，目标函数沿 b = 1.6 − 2a 这个方向完全平坦，“令偏导为零”只得到这条约束本身，得不到一个点，任何单一斜率都不是数据选出来的。加上 λa² 等于在原本平坦的方向上加了一点曲率，谷底从一条线收成一个点。要保留一句边界：a=0 是 λ&amp;gt;0 时的选择，不是数据把斜率定成了 0——数据的形状只要求预测值等于 ȳ。&lt;/p>
+
+&lt;h2>7 四个问题的回答&lt;/h2>
+&lt;h3>增大 λ 为什么会改变斜率&lt;/h3>
+&lt;p>一阶条件 S&lt;sub>xy&lt;/sub> = a(S&lt;sub>xx&lt;/sub> + λ) 把 a 与 λ 绑在同一个分母里：a* = S&lt;sub>xy&lt;/sub>/(S&lt;sub>xx&lt;/sub>+λ)。本例 S&lt;sub>xy&lt;/sub>=14&amp;gt;0 固定，λ 只增大分母，所以 a* 单调下降。配方里看是同一件事：λ 让 (a − a*)² 前面的系数从 S&lt;sub>xx&lt;/sub> 增到 S&lt;sub>xx&lt;/sub>+λ，斜率方向的曲率变大，最优解被压向 0；λ 趋于无穷时 a* 趋于 0。若换一组数据使 S&lt;sub>xy&lt;/sub>&amp;lt;0，则 a*&amp;lt;0 且随 λ 增大趋向 0，绝对值同样变小。&lt;/p>
+&lt;h3>截距为什么会跟着变化&lt;/h3>
+&lt;p>因为 b* = ȳ − x̄a*，而 x̄=2≠0。a* 每减少 1，b* 就增加 2。λ 从 0 到 2 时，a* 从 1.4 降到 1.167，b* 相应从 −1.2 升到 −0.733。注意这不是惩罚项直接作用在 b 上——罚项里没有 b——而是“必须经过 (2, 1.6)”这条约束在直线被拉平时把截距顶了上去。如果改用中心化变量 t = x − x̄ 作自变量，截距就固定是 ȳ=1.6，不再随 λ 变；此时被惩罚的斜率与原斜率是同一个数，所以 a* 不变。&lt;/p>
+&lt;h3>为什么拟合直线仍然经过均值点&lt;/h3>
+&lt;p>对 b 的偏导是 −2Σ残差，令其为零即 Σ残差 = 0；而 Σ残差 = 5(ȳ − x̄a − b)，所以 b = ȳ − x̄a，等价于 ŷ(x̄) = a x̄ + b = ȳ。罚项 λa² 里没有 b，这个方程与 λ 无关，因此每个 λ 的最优直线都过 (2, 1.6)。配方里也看得见：含 (ȳ − x̄a − b)² 的那一项系数是 5&amp;gt;0，最小值处它必须为 0。&lt;/p>
+&lt;h3>正则化在 x 没有变化时究竟解决了什么&lt;/h3>
+&lt;p>它解决了“最优解不唯一”。λ=0 时整条 b = 1.6 − 2a 都是最小值点，任何单一斜率都不是数据选出来的；λ&amp;gt;0 时唯一解是 a=0、b=1.6。同时要看清它没有做什么：SSE 与最小 J 都仍是 21.2，误差没有下降。它做的是在一族同样好的直线里指定一条，让“最优解”重新成为一个点。&lt;/p>
+
+&lt;h2>8 复现清单&lt;/h2>
+&lt;p>想自己从零推一遍，照这八步走，每一步都能对上本页的数字。&lt;/p>
+&lt;ol>
+&lt;li>写出 J，确认两点：求和不是平均；罚项只含 a。&lt;/li>
+&lt;li>算 x̄=2、ȳ=1.6、S&lt;sub>xx&lt;/sub>=10、S&lt;sub>xy&lt;/sub>=14、S&lt;sub>yy&lt;/sub>=21.2。&lt;/li>
+&lt;li>令 r = ȳ − a x̄ − b、u&lt;sub>i&lt;/sub> = (y&lt;sub>i&lt;/sub>−ȳ) − a(x&lt;sub>i&lt;/sub>−x̄)，说明 Σu&lt;sub>i&lt;/sub>=0，得到第 2 节的恒等式；同时分清哪一类交叉项消失、哪一类不消失。&lt;/li>
+&lt;li>对 b 求偏导 → Σ残差=0 → b = ȳ − x̄a。&lt;/li>
+&lt;li>对 a 求偏导，用 Σx&lt;sub>i&lt;/sub>·残差&lt;sub>i&lt;/sub> = S&lt;sub>xy&lt;/sub> − a S&lt;sub>xx&lt;/sub>，得 a* = 14/(10+λ)。&lt;/li>
+&lt;li>配方得 J = 5(ȳ − x̄a − b)² + (10+λ)(a − a*)² + J&lt;sub>min&lt;/sub>，检查两个系数为正 → 全局最小且唯一。&lt;/li>
+&lt;li>用 λ=2 核对：a*=7/6≈1.167，b*=−11/15≈−0.733，SSE=193/90≈2.144，罚金=49/18≈2.722，J=73/15≈4.867。&lt;/li>
+&lt;li>换退化数据：S&lt;sub>xx&lt;/sub>=S&lt;sub>xy&lt;/sub>=0；λ=0 时解集是整条 b=1.6−2a，λ&amp;gt;0 时唯一 (0, 1.6)，最小值仍是 21.2。&lt;/li>
+&lt;/ol>
+&lt;/main>
+&lt;script>
+(function(){
+'use strict';
+var DATA={main:{x:[0,1,2,3,4],y:[-1,0,2,2,5]},deg:{x:[2,2,2,2,2],y:[-1,0,2,2,5]}};
+var state={dataset:'main',lambda:2};
+function stats(d){var i,sx=0,sy=0,m=d.x.length;for(i=0;i&lt;m;i++){sx+=d.x[i];sy+=d.y[i];}var xb=sx/m,yb=sy/m,Sxx=0,Sxy=0,Syy=0;for(i=0;i&lt;m;i++){var dx=d.x[i]-xb,dy=d.y[i]-yb;Sxx+=dx*dx;Sxy+=dx*dy;Syy+=dy*dy;}return {xbar:xb,ybar:yb,Sxx:Sxx,Sxy:Sxy,Syy:Syy};}
+function fmt(v){if(v===null||v===undefined||!isFinite(v))return '\u2014';var s=(Math.round(v*1000)/1000).toFixed(3);s=s.replace(/\.?0+$/,'');if(s==='-0'){s='0';}return s;}
+function solve(){var d=DATA[state.dataset],st=stats(d),lam=state.lambda,den=st.Sxx+lam;var r={d:d,st:st,lam:lam,den:den,unique:den>1e-9};if(r.unique){r.a=st.Sxy/den;r.b=st.ybar-r.a*st.xbar;r.sse=st.Syy-2*r.a*st.Sxy+r.a*r.a*st.Sxx;r.pen=lam*r.a*r.a;r.J=r.sse+r.pen;r.jmin=st.Syy-st.Sxy*st.Sxy/den;}else{r.a=null;r.b=null;r.sse=st.Syy;r.pen=0;r.J=st.Syy;r.jmin=st.Syy;}return r;}
+var W=400,H=300,PL=34,PR=10,PT=12,PB=30;
+var VB={x0:-0.5,x1:4.5,y0:-2.6,y1:6.6};
+function SX(x){return PL+(x-VB.x0)/(VB.x1-VB.x0)*(W-PL-PR);}
+function SY(y){return H-PB-(y-VB.y0)/(VB.y1-VB.y0)*(H-PT-PB);}
+function LN(x1,y1,x2,y2,c){return `&lt;line x1='${SX(x1).toFixed(1)}' y1='${SY(y1).toFixed(1)}' x2='${SX(x2).toFixed(1)}' y2='${SY(y2).toFixed(1)}' class='${c}'/>`;}
+function drawLab(r){
+var st=r.st,d=r.d,i,s='';
+s+=`&lt;defs>&lt;clipPath id='pclip'>&lt;rect x='${PL}' y='${PT}' width='${W-PL-PR}' height='${H-PT-PB}'/>&lt;/clipPath>&lt;/defs>`;
+for(i=0;i&lt;=4;i++){s+=LN(i,VB.y0,i,VB.y1,'grid');}
+for(i=-2;i&lt;=6;i++){s+=LN(VB.x0,i,VB.x1,i,'grid');}
+s+=LN(VB.x0,0,VB.x1,0,'axis')+LN(VB.x0,VB.y0,VB.x0,VB.y1,'axis');
+for(i=0;i&lt;=4;i++){s+=`&lt;text x='${SX(i).toFixed(1)}' y='${(SY(0)+15).toFixed(1)}' text-anchor='middle'>${i}&lt;/text>`;}
+for(i=-2;i&lt;=6;i+=2){if(i!==0){s+=`&lt;text x='${PL-5}' y='${(SY(i)+4).toFixed(1)}' text-anchor='end'>${i}&lt;/text>`;}}
+s+=`&lt;g clip-path='url(#pclip)'>`;
+if(r.unique){
+s+=LN(VB.x0,r.a*VB.x0+r.b,VB.x1,r.a*VB.x1+r.b,'fit');
+for(i=0;i&lt;d.x.length;i++){s+=LN(d.x[i],d.y[i],d.x[i],r.a*d.x[i]+r.b,'res');}
+}else{
+var fan=[-2.4,-1.8,-1.2,-0.6,0,0.6,1.2,1.8,2.4];var m;
+for(i=0;i&lt;fan.length;i++){m=fan[i];s+=LN(VB.x0,m*(VB.x0-st.xbar)+st.ybar,VB.x1,m*(VB.x1-st.xbar)+st.ybar,'fan');}
+for(i=0;i&lt;d.y.length;i++){s+=LN(st.xbar,st.ybar,st.xbar,d.y[i],'res');}
+}
+s+=`&lt;/g>`;
+for(i=0;i&lt;d.x.length;i++){s+=`&lt;circle cx='${SX(d.x[i]).toFixed(1)}' cy='${SY(d.y[i]).toFixed(1)}' r='4.2' class='pt'/>`;}
+s+=`&lt;rect x='${(SX(st.xbar)-4).toFixed(1)}' y='${(SY(st.ybar)-4).toFixed(1)}' width='8' height='8' class='meanpt'/>`;
+s+=`&lt;text x='${(SX(st.xbar)+8).toFixed(1)}' y='${(SY(st.ybar)-8).toFixed(1)}' class='lbl'>(2, 1.6)&lt;/text>`;
+document.getElementById('plot').innerHTML=s;
+}
+function formulaText(r){
+if(state.dataset==='main'){return `a* = 14/(10 + λ) = ${fmt(r.a)}，b* = 1.6 − 2a* = ${fmt(r.b)}`;}
+if(r.unique){return 'a* = 0/(0 + λ) = 0，b* = 1.6 − 2a* = 1.6';}
+return 'S_xx + λ = 0，公式 a* = 0/0 没有定义：最优解不唯一';
+}
+function statusText(r){
+if(r.unique){return '唯一最优解：直线过 (2, 1.6)，上面两个最小值读数应当相等。';}
+return '不唯一：任何经过 (2, 1.6) 的直线都给出 J = 21.2，没有哪一条是数据选出来的。';
+}
+function noteText(r){
+if(r.unique){return `实线是 λ = ${r.lam.toFixed(1)} 时的最优直线；虚线是五个观测点到这条直线的残差。`;}
+return 'λ = 0 且五个 x 都等于 2：图中画出经过 (2, 1.6) 的 9 条直线，它们的目标值完全相同（J = 21.2），所以这里不给单一斜率。';
+}
+function obsSummary(r){
+if(r.unique){return `λ=${r.lam}，a*=${fmt(r.a)}，b*=${fmt(r.b)}，SSE=${fmt(r.sse)}，罚金=${fmt(r.pen)}，J=${fmt(r.J)}`;}
+return `λ=${r.lam}，退化数据：最优解不唯一，斜率未定，最优集合为 b=1.6−2a`;
+}
+function setText(id,t){var el=document.getElementById(id);if(el){el.textContent=t;}}
+function render(){
+var r=solve();
+var sl=document.getElementById('lam');
+if(sl&amp;&amp;parseFloat(sl.value)!==r.lam){sl.value=String(r.lam);}
+setText('lam-out',r.lam.toFixed(1));
+document.getElementById('ds-main').setAttribute('aria-pressed',state.dataset==='main'?'true':'false');
+document.getElementById('ds-deg').setAttribute('aria-pressed',state.dataset==='deg'?'true':'false');
+setText('r-a',r.unique?fmt(r.a):'不唯一');
+setText('r-b',r.unique?fmt(r.b):'b = 1.6 − 2a');
+setText('r-sse',fmt(r.sse));
+setText('r-pen',r.unique?fmt(r.pen):'0');
+setText('r-J',fmt(r.J));
+setText('r-jmin',fmt(r.jmin));
+setText('r-mean','1.6');
+setText('r-formula',formulaText(r));
+setText('r-status',statusText(r));
+setText('lab-note',noteText(r));
+drawLab(r);
+}
+var PA={w:320,h:280,l:30,r:8,t:10,b:26,a0:-0.5,a1:2.5,c0:-3.0,c1:2.2};
+function pax(a){return PA.l+(a-PA.a0)/(PA.a1-PA.a0)*(PA.w-PA.l-PA.r);}
+function pay(b){return PA.h-PA.b-(b-PA.c0)/(PA.c1-PA.c0)*(PA.h-PA.t-PA.b);}
+function pline(x1,y1,x2,y2,c){return `&lt;line x1='${pax(x1).toFixed(1)}' y1='${pay(y1).toFixed(1)}' x2='${pax(x2).toFixed(1)}' y2='${pay(y2).toFixed(1)}' class='${c}'/>`;}
+function ellPath(aS,bS,coef,c,cls){
+var N=110,i,t,u,v,a,b,pts=[];
+for(i=0;i&lt;=N;i++){t=i/N*2*Math.PI;u=Math.sqrt(c/5)*Math.cos(t);v=Math.sqrt(c/coef)*Math.sin(t);a=aS+v;b=bS+u-2*v;pts.push(`${i?'L':'M'}${pax(a).toFixed(1)} ${pay(b).toFixed(1)}`);}
+return `&lt;path d='${pts.join(' ')} Z' class='${cls}'/>`;
+}
+function axesPanel(){
+var s='',i;
+for(i=0;i&lt;=2;i++){s+=pline(i,PA.c0,i,PA.c1,'pgrid');}
+for(i=-3;i&lt;=2;i++){s+=pline(PA.a0,i,PA.a1,i,'pgrid');}
+s+=pline(PA.a0,0,PA.a1,0,'paxis')+pline(0,PA.c0,0,PA.c1,'paxis');
+for(i=0;i&lt;=2;i++){s+=`&lt;text x='${pax(i).toFixed(1)}' y='${(pay(0)+14).toFixed(1)}' text-anchor='middle'>${i}&lt;/text>`;}
+for(i=-3;i&lt;=2;i+=1){if(i!==0){s+=`&lt;text x='${PA.l-4}' y='${(pay(i)+4).toFixed(1)}' text-anchor='end'>${i}&lt;/text>`;}}
+return s;
+}
+function drawPanelA(){
+var aS=14/12,bS=1.6-2*aS,levs=[0.4,1.5,3.5,7,12,18],i,s='';
+s+=`&lt;defs>&lt;clipPath id='clipA'>&lt;rect x='${PA.l}' y='${PA.t}' width='${PA.w-PA.l-PA.r}' height='${PA.h-PA.t-PA.b}'/>&lt;/clipPath>&lt;/defs>`;
+s+=axesPanel();
+s+=`&lt;g clip-path='url(#clipA)'>`;
+for(i=0;i&lt;levs.length;i++){s+=ellPath(aS,bS,12,levs[i],'iso');}
+s+=pline(PA.a0,1.6-2*PA.a0,PA.a1,1.6-2*PA.a1,'ppath');
+s+=`&lt;/g>`;
+s+=`&lt;text x='${PA.w-PA.r}' y='${(pay(0)+14).toFixed(1)}' text-anchor='end'>a&lt;/text>`;
+s+=`&lt;text x='${(pax(0)+6).toFixed(1)}' y='${PA.t+9}'>b&lt;/text>`;
+s+=`&lt;circle cx='${pax(1.4).toFixed(1)}' cy='${pay(-1.2).toFixed(1)}' r='4' class='pmark-open'/>`;
+s+=`&lt;text x='${(pax(1.4)+6).toFixed(1)}' y='${(pay(-1.2)+12).toFixed(1)}' class='plab'>λ=0&lt;/text>`;
+s+=`&lt;rect x='${(pax(0.7)-3.5).toFixed(1)}' y='${(pay(0.2)-3.5).toFixed(1)}' width='7' height='7' class='pmark-open'/>`;
+s+=`&lt;text x='${(pax(0.7)+8).toFixed(1)}' y='${(pay(0.2)+4).toFixed(1)}' class='plab'>λ=10&lt;/text>`;
+s+=`&lt;circle cx='${pax(aS).toFixed(1)}' cy='${pay(bS).toFixed(1)}' r='4.6' class='pmark-solid'/>`;
+s+=`&lt;text x='${(pax(aS)-7).toFixed(1)}' y='${(pay(bS)-7).toFixed(1)}' text-anchor='end' class='plab'>λ=2&lt;/text>`;
+document.getElementById('panelA').innerHTML=s;
+}
+function drawPanelB(){
+var levs=[0.3,1.2,2.7,5,8,12],i,off,s='';
+s+=`&lt;defs>&lt;clipPath id='clipB'>&lt;rect x='${PA.l}' y='${PA.t}' width='${PA.w-PA.l-PA.r}' height='${PA.h-PA.t-PA.b}'/>&lt;/clipPath>&lt;/defs>`;
+s+=axesPanel();
+s+=`&lt;g clip-path='url(#clipB)'>`;
+for(i=0;i&lt;levs.length;i++){
+off=Math.sqrt(levs[i]/5);
+s+=pline(PA.a0,1.6-off-2*PA.a0,PA.a1,1.6-off-2*PA.a1,'iso');
+s+=pline(PA.a0,1.6+off-2*PA.a0,PA.a1,1.6+off-2*PA.a1,'iso');
+}
+s+=ellPath(0,1.6,2,0.4,'iso2')+ellPath(0,1.6,2,1.2,'iso2');
+s+=pline(PA.a0,1.6-2*PA.a0,PA.a1,1.6-2*PA.a1,'pvalley');
+s+=`&lt;/g>`;
+s+=`&lt;text x='${PA.w-PA.r}' y='${(pay(0)+14).toFixed(1)}' text-anchor='end'>a&lt;/text>`;
+s+=`&lt;text x='${(pax(0)+6).toFixed(1)}' y='${PA.t+9}'>b&lt;/text>`;
+s+=`&lt;path d='M${(pax(0)-4).toFixed(1)} ${(pay(1.6)-4).toFixed(1)}L${(pax(0)+4).toFixed(1)} ${(pay(1.6)+4).toFixed(1)}M${(pax(0)-4).toFixed(1)} ${(pay(1.6)+4).toFixed(1)}L${(pax(0)+4).toFixed(1)} ${(pay(1.6)-4).toFixed(1)}' class='pgreen'/>`;
+s+=`&lt;text x='${(pax(0)+9).toFixed(1)}' y='${(pay(1.6)+16).toFixed(1)}' class='plab2'>λ&amp;gt;0: (0, 1.6)&lt;/text>`;
+s+=`&lt;text x='${(pax(2.15)).toFixed(1)}' y='${(pay(-2.55)).toFixed(1)}' class='plab'>λ=0&lt;/text>`;
+document.getElementById('panelB').innerHTML=s;
+}
+drawPanelA();drawPanelB();render();
+var slider=document.getElementById('lam');
+slider.addEventListener('input',function(){state.lambda=parseFloat(slider.value);render();});
+slider.addEventListener('change',function(){if(window.presentation&amp;&amp;window.presentation.commitState){window.presentation.commitState();}});
+document.getElementById('ds-main').addEventListener('click',function(){state.dataset='main';render();if(window.presentation&amp;&amp;window.presentation.commitState){window.presentation.commitState();}});
+document.getElementById('ds-deg').addEventListener('click',function(){state.dataset='deg';render();if(window.presentation&amp;&amp;window.presentation.commitState){window.presentation.commitState();}});
+if(window.presentation){
+if(window.presentation.registerStateReader){
+window.presentation.registerStateReader(function(){
+var r=solve();
+return {values:{dataset:state.dataset,lambda:state.lambda},visible_step:null,
+observation:{summary:obsSummary(r),state:{dataset:state.dataset,lambda:state.lambda,
+a:r.unique?r.a:null,b:r.unique?r.b:null,sse:r.sse,penalty:r.pen,J:r.J,unique:r.unique}}};
+});
+}
+if(window.presentation.registerStateRestorer){
+window.presentation.registerStateRestorer(function(saved){
+var p=null;
+if(saved&amp;&amp;saved.values&amp;&amp;saved.values.page){p=saved.values.page;}
+else if(saved&amp;&amp;saved.values){p=saved.values;}
+if(p){
+if(p.dataset==='main'||p.dataset==='deg'){state.dataset=p.dataset;}
+if(typeof p.lambda==='number'&amp;&amp;isFinite(p.lambda)){state.lambda=Math.min(10,Math.max(0,Math.round(p.lambda*2)/2));}
+}
+render();
+});
+}
+}
+})();
+&lt;/script>
+
+&lt;/body>&lt;/html>"></iframe></body></html>

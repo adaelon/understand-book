@@ -1,0 +1,917 @@
+{
+  "provider_calls": 0,
+  "scope": "Fixture arithmetic only; no claims about generated page quality",
+  "checks": {
+    "backprop_supported_grid_cases": 169,
+    "ridge_supported_cases": 42
+  },
+  "backprop": [
+    {
+      "x": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "y": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "u": {
+        "exact": "6",
+        "decimal": 6.0
+      },
+      "v": {
+        "exact": "8",
+        "decimal": 8.0
+      },
+      "L": {
+        "exact": "82",
+        "decimal": 82.0
+      },
+      "g_v": {
+        "exact": "16",
+        "decimal": 16.0
+      },
+      "u_v_path": {
+        "exact": "16",
+        "decimal": 16.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "19",
+        "decimal": 19.0
+      },
+      "x_v_path": {
+        "exact": "16",
+        "decimal": 16.0
+      },
+      "x_u_path": {
+        "exact": "57",
+        "decimal": 57.0
+      },
+      "g_x": {
+        "exact": "73",
+        "decimal": 73.0
+      },
+      "g_y": {
+        "exact": "38",
+        "decimal": 38.0
+      }
+    },
+    {
+      "x": {
+        "exact": "-1",
+        "decimal": -1.0
+      },
+      "y": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "u": {
+        "exact": "-2",
+        "decimal": -2.0
+      },
+      "v": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "L": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_v": {
+        "exact": "-6",
+        "decimal": -6.0
+      },
+      "u_v_path": {
+        "exact": "-6",
+        "decimal": -6.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "x_v_path": {
+        "exact": "-6",
+        "decimal": -6.0
+      },
+      "x_u_path": {
+        "exact": "-6",
+        "decimal": -6.0
+      },
+      "g_x": {
+        "exact": "-12",
+        "decimal": -12.0
+      },
+      "g_y": {
+        "exact": "3",
+        "decimal": 3.0
+      }
+    },
+    {
+      "x": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "y": {
+        "exact": "-1",
+        "decimal": -1.0
+      },
+      "u": {
+        "exact": "-2",
+        "decimal": -2.0
+      },
+      "v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "L": {
+        "exact": "-6",
+        "decimal": -6.0
+      },
+      "g_v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "x_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "x_u_path": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "g_x": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "g_y": {
+        "exact": "6",
+        "decimal": 6.0
+      }
+    },
+    {
+      "x": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "y": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "u": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "L": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "g_v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "x_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "x_u_path": {
+        "exact": "6",
+        "decimal": 6.0
+      },
+      "g_x": {
+        "exact": "6",
+        "decimal": 6.0
+      },
+      "g_y": {
+        "exact": "0",
+        "decimal": 0.0
+      }
+    },
+    {
+      "x": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "y": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "L": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "g_v": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "x_v_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "x_u_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "g_x": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "g_y": {
+        "exact": "0",
+        "decimal": 0.0
+      }
+    },
+    {
+      "x": {
+        "exact": "1",
+        "decimal": 1.0
+      },
+      "y": {
+        "exact": "-5/2",
+        "decimal": -2.5
+      },
+      "u": {
+        "exact": "-5/2",
+        "decimal": -2.5
+      },
+      "v": {
+        "exact": "-3/2",
+        "decimal": -1.5
+      },
+      "L": {
+        "exact": "-21/4",
+        "decimal": -5.25
+      },
+      "g_v": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "u_v_path": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "u_direct_path": {
+        "exact": "3",
+        "decimal": 3.0
+      },
+      "g_u": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "x_v_path": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "x_u_path": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "g_x": {
+        "exact": "-3",
+        "decimal": -3.0
+      },
+      "g_y": {
+        "exact": "0",
+        "decimal": 0.0
+      }
+    }
+  ],
+  "ridge": [
+    {
+      "lambda": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "degenerate": false,
+      "unique": true,
+      "a": {
+        "exact": "7/5",
+        "decimal": 1.4
+      },
+      "b": {
+        "exact": "-6/5",
+        "decimal": -1.2
+      },
+      "SSE": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "penalty": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "J": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "xbar": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "ybar": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "Sxx": {
+        "exact": "10",
+        "decimal": 10.0
+      },
+      "Sxy": {
+        "exact": "14",
+        "decimal": 14.0
+      },
+      "Syy": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "predictions": [
+        {
+          "exact": "-6/5",
+          "decimal": -1.2
+        },
+        {
+          "exact": "1/5",
+          "decimal": 0.2
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "3",
+          "decimal": 3.0
+        },
+        {
+          "exact": "22/5",
+          "decimal": 4.4
+        }
+      ],
+      "residuals": [
+        {
+          "exact": "1/5",
+          "decimal": 0.2
+        },
+        {
+          "exact": "-1/5",
+          "decimal": -0.2
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "-1",
+          "decimal": -1.0
+        },
+        {
+          "exact": "3/5",
+          "decimal": 0.6
+        }
+      ]
+    },
+    {
+      "lambda": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "degenerate": false,
+      "unique": true,
+      "a": {
+        "exact": "7/6",
+        "decimal": 1.1666666666666667
+      },
+      "b": {
+        "exact": "-11/15",
+        "decimal": -0.7333333333333333
+      },
+      "SSE": {
+        "exact": "193/90",
+        "decimal": 2.1444444444444444
+      },
+      "penalty": {
+        "exact": "49/18",
+        "decimal": 2.7222222222222223
+      },
+      "J": {
+        "exact": "73/15",
+        "decimal": 4.866666666666666
+      },
+      "xbar": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "ybar": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "Sxx": {
+        "exact": "10",
+        "decimal": 10.0
+      },
+      "Sxy": {
+        "exact": "14",
+        "decimal": 14.0
+      },
+      "Syy": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "predictions": [
+        {
+          "exact": "-11/15",
+          "decimal": -0.7333333333333333
+        },
+        {
+          "exact": "13/30",
+          "decimal": 0.43333333333333335
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "83/30",
+          "decimal": 2.7666666666666666
+        },
+        {
+          "exact": "59/15",
+          "decimal": 3.933333333333333
+        }
+      ],
+      "residuals": [
+        {
+          "exact": "-4/15",
+          "decimal": -0.26666666666666666
+        },
+        {
+          "exact": "-13/30",
+          "decimal": -0.43333333333333335
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "-23/30",
+          "decimal": -0.7666666666666667
+        },
+        {
+          "exact": "16/15",
+          "decimal": 1.0666666666666667
+        }
+      ]
+    },
+    {
+      "lambda": {
+        "exact": "10",
+        "decimal": 10.0
+      },
+      "degenerate": false,
+      "unique": true,
+      "a": {
+        "exact": "7/10",
+        "decimal": 0.7
+      },
+      "b": {
+        "exact": "1/5",
+        "decimal": 0.2
+      },
+      "SSE": {
+        "exact": "13/2",
+        "decimal": 6.5
+      },
+      "penalty": {
+        "exact": "49/10",
+        "decimal": 4.9
+      },
+      "J": {
+        "exact": "57/5",
+        "decimal": 11.4
+      },
+      "xbar": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "ybar": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "Sxx": {
+        "exact": "10",
+        "decimal": 10.0
+      },
+      "Sxy": {
+        "exact": "14",
+        "decimal": 14.0
+      },
+      "Syy": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "predictions": [
+        {
+          "exact": "1/5",
+          "decimal": 0.2
+        },
+        {
+          "exact": "9/10",
+          "decimal": 0.9
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "23/10",
+          "decimal": 2.3
+        },
+        {
+          "exact": "3",
+          "decimal": 3.0
+        }
+      ],
+      "residuals": [
+        {
+          "exact": "-6/5",
+          "decimal": -1.2
+        },
+        {
+          "exact": "-9/10",
+          "decimal": -0.9
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "-3/10",
+          "decimal": -0.3
+        },
+        {
+          "exact": "2",
+          "decimal": 2.0
+        }
+      ]
+    },
+    {
+      "lambda": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "degenerate": true,
+      "unique": false,
+      "minimizers": "b=8/5-2a, a arbitrary real",
+      "representatives": [
+        {
+          "a": {
+            "exact": "-2",
+            "decimal": -2.0
+          },
+          "b": {
+            "exact": "28/5",
+            "decimal": 5.6
+          },
+          "SSE": {
+            "exact": "106/5",
+            "decimal": 21.2
+          },
+          "J": {
+            "exact": "106/5",
+            "decimal": 21.2
+          }
+        },
+        {
+          "a": {
+            "exact": "0",
+            "decimal": 0.0
+          },
+          "b": {
+            "exact": "8/5",
+            "decimal": 1.6
+          },
+          "SSE": {
+            "exact": "106/5",
+            "decimal": 21.2
+          },
+          "J": {
+            "exact": "106/5",
+            "decimal": 21.2
+          }
+        },
+        {
+          "a": {
+            "exact": "3",
+            "decimal": 3.0
+          },
+          "b": {
+            "exact": "-22/5",
+            "decimal": -4.4
+          },
+          "SSE": {
+            "exact": "106/5",
+            "decimal": 21.2
+          },
+          "J": {
+            "exact": "106/5",
+            "decimal": 21.2
+          }
+        }
+      ]
+    },
+    {
+      "lambda": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "degenerate": true,
+      "unique": true,
+      "a": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "b": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "SSE": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "penalty": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "J": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "xbar": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "ybar": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "Sxx": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "Sxy": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "Syy": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "predictions": [
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        }
+      ],
+      "residuals": [
+        {
+          "exact": "-13/5",
+          "decimal": -2.6
+        },
+        {
+          "exact": "-8/5",
+          "decimal": -1.6
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "17/5",
+          "decimal": 3.4
+        }
+      ]
+    },
+    {
+      "lambda": {
+        "exact": "10",
+        "decimal": 10.0
+      },
+      "degenerate": true,
+      "unique": true,
+      "a": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "b": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "SSE": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "penalty": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "J": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "xbar": {
+        "exact": "2",
+        "decimal": 2.0
+      },
+      "ybar": {
+        "exact": "8/5",
+        "decimal": 1.6
+      },
+      "Sxx": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "Sxy": {
+        "exact": "0",
+        "decimal": 0.0
+      },
+      "Syy": {
+        "exact": "106/5",
+        "decimal": 21.2
+      },
+      "predictions": [
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        },
+        {
+          "exact": "8/5",
+          "decimal": 1.6
+        }
+      ],
+      "residuals": [
+        {
+          "exact": "-13/5",
+          "decimal": -2.6
+        },
+        {
+          "exact": "-8/5",
+          "decimal": -1.6
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "2/5",
+          "decimal": 0.4
+        },
+        {
+          "exact": "17/5",
+          "decimal": 3.4
+        }
+      ]
+    }
+  ],
+  "pilot": [
+    {
+      "transferred": 0,
+      "left": 8,
+      "right": 2,
+      "total": 10
+    },
+    {
+      "transferred": 1,
+      "left": 7,
+      "right": 3,
+      "total": 10
+    },
+    {
+      "transferred": 2,
+      "left": 6,
+      "right": 4,
+      "total": 10
+    },
+    {
+      "transferred": 3,
+      "left": 5,
+      "right": 5,
+      "total": 10
+    },
+    {
+      "transferred": 4,
+      "left": 4,
+      "right": 6,
+      "total": 10
+    },
+    {
+      "transferred": 5,
+      "left": 3,
+      "right": 7,
+      "total": 10
+    },
+    {
+      "transferred": 6,
+      "left": 2,
+      "right": 8,
+      "total": 10
+    },
+    {
+      "transferred": 7,
+      "left": 1,
+      "right": 9,
+      "total": 10
+    },
+    {
+      "transferred": 8,
+      "left": 0,
+      "right": 10,
+      "total": 10
+    }
+  ]
+}

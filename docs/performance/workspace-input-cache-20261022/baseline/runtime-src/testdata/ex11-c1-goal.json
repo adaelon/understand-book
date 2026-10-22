@@ -1,0 +1,41 @@
+{
+  "id": "goal_turn_455a523571f9f029",
+  "revision": 2,
+  "origin_turn_id": "turn_455a523571f9f029",
+  "related_goal_id": null,
+  "user_message_refs": [
+    "turn_455a523571f9f029"
+  ],
+  "interpretation": "交付一个可交互的网页讲解（EX10 条件 C：Konva 10.7.0 画布 + HTML 控件/文字），只用用户给定的一维模型 L(w)=(w-2)^2、w_{t+1}=w_t-2η(w_t-2)、w_0=0 解释\"学习率大为什么会来回跳、甚至越来越远\"，并支持拖动 η 实时看每步、播放/暂停/回到上一步。",
+  "requirements": [
+    {
+      "id": "r1",
+      "description": "含 <!--EX10_KONVA_10.7.0--> 标记的单文件页面；Konva.Stage/Layer/Shape；无外部资源；HTML 承担文字、数值与公式；提供唯一结果选择器 #result-summary。",
+      "basis_turn_id": "turn_455a523571f9f029",
+      "verification": "presentation_delivery"
+    },
+    {
+      "id": "r2",
+      "description": "数学内容：e_{t+1}=(1-2η)e_t，w_t=2-2(1-2η)^t；覆盖 η=0.2/0.8/1.1，η∈[0,1.2]，k=0..5；真实端点与动画插值视觉区分；|1-2η|<1 收敛、=1 永久来回跳、>1 振荡发散。",
+      "basis_turn_id": "turn_455a523571f9f029",
+      "verification": "content"
+    },
+    {
+      "id": "r3",
+      "description": "交互：拖动 η 立即暂停播放、重置 k=0/progress=0、清空旧轨迹并显示新第一步目标与数值；播放/暂停/上一步/下一步；window.presentationScene.seek/snapshot 与 registerStateReader/registerStateRestorer；控件≥44px，适配 960x720、320x420、640x240。",
+      "basis_turn_id": "turn_455a523571f9f029",
+      "verification": "reader_action"
+    }
+  ],
+  "working": {
+    "focus": "",
+    "open_questions": [],
+    "next_move": ""
+  },
+  "result_refs": [
+    "{\"presentation_id\":\"presentation-1790561185532195900-6\",\"revision\":1}",
+    "answer:turn_455a523571f9f029"
+  ],
+  "status": "open",
+  "last_stop_reason": "TURN_LIMIT_EXCEEDED"
+}

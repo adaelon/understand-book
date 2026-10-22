@@ -1,0 +1,18 @@
+{
+  "beethoven": {
+    "work": "Symphony No.9 in D minor, Op.125",
+    "recording": {
+      "recording_id": "beethoven-op125-4-coates-damian",
+      "revision": "transfer-20240507-concat-mp3-20261022"
+    },
+    "actual_duration": 1448.817596,
+    "audio_url": "/api/build_workbench/music/audio?recording_id=beethoven-op125-4-coates-damian&recording_revision=transfer-20240507-concat-mp3-20261022&score_id=beethoven-op125-4-openscore-m93-164&score_revision=hauptstimme-download-20261022-excerpt"
+  },
+  "schubert_actual_duration": 101,
+  "old_audio_and_score_status": 404,
+  "unpublished_reader_projection_error": false,
+  "nonmusic_entry_hidden": true,
+  "nonmusic_to_music_entry_appeared": true,
+  "opened_context_refetched": true,
+  "errors": []
+}

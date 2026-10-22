@@ -1,0 +1,47 @@
+{
+  "alias":"Amber",
+  "status":"evaluated; final individual review",
+  "method":"Independent full visible-DOM reading, required lambda/data operations, screenshots at960x720/320x420/640x240, and an actual reload to check the page's explicit persistence claim. No source or generation conditions read.",
+  "overall":"A complete and usable derivation with correct requested numbers, diagrams, and degeneracy states. No error was found in the main optimizing argument or the required interaction. The narrow-screen number table splits values, and a claimed state-restoration feature did not work in the tested Reader.",
+  "strengths":[
+    "Clearly distinguishes scaling the entire objective from averaging only the squared-error term while retaining lambda; the total convention is used consistently.",
+    "The centered residual identity, two zero sums, vanished cross term, and elimination of b are explained continuously. The subsequent reduced J(a) is explicitly identified as minimizing b for each a rather than holding b fixed.",
+    "The one-variable square completion establishes a unique minimum in a, then the nonnegative b term lifts the conclusion back to J(a,b). The Hessian and Sxx+lambda condition correctly support uniqueness.",
+    "All required numerical states match the mathematical reference. Dynamic equations, the current-data label, Hessian determinant, unique/nonunique text, scatterplot, and profile curve agree in the tested states and after return to normal data.",
+    "At degenerate lambda0 the drawn line family really passes through (2,1.6), the profile is horizontal at21.2, a is nonunique, and b is a relation. At positive lambda the unique horizontal line and curved profile appear correctly without claiming better SSE.",
+    "The two side-by-side desktop charts show vertical residuals and squared-residual areas separately from the objective profile; they support rather than replace the proof. The prescribed interaction sequence explicitly separates normal exploration from switching to degeneracy.",
+    "Prose and formula blocks remain readable at320px, and all controls work in320x420 and640x240 without fixed-layer obstruction."
+  ],
+  "observedStates":[
+    {"data":"normal","lambda":0,"a":"1.400","b":"-1.200","SSE":"1.600","penalty":"0.000","J":"1.600"},
+    {"data":"normal","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867"},
+    {"data":"normal","lambda":10,"a":"0.700","b":"0.200","SSE":"6.500","penalty":"4.900","J":"11.400"},
+    {"data":"degenerate","lambda":0,"a":"不唯一","b":"1.6−2a","SSE":"21.200","penalty":"0.000","J":"21.200"},
+    {"data":"degenerate","lambda":2,"a":"0.000","b":"1.600","SSE":"21.200","penalty":"0.000","J":"21.200"},
+    {"data":"normal after return","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867"}
+  ],
+  "issues":[
+    {
+      "id":"Amber-1","severity":"moderate","location":"320x420, Section4 numeric table",
+      "finding":"Several numeric values are split across lines because the six columns are squeezed into the narrow viewport.",
+      "evidence":"lambda10 is shown as '1' over '0'; a1.167 is '1.1' over '67'; b-0.733 is split; J4.867 also wraps within the number. There is no local horizontal overflow. Normal explanatory text and formula boxes wrap readably.",
+      "impact":"The reader must reconstruct digits to compare or reproduce the fixed-example values. Dynamic readouts remain separately readable.",
+      "files":["320-table.png","320-center.png","interaction-evidence.json"]
+    },
+    {
+      "id":"Amber-2","severity":"minor","location":"Final footer persistence claim",
+      "finding":"The promise to restore the previous lambda and dataset after reopening was not met on an actual reload in the provided Reader.",
+      "evidence":"The footer says the lambda and dataset selection can be saved and will be restored when reopened. In the same browser context, I selected degenerate data and lambda0, then reloaded the wrapper; the page returned to normal data and lambda2. The exact returned current-state text is recorded under reloadObservation.",
+      "impact":"An advertised convenience is unreliable in this tested surface. This does not affect the requested derivation or required live interactions, and no claim is made about other hosting environments.",
+      "files":["initial-dom.json","interaction-evidence.json"]
+    }
+  ],
+  "scopeClarity":"Fixed numerical examples are marked A. Current dataset,lambda,line equation,and uniqueness explanation update together. The numbered exploration sequence explicitly moves from normal data to the degenerate branch, so its normal-data statements have a discernible scope.",
+  "viewportEvidence":{
+    "960x720":"Full path read; centered identity, reduced objective, global proof, all specified states, and both charts inspected. Residual squares and profile curve remain distinct quantities.",
+    "320x420":"Document width320,no measured horizontal overflow. Text and formulas wrap; the fixed numeric table splits numbers. Dataset buttons and slider operate; dynamic readouts remain readable. Chart text is small but shape and separate captions are available.",
+    "640x240":"Document width640;dataset controls and slider remain visible and operable with no fixed overlay."
+  },
+  "consoleErrors":[],
+  "evidenceFiles":["initial-dom.json","interaction-evidence.json"]
+}

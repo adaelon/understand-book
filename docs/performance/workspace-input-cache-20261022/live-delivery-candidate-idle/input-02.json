@@ -1,0 +1,1125 @@
+{
+  "provider_profile": {
+    "base_instructions": {
+      "asset_id": "resident-agent.base.v2",
+      "revision": "v1",
+      "text_override": null
+    },
+    "compaction": {
+      "consumption_wrapper_asset": {
+        "asset_id": "agent-compaction.consumption.v1",
+        "revision": "v1",
+        "text_override": "A previous active-history segment has been replaced by the validated compaction_checkpoint below.\nThis checkpoint is derived handoff state. It is not a user message and is not evidence by itself.\nContinue from it without repeating completed work. Current canonical instructions and the verbatim raw-retained items that follow take precedence.\nFor factual claims, rely only on each semantic item's evidence_refs or reacquire evidence with the tools available in the current turn."
+      },
+      "high_watermark_ratio": 0.75,
+      "output_schema_id": "compaction_draft.v1",
+      "prompt_asset": {
+        "asset_id": "agent-compaction.generation.v1",
+        "revision": "v1",
+        "text_override": "You are performing a CONTEXT CHECKPOINT COMPACTION for a reading and research agent.\nCreate a typed handoff state for the next model sampling request. Do not answer the user and do not describe private reasoning.\n\nThe runtime provides:\n- eligible_items: older conversation items that may be compacted, each with a stable source ID;\n- required_source_ids: task-bearing sources that must remain represented;\n- optional_source_ids: sources that may be marked duplicate, superseded, or non-task;\n- allowed_evidence_refs: the only evidence references you may use.\n- allowed_supersession_edges: the only source-to-source relationships that may use Superseded.\n\nReturn JSON matching CompactionDraft exactly, with only these ten sections.\nDo not copy input fields or runtime metadata into the output:\n- active_goal\n- progress\n- decisions\n- user_constraints\n- open_obligations\n- unresolved_ambiguities\n- critical_facts\n- critical_examples\n- next_steps\n- source_coverage\n\nThe first nine sections are arrays of objects with exactly item_id, text,\nsource_item_ids, and evidence_refs. item_id is a unique nonempty ID you assign\n(1-128 ASCII letters, digits, dots, underscores, colons or hyphens).\nPrefer simple sequential IDs such as item.1, item.2. Keep Chinese and other\nnon-ASCII characters in text, never in item_id. source_item_ids must be copied\nfrom eligible_items. Each source_coverage object has source_item_id, disposition,\ntarget_item_ids, and optional reason. disposition is one of \"compacted\",\n\"duplicate\", \"superseded\", \"non_task\". target_item_ids refer to your item_id\nvalues, not source IDs. Every target must name an item actually present in one\nof the first nine sections; never leave a target pointing to an omitted or\nrenamed item. Renaming an item requires updating all its coverage targets.\nFor compacted, duplicate and superseded, omit reason\n(or set it to null). For non_task, use an empty target_item_ids array and set\nreason to exactly \"transport_only\", \"duplicate_envelope\", or \"status_only\";\nfree-form reason text is not accepted. Only optional_source_ids may be non_task.\nFor compacted and duplicate, target_item_ids must be nonempty and\neach target item's source_item_ids must include that same source_item_id.\nFor superseded, targets must be nonempty; at least one target must include both\nthe earlier source and its later source from an allowed_supersession_edge.\nevidence_refs are copied from allowed_evidence_refs and are either\n{\"kind\":\"lid_range\",\"start_lid\":\"...\",\"end_lid\":\"...\"} or\n{\"kind\":\"source\",\"source_ref_id\":\"...\"}; use [] when there is no evidence.\nCopy each evidence reference exactly. Do not merge adjacent or overlapping\nLID ranges, split ranges, or derive new endpoints, even when their union seems\nequivalent. For example, allowed ranges 7.7.1-7.7.2 and 7.7.2-7.7.9 must remain\ntwo references; they do not authorize a new 7.7.1-7.7.9 reference.\n\nComplete output-shape example (replace the illustrative text and source.1 with\nthe actual request's content and eligible source IDs; empty arrays stay present):\n```json\n{\n  \"active_goal\": [{\"item_id\":\"item.goal\",\"text\":\"Retain the requested objective\",\"source_item_ids\":[\"source.1\"],\"evidence_refs\":[]}],\n  \"progress\": [],\n  \"decisions\": [],\n  \"user_constraints\": [],\n  \"open_obligations\": [],\n  \"unresolved_ambiguities\": [],\n  \"critical_facts\": [],\n  \"critical_examples\": [],\n  \"next_steps\": [],\n  \"source_coverage\": [{\"source_item_id\":\"source.1\",\"disposition\":\"compacted\",\"target_item_ids\":[\"item.goal\"]}]\n}\n```\n\nRules:\n1. Preserve task state, not conversational narration. Be concise and neutral.\n2. Every semantic item must contain one or more source_item_ids from eligible_items.\n3. Use only allowed_evidence_refs. Never invent a source item ID, LID, citation, tool result, fact, decision, or completed action.\n4. Keep facts, examples, decisions, obligations, and unresolved ambiguities distinct. Do not resolve an ambiguity during compaction.\n5. Summarize only eligible_items. Current user text, verified selection, and incomplete tool-call pairs are retained separately by the runtime.\n6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.\n7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Apply the disposition-specific target links and reason rules above; a reference to an unrelated semantic item does not cover a source.\n8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.\n9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.\n10. Use empty arrays when a section has no supported content. Do not omit schema fields.\n11. A trailing runtime_repair_diagnostic object contains the rejected_draft and its validation errors. Correct every reported error in that draft, preserving its supported content and valid links. If a referenced target is missing, restore a source-supported semantic item or link to an existing item that actually contains that source; do not drop coverage. Return the complete CompactionDraft, not a patch or the diagnostic object. This is the single repair attempt."
+      }
+    },
+    "context_window_tokens": 1000000,
+    "matched_model": "deepseek-v4-flash",
+    "model_match": {
+      "Exact": "deepseek-v4-flash"
+    },
+    "output_reserve_tokens": 8000,
+    "profile_id": "resident-agent-deepseek-flash-v1",
+    "resolution": "CatalogMatch",
+    "safety_margin_tokens": 4000,
+    "supports_continuation": false,
+    "supports_native_tools": true,
+    "supports_parallel_tools": false,
+    "tool_schema_budget_bytes": 262144,
+    "truncation_policy": "PreserveCurrentBodies",
+    "version": "model_runtime_profile.v1"
+  },
+  "request": {
+    "message": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。"
+  },
+  "tutor": {
+    "agent_working_state": {
+      "corrections": [],
+      "current_work": {
+        "agent_work": {
+          "open_questions": [],
+          "understanding": [
+            {
+              "sources": [
+                {
+                  "lid": "1.1",
+                  "quote": "训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e"
+                }
+              ],
+              "statement": "训练误差在参与拟合的数据上计算；验证误差在未用于拟合参数的数据上计算，用于估计对同类新样本的泛化。"
+            },
+            {
+              "sources": [
+                {
+                  "lid": "1.1",
+                  "quote": "过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e"
+                }
+              ],
+              "statement": "过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。"
+            },
+            {
+              "sources": [
+                {
+                  "lid": "1.1",
+                  "quote": "例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e"
+                }
+              ],
+              "statement": "材料给出的例子是 A 的训练均方误差 0.01、验证均方误差 0.30；B 的训练均方误差 0.08、验证均方误差 0.12。"
+            },
+            {
+              "sources": [
+                {
+                  "lid": "1.1",
+                  "quote": "在数据划分和度量相同的前提下，B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e"
+                }
+              ],
+              "statement": "在数据划分和度量相同的前提下，材料判断 B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。"
+            }
+          ]
+        },
+        "delivered_refs": [
+          "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+        ],
+        "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+        "proposed_text": {
+          "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度",
+          "truncated": true
+        },
+        "request": {
+          "text": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+          "truncated": false
+        },
+        "request_resolution": {
+          "answer_quotes": [
+            "训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。",
+            "过拟合是指模型过度适应训练数据里的偶然细节。",
+            "第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。",
+            "结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。"
+          ],
+          "delivered_relation": "正文先区分训练误差与验证误差各自的数据是否参与拟合，再定义过拟合并解释训练误差低不保证验证误差低；随后按 A 的 0.01→0.30、B 的 0.08→0.12 比较验证误差和训练—验证差距，得出 B 在这份验证集上泛化更好，因此选 B，并保留同划分、同度量的条件。",
+          "question_quote": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+          "reason": "所引正文把“误差在哪种数据上计算”作为因果起点，说明过拟合为何让训练误差失去对未见样本的代表性，再把 A、B 的两组数字分别用于验证误差和差距比较，直接回答为何选 B；结论的适用条件也保留，没有留下需读者补出的关键步骤。",
+          "requested_relation": "在数据划分与度量相同的前提下，说明过拟合是什么，并依据训练误差与验证误差的数据来源，解释为何验证误差更低、训练—验证差距更小的 B 比训练误差更低的 A 更应被选择。",
+          "status": "answered"
+        },
+        "review_ref": "agent-work:turn_76f1b4e10bff7c40:1",
+        "review_status": "accepted_by_review",
+        "round": 1,
+        "turn_id": "turn_76f1b4e10bff7c40"
+      },
+      "meaning": "Teacher work and review observations only. accepted_by_review means that review accepted the candidate; it is not proof of factual truth, actual delivery, or learner understanding. Full records and evidence are readable with tutor.step trace using review_ref. Older records may be outside this bounded view.",
+      "previous_work": []
+    },
+    "binding": {
+      "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+      "control_revision": 2,
+      "session_revision": 1,
+      "source_id": "workspace-cache-live-overfitting",
+      "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+      "turn_id": "turn_76f1b7e10bff8159",
+      "tutor_session_id": "tutor-begin-1"
+    },
+    "chapter_scope": null,
+    "confirmed_preferences": [],
+    "constraints": [],
+    "current_design": {
+      "design": {
+        "basis_refs": [],
+        "blocks": [
+          {
+            "block_id": "two-errors",
+            "purpose": "让读者能用“这段数据有没有参与拟合”这一条件区分两个误差，从而理解为什么低训练误差不能直接当成绩效证据。",
+            "relation": "训练误差在参与拟合的数据上计算；验证误差在未用于拟合参数的数据上计算，用来估计模型对同类新样本的泛化。两者的区别来自数据是否参与拟合，而不是计算方式不同。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          {
+            "block_id": "overfit-definition",
+            "purpose": "给出过拟合的定义，并把“训练误差低、验证误差高”这一表现与定义连起来，使读者能自己判断一个模型是否表现出过拟合。",
+            "relation": "过拟合指模型过度适应训练数据的偶然细节；后果是训练误差低并不保证验证误差低，即模型在训练样本上的表现没有迁移到未见样本。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          {
+            "block_id": "ab-comparison",
+            "purpose": "让读者能依据验证误差和训练-验证差距做出模型选择，并说明为什么不能只看训练误差，同时保留前提条件。",
+            "relation": "在数据划分与度量相同的前提下，A：训练 0.01、验证 0.30；B：训练 0.08、验证 0.12。B 的验证误差更低，因此在这份验证集上泛化更好；A 的训练与验证差距更大，说明它更明显地表现出过拟合。选择依据落在未见数据上的表现，所以选 B。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        ],
+        "connections": [
+          "two-errors",
+          "overfit-definition",
+          "ab-comparison"
+        ],
+        "focus_block_refs": [
+          "two-errors",
+          "overfit-definition",
+          "ab-comparison"
+        ],
+        "open_question_refs": [],
+        "organizing_model": "读者要回答的是一个“该信哪个数字”的问题：训练误差是在参与拟合的数据上算出的，验证误差是在未参与拟合的数据上算出的。把这两个误差的数据来源分清，读者就能理解过拟合为何表现为训练误差低而验证误差高，并据此解释为什么 A 与 B 之间应选 B。",
+        "representation": {
+          "kind": "text",
+          "reason": "用户明确要求纯文字、不要展示页面，因此用连续文字依次建立两个误差的数据来源差异、过拟合的表现定义，再落到 A 与 B 的数字比较和选择结论。"
+        },
+        "revision_reason": "首次设计：用户请求直接、完整地用纯文字讲清过拟合，并用 A、B 的训练/验证误差说明为何选 B；明确要求不展示页面、不出题，因此正文采用文字并一次讲完，不安排学习者作答。",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+          "learning_focus": "过拟合与训练/验证误差",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "workspace-cache-live-overfitting",
+              "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1"
+    },
+    "current_request": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+    "default_teaching_intent": null,
+    "goal_relation": "When proposing a stage or next step, explain how it serves the accepted workspace goal and its explicit constraints; a temporary question does not change that goal.",
+    "learner_context": {
+      "chapter_scope": null,
+      "confirmed_background": [],
+      "confirmed_preferences": [],
+      "constraints": [],
+      "current_design": {
+        "design": {
+          "basis_refs": [],
+          "blocks": [
+            {
+              "block_id": "two-errors",
+              "purpose": "让读者能用“这段数据有没有参与拟合”这一条件区分两个误差，从而理解为什么低训练误差不能直接当成绩效证据。",
+              "relation": "训练误差在参与拟合的数据上计算；验证误差在未用于拟合参数的数据上计算，用来估计模型对同类新样本的泛化。两者的区别来自数据是否参与拟合，而不是计算方式不同。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "overfit-definition",
+              "purpose": "给出过拟合的定义，并把“训练误差低、验证误差高”这一表现与定义连起来，使读者能自己判断一个模型是否表现出过拟合。",
+              "relation": "过拟合指模型过度适应训练数据的偶然细节；后果是训练误差低并不保证验证误差低，即模型在训练样本上的表现没有迁移到未见样本。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "ab-comparison",
+              "purpose": "让读者能依据验证误差和训练-验证差距做出模型选择，并说明为什么不能只看训练误差，同时保留前提条件。",
+              "relation": "在数据划分与度量相同的前提下，A：训练 0.01、验证 0.30；B：训练 0.08、验证 0.12。B 的验证误差更低，因此在这份验证集上泛化更好；A 的训练与验证差距更大，说明它更明显地表现出过拟合。选择依据落在未见数据上的表现，所以选 B。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            "two-errors",
+            "overfit-definition",
+            "ab-comparison"
+          ],
+          "focus_block_refs": [
+            "two-errors",
+            "overfit-definition",
+            "ab-comparison"
+          ],
+          "open_question_refs": [],
+          "organizing_model": "读者要回答的是一个“该信哪个数字”的问题：训练误差是在参与拟合的数据上算出的，验证误差是在未参与拟合的数据上算出的。把这两个误差的数据来源分清，读者就能理解过拟合为何表现为训练误差低而验证误差高，并据此解释为什么 A 与 B 之间应选 B。",
+          "representation": {
+            "kind": "text",
+            "reason": "用户明确要求纯文字、不要展示页面，因此用连续文字依次建立两个误差的数据来源差异、过拟合的表现定义，再落到 A 与 B 的数字比较和选择结论。"
+          },
+          "revision_reason": "首次设计：用户请求直接、完整地用纯文字讲清过拟合，并用 A、B 的训练/验证误差说明为何选 B；明确要求不展示页面、不出题，因此正文采用文字并一次讲完，不安排学习者作答。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+            "learning_focus": "过拟合与训练/验证误差",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1"
+      },
+      "current_request": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+      "current_target": {
+        "capability": "explanation",
+        "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+        "learning_focus": "过拟合与训练/验证误差",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+      "entries": [],
+      "evidence_watermark": 0,
+      "interpretations": [],
+      "learner_grounding": {
+        "delivered_support": [
+          {
+            "action_ref": null,
+            "actor": null,
+            "answer": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+            "before_receipt": null,
+            "delivery_ref": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab",
+            "feedback": null,
+            "kind": "message_delivered",
+            "move": {
+              "actions": [],
+              "block_refs": [
+                "two-errors",
+                "overfit-definition",
+                "ab-comparison"
+              ],
+              "capability": "explanation",
+              "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+              "intent_origin": "current_request",
+              "intent_quote": "请直接讲解，不用展示页面，也暂时不要出题。",
+              "interaction_intent": "direct_explanation",
+              "interpretation_refs": [],
+              "kind": "explain",
+              "move_id": "explain-overfitting-ab",
+              "object_ids": [],
+              "preference_ref": null,
+              "presentation": null,
+              "prompt": "用纯文字依次讲清：训练误差与验证误差的数据来源差异；过拟合的定义及其“训练误差低、验证误差高”的表现；在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距解释为何更应选 B，并保留材料对这份验证集的限定。",
+              "responds_to": {
+                "disposition": "addressed",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+                ]
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+                "learning_focus": "过拟合与训练/验证误差",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "workspace-cache-live-overfitting",
+                    "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "presentation": null,
+            "presentations": null,
+            "scene": null,
+            "text": null
+          }
+        ],
+        "expressions": [
+          {
+            "assistance_refs": [],
+            "fact_ref": "usage:tutor-begin-1:user:turn_76f1b7e10bff8159",
+            "invitation_context_ref": null,
+            "presentations": [],
+            "response_origin": null,
+            "scene": null,
+            "support_delivery_refs": [
+              "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+            ],
+            "text": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。"
+          },
+          {
+            "assistance_refs": null,
+            "fact_ref": "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40",
+            "invitation_context_ref": null,
+            "presentations": [],
+            "response_origin": null,
+            "scene": null,
+            "support_delivery_refs": null,
+            "text": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。"
+          }
+        ],
+        "interpretations": [],
+        "unavailable_basis_refs": [],
+        "unknown_when_absent": true
+      },
+      "learning_opportunity": {
+        "continuity": {
+          "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+          "content_char_budget": 6000,
+          "open_questions": [],
+          "previous_work": [
+            {
+              "action_ref": null,
+              "assessment_ref": null,
+              "assessment_status": "unassessed",
+              "assistance_refs": [],
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "turn_id": "turn_76f1b7e10bff8159",
+                "tutor_session_id": "tutor-begin-1"
+              },
+              "delivery_ref": null,
+              "evidence_refs": [],
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_76f1b7e10bff8159"
+              ],
+              "help": [
+                {
+                  "content_excerpt": {
+                    "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从",
+                    "truncated": true
+                  },
+                  "fact_ref": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+                }
+              ],
+              "help_truncated": false,
+              "historical": false,
+              "learner_quote_excerpt": {
+                "text": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+                "truncated": false
+              },
+              "presentation_receipt": null,
+              "published_book_ref": null,
+              "response_origin": null,
+              "saved_state_ref": null,
+              "source_refs": [
+                {
+                  "evidence_range": {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  },
+                  "publication_id": null,
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_ref_id": null,
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e"
+                }
+              ],
+              "support_delivery_refs": [
+                "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+              ]
+            }
+          ],
+          "read_more": [
+            {
+              "arguments": {
+                "event_id": "usage:tutor-begin-1:user:turn_76f1b7e10bff8159",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            },
+            {
+              "arguments": {
+                "event_id": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            }
+          ],
+          "scope": {
+            "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+            "focus_block_refs": [
+              "two-errors",
+              "overfit-definition",
+              "ab-comparison"
+            ],
+            "learning_workspace_id": null,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "tutor_session_id": "tutor-begin-1",
+            "workspace_goal_revision": null
+          },
+          "teaching_implications": [],
+          "truncated": false
+        },
+        "delivered_support": [
+          {
+            "answer_preview": {
+              "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+              "truncated": false
+            },
+            "block_refs": [
+              "two-errors",
+              "overfit-definition",
+              "ab-comparison"
+            ],
+            "delivery_ref": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab",
+            "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+            "displayed_help": [],
+            "learner_expressions": [],
+            "participation": {
+              "choice": "conclude",
+              "reason": "用户明确要求直接、完整地讲解，并要求不展示页面、暂时不出题，因此本次交付一次讲完定义、机制与 A、B 的比较结论，不安排学习者作答。"
+            },
+            "presentation": null,
+            "presentation_support": null,
+            "responding_to_expressions": [
+              {
+                "assistance_refs": null,
+                "expression_preview": {
+                  "text": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+                  "truncated": false
+                },
+                "fact_ref": "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+                ],
+                "interpretations": [],
+                "invitation_context_ref": null,
+                "response_origin": null,
+                "scene": null,
+                "support_delivery_refs": null
+              }
+            ],
+            "response_expectation": null,
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+              "learning_focus": "过拟合与训练/验证误差",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "workspace-cache-live-overfitting",
+                  "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "teacher_actions": []
+          }
+        ],
+        "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+        "focus_block_refs": [
+          "two-errors",
+          "overfit-definition",
+          "ab-comparison"
+        ],
+        "interpretation_refs": [],
+        "pending_response_invitation": null,
+        "return_context": null,
+        "unknown_when_absent": true
+      },
+      "learning_purpose": null,
+      "material_scope": [
+        {
+          "role": "primary",
+          "scope_refs": [],
+          "source_id": "workspace-cache-live-overfitting"
+        }
+      ],
+      "path_progress": [],
+      "pending_activity": null,
+      "pending_assessment_refs": [],
+      "pending_response_invitation": null,
+      "projection_watermark": 0,
+      "recent_facts": [
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_76f1b7e10bff8159",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:user:turn_76f1b7e10bff8159",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "workspace-cache-live-2",
+          "original_ref": {
+            "book_id": "workspace-cache-live-overfitting",
+            "kind": "chat_turn",
+            "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "turn_id": "turn_76f1b7e10bff8159"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": [
+            "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+          ],
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_76f1b4e10bff7c40",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": [
+            "two-errors",
+            "overfit-definition",
+            "ab-comparison"
+          ],
+          "causal_refs": [
+            "move:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+          ],
+          "continuation": null,
+          "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+          "event_id": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "message_delivered",
+          "move_id": "explain-overfitting-ab",
+          "occurred_at": "workspace-cache-live-1",
+          "original_ref": null,
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "用纯文字依次讲清：训练误差与验证误差的数据来源差异；过拟合的定义及其“训练误差低、验证误差高”的表现；在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距解释为何更应选 B，并保留材料对这份验证集的限定。",
+            "truncated": false
+          },
+          "responds_to": {
+            "disposition": "addressed",
+            "fact_refs": [
+              "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+            ]
+          },
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+            "learning_focus": "过拟合与训练/验证误差",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "workspace-cache-live-overfitting",
+                "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_76f1b4e10bff7c40",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+          ],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_76f1b4e10bff7c40",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "workspace-cache-live-1",
+          "original_ref": {
+            "book_id": "workspace-cache-live-overfitting",
+            "kind": "chat_turn",
+            "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "turn_id": "turn_76f1b4e10bff7c40"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_76f1b4e10bff7c40",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "workspace-cache-live-1",
+          "original_ref": {
+            "book_id": "workspace-cache-live-overfitting",
+            "kind": "chat_turn",
+            "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+            "turn_id": "turn_76f1b4e10bff7c40"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        }
+      ],
+      "session_focus": {
+        "capability_targets": [],
+        "interpretation": "",
+        "target_object_refs": []
+      },
+      "stale": false,
+      "uninterpreted_fact_refs": [
+        "usage:tutor-begin-1:user:turn_76f1b7e10bff8159",
+        "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+      ],
+      "unknown_when_absent": true,
+      "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始",
+      "workspace_goal_revision": null
+    },
+    "learning_purpose": null,
+    "limitations": [],
+    "material_scope": [
+      {
+        "role": "primary",
+        "scope_refs": [],
+        "source_id": "workspace-cache-live-overfitting"
+      }
+    ],
+    "object_count": 0,
+    "objects": [],
+    "recent_facts": [
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "workspace-cache-live-overfitting",
+          "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+          "turn_id": "turn_76f1b7e10bff8159",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "block_refs": null,
+        "causal_refs": [],
+        "continuation": null,
+        "design_ref": null,
+        "event_id": "usage:tutor-begin-1:user:turn_76f1b7e10bff8159",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "invitation_context_ref": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "workspace-cache-live-2",
+        "original_ref": {
+          "book_id": "workspace-cache-live-overfitting",
+          "kind": "chat_turn",
+          "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "turn_id": "turn_76f1b7e10bff8159"
+        },
+        "presentation_follow_up": null,
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "responds_to": null,
+        "response_expectation": null,
+        "response_origin": null,
+        "response_preview": {
+          "text": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+          "truncated": false
+        },
+        "scene_receipt": null,
+        "scene_visible_step": null,
+        "support_delivery_refs": [
+          "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+        ],
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "workspace-cache-live-overfitting",
+          "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+          "turn_id": "turn_76f1b4e10bff7c40",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "block_refs": [
+          "two-errors",
+          "overfit-definition",
+          "ab-comparison"
+        ],
+        "causal_refs": [
+          "move:turn_76f1b4e10bff7c40:explain-overfitting-ab"
+        ],
+        "continuation": null,
+        "design_ref": "design:turn_76f1b4e10bff7c40:design-overfitting-ab-1",
+        "event_id": "delivery:turn_76f1b4e10bff7c40:explain-overfitting-ab",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "invitation_context_ref": null,
+        "kind": "message_delivered",
+        "move_id": "explain-overfitting-ab",
+        "occurred_at": "workspace-cache-live-1",
+        "original_ref": null,
+        "presentation_follow_up": null,
+        "prompt_preview": {
+          "text": "用纯文字依次讲清：训练误差与验证误差的数据来源差异；过拟合的定义及其“训练误差低、验证误差高”的表现；在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距解释为何更应选 B，并保留材料对这份验证集的限定。",
+          "truncated": false
+        },
+        "responds_to": {
+          "disposition": "addressed",
+          "fact_refs": [
+            "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+          ]
+        },
+        "response_expectation": null,
+        "response_origin": null,
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "scene_receipt": null,
+        "scene_visible_step": null,
+        "support_delivery_refs": null,
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "结合材料说明训练误差与验证误差各自的数据来源，据此解释过拟合的表现，并在数据划分与度量相同的前提下，用 A 与 B 的验证误差和训练-验证差距说明为何更应选 B。",
+          "learning_focus": "过拟合与训练/验证误差",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "workspace-cache-live-overfitting",
+              "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "usage": null
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "先把两个误差各自站在哪些数据上说清楚，后面 A 与 B 的比较才有依据。\n\n训练误差在参与拟合的数据上计算：这批样本被用来调整模型参数，误差就是在这批样本上算出的偏差。验证误差在未用于拟合参数的数据上计算，材料把它用来看模型对同类新样本的泛化能力。两者的区别来自数据有没有参与拟合，计算方式本身可以一样，比如材料里的两个数字都是均方误差。\n\n过拟合是指模型过度适应训练数据里的偶然细节。这个过程可以拆成两步看：模型在拟合训练样本时，把只属于这一批数据的偶然波动也一起当成规律拟合进去，于是它在这一批样本上的误差被压得很低；换到没参与拟合的新样本上，那些偶然细节不再出现，误差就明显上升。材料由此给出一条界限：训练误差低并不保证验证误差低。\n\n所以低训练误差只能回答一个问题：模型对已经见过的这批数据拟合得紧不紧。它回答不了另一个问题：换成同类新样本会怎样。挑模型要回答的是后一个问题，于是判断落在验证误差上。\n\n把 A 与 B 的数字放进来，材料先限定了一个前提：数据划分和度量相同。在这个前提下，A 的训练均方误差是 0.01、验证均方误差是 0.30；B 的训练均方误差是 0.08、验证均方误差是 0.12。这两组数一起看，能读出两件事。\n\n第一件，看没参与拟合的数据。B 的验证误差 0.12 小于 A 的 0.30，所以 B 在这份验证集上的泛化更好。\n\n第二件，看训练到验证的变化。A 从 0.01 升到 0.30，升幅是 0.30 减 0.01，约 0.29；B 从 0.08 升到 0.12，升幅是 0.04。这个减法是直接用材料给的两个数字算出的。A 的升幅大得多，材料据此说 A 表现出更明显的训练与验证差距；按上面的定义，这个差距正是过拟合在数字上的样子：训练样本上的偶然细节被拟合进去了，新样本上就露出来。\n\n结论因此是选 B。选 B 的依据是它在未参与拟合的数据上误差更低、训练与验证的表现更接近；它的训练误差比 A 高这一点，在“换新样本会怎样”这个问题上不构成反对理由。要是把“0.01 比 0.08 小”当作选 A 的依据，等于用参与拟合的那批数据的表现替代了未见数据的表现，材料划出的那条界限就被跨过去了。\n\n材料还把 B 的优势限定在“这份验证集上”，并且要求数据划分与度量相同。验证误差估计的是对同类新样本的泛化，一份验证集给出的仍然是估计：换一份划分不同、或度量不同的验证集，这些数字就不能直接这样比。",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "workspace-cache-live-overfitting",
+          "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+          "turn_id": "turn_76f1b4e10bff7c40",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "block_refs": null,
+        "causal_refs": [
+          "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40"
+        ],
+        "continuation": null,
+        "design_ref": null,
+        "event_id": "usage:tutor-begin-1:assistant:turn_76f1b4e10bff7c40",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "invitation_context_ref": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "workspace-cache-live-1",
+        "original_ref": {
+          "book_id": "workspace-cache-live-overfitting",
+          "kind": "chat_turn",
+          "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "turn_id": "turn_76f1b4e10bff7c40"
+        },
+        "presentation_follow_up": null,
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "responds_to": null,
+        "response_expectation": null,
+        "response_origin": null,
+        "response_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "scene_receipt": null,
+        "scene_visible_step": null,
+        "support_delivery_refs": null,
+        "target": null,
+        "usage": {
+          "kind": "assistant_delivery"
+        }
+      },
+      {
+        "action": null,
+        "answer_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "assistance_count": 0,
+        "attempt": null,
+        "binding": {
+          "chat_session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "workspace-cache-live-overfitting",
+          "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+          "turn_id": "turn_76f1b4e10bff7c40",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "block_refs": null,
+        "causal_refs": [],
+        "continuation": null,
+        "design_ref": null,
+        "event_id": "usage:tutor-begin-1:user:turn_76f1b4e10bff7c40",
+        "help_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "interaction": null,
+        "invitation_context_ref": null,
+        "kind": "usage_observed",
+        "move_id": null,
+        "occurred_at": "workspace-cache-live-1",
+        "original_ref": {
+          "book_id": "workspace-cache-live-overfitting",
+          "kind": "chat_turn",
+          "session_id": "chat-01a161cd-8802-7f01-9af3-bfcfef3bacd3",
+          "turn_id": "turn_76f1b4e10bff7c40"
+        },
+        "presentation_follow_up": null,
+        "prompt_preview": {
+          "text": "null",
+          "truncated": false
+        },
+        "responds_to": null,
+        "response_expectation": null,
+        "response_origin": null,
+        "response_preview": {
+          "text": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+          "truncated": false
+        },
+        "scene_receipt": null,
+        "scene_visible_step": null,
+        "support_delivery_refs": null,
+        "target": null,
+        "usage": {
+          "kind": "user_message"
+        }
+      }
+    ],
+    "status": "active",
+    "teaching_assets": {
+      "cognitive_materials": {
+        "status": "missing"
+      },
+      "formal_objects": {
+        "status": "missing"
+      },
+      "limitations": [],
+      "reason": "正式教学素材尚未发布",
+      "source_id": "workspace-cache-live-overfitting",
+      "status": "preparing",
+      "teaching_map_revision": null
+    },
+    "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始",
+    "workspace_goal_revision": null
+  }
+}

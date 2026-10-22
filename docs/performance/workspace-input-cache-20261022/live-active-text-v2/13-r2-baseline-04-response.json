@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 2,
+  "position": 0,
+  "index": 4,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-04.json",
+  "ordinal": 13,
+  "started_utc": "2026-10-22T03:28:43.700575+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 18088,
+    "completion_tokens": 718,
+    "total_tokens": 18806,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 18088
+  },
+  "response_id": "f463fd01-ca56-4d92-bc4f-048a62bd4de0",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "训练误差越来越低，模型却可能变差，原因在于：训练误差衡量的是模型对已经见过的训练样本拟合得有多紧，而模型真正要面对的是没见过的数据。如果模型把训练样本里偶然出现的噪声也当成规律学了进去，训练误差就可能继续下降，但在未见样本上的误差反而上升，这就是过拟合的一种典型表现。因此，单看一次训练误差较低，不足以判断模型更好，应当比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n书里的对照例子很直观：在相同的数据划分与误差指标下，模型甲的训练误差为 0.01、验证误差为 0.30；模型乙的训练误差为 0.08、验证误差为 0.12。如果目标是对未见数据的预测，验证结果支持选择乙。乙没有把训练集拟合得最紧，但在这份验证集上的误差较小。[[source:source_ref_c52685f9e6cb9140]]\n\n三个数据集的分工如下：\n\n| 数据集 | 用途 | 关键点 |\n|---|---|---|\n| 训练集 | 参与参数拟合 | 模型直接在这批数据上优化，所以训练误差低只说明它“记住了”这批数据 |\n| 验证集 | 用于选择模型和超参数 | 比较候选模型、挑选正则化强度等，都看它；它不参与参数拟合，但会被反复用来做选择 |\n| 测试集 | 留到最终评估 | 不参与调参，用来给出对最终模型的一次独立评估 |\n\n关于验证集和测试集，有两点边界需要记住：验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估；测试集也不用于反复挑选超参数。[[source:source_ref_c52685f9e6cb9140]][[source:source_ref_679b2138443382f8]]\n\n正则化从另一个角度说明了同一件事。L2 正则化把训练目标改为 J(w)=L_train(w)+λ·Σw_j²，λ 越大，大权重就越“昂贵”。适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；惩罚过强也可能使模型欠拟合。所以增加正则化强度后，训练误差可能上升，但只要验证表现改善，这并不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n书里还有一个算例：两个候选模型的 L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。λ=0 时，目标值分别是 0.05 和 0.09，前者更小；λ=0.01 时，目标值分别是 0.15 和 0.10，后者更小。这个算例说明惩罚改变了优化中的偏好，但它本身并不证明哪个模型的验证误差更低，最终仍要看验证集的结果。[[source:source_ref_679b2138443382f8]]\n\n最后补充一个反向情形：欠拟合是连训练数据中的主要关系也没有学好，常表现为训练误差和验证误差都较高。[[source:source_ref_c52685f9e6cb9140]] 所以判断模型好坏，要看训练误差和验证误差之间的关系：训练误差低、验证误差高，偏向过拟合；两者都高，偏向欠拟合。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 729.203,
+  "first_text_ms": 729.203,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 224.673,
+  "streaming": true,
+  "duration_ms": 3703.889,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 18088,
+    "cached_input_tokens": 0,
+    "uncached_input_tokens": 18088,
+    "output_tokens": 718
+  },
+  "cost": {
+    "input_cny": "0.036176",
+    "output_cny": "0.005744",
+    "total_cny": "0.04192",
+    "total_rounded_micro_cny": 41920
+  }
+}

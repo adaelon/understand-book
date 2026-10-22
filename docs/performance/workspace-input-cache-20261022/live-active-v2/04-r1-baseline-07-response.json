@@ -1,0 +1,64 @@
+{
+  "arm": "baseline",
+  "repetition": 1,
+  "position": 3,
+  "index": 7,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-07.json",
+  "ordinal": 4,
+  "started_utc": "2026-10-22T03:26:24.853195+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 51060,
+    "completion_tokens": 75,
+    "total_tokens": 51135,
+    "prompt_tokens_details": {
+      "cached_tokens": 13952
+    },
+    "prompt_cache_hit_tokens": 13952,
+    "prompt_cache_miss_tokens": 37108
+  },
+  "response_id": "0bdd610d-3800-45e1-b29c-09cc4909ecb7",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_glLYMu7rqt8ZDAyqfR5k4910",
+          "type": "function",
+          "function": {
+            "name": "agent_progress",
+            "arguments": "{\"message\": \"我先用文字说明过强惩罚、欠拟合与验证集选择的关系，然后做一个可调 lambda 的比较页面，让你直接看到训练目标、训练误差和验证误差各自的变化。\"}"
+          }
+        }
+      ]
+    }
+  ],
+  "first_delta_ms": 1766.797,
+  "first_text_ms": null,
+  "first_reasoning_ms": null,
+  "first_tool_ms": 1766.797,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 296.766,
+  "streaming": true,
+  "duration_ms": 1890.144,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": false,
+  "measured_usage": {
+    "input_tokens": 51060,
+    "cached_input_tokens": 13952,
+    "uncached_input_tokens": 37108,
+    "output_tokens": 75
+  },
+  "cost": {
+    "input_cny": "0.07477408",
+    "output_cny": "0.0006",
+    "total_cny": "0.07537408",
+    "total_rounded_micro_cny": 75375
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "rates": [
+    {
+      "version": "deepseek-web_search-20261021",
+      "provider": "deepseek",
+      "service_kind": "web_search",
+      "starts_at": 1792560930,
+      "expires_at": 1795152990,
+      "cost_micro_cny_per_request": 5000,
+      "source": "https://api-docs.deepseek.com/zh-cn/guides/search/#计费; checked 2026-10-21, CNY 5 per 1000 successful direct API requests. Local tariff review expires in 30 days."
+    },
+    {
+      "version": "deepseek-web_fetch-20261021",
+      "provider": "deepseek",
+      "service_kind": "web_fetch",
+      "starts_at": 1792560930,
+      "expires_at": 1795152990,
+      "cost_micro_cny_per_request": 5000,
+      "source": "https://api-docs.deepseek.com/zh-cn/guides/search/#计费; checked 2026-10-21, CNY 5 per 1000 successful direct API requests. Local tariff review expires in 30 days."
+    }
+  ]
+}

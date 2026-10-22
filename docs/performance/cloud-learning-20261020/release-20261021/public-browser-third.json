@@ -1,0 +1,13 @@
+{
+  "status": "failed",
+  "origin": "https://understandbook.top",
+  "checked_at": "2026-10-21T01:26:25.422Z",
+  "checks": [
+    "Mobile homepage and Windows download entry",
+    "Authenticated root opens cloud Reader"
+  ],
+  "errors": [],
+  "httpFailures": [],
+  "model_requests": 0,
+  "failure": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: '云端学习套餐', exact: true }) to be visible\u001b[22m\n"
+}

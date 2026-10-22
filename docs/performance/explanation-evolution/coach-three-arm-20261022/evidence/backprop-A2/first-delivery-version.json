@@ -1,0 +1,283 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1792668147972668900-7",
+    "revision": 1
+  },
+  "candidate_id": "candidate-1792668147972673400-8",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-10-16T04:00:00Z_0"
+  },
+  "created_by_turn_id": "turn_1a986d9fd8e2f279",
+  "based_on": null,
+  "content": {
+    "method_refs": [],
+    "method_observations": {
+      "catalog": {
+        "methods": [
+          {
+            "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "discrete-update",
+            "name": "追踪一次离散更新",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+            "revision": 3,
+            "root": "skills/presentation/methods/discrete-update/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "object-transform",
+            "name": "保持身份的对象变换",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+            "revision": 2,
+            "root": "skills/presentation/methods/object-transform/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+            "revision": 3,
+            "root": "skills/presentation/methods/compare-one-factor/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/compare-one-factor/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "part-whole",
+            "name": "整体与部分保持对应",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+            "revision": 2,
+            "root": "skills/presentation/methods/part-whole/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "process-reveal",
+            "name": "沿关系逐步展开过程",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+            "revision": 2,
+            "root": "skills/presentation/methods/process-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "evidence-chain",
+            "name": "从证据走到有边界的结论",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+            "revision": 2,
+            "root": "skills/presentation/methods/evidence-chain/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "counterexamples.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先看见数量关系，再核对参数",
+            "needs": [
+              "state"
+            ],
+            "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+            "revision": 3,
+            "root": "skills/presentation/methods/chart-reveal/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先建立尺度，再揭示数据",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/chart-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "scale-zoom",
+            "name": "保留定位的尺度缩放",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+            "revision": 2,
+            "root": "skills/presentation/methods/scale-zoom/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md",
+              "runtime.js",
+              "adaptations/spring.html",
+              "adaptations/spring-author.json"
+            ],
+            "id": "spatial-linked-views",
+            "name": "三维结构与图解共用一个模型",
+            "needs": [
+              "three",
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+            "revision": 1,
+            "root": "skills/presentation/methods/spatial-linked-views/v1",
+            "status": "adopted"
+          }
+        ],
+        "revision": 6
+      },
+      "reads": [],
+      "supplied_files": []
+    },
+    "animation_assets": {},
+    "title": "u 被用两次：反向传播为什么要把两份贡献相加",
+    "content_files": {
+      "index.html": "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"color-scheme\" content=\"light\">\n<title>u 被用两次：反向传播为什么要把两份贡献相加</title>\n<style>\n:root{\n  --canvas:#f4f4ef;\n  --ink:#1c1c1a;\n  --surface:#ffffff;\n  --line:#d8d8d0;\n  --accent:#14695a;\n  --muted:#63635c;\n  --warm:#a3461b;\n  --soft:#e9f2ef;\n  --softline:#cfe2dc;\n}\n*{box-sizing:border-box}\nbody{margin:0;background:var(--canvas);color:var(--ink);\n  font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Noto Sans SC\",\"PingFang SC\",\"Hiragino Sans GB\",\"Microsoft YaHei\",sans-serif;\n  font-size:16px;line-height:1.78;-webkit-text-size-adjust:100%}\nmain{max-width:980px;margin:0 auto;padding:24px 16px 72px}\nh1{font-size:clamp(21px,4.4vw,29px);line-height:1.4;margin:6px 0 10px;letter-spacing:-.01em}\nh2{font-size:clamp(17px,3.2vw,21px);line-height:1.5;margin:38px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}\nh3{font-size:15.5px;margin:16px 0 6px}\np{margin:9px 0}\nul,ol{margin:8px 0;padding-left:1.2em}\nli{margin:4px 0}\n.lede{font-size:16.5px;color:#2b2b28}\n.v{font-variant-numeric:tabular-nums;font-weight:600}\n.muted{color:var(--muted)}\n.eq{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;line-height:1.95;\n  background:#fafaf7;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;overflow-wrap:anywhere}\n.eq b{font-weight:600}\n.note{font-size:14.5px;color:var(--muted);border-left:3px solid var(--softline);padding:2px 0 2px 12px;margin:12px 0}\n\nfigure{margin:14px 0 6px}\n.figwrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 8px 4px}\nsvg#cg{display:block;width:100%;max-width:420px;height:auto;margin:0 auto}\nfigcaption{font-size:13.8px;line-height:1.72;color:var(--muted);padding:8px 6px 8px;max-width:640px;margin:0 auto}\n#cg .node rect{fill:var(--surface);stroke:var(--line);stroke-width:2;transition:fill .15s,stroke .15s}\n#cg .node .nname{font-size:15px;fill:var(--muted);font-weight:700;text-anchor:middle}\n#cg .node .nval{font-size:20px;fill:var(--ink);font-weight:700;text-anchor:middle;font-variant-numeric:tabular-nums}\n#cg .node.now rect{stroke:var(--accent);stroke-width:4}\n#cg .node.full rect{fill:var(--soft)}\n#cg .node.half rect{stroke-dasharray:6 4}\n#cg .edge{fill:none;stroke:#bcbcb4;stroke-width:2.4;marker-end:url(#ar)}\n#cg .edge.done{stroke:#5f9d90;stroke-width:2.8;marker-end:url(#arDone)}\n#cg .edge.now{stroke:var(--accent);stroke-width:4.2;marker-end:url(#arAct)}\n#cg .elab{font-size:15px;font-weight:700;fill:var(--accent);text-anchor:middle;\n  paint-order:stroke;stroke:var(--surface);stroke-width:4.5;stroke-linejoin:round;opacity:0;transition:opacity .2s}\n#cg .elab.show{opacity:1}\n#cg .cap{font-size:12.5px;fill:var(--muted);text-anchor:middle}\n\n.console{display:grid;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}\n.ctl{display:grid;gap:0}\n.lab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px;font-weight:600}\n.lab output{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;font-size:15px}\ninput[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent);background:transparent}\n.btnrow{display:flex;flex-wrap:wrap;gap:8px}\nbutton{font:inherit;font-size:14px;min-height:44px;min-width:44px;padding:8px 14px;\n  border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);cursor:pointer}\nbutton:hover{border-color:var(--accent);color:var(--accent)}\nbutton.primary{background:var(--accent);border-color:var(--accent);color:#fff}\nbutton.primary:hover{color:#fff;opacity:.92}\nbutton:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}\n.status{display:flex;flex-wrap:wrap;gap:2px 18px;font-size:14px;background:var(--soft);\n  border:1px solid var(--softline);border-radius:10px;padding:8px 12px;margin:0}\n.status b{font-variant-numeric:tabular-nums}\n\nol.steps{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px}\nli.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px}\nli.step.future{opacity:.45}\nli.step.future .lines{display:none}\nli.step.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}\n.shead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}\n.badge{font-size:11.5px;line-height:1.7;padding:1px 8px;border-radius:999px;background:var(--soft);\n  color:var(--accent);border:1px solid var(--softline);white-space:nowrap;font-weight:700}\n.stitle{font-weight:600;font-size:15px}\n.lines{list-style:none;margin:6px 0 0;padding:0;font-size:14.8px}\n.lines li{margin:3px 0}\n\n.ncards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px;margin-top:10px}\n.ncard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}\n.ncard.full{border-color:#a9cec3;background:#fbfdfc}\n.ncard h3{margin:0 0 2px;font-size:15px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}\n.nmeta{font-size:12.5px;color:var(--muted);font-weight:400}\n.nlist{list-style:none;margin:6px 0;padding:0;font-size:14px}\n.nlist li{padding:3px 0;border-top:1px dashed #e8e8e1}\n.nlist li:first-child{border-top:0}\n.ntot{font-size:14px;font-weight:700;margin:4px 0 0}\n.ntot.pend{font-weight:500;color:var(--warm)}\n\n.plist{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}\n.plist li{display:flex;flex-wrap:wrap;gap:2px 12px;background:#fbfbf8;border:1px solid var(--line);\n  border-radius:8px;padding:6px 10px;font-size:14px}\n.pr{font-weight:700;min-width:104px}\n.pc{font-variant-numeric:tabular-nums;color:#33332f}\n.sumrow{font-size:14.5px;font-weight:600;margin:6px 0 0}\n\n.reslist{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}\n.reslist li{display:flex;flex-wrap:wrap;gap:2px 12px;background:var(--surface);border:1px solid var(--line);\n  border-radius:10px;padding:8px 12px;font-size:14.5px}\n.reslist .k{display:block;width:100%;font-weight:600;font-size:13px;color:var(--muted);letter-spacing:.02em}\n.reslist .val{font-variant-numeric:tabular-nums}\n.reslist li.bad{border-color:#e2c7b6;background:#fdf7f2}\n\n.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;padding:0;list-style:none}\n.chips li{font-size:13.5px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;\n  background:#fff;font-variant-numeric:tabular-nums}\n.neg{color:var(--warm)}\n\ntable{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}\nth,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}\nth{font-weight:700;color:var(--muted);font-size:12.8px}\ntd.num{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}\n.tnote{font-size:13.5px;color:var(--muted);margin:6px 0 0}\n@media (max-width:520px){\n  .pr{min-width:0;width:100%}\n  .reslist .k{min-width:0;width:100%}\n  th,td{padding:6px 4px;font-size:13px}\n}\n</style>\n</head>\n<body>\n<main>\n\n<header>\n<h1>u 被用两次，反向传播为什么要把两份贡献相加</h1>\n<p class=\"lede\">u = x·y 算出来以后被用了两次，x 也同时进入两处。这份页面就沿着这张小图的真实依赖走：先算值，再从 L 逆着箭头回来，看着两份贡献在哪里汇合、为什么必须等到齐了才能继续往回传。</p>\n</header>\n\n<section id=\"model\">\n<h2>1. 只看这三个公式</h2>\n<div class=\"eq\">\n<div>u = x · y</div>\n<div>v = u + x</div>\n<div>L = v² + 3u</div>\n</div>\n<p>x、y 是输入，可以自由选；u、v、L 都是算出来的。有两处\"共用\"值得先盯住：</p>\n<ul>\n<li><b>u 被用两次</b>：一次进 v（v = u + x），一次直接进 L（3u 那一项）。同一个计算结果，两条出路。</li>\n<li><b>x 进入两处</b>：一次进 u（u = x·y），一次直接进 v（v = u + x）。</li>\n</ul>\n<p>反向传播要处理的就是这两处共用：从 L 出发，回到 u 有两条路，回到 x 也有两条路。</p>\n</section>\n\n<section id=\"figure\">\n<h2>2. 图长什么样</h2>\n<figure>\n<div class=\"figwrap\">\n<svg id=\"cg\" viewBox=\"0 0 400 452\" role=\"img\" aria-labelledby=\"cgTitle cgDesc\">\n<title id=\"cgTitle\">计算图：x 与 y 算出 u，u 与 x 算出 v，v 与 u 算出 L</title>\n<desc id=\"cgDesc\">x 与 y 各有一条箭头指向 u；u 与 x 各有一条箭头指向 v；u 与 v 各有一条箭头指向 L。节点上写前向数值，边上的小字是这条边的局部导数。</desc>\n<defs>\n<marker id=\"ar\" viewBox=\"0 0 10 10\" refX=\"9.6\" refY=\"5\" markerWidth=\"6.5\" markerHeight=\"6.5\" orient=\"auto-start-reverse\">\n<path d=\"M0 0 L10 5 L0 10 z\" fill=\"#bcbcb4\"/>\n</marker>\n<marker id=\"arDone\" viewBox=\"0 0 10 10\" refX=\"9.6\" refY=\"5\" markerWidth=\"6.5\" markerHeight=\"6.5\" orient=\"auto-start-reverse\">\n<path d=\"M0 0 L10 5 L0 10 z\" fill=\"#5f9d90\"/>\n</marker>\n<marker id=\"arAct\" viewBox=\"0 0 10 10\" refX=\"9.6\" refY=\"5\" markerWidth=\"6.5\" markerHeight=\"6.5\" orient=\"auto-start-reverse\">\n<path d=\"M0 0 L10 5 L0 10 z\" fill=\"#14695a\"/>\n</marker>\n</defs>\n\n<path class=\"edge\" id=\"e-xu\" d=\"M80 70 L174 120\"/>\n<path class=\"edge\" id=\"e-yu\" d=\"M320 70 L226 120\"/>\n<path class=\"edge\" id=\"e-uv\" d=\"M200 174 L200 244\"/>\n<path class=\"edge\" id=\"e-xv\" d=\"M32 70 C22 150 22 274 154 274\"/>\n<path class=\"edge\" id=\"e-vL\" d=\"M200 298 L200 374\"/>\n<path class=\"edge\" id=\"e-uL\" d=\"M240 162 C322 195 332 372 244 396\"/>\n\n<text class=\"elab\" id=\"l-xu\" x=\"114\" y=\"84\">y</text>\n<text class=\"elab\" id=\"l-yu\" x=\"286\" y=\"84\">x</text>\n<text class=\"elab\" id=\"l-uv\" x=\"218\" y=\"213\">1</text>\n<text class=\"elab\" id=\"l-xv\" x=\"108\" y=\"259\">1</text>\n<text class=\"elab\" id=\"l-vL\" x=\"224\" y=\"339\">2v</text>\n<text class=\"elab\" id=\"l-uL\" x=\"310\" y=\"238\">3</text>\n\n<g class=\"node\" id=\"node-x\">\n<rect x=\"21\" y=\"22\" width=\"78\" height=\"48\" rx=\"10\"/>\n<text class=\"nname\" x=\"60\" y=\"45\">x</text>\n<text class=\"nval\" x=\"60\" y=\"65\" id=\"val-x\">2</text>\n</g>\n<g class=\"node\" id=\"node-y\">\n<rect x=\"301\" y=\"22\" width=\"78\" height=\"48\" rx=\"10\"/>\n<text class=\"nname\" x=\"340\" y=\"45\">y</text>\n<text class=\"nval\" x=\"340\" y=\"65\" id=\"val-y\">3</text>\n</g>\n<g class=\"node\" id=\"node-u\">\n<rect x=\"161\" y=\"126\" width=\"78\" height=\"48\" rx=\"10\"/>\n<text class=\"nname\" x=\"200\" y=\"149\">u</text>\n<text class=\"nval\" x=\"200\" y=\"169\" id=\"val-u\">6</text>\n</g>\n<g class=\"node\" id=\"node-v\">\n<rect x=\"161\" y=\"250\" width=\"78\" height=\"48\" rx=\"10\"/>\n<text class=\"nname\" x=\"200\" y=\"273\">v</text>\n<text class=\"nval\" x=\"200\" y=\"293\" id=\"val-v\">8</text>\n</g>\n<g class=\"node\" id=\"node-L\">\n<rect x=\"161\" y=\"380\" width=\"78\" height=\"48\" rx=\"10\"/>\n<text class=\"nname\" x=\"200\" y=\"403\">L</text>\n<text class=\"nval\" x=\"200\" y=\"423\" id=\"val-L\">82</text>\n</g>\n</svg>\n</div>\n<figcaption>节点中间的大数字是当前输入下的前向值（还没算出来时显示问号）。边上的小字是这条边的局部导数：x→u 上写 y，表示 ∂u/∂x = y，默认输入下等于 <span class=\"v\" id=\"cap-xu\">3</span>；v→L 上写 2v，表示 ∂L/∂v = 2v，默认等于 <span class=\"v\" id=\"cap-vL\">16</span>。u 有两条出边、x 有两条出边，这就是\"一个量被用两次\"在图上长什么样。反向时沿箭头逆行。</figcaption>\n</figure>\n</section>\n\n<section id=\"console\" class=\"console\" aria-label=\"控制台\">\n<div class=\"ctl\">\n<div class=\"lab\"><label for=\"sx\">输入 x</label><output id=\"out-x\" for=\"sx\">2</output></div>\n<input id=\"sx\" type=\"range\" min=\"-3\" max=\"3\" step=\"0.5\" value=\"2\" aria-label=\"输入 x，范围负三到三，步长零点五\">\n</div>\n<div class=\"ctl\">\n<div class=\"lab\"><label for=\"sy\">输入 y</label><output id=\"out-y\" for=\"sy\">3</output></div>\n<input id=\"sy\" type=\"range\" min=\"-3\" max=\"3\" step=\"0.5\" value=\"3\" aria-label=\"输入 y，范围负三到三，步长零点五\">\n</div>\n<div class=\"ctl\">\n<div class=\"lab\"><label for=\"sstep\">看到第几步</label><output id=\"out-k\" for=\"sstep\">13 / 13</output></div>\n<input id=\"sstep\" type=\"range\" min=\"0\" max=\"12\" step=\"1\" value=\"12\" aria-label=\"步骤，从第一步到第十三步\">\n</div>\n<div class=\"btnrow\">\n<button type=\"button\" id=\"first\">回到第 1 步</button>\n<button type=\"button\" id=\"prev\">上一步</button>\n<button type=\"button\" id=\"next\">下一步</button>\n<button type=\"button\" id=\"last\" class=\"primary\">全部展开</button>\n</div>\n<div class=\"btnrow\">\n<button type=\"button\" data-preset=\"2,3\">默认 x=2, y=3</button>\n<button type=\"button\" data-preset=\"0,3\">让 x=0</button>\n<button type=\"button\" data-preset=\"2,-1\">让 v=0</button>\n<button type=\"button\" data-preset=\"-2,3\">负数 x=−2</button>\n</div>\n<p class=\"status\" id=\"status\"></p>\n</section>\n\n<section id=\"player\">\n<h2>3. 一步一步走：先前向，再反向</h2>\n<p>整个回放一共 13 步：前 4 步前向，后 9 步反向。拖动上面的步骤滑杆或点按钮，下面的列表会跟着亮到当前这一步；图上的节点和边也会同时高亮当前在处理的对象。</p>\n<p>反向有两条规则，整套账都靠它们：</p>\n<ol>\n<li><b>从 L 出发，逆着箭头走。</b>先离开 L 最近的 v 和 u，最后才到输入 x、y。</li>\n<li><b>到一个节点，要等它的所有出边都把贡献送回来，才能把合计继续往回传。</b>一个节点正向流出几条边，就要收回几笔。</li>\n</ol>\n<p>先算哪一条出边无所谓，加法可以交换；必须遵守的是\"到齐\"。下面每一步都只用当前这组输入算出的数字。</p>\n<ol class=\"steps\" id=\"steps\"></ol>\n</section>\n\n<section id=\"ledger\">\n<h2>4. 每个节点的账本</h2>\n<p>反向时每个节点都在等自己的几笔贡献。下面这张账本显示：正向流出几条边、已经收回几笔、合计是多少、有没有到齐。没到齐的节点会写明\"先不往回传\"。</p>\n<div class=\"ncards\" id=\"ledger-cards\"></div>\n</section>\n\n<section id=\"why\">\n<h2>5. 为什么要相加，而不是二选一</h2>\n<p>沿一条边反向走时，你乘的是这条边的局部导数：上游动一点，这个节点跟着动多少。从 L 到某个量如果只有一条路，把沿路的局部导数乘起来就够了，这就是你熟悉的链式法则。</p>\n<p>麻烦在于 u 和 x 都有两条路。以 u 为例：把 u 挪动一个很小的量 h。经过 3u 这一项，L 变化约 3h；同时 v 变化约 1·h，而 v 的变化又让 v² 变化约 2v·(1·h)。这两件事同时发生，所以 L 的总变化约 (3 + 2v)·h。除以 h，就得到 dL/du = 3 + 2v。</p>\n<p>相加的来源就在这句话里：同一份 h 被两条路同时送出去，两条路的效果叠在一起。两条路的终点都是 L，所以它们共用同一个上游数（这里是 1），不同的只是沿途乘了哪些局部导数。每一笔对应一条不同的路径，路径不同，乘的局部导数就不同，所以和里没有重复计算。</p>\n<h3>把五条路径摊开</h3>\n<div id=\"paths-x\"></div>\n<div id=\"paths-y\"></div>\n<p>把 x 的路径重新分组，正好就是账本里的两笔：经 u 的两条（x→u→L 和 x→u→v→L）加起来是 <span class=\"v\" id=\"why-via-u\"></span>，直达 v 的那条是 <span class=\"v\" id=\"why-xv\"></span>。所以\"u 收到 3 和 16、合计 19\"与\"x 收到 57 和 16、合计 73\"说的是同一件事的两个层次：先在 u 处汇总，再把汇总后的数继续往回乘。</p>\n<p class=\"note\">顺序本身不重要：先算哪条出边，和都不变。真正卡住的是\"完整\"——一个节点少收一笔就往下传，缺的那块会跟着再乘一次局部导数，被放大到所有更上游的节点。</p>\n</section>\n\n<section id=\"omit\">\n<h2>6. 漏掉一笔会得到什么</h2>\n<p>把账本故意弄错一次，看数字怎么变。下面全部用当前这组输入算。</p>\n<ul class=\"reslist\" id=\"omit\"></ul>\n<p>两种错法的共同点：得到的数看上去都像一个正常的导数，光看图看不出问题。第 7 节的差分和展开核对就是为了抓这种错。</p>\n<p>为什么漏掉会错：dL/dx 描述\"x 动一点，L 总共动多少\"。x 通过两条通道影响 L，漏掉一条就只算了一部分变化。所以梯度不是挑一条最\"主要\"的路，而是把所有路径的效应加起来。</p>\n</section>\n\n<section id=\"zero\">\n<h2>7. 贡献是 0 或负数时</h2>\n<p>每一笔贡献 = 上游的数 × 这条边的局部导数。乘积为 0 只有两种可能：上游是 0，或者这条边的局部导数是 0。它的含义是\"沿这条路，此刻 L 不随这个量变化\"，而不是\"这条路不存在\"：换一个输入，同一条边立刻又会有贡献。</p>\n<p>负号表示方向相反：沿这条路，这个量增加会让 L 下降。相加时直接按带符号的数相加，不要取绝对值。</p>\n<div id=\"zero-notes\"></div>\n<h3>当前六笔贡献</h3>\n<ul class=\"chips\" id=\"chips\"></ul>\n<div class=\"btnrow\">\n<button type=\"button\" data-preset=\"0,3\">试 x = 0</button>\n<button type=\"button\" data-preset=\"2,0\">试 y = 0</button>\n<button type=\"button\" data-preset=\"2,-1\">试 v = 0</button>\n<button type=\"button\" data-preset=\"2,3\">回到默认</button>\n</div>\n<p class=\"tnote\">每换一组输入，上面的说明和下面的六笔贡献都会重算，控制台里的输入与状态行也会同步；步数会跳到反向结束那一步。</p>\n</section>\n\n<section id=\"check\">\n<h2>8. 独立核对：把 L 直接展开求导</h2>\n<p>前面的 73 和 38 是沿图算出来的。现在换一条完全不同的路：把 u、v 代进去，让 L 变成只含 x、y 的一个多项式，再直接用多项式求导。</p>\n<div class=\"eq\">\n<div>u = x·y，　v = u + x = x(y + 1)</div>\n<div>L = v² + 3u = x²(y + 1)² + 3xy</div>\n<div>∂L/∂x = 2x(y + 1)² + 3y</div>\n<div>∂L/∂y = 2x²(y + 1) + 3x</div>\n</div>\n<p>再把平方项整个拆开，得到最朴素的多项式形式：</p>\n<div class=\"eq\">\n<div>L = x²y² + 2x²y + x² + 3xy</div>\n<div>∂L/∂x = 2xy² + 4xy + 2x + 3y</div>\n<div>∂L/∂y = 2x²y + 2x² + 3x</div>\n</div>\n<div id=\"checkbody\"></div>\n<p>展开式和图算的是同一个东西，但展开式把经过 v 的两条路合并进了 2x(y + 1)² 这一项里：2x(y + 1)² = 2v·(y + 1)，正是\"直达 v 的 2v\"加上\"经 u→v 的 2v·y\"。所以展开式能核对总数，却看不出每条路径各乘了什么——这正是需要计算图的地方。</p>\n</section>\n\n<section id=\"wrap\">\n<h2>9. 把这件事压成四句</h2>\n<ul>\n<li>前向按箭头算值：u 只算一次，被读两次（进 v、进 L）。</li>\n<li>反向从 dL/dL = 1 出发逆着箭头走；每到一个节点，等它的所有出边都到齐，再把合计乘上局部导数往回传。</li>\n<li>两份贡献相加，是因为同一份变化被多条通道同时送出，一阶效应叠加；每笔各对应一条路径。</li>\n<li>漏一笔，或没到齐就下传，都会得到一个\"看起来像导数\"的错数；展开求导和差分能把它抓出来。</li>\n</ul>\n</section>\n\n</main>\n\n<script>\n(function(){\n\"use strict\";\nvar $=function(id){return document.getElementById(id);};\nvar state={x:2,y:3,step:12};\nvar LAST=12;\nvar STEPS=[];\n\nfunction round2(n){var r=Math.round(n*100)/100;return Object.is(r,-0)?0:r;}\nfunction fmt(n){var r=round2(n);if(!isFinite(r))return \"—\";return String(r).replace(\"-\",\"\\u2212\");}\nfunction par(n){var r=round2(n);return r<0?(\"(\"+fmt(r)+\")\"):fmt(r);}\n\nfunction calc(){\n  var x=state.x,y=state.y;\n  var u=x*y, v=u+x, L=v*v+3*u;\n  var dLdv=2*v, dLdu=3+dLdv;\n  return {x:x,y:y,u:u,v:v,L:L,dLdv:dLdv,dLdu:dLdu,dLdx:dLdu*y+dLdv,dLdy:dLdu*x};\n}\nfunction Lof(x,y){var u=x*y,v=u+x;return v*v+3*u;}\n\nfunction buildSteps(m){\n  var f=fmt,p=par;\n  return [\n  {ph:\"前向\",t:\"确定输入\",nodes:[\"x\",\"y\"],edges:[],lines:[\n    \"x = \"+f(m.x)+\"，y = \"+f(m.y)+\"。这是全图唯一可以自由选的两个数。\",\n    \"u、v、L 都由它们算出来，没有别的输入。\"]},\n  {ph:\"前向\",t:\"u = x·y\",nodes:[\"u\"],edges:[\"xu\",\"yu\"],lines:[\n    \"u = x × y = \"+p(m.x)+\" × \"+p(m.y)+\" = \"+f(m.u)+\"。\",\n    \"u 算一次就够；后面它被读两次：一次进 v，一次直接进 L。\"]},\n  {ph:\"前向\",t:\"v = u + x\",nodes:[\"v\"],edges:[\"uv\",\"xv\"],lines:[\n    \"v = u + x = \"+f(m.u)+\" + \"+p(m.x)+\" = \"+f(m.v)+\"。\",\n    \"这一步读了两个不同的量：中间结果 u，和输入 x。\"]},\n  {ph:\"前向\",t:\"L = v² + 3u\",nodes:[\"L\"],edges:[\"vL\",\"uL\"],lines:[\n    \"L = v² + 3u = \"+p(m.v)+\"² + 3 × \"+p(m.u)+\" = \"+f(m.v*m.v)+\" + \"+f(3*m.u)+\" = \"+f(m.L)+\"。\",\n    \"前向结束。通向 L 的边有两条：来自 v 的 v² 项，来自 u 的 3u 项。\"]},\n  {ph:\"反向\",t:\"起点 dL/dL = 1\",nodes:[\"L\"],edges:[],lines:[\n    \"反向要回答的是：每个量动一点，L 动多少。从 L 自己出发，dL/dL = 1。\"]},\n  {ph:\"反向\",t:\"边 v→L，逆行走到 v\",nodes:[\"v\"],edges:[\"vL\"],lines:[\n    \"v 在 L 里只出现在 v² 这一项，这一项的导数是 2v = 2 × \"+p(m.v)+\" = \"+f(m.dLdv)+\"。\",\n    \"贡献 = 上游 1 × 局部导数 \"+f(m.dLdv)+\" = \"+f(m.dLdv)+\"，记到 v 的账上。\",\n    \"v 正向只流出一条边，所以这一笔就是 dL/dv = \"+f(m.dLdv)+\"：到齐。\"]},\n  {ph:\"反向\",t:\"边 u→L，逆行走到 u\",nodes:[\"u\"],edges:[\"uL\"],lines:[\n    \"u 除了藏在 v 里，还直接出现在 3u 这一项，这一项的导数是 3。\",\n    \"贡献 = 1 × 3 = 3，记到 u 的账上。\",\n    \"u 正向流出两条边（u→v 和 u→L），现在只到 1 笔：先记着，不能往回传。\"]},\n  {ph:\"反向\",t:\"边 u→v，逆行走到 u\",nodes:[\"u\"],edges:[\"uv\"],lines:[\n    \"v 已经到齐，可以往回走一步。v = u + x 对 u 的导数是 1。\",\n    \"贡献 = dL/dv \"+f(m.dLdv)+\" × 1 = \"+f(m.dLdv)+\"，记到 u 的账上。\",\n    \"到这里 u 的两笔都到了。\"]},\n  {ph:\"反向\",t:\"u 汇合：两份相加\",nodes:[\"u\"],edges:[],lines:[\n    \"dL/du = 3（L 里的 3u）+ \"+f(m.dLdv)+\"（经 v 回来）= \"+f(m.dLdu)+\"。\",\n    \"到齐之后 u 才继续往回传。早一步传，传下去的就是不完整的数。\"]},\n  {ph:\"反向\",t:\"边 y→u，逆行走到 y\",nodes:[\"y\"],edges:[\"yu\"],lines:[\n    \"u = x·y 对 y 的导数是 x = \"+f(m.x)+\"。\",\n    \"贡献 = dL/du \"+f(m.dLdu)+\" × \"+p(m.x)+\" = \"+f(m.dLdy)+\"。\",\n    \"y 只流出一条边，dL/dy = \"+f(m.dLdy)+\"：到齐。\"]},\n  {ph:\"反向\",t:\"边 x→u，逆行走到 x\",nodes:[\"x\"],edges:[\"xu\"],lines:[\n    \"u = x·y 对 x 的导数是 y = \"+f(m.y)+\"。\",\n    \"贡献 = \"+f(m.dLdu)+\" × \"+p(m.y)+\" = \"+f(m.dLdu*m.y)+\"，记到 x 的账上。\",\n    \"x 还有一条直达 v 的路没到，先别下结论。\"]},\n  {ph:\"反向\",t:\"边 x→v，逆行走到 x\",nodes:[\"x\"],edges:[\"xv\"],lines:[\n    \"这条路不经过 u：v = u + x 里 x 直接出现，导数是 1。\",\n    \"贡献 = dL/dv \"+f(m.dLdv)+\" × 1 = \"+f(m.dLdv)+\"，记到 x 的账上。\"]},\n  {ph:\"反向\",t:\"x 汇合，反向结束\",nodes:[\"x\"],edges:[],lines:[\n    \"dL/dx = \"+f(m.dLdu*m.y)+\"（经 u）+ \"+f(m.dLdv)+\"（直达 v）= \"+f(m.dLdx)+\"。\",\n    \"dL/dy = \"+f(m.dLdy)+\"。这两个数就是 x、y 各自动一点时 L 的变化率。\"]}\n  ];\n}\n\nfunction drawGraph(m){\n  var s=state.step;\n  var nowN={},nowE={},doneE={};\n  STEPS[s].nodes.forEach(function(n){nowN[n]=1;});\n  STEPS[s].edges.forEach(function(e){nowE[e]=1;});\n  for(var i=0;i<=s;i++){STEPS[i].edges.forEach(function(e){doneE[e]=1;});}\n\n  var vals={x:fmt(m.x),y:fmt(m.y),u:(s>=1?fmt(m.u):\"?\"),v:(s>=2?fmt(m.v):\"?\"),L:(s>=3?fmt(m.L):\"?\")};\n  [\"x\",\"y\",\"u\",\"v\",\"L\"].forEach(function(n){$(\"val-\"+n).textContent=vals[n];});\n\n  var cnt={v:(s>=5?1:0),u:(s>=6?1:0)+(s>=7?1:0),x:(s>=10?1:0)+(s>=11?1:0),y:(s>=9?1:0)};\n  var need={v:1,u:2,x:2,y:1};\n  [\"x\",\"y\",\"u\",\"v\",\"L\"].forEach(function(n){\n    var el=$(\"node-\"+n);\n    var k=need[n];\n    el.classList.toggle(\"now\",!!nowN[n]);\n    if(k){\n      el.classList.toggle(\"full\",cnt[n]>=k);\n      el.classList.toggle(\"half\",cnt[n]>0&&cnt[n]<k);\n    }else{\n      el.classList.toggle(\"full\",s>=4);\n      el.classList.remove(\"half\");\n    }\n  });\n\n  [\"xu\",\"yu\",\"uv\",\"xv\",\"vL\",\"uL\"].forEach(function(e){\n    var el=$(\"e-\"+e);\n    el.classList.toggle(\"now\",!!nowE[e]);\n    el.classList.toggle(\"done\",!!doneE[e]&&!nowE[e]);\n  });\n\n  $(\"l-xu\").classList.toggle(\"show\",s>=1);\n  $(\"l-yu\").classList.toggle(\"show\",s>=1);\n  $(\"l-uv\").classList.toggle(\"show\",s>=2);\n  $(\"l-xv\").classList.toggle(\"show\",s>=2);\n  $(\"l-vL\").classList.toggle(\"show\",s>=3);\n  $(\"l-uL\").classList.toggle(\"show\",s>=3);\n\n  $(\"cap-xu\").textContent=fmt(m.y);\n  $(\"cap-vL\").textContent=fmt(m.dLdv);\n}\n\nfunction drawStatus(m){\n  var st=STEPS[state.step];\n  var html=\"<span>输入 x = <b>\"+fmt(m.x)+\"</b>，y = <b>\"+fmt(m.y)+\"</b></span>\"+\n           \"<span>第 <b>\"+(state.step+1)+\"</b> / 13 步 · \"+st.ph+\"：\"+st.t+\"</span>\";\n  if(state.step>=3){html+=\"<span>此刻 L = <b>\"+fmt(m.L)+\"</b></span>\";}\n  if(state.step>=12){html+=\"<span>dL/dx = <b>\"+fmt(m.dLdx)+\"</b>，dL/dy = <b>\"+fmt(m.dLdy)+\"</b></span>\";}\n  $(\"status\").innerHTML=html;\n}\n\nfunction drawSteps(){\n  var out=[];\n  for(var i=0;i<STEPS.length;i++){\n    var st=STEPS[i];\n    var cls=(i<state.step)?\"past\":(i===state.step?\"cur\":\"future\");\n    var body=st.lines.map(function(l){return \"<li>\"+l+\"</li>\";}).join(\"\");\n    out.push(\"<li class=\\\"step \"+cls+\"\\\"><div class=\\\"shead\\\"><span class=\\\"badge\\\">\"+st.ph+\" \"+(i+1)+\"</span>\"+\n             \"<span class=\\\"stitle\\\">\"+st.t+\"</span></div><ul class=\\\"lines\\\">\"+body+\"</ul></li>\");\n  }\n  $(\"steps\").innerHTML=out.join(\"\");\n}\n\nfunction nodeCard(o){\n  var s=state.step;\n  var got=o.items.filter(function(it){return s>=it.at;});\n  var full=(o.items.length>0&&got.length===o.items.length);\n  var list=got.length?got.map(function(it){return \"<li>\"+it.txt+\"</li>\";}).join(\"\"):\n           \"<li class=\\\"muted\\\">还没有贡献到达</li>\";\n  var tot;\n  if(full){\n    tot=\"<p class=\\\"ntot\\\">dL/d\"+o.name+\" = \"+fmt(o.sum)+\" · 到齐（\"+o.items.length+\" 笔）</p>\";\n  }else if(got.length){\n    tot=\"<p class=\\\"ntot pend\\\">暂记 \"+fmt(got.reduce(function(a,b){return a+b.v;},0))+\"，还差 \"+\n        (o.items.length-got.length)+\" 笔，先不往回传</p>\";\n  }else{\n    tot=\"<p class=\\\"ntot pend\\\">等 \"+o.items.length+\" 笔贡献</p>\";\n  }\n  return \"<article class=\\\"ncard\"+(full?\" full\":\"\")+\"\\\"><h3><span>\"+o.name+\"</span>\"+\n         \"<span class=\\\"nmeta\\\">前向值 \"+fmt(o.val)+\" · 正向流出 \"+o.out+\" 条边</span></h3>\"+\n         \"<ul class=\\\"nlist\\\">\"+list+\"</ul>\"+tot+\"</article>\";\n}\n\nfunction drawLedger(m){\n  var s=state.step;\n  var cards=[];\n  cards.push(\"<article class=\\\"ncard\"+(s>=4?\" full\":\"\")+\"\\\"><h3><span>L</span>\"+\n    \"<span class=\\\"nmeta\\\">前向值 \"+fmt(m.L)+\" · 没有出边</span></h3>\"+\n    \"<ul class=\\\"nlist\\\"><li>\"+(s>=4?\"反向起点 dL/dL = 1\":\"反向还没开始\")+\"</li></ul>\"+\n    \"<p class=\\\"ntot\\\">这个 1 是所有贡献的乘数起点</p></article>\");\n\n  cards.push(nodeCard({name:\"v\",val:m.v,out:1,sum:m.dLdv,items:[\n    {at:5,v:m.dLdv,txt:fmt(m.dLdv)+\" ← 边 v→L：局部导数 2v = \"+fmt(m.dLdv)+\"，乘上游 1\"}]}));\n\n  cards.push(nodeCard({name:\"u\",val:m.u,out:2,sum:m.dLdu,items:[\n    {at:6,v:3,txt:\"3 ← 边 u→L：局部导数 3，乘上游 1\"},\n    {at:7,v:m.dLdv,txt:fmt(m.dLdv)+\" ← 边 u→v：局部导数 1，乘上游 \"+fmt(m.dLdv)}]}));\n\n  cards.push(nodeCard({name:\"x\",val:m.x,out:2,sum:m.dLdx,items:[\n    {at:10,v:m.dLdu*m.y,txt:fmt(m.dLdu*m.y)+\" ← 边 x→u：局部导数 y = \"+fmt(m.y)+\"，乘上游 \"+fmt(m.dLdu)},\n    {at:11,v:m.dLdv,txt:fmt(m.dLdv)+\" ← 边 x→v：局部导数 1，乘上游 \"+fmt(m.dLdv)}]}));\n\n  cards.push(nodeCard({name:\"y\",val:m.y,out:1,sum:m.dLdy,items:[\n    {at:9,v:m.dLdy,txt:fmt(m.dLdy)+\" ← 边 y→u：局部导数 x = \"+fmt(m.x)+\"，乘上游 \"+fmt(m.dLdu)}]}));\n\n  $(\"ledger-cards\").innerHTML=cards.join(\"\");\n}\n\nfunction pathList(title,rows,sumTxt){\n  var items=rows.map(function(r){\n    return \"<li><span class=\\\"pr\\\">\"+r[0]+\"</span><span class=\\\"pc\\\">\"+r[1]+\"</span></li>\";\n  }).join(\"\");\n  return \"<h3>\"+title+\"</h3><ul class=\\\"plist\\\">\"+items+\"</ul><p class=\\\"sumrow\\\">\"+sumTxt+\"</p>\";\n}\n\nfunction drawPaths(m){\n  var xRows=[\n    [\"x → v → L\",\"1 × 2v = \"+fmt(m.dLdv)],\n    [\"x → u → L\",\"y × 3 = \"+fmt(3*m.y)],\n    [\"x → u → v → L\",\"y × 1 × 2v = \"+fmt(m.y*m.dLdv)]\n  ];\n  var yRows=[\n    [\"y → u → L\",\"x × 3 = \"+fmt(3*m.x)],\n    [\"y → u → v → L\",\"x × 1 × 2v = \"+fmt(m.x*m.dLdv)]\n  ];\n  $(\"paths-x\").innerHTML=pathList(\"x 的三条路\",xRows,\n    \"三条合计 \"+fmt(3*m.y+m.dLdv+m.y*m.dLdv)+\" = dL/dx，与账本一致。\");\n  $(\"paths-y\").innerHTML=pathList(\"y 的两条路\",yRows,\n    \"两条合计 \"+fmt(3*m.x+m.x*m.dLdv)+\" = dL/dy，与账本一致。\");\n  $(\"why-via-u\").textContent=fmt(m.dLdu*m.y);\n  $(\"why-xv\").textContent=fmt(m.dLdv);\n}\n\nfunction drawOmit(m){\n  var viaU=round2(m.dLdu*m.y);\n  var leak=round2(m.dLdx-viaU);\n  var earlyX=round2(3*m.y+m.dLdv);\n  var earlyY=round2(3*m.x);\n  var num=round2((Lof(m.x+0.01,m.y)-m.L)/0.01);\n  var rows=[[\"正确\",\"dL/dx = \"+fmt(m.dLdx)+\"，dL/dy = \"+fmt(m.dLdy)]];\n  if(round2(m.dLdv)!==0){\n    rows.push([\"漏掉边 x→v 这一笔\",\"只能得到 \"+fmt(viaU)+\"（应该是 \"+fmt(m.dLdx)+\"）；少掉的 \"+fmt(leak)+\" 正好是 dL/dv × 1\"]);\n  }else{\n    rows.push([\"漏掉边 x→v 这一笔\",\"此刻 2v = 0，x→v 的贡献本来就是 0，漏掉它数字不变；边仍然在，换一组输入立刻出现差额\"]);\n  }\n  if(round2(earlyX)!==round2(m.dLdx)||round2(earlyY)!==round2(m.dLdy)){\n    var tail=\"\";\n    if(round2(earlyX)===round2(m.dLdx)){\n      tail=\"（这组输入下 dL/dx 恰好没差：dL/dv × y = \"+fmt(m.dLdv)+\" × \"+par(m.y)+\" = 0，提前下传少乘的那部分正好是 0；dL/dy 才把错露出来）\";\n    }\n    rows.push([\"在 u 处只收到 3 就往下传\",\"经 u 的两笔变成 3×y = \"+fmt(3*m.y)+\" 和 3×x = \"+fmt(3*m.x)+\"，于是 dL/dx 会算成 \"+fmt(earlyX)+\"，dL/dy 会算成 \"+fmt(earlyY)+tail]);\n  }else{\n    rows.push([\"在 u 处只收到 3 就往下传\",\"这组输入下两种算法同值：dL/dv = \"+fmt(m.dLdv)+\" 与 y = \"+fmt(m.y)+\" 里有 0，提前下传少乘的那部分正好是 0；换一组输入就分开了\"]);\n  }\n  var wrongs=[];\n  if(round2(viaU)!==round2(m.dLdx)){wrongs.push(fmt(viaU));}\n  if(round2(earlyX)!==round2(m.dLdx)){wrongs.push(fmt(earlyX));}\n  var cmpTxt=wrongs.length?(\"，与 \"+wrongs.join(\"、\")+\" 都对不上\"):\"；这组输入里两种错法恰好落在同一个数上，换一组输入才看得出区别\";\n  rows.push([\"差分检验：x 增加 0.01\",\"L 的变化 ÷ 0.01 = \"+fmt(num)+\"，接近 \"+fmt(m.dLdx)+cmpTxt]);\n  var html=rows.map(function(r,i){\n    return \"<li\"+(i===0?\"\":\" class=\\\"bad\\\"\")+\"><span class=\\\"k\\\">\"+r[0]+\"</span><span class=\\\"val\\\">\"+r[1]+\"</span></li>\";\n  }).join(\"\");\n  $(\"omit\").innerHTML=html;\n}\n\nfunction drawZero(m){\n  var notes=[];\n  if(round2(m.v)===0){\n    notes.push(\"当前 v = 0：v² 在这一点是平的，局部导数 2v = 0，所以 v→L 和 x→v 这两笔都是 0。u→L 的 3 不受影响，dL/du 仍然等于 \"+fmt(m.dLdu)+\"。\");\n  }\n  if(round2(m.x)===0){\n    notes.push(\"当前 x = 0：∂u/∂y = x = 0，所以 y 只收到 0，dL/dy = 0。y 挪一点，u 不动，L 也不动。\");\n  }\n  if(round2(m.y)===0){\n    notes.push(\"当前 y = 0：∂u/∂x = y = 0，u→x 这一笔是 0；但 x 还能经由 v 影响 L，dL/dx = \"+fmt(m.dLdx)+\"。\");\n  }\n  if(round2(m.dLdu)===0){\n    notes.push(\"当前 dL/du = 3 + 2v = 0：u 的两条出边贡献正好抵消，所以经 u 的两笔（x→u、y→u）都是 0，尽管 ∂u/∂x = y 并不为 0。L 在这一点对 u 一阶不敏感。\");\n  }\n  if(!notes.length){\n    notes.push(\"当前输入下六条边的局部导数都不是 0，六笔贡献也都不是 0。用下面的按钮换一组输入，就能看到某些笔变成 0。\");\n  }\n  var negs=[];\n  [[\"x→u\",m.dLdu*m.y],[\"x→v\",m.dLdv],[\"y→u\",m.dLdy],[\"u→L\",3],[\"u→v\",m.dLdv],[\"v→L\",m.dLdv]].forEach(function(p){\n    if(round2(p[1])<0){negs.push(p[0]);}\n  });\n  if(negs.length){\n    notes.push(\"当前有负的贡献（\"+negs.join(\"、\")+\"）：负号说明沿这条路，该项增加会让 L 下降。相加时按带符号的数加，不取绝对值。\");\n  }\n  $(\"zero-notes\").innerHTML=notes.map(function(t){return \"<p>\"+t+\"</p>\";}).join(\"\");\n\n  var chips=[[\"边 x→u\",m.dLdu*m.y],[\"边 x→v\",m.dLdv],[\"边 y→u\",m.dLdy],[\"边 u→L\",3],[\"边 u→v\",m.dLdv],[\"边 v→L\",m.dLdv]];\n  $(\"chips\").innerHTML=chips.map(function(c){\n    var cls=round2(c[1])<0?\" class=\\\"neg\\\"\":\"\";\n    return \"<li\"+cls+\">\"+c[0]+\"：\"+fmt(c[1])+\"</li>\";\n  }).join(\"\");\n}\n\nfunction drawCheck(m){\n  var cfx=round2(2*m.x*(m.y+1)*(m.y+1)+3*m.y);\n  var cfy=round2(2*m.x*m.x*(m.y+1)+3*m.x);\n  var ex=round2(2*m.x*m.y*m.y+4*m.x*m.y+2*m.x+3*m.y);\n  var ey=round2(2*m.x*m.x*m.y+2*m.x*m.x+3*m.x);\n  var nx=round2((Lof(m.x+0.01,m.y)-m.L)/0.01);\n  var ny=round2((Lof(m.x,m.y+0.01)-m.L)/0.01);\n\n  var html=\"\";\n  html+=\"<div class=\\\"eq\\\">\";\n  html+=\"<div>2x(y + 1)² + 3y = 2·\"+par(m.x)+\"·(\"+fmt(m.y+1)+\")² + 3·\"+par(m.y)+\" = \"+fmt(cfx)+\"</div>\";\n  html+=\"<div>2x²(y + 1) + 3x = 2·\"+par(m.x)+\"²·(\"+fmt(m.y+1)+\") + 3·\"+par(m.x)+\" = \"+fmt(cfy)+\"</div>\";\n  html+=\"<div>2xy² + 4xy + 2x + 3y = \"+fmt(ex)+\"</div>\";\n  html+=\"<div>2x²y + 2x² + 3x = \"+fmt(ey)+\"</div>\";\n  html+=\"</div>\";\n\n  html+=\"<table><thead><tr><th>来源</th><th>dL/dx</th><th>dL/dy</th></tr></thead><tbody>\";\n  html+=\"<tr><td>计算图：两笔相加</td><td class=\\\"num\\\">\"+fmt(m.dLdx)+\"</td><td class=\\\"num\\\">\"+fmt(m.dLdy)+\"</td></tr>\";\n  html+=\"<tr><td>展开式求导</td><td class=\\\"num\\\">\"+fmt(ex)+\"</td><td class=\\\"num\\\">\"+fmt(ey)+\"</td></tr>\";\n  html+=\"<tr><td>差分（Δ = 0.01）</td><td class=\\\"num\\\">\"+fmt(nx)+\"</td><td class=\\\"num\\\">\"+fmt(ny)+\"</td></tr>\";\n  html+=\"</tbody></table>\";\n  html+=\"<p class=\\\"tnote\\\">前两行来自完全不同的计算，必须相等；第三行是把 \"+fmt(0.01)+\" 这样的有限步长直接除出来的结果，步长越小越贴近导数，所以它只用来做趋势对照。</p>\";\n  $(\"checkbody\").innerHTML=html;\n}\n\nfunction renderAll(){\n  var m=calc();\n  STEPS=buildSteps(m);\n  drawGraph(m);\n  drawStatus(m);\n  drawSteps();\n  drawLedger(m);\n  drawPaths(m);\n  drawOmit(m);\n  drawZero(m);\n  drawCheck(m);\n  $(\"sx\").value=String(state.x);\n  $(\"sy\").value=String(state.y);\n  $(\"sstep\").value=String(state.step);\n  $(\"out-x\").textContent=fmt(state.x);\n  $(\"out-y\").textContent=fmt(state.y);\n  $(\"out-k\").textContent=(state.step+1)+\" / 13\";\n}\n\nfunction snap(v){\n  var n=Math.round((v||0)*2)/2;\n  if(n<-3)n=-3; if(n>3)n=3;\n  return n;\n}\nfunction setStep(k){\n  state.step=Math.max(0,Math.min(LAST,Math.round(k)));\n  renderAll();\n}\n\ndocument.addEventListener(\"input\",function(ev){\n  var t=ev.target;\n  if(!t||!t.id)return;\n  if(t.id===\"sx\"){state.x=snap(parseFloat(t.value));renderAll();}\n  else if(t.id===\"sy\"){state.y=snap(parseFloat(t.value));renderAll();}\n  else if(t.id===\"sstep\"){setStep(parseInt(t.value,10));}\n});\n\ndocument.addEventListener(\"click\",function(ev){\n  var b=ev.target&&ev.target.closest?ev.target.closest(\"button\"):null;\n  if(!b)return;\n  if(b.dataset&&b.dataset.preset){\n    var parts=b.dataset.preset.split(\",\");\n    state.x=snap(parseFloat(parts[0]));\n    state.y=snap(parseFloat(parts[1]));\n    state.step=LAST;\n    renderAll();\n    return;\n  }\n  if(b.id===\"first\"){state.x=state.x;setStep(0);}\n  else if(b.id===\"prev\"){setStep(state.step-1);}\n  else if(b.id===\"next\"){setStep(state.step+1);}\n  else if(b.id===\"last\"){setStep(LAST);}\n});\n\nif(window.presentation&&typeof window.presentation.registerStateReader===\"function\"){\n  window.presentation.registerStateReader(function(){\n    var st=STEPS[state.step]||{ph:\"\",t:\"\"};\n    return {values:{x:state.x,y:state.y,step:state.step},\n      visible_step:String(state.step+1)+\" / 13\",\n      observation:{summary:\"输入 x = \"+fmt(state.x)+\"，y = \"+fmt(state.y)+\"，显示到第 \"+(state.step+1)+\" 步（\"+st.ph+\"：\"+st.t+\"）。\",\n        state:{x:state.x,y:state.y,step:state.step,phase:st.ph,title:st.t}}};\n  });\n}\nif(window.presentation&&typeof window.presentation.registerStateRestorer===\"function\"){\n  window.presentation.registerStateRestorer(function(saved){\n    var v=(saved&&saved.values)?saved.values:(saved||{});\n    if(typeof v.x===\"number\")state.x=snap(v.x);\n    if(typeof v.y===\"number\")state.y=snap(v.y);\n    if(typeof v.step===\"number\")state.step=Math.max(0,Math.min(LAST,Math.round(v.step)));\n    renderAll();\n  });\n}\n\nrenderAll();\n})();\n</script>\n</body>\n</html>"
+    },
+    "entrypoint": "index.html",
+    "readable_content": "页面围绕小模型 u=x·y、v=u+x、L=v²+3u 展开，先给出三个公式并指出两处共用：u 的同一个计算结果进了 v 和 3u，x 既进 u 又直接进 v；随后是一张纵向计算图，节点上写前向数值，边上的小字写局部导数（x→u 上是 y，v→L 上是 2v 等），并用说明文字指出 u 与 x 各有两条出边。\n\n控制台提供两个输入滑杆（x、y 各从 −3 到 3，步长 0.5）、一个 13 步的步骤滑杆、回到第 1 步／上一步／下一步／全部展开四个按钮，以及默认、x=0、v=0、x=−2 四个预设；状态栏始终显示当前输入值、当前是第几步及其标题（必要时还显示此刻的 L 与最终的 dL/dx、dL/dy）。\n\n13 步回放：前 4 步给出 u=6、v=8、L=82（默认 x=2、y=3）；后 9 步从 dL/dL=1 出发，依次讲边 v→L 的局部导数 2v=16、边 u→L 的局部导数 3、边 u→v 的局部导数 1 带回 16、u 汇合为 19、边 y→u 的局部导数 x=2 带回 38、边 x→u 的局部导数 y=3 带回 57、边 x→v 的局部导数 1 带回 16、x 汇合为 73。每个节点配一张账本卡片，写明前向值、正向流出几条边、已收到哪几笔贡献、合计多少、是否到齐；没到齐时标注\"先不往回传\"并说明还差几笔。\n\n页面接着解释相加的来源：把 u 挪动一个小量 h，3u 项贡献 3h，v² 项经 v 贡献 2v·h，两件事同时发生所以叠加成 (3+2v)h；并列出五条路径（x 三条、y 两条）的局部导数乘积与合计，指出经 u 的两条正好合成 57、直达 v 的一条是 16。随后演算两种错法：漏掉 x→v 只能得到 57，在 u 处只收到 3 就下传会把 dL/dx 算成 25、dL/dy 算成 6，并用 Δ=0.01 的差分 73.16 作对照；还说明 0 贡献表示此刻沿这条路不敏感、边仍然存在，负贡献按带符号相加，并列出当前六笔贡献的数值。\n\n最后把 L 展开为 x²y²+2x²y+x²+3xy，用 2xy²+4xy+2x+3y 与 2x²y+2x²+3x 独立求导，与计算图的 73／38 并排比较，再加一行差分结果，说明展开式把经过 v 的两条路合并进 2x(y+1)² 这一项，能核对总数却看不出路径。\n\n页面状态（x、y、步骤）可保存与恢复，恢复后重新计算全部数值。",
+    "source_bindings": [],
+    "assumptions": [
+      "输入限定为题目给定模型的实数 x、y，不涉及矩阵、神经网络层或实现性能",
+      "页面中的差分检验固定用 Δ=0.01，只作趋势对照，不当作导数的精确值",
+      "所有数值都由页面按这组公式即时计算，未引用任何外部资料"
+    ],
+    "state_contract": {
+      "step": "当前显示到第几步，整数 0 到 12：0 为前向第一步，3 为前向结束，4 至 12 为反向各步，12 为反向结束",
+      "x": "输入 x，实数，取值 -3 到 3，步长 0.5",
+      "y": "输入 y，实数，取值 -3 到 3，步长 0.5"
+    },
+    "initial_state": {
+      "step": 12,
+      "x": 2,
+      "y": 3
+    }
+  }
+}

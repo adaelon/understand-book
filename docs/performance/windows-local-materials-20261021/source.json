@@ -1,0 +1,16 @@
+{
+  "base": "E:\\allwork\\download\\agent\\understand-book\\tmp\\cloud-release-20261021\\frontend",
+  "changed": [
+    "local-materials.ts",
+    "local-epub.ts",
+    "components/LocalMaterials.vue",
+    "components/LocalMaterialReader.vue",
+    "components/LocalPdfReader.vue",
+    "components/PersonalMaterials.vue",
+    "NetworkApp.vue",
+    "personal-preparations.ts",
+    "components/PersonalPreparations.vue"
+  ],
+  "server_changes": false,
+  "database_changes": false
+}

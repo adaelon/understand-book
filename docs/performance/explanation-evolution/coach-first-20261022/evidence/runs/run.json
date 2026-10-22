@@ -1,0 +1,43 @@
+{
+  "contract": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\experiment\\contract.json",
+  "started_at": "2026-10-22T12:38:36.278820+00:00",
+  "rows": [
+    {
+      "id": "backprop-D1",
+      "task": "backprop",
+      "arm": "D",
+      "repeat": 1,
+      "phase": "main",
+      "started_at": "2026-10-22T12:38:36.281570+00:00",
+      "finished_at": "2026-10-22T12:45:22.740836+00:00",
+      "calls_start": 0,
+      "calls_end": 15,
+      "peak_upper_cny_delta": 1.04017904,
+      "per_run_stop": null,
+      "exit_code": 0
+    },
+    {
+      "id": "ridge-D1",
+      "task": "ridge",
+      "arm": "D",
+      "repeat": 1,
+      "phase": "main",
+      "started_at": "2026-10-22T12:45:23.334554+00:00",
+      "finished_at": "2026-10-22T12:50:48.652437+00:00",
+      "calls_start": 15,
+      "calls_end": 29,
+      "peak_upper_cny_delta": 0.87664912,
+      "per_run_stop": null,
+      "exit_code": 0
+    }
+  ],
+  "status": "completed",
+  "unstarted": [],
+  "budget": {
+    "limit_cny": 8.0,
+    "calls": 29,
+    "peak_upper_cny": 1.91682816,
+    "stop": null
+  },
+  "finished_at": "2026-10-22T12:50:49.474580+00:00"
+}

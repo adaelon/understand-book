@@ -1,0 +1,640 @@
+{
+  "directory": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\live-delivery-candidate",
+  "complete": true,
+  "successful_deliveries": 2,
+  "logical_model_calls": 19,
+  "budget_denials": 0,
+  "totals": {
+    "http_attempts": 19,
+    "usage": {
+      "input_tokens": 942026,
+      "cached_input_tokens": 600960,
+      "uncached_input_tokens": 341066,
+      "output_tokens": 70585
+    },
+    "actual_cost": {
+      "input_cny": "0.58363272",
+      "output_cny": "0.479376",
+      "total_cny": "1.06300872"
+    },
+    "normalized_off_peak_cost": {
+      "input_cny": "0.35308520",
+      "output_cny": "0.282340",
+      "total_cny": "0.63542520"
+    },
+    "cache_hit_rate": 0.6379441756384643,
+    "usage_status": "complete",
+    "unknown_fields": [],
+    "attempts_with_unknown_fields": 0,
+    "evidence_counts": {
+      "response": 19
+    },
+    "rate_versions": {
+      "deepseek-flash-20261022-01-04": 15,
+      "deepseek-flash-20261022-04-06": 4
+    }
+  },
+  "turns": [
+    {
+      "turn": 1,
+      "record_status": "present",
+      "delivered": true,
+      "runtime_incomplete": false,
+      "admission_failed": false,
+      "http_status": 200,
+      "time_to_first_public_answer_patch_ms": 104565.64719999999,
+      "elapsed_including_post_coach_ms": 116437.7953,
+      "http_attempts_total": 10,
+      "metrics": {
+        "http_attempts": 10,
+        "usage": {
+          "input_tokens": 351296,
+          "cached_input_tokens": 231808,
+          "uncached_input_tokens": 119488,
+          "output_tokens": 22428
+        },
+        "actual_cost": {
+          "input_cny": "0.24824832",
+          "output_cny": "0.179424",
+          "total_cny": "0.42767232"
+        },
+        "normalized_off_peak_cost": {
+          "input_cny": "0.12412416",
+          "output_cny": "0.089712",
+          "total_cny": "0.21383616"
+        },
+        "cache_hit_rate": 0.6598651849152851,
+        "usage_status": "complete",
+        "unknown_fields": [],
+        "attempts_with_unknown_fields": 0,
+        "evidence_counts": {
+          "response": 10
+        },
+        "rate_versions": {
+          "deepseek-flash-20261022-01-04": 10
+        },
+        "http_attempt_indexes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      }
+    },
+    {
+      "turn": 2,
+      "record_status": "present",
+      "delivered": true,
+      "runtime_incomplete": false,
+      "admission_failed": false,
+      "http_status": 200,
+      "time_to_first_public_answer_patch_ms": 222132.2333,
+      "elapsed_including_post_coach_ms": 238102.8898,
+      "http_attempts_total": 19,
+      "metrics": {
+        "http_attempts": 9,
+        "usage": {
+          "input_tokens": 590730,
+          "cached_input_tokens": 369152,
+          "uncached_input_tokens": 221578,
+          "output_tokens": 48157
+        },
+        "actual_cost": {
+          "input_cny": "0.33538440",
+          "output_cny": "0.299952",
+          "total_cny": "0.63533640"
+        },
+        "normalized_off_peak_cost": {
+          "input_cny": "0.22896104",
+          "output_cny": "0.192628",
+          "total_cny": "0.42158904"
+        },
+        "cache_hit_rate": 0.6249081644744638,
+        "usage_status": "complete",
+        "unknown_fields": [],
+        "attempts_with_unknown_fields": 0,
+        "evidence_counts": {
+          "response": 9
+        },
+        "rate_versions": {
+          "deepseek-flash-20261022-01-04": 5,
+          "deepseek-flash-20261022-04-06": 4
+        },
+        "http_attempt_indexes": [
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ]
+      }
+    }
+  ],
+  "attempts": [
+    {
+      "call_id": "01a161c1-0b39-7951-bec0-7e4dc9cd7dc1",
+      "purpose": "tutor_coach",
+      "started_at_unix_ms": 1792641403705,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 4682,
+        "cached_input_tokens": 128,
+        "output_tokens": 2141,
+        "uncached_input_tokens": 4554
+      },
+      "actual_cost": {
+        "input_cny": "0.00911312",
+        "output_cny": "0.017128",
+        "total_cny": "0.02624112"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00455656",
+        "output_cny": "0.008564",
+        "total_cny": "0.01312056"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-3b3d-7da3-bb38-596e3eb16982",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641415997,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 28825,
+        "cached_input_tokens": 512,
+        "output_tokens": 176,
+        "uncached_input_tokens": 28313
+      },
+      "actual_cost": {
+        "input_cny": "0.05664648",
+        "output_cny": "0.001408",
+        "total_cny": "0.05805448"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.02832324",
+        "output_cny": "0.000704",
+        "total_cny": "0.02902724"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-452d-7452-af1a-39eafba64b08",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641418541,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 31111,
+        "cached_input_tokens": 28928,
+        "output_tokens": 106,
+        "uncached_input_tokens": 2183
+      },
+      "actual_cost": {
+        "input_cny": "0.00552312",
+        "output_cny": "0.000848",
+        "total_cny": "0.00637112"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00276156",
+        "output_cny": "0.000424",
+        "total_cny": "0.00318556"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-4b6f-7310-b1c5-3b2cfd665fe8",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641420143,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 33833,
+        "cached_input_tokens": 31104,
+        "output_tokens": 53,
+        "uncached_input_tokens": 2729
+      },
+      "actual_cost": {
+        "input_cny": "0.00670216",
+        "output_cny": "0.000424",
+        "total_cny": "0.00712616"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00335108",
+        "output_cny": "0.000212",
+        "total_cny": "0.00356308"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-508d-7e03-82f2-1a15702cf0b5",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641421453,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 40853,
+        "cached_input_tokens": 13952,
+        "output_tokens": 3543,
+        "uncached_input_tokens": 26901
+      },
+      "actual_cost": {
+        "input_cny": "0.05436008",
+        "output_cny": "0.028344",
+        "total_cny": "0.08270408"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.02718004",
+        "output_cny": "0.014172",
+        "total_cny": "0.04135204"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-9b90-7d30-a494-f4c52f2a126f",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641440656,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 47963,
+        "cached_input_tokens": 41984,
+        "output_tokens": 2363,
+        "uncached_input_tokens": 5979
+      },
+      "actual_cost": {
+        "input_cny": "0.01363736",
+        "output_cny": "0.018904",
+        "total_cny": "0.03254136"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00681868",
+        "output_cny": "0.009452",
+        "total_cny": "0.01627068"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c1-c767-75e1-97a8-8935fdb8b58f",
+      "purpose": "tutor_delivery_review",
+      "started_at_unix_ms": 1792641451879,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 13149,
+        "cached_input_tokens": 6912,
+        "output_tokens": 9123,
+        "uncached_input_tokens": 6237
+      },
+      "actual_cost": {
+        "input_cny": "0.01275048",
+        "output_cny": "0.072984",
+        "total_cny": "0.08573448"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00637524",
+        "output_cny": "0.036492",
+        "total_cny": "0.04286724"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c2-6d19-7a62-8b1b-b5e342d696ce",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641494297,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 57441,
+        "cached_input_tokens": 48768,
+        "output_tokens": 2010,
+        "uncached_input_tokens": 8673
+      },
+      "actual_cost": {
+        "input_cny": "0.01929672",
+        "output_cny": "0.01608",
+        "total_cny": "0.03537672"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00964836",
+        "output_cny": "0.00804",
+        "total_cny": "0.01768836"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c2-8e4c-7c13-b0d7-5b2226e534e1",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641502796,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 65818,
+        "cached_input_tokens": 57856,
+        "output_tokens": 1126,
+        "uncached_input_tokens": 7962
+      },
+      "actual_cost": {
+        "input_cny": "0.01823824",
+        "output_cny": "0.009008",
+        "total_cny": "0.02724624"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.00911912",
+        "output_cny": "0.004504",
+        "total_cny": "0.01362312"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c2-a44a-76d3-a111-1d5a7988b422",
+      "purpose": "tutor_coach",
+      "started_at_unix_ms": 1792641508426,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 27621,
+        "cached_input_tokens": 1664,
+        "output_tokens": 1787,
+        "uncached_input_tokens": 25957
+      },
+      "actual_cost": {
+        "input_cny": "0.05198056",
+        "output_cny": "0.014296",
+        "total_cny": "0.06627656"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.02599028",
+        "output_cny": "0.007148",
+        "total_cny": "0.03313828"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c2-d314-7961-88c5-e492bf292311",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641520404,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 45457,
+        "cached_input_tokens": 14848,
+        "output_tokens": 282,
+        "uncached_input_tokens": 30609
+      },
+      "actual_cost": {
+        "input_cny": "0.06181192",
+        "output_cny": "0.002256",
+        "total_cny": "0.06406792"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.03090596",
+        "output_cny": "0.001128",
+        "total_cny": "0.03203396"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c2-dd23-7bf0-a4be-ebf389337972",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641522979,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 59717,
+        "cached_input_tokens": 18048,
+        "output_tokens": 4295,
+        "uncached_input_tokens": 41669
+      },
+      "actual_cost": {
+        "input_cny": "0.08405992",
+        "output_cny": "0.03436",
+        "total_cny": "0.11841992"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.04202996",
+        "output_cny": "0.01718",
+        "total_cny": "0.05920996"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c3-342e-7180-b03b-8e54e94f9256",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641545262,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 73138,
+        "cached_input_tokens": 62848,
+        "output_tokens": 1018,
+        "uncached_input_tokens": 10290
+      },
+      "actual_cost": {
+        "input_cny": "0.02309392",
+        "output_cny": "0.008144",
+        "total_cny": "0.03123792"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01154696",
+        "output_cny": "0.004072",
+        "total_cny": "0.01561896"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c3-4867-7063-ac7b-0faacd62be46",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641550439,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 82930,
+        "cached_input_tokens": 74112,
+        "output_tokens": 3681,
+        "uncached_input_tokens": 8818
+      },
+      "actual_cost": {
+        "input_cny": "0.02060048",
+        "output_cny": "0.029448",
+        "total_cny": "0.05004848"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01030024",
+        "output_cny": "0.014724",
+        "total_cny": "0.02502424"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c3-8a8b-7f40-bc14-912096f61395",
+      "purpose": "tutor_delivery_review",
+      "started_at_unix_ms": 1792641567371,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "input_tokens": 18414,
+        "cached_input_tokens": 6912,
+        "output_tokens": 17555,
+        "uncached_input_tokens": 11502
+      },
+      "actual_cost": {
+        "input_cny": "0.02328048",
+        "output_cny": "0.14044",
+        "total_cny": "0.16372048"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01164024",
+        "output_cny": "0.07022",
+        "total_cny": "0.08186024"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c4-e40f-7081-8b85-47dd0668effb",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641655823,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-04-06",
+      "usage": {
+        "input_tokens": 100061,
+        "cached_input_tokens": 83456,
+        "output_tokens": 2460,
+        "uncached_input_tokens": 16605
+      },
+      "actual_cost": {
+        "input_cny": "0.01827412",
+        "output_cny": "0.00984",
+        "total_cny": "0.02811412"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01827412",
+        "output_cny": "0.00984",
+        "total_cny": "0.02811412"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c5-09fe-70b1-90e1-1a390d523890",
+      "purpose": "tutor_delivery_review",
+      "started_at_unix_ms": 1792641665534,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-04-06",
+      "usage": {
+        "input_tokens": 22540,
+        "cached_input_tokens": 6912,
+        "output_tokens": 14729,
+        "uncached_input_tokens": 15628
+      },
+      "actual_cost": {
+        "input_cny": "0.01576624",
+        "output_cny": "0.058916",
+        "total_cny": "0.07468224"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01576624",
+        "output_cny": "0.058916",
+        "total_cny": "0.07468224"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c6-1b30-7583-b028-bc473dc28477",
+      "purpose": "outer",
+      "started_at_unix_ms": 1792641735472,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-04-06",
+      "usage": {
+        "input_tokens": 115384,
+        "cached_input_tokens": 100352,
+        "output_tokens": 1554,
+        "uncached_input_tokens": 15032
+      },
+      "actual_cost": {
+        "input_cny": "0.01703904",
+        "output_cny": "0.006216",
+        "total_cny": "0.02325504"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.01703904",
+        "output_cny": "0.006216",
+        "total_cny": "0.02325504"
+      },
+      "unknown_fields": [],
+      "notes": []
+    },
+    {
+      "call_id": "01a161c6-3602-7122-ae88-ba3d08ed4ff3",
+      "purpose": "tutor_coach",
+      "started_at_unix_ms": 1792641742338,
+      "evidence": "response",
+      "succeeded": true,
+      "rate_version": "deepseek-flash-20261022-04-06",
+      "usage": {
+        "input_tokens": 73089,
+        "cached_input_tokens": 1664,
+        "output_tokens": 2583,
+        "uncached_input_tokens": 71425
+      },
+      "actual_cost": {
+        "input_cny": "0.07145828",
+        "output_cny": "0.010332",
+        "total_cny": "0.08179028"
+      },
+      "normalized_off_peak_cost": {
+        "input_cny": "0.07145828",
+        "output_cny": "0.010332",
+        "total_cny": "0.08179028"
+      },
+      "unknown_fields": [],
+      "notes": []
+    }
+  ],
+  "unassigned_http_attempts": 0
+}

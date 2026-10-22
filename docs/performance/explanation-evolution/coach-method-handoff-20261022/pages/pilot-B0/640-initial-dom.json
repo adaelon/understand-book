@@ -1,0 +1,212 @@
+{
+  "viewport": {
+    "width": 640,
+    "height": 240
+  },
+  "scroll": {
+    "x": 0,
+    "y": 0,
+    "height": 2085,
+    "width": 640
+  },
+  "horizontal_overflow": false,
+  "text": "从两个盒子理解转移和总量\n\n左盒一开始有 8 枚棋子，右盒有 2 枚。每次把左盒的一枚棋子搬到右盒：两盒里各有多少枚会变，两盒加起来始终是 10 枚。\n\n看懂规则（不点按钮也能读）\n棋子编了 1 到 10 号，只是为了让你盯住同一枚棋子；棋子本身完全一样。\n左盒放 1–8 号，共 8 枚；右盒放 9、10 号，共 2 枚。合起来：8 + 2 = 10。\n搬动 k 次后：左盒 8 − k 枚，右盒 2 + k 枚，总数仍是 10 枚。k 只统计已经落进右盒的棋子。\n按一次按钮只搬一枚。它离开左盒后先到中间的「途中」，落进右盒才算进右盒的枚数。\n左盒\n8 枚\n右盒\n2 枚\n1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n\n还没有搬动。按「前进一枚」开始搬第一枚。\n\n已转移 k\n0次\n左盒\n8枚\n途中\n0枚\n右盒\n2枚\n总数\n10枚\n\n左盒 8 枚 ＋ 右盒 2 枚 ＝ 10 枚\n\n前进一枚\n后退一枚\n重置\n暂停\n直接跳到 k =\n0\n跟着看一次搬动\n\n在初始状态按一下「前进一枚」。被搬的那枚棋子会高亮，从左边移到中间：这段时间它不在任何一个盒子里，只出现在「途中」一栏。等它落进右盒，k 才从 0 变成 1，读数同时变成左盒 7、右盒 3、合计 10。\n\n按「后退一枚」，同一枚棋子从右盒原路回到左盒；按「重置」回到一开始的 8 加 2。想在途中停下来看，就按「暂停」。\n\n为什么总数不会增加\n\n任何时刻，每一枚棋子恰好待在一个地方：左盒、途中、右盒。搬动只改变它在哪个地方，不会凭空多出棋子，也不会让棋子消失，所以这三个数相加总是 10。\n\nk 记录的是已经完成多少次搬动，它给这些变化编号，不参与计算总量。搬动一次，左盒少一枚、右盒多一枚；棋子落进右盒的那一刻，k 才加一。\n\n静止时用公式写：左盒 8 − k 枚，右盒 2 + k 枚。两式相加 (8 − k) + (2 + k) = 10，k 正好抵消，所以无论 k 是 0 还是 8，合计都是 10 枚。取 k = 3 核对：左盒 5 枚、右盒 5 枚、合计 10 枚。\n\n容易看错的地方\n\n棋子离开左盒、还没落进右盒的那一小段时间，左盒少了一枚，右盒还没多出来。这时只盯着两个盒子，会以为总数变成了 9。其实少掉的那一枚正在途中，把它加回来正好是 10。页面把这一枚单独放在「途中」一栏，就是为了让它任何时刻都只被数一次。\n\n核对表与边界\nk（已转移）\t左盒 8 − k\t右盒 2 + k\t总数\n0\t8\t2\t10\n1\t7\t3\t10\n2\t6\t4\t10\n3\t5\t5\t10\n4\t4\t6\t10\n5\t3\t7\t10\n6\t2\t8\t10\n7\t1\t9\t10\n8\t0\t10\t10\n表格列出静止状态（没有棋子在途中）的读数。左盒只有 8 枚，所以 k 最大是 8；到 k = 8 时左盒为空，「前进一枚」停用，右盒 10 枚，合计仍是 10。\n这页做了哪些简化",
+  "controls": [
+    {
+      "tag": "button",
+      "id": "advance",
+      "role": null,
+      "type": null,
+      "text": "前进一枚",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 16,
+        "y": 794.40625,
+        "width": 96,
+        "height": 46
+      }
+    },
+    {
+      "tag": "button",
+      "id": "back",
+      "role": null,
+      "type": null,
+      "text": "后退一枚",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": true,
+      "visible": true,
+      "bounds": {
+        "x": 120,
+        "y": 794.40625,
+        "width": 96,
+        "height": 46
+      }
+    },
+    {
+      "tag": "button",
+      "id": "reset",
+      "role": null,
+      "type": null,
+      "text": "重置",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": true,
+      "visible": true,
+      "bounds": {
+        "x": 224,
+        "y": 794.40625,
+        "width": 64,
+        "height": 46
+      }
+    },
+    {
+      "tag": "button",
+      "id": "pause",
+      "role": null,
+      "type": null,
+      "text": "暂停",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": true,
+      "visible": true,
+      "bounds": {
+        "x": 296,
+        "y": 794.40625,
+        "width": 64,
+        "height": 46
+      }
+    },
+    {
+      "tag": "input",
+      "id": "kRange",
+      "role": null,
+      "type": "range",
+      "text": "",
+      "label": null,
+      "labels": [
+        "直接跳到 k ="
+      ],
+      "value": "0",
+      "min": "0",
+      "max": "8",
+      "step": "1",
+      "checked": false,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 104.21875,
+        "y": 846.40625,
+        "width": 492.1875,
+        "height": 44
+      }
+    },
+    {
+      "tag": "summary",
+      "id": "",
+      "role": null,
+      "type": null,
+      "text": "这页做了哪些简化",
+      "label": null,
+      "labels": [],
+      "value": null,
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 16,
+        "y": 1994.78125,
+        "width": 608,
+        "height": 44
+      }
+    }
+  ],
+  "headings": [
+    {
+      "text": "从两个盒子理解转移和总量",
+      "bounds": {
+        "x": 16,
+        "y": 26,
+        "width": 608,
+        "height": 43.1875
+      }
+    },
+    {
+      "text": "看懂规则（不点按钮也能读）",
+      "bounds": {
+        "x": 32,
+        "y": 165.1875,
+        "width": 576,
+        "height": 26.625
+      }
+    },
+    {
+      "text": "跟着看一次搬动",
+      "bounds": {
+        "x": 16,
+        "y": 916.40625,
+        "width": 608,
+        "height": 26.625
+      }
+    },
+    {
+      "text": "为什么总数不会增加",
+      "bounds": {
+        "x": 16,
+        "y": 1127.03125,
+        "width": 608,
+        "height": 26.625
+      }
+    },
+    {
+      "text": "容易看错的地方",
+      "bounds": {
+        "x": 16,
+        "y": 1402.65625,
+        "width": 608,
+        "height": 26.625
+      }
+    },
+    {
+      "text": "核对表与边界",
+      "bounds": {
+        "x": 16,
+        "y": 1548.28125,
+        "width": 608,
+        "height": 26.625
+      }
+    }
+  ],
+  "scroll_containers": [],
+  "graphics": {
+    "svg": 1,
+    "canvas": 0,
+    "images": 0
+  }
+}

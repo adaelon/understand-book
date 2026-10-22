@@ -1,0 +1,22 @@
+{
+  "viewport": {
+    "width": 960,
+    "height": 720
+  },
+  "scroll": {
+    "x": 0,
+    "y": 0,
+    "height": 720,
+    "width": 960
+  },
+  "horizontal_overflow": false,
+  "text": "",
+  "controls": [],
+  "headings": [],
+  "scroll_containers": [],
+  "graphics": {
+    "svg": 0,
+    "canvas": 0,
+    "images": 0
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "alias":"Jade",
+  "status":"evaluated; preliminary; no cross-sample comparison",
+  "method":"Independently read the entire visible DOM, operated the real Reader controls for all required states, and inspected static contour diagrams, dynamic fits, and three viewport sizes. No source, generation conditions, or external reviews read.",
+  "overall":"The core derivation, global-minimum proof, numerical states, and degenerate family are correct and usable. The main defect is an ordinary-data checking instruction left unscoped below an interaction that also supports degenerate data; one local phrase confuses smallest slope with smallest slope magnitude.",
+  "strengths":[
+    "Explains the residual identity with r and ui, explicitly eliminates the r cross term using both centered zero sums, and separately warns that -2aSxy remains.",
+    "The slope derivative begins from the full residual expression and only uses centered x after establishing zero residual sum; this makes the route reproducible without dropping coupled terms.",
+    "The complete two-square identity gives a lower bound, simultaneous attainment, and uniqueness of both coefficients. It includes a numerical identity check at arbitrary a=b=0 rather than using only the optimum.",
+    "All required values of a,b,SSE,penalty,J,and the independently labeled minimum are correct, including degenerate lambda0 where the minimum remains21.2 and the slope is explicitly nonunique.",
+    "Nine drawn equally optimal lines at degenerate lambda0 visibly pass through the mean point; lambda2 correctly becomes the single horizontal line. Returning to normal data restores its values and graph.",
+    "The full derivation remains continuously visible. Static contour diagrams distinguish a single normal-data valley from a flat degenerate direction. The prose correctly discusses negative Sxy as magnitude shrinkage rather than numerical decrease.",
+    "At320px, formulas wrap and the table preserves numeric strings intact. Both dataset buttons and slider work at320x420 and640x240; no page overflow or overlay obstruction was observed."
+  ],
+  "observedStates":[
+    {"data":"normal","lambda":0,"a":"1.4","b":"-1.2","SSE":"1.6","penalty":"0","J":"1.6","minimum":"1.6"},
+    {"data":"normal","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867","minimum":"4.867"},
+    {"data":"normal","lambda":10,"a":"0.7","b":"0.2","SSE":"6.5","penalty":"4.9","J":"11.4","minimum":"11.4"},
+    {"data":"degenerate","lambda":0,"a":"不唯一","b":"b=1.6−2a","SSE":"21.2","penalty":"0","J":"21.2","minimum":"21.2"},
+    {"data":"degenerate","lambda":2,"a":"0","b":"1.6","SSE":"21.2","penalty":"0","J":"21.2","minimum":"21.2"},
+    {"data":"normal after return","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867","minimum":"4.867"}
+  ],
+  "issues":[
+    {
+      "id":"Jade-1","severity":"moderate","location":"Section5, 三处核对最有价值 beneath the interaction",
+      "finding":"Instructions that only hold for normal data are presented as unconditional checks on the current panel, including after the user selects degenerate data.",
+      "evidence":"At degenerate lambda2 the panel correctly shows a0,b1.6,J21.2, but the immediately following instructions still say the panel should show a1.167,b-0.733 at lambda2 and that the second minimum calculation uses21.2−196/(10+lambda). They add that a mismatch means an algebra or code error. That expression yields4.867 at lambda2, not the correct21.2 for the selected data. No normal-data scope label is attached to these bullets.",
+      "impact":"A reader following the prescribed verification can wrongly conclude the correct degenerate panel is broken, or apply the normal constants to the other data. Static example labeling elsewhere is clearer.",
+      "files":["desktop-degenerate-check-instructions.png","interaction-evidence.json"]
+    },
+    {
+      "id":"Jade-2","severity":"minor","location":"Section6, λ>0 explanation",
+      "finding":"The sentence calling a=0 the 'smallest slope' in the equally good family should refer to the smallest absolute slope or a squared value. The family admits arbitrary negative slopes and has no smallest slope.",
+      "evidence":"Visible text: '惩罚做的事是在这一族“拟合一样好”的直线里指定了一条——斜率最小的那条 a=0。' The preceding proof using lambda*a^2 is correct, so this is a local wording error rather than a wrong computed solution.",
+      "files":["desktop-degenerate-explanation.png","initial-dom.json"]
+    }
+  ],
+  "viewportEvidence":{
+    "960x720":"Full visible text read; centered expansion, complete derivative route, global proof, static contours, and all dynamic states inspected. Dynamic graphs and numbers are clear.",
+    "320x420":"Document width320 with no measured horizontal overflow. Formulas wrap, numeric table values remain intact, and controls operate. Small chart labels are less comfortable than the prose, but numerical readouts are separate and readable.",
+    "640x240":"Document width640. Both dataset buttons and lambda slider visible and usable without a fixed overlay."
+  },
+  "consoleErrors":[],
+  "evidenceFiles":["initial-dom.json","interaction-evidence.json"]
+}

@@ -1,0 +1,33 @@
+{
+  "reviewed_on": "2026-10-20",
+  "basis": "Actual saved model answers, sampling inputs, structured answer source parts and successful HTTP source resolution; no model answers were edited.",
+  "conclusion": "Exam-date/scope behavior and source navigation verified. Direct-question entry works, but its explanation still fails and requires the bounded material-revision retest.",
+  "cases": [
+    {
+      "id": "three-days",
+      "result": "verified",
+      "evidence": "The answer uses 2026-10-23, a three-day horizon and 30 minutes; it includes the accepted source/version/video scope and gives the plan before optional practice.",
+      "deterministic_checks_passed": true
+    },
+    {
+      "id": "changed-date-scope",
+      "result": "verified",
+      "evidence": "The answer adopts the revised 2026-10-21 horizon, excludes version management and allocates 22 + 8 minutes to video interval work.",
+      "deterministic_checks_passed": true
+    },
+    {
+      "id": "direct-question",
+      "result": "entry_behavior_verified_explanation_failed",
+      "evidence": "The answer directly explains the supplied question, without a prerequisite diagnostic or quiz. Three actually read text passages resolve successfully. The original unsupported two-claims argument is absent.",
+      "deterministic_checks_passed": true,
+      "failure": "The answer equates a wider source interval with the claim covering the whole interval, then says it cannot be used to verify the claim. A wider interval can still contain sufficient evidence. This is a reasoning error, not only a wording issue."
+    },
+    {
+      "id": "text-video-sources",
+      "result": "verified",
+      "evidence": "The answer explains preserved publication/source identity and the two-second transcript window. Three text references and one video reference occur in structured answer parts and each resolves with can_open_in_reader=true, stale=false. The video reference uses the exact published video and 0..2000 ms.",
+      "deterministic_checks_passed": true
+    }
+  ],
+  "scope_limit": "Original miniature fixture, not a selected academic course or a learning-outcome experiment."
+}

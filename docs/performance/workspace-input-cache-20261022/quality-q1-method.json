@@ -1,0 +1,59 @@
+{
+  "schema": "workspace_cache_quality_q1_method.v1",
+  "status": "method_prepared_results_pending",
+  "paths_relative_to": "docs/performance/workspace-input-cache-20261022",
+  "q1_changes": [
+    "已保存 move_id 的内容冲突在付费教学审视之前，由已有 preflight 拒绝。",
+    "正确性修订指导更新为 v24：影响成立条件或结论的问题要求修订，不能仅列为可选润色。",
+    "接纳后实质修订使用新的 move_id，并从本次交付引用中移除被替换的已接纳选择。"
+  ],
+  "cache_isolation": {
+    "question": "在相同 Q1 质量指导下，稳定工具定义是否仍减少这组固定连续讲解请求的未缓存输入与输入费用？",
+    "baseline_requests": "requests/baseline-q1",
+    "candidate_requests": "requests/candidate-q1",
+    "live_results": "live-active-q1/results.json",
+    "common_changes": "两臂均使用相同 Q1 指导与同期公共代码；baseline 只还原本轮缓存相关请求构造和示例位置。原文、用户问题、固定历史及采样配置保持相同。",
+    "variant": "工具操作定义和依赖事实的示例是重写工具前缀，还是维持定义稳定并追加当前状态。",
+    "execution": "固定生产请求回放；新模型输出不进入下一请求，返回工具调用不执行。采用实际 results.json 记录的索引、重复次数、顺序和请求上限。",
+    "reported_metrics": "分别报告首次请求、连续追问和全部请求的输入、缓存、未缓存、输出 tokens，加权命中率，输入/输出费用，实际调用数及原始首工具或首正文计时。",
+    "quality_evidence": "对照新回包是否尊重当前文字讲解要求、是否给出完整候选讲稿、数字与公式是否正确、是否保留原文条件与来源身份。select.delivery_text 仍是候选稿，不记为真实交付。",
+    "attribution": "该对照可衡量相同 Q1 指导下缓存布局的增量影响，不能衡量付费审视前冲突检查的节省，也不提供公开 answer.patch 延迟。",
+    "pending_evidence": "两臂请求、实际样本元数据及对应有效源码齐备后，再确认共同 Q1 指导与缓存差异边界。当前不填收益结论。"
+  },
+  "end_to_end_overall_comparison": {
+    "question": "原始基线与最终缓存加 Q1 改动版本，在同一两问真实交付任务中分别花了多少调用、费用和公开首字时间，交付是否正确完整？",
+    "baseline_directory": "live-delivery-baseline",
+    "candidate_directory": "live-delivery-candidate-q1",
+    "baseline_identity": "已保存的修正前原始基线；本次不重复计费或将其当作新 Q1 基线。",
+    "candidate_identity": "缓存优化加 Q1 正确性指导、冲突预检和修订身份流程的最终候选。",
+    "execution": "真实 Server 与默认 Native 配置执行两问，第二问消费第一问实际保存历史；包含实际工具调用、私有审视、选择持久化和公开 answer.patch。",
+    "attribution": "这是整体前后观察：缓存、Q1 修正、自主模型轨迹和运行时机共同变化，不能把全部费用或延迟差归因于缓存。旧基线与新候选不是同期 AB/BA 对照。",
+    "latency": "逐问公开 time_to_first_public_answer_patch_ms；不可用首工具参数、私有正文或最终化前的候选稿替代。",
+    "cost": "按 http_attempts_total 切分各轮全部 HTTP 尝试，含重试和私有调用。同时报告 actual_cost 与统一 1/0.02/4 元每百万 tokens 的 normalized_off_peak_cost。缺 usage 保留 unknown。",
+    "quality_evidence": "以 answer-01/02.md、持久化 saved_turn、message_delivered 和最终 answer.patch 对应的实际正文为准；分别记录数字与公式正确性、成立条件、文字讲解要求及修订是否真正落地。未触发 move_id 冲突的真实运行不能单独证明预检机制效果，机制由对应离线回归测试证明。",
+    "scope": "单材料临时 Book 的两问交付；不扩展为工作区 RAG、视频、页面、音频或长期学习效果结论。",
+    "summary_command": "python docs/performance/workspace-input-cache-20261022/summarize_delivery.py docs/performance/workspace-input-cache-20261022/live-delivery-baseline docs/performance/workspace-input-cache-20261022/live-delivery-candidate-q1 --output docs/performance/workspace-input-cache-20261022/delivery-q1-analysis.json"
+  },
+  "historical_accounting": {
+    "http_attempts": 121,
+    "actual_total_cny": "5.85009908",
+    "runs": [
+      {"directory": "live-ordinary", "http_attempts": 16, "actual_total_cny": "0.44768512"},
+      {"directory": "live-active", "http_attempts": 16, "actual_total_cny": "1.17490832"},
+      {"directory": "live-active-v2", "http_attempts": 16, "actual_total_cny": "1.17651632"},
+      {"directory": "live-active-text-v2", "http_attempts": 16, "actual_total_cny": "0.68811008"},
+      {"directory": "live-delivery-candidate", "http_attempts": 19, "actual_total_cny": "1.06300872"},
+      {"directory": "live-delivery-baseline", "http_attempts": 21, "actual_total_cny": "0.68578552"},
+      {"directory": "live-delivery-candidate-idle", "http_attempts": 17, "actual_total_cny": "0.61408500"}
+    ],
+    "new_experiment_directories": ["live-active-q1", "live-delivery-candidate-q1"],
+    "aggregation": "最终实验总额仅在 121 HTTP 与 ¥5.85009908 上累加新目录的实际请求。对照汇总再次引用 live-delivery-baseline 不产生额外请求，不重复计入总额。任何新失败或暖机按实际目录保留并计费。",
+    "retained_evidence": "旧 v1、v2、强制文本异常、暖机、审核失败和不利追问结果全部保留。Q1 新结果追加，不覆盖旧结果或将旧质量问题改写为通过。"
+  },
+  "reporting_proposal": {
+    "cache_table_label": "Q1 共同质量指导下的缓存隔离对照",
+    "delivery_table_label": "原始基线至最终 Q1 的真实交付整体对比",
+    "readme_change": "将原有最终版本 v2 改为历史缓存 v2，另列 Q1 缓存隔离结果与真实交付整体结果；保留旧表，更新累积实验费用与验证范围。",
+    "final_judgment": "分别陈述缓存增量、实际交付表现和输出质量；依据实际新结果收口，不用单一命中率、首问收益或候选稿正确掩盖未交付、追问回退或成立条件错误。"
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "catalog_ms": 14624.979409,
+    "catalog_read_bytes": 2357261374,
+    "book_ms": 16565.530522,
+    "book_read_bytes": 2355991947,
+    "phase": "before",
+    "run": 1,
+    "outputs_equal": true
+  },
+  {
+    "catalog_ms": 10860.576169,
+    "catalog_read_bytes": 2357261376,
+    "book_ms": 10266.217932,
+    "book_read_bytes": 2355991947,
+    "phase": "before",
+    "run": 2,
+    "outputs_equal": true
+  },
+  {
+    "catalog_ms": 25.368545,
+    "catalog_read_bytes": 1464823,
+    "book_ms": 1736.6931490000002,
+    "book_read_bytes": 17974033,
+    "phase": "after",
+    "run": 1,
+    "outputs_equal": true
+  },
+  {
+    "catalog_ms": 23.001796000000002,
+    "catalog_read_bytes": 1464818,
+    "book_ms": 225.517158,
+    "book_read_bytes": 17974027,
+    "phase": "after",
+    "run": 2,
+    "outputs_equal": true
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "formulaOverflow": [
+      {
+        "text": "∂L/∂y = ∂L/∂u × ∂u/∂y = 19 × 2 = 38",
+        "width": 202,
+        "scrollWidth": 299,
+        "overflowX": "auto"
+      },
+      {
+        "text": "梯度\ny 只有一条路\n\ny 只出现在 u = xy 里，所以只有一份贡献，不存在相加。如果 y 也被用在别处，这里就会成为第三次汇合。\n\n∂L/∂y = ∂L/∂u × ∂u/∂y = 19 × 2 = 38",
+        "width": 232,
+        "scrollWidth": 232,
+        "overflowX": "visible"
+      }
+    ]
+  }
+]

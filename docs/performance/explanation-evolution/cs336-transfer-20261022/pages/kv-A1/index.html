@@ -1,0 +1,883 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delivered presentation</title></head><body style="margin:0"><iframe title="Delivered presentation" sandbox="allow-scripts" style="border:0;display:block;width:100%;height:100vh" srcdoc="&lt;!doctype html>&lt;html lang=&quot;zh-CN&quot;>&lt;head>&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'&quot;>&lt;style>:root { color-scheme: light dark; --canvas: #faf9f5; --ink: #252523; --surface: #efe9de; --line: #e6dfd8; --accent: #a9583e; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; background: var(--canvas); color: var(--ink); font: 16px/1.65 system-ui, &quot;Microsoft YaHei&quot;, sans-serif; overflow-wrap: anywhere; }
+h1, h2, h3 { line-height: 1.3; margin: 0 0 .6em; }
+h1 { font-size: 1.45em; } h2 { font-size: 1.2em; }
+p { margin: .65em 0; }
+button, input, select, textarea { font: inherit; max-width: 100%; }
+button, select, textarea, input:not([type=range]) { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .4em .7em; }
+button { cursor: pointer; } :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Source entrances stay compact even when an authored page styles all buttons. */
+button[data-source-ref] { display: inline-flex !important; align-items: center; width: auto !important; min-width: 0 !important; min-height: 24px !important; height: auto !important; padding: 2px 6px !important; margin: 0 2px !important; color: var(--accent); font-size: 12px !important; line-height: 1.4 !important; white-space: nowrap !important; vertical-align: baseline; }
+@media (pointer: coarse) { button[data-source-ref] { min-width: 44px !important; min-height: 44px !important; } }
+img, svg, canvas, video { max-width: 100%; height: auto; }
+pre { overflow-x: auto; padding: 12px; background: var(--surface); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; } td, th { text-align: left; padding: .6em; border-bottom: 1px solid var(--line); }
+.comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.card, .callout { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+&lt;/style>&lt;script>// Shared by the Reader and the server's real-browser presentation preview.
+function sourceChipLabel(sources, id) {
+  const index = sources.findIndex(source => source.source_ref_id === id);
+  if (index &lt; 0) return '来源不可用';
+  const label = sources[index].label;
+  const title = (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label).split(' / ').at(-1).trim();
+  const chars = Array.from(title);
+  return `${chars.length > 14 ? chars.slice(0, 14).join('') + '…' : title} [${index + 1}]`;
+}
+
+(function (config, staticCapture, createActions) {
+  const send = message => parent.postMessage({ channel: config.channel, ...message }, &quot;*&quot;);
+  let observer;
+  let stateReader;
+  let actionHandler;
+  const parameterEdits = {};
+  const parameters = (config.actionContract ?? []).filter(entry => entry.kind === &quot;set_parameters&quot;).flatMap(entry => entry.parameters);
+  let interaction;
+  let stateRestorer;
+  let restoring = true;
+  let commitTimer;
+  let hostGeneration;
+  let editing = false;
+  let zoom = 1;
+  const pendingCaptures = new Map();
+  const pendingHelp = new Map();
+  let helpRequest = 0;
+  function teachingRegion(regionId) {
+    if (!config.teachingBinding?.regions.some(region => region.region_id === regionId)) return null;
+    return Array.from(document.querySelectorAll('[data-teaching-region], [id]'))
+      .find(node => node.getAttribute('data-teaching-region') === regionId || node.id === regionId) ?? null;
+  }
+  window.presentation = Object.freeze({
+    initialState: config.initialState,
+    restoredState: config.restoredState ?? null,
+    registerActionHandler: handler => { actionHandler = handler; },
+    registerStateReader: reader => { stateReader = reader; },
+    registerStateRestorer: restorer => { stateRestorer = restorer; },
+    commitState: () => scheduleCommit(),
+    // Opens the host action form; only an explicit host submission records a learner action.
+    requestTeachingAction: (moveId, response) => send({ kind: &quot;teaching-action&quot;, move_id: moveId, response }),
+    // Only teaching help explicitly revealed on the page is reported. Moving
+    // sliders, expanding ordinary prose or locating a region is not an answer.
+    reportTeachingHelp: (moveId, kind, regionId) => new Promise((resolve, reject) => {
+      const region = teachingRegion(regionId);
+      const bounds = region?.getBoundingClientRect();
+      const text = region ? visibleText(region).trim() : '';
+      if (!region || !bounds || !text || !['hint', 'explanation'].includes(kind)
+        || bounds.bottom &lt;= 0 || bounds.top >= innerHeight || bounds.right &lt;= 0 || bounds.left >= innerWidth) {
+        reject(new Error('帮助区域尚未显示。')); return;
+      }
+      const requestId = ++helpRequest;
+      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error('帮助展示记录未确认。')); }, 15000);
+      pendingHelp.set(requestId, { resolve, reject, timer });
+      send({ kind: 'teaching-help', request_id: requestId, move_id: moveId, help_kind: kind, region_id: regionId, text });
+    }),
+  });
+  window.addEventListener(&quot;error&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;unhandledrejection&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === 'interaction-cancel') {
+      if (interaction?.id === event.data.request_id) interaction.controller.abort();
+      return;
+    }
+    if (event.data.kind === 'interaction') {
+      const id = event.data.request_id;
+      if (restoring || interaction) {
+        send({ kind: 'interaction-result', request_id: id, status: 'failed', reason: 'The page is not ready for an operation.' });
+        return;
+      }
+      const current = { id, controller: new AbortController() };
+      interaction = current;
+      clearTimeout(commitTimer);
+      let before = {};
+      try { before = { ...stateReader?.()?.values }; } catch {}
+      const actions = createActions(config.actionContract, () => stateReader?.(), () => actionHandler, () => parameterEdits);
+      actions.execute(event.data.request, event.data.expected_values, current.controller.signal, event.data.expected_edits).then(status => {
+        if (!current.controller.signal.aborted) {
+          const action = event.data.request.action;
+          const after = stateReader?.()?.values ?? {};
+          const support = status !== 'applied' || action?.kind === 'highlight' ? [] :
+            (config.teachingBinding?.regions ?? []).filter(region =>
+              ['reveal', 'annotate'].includes(action.kind) ? region.region_id === action.region_id :
+                region.state_fields.some(key => before[key] !== after[key])
+            ).flatMap(region => {
+              const node = teachingRegion(region.region_id);
+              const text = node?.getClientRects().length ? visibleText(node).trim() : '';
+              return text ? [{ region_id: region.region_id, text }] : [];
+            });
+          capture(id, false, { status, support });
+        }
+      }).catch(failure => {
+        const result = { status: current.controller.signal.aborted ? 'cancelled' : 'failed', reason: String(failure.message ?? failure) };
+        if (current.controller.signal.aborted) send({ kind: 'interaction-result', request_id: id, ...result });
+        else capture(id, false, result);
+      }).finally(() => { if (interaction === current) interaction = undefined; });
+      return;
+    }
+    if (event.data.kind === 'locate-region') {
+      const region = teachingRegion(event.data.region_id);
+      if (region) {
+        region.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        region.animate([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+          { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+      }
+      send({ kind: 'region-located', region_id: event.data.region_id, located: !!region });
+      return;
+    }
+    if (event.data.kind === 'teaching-help-recorded') {
+      const pending = pendingHelp.get(event.data.request_id);
+      if (pending) {
+        clearTimeout(pending.timer); pendingHelp.delete(event.data.request_id);
+        if (event.data.error) pending.reject(new Error(event.data.error)); else pending.resolve();
+      }
+      return;
+    }
+    if (event.data.kind === &quot;zoom&quot; &amp;&amp; Number.isFinite(event.data.scale) &amp;&amp; event.data.scale >= .5 &amp;&amp; event.data.scale &lt;= 1.5) {
+      const next = event.data.scale;
+      if (next !== zoom) {
+        const x = window.scrollX / zoom, y = window.scrollY / zoom;
+        document.documentElement.style.zoom = String(next);
+        zoom = next;
+        window.scrollTo(x * zoom, y * zoom);
+      }
+      return;
+    }
+    if (event.data.kind === &quot;theme&quot;) {
+      if (Number.isInteger(event.data.generation)) hostGeneration = event.data.generation;
+      for (const [name, value] of Object.entries(event.data.values)) document.documentElement.style.setProperty(name, value);
+    }
+    if (event.data.kind === &quot;snapshot&quot;) capture(event.data.request_id);
+    if (event.data.kind === &quot;export-static&quot;) {
+      const id = event.data.request_id;
+      Promise.all([document.fonts.ready, ...Array.from(document.images, image => image.decode())])
+        .then(() => capture(id, true), () => send({ kind: &quot;static-error&quot;, request_id: id, message: &quot;图解图片资源加载失败，请重新加载后重试。&quot; }));
+    }
+  });
+  // The host owns source labels and actions; ordinary page rendering stays local.
+  function normalizeSources() {
+    observer.disconnect();
+    const refs = [];
+    document.querySelectorAll(&quot;[data-source-ref]&quot;).forEach(node => {
+      const id = node.getAttribute(&quot;data-source-ref&quot;);
+      refs.push(id);
+      const source = config.sources.find(source => source.source_ref_id === id);
+      node.textContent = sourceChipLabel(config.sources, id);
+      node.setAttribute(&quot;title&quot;, source ? source.label : &quot;来源不可用&quot;);
+      node.setAttribute(&quot;aria-label&quot;, source ? `${node.textContent}：${source.label}` : &quot;来源不可用&quot;);
+      if (node instanceof HTMLButtonElement) node.disabled = !source;
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    return refs;
+  }
+  function capture(request_id, exporting = false, result) {
+    if (restoring || !observer) { pendingCaptures.set(request_id, exporting); return; }
+    const sourceRefs = normalizeSources();
+    const controls = Array.from(document.querySelectorAll(&quot;input, textarea, select&quot;))
+      .map((node, index) => ({
+      key: node.id || node.name || `control-${index}`, type: node.type,
+      value: node instanceof HTMLSelectElement &amp;&amp; node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value,
+      ...(node.type === &quot;checkbox&quot; || node.type === &quot;radio&quot; ? { checked: node.checked } : {}),
+      }));
+    try {
+    // A failed reader must not reuse an earlier semantic scene or hide the DOM
+    // that is still visible now. Read afresh for every capture.
+    let custom = {};
+    try { custom = stateReader ? stateReader() ?? {} : {}; } catch {}
+    // One synchronous browser read freezes parameters and actual rendered semantics together.
+    send({ kind: result ? &quot;interaction-result&quot; : exporting ? &quot;static-result&quot; : &quot;state&quot;, request_id, ...result, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') &amp;&amp; node.getClientRects().length > 0 &amp;&amp; getComputedStyle(node).visibility !== 'hidden' &amp;&amp; node.type !== 'hidden').map((node, index) => ({
+      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
+      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
+    })) } : {}), state: {
+      values: { controls, page: custom.values ?? null, parameter_edits: { ...parameterEdits } },
+      visible_step: custom.visible_step ?? document.querySelector(&quot;[data-presentation-step]&quot;)?.getAttribute(&quot;data-presentation-step&quot;) ?? null,
+      observed_result: visibleText(document.body).trim(), source_ref_ids: sourceRefs,
+      ...(custom.observation ? { observation: custom.observation } : {}),
+    } });
+    } catch (error) {
+      if (exporting) send({ kind: &quot;static-error&quot;, request_id, message: error instanceof Error ? error.message : String(error) });
+      else throw error;
+    }
+  }
+  function visibleText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (!(node instanceof Element) || node.matches(&quot;script, style, [data-source-ref]&quot;)) return &quot;&quot;;
+    const style = getComputedStyle(node);
+    if (style.display === &quot;none&quot; || style.visibility === &quot;hidden&quot;) return &quot;&quot;;
+    const label = [node.getAttribute(&quot;alt&quot;), node.getAttribute(&quot;aria-label&quot;)].filter(Boolean).join(&quot; &quot;);
+    return [label, ...Array.from(node.childNodes, visibleText)].join(&quot; &quot;);
+  }
+  function scheduleCommit() {
+    if (restoring || interaction) return;
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(() => capture(), 0);
+  }
+  function isEditingTarget(node) {
+    return node instanceof Element &amp;&amp; !!node.closest(&quot;input, textarea, select, [contenteditable]:not([contenteditable='false'])&quot;);
+  }
+  function publishEditing(next) {
+    if (!Number.isInteger(hostGeneration) || editing === next) return;
+    editing = next;
+    send({ kind: &quot;editing-focus&quot;, generation: hostGeneration, editing });
+  }
+  document.addEventListener(&quot;click&quot;, event => {
+    const node = event.target instanceof Element ? event.target.closest(&quot;[data-source-ref], a&quot;) : null;
+    if (!node) return;
+    event.preventDefault();
+    const id = node.getAttribute(&quot;data-source-ref&quot;);
+    if (config.sources.some(source => source.source_ref_id === id)) send({ kind: &quot;source&quot;, source_ref_id: id });
+  }, true);
+  document.addEventListener(&quot;submit&quot;, event => event.preventDefault(), true);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    // Run after the page's own DOMContentLoaded handlers installed its controls.
+    setTimeout(async () => {
+    try {
+    restoring = true;
+    if (config.restoredState) {
+      const controls = config.restoredState.values?.controls ?? [];
+      document.querySelectorAll(&quot;input, textarea, select&quot;).forEach((node, index) => {
+        const saved = controls.find(control => control.key === (node.id || node.name || `control-${index}`) &amp;&amp; control.type === node.type);
+        if (!saved) return;
+        if (node instanceof HTMLSelectElement &amp;&amp; node.multiple) {
+          Array.from(node.options).forEach(option => { option.selected = saved.value.includes(option.value); });
+        } else if (node.type !== &quot;file&quot;) node.value = saved.value;
+        if (&quot;checked&quot; in saved) node.checked = saved.checked;
+        node.dispatchEvent(new Event(&quot;input&quot;, { bubbles: true }));
+        node.dispatchEvent(new Event(&quot;change&quot;, { bubbles: true }));
+      });
+      if (stateRestorer) await stateRestorer(config.restoredState);
+      if (!stateRestorer &amp;&amp; (config.restoredState.values?.page != null || config.restoredState.visible_step != null)) {
+        send({ kind: &quot;restore-partial&quot; });
+      }
+    }
+    restoring = false;
+    observer = new MutationObserver(normalizeSources);
+    // Only human control edits invalidate an observation. Timer/playback updates
+    // still appear in the snapshot, but do not masquerade as conflicting edits.
+    for (const kind of ['input', 'change', 'click']) document.addEventListener(kind, event => {
+      if (!event.isTrusted || interaction || !parameters.length) return;
+      let before;
+      try { before = { ...stateReader?.()?.values }; } catch { return; }
+      queueMicrotask(() => {
+        let after;
+        try { after = stateReader?.()?.values ?? {}; } catch { return; }
+        for (const key of parameters) {
+          const target = event.target;
+          if (before[key] !== after[key] || ((kind === 'input' || kind === 'change') &amp;&amp; target instanceof Element &amp;&amp; target.getAttribute('data-presentation-parameter') === key)) {
+            parameterEdits[key] = (parameterEdits[key] ?? 0) + 1;
+          }
+        }
+      });
+    }, true);
+    document.addEventListener(&quot;change&quot;, scheduleCommit);
+    document.addEventListener(&quot;focusin&quot;, event => publishEditing(isEditingTarget(event.target)));
+    document.addEventListener(&quot;focusout&quot;, () => queueMicrotask(() => publishEditing(isEditingTarget(document.activeElement))));
+    window.addEventListener(&quot;blur&quot;, () => publishEditing(false));
+    document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) publishEditing(false); });
+    document.addEventListener(&quot;click&quot;, event => {
+      if (!(event.target instanceof Element) || event.target.closest(&quot;[data-source-ref], a&quot;)) return;
+      if (event.target.closest(&quot;button, summary, [role=button], [data-presentation-step]&quot;)) scheduleCommit();
+    });
+    normalizeSources();
+    send({ kind: &quot;ready&quot; });
+    const captures = Array.from(pendingCaptures);
+    pendingCaptures.clear();
+    captures.forEach(([id, mode]) => capture(id, mode));
+    } catch {
+      restoring = true;
+      send({ kind: &quot;error&quot; });
+    }
+    });
+  });
+})({&quot;channel&quot;:&quot;rsi-render&quot;,&quot;sources&quot;:[],&quot;initialState&quot;:{&quot;B&quot;:4,&quot;T&quot;:8192,&quot;s&quot;:2},&quot;restoredState&quot;:null,&quot;actionContract&quot;:[{&quot;kind&quot;:&quot;set_parameters&quot;,&quot;parameters&quot;:[&quot;B&quot;,&quot;T&quot;,&quot;s&quot;]}]}, (// Runs inside the existing opaque-origin frame. Freeze pixels and DOM synchronously
+// with the bridge's state read; decoding/rasterization happens later in the host.
+function () {
+  if (document.fonts.status !== 'loaded') throw new Error('图解字体尚未就绪，请稍后重试。');
+  const root = document.body;
+  const width = root.offsetWidth, height = Math.max(root.offsetHeight, root.scrollHeight);
+  if (!width || !height) throw new Error('当前图解没有可导出的画面。');
+  if ([...document.fonts].some(face => face.status === 'error')) throw new Error('图解字体加载失败，请重试。');
+  const rules = [], resources = new Set();
+  let serial = 0;
+  const copyStyle = (style, target) => {
+    for (const name of style) target.style.setProperty(name, style.getPropertyValue(name));
+    target.style.animation = 'none'; target.style.transition = 'none'; target.style.caretColor = 'transparent';
+  };
+  function clone(node) {
+    if (!(node instanceof Element)) return node.cloneNode(true);
+    if (node.matches('script,style,link,[data-presentation-mask]')) return document.createTextNode('');
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden') return document.createTextNode('');
+    if (node.matches('video,audio,iframe,object,embed') || node.shadowRoot)
+      throw new Error('当前图解包含尚不支持静态输出的媒体或嵌入内容。');
+    if (node instanceof HTMLElement &amp;&amp; /auto|scroll/.test(style.overflow + style.overflowX + style.overflowY)
+        &amp;&amp; (node.scrollWidth > node.clientWidth + 2 || node.scrollHeight > node.clientHeight + 2))
+      throw new Error('图解含滚动区域，请展开内容后重新导出，避免遗漏。');
+    for (const property of ['background-image', 'mask-image', 'list-style-image']) {
+      for (const match of style.getPropertyValue(property).matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)) {
+        if (match[1].startsWith('#')) continue;
+        if (!match[1].startsWith('data:')) throw new Error('图解包含未就绪的图片资源，请使用版本内资源。');
+        resources.add(match[1]);
+      }
+    }
+    if (node instanceof SVGImageElement) {
+      const href = node.href.baseVal;
+      if (!href.startsWith('data:')) throw new Error('SVG 图片资源无法嵌入，请使用版本内资源。');
+      resources.add(href);
+    }
+    let target;
+    if (node instanceof HTMLCanvasElement) {
+      if (!node.getContext('2d')) {
+        const gl = node.getContext('webgl2') || node.getContext('webgl');
+        if (!gl || gl.isContextLost()) throw new Error('三维画布尚未就绪，请重新加载图解。');
+        if (!gl.getContextAttributes().preserveDrawingBuffer)
+          throw new Error('三维画布未保留画面；制作时请开启 preserveDrawingBuffer 后重新导出。');
+      }
+      target = document.createElement('img');
+      try { target.src = node.toDataURL('image/png'); } catch { throw new Error('Canvas 资源无法读取，请重新加载图解。'); }
+    } else {
+      if (node instanceof HTMLImageElement &amp;&amp; (!node.complete || !node.naturalWidth))
+        throw new Error('图解图片资源尚未就绪或加载失败，请重试。');
+      target = node.cloneNode(false);
+      if (node instanceof HTMLTextAreaElement) target.textContent = node.value;
+      else for (const child of node.childNodes) target.append(clone(child));
+      // Serialize live control state while retaining the actual control's appearance and size.
+      if (node instanceof HTMLInputElement) {
+        target.setAttribute('value', node.value);
+        target.toggleAttribute('checked', node.checked);
+      } else if (node instanceof HTMLOptionElement) target.toggleAttribute('selected', node.selected);
+    }
+    copyStyle(style, target);
+    if (node instanceof HTMLCanvasElement) { target.style.width = style.width; target.style.height = style.height; }
+    for (const attr of [...target.attributes]) if (attr.name.startsWith('on')) target.removeAttribute(attr.name);
+    for (const pseudo of ['::before', '::after']) {
+      const value = getComputedStyle(node, pseudo);
+      if (!value.content || value.content === 'none' || value.content === 'normal') continue;
+      const id = `static-${++serial}`; target.classList.add(id);
+      const holder = document.createElement('span'); copyStyle(value, holder);
+      rules.push(`.${id}${pseudo}{${holder.style.cssText}}`);
+    }
+    return target;
+  }
+  const body = clone(root);
+  body.style.margin = '0'; body.style.width = `${width}px`; body.style.height = `${height}px`;
+  // Keep authored control/pseudo-element styling alongside the frozen computed styles.
+  const authoredRules = [];
+  for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
+    if (rule instanceof CSSFontFaceRule) {
+      if ([...rule.style.getPropertyValue('src').matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)].some(match => !match[1].startsWith('data:')))
+        throw new Error('图解字体资源无法嵌入，请使用版本内字体。');
+    }
+    authoredRules.push(rule.cssText);
+  }
+  const style = document.createElement('style'); style.textContent = [...authoredRules, ...rules].join('\n'); body.prepend(style);
+  if (root.scrollWidth > width + 2) throw new Error('图解超出当前画布，请展开演示后重新导出。');
+  return { width, height, resources: [...resources], svg: `&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;${width}&quot; height=&quot;${height}&quot;>&lt;foreignObject width=&quot;100%&quot; height=&quot;100%&quot;>${new XMLSerializer().serializeToString(body)}&lt;/foreignObject>&lt;/svg>` };
+}), (function (contract, read, handler, edits = () => ({})) {
+  const entries = contract ?? [];
+  const region = id => Array.from(document.querySelectorAll('[data-teaching-region],[id]'))
+    .find(node => node.getAttribute('data-teaching-region') === id || node.id === id);
+  const control = key => Array.from(document.querySelectorAll('input,select,textarea'))
+    .find(node => node.getAttribute('data-presentation-parameter') === key);
+  const invocation = id => Array.from(document.querySelectorAll('[data-presentation-action]'))
+    .find(node => node.getAttribute('data-presentation-action') === id);
+  function inspect() {
+    const problems = [];
+    for (const entry of entries) {
+      if (entry.kind !== 'highlight' &amp;&amp; typeof handler() !== 'function') problems.push('Register registerActionHandler for declared actions.');
+      if (entry.kind === 'set_parameters') {
+        for (const key of entry.parameters) {
+          if (!control(key) || !(key in (read()?.values ?? {}))) problems.push(`Parameter ${key} needs a bound control and reader value.`);
+        }
+      } else if (entry.kind === 'invoke') {
+        if (!invocation(entry.action_id)) problems.push(`Action ${entry.action_id} needs a bound control.`);
+      } else if (!region(entry.region_id)) problems.push(`Region ${entry.region_id} does not exist.`);
+    }
+    return problems;
+  }
+  function locate(target) {
+    target.scrollIntoView({ block: 'center', behavior: 'instant' });
+    target.animate?.([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+      { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+  }
+  async function execute(request, expected, signal, expectedEdits) {
+    signal?.throwIfAborted();
+    const problems = inspect();
+    if (problems.length) throw new Error(problems.join(' '));
+    if (request.operation === 'observe') return 'observed';
+    const action = request.action;
+    const declared = entries.some(entry => entry.kind === action.kind &amp;&amp; (
+      action.kind === 'set_parameters' ? Object.keys(action.values).length > 0 &amp;&amp; Object.keys(action.values).every(key => entries.filter(item => item.kind === 'set_parameters').flatMap(item => item.parameters).includes(key))
+        : action.kind === 'invoke' ? entry.action_id === action.action_id : entry.region_id === action.region_id));
+    if (!declared) throw new Error('This action is not declared by this content version.');
+    const values = read()?.values ?? {};
+    if (Object.entries(expected ?? {}).some(([key, value]) => values[key] !== value
+      &amp;&amp; (!expectedEdits || (edits()[key] ?? 0) !== (expectedEdits[key] ?? 0)))) return 'conflict';
+    if (action.kind === 'set_parameters') {
+      for (const [key, value] of Object.entries(action.values)) {
+        const node = control(key);
+        if (!node || node.disabled || (values[key] !== null &amp;&amp; typeof value !== typeof values[key])) throw new Error(`Parameter ${key} is unavailable or has the wrong type.`);
+        if (typeof value === 'number' &amp;&amp; (!Number.isFinite(value)
+          || (node.min !== '' &amp;&amp; node.min != null &amp;&amp; value &lt; Number(node.min))
+          || (node.max !== '' &amp;&amp; node.max != null &amp;&amp; value > Number(node.max)))) throw new Error(`Parameter ${key} is outside its control range.`);
+      }
+    }
+    if (action.kind === 'invoke' &amp;&amp; invocation(action.action_id)?.disabled) throw new Error('This operation is currently disabled.');
+    if (action.kind === 'highlight') locate(region(action.region_id));
+    else await handler()(action, { signal });
+    signal?.throwIfAborted();
+    if (action.kind === 'set_parameters' &amp;&amp; Object.entries(action.values).some(([key, value]) => read()?.values?.[key] !== value)) {
+      throw new Error('The handler did not apply the requested parameters.');
+    }
+    if (['reveal', 'annotate'].includes(action.kind)) {
+      const target = region(action.region_id);
+      if (!target || !target.getClientRects().length || getComputedStyle(target).visibility === 'hidden' || !target.innerText?.trim()) {
+        throw new Error('The requested content has not become visible.');
+      }
+      locate(target);
+    }
+    return 'applied';
+  }
+  return { inspect, execute, locate };
+}));
+// Shared Reader/preview lifecycle. Returning never resumes a demo implicitly.
+(() => {
+  let hostVisible = true;
+  const pauseAll = () => document.querySelectorAll(&quot;video&quot;).forEach(video => video.pause());
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== &quot;rsi-render&quot; || event.data.kind !== &quot;visibility&quot;) return;
+    hostVisible = event.data.visible;
+    if (!hostVisible) pauseAll();
+  });
+  document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) pauseAll(); });
+  window.addEventListener(&quot;pagehide&quot;, pauseAll);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    const visibility = new WeakMap();
+    const installed = new WeakSet();
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      visibility.set(entry.target, entry.isIntersecting);
+      if (!entry.isIntersecting) entry.target.pause();
+    }));
+    const visit = (node, action) => {
+      if (!(node instanceof Element)) return;
+      if (node.matches(&quot;video&quot;)) action(node);
+      node.querySelectorAll(&quot;video&quot;).forEach(action);
+    };
+    const install = video => {
+      observer.observe(video);
+      if (installed.has(video)) return;
+      installed.add(video);
+      video.controls = false; video.playsInline = true; video.autoplay = false; video.pause();
+      video.addEventListener(&quot;play&quot;, () => {
+        if (document.hidden || !hostVisible || visibility.get(video) === false) { video.pause(); return; }
+        document.querySelectorAll(&quot;video&quot;).forEach(other => { if (other !== video) other.pause(); });
+      });
+    };
+    visit(document.body, install);
+    new MutationObserver(records => records.forEach(record => {
+      record.addedNodes.forEach(node => visit(node, install));
+      record.removedNodes.forEach(node => visit(node, video => {
+        if (!video.isConnected) { video.pause(); observer.unobserve(video); }
+      }));
+    })).observe(document.body, { subtree: true, childList: true });
+  });
+})();
+&lt;/script>
+&lt;meta charset=&quot;utf-8&quot;>
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+&lt;title>一张显卡能留住多少上下文？——显存容量台&lt;/title>
+&lt;style>
+*{box-sizing:border-box}
+:root{
+  --canvas:#f5f7fb;--ink:#16202b;--surface:#ffffff;--line:#d5dce7;--accent:#2f6df6;
+  --muted:#5a6b80;--ok:#0b6b5f;--warn:#b3400b;
+  --seg-w:#93a1b3;--seg-o:#c9d2de;
+}
+html,body{margin:0}
+body{background:var(--canvas);color:var(--ink);
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,&quot;PingFang SC&quot;,&quot;Hiragino Sans GB&quot;,&quot;Microsoft YaHei&quot;,sans-serif;}
+main{max-width:860px;margin:0 auto;padding:24px 18px 56px}
+h1{font-size:1.45rem;line-height:1.35;margin:0 0 10px}
+h2{font-size:1.14rem;margin:26px 0 8px}
+p{margin:10px 0}
+.lead{color:var(--muted)}
+.formula{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95rem;overflow-x:auto}
+figure{margin:16px 0 0}
+.bar{position:relative;height:34px;border:1px solid var(--line);border-radius:8px;background:#eef1f6;overflow:hidden}
+.seg{position:absolute;top:0;bottom:0}
+#segW{background:var(--seg-w)}
+#segO{background:var(--seg-o)}
+#segKV{background:var(--accent)}
+#segOver{background:repeating-linear-gradient(45deg,#b3400b 0 5px,#e8865c 5px 10px);z-index:2}
+#mark24{position:absolute;top:0;bottom:0;width:2px;background:#b3400b;z-index:3;transform:translateX(-1px)}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:.86rem;color:var(--muted)}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.ctrl{display:grid;gap:4px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.ctrl .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ctrl label{font-weight:600;font-size:.95rem}
+.ctrl output{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent)}
+.ctrl .note{font-size:.82rem;color:var(--muted)}
+input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent)}
+select{height:44px;min-width:104px;font:inherit;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 2px}
+.presets button{min-height:44px;padding:0 14px;border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;font:inherit;font-size:.9rem;color:var(--ink);cursor:pointer}
+.presets button:hover{border-color:var(--accent);color:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-top:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.stat b{display:block;font-size:.8rem;color:var(--muted);font-weight:600;margin-bottom:2px}
+.stat span{font-size:1.1rem;font-variant-numeric:tabular-nums;font-weight:650;overflow-wrap:anywhere}
+.stat em{display:block;font-size:.8rem;color:var(--muted);font-style:normal;margin-top:2px;overflow-wrap:anywhere}
+.verdict{margin-top:14px;border-radius:10px;padding:12px 14px;border:1px solid var(--line);background:var(--surface)}
+.verdict strong{display:block;font-size:1.02rem;margin-bottom:4px}
+.verdict.fits{border-color:#9ed3c9;background:#eefaf7}
+.verdict.fits strong{color:var(--ok)}
+.verdict.exact{border-color:#a9c2f5;background:#eef3ff}
+.verdict.exact strong{color:#1d4ed8}
+.verdict.over{border-color:#f0b89a;background:#fdf1ea}
+.verdict.over strong{color:var(--warn)}
+#delta{margin-top:12px;font-size:.93rem;color:var(--muted);min-height:3.2em}
+.panelbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 14px 18px}
+.story{margin-top:22px}
+.story p{font-size:.98rem}
+.ladder{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px}
+.ladder li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.95rem}
+.ladder .k{display:block;font-size:.82rem;color:var(--muted);margin-bottom:2px}
+.ladder .v{font-variant-numeric:tabular-nums;font-weight:700;overflow-wrap:anywhere}
+.qa{display:grid;gap:10px;margin:12px 0 0}
+.qa > div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.qa h3{margin:0 0 6px;font-size:.98rem;line-height:1.5}
+.qa p:last-child{margin-bottom:0}
+table.cmp{width:100%;table-layout:fixed;border-collapse:collapse;margin:12px 0 0;font-size:.9rem;background:var(--surface)}
+table.cmp th,table.cmp td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+table.cmp th:nth-child(1),table.cmp td:nth-child(1){width:26%}
+table.cmp th:nth-child(2),table.cmp td:nth-child(2){width:28%}
+table.cmp th{background:#eef2f8;font-weight:600}
+&lt;/style>
+&lt;/head>
+&lt;body>
+&lt;main>
+  &lt;h1>一张显卡能留住多少上下文？&lt;/h1>
+  &lt;p class=&quot;lead&quot;>模型装进显卡之后，权重就固定在显存里不动了。可是对话一长、同时服务的人一多，显存还会继续被吃掉——吃掉的正是每个已缓存 token 在每一层留下的 K 和 V。下面这台容量台，用你给的参数把这笔账算给你看。&lt;/p>
+
+  &lt;p>这台机器的账目分两块：固定的一块是 &lt;strong>10 GiB 权重&lt;/strong>加 &lt;strong>2 GiB 其他运行开销&lt;/strong>，合计 12 GiB，装进去就不再变；另一块是 K/V 缓存，它随并发条数、缓存长度、每元素字节数一起长大。&lt;/p>
+
+  &lt;p class=&quot;formula&quot;>KV 缓存字节数 = B × T × 65 536 × s&lt;br>可用余量 = 24 − 12 = 12 GiB　⇒　装得下 ⇔ B × T × s ≤ 196 608&lt;/p>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>一、缓存里记的是每个 token 的名签和内容&lt;/h2>
+    &lt;p>一段对话进入模型后会先切成 token。每个 token 经过每一层时，这一层都会为它算出三个向量：查询 Q、键 K、值 V。Q 是它此刻要问的问题，K 是它留给后来者的名签，V 是它真正交代的内容。&lt;/p>
+    &lt;p>处理新 token 时，这一层的注意力拿这枚新的 Q 与前面所有 token 的 K 逐个比较，得到一组权重，再用这组权重把它们的 V 加权求和，作为新 token 在这一层的输出。前面的 K 和 V 一旦丢掉，下次还得重新算一遍；把它们留着，每个 token 就只需要算一次。留下来的这一份，就是 K/V 缓存。&lt;/p>
+    &lt;p>层与层之间不能互相顶替。第 5 层存下的 K 只服务于第 5 层的注意力，第 20 层有自己的向量和表示空间，拿第 5 层那份顶不上，所以 32 层各存 32 份。&lt;/p>
+    &lt;p>头与头之间同样不能互相顶替。8 个缓存头各自在自己的 128 维子空间里做比较和加权，一个头的结果补不上另一个头，所以每层要存 8 套。&lt;/p>
+    &lt;p>于是，一个已缓存的 token 在每一层留下的元素数是：K 一份 8 × 128 个，V 一份 8 × 128 个，合起来 &lt;strong>2048 个元素&lt;/strong>。这一段是背景机制说明；后面的所有数字只用到你给的模型设定，即每个已缓存 token 在每层存一份 K 和一份形状相同的 V。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>二、为什么这些数量要相乘&lt;/h2>
+    &lt;p>你熟悉的账是一个数组有 N 个元素、每个元素 s 字节，所以占 N × s 字节。这里的算法相同，只是数组被拆成了几层彼此独立的维度：哪个 token、哪一层、哪个头、K 还是 V，每一项都要各存一份，每一维因此都变成一个乘数。下面按默认参数 B = 4、T = 8192、s = 2 走一遍。&lt;/p>
+    &lt;ol class=&quot;ladder&quot;>
+      &lt;li>&lt;span class=&quot;k&quot;>一个元素&lt;/span>&lt;span class=&quot;v&quot;>s = 2 字节&lt;/span>&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>一个缓存头的一份向量&lt;/span>&lt;span class=&quot;v&quot;>128 个元素&lt;/span>&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>一层里 K 和 V 各有 8 个头&lt;/span>&lt;span class=&quot;v&quot;>2 × 8 × 128 = 2048 个元素&lt;/span>&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>整个模型的 32 层&lt;/span>&lt;span class=&quot;v&quot;>2048 × 32 = 65 536 个元素 / token&lt;/span>&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>乘上每元素字节数&lt;/span>&lt;span class=&quot;v&quot;>65 536 × 2 = 131 072 字节 / token&lt;/span>　即每个 token 在一条序列里占 128 KiB。&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>一条序列的 T 个 token&lt;/span>&lt;span class=&quot;v&quot;>131 072 × 8192 = 1 073 741 824 字节 = 1 GiB&lt;/span>&lt;/li>
+      &lt;li>&lt;span class=&quot;k&quot;>B 条互不共享的序列&lt;/span>&lt;span class=&quot;v&quot;>1 GiB × 4 = 4 GiB&lt;/span>&lt;/li>
+    &lt;/ol>
+    &lt;p class=&quot;formula&quot;>KV 缓存字节数 = B × T × 65 536 × s&lt;/p>
+    &lt;p>65 536 这个数只由模型结构决定（32 层、8 头、128 元素、K 与 V 两份），换模型才变；B、T、s 是运行时你手上的三个旋钮，改哪一个都会按同一比例改动缓存。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>三、哪些占用固定，哪些随对话增长&lt;/h2>
+    &lt;p>显存里的东西分成三块，只有第三块会继续吃显存。&lt;/p>
+    &lt;table class=&quot;cmp&quot;>
+      &lt;tbody>&lt;tr>&lt;th>占用项&lt;/th>&lt;th>本模型的大小&lt;/th>&lt;th>对话变长、并发变多时会怎样&lt;/th>&lt;/tr>
+      &lt;tr>&lt;td>模型权重&lt;/td>&lt;td>10 GiB&lt;/td>&lt;td>不变。装进显存后一直占着，与对话无关。&lt;/td>&lt;/tr>
+      &lt;tr>&lt;td>其他运行开销&lt;/td>&lt;td>2 GiB&lt;/td>&lt;td>不变。本模型把它当固定项处理。&lt;/td>&lt;/tr>
+      &lt;tr>&lt;td>K/V 缓存&lt;/td>&lt;td>B × T × 65 536 × s&lt;/td>&lt;td>随条数 B、长度 T、每元素字节数 s 一起变大。&lt;/td>&lt;/tr>
+    &lt;/tbody>&lt;/table>
+    &lt;p>固定部分合计 10 + 2 = 12 GiB。24 GiB 的显卡扣掉这 12 GiB，剩下 12 GiB 才是留给缓存的余量。模型装进去之后显存还会继续涨，涨的正是这 12 GiB 余量被 B、T、s 一点点吃掉的部分。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>四、把结果落成一条判断&lt;/h2>
+    &lt;p>12 GiB 换成字节是 12 × 2³⁰ = 12 884 901 888 字节。缓存不超过它，就是装得下的条件。&lt;/p>
+    &lt;p class=&quot;formula&quot;>B × T × 65 536 × s ≤ 12 884 901 888&lt;br>两边同除以 65 536　⇒　B × T × s ≤ 196 608&lt;/p>
+    &lt;p>196 608 是这个模型的容量指数，等于 3 × 65 536，只取决于显卡余量和模型结构。三个旋钮的乘积不超过 196 608 就装得下，超过就装不下。&lt;/p>
+    &lt;p>用初始参数代入：B × T × s = 4 × 8192 × 2 = 65 536，正好是 196 608 的三分之一，所以缓存占去 12 GiB 余量的三分之一，即 4 GiB。总占用 12 + 4 = 16 GiB，还剩 8 GiB。&lt;/p>
+    &lt;p>结果分三档。总占用小于 24 GiB 是装得下；总占用正好等于 24 GiB 也是装得下，按你的约定恰好装满算可容纳；总占用大于 24 GiB 是装不下，此时把溢出量算出来，再给出退让的方向。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>五、三个可以自己回答的问题&lt;/h2>
+    &lt;div class=&quot;qa&quot;>
+      &lt;div>
+        &lt;h3>多一条同样长的序列，多占多少？&lt;/h3>
+        &lt;p>多出来的正好是一条序列自己的缓存：T × 65 536 × s = 8192 × 131 072 = 1 GiB。它只由 T 和 s 决定，与已经开了几条无关，因为每条序列各自保存、不共享内容。默认参数下 B 从 4 加到 5，缓存从 4 GiB 变成 5 GiB，总占用从 16 GiB 变成 17 GiB，权重和其他开销仍是 12 GiB。&lt;/p>
+      &lt;/div>
+      &lt;div>
+        &lt;h3>长度翻倍时，哪些量翻倍？&lt;/h3>
+        &lt;p>翻倍的只有与 T 成正比的那几项：一条序列的缓存、全部序列的缓存合起来、以及总占用里属于缓存的那部分。T 从 8192 到 16384，缓存从 4 GiB 变成 8 GiB，总占用从 16 GiB 变成 20 GiB。&lt;/p>
+        &lt;p>不翻倍的是权重 10 GiB、其他开销 2 GiB、每个 token 的 131 072 字节、每层每头的 2048 个元素。总量从 12 + KV 变成 12 + 2 × KV，16 GiB 到 20 GiB，它没有跟着翻倍。&lt;/p>
+      &lt;/div>
+      &lt;div>
+        &lt;h3>这组参数还能容纳多长的上下文？&lt;/h3>
+        &lt;p>把判据反过来解：T ≤ 196 608 ÷ (B × s)。默认 B = 4、s = 2 时是 196 608 ÷ 8 = 24 576 个 token。&lt;/p>
+        &lt;p>这个结果还要和本模型每条序列的长度上限 32 768 取小。默认这组里显存先到限制，24 576 小于 32 768；当 B × s 很小，例如 B = 1、s = 1 时算出来是 196 608，超过 32 768，于是长度上限先到，答案就是 32 768。&lt;/p>
+      &lt;/div>
+    &lt;/div>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>六、超过容量时是什么结果&lt;/h2>
+    &lt;p>把三个旋钮都推到最大：B = 16、T = 32768、s = 4。缓存是 16 × 32768 × 65 536 × 4 = 137 438 953 472 字节 = 128 GiB，加上固定 12 GiB，总需求 140 GiB，比 24 GiB 的显卡多出 116 GiB。这时没有稍微超一点的说法，账面上就是差 116 GiB，这组并发和长度跑不起来。&lt;/p>
+    &lt;p>要退回来，可以动 B、动 T 或者动 s。s = 4、B = 16 不变时，T 要降到 196 608 ÷ (16 × 4) = 3072 以内；T = 32768、s = 4 不变时，B 要降到 196 608 ÷ (32 768 × 4) = 1.5，取整就是 1 条。两条路都在把总需求压回 24 GiB 以内。&lt;/p>
+    &lt;p>边界要对齐：B = 3、T = 32768、s = 2 时，B × T × s = 196 608，正好用满 12 GiB 余量，总占用正好 24 GiB，按约定算装得下；把 T 再加 1 个 token，乘积变成 196 614，就超出了。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;story&quot;>
+    &lt;h2>七、用容量台检验直觉&lt;/h2>
+    &lt;p>下面三个控件就是 B、T、s。容量条整条的长度代表 24 GiB 与总需求中较大的那个，红色竖线标出 24 GiB 上限；权重和其他开销永远占住最左边的 12 GiB，蓝色段是 24 GiB 以内的缓存，越过红线的那截用斜纹单独标出、不与蓝色混在一起。读数格把缓存字节数、总占用、剩余或溢出、单条序列占用、每个 token 的字节数和 T 的上限一起算出来，底部一句话给出装得下、恰好装满或装不下的结论。&lt;/p>
+    &lt;p>先预测再动手：按下「加一条序列」，缓存会多出多少？按下「长度翻倍」，总占用会不会翻倍？把 s 从 2 换成 1，哪些读数动、哪些不动？读数与前面的推导对得上，说明这套乘法你已经用上了。&lt;/p>
+  &lt;/section>
+
+  &lt;section class=&quot;panelbox&quot; id=&quot;capacityPanel&quot;>
+    &lt;h2>显存容量台&lt;/h2>
+    &lt;p class=&quot;note&quot; style=&quot;font-size:.9rem;color:var(--muted);margin-top:0&quot;>拖动三个参数，下面的容量条、读数和结论一起变。&lt;/p>
+
+    &lt;div class=&quot;ctrl&quot;>
+      &lt;div class=&quot;row&quot;>&lt;label for=&quot;bInput&quot;>并发序列数 B&lt;/label>&lt;output id=&quot;bOut&quot; for=&quot;bInput&quot;>4&lt;/output>&lt;/div>
+      &lt;input id=&quot;bInput&quot; type=&quot;range&quot; min=&quot;1&quot; max=&quot;16&quot; step=&quot;1&quot; value=&quot;4&quot; data-presentation-parameter=&quot;B&quot;>
+      &lt;div class=&quot;note&quot;>同时服务的对话条数，每条各自独占一份缓存。&lt;/div>
+    &lt;/div>
+
+    &lt;div class=&quot;ctrl&quot;>
+      &lt;div class=&quot;row&quot;>&lt;label for=&quot;tInput&quot;>每条序列的缓存长度 T&lt;/label>&lt;output id=&quot;tOut&quot; for=&quot;tInput&quot;>8192&lt;/output>&lt;/div>
+      &lt;input id=&quot;tInput&quot; type=&quot;range&quot; min=&quot;0&quot; max=&quot;32768&quot; step=&quot;128&quot; value=&quot;8192&quot; data-presentation-parameter=&quot;T&quot;>
+      &lt;div class=&quot;note&quot;>每条序列已缓存的 token 数。&lt;/div>
+    &lt;/div>
+
+    &lt;div class=&quot;ctrl&quot;>
+      &lt;div class=&quot;row&quot;>&lt;label for=&quot;sInput&quot;>每个元素占用 s&lt;/label>
+        &lt;select id=&quot;sInput&quot; data-presentation-parameter=&quot;s&quot;>
+          &lt;option value=&quot;1&quot;>1 字节&lt;/option>
+          &lt;option value=&quot;2&quot; selected=&quot;&quot;>2 字节&lt;/option>
+          &lt;option value=&quot;4&quot;>4 字节&lt;/option>
+        &lt;/select>
+      &lt;/div>
+      &lt;div class=&quot;note&quot;>只改变缓存占用，不改动权重和其他开销。&lt;/div>
+    &lt;/div>
+
+    &lt;div class=&quot;presets&quot;>
+      &lt;button type=&quot;button&quot; id=&quot;pReset&quot;>初始参数&lt;/button>
+      &lt;button type=&quot;button&quot; id=&quot;pAdd&quot;>加一条序列&lt;/button>
+      &lt;button type=&quot;button&quot; id=&quot;pDouble&quot;>长度翻倍&lt;/button>
+      &lt;button type=&quot;button&quot; id=&quot;pTmax&quot;>T 压到上限&lt;/button>
+      &lt;button type=&quot;button&quot; id=&quot;pS1&quot;>s 换成 1 字节&lt;/button>
+      &lt;button type=&quot;button&quot; id=&quot;pWorst&quot;>最挤的一组&lt;/button>
+    &lt;/div>
+
+    &lt;figure>
+      &lt;div class=&quot;bar&quot; id=&quot;bar&quot;>
+        &lt;div class=&quot;seg&quot; id=&quot;segW&quot;>&lt;/div>
+        &lt;div class=&quot;seg&quot; id=&quot;segO&quot;>&lt;/div>
+        &lt;div class=&quot;seg&quot; id=&quot;segKV&quot;>&lt;/div>
+        &lt;div class=&quot;seg&quot; id=&quot;segOver&quot; hidden=&quot;&quot;>&lt;/div>
+        &lt;div id=&quot;mark24&quot;>&lt;/div>
+      &lt;/div>
+      &lt;div class=&quot;legend&quot;>
+        &lt;span>&lt;i style=&quot;background:var(--seg-w)&quot;>&lt;/i>权重 10 GiB&lt;/span>
+        &lt;span>&lt;i style=&quot;background:var(--seg-o)&quot;>&lt;/i>其他开销 2 GiB&lt;/span>
+        &lt;span>&lt;i style=&quot;background:var(--accent)&quot;>&lt;/i>K/V 缓存（24 GiB 以内）&lt;/span>
+        &lt;span>&lt;i style=&quot;background:repeating-linear-gradient(45deg,#b3400b 0 5px,#e8865c 5px 10px)&quot;>&lt;/i>K/V 缓存越过 24 GiB 的部分&lt;/span>
+        &lt;span>&lt;i style=&quot;background:#b3400b;width:3px&quot;>&lt;/i>24 GiB 上限&lt;/span>
+      &lt;/div>
+      &lt;figcaption id=&quot;barCap&quot;>&lt;/figcaption>
+    &lt;/figure>
+
+    &lt;div class=&quot;stats&quot; id=&quot;stats&quot;>
+      &lt;div class=&quot;stat&quot;>&lt;b>K/V 缓存&lt;/b>&lt;span id=&quot;kvGib&quot;>—&lt;/span>&lt;em id=&quot;kvBytes&quot;>—&lt;/em>&lt;/div>
+      &lt;div class=&quot;stat&quot;>&lt;b>总占用&lt;/b>&lt;span id=&quot;totGib&quot;>—&lt;/span>&lt;em>固定 12 GiB ＋ 缓存&lt;/em>&lt;/div>
+      &lt;div class=&quot;stat&quot;>&lt;b>余量 / 超出&lt;/b>&lt;span id=&quot;slack&quot;>—&lt;/span>&lt;em id=&quot;slackNote&quot;>—&lt;/em>&lt;/div>
+      &lt;div class=&quot;stat&quot;>&lt;b>单条序列占用&lt;/b>&lt;span id=&quot;perSeq&quot;>—&lt;/span>&lt;em>1 条、长度 T&lt;/em>&lt;/div>
+      &lt;div class=&quot;stat&quot;>&lt;b>每个 token（单条序列）&lt;/b>&lt;span id=&quot;perTok&quot;>—&lt;/span>&lt;em id=&quot;perTokNote&quot;>—&lt;/em>&lt;/div>
+      &lt;div class=&quot;stat&quot;>&lt;b>还能容纳的 T 上限&lt;/b>&lt;span id=&quot;tMax&quot;>—&lt;/span>&lt;em id=&quot;tMaxNote&quot;>—&lt;/em>&lt;/div>
+    &lt;/div>
+
+    &lt;div class=&quot;verdict&quot; id=&quot;verdict&quot;>&lt;strong id=&quot;vTitle&quot;>—&lt;/strong>&lt;span id=&quot;vText&quot;>—&lt;/span>&lt;/div>
+    &lt;p id=&quot;delta&quot;>试试「加一条序列」和「长度翻倍」，看哪些数字跟着变、哪些不变。&lt;/p>
+  &lt;/section>
+&lt;/main>
+
+&lt;script>
+(function(){
+  &quot;use strict&quot;;
+  var GIB = 1073741824;                 // 1 GiB = 2^30 字节
+  var VRAM_GIB = 24, W_GIB = 10, O_GIB = 2;
+  var FIXED_GIB = W_GIB + O_GIB;        // 12 GiB
+  var HEADROOM_GIB = VRAM_GIB - FIXED_GIB;   // 12 GiB
+  var HEADROOM_BYTES = HEADROOM_GIB * GIB;
+  var PER_TOKEN_ELEMS = 32 * 8 * 128 * 2;    // 32 层 × 8 头 × 128 元素 × (K 与 V 各一份)
+  var CRIT = HEADROOM_BYTES / PER_TOKEN_ELEMS; // 196608
+  var T_CAP = 32768;
+
+  var bIn = document.getElementById('bInput');
+  var tIn = document.getElementById('tInput');
+  var sIn = document.getElementById('sInput');
+  var el = function(id){ return document.getElementById(id); };
+
+  function num(v){ var r = Math.round(v * 1000) / 1000; return String(r); }
+  function gib(bytes){ return num(bytes / GIB); }
+  function bytes(n){ return n.toLocaleString('en-US'); }
+
+  function read(){ return { B: +bIn.value, T: +tIn.value, s: +sIn.value }; }
+  function calc(v){
+    var perTokenBytes = PER_TOKEN_ELEMS * v.s;
+    var kvBytes = v.B * v.T * perTokenBytes;
+    var kvGiB = kvBytes / GIB;
+    var totalGiB = FIXED_GIB + kvGiB;
+    return {
+      perTokenBytes: perTokenBytes, kvBytes: kvBytes, kvGiB: kvGiB,
+      perSeqBytes: v.T * perTokenBytes, totalGiB: totalGiB,
+      fits: kvBytes &lt;= HEADROOM_BYTES, exact: kvBytes === HEADROOM_BYTES,
+      tMaxRaw: Math.floor(CRIT / (v.B * v.s)), tMax: Math.min(T_CAP, Math.floor(CRIT / (v.B * v.s)))
+    };
+  }
+
+  function render(){
+    var v = read(), c = calc(v);
+
+    el('bOut').textContent = v.B;
+    el('tOut').textContent = v.T;
+    el('sOut') &amp;&amp; (el('sOut').textContent = v.s);
+
+    var scaleMax = Math.max(VRAM_GIB, c.totalGiB);
+    var p = function(g){ return (g / scaleMax) * 100; };
+    el('segW').style.left = '0%';  el('segW').style.width = p(W_GIB) + '%';
+    el('segO').style.left = p(W_GIB) + '%'; el('segO').style.width = p(O_GIB) + '%';
+    var kvIn = Math.min(c.kvGiB, HEADROOM_GIB);
+    var kvOut = Math.max(0, c.totalGiB - VRAM_GIB);
+    el('segKV').style.left = p(FIXED_GIB) + '%'; el('segKV').style.width = p(kvIn) + '%';
+    el('mark24').style.left = p(VRAM_GIB) + '%';
+    var over = el('segOver');
+    if (kvOut > 1e-9){
+      over.hidden = false;
+      over.style.left = p(VRAM_GIB) + '%';
+      over.style.width = p(kvOut) + '%';
+    } else { over.hidden = true; }
+    el('barCap').textContent = '整条长度代表 ' + num(scaleMax) + ' GiB（取 24 GiB 与总需求的较大者）；红色竖线是 24 GiB 上限，线右侧的浅色空白是还没用到的余量。';
+
+    el('kvGib').textContent = gib(c.kvBytes) + ' GiB';
+    el('kvBytes').textContent = bytes(c.kvBytes) + ' 字节';
+    el('totGib').textContent = num(c.totalGiB) + ' GiB';
+    if (c.kvBytes > HEADROOM_BYTES){
+      el('slack').textContent = '超出 ' + num(c.totalGiB - VRAM_GIB) + ' GiB';
+      el('slackNote').textContent = '总需求 − 24 GiB';
+    } else {
+      el('slack').textContent = '还剩 ' + num(VRAM_GIB - c.totalGiB) + ' GiB';
+      el('slackNote').textContent = '24 GiB − 总需求';
+    }
+    el('perSeq').textContent = gib(c.perSeqBytes) + ' GiB';
+    el('perTok').textContent = bytes(c.perTokenBytes) + ' 字节';
+    el('perTokNote').textContent = '65 536 元素 × ' + v.s + ' 字节';
+    el('tMax').textContent = c.tMax + ' token';
+    el('tMaxNote').textContent = c.tMaxRaw >= T_CAP
+      ? '按显存是 ' + c.tMaxRaw + '，但本模型长度上限 32 768 先到'
+      : '⌊196 608 ÷ (B×s)⌋，未触及 32 768 上限';
+
+    var box = el('verdict'), title = el('vTitle'), text = el('vText');
+    box.className = 'verdict ' + (c.exact ? 'exact' : (c.fits ? 'fits' : 'over'));
+    if (!c.fits){
+      title.textContent = '装不下：差 ' + num(c.totalGiB - VRAM_GIB) + ' GiB';
+      var advise = '在 B = ' + v.B + '、s = ' + v.s + ' 不变时，T 要降到 ' + c.tMaxRaw + ' 以内才装得下';
+      if (v.T > 0){
+        var bMax = Math.floor(CRIT / (v.T * v.s));
+        advise += '；若 T = ' + v.T + '、s = ' + v.s + ' 不变，B 要降到 ' + bMax + ' 以内';
+      }
+      text.textContent = '需要 ' + num(c.totalGiB) + ' GiB，超过 24 GiB 共 ' + num(c.totalGiB - VRAM_GIB) + ' GiB。' + advise + '。';
+    } else if (c.exact){
+      title.textContent = '恰好装满，算装得下';
+      text.textContent = '缓存正好 ' + gib(c.kvBytes) + ' GiB，加上固定的 12 GiB 正好 24 GiB，一点余量都不剩。';
+    } else {
+      title.textContent = '装得下，还剩 ' + num(VRAM_GIB - c.totalGiB) + ' GiB';
+      text.textContent = '缓存 ' + gib(c.kvBytes) + ' GiB 加上固定 12 GiB，总占用 ' + num(c.totalGiB) + ' GiB，没碰到 24 GiB 上限。';
+    }
+
+    el('delta').textContent = '在当前这组参数下：再加一条同样长的序列，多占 ' + num(c.perSeqBytes / GIB) + ' GiB；' +
+      '若把 T 翻倍，缓存变成 ' + num(c.kvGiB * 2) + ' GiB、总占用变成 ' + num(FIXED_GIB + c.kvGiB * 2) + ' GiB，固定 12 GiB 不动；' +
+      '这套 B、T、s 能容纳的每条序列长度上限是 ' + c.tMax + ' token。';
+  }
+
+  function applyPreset(kind){
+    if (kind === 'reset'){ bIn.value = 4; tIn.value = 8192; sIn.value = '2'; }
+    if (kind === 'add'){ bIn.value = Math.min(16, +bIn.value + 1); }
+    if (kind === 'double'){ tIn.value = Math.min(T_CAP, +tIn.value * 2); }
+    if (kind === 'tmax'){ tIn.value = Math.min(T_CAP, Math.floor(CRIT / (+bIn.value * +sIn.value))); }
+    if (kind === 's1'){ sIn.value = '1'; }
+    if (kind === 'worst'){ bIn.value = 16; tIn.value = 32768; sIn.value = '4'; }
+    render();
+    if (window.presentation &amp;&amp; window.presentation.commitState) window.presentation.commitState();
+  }
+
+  bIn.addEventListener('input', render);
+  tIn.addEventListener('input', render);
+  sIn.addEventListener('change', render);
+  el('pReset').addEventListener('click', function(){ applyPreset('reset'); });
+  el('pAdd').addEventListener('click', function(){ applyPreset('add'); });
+  el('pDouble').addEventListener('click', function(){ applyPreset('double'); });
+  el('pTmax').addEventListener('click', function(){ applyPreset('tmax'); });
+  el('pS1').addEventListener('click', function(){ applyPreset('s1'); });
+  el('pWorst').addEventListener('click', function(){ applyPreset('worst'); });
+
+  var init = (window.presentation &amp;&amp; window.presentation.initialState) || {};
+  if (typeof init.B === 'number') bIn.value = init.B;
+  if (typeof init.T === 'number') tIn.value = init.T;
+  if (init.s !== undefined &amp;&amp; init.s !== null) sIn.value = String(init.s);
+  render();
+
+  if (window.presentation &amp;&amp; window.presentation.registerActionHandler){
+    window.presentation.registerActionHandler(function(action){
+      if (action &amp;&amp; action.kind === 'set_parameters'){
+        var v = action.values || {};
+        if (typeof v.B === 'number') bIn.value = v.B;
+        if (typeof v.T === 'number') tIn.value = v.T;
+        if (v.s !== undefined &amp;&amp; v.s !== null) sIn.value = String(v.s);
+        render();
+      }
+      return Promise.resolve();
+    });
+  }
+
+  if (window.presentation &amp;&amp; window.presentation.registerStateReader){
+    window.presentation.registerStateReader(function(){
+      var v = read(), c = calc(v);
+      var status = !c.fits ? '装不下' : (c.exact ? '恰好装满' : '装得下');
+      return {
+        values: { B: v.B, T: v.T, s: v.s },
+        visible_step: null,
+        observation: {
+          summary: 'B=' + v.B + '、T=' + v.T + '、s=' + v.s + '：缓存 ' + gib(c.kvBytes) + ' GiB，总占用 ' +
+                   num(c.totalGiB) + ' GiB，' + status + '。',
+          state: { B: v.B, T: v.T, s: v.s, kv_gib: Math.round(c.kvGiB * 1000) / 1000,
+                   total_gib: Math.round(c.totalGiB * 1000) / 1000, status: status }
+        }
+      };
+    });
+  }
+
+  if (window.presentation &amp;&amp; window.presentation.registerStateRestorer){
+    window.presentation.registerStateRestorer(function(saved){
+      var p = (saved &amp;&amp; saved.values &amp;&amp; (saved.values.page || saved.values)) || {};
+      if (typeof p.B === 'number') bIn.value = p.B;
+      if (typeof p.T === 'number') tIn.value = p.T;
+      if (p.s !== undefined &amp;&amp; p.s !== null) sIn.value = String(p.s);
+      render();
+    });
+  }
+})();
+&lt;/script>
+
+&lt;/body>&lt;/html>"></iframe></body></html>

@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "finished_at_utc": "2026-10-21T09:49:49.489207+00:00",
+  "checks": [
+    {
+      "path": "index.html",
+      "status": 200,
+      "bytes": 5360,
+      "candidate_html_matches_without_cdn_analytics": true
+    },
+    {
+      "path": "assets/LocalPdfReader-CG_IqQ2G.js",
+      "status": 200,
+      "bytes": 2856,
+      "exact_match": true
+    },
+    {
+      "path": "assets/reader-JXL5zaL0.js",
+      "status": 200,
+      "bytes": 2364729,
+      "exact_match": true
+    },
+    {
+      "path": "assets/reader-svuv8Hj3.css",
+      "status": 200,
+      "bytes": 536765,
+      "exact_match": true
+    },
+    {
+      "path": "assets/webviewWindow-TNDVlf-z.js",
+      "status": 200,
+      "bytes": 19096,
+      "exact_match": true
+    },
+    {
+      "path": "downloads/UnderstandBookSetup.exe?v=0.3.3",
+      "status": 200,
+      "bytes": 4898568,
+      "exact_match": true
+    },
+    {
+      "path": "downloads/UnderstandBookSetup.exe",
+      "status": 200,
+      "bytes": 4898568,
+      "exact_match": true
+    }
+  ]
+}

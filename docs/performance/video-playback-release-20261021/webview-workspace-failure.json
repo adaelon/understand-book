@@ -1,0 +1,30 @@
+{
+  "kind": "WebView2",
+  "status": "failed",
+  "requests": [
+    {
+      "path": "/assets/hls-bsuTaLC4.js",
+      "at_ms": 83,
+      "method": "GET",
+      "response_ms": 6351,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces",
+      "at_ms": 84,
+      "method": "POST",
+      "response_ms": 3725,
+      "status": 503
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "at_ms": 18783,
+      "method": "GET",
+      "range": "bytes=16252928-16504341"
+    }
+  ],
+  "errors": [],
+  "model_requests": 0,
+  "failure": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('video') to be visible\u001b[22m\n",
+  "page_text": "The operation could not be completed\n\nUNDERSTAND BOOK\n\n学习工作区\n把资料变成自己的理解。\n新建工作区\nR\nreader\n我的工作区\n01\n结合课程录像、中英转写和画面索引，理解 PyTorch 张量运算，并掌握显存占用与 FLOPs 的基本核算方法。\n1 份资料 · 已归档\n打开工作区\n浏览共享预构建工作区\n\n从准备好的课程与学习路线开始。\n\n旧聊天与学习记录\n全部资料\n你的书籍、课程与阅读收藏\nVIDEO / 课程录像\nCS336 第 2 讲：PyTorch 与资源核算\n课程视频\nCS336 第 2 讲：PyTorch 与资源核算\n课程视频\nA Survey of Agent Memory in the Second Half: Towards Self-Evolving and Long-Horizon Agents\nUNDERSTAND BOOK\nA Survey of Agent Memory in the Second Half: Towards Self-Evolving and Long-Horizon Agents\n阅读资料\n深入理解ai agent\nUNDERSTAND BOOK\n深入理解ai agent\n阅读资料\n深入理解 AI Infra：量化分析与系统设计 · 版本 1\nUNDERSTAND BOOK\n深入理解 AI Infra：量化分析与系统设计 · 版本 1\n阅读资料\n深入理解 AI Infra：量化分析与系统设计 · 版本 2（默认）\nUNDERSTAND BOOK\n深入理解 AI Infra：量化分析与系统设计 · 版本 2（默认）\n阅读资料\nKimi K3: Open Frontier Intelligence\nUNDERSTAND BOOK\nKimi K3: Open Frontier Intelligence\n阅读资料\n这一刀怎么补\nUNDERSTAND BOOK\n这一刀怎么补\n阅读资料\nmastering rust\n阅读资料\n你认为量化的本质是什么？\nUNDERSTAND BOOK\n你认为量化的本质是什么？\n阅读资料\n让每一次理解都有出处\nUNDERSTAND BOOK\n让每一次理解都有出处\n阅读资料\nsample book\nUNDERSTAND BOOK\nsample book\n阅读资料\nUnderstanding Transformer from the Perspective of Associative Memory\nUNDERSTAND BOOK\nUnderstanding Transformer from the Perspective of Associative Memory\n阅读资料"
+}

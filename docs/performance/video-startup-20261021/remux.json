@@ -1,0 +1,141 @@
+{
+  "command": [
+    "ffmpeg",
+    "-nostdin",
+    "-hide_banner",
+    "-loglevel",
+    "warning",
+    "-n",
+    "-copyts",
+    "-i",
+    "/opt/understand-book/data/multi-reader-to-tb-20261012/library/published/19ac880d-a788-43f4-9725-6c56f4980189/01a15c89-da55-7d71-8329-a0ba9f25c86b/media/original.mp4",
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0",
+    "-c",
+    "copy",
+    "-avoid_negative_ts",
+    "disabled",
+    "-movflags",
+    "+frag_keyframe+delay_moov+default_base_moof+global_sidx",
+    "/opt/understand-book/acceptance/video-startup-20261021/playback-fragmented.mp4"
+  ],
+  "elapsed_seconds": 2.543,
+  "stderr": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x55d07b1845c0] stream 0, timescale not set\n",
+  "size": 223103803,
+  "first_boxes": [
+    {
+      "type": "ftyp",
+      "offset": 0,
+      "bytes": 28
+    },
+    {
+      "type": "moov",
+      "offset": 28,
+      "bytes": 1608
+    },
+    {
+      "type": "sidx",
+      "offset": 1636,
+      "bytes": 11188
+    },
+    {
+      "type": "sidx",
+      "offset": 12824,
+      "bytes": 11188
+    },
+    {
+      "type": "moof",
+      "offset": 24012,
+      "bytes": 2828
+    },
+    {
+      "type": "mdat",
+      "offset": 26840,
+      "bytes": 542813
+    },
+    {
+      "type": "moof",
+      "offset": 569653,
+      "bytes": 3700
+    },
+    {
+      "type": "mdat",
+      "offset": 573353,
+      "bytes": 424191
+    },
+    {
+      "type": "moof",
+      "offset": 997544,
+      "bytes": 2840
+    },
+    {
+      "type": "mdat",
+      "offset": 1000384,
+      "bytes": 264339
+    }
+  ],
+  "last_boxes": [
+    {
+      "type": "moof",
+      "offset": 223032336,
+      "bytes": 660
+    },
+    {
+      "type": "mdat",
+      "offset": 223032996,
+      "bytes": 35433
+    },
+    {
+      "type": "mfra",
+      "offset": 223068429,
+      "bytes": 35374
+    }
+  ],
+  "fragment_count": 929,
+  "metadata": {
+    "programs": [],
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "time_base": "1/16000",
+        "start_time": "0.000000",
+        "duration": "4641.333312"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "time_base": "1/44100",
+        "start_time": "0.000000",
+        "duration": "4641.376145"
+      }
+    ],
+    "format": {
+      "start_time": "0.000000",
+      "duration": "4641.376145",
+      "size": "223103803"
+    }
+  },
+  "packet_comparison": {
+    "v:0": {
+      "source_packets": 139240,
+      "derivative_packets": 139240,
+      "identical_packet_timing_size_flags": true,
+      "first_mismatch": null
+    },
+    "a:0": {
+      "source_packets": 199887,
+      "derivative_packets": 199887,
+      "identical_packet_timing_size_flags": false,
+      "first_mismatch": {
+        "index": 0,
+        "before": "pts=0|dts=0|duration=1024|size=8|flags=K_",
+        "after": "pts=0|dts=0|duration=N/A|size=8|flags=K_"
+      }
+    }
+  }
+}

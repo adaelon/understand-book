@@ -1,0 +1,342 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1792658991339127100-14",
+    "revision": 1
+  },
+  "candidate_id": "candidate-1792658991339130900-15",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-10-16T04:00:00Z_0"
+  },
+  "created_by_turn_id": "turn_1a986d9fd8e2f279",
+  "based_on": null,
+  "content": {
+    "action_contract": [
+      {
+        "kind": "set_parameters",
+        "parameters": [
+          "transfer_count"
+        ]
+      },
+      {
+        "kind": "invoke",
+        "action_id": "advance",
+        "label": "前进一枚"
+      }
+    ],
+    "method_refs": [],
+    "method_observations": {
+      "catalog": {
+        "methods": [
+          {
+            "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "discrete-update",
+            "name": "追踪一次离散更新",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+            "revision": 3,
+            "root": "skills/presentation/methods/discrete-update/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "object-transform",
+            "name": "保持身份的对象变换",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+            "revision": 2,
+            "root": "skills/presentation/methods/object-transform/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+            "revision": 3,
+            "root": "skills/presentation/methods/compare-one-factor/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/compare-one-factor/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "part-whole",
+            "name": "整体与部分保持对应",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+            "revision": 2,
+            "root": "skills/presentation/methods/part-whole/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "process-reveal",
+            "name": "沿关系逐步展开过程",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+            "revision": 2,
+            "root": "skills/presentation/methods/process-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "evidence-chain",
+            "name": "从证据走到有边界的结论",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+            "revision": 2,
+            "root": "skills/presentation/methods/evidence-chain/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "counterexamples.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先看见数量关系，再核对参数",
+            "needs": [
+              "state"
+            ],
+            "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+            "revision": 3,
+            "root": "skills/presentation/methods/chart-reveal/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先建立尺度，再揭示数据",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/chart-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "scale-zoom",
+            "name": "保留定位的尺度缩放",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+            "revision": 2,
+            "root": "skills/presentation/methods/scale-zoom/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md",
+              "runtime.js",
+              "adaptations/spring.html",
+              "adaptations/spring-author.json"
+            ],
+            "id": "spatial-linked-views",
+            "name": "三维结构与图解共用一个模型",
+            "needs": [
+              "three",
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+            "revision": 1,
+            "root": "skills/presentation/methods/spatial-linked-views/v1",
+            "status": "adopted"
+          }
+        ],
+        "revision": 6
+      },
+      "reads": [
+        {
+          "tool_call_id": "call_00_bASumgkIvayqAiJCQKHO5983",
+          "method_id": "discrete-update",
+          "revision": 3,
+          "file": "card.md",
+          "offset": 0,
+          "characters": 1187,
+          "end_offset": 1187,
+          "total_characters": 1187
+        },
+        {
+          "tool_call_id": "call_01_RkCf8EoPUPSnUWI5cgNo2720",
+          "method_id": "part-whole",
+          "revision": 2,
+          "file": "card.md",
+          "offset": 0,
+          "characters": 829,
+          "end_offset": 829,
+          "total_characters": 829
+        },
+        {
+          "tool_call_id": "call_00_pSS4YaahXJ8SzVAbK9gf8601",
+          "method_id": "discrete-update",
+          "revision": 3,
+          "file": "example/index.html",
+          "offset": 0,
+          "characters": 7000,
+          "end_offset": 7000,
+          "total_characters": 25860
+        },
+        {
+          "tool_call_id": "call_01_uzHw5WCHnaKrwQqwLZFg2728",
+          "method_id": "object-transform",
+          "revision": 2,
+          "file": "card.md",
+          "offset": 0,
+          "characters": 826,
+          "end_offset": 826,
+          "total_characters": 826
+        },
+        {
+          "tool_call_id": "call_00_TR0tz7e3ZxHY4B3pVM0q4876",
+          "method_id": "discrete-update",
+          "revision": 3,
+          "file": "example/README.md",
+          "offset": 0,
+          "characters": 1646,
+          "end_offset": 1646,
+          "total_characters": 1646
+        }
+      ]
+    },
+    "animation_assets": {},
+    "title": "从两个盒子理解转移和总量",
+    "content_files": {
+      "index.html": "<!doctype html>\n<html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>从两个盒子理解转移和总量</title>\n<style>\n:root{color-scheme:light;--canvas:#f2f0e7;--ink:#20333a;--surface:#fffdf6;--line:#d7d2c0;--accent:#1c7b72;--muted:#5d7175}\n*{box-sizing:border-box}\nhtml,body{margin:0;padding:0}\nbody{background:var(--canvas);color:var(--ink);font:16px/1.75 \"Segoe UI\",\"Microsoft YaHei\",system-ui,sans-serif}\nmain{max-width:900px;margin:0 auto;padding:26px 16px 46px}\nh1{font-size:clamp(23px,5vw,33px);line-height:1.35;margin:0 0 8px;font-weight:650}\nh2{font-size:clamp(17px,3.2vw,21px);margin:26px 0 8px;font-weight:600}\np{margin:9px 0}\n.lead{font-size:16px;color:#3d5654}\n.rule{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 15px 14px;margin:14px 0}\n.rule h2{margin:6px 0 2px}\n.rule ul{margin:2px 0 0;padding-left:20px;font-size:14px}\n.rule li{margin:3px 0}\nb{color:var(--accent)}\n.stage{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 10px 2px;margin:14px auto 0;max-width:560px;position:relative}\n#sceneWrap{max-width:480px;margin:0 auto}\n#sceneWrap svg{display:block;width:100%;height:auto}\n.boxtitle{font:600 18px \"Segoe UI\",\"Microsoft YaHei\",sans-serif;fill:#3d5654;text-anchor:middle}\n.boxcount{font:600 18px \"Segoe UI\",\"Microsoft YaHei\",sans-serif;fill:#20333a;text-anchor:middle;font-variant-numeric:tabular-nums}\n.totalnote{font:600 17px \"Segoe UI\",\"Microsoft YaHei\",sans-serif;fill:#1c7b72;text-anchor:middle;font-variant-numeric:tabular-nums}\n.chipnum{font:700 19px \"Segoe UI\",sans-serif;text-anchor:middle;dominant-baseline:central;fill:#20333a;font-variant-numeric:tabular-nums}\n.chipnum.on{fill:#ffffff}\n.status{margin:0 0 10px;font-size:14px;color:#3d5654;min-height:2.4em}\n.readout{margin-top:12px}\n.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}\n.metric{background:#fbf9f0;border:1px solid var(--line);border-radius:10px;padding:5px 10px 7px}\n.mlabel{display:block;font-size:12px;color:var(--muted);line-height:1.5}\n.metric .val{font:650 21px/1.35 \"Segoe UI\",sans-serif;font-variant-numeric:tabular-nums}\n.metric .unit{font-size:11px;color:var(--muted);margin-left:2px}\n.metric.hot{border-color:var(--accent);background:#eaf5f0}\n.balance{margin:9px 0 0;font-size:14px;background:#f5f3e8;border-left:3px solid var(--accent);padding:8px 10px;border-radius:0 8px 8px 0;font-variant-numeric:tabular-nums}\n.balance.hot{background:#e7f3ee}\n.controls{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}\nbutton{font:inherit;min-height:44px;min-width:44px;padding:8px 15px;border-radius:10px;border:1px solid var(--line);background:#fcfaf1;color:var(--ink);cursor:pointer}\n#advance{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}\nbutton:disabled{opacity:.42;cursor:default}\nbutton:focus-visible,input:focus-visible{outline:3px solid #c98f2e;outline-offset:3px}\n.slider-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 0;font-size:14px}\n.slider-row label{white-space:nowrap}\n.slider-row input[type=range]{flex:1 1 150px;min-height:44px;min-width:44px;margin:0;accent-color:var(--accent)}\n.slider-row output{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;min-width:1.4em;text-align:right}\n.tablewrap{overflow-x:auto;margin-top:6px}\ntable{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}\ncaption{caption-side:bottom;text-align:left;font-size:12px;color:var(--muted);padding-top:6px;line-height:1.6}\nth,td{padding:5px 9px;border-bottom:1px solid #e6e2d2;text-align:right}\nth:first-child,td:first-child{text-align:left}\nthead th{font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line)}\ntr.now{background:#e7f3ee;font-weight:700}\ndetails{margin-top:16px;font-size:13px;color:var(--muted)}\nsummary{cursor:pointer;min-height:44px;padding:8px 0}\n</style></head>\n<body>\n<main>\n<h1>从两个盒子理解转移和总量</h1>\n<p class=\"lead\">左盒一开始有 8 枚棋子，右盒有 2 枚。每次把左盒的一枚棋子搬到右盒：两盒里各有多少枚会变，两盒加起来始终是 10 枚。</p>\n\n<section class=\"rule\" aria-labelledby=\"ruleTitle\">\n  <h2 id=\"ruleTitle\">看懂规则（不点按钮也能读）</h2>\n  <ul>\n    <li>棋子编了 1 到 10 号，只是为了让你盯住<b>同一枚</b>棋子；棋子本身完全一样。</li>\n    <li>左盒放 1–8 号，共 <b>8 枚</b>；右盒放 9、10 号，共 <b>2 枚</b>。合起来：<b>8 + 2 = 10</b>。</li>\n    <li>搬动 k 次后：左盒 <b>8 − k</b> 枚，右盒 <b>2 + k</b> 枚，总数仍是 <b>10</b> 枚。k 只统计已经落进右盒的棋子。</li>\n    <li>按一次按钮只搬一枚。它离开左盒后先到中间的「途中」，落进右盒才算进右盒的枚数。</li>\n  </ul>\n</section>\n\n<section class=\"stage\" id=\"stage\" aria-label=\"两个盒子的互动演示\">\n  <div id=\"sceneWrap\"></div>\n</section>\n\n<section class=\"readout\" id=\"readout\" aria-label=\"当前读数\">\n  <p class=\"status\" id=\"status\" role=\"status\">还没有搬动。按「前进一枚」开始搬第一枚。</p>\n  <div class=\"metrics\">\n    <div class=\"metric\"><span class=\"mlabel\">已转移 k</span><span class=\"val\" id=\"mK\">0</span><span class=\"unit\">次</span></div>\n    <div class=\"metric\"><span class=\"mlabel\">左盒</span><span class=\"val\" id=\"mLeft\">8</span><span class=\"unit\">枚</span></div>\n    <div class=\"metric\" id=\"mTransitBox\"><span class=\"mlabel\">途中</span><span class=\"val\" id=\"mTransit\">0</span><span class=\"unit\">枚</span></div>\n    <div class=\"metric\"><span class=\"mlabel\">右盒</span><span class=\"val\" id=\"mRight\">2</span><span class=\"unit\">枚</span></div>\n    <div class=\"metric\"><span class=\"mlabel\">总数</span><span class=\"val\" id=\"mTotal\">10</span><span class=\"unit\">枚</span></div>\n  </div>\n  <p class=\"balance\" id=\"balance\">左盒 8 枚 ＋ 右盒 2 枚 ＝ 10 枚</p>\n</section>\n\n<div class=\"controls\">\n  <button id=\"advance\" data-presentation-action=\"advance\">前进一枚</button>\n  <button id=\"back\">后退一枚</button>\n  <button id=\"reset\">重置</button>\n  <button id=\"pause\" disabled>暂停</button>\n</div>\n\n<div class=\"slider-row\">\n  <label for=\"kRange\">直接跳到 k =</label>\n  <input type=\"range\" id=\"kRange\" min=\"0\" max=\"8\" step=\"1\" value=\"0\" data-presentation-parameter=\"transfer_count\">\n  <output id=\"kRangeOut\" for=\"kRange\">0</output>\n</div>\n\n<h2>跟着看一次搬动</h2>\n<p>在初始状态按一下「前进一枚」。被搬的那枚棋子会高亮，从左边移到中间：这段时间它不在任何一个盒子里，只出现在「途中」一栏。等它落进右盒，k 才从 0 变成 1，读数同时变成左盒 7、右盒 3、合计 10。</p>\n<p>按「后退一枚」，同一枚棋子从右盒原路回到左盒；按「重置」回到一开始的 8 加 2。想在途中停下来看，就按「暂停」。</p>\n\n<h2>为什么总数不会增加</h2>\n<p>任何时刻，每一枚棋子恰好待在一个地方：左盒、途中、右盒。搬动只改变它在哪个地方，不会凭空多出棋子，也不会让棋子消失，所以这三个数相加总是 10。</p>\n<p>k 记录的是已经完成多少次搬动，它给这些变化编号，不参与计算总量。搬动一次，左盒少一枚、右盒多一枚；棋子落进右盒的那一刻，k 才加一。</p>\n<p>静止时用公式写：左盒 8 − k 枚，右盒 2 + k 枚。两式相加 (8 − k) + (2 + k) = 10，k 正好抵消，所以无论 k 是 0 还是 8，合计都是 10 枚。取 k = 3 核对：左盒 5 枚、右盒 5 枚、合计 10 枚。</p>\n\n<h2>容易看错的地方</h2>\n<p>棋子离开左盒、还没落进右盒的那一小段时间，左盒少了一枚，右盒还没多出来。这时只盯着两个盒子，会以为总数变成了 9。其实少掉的那一枚正在途中，把它加回来正好是 10。页面把这一枚单独放在「途中」一栏，就是为了让它任何时刻都只被数一次。</p>\n\n<h2>核对表与边界</h2>\n<div class=\"tablewrap\">\n<table id=\"table\">\n  <thead><tr><th>k（已转移）</th><th>左盒 8 − k</th><th>右盒 2 + k</th><th>总数</th></tr></thead>\n  <tbody></tbody>\n  <caption>表格列出静止状态（没有棋子在途中）的读数。左盒只有 8 枚，所以 k 最大是 8；到 k = 8 时左盒为空，「前进一枚」停用，右盒 10 枚，合计仍是 10。</caption>\n</table>\n</div>\n\n<details>\n  <summary>这页做了哪些简化</summary>\n  <p>棋子被画成带编号的圆点，编号只用来追踪同一枚棋子，不代表棋子有区别。搬动动画只是把「换位置」这个动作画出来，途中停留的时间可长可短，不影响枚数。</p>\n</details>\n</main>\n\n<script>\n\"use strict\";\n(function () {\n  var MAX_K = 8;\n  var BOX = { left: { x: 8, y: 24, w: 204, h: 176 }, right: { x: 268, y: 24, w: 204, h: 176 } };\n  var state = { k: 0, p: 0, dir: \"forward\" };\n  var playing = false, rafId = 0, rafStart = 0, DURATION = 950, resolver = null;\n\n  function byId(id) { return document.getElementById(id); }\n  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }\n  function easeInOut(u) { return u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }\n  function now() { return (typeof performance !== \"undefined\" && performance.now) ? performance.now() : Date.now(); }\n\n  function slotLeft(chip) { var i = chip - 1; return { x: 38 + (i % 4) * 46, y: 56 + Math.floor(i / 4) * 52 }; }\n  function slotRight(chip) { var idx = chip >= 9 ? chip - 9 : chip + 1; return { x: 298 + (idx % 4) * 46, y: 56 + Math.floor(idx / 4) * 52 }; }\n\n  function compute() {\n    var flying = state.p > 0;\n    var dir = state.dir;\n    var moving = flying ? (dir === \"forward\" ? state.k + 1 : state.k) : null;\n    var leftChips = [], rightChips = [], i;\n    for (i = 1; i <= 8; i++) { if (i > state.k) { leftChips.push(i); } }\n    rightChips.push(9);\n    rightChips.push(10);\n    for (i = 1; i <= state.k; i++) { rightChips.push(i); }\n    if (flying) {\n      if (dir === \"forward\") {\n        leftChips = leftChips.filter(function (c) { return c !== moving; });\n      } else {\n        rightChips = rightChips.filter(function (c) { return c !== moving; });\n      }\n    }\n    var left = leftChips.length, right = rightChips.length, transit = flying ? 1 : 0;\n    return {\n      flying: flying, dir: dir, moving: moving,\n      leftChips: leftChips, rightChips: rightChips,\n      left: left, right: right, transit: transit, total: left + right + transit\n    };\n  }\n\n  function chipMarkup(chip, pos, hot) {\n    var fill = hot ? \"#1c7b72\" : \"#fffdf6\";\n    var stroke = hot ? \"#0f5b54\" : \"#8fa8a1\";\n    var cls = hot ? \"chipnum on\" : \"chipnum\";\n    return '<g><circle cx=\"' + pos.x + '\" cy=\"' + pos.y + '\" r=\"21\" fill=\"' + fill + '\" stroke=\"' + stroke + '\" stroke-width=\"2\"/>' +\n      '<text x=\"' + pos.x + '\" y=\"' + pos.y + '\" class=\"' + cls + '\">' + chip + '</text></g>';\n  }\n\n  function boxMarkup(box, title, count) {\n    var cx = box.x + box.w / 2;\n    return '<rect x=\"' + box.x + '\" y=\"' + box.y + '\" width=\"' + box.w + '\" height=\"' + box.h + '\" rx=\"16\" fill=\"#f8f6ec\" stroke=\"#c7c2ae\" stroke-width=\"2\" stroke-dasharray=\"9 7\"/>' +\n      '<text x=\"' + cx + '\" y=\"16\" class=\"boxtitle\">' + title + '</text>' +\n      '<text x=\"' + cx + '\" y=\"224\" class=\"boxcount\">' + count + ' 枚</text>';\n  }\n\n  function arcPath(a, b) {\n    var mx = (a.x + b.x) / 2, my = Math.min(a.y, b.y) - 34;\n    return 'M' + a.x + ',' + a.y + ' Q' + mx + ',' + my + ' ' + b.x + ',' + b.y;\n  }\n  function pointOnQuad(a, b, u) {\n    var mx = (a.x + b.x) / 2, my = Math.min(a.y, b.y) - 34;\n    var mu = 1 - u;\n    return {\n      x: mu * mu * a.x + 2 * mu * u * mx + u * u * b.x,\n      y: mu * mu * a.y + 2 * mu * u * my + u * u * b.y\n    };\n  }\n\n  function render() {\n    var c = compute();\n    var svg = ['<svg viewBox=\"0 0 480 240\" role=\"img\" aria-label=\"左盒与右盒中的棋子分布\">'];\n    svg.push(boxMarkup(BOX.left, \"左盒\", c.left));\n    svg.push(boxMarkup(BOX.right, \"右盒\", c.right));\n\n    var from = null, to = null;\n    if (c.flying) {\n      from = c.dir === \"forward\" ? slotLeft(c.moving) : slotRight(c.moving);\n      to = c.dir === \"forward\" ? slotRight(c.moving) : slotLeft(c.moving);\n      svg.push('<path d=\"' + arcPath(from, to) + '\" fill=\"none\" stroke=\"#9dbcb2\" stroke-width=\"2.5\" stroke-dasharray=\"8 7\"/>');\n    }\n    c.leftChips.forEach(function (ch) { svg.push(chipMarkup(ch, slotLeft(ch), false)); });\n    c.rightChips.forEach(function (ch) { svg.push(chipMarkup(ch, slotRight(ch), false)); });\n    if (c.flying) {\n      svg.push(chipMarkup(c.moving, pointOnQuad(from, to, easeInOut(state.p)), true));\n    }\n    svg.push('</svg>');\n    byId(\"sceneWrap\").innerHTML = svg.join(\"\");\n\n    byId(\"mK\").textContent = String(state.k);\n    byId(\"mLeft\").textContent = String(c.left);\n    byId(\"mTransit\").textContent = String(c.transit);\n    byId(\"mRight\").textContent = String(c.right);\n    byId(\"mTotal\").textContent = String(c.total);\n    byId(\"mTransitBox\").classList.toggle(\"hot\", c.flying);\n\n    var bal;\n    if (c.flying) {\n      bal = \"左盒 \" + c.left + \" 枚 ＋ 途中 \" + c.transit + \" 枚 ＋ 右盒 \" + c.right + \" 枚 ＝ \" + c.total + \" 枚\";\n      bal += c.dir === \"forward\"\n        ? \"（k 仍是 \" + state.k + \"：第 \" + c.moving + \" 号棋子还没落进右盒）\"\n        : \"（k 仍是 \" + state.k + \"：第 \" + c.moving + \" 号棋子还没落回左盒）\";\n    } else {\n      bal = \"左盒 \" + c.left + \" 枚 ＋ 右盒 \" + c.right + \" 枚 ＝ \" + c.total + \" 枚\";\n      if (state.k > 0) { bal += \"（左盒 8 − \" + state.k + \" = \" + c.left + \"，右盒 2 + \" + state.k + \" = \" + c.right + \"）\"; }\n    }\n    var balanceEl = byId(\"balance\");\n    balanceEl.textContent = bal;\n    balanceEl.classList.toggle(\"hot\", c.flying);\n\n    var statusEl = byId(\"status\");\n    if (c.flying) {\n      statusEl.textContent = c.dir === \"forward\"\n        ? \"第 \" + c.moving + \" 号棋子正在从左边搬到右边：它在途中，暂时不算进左盒，也不算进右盒。\"\n        : \"第 \" + c.moving + \" 号棋子正在从右边搬回左边：它在途中，同样只算一次。\";\n    } else if (state.k === 0) {\n      statusEl.textContent = \"还没有搬动。按「前进一枚」开始搬第一枚。\";\n    } else if (state.k === MAX_K) {\n      statusEl.textContent = \"左盒已经空了，没有可以再搬的棋子。\";\n    } else {\n      statusEl.textContent = \"已经完成 \" + state.k + \" 次搬动：棋子只是换了位置，总数没有变。\";\n    }\n\n    byId(\"kRange\").value = String(state.k);\n    byId(\"kRangeOut\").textContent = String(state.k);\n    byId(\"advance\").disabled = c.flying || state.k >= MAX_K;\n    byId(\"back\").disabled = c.flying || state.k <= 0;\n    byId(\"reset\").disabled = state.k === 0 && !c.flying;\n    byId(\"pause\").disabled = !(c.flying || playing);\n    byId(\"pause\").textContent = (!playing && c.flying) ? \"继续\" : \"暂停\";\n\n    var rows = byId(\"table\").tBodies[0].rows;\n    for (var r = 0; r < rows.length; r++) {\n      rows[r].classList.toggle(\"now\", Number(rows[r].getAttribute(\"data-k\")) === state.k);\n    }\n  }\n\n  function commit() {\n    try {\n      if (window.presentation && typeof window.presentation.commitState === \"function\") { window.presentation.commitState(); }\n    } catch (e) {}\n  }\n\n  function finish() {\n    if (resolver) { var r = resolver; resolver = null; r(); }\n  }\n\n  function land() {\n    playing = false;\n    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n    if (state.dir === \"forward\") { state.k = Math.min(MAX_K, state.k + 1); }\n    else { state.k = Math.max(0, state.k - 1); }\n    state.p = 0;\n    render();\n    commit();\n    finish();\n  }\n\n  function tick() {\n    if (!playing) { finish(); return; }\n    var u = (now() - rafStart) / DURATION;\n    if (u >= 1) { land(); return; }\n    state.p = clamp(u, 0.0001, 0.999);\n    render();\n    rafId = requestAnimationFrame(tick);\n  }\n\n  function animateTo(dir) {\n    if (playing || state.p > 0) { return Promise.resolve(); }\n    if (dir === \"forward\" && state.k >= MAX_K) { return Promise.resolve(); }\n    if (dir === \"backward\" && state.k <= 0) { return Promise.resolve(); }\n    state.dir = dir === \"backward\" ? \"backward\" : \"forward\";\n    state.p = 0.0001;\n    playing = true;\n    rafStart = now();\n    render();\n    return new Promise(function (resolve) {\n      resolver = resolve;\n      rafId = requestAnimationFrame(tick);\n    });\n  }\n\n  function togglePause() {\n    if (playing) {\n      playing = false;\n      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n      render();\n      commit();\n      finish();\n    } else if (state.p > 0) {\n      playing = true;\n      rafStart = now() - state.p * DURATION;\n      render();\n      rafId = requestAnimationFrame(tick);\n    }\n  }\n\n  function resetAll() {\n    playing = false;\n    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n    state.k = 0; state.p = 0; state.dir = \"forward\";\n    render();\n    commit();\n    finish();\n  }\n\n  function applyK(value) {\n    var k = Number(value);\n    if (!isFinite(k)) { return; }\n    playing = false;\n    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n    state.k = clamp(Math.round(k), 0, MAX_K);\n    state.p = 0;\n    state.dir = \"forward\";\n    render();\n    commit();\n    finish();\n  }\n\n  function buildTable() {\n    var body = byId(\"table\").tBodies[0];\n    var html = [];\n    for (var k = 0; k <= MAX_K; k++) {\n      var now = k === state.k ? ' class=\"now\"' : '';\n      html.push('<tr data-k=\"' + k + '\"' + now + '><td>' + k + '</td><td>' + (8 - k) + '</td><td>' + (2 + k) + '</td><td>10</td></tr>');\n    }\n    body.innerHTML = html.join(\"\");\n  }\n\n  function boot() {\n    var initial = {};\n    try { initial = (window.presentation && window.presentation.initialState) || {}; } catch (e) { initial = {}; }\n    buildTable();\n    byId(\"advance\").addEventListener(\"click\", function () { animateTo(\"forward\"); });\n    byId(\"back\").addEventListener(\"click\", function () { animateTo(\"backward\"); });\n    byId(\"reset\").addEventListener(\"click\", resetAll);\n    byId(\"pause\").addEventListener(\"click\", togglePause);\n    byId(\"kRange\").addEventListener(\"input\", function (ev) { applyK(ev.target.value); });\n\n    document.addEventListener(\"keydown\", function (ev) {\n      if (ev.key === \"ArrowRight\") { animateTo(\"forward\"); }\n      else if (ev.key === \"ArrowLeft\") { animateTo(\"backward\"); }\n    });\n\n    window.presentationScene = {\n      seek: function (target) {\n        var t = target || {};\n        playing = false;\n        if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n        var k = Number(t.semantic_state);\n        if (isFinite(k)) { state.k = clamp(Math.round(k), 0, MAX_K); }\n        var p = Number(t.transition_progress);\n        state.p = isFinite(p) ? clamp(p, 0, 0.999) : 0;\n        if (state.p > 0 && state.dir === \"forward\" && state.k >= MAX_K) { state.p = 0; }\n        if (state.p > 0 && state.dir === \"backward\" && state.k <= 0) { state.p = 0; }\n        render();\n        return Promise.resolve({ semantic_state: state.k, transition_progress: state.p, playing: false });\n      },\n      snapshot: function () {\n        return { semantic_state: state.k, transition_progress: state.p, playing: playing };\n      }\n    };\n\n    if (window.presentation && typeof window.presentation.registerStateReader === \"function\") {\n      window.presentation.registerStateReader(function () {\n        var c = compute();\n        var name = c.flying ? c.moving : null;\n        var summary = c.flying\n          ? \"第 \" + name + \" 号棋子在途中：左盒 \" + c.left + \" 枚，途中 1 枚，右盒 \" + c.right + \" 枚，合计 \" + c.total + \" 枚\"\n          : \"k = \" + state.k + \"：左盒 \" + c.left + \" 枚，右盒 \" + c.right + \" 枚，合计 \" + c.total + \" 枚\";\n        return {\n          values: {\n            transfer_count: state.k,\n            transition_progress: state.p,\n            pending_direction: state.dir\n          },\n          visible_step: c.flying ? (\"k=\" + state.k + \"，第 \" + name + \" 号棋子在途中\") : (\"k=\" + state.k + \"，静止\"),\n          observation: {\n            summary: summary,\n            state: {\n              transfer_count: state.k,\n              left_box: c.left,\n              in_transit: c.transit,\n              right_box: c.right,\n              total: c.total,\n              phase: c.flying ? \"in_transit\" : \"settled\"\n            }\n          }\n        };\n      });\n    }\n\n    if (window.presentation && typeof window.presentation.registerStateRestorer === \"function\") {\n      window.presentation.registerStateRestorer(function (saved) {\n        try {\n          var v = (saved && saved.values && saved.values.page) || (saved && saved.values) || {};\n          playing = false;\n          if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }\n          var k = Number(v.transfer_count);\n          if (isFinite(k)) { state.k = clamp(Math.round(k), 0, MAX_K); }\n          state.dir = v.pending_direction === \"backward\" ? \"backward\" : \"forward\";\n          var p = Number(v.transition_progress);\n          state.p = isFinite(p) ? clamp(p, 0, 0.999) : 0;\n          if (state.p > 0 && state.dir === \"forward\" && state.k >= MAX_K) { state.p = 0; }\n          if (state.p > 0 && state.dir === \"backward\" && state.k <= 0) { state.p = 0; }\n          render();\n        } catch (e) {}\n      });\n    }\n\n    if (window.presentation && typeof window.presentation.registerActionHandler === \"function\") {\n      window.presentation.registerActionHandler(function (action) {\n        if (!action) { return; }\n        if (action.kind === \"invoke\") {\n          if (action.action_id === \"advance\") { return animateTo(\"forward\"); }\n          if (action.action_id === \"backward\") { return animateTo(\"backward\"); }\n          if (action.action_id === \"reset\") { resetAll(); return; }\n          return;\n        }\n        if (action.kind === \"set_parameters\") {\n          var vals = action.values || {};\n          if (Object.prototype.hasOwnProperty.call(vals, \"transfer_count\")) { applyK(vals.transfer_count); }\n        }\n      });\n    }\n\n    if (initial && isFinite(Number(initial.transfer_count))) {\n      state.k = clamp(Math.round(Number(initial.transfer_count)), 0, MAX_K);\n    }\n    if (initial && isFinite(Number(initial.transition_progress))) {\n      state.p = clamp(Number(initial.transition_progress), 0, 1);\n    }\n    if (state.p >= 1) { state.p = 0; }\n    render();\n  }\n\n  if (document.readyState === \"loading\") {\n    document.addEventListener(\"DOMContentLoaded\", boot);\n  } else {\n    boot();\n  }\n})();\n</script>\n</body></html>"
+    },
+    "entrypoint": "index.html",
+    "readable_content": "页面标题：从两个盒子理解转移和总量。\n\n首段说明：左盒一开始有 8 枚棋子，右盒有 2 枚。每次把左盒的一枚棋子搬到右盒，两盒各有多少枚会变，两盒加起来始终是 10 枚。\n\n规则区（不需要操作即可读）：棋子编号 1 到 10 只用于盯住同一枚棋子，棋子本身完全一样；左盒放 1–8 号共 8 枚，右盒放 9、10 号共 2 枚，合计 8 + 2 = 10；搬动 k 次后左盒 8 − k 枚、右盒 2 + k 枚、总数仍是 10 枚；k 只统计已经落到右盒的棋子；按一次按钮只有一枚棋子改变位置，它离开左盒后先进入「途中」，落进右盒才被算进右盒。\n\n互动图示：两个虚线盒子并排，左盒内是 1–8 号棋子，右盒内是 9、10 号棋子。图示下方实时显示左盒枚数与右盒枚数，中间显示「两盒合计 10 枚」。\n\n读数区（五个数字，全部由同一个状态算出）：「已转移 k」（次）、「左盒」（枚）、「途中」（枚）、「右盒」（枚）、「总数」（枚）。其下一行算式：静止时写作「左盒 7 枚 ＋ 右盒 3 枚 ＝ 10 枚」，飞行时写作「左盒 7 枚 ＋ 途中 1 枚 ＋ 右盒 2 枚 ＝ 10 枚」，并注明 k 保持不变的原因。\n\n状态文字：初始为「左盒 8 枚，右盒 2 枚，两盒合计 10 枚」；搬动中为「第 1 号棋子正在从左边搬到右边：它在途中，暂时不算进左盒，也不算进右盒」；静止时给出「已完成 k 次搬动」及左右盒算式；k = 8 时说明左盒已空、没有可搬的棋子。\n\n控件：「前进一枚」（左盒为空或棋子飞行中时停用）、「后退一枚」（k = 0 或飞行中时停用，同一枚棋子原路返回）、「重置」（回到 8 加 2）、「暂停 / 继续」（飞行中可停在途中观察）；另有「直接跳到 k = 」滑块（0 到 8），用于直接查看某个 k 下的读数。\n\n核对表：k 从 0 到 8 的九行，列出左盒 8 − k、右盒 2 + k、总数 10，当前 k 所在行高亮；表注说明表格只描述没有棋子在途中的静止状态。\n\n解释区三段：为何总数不会增加（每一枚棋子任何时刻恰好在左盒、途中、右盒之一，搬动只改变位置；公式 (8 − k) + (2 + k) = 10 中 k 相消，取 k = 3 得 5 枚、5 枚、合计 10）；容易看错的地方（棋子离开左盒还未落进右盒时，只看两个盒子会像少了 1 枚，那 1 枚在「途中」一栏，因此任何时刻都只被数一次）；边界（最多转移 8 枚，k = 8 时左盒为空、按钮停用、右盒 10 枚）。",
+    "source_bindings": [],
+    "assumptions": [],
+    "state_contract": {
+      "pending_direction": "正在进行的搬动方向，取值为 forward（左到右）或 backward（右到左）；progress 为 0 时无意义",
+      "transfer_count": "已完成的搬动次数 k，整数 0 到 8；只在棋子落到目标盒后增加或减少",
+      "transition_progress": "当前这一次搬动的动画进度，0 到 1 之间的小数；0 表示没有棋子在途中"
+    },
+    "initial_state": {
+      "pending_direction": "forward",
+      "transfer_count": 0,
+      "transition_progress": 0
+    }
+  }
+}

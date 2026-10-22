@@ -1,0 +1,48 @@
+{
+  "activity": "coach-first-20261022",
+  "activity_limit_cny": "8",
+  "scope": {
+    "arm": "D1",
+    "pages": 2,
+    "fresh_activity": true,
+    "resume": false,
+    "pilot": false
+  },
+  "current_batch": {
+    "path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\runs",
+    "state": "completed",
+    "calls": 29,
+    "limit_cny": "8",
+    "peak_upper_cny": "1.91682816",
+    "usage_estimated_peak_cny": "1.91682816",
+    "retained_reservation_peak_cny": "0",
+    "retained_reservations": []
+  },
+  "activity_peak_upper_cny": "1.91682816",
+  "activity_usage_estimated_peak_cny": "1.91682816",
+  "activity_retained_reservation_peak_cny": "0",
+  "remaining_conservative_allowance_cny": "6.08317184",
+  "within_activity_cap": true,
+  "previous_activity": {
+    "ledger": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\experiment\\activity-budget.json",
+    "activity": "coach-three-arm-20261022",
+    "earlier_activities_peak_upper_cny": "6.55102280",
+    "activity_peak_upper_cny": "14.8117068",
+    "usage_estimated_peak_cny": "11.66597880",
+    "retained_reservation_peak_cny": "3.145728",
+    "retained_reservations": [
+      {
+        "call_index": 20,
+        "run_id": "backprop-B1",
+        "peak_upper_cny": "3.145728",
+        "actual_charge_known": false,
+        "error": "Host interrupted before terminal usage"
+      }
+    ],
+    "cross_activity_peak_upper_cny": "21.36272960",
+    "interpretation": "The cross-activity amount already includes the earlier activity. Usage and reservation subtotals describe only the three-arm activity."
+  },
+  "cross_activity_peak_upper_cny": "23.27955776",
+  "limit_origin": "Independent 8 CNY cap for this fresh two-page D1 activity.",
+  "interpretation": "Peak-price usage estimates and retained worst-case reservations are separate, not an actual provider bill. Prior costs do not consume this activity allowance. An unsettled current run has unknown totals until final artifacts agree."
+}

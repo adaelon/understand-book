@@ -1,0 +1,387 @@
+{
+  "status": "completed",
+  "recorded_at": "2026-10-22T12:53:05.910787+00:00",
+  "new_sample_count": 2,
+  "delivered": 2,
+  "unstarted": [],
+  "baseline_reference_count": 4,
+  "baseline_regenerated": false,
+  "rows": [
+    {
+      "id": "backprop-D1",
+      "delivery_state": "delivered",
+      "calls": 15,
+      "peak_upper_cny": "1.04017904",
+      "served_models": [
+        "deepseek-flash"
+      ],
+      "missing_usage_calls": [],
+      "coach_calls": 1,
+      "tool_read_calls": 0,
+      "method_refs_first_delivery": [],
+      "methods": [
+        {
+          "method_id": "process-reveal",
+          "revision": 2,
+          "catalog_entry_found": true,
+          "declared_first_delivery": false,
+          "first_author_files": [
+            {
+              "file": "card.md",
+              "observed_ranges": [
+                [
+                  0,
+                  873
+                ]
+              ],
+              "total_character_values": [
+                873
+              ],
+              "observed_characters": 873,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/index.html",
+              "observed_ranges": [
+                [
+                  0,
+                  26045
+                ]
+              ],
+              "total_character_values": [
+                26045
+              ],
+              "observed_characters": 26045,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/README.md",
+              "observed_ranges": [
+                [
+                  0,
+                  1668
+                ]
+              ],
+              "total_character_values": [
+                1668
+              ],
+              "observed_characters": 1668,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/author.json",
+              "observed_ranges": [
+                [
+                  0,
+                  850
+                ]
+              ],
+              "total_character_values": [
+                850
+              ],
+              "observed_characters": 850,
+              "full_file_observed": true
+            },
+            {
+              "file": "checks.md",
+              "observed_ranges": [
+                [
+                  0,
+                  312
+                ]
+              ],
+              "total_character_values": [
+                312
+              ],
+              "observed_characters": 312,
+              "full_file_observed": true
+            }
+          ],
+          "all_files_complete_in_first_author_request": true,
+          "characters_in_first_author_request": 29748
+        }
+      ],
+      "runtime_receipt_files": 5,
+      "ordered_events": [
+        {
+          "kind": "coach_request",
+          "file": "request-000.json"
+        },
+        {
+          "kind": "first_author_request",
+          "file": "request-001.json"
+        },
+        {
+          "kind": "first_author_prepare_response",
+          "file": "response-001.json"
+        },
+        {
+          "kind": "first_author_write_response",
+          "file": "response-004.json"
+        }
+      ],
+      "admission": {
+        "field": "presentation_planning_requested",
+        "present": true,
+        "value": true
+      },
+      "coach_input_proposal": [
+        {
+          "request_file": "request-000.json",
+          "present": true,
+          "explicit_null": true
+        }
+      ],
+      "coach_before_first_author_request": true,
+      "extra_coach_after_first_author_request": [],
+      "first_author_source_receipts_all_present": true,
+      "evidence_file": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\runs\\backprop-D1\\coach-evidence.json"
+    },
+    {
+      "id": "ridge-D1",
+      "delivery_state": "delivered",
+      "calls": 14,
+      "peak_upper_cny": "0.87664912",
+      "served_models": [
+        "deepseek-flash"
+      ],
+      "missing_usage_calls": [],
+      "coach_calls": 1,
+      "tool_read_calls": 0,
+      "method_refs_first_delivery": [
+        {
+          "method_id": "process-reveal",
+          "revision": 2,
+          "scope": "第 2–4 节：沿同一个 J 逐步展开残差分解、消交叉项、配方与全局最小恒等式，每步保留前一步结果",
+          "basis": {
+            "kind": "candidate",
+            "candidate_id": "candidate-1792673339971072900-2"
+          }
+        },
+        {
+          "method_id": "compare-one-factor",
+          "revision": 3,
+          "scope": "第 5 节：固定数据与目标函数，只让 λ 变化；数据集切换作为独立分支并明确标注",
+          "basis": {
+            "kind": "candidate",
+            "candidate_id": "candidate-1792673339971072900-2"
+          }
+        }
+      ],
+      "methods": [
+        {
+          "method_id": "process-reveal",
+          "revision": 2,
+          "catalog_entry_found": true,
+          "declared_first_delivery": true,
+          "first_author_files": [
+            {
+              "file": "card.md",
+              "observed_ranges": [
+                [
+                  0,
+                  873
+                ]
+              ],
+              "total_character_values": [
+                873
+              ],
+              "observed_characters": 873,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/index.html",
+              "observed_ranges": [
+                [
+                  0,
+                  26045
+                ]
+              ],
+              "total_character_values": [
+                26045
+              ],
+              "observed_characters": 26045,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/README.md",
+              "observed_ranges": [
+                [
+                  0,
+                  1668
+                ]
+              ],
+              "total_character_values": [
+                1668
+              ],
+              "observed_characters": 1668,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/author.json",
+              "observed_ranges": [
+                [
+                  0,
+                  850
+                ]
+              ],
+              "total_character_values": [
+                850
+              ],
+              "observed_characters": 850,
+              "full_file_observed": true
+            },
+            {
+              "file": "checks.md",
+              "observed_ranges": [
+                [
+                  0,
+                  312
+                ]
+              ],
+              "total_character_values": [
+                312
+              ],
+              "observed_characters": 312,
+              "full_file_observed": true
+            }
+          ],
+          "all_files_complete_in_first_author_request": true,
+          "characters_in_first_author_request": 29748
+        },
+        {
+          "method_id": "compare-one-factor",
+          "revision": 3,
+          "catalog_entry_found": true,
+          "declared_first_delivery": true,
+          "first_author_files": [
+            {
+              "file": "card.md",
+              "observed_ranges": [
+                [
+                  0,
+                  442
+                ]
+              ],
+              "total_character_values": [
+                442
+              ],
+              "observed_characters": 442,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/index.html",
+              "observed_ranges": [
+                [
+                  0,
+                  15006
+                ]
+              ],
+              "total_character_values": [
+                15006
+              ],
+              "observed_characters": 15006,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/README.md",
+              "observed_ranges": [
+                [
+                  0,
+                  1071
+                ]
+              ],
+              "total_character_values": [
+                1071
+              ],
+              "observed_characters": 1071,
+              "full_file_observed": true
+            },
+            {
+              "file": "example/author.json",
+              "observed_ranges": [
+                [
+                  0,
+                  1540
+                ]
+              ],
+              "total_character_values": [
+                1540
+              ],
+              "observed_characters": 1540,
+              "full_file_observed": true
+            },
+            {
+              "file": "checks.md",
+              "observed_ranges": [
+                [
+                  0,
+                  424
+                ]
+              ],
+              "total_character_values": [
+                424
+              ],
+              "observed_characters": 424,
+              "full_file_observed": true
+            }
+          ],
+          "all_files_complete_in_first_author_request": true,
+          "characters_in_first_author_request": 18483
+        }
+      ],
+      "runtime_receipt_files": 10,
+      "ordered_events": [
+        {
+          "kind": "coach_request",
+          "file": "request-000.json"
+        },
+        {
+          "kind": "first_author_request",
+          "file": "request-001.json"
+        },
+        {
+          "kind": "first_author_prepare_response",
+          "file": "response-001.json"
+        },
+        {
+          "kind": "first_author_write_response",
+          "file": "response-002.json"
+        }
+      ],
+      "admission": {
+        "field": "presentation_planning_requested",
+        "present": true,
+        "value": true
+      },
+      "coach_input_proposal": [
+        {
+          "request_file": "request-000.json",
+          "present": true,
+          "explicit_null": true
+        }
+      ],
+      "coach_before_first_author_request": true,
+      "extra_coach_after_first_author_request": [],
+      "first_author_source_receipts_all_present": true,
+      "evidence_file": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\runs\\ridge-D1\\coach-evidence.json"
+    }
+  ],
+  "request_model": "deepseek-v4-flash",
+  "all_settled_returned_models": [
+    "deepseek-flash"
+  ],
+  "settled_usage_call_count": 29,
+  "chart_reveal_v3_selected": false,
+  "accounting": {
+    "activity_limit_cny": "8",
+    "activity_peak_upper_cny": "1.91682816",
+    "activity_usage_estimated_peak_cny": "1.91682816",
+    "activity_retained_reservation_peak_cny": "0",
+    "remaining_conservative_allowance_cny": "6.08317184",
+    "cross_activity_peak_upper_cny": "23.27955776"
+  },
+  "previous_cross_activity_peak_upper_cny": "21.36272960",
+  "prior_unknown_reservation_preserved_cny": "3.145728",
+  "interpretation": "D coach occurs before the first author request, with explicit-null author_proposal and recorded true admission. Full selected-method definitions in that request are actual public input evidence; matching runtime receipts confirm successful use by the sampling layer. This is not a page-quality judgment. Each task has one new D compared with both earlier C outputs; plan variability, timing and necessary absence of an earlier proposal are not separated causally."
+}

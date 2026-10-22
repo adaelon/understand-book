@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "version": "0.3.1",
+  "release": "/opt/understand-book/releases/cloud-20261021",
+  "backup": "/opt/understand-book/acceptance/local-library-20261021/backup",
+  "installer_bytes": 4899391,
+  "public_entry_assets_match": true,
+  "public_installer_matches": true,
+  "entry_assets": [
+    "/assets/reader-Btn-d9jh.js",
+    "/assets/understand-book-logo-JhTwDc3c.js",
+    "/assets/_commonjsHelpers-CqkleIqs.js",
+    "/assets/understand-book-logo-B8eaKH2F.css",
+    "/assets/reader-BPwMmgop.css",
+    "/assets/home-DzKr6BVm.js",
+    "/assets/home-CgaqwNrb.css"
+  ],
+  "server_restarted": false,
+  "database_changes": false,
+  "model_requests": 0,
+  "finished_at_utc": "2026-10-21T02:55:04.912Z",
+  "verification_note": "CDN analytics script removed before comparing HTML; all remaining HTML, entry assets and installer match candidate bytes. Browser API fixtures and native WebView2 tests recorded separately."
+}

@@ -1,0 +1,18 @@
+
+> @understand-book/admin@0.0.0 build E:\allwork\download\agent\understand-book\apps\admin
+> tsc --noEmit && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 1987 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.43 kB │ gzip:   0.30 kB
+dist/assets/index-Bbc37V2E.css   54.47 kB │ gzip:   9.79 kB
+dist/assets/index-tiyt0vUh.js   622.72 kB │ gzip: 192.90 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 14.16s

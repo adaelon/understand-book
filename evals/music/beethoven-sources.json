@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-22",
+  "status": "local_only_recording; score_excerpt_ready; alignment_pending",
+  "score": {
+    "source_page": "https://fourscoreandmore.org/openscore/orchestra/",
+    "repository": "https://github.com/MarkGotham/Hauptstimme",
+    "original_mxl": "beethoven-op125-4-openscore.mxl",
+    "original_xml": "beethoven-op125-4-openscore.musicxml",
+    "excerpt_xml": "beethoven-op125-4-m93-164.musicxml",
+    "original_parts": 36,
+    "excerpt_parts": [
+      "P32",
+      "P33",
+      "P34",
+      "P35",
+      "P36",
+      "P8"
+    ],
+    "original_measures": 943,
+    "selected_measures": [
+      93,
+      164
+    ],
+    "score_license": "CC0 1.0 Universal",
+    "annotation_license": "CC-By-SA (version unspecified by publisher)",
+    "license_source": "https://raw.githubusercontent.com/MarkGotham/Hauptstimme/main/README.md",
+    "changes": "Extracted measures 93–164; omitted parts entirely silent within this excerpt and removed their grouping brackets. Carried effective clefs/key/time/transpositions/divisions to each part's first measure. Original bar labels and full source files retained."
+  },
+  "recording": {
+    "source_page": "https://music.damians78s.co.uk/2024/05/07/albert-coates-conducts-beethovens-9th-1923/",
+    "sources": [
+      {
+        "file": "beethoven-op125-4-coates-damian-a.flac",
+        "url": "https://www.damians78s.co.uk/D842-9%20-%20Beethoven%209%20ac%20-%20Coates04a.flac",
+        "bytes": 27176474
+      },
+      {
+        "file": "beethoven-op125-4-coates-damian-b.flac",
+        "url": "https://www.damians78s.co.uk/D842-9%20-%20Beethoven%209%20ac%20-%20Coates04b.flac",
+        "bytes": 40249403
+      }
+    ],
+    "derivative": "beethoven-op125-4-coates-damian-full.mp3",
+    "derivative_bytes": 23182550,
+    "duration_seconds": 1448.85551,
+    "conductor": "Albert Coates",
+    "ensemble": "Symphony Orchestra, chorus and soloists named on transfer publisher page",
+    "recorded": "October–November 1923",
+    "first_published": "May 1924, HMV D 842–849; finale D 847–849",
+    "distribution": "local_only",
+    "rights_basis": "Original 1924 recording term has elapsed under the cited US 95+5-year rule. The 2024 transfer contains editorial repairs and has no explicit open redistribution license; commercial release of this transfer remains unapproved.",
+    "term_source": "https://www.copyright.gov/music-modernization/pre1972-soundrecordings/",
+    "changes": "Concatenated publisher part 1 and part 2 in order, transcoded to MP3 for local browser playback. No excerpt crop, new repair, or denoising. Publisher's own repairs remain; see source page."
+  },
+  "alignment_reference": {
+    "file": "beethoven-op125-4-openscore_alignment.csv",
+    "recordings": [
+      "IMSLP729211",
+      "IMSLP484065",
+      "IMSLP736780"
+    ],
+    "usable_for_current_recording": false,
+    "reason": "These are other performances; do not transfer their seconds to Coates."
+  }
+}

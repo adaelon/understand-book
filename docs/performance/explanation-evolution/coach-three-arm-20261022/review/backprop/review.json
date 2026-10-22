@@ -1,0 +1,26 @@
+{
+  "topic":"shared-node-backprop",
+  "status":"complete_for_delivered_pages",
+  "reviewed_aliases":["Pine","Cedar","Birch","Oak","Maple"],
+  "reviewed_page_count":5,
+  "undelivered_slots":1,
+  "undelivered_handling":"No page-quality judgment; excluded from comparison.",
+  "required_oracle_states_per_page":6,
+  "required_complete_numeric_states_observed":30,
+  "required_complete_numeric_states_correct":30,
+  "additional_targeted_state":{"alias":"Birch","x":2,"y":-2.5,"purpose":"Test the visible claim that negative y forces a negative contribution via u","numeric_result_correct":true},
+  "viewports":[{"width":960,"height":720},{"width":320,"height":420},{"width":640,"height":240}],
+  "evidence_method":"Reviewer personally read complete visible Reader iframe content, operated controls and inspected screenshots. No source code, generation conditions, condition mapping or other reviewers' findings were used.",
+  "page_reports":{"Pine":"Pine/review.json","Cedar":"Cedar/review.json","Birch":"Birch/review.json","Oak":"Oak/review.json","Maple":"Maple/review.json"},
+  "comparison_report":"topic-comparison.md",
+  "comparison":{
+    "clear_overall_winner":false,
+    "core_concept_explanation":"Oak gives the most reliable complete explanation of accumulation, complete-path regrouping, cancellation and zero-contribution exceptions, with stale-number prose and a summary overstatement remaining.",
+    "guided_mobile_reading":"Birch offers the clearest step-linked reading and responsive edge-list alternative, with important negative-sign and formula-display defects remaining.",
+    "first_order_change_explanation":"Maple's exact perturbation/remainder table and independent term-by-term expansion are particularly useful, but its zero-state prose contradicts correct numbers and retains default-gradient text.",
+    "pine":"Clear separate u/x ledgers and readable default derivation; local-versus-total sign error, zero-omission contradiction and step-state wording reduce reliability.",
+    "cedar":"Useful omission experiment and complete derivation; backward-arrow direction, wrong reuse of u's total on x→v and sign/zero generalizations directly affect the requested mental model.",
+    "basis":"Content and behavior trade-offs, not issue counts or mechanical scores."
+  },
+  "limitations":"Initial-delivery observation only; no learner experiment and no inference of learning gains."
+}

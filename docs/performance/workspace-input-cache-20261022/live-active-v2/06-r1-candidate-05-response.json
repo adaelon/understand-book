@@ -1,0 +1,64 @@
+{
+  "arm": "candidate",
+  "repetition": 1,
+  "position": 1,
+  "index": 5,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate-v2\\native-05.json",
+  "ordinal": 6,
+  "started_utc": "2026-10-22T03:26:36.933802+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 50138,
+    "completion_tokens": 76,
+    "total_tokens": 50214,
+    "prompt_tokens_details": {
+      "cached_tokens": 28672
+    },
+    "prompt_cache_hit_tokens": 28672,
+    "prompt_cache_miss_tokens": 21466
+  },
+  "response_id": "690046e1-d772-462b-97fe-7c226b6c546b",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_RoBR3ptZ61Obg8pUIzSO8456",
+          "type": "function",
+          "function": {
+            "name": "agent_progress",
+            "arguments": "{\"message\": \"我先把甲、乙两组数字逐项讲清楚，再做一个可对照的直观页面：同一组数据下，训练误差与验证误差并排显示，并标出选择依据。\"}"
+          }
+        }
+      ]
+    }
+  ],
+  "first_delta_ms": 1154.765,
+  "first_text_ms": null,
+  "first_reasoning_ms": null,
+  "first_tool_ms": 1154.765,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 299.316,
+  "streaming": true,
+  "duration_ms": 1433.301,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": false,
+  "measured_usage": {
+    "input_tokens": 50138,
+    "cached_input_tokens": 28672,
+    "uncached_input_tokens": 21466,
+    "output_tokens": 76
+  },
+  "cost": {
+    "input_cny": "0.04407888",
+    "output_cny": "0.000608",
+    "total_cny": "0.04468688",
+    "total_rounded_micro_cny": 44687
+  }
+}

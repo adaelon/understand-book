@@ -1,0 +1,194 @@
+{
+  "url": "http://127.0.0.1:4193",
+  "work": "Moments musicaux, D.780 / Op.94",
+  "occurrences": 78,
+  "pages": 3,
+  "publication": null,
+  "playback": {
+    "current_ms": 746.9350000000001,
+    "paused": false,
+    "rate": 0.75,
+    "ready_state": 4
+  },
+  "shared_boundary_changed_and_discarded": true,
+  "saved_pending_revision": {
+    "coverage": [
+      {
+        "detail": "浏览器流程验证，沿用原候选时间；未进行人工复听核准。",
+        "end_ms": 3040,
+        "granularity": "measure",
+        "method": "manual",
+        "provenance_id": "calibration-61308b31-55b3-4a6f-a385-7d885f66c39b",
+        "start_ms": 580,
+        "status": "pending"
+      },
+      {
+        "detail": "浏览器流程验证，沿用原候选时间；未进行人工复听核准。",
+        "end_ms": 3040,
+        "granularity": "note",
+        "method": "manual",
+        "provenance_id": "calibration-61308b31-55b3-4a6f-a385-7d885f66c39b",
+        "start_ms": 580,
+        "status": "pending"
+      }
+    ],
+    "end_ms": 3040,
+    "note_alignments": [
+      {
+        "attack": true,
+        "end_ms": 780,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n2",
+        "start_ms": 620
+      },
+      {
+        "attack": true,
+        "end_ms": 1120,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n3",
+        "start_ms": 960
+      },
+      {
+        "attack": true,
+        "end_ms": 1120,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n4",
+        "start_ms": 960
+      },
+      {
+        "attack": true,
+        "end_ms": 1440,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n5",
+        "start_ms": 1280
+      },
+      {
+        "attack": true,
+        "end_ms": 1740,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n6",
+        "start_ms": 1580
+      },
+      {
+        "attack": true,
+        "end_ms": 1740,
+        "occurrence_id": "measure-1-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m1-n7",
+        "start_ms": 1580
+      },
+      {
+        "attack": true,
+        "end_ms": 2040,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n2",
+        "start_ms": 1880
+      },
+      {
+        "attack": true,
+        "end_ms": 2360,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n3",
+        "start_ms": 2200
+      },
+      {
+        "attack": true,
+        "end_ms": 2360,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n4",
+        "start_ms": 2200
+      },
+      {
+        "attack": true,
+        "end_ms": 2680,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n5",
+        "start_ms": 2520
+      },
+      {
+        "attack": true,
+        "end_ms": 2980,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n6",
+        "start_ms": 2820
+      },
+      {
+        "attack": true,
+        "end_ms": 2980,
+        "occurrence_id": "measure-2-occurrence-1",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "score_object_id": "P1-m2-n7",
+        "start_ms": 2820
+      }
+    ],
+    "occurrences": [
+      {
+        "end_ms": 1820,
+        "measure": "1",
+        "occurrence_id": "measure-1-occurrence-1",
+        "order": 0,
+        "score_object_ids": [
+          "P1-m1-n1",
+          "P1-m1-n2",
+          "P1-m1-n3",
+          "P1-m1-n4",
+          "P1-m1-n5",
+          "P1-m1-n6",
+          "P1-m1-n7"
+        ],
+        "start_ms": 580
+      },
+      {
+        "end_ms": 3040,
+        "measure": "2",
+        "occurrence_id": "measure-2-occurrence-1",
+        "order": 1,
+        "score_object_ids": [
+          "P1-m2-n1",
+          "P1-m2-n2",
+          "P1-m2-n3",
+          "P1-m2-n4",
+          "P1-m2-n5",
+          "P1-m2-n6",
+          "P1-m2-n7"
+        ],
+        "start_ms": 1820
+      }
+    ],
+    "provenance": [
+      {
+        "description": "浏览器流程验证，沿用原候选时间；未进行人工复听核准。",
+        "kind": "interpretation",
+        "processor": null,
+        "provenance_id": "calibration-61308b31-55b3-4a6f-a385-7d885f66c39b",
+        "source_url": null
+      }
+    ],
+    "reason": "界面流程验证，候选保留待检查",
+    "recording": {
+      "recording_id": "schubert-d780-3-vetter",
+      "revision": "imslp456646"
+    },
+    "score": {
+      "revision": "download-20261022",
+      "score_id": "schubert-d780-3-noctave"
+    },
+    "start_ms": 580
+  },
+  "history_before": 1,
+  "history_after": 2,
+  "reopened_history": true,
+  "local_app_open_close_reopen": true,
+  "mobile_overflow": false,
+  "errors": []
+}

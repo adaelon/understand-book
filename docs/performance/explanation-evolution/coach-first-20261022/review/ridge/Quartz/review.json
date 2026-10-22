@@ -1,0 +1,69 @@
+{
+  "alias": "Quartz",
+  "conclusion": "推导与数值完整；退化λ0两条代表直线错误影响关键概念，修正前不作为首选",
+  "viewports": [
+    [
+      960,
+      720
+    ],
+    [
+      320,
+      420
+    ],
+    [
+      640,
+      240
+    ]
+  ],
+  "read_source": false,
+  "states": [
+    "normal-0",
+    "normal-2",
+    "normal-10",
+    "degenerate-0",
+    "degenerate-2",
+    "return-normal-2"
+  ],
+  "strengths": [
+    "完整中心化与二维配方证明",
+    "SSE/惩罚/J明确分离",
+    "全部数值与条件文字正确",
+    "宽表可横向读全",
+    "五观测和竖向残差保留"
+  ],
+  "findings": [
+    {
+      "id": "Q1",
+      "severity": "high",
+      "title": "退化λ0两条最优代表线不经过均值点",
+      "reproduction": "λ=0，切换退化数据，观察图A",
+      "actual": "斜率−0.8与1.3的可见直线在x=2处分别约为y=0和4.2；只水平线经过(2,1.6)",
+      "expected": "三条代表线全部满足b=1.6−2a并通过(2,1.6)",
+      "impact": "把非最优线标为同样好，与正文、均值点和残差矛盾",
+      "evidence": [
+        "degenerate-family-error.png",
+        "observations.json"
+      ]
+    },
+    {
+      "id": "Q2",
+      "severity": "low",
+      "title": "窄屏图内文字约5px",
+      "reproduction": "320x420，阅读第5节图形",
+      "impact": "刻度、曲线图例及点标签难辨读",
+      "evidence": [
+        "mobile-plot.png"
+      ]
+    }
+  ],
+  "evidence": {
+    "report": "review.md",
+    "observations": "observations.json",
+    "text": "visible-text.txt"
+  },
+  "limitations": [
+    "未进行真实学习者实验",
+    "未读源码",
+    "未改页面"
+  ]
+}

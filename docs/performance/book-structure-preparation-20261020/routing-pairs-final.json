@@ -1,0 +1,406 @@
+{
+  "compact": {
+    "runtime": "v24.9.0",
+    "prepared_bytes": 3489860,
+    "samples": [
+      {
+        "scope": "stage",
+        "pair": 0,
+        "cached": true,
+        "wall_ms": 293.5525999999991,
+        "cpu_ms": 328
+      },
+      {
+        "scope": "stage",
+        "pair": 0,
+        "cached": false,
+        "wall_ms": 451.0764999999992,
+        "cpu_ms": 501
+      },
+      {
+        "scope": "stage",
+        "pair": 1,
+        "cached": false,
+        "wall_ms": 409.96639999999934,
+        "cpu_ms": 437
+      },
+      {
+        "scope": "stage",
+        "pair": 1,
+        "cached": true,
+        "wall_ms": 279.41439999999966,
+        "cpu_ms": 313
+      },
+      {
+        "scope": "stage",
+        "pair": 2,
+        "cached": true,
+        "wall_ms": 358.71970000000147,
+        "cpu_ms": 374
+      },
+      {
+        "scope": "stage",
+        "pair": 2,
+        "cached": false,
+        "wall_ms": 478.2349000000013,
+        "cpu_ms": 547
+      },
+      {
+        "scope": "stage",
+        "pair": 3,
+        "cached": false,
+        "wall_ms": 425.3059999999987,
+        "cpu_ms": 484
+      },
+      {
+        "scope": "stage",
+        "pair": 3,
+        "cached": true,
+        "wall_ms": 300.6913000000004,
+        "cpu_ms": 312
+      },
+      {
+        "scope": "stage",
+        "pair": 4,
+        "cached": true,
+        "wall_ms": 262.39680000000044,
+        "cpu_ms": 267
+      },
+      {
+        "scope": "stage",
+        "pair": 4,
+        "cached": false,
+        "wall_ms": 446.0072,
+        "cpu_ms": 483
+      },
+      {
+        "scope": "stage",
+        "pair": 5,
+        "cached": false,
+        "wall_ms": 516.8871999999992,
+        "cpu_ms": 532
+      },
+      {
+        "scope": "stage",
+        "pair": 5,
+        "cached": true,
+        "wall_ms": 336.60499999999956,
+        "cpu_ms": 328
+      },
+      {
+        "scope": "stage",
+        "pair": 6,
+        "cached": true,
+        "wall_ms": 381.1139999999996,
+        "cpu_ms": 390
+      },
+      {
+        "scope": "stage",
+        "pair": 6,
+        "cached": false,
+        "wall_ms": 429.5667999999987,
+        "cpu_ms": 438
+      },
+      {
+        "scope": "chapter",
+        "pair": 0,
+        "cached": true,
+        "wall_ms": 286.53829999999834,
+        "cpu_ms": 281
+      },
+      {
+        "scope": "chapter",
+        "pair": 0,
+        "cached": false,
+        "wall_ms": 391.65140000000247,
+        "cpu_ms": 328
+      },
+      {
+        "scope": "chapter",
+        "pair": 1,
+        "cached": false,
+        "wall_ms": 435.0475000000006,
+        "cpu_ms": 328
+      },
+      {
+        "scope": "chapter",
+        "pair": 1,
+        "cached": true,
+        "wall_ms": 354.03250000000116,
+        "cpu_ms": 281
+      },
+      {
+        "scope": "chapter",
+        "pair": 2,
+        "cached": true,
+        "wall_ms": 213.10289999999804,
+        "cpu_ms": 219
+      },
+      {
+        "scope": "chapter",
+        "pair": 2,
+        "cached": false,
+        "wall_ms": 214.59109999999782,
+        "cpu_ms": 219
+      },
+      {
+        "scope": "chapter",
+        "pair": 3,
+        "cached": false,
+        "wall_ms": 229.52499999999782,
+        "cpu_ms": 250
+      },
+      {
+        "scope": "chapter",
+        "pair": 3,
+        "cached": true,
+        "wall_ms": 170.73379999999815,
+        "cpu_ms": 172
+      },
+      {
+        "scope": "chapter",
+        "pair": 4,
+        "cached": true,
+        "wall_ms": 150.6856000000007,
+        "cpu_ms": 141
+      },
+      {
+        "scope": "chapter",
+        "pair": 4,
+        "cached": false,
+        "wall_ms": 167.1957999999977,
+        "cpu_ms": 155
+      },
+      {
+        "scope": "chapter",
+        "pair": 5,
+        "cached": false,
+        "wall_ms": 155.3212999999996,
+        "cpu_ms": 157
+      },
+      {
+        "scope": "chapter",
+        "pair": 5,
+        "cached": true,
+        "wall_ms": 176.37219999999797,
+        "cpu_ms": 202
+      },
+      {
+        "scope": "chapter",
+        "pair": 6,
+        "cached": true,
+        "wall_ms": 253.91259999999966,
+        "cpu_ms": 282
+      },
+      {
+        "scope": "chapter",
+        "pair": 6,
+        "cached": false,
+        "wall_ms": 165.47710000000006,
+        "cpu_ms": 172
+      }
+    ]
+  },
+  "fragmented": {
+    "runtime": "v24.9.0",
+    "prepared_bytes": 1071112,
+    "samples": [
+      {
+        "scope": "stage",
+        "pair": 0,
+        "cached": true,
+        "wall_ms": 479.16769999999815,
+        "cpu_ms": 485
+      },
+      {
+        "scope": "stage",
+        "pair": 0,
+        "cached": false,
+        "wall_ms": 875.1483999999982,
+        "cpu_ms": 921
+      },
+      {
+        "scope": "stage",
+        "pair": 1,
+        "cached": false,
+        "wall_ms": 794.7736000000004,
+        "cpu_ms": 781
+      },
+      {
+        "scope": "stage",
+        "pair": 1,
+        "cached": true,
+        "wall_ms": 514.5408000000025,
+        "cpu_ms": 578
+      },
+      {
+        "scope": "stage",
+        "pair": 2,
+        "cached": true,
+        "wall_ms": 527.0084999999999,
+        "cpu_ms": 641
+      },
+      {
+        "scope": "stage",
+        "pair": 2,
+        "cached": false,
+        "wall_ms": 651.9686000000002,
+        "cpu_ms": 672
+      },
+      {
+        "scope": "stage",
+        "pair": 3,
+        "cached": false,
+        "wall_ms": 664.9845999999998,
+        "cpu_ms": 703
+      },
+      {
+        "scope": "stage",
+        "pair": 3,
+        "cached": true,
+        "wall_ms": 391.11989999999787,
+        "cpu_ms": 390
+      },
+      {
+        "scope": "stage",
+        "pair": 4,
+        "cached": true,
+        "wall_ms": 385.05119999999806,
+        "cpu_ms": 391
+      },
+      {
+        "scope": "stage",
+        "pair": 4,
+        "cached": false,
+        "wall_ms": 705.9109000000026,
+        "cpu_ms": 703
+      },
+      {
+        "scope": "stage",
+        "pair": 5,
+        "cached": false,
+        "wall_ms": 737.4657999999981,
+        "cpu_ms": 750
+      },
+      {
+        "scope": "stage",
+        "pair": 5,
+        "cached": true,
+        "wall_ms": 391.1033000000025,
+        "cpu_ms": 390
+      },
+      {
+        "scope": "stage",
+        "pair": 6,
+        "cached": true,
+        "wall_ms": 403.08810000000085,
+        "cpu_ms": 391
+      },
+      {
+        "scope": "stage",
+        "pair": 6,
+        "cached": false,
+        "wall_ms": 604.1671999999999,
+        "cpu_ms": 594
+      },
+      {
+        "scope": "chapter",
+        "pair": 0,
+        "cached": true,
+        "wall_ms": 368.0727000000006,
+        "cpu_ms": 390
+      },
+      {
+        "scope": "chapter",
+        "pair": 0,
+        "cached": false,
+        "wall_ms": 456.54409999999916,
+        "cpu_ms": 453
+      },
+      {
+        "scope": "chapter",
+        "pair": 1,
+        "cached": false,
+        "wall_ms": 424.9480000000003,
+        "cpu_ms": 422
+      },
+      {
+        "scope": "chapter",
+        "pair": 1,
+        "cached": true,
+        "wall_ms": 428.5517,
+        "cpu_ms": 469
+      },
+      {
+        "scope": "chapter",
+        "pair": 2,
+        "cached": true,
+        "wall_ms": 377.65309999999954,
+        "cpu_ms": 375
+      },
+      {
+        "scope": "chapter",
+        "pair": 2,
+        "cached": false,
+        "wall_ms": 421.51260000000184,
+        "cpu_ms": 422
+      },
+      {
+        "scope": "chapter",
+        "pair": 3,
+        "cached": false,
+        "wall_ms": 458.091499999995,
+        "cpu_ms": 453
+      },
+      {
+        "scope": "chapter",
+        "pair": 3,
+        "cached": true,
+        "wall_ms": 421.7430000000022,
+        "cpu_ms": 438
+      },
+      {
+        "scope": "chapter",
+        "pair": 4,
+        "cached": true,
+        "wall_ms": 387.4718999999968,
+        "cpu_ms": 375
+      },
+      {
+        "scope": "chapter",
+        "pair": 4,
+        "cached": false,
+        "wall_ms": 479.7352000000028,
+        "cpu_ms": 484
+      },
+      {
+        "scope": "chapter",
+        "pair": 5,
+        "cached": false,
+        "wall_ms": 530.9277000000002,
+        "cpu_ms": 531
+      },
+      {
+        "scope": "chapter",
+        "pair": 5,
+        "cached": true,
+        "wall_ms": 499.45679999999993,
+        "cpu_ms": 501
+      },
+      {
+        "scope": "chapter",
+        "pair": 6,
+        "cached": true,
+        "wall_ms": 615.1952000000019,
+        "cpu_ms": 655
+      },
+      {
+        "scope": "chapter",
+        "pair": 6,
+        "cached": false,
+        "wall_ms": 681.6435999999958,
+        "cpu_ms": 672
+      }
+    ]
+  }
+}

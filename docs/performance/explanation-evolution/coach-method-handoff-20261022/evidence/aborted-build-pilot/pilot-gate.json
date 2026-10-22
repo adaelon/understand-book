@@ -1,0 +1,1 @@
+{"pilot_id":"pilot-B0","allowed":false,"reason":"Stopped because build inspection found possible stale B executable; retain all requests and cost, rebuild before an audited resume."}

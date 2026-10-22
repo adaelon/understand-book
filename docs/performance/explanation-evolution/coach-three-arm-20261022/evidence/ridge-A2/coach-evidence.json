@@ -1,0 +1,52 @@
+{
+  "purpose_recording_complete": true,
+  "coach_call_count": 0,
+  "identified_coach_call_count": 0,
+  "coach_calls": [],
+  "prepare_calls": [
+    {
+      "call_id": "call_00_5YsnNOPjDqlnEuGENZfi2434",
+      "response_file": "response-000.json",
+      "result_source": {
+        "request_file": "request-001.json"
+      },
+      "result_status": "authoring_context_prepared",
+      "error_code": null,
+      "coach_receipt": {
+        "status": null
+      },
+      "receipt_contains_full_plan": false
+    }
+  ],
+  "prepare_count": 1,
+  "prepare_count_with_coach_status": 1,
+  "repeated_prepare_without_extra_coach_call": false,
+  "handoff_samples": [],
+  "distinct_sampled_handoffs": [],
+  "private_handoff_entered_author_request": false,
+  "sampling_guidance_definition_requests": [],
+  "asset_declared_without_definition_requests": [],
+  "duplicate_handoff_message_requests": [],
+  "selected_methods": null,
+  "forced_supply": {
+    "samples": [],
+    "runtime_receipts": [],
+    "actual_definition_count": 0,
+    "distinct_supplied_files": [],
+    "runtime_recorded_file_count": 0,
+    "interpretation": "Actual system-message definitions are distinct from tool reads and asset manifests. Runtime receipts confirm successful sampling but contain no request ordinal; before-write coverage uses ordered requests and separately preserves response errors and receipt presence. Neither is page-quality evidence."
+  },
+  "selected_method_file_coverage": [],
+  "declared_method_file_coverage": [],
+  "all_recommended_or_declared_method_coverage": [],
+  "complete_method_input_diagnostics": {
+    "complete_selected_declared_methods_before_first_write": [],
+    "at_least_one_complete_method": false,
+    "page_relationship_review": "Inspect actual page for visible useful adaptation. Input coverage never gates this experiment and does not prove quality.",
+    "auxiliary_method_gaps": "Retain all recommended or declared method coverage; gaps are reported but do not exclude samples."
+  },
+  "method_reads": [],
+  "method_read_call_count": 0,
+  "nonempty_method_read_calls_sampled": 0,
+  "interpretation": "Recorded input/output and body coverage only. Asset declarations do not prove handoff delivery; require actual presentation_coach.v1 definition in ordered_messages. Method recommendation, read, declaration and useful adaptation are distinct; no inferred teaching quality."
+}

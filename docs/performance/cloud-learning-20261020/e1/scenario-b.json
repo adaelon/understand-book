@@ -1,0 +1,142 @@
+{
+  "new_model_calls": 0,
+  "one_user_updated": true,
+  "original_source": {
+    "duration_ms": 2000.0,
+    "observations": [],
+    "publication": {
+      "book_id": "test-book",
+      "publication_id": "01a15a07-2bd8-7962-97b1-758aa0143163"
+    },
+    "target": {
+      "frames": [
+        {
+          "actual_pts_ms": 200.0,
+          "height": 90,
+          "video": {
+            "media_id": "test-video",
+            "media_revision": "1"
+          },
+          "width": 160
+        }
+      ],
+      "kind": "visual",
+      "publication": {
+        "book_id": "test-book",
+        "publication_id": "01a15a07-2bd8-7962-97b1-758aa0143163"
+      },
+      "regions": []
+    },
+    "transcript": [
+      {
+        "location": {
+          "end_ms": 2000.0,
+          "start_ms": 0.0,
+          "video": {
+            "media_id": "test-video",
+            "media_revision": "1"
+          }
+        },
+        "segment_id": "s",
+        "text": "A frame.",
+        "text_range": {
+          "lid": "1",
+          "range": {
+            "end": 8,
+            "start": 0
+          }
+        },
+        "words": []
+      }
+    ],
+    "translations": []
+  },
+  "original_video_reference": {
+    "book_id": "test-book",
+    "publication_id": "01a15a07-2bd8-7962-97b1-758aa0143163"
+  },
+  "private_preparation_retained": true,
+  "real_decoded_frames": 2,
+  "selected_video_reference": {
+    "book_id": "test-book",
+    "publication_id": "01a15a07-316f-7bb1-88fa-2f8b2f5c2389"
+  },
+  "shared_cost_micro_cny": 12,
+  "status": "passed",
+  "summary": {
+    "account": {
+      "account_debit_micro_cny": 0,
+      "active_requests": 0,
+      "active_reserved_micro_cny": 0,
+      "confirmed_cost_micro_cny": 0,
+      "estimated_cost_micro_cny": 0,
+      "estimated_cost_requests": 0,
+      "pending_micro_cny": 0,
+      "pending_requests": 0,
+      "period_groups": [],
+      "platform_covered_micro_cny": 0,
+      "provider_cost_complete": true,
+      "provider_cost_micro_cny": 0,
+      "reconciliation_requests": 0,
+      "request_count": 0,
+      "unknown_cost_requests": 0
+    },
+    "account_level": [],
+    "accounts": [],
+    "from": null,
+    "platform": {
+      "account_debit_micro_cny": 0,
+      "active_requests": 0,
+      "active_reserved_micro_cny": 0,
+      "confirmed_cost_micro_cny": 12,
+      "estimated_cost_micro_cny": 0,
+      "estimated_cost_requests": 0,
+      "pending_micro_cny": 0,
+      "pending_requests": 0,
+      "period_groups": [],
+      "platform_covered_micro_cny": 12,
+      "provider_cost_complete": true,
+      "provider_cost_micro_cny": 12,
+      "reconciliation_requests": 0,
+      "request_count": 1,
+      "unknown_cost_requests": 0
+    },
+    "tasks": {
+      "items": [
+        {
+          "account_debit_micro_cny": 0,
+          "active_requests": 0,
+          "active_reserved_micro_cny": 0,
+          "confirmed_cost_micro_cny": 12,
+          "cost_owner": "platform",
+          "estimated_cost_micro_cny": 0,
+          "estimated_cost_requests": 0,
+          "latest_at": 1792511781,
+          "learning_workspace_ids": [],
+          "parent_task_ref": "e1-public",
+          "pending_micro_cny": 0,
+          "pending_requests": 0,
+          "period_groups": [],
+          "platform_covered_micro_cny": 12,
+          "provider_cost_complete": true,
+          "provider_cost_micro_cny": 12,
+          "purposes": [
+            "prebuild"
+          ],
+          "reconciliation_requests": 0,
+          "related_learning_workspace_ids": [],
+          "request_count": 1,
+          "unknown_cost_requests": 0,
+          "user_id": null
+        }
+      ],
+      "limit": 50,
+      "offset": 0,
+      "total": 1
+    },
+    "timezone": "Asia/Hong_Kong",
+    "to": null,
+    "workspaces": []
+  },
+  "two_users_separate": true
+}

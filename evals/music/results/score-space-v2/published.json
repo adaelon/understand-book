@@ -1,0 +1,17 @@
+{
+  "phase": "published",
+  "surfaces": [],
+  "checks": [
+    "production bundle, actual recording, fullscreen expands score, question pauses and exits fullscreen to visible composer",
+    "production mobile: score and controls fit, demo plays, ask reveals chat, return/cancel restores score"
+  ],
+  "errors": [],
+  "assets": [
+    "http://127.0.0.1:6677/assets/reader-DDJl87jm.js"
+  ],
+  "audio": {
+    "duration": 101,
+    "ready_state": 4,
+    "source": "http://127.0.0.1:6677/api/books/music-schubert-d780-3-vetter/publications/01a1625b-808a-77d2-9cfb-1ecc62bd219f/music/audio"
+  }
+}

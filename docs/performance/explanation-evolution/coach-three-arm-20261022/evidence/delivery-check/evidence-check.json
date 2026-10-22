@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "checks": [
+    "missing evidence stays unknown",
+    "distinct full files, all catalog files, first-write coverage and autonomous reads stay separate",
+    "runtime receipts alone do not prove actual provision or first-write timing",
+    "actual observations are not hidden by planned arm conditions",
+    "interrupted samples retain their status and recovered rows use their original evidence directory"
+  ],
+  "model_calls": 0,
+  "generated_pages_read": 0
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "format": "pptx",
+    "workspace": "E:\\allwork\\download\\agent\\understand-book\\tmp\\cloud-document-acceptance\\prepared-pptx\\.understand-book\\original-exam",
+    "pages": 3,
+    "hidden_slide": true,
+    "formula": "f(x) = x² + 1",
+    "original_retained": true,
+    "resumed": true,
+    "cloud_model_plan": true
+  },
+  {
+    "format": "ppt",
+    "workspace": "E:\\allwork\\download\\agent\\understand-book\\tmp\\cloud-document-acceptance\\prepared-ppt\\.understand-book\\original-exam",
+    "pages": 3,
+    "hidden_slide": true,
+    "formula": "f(x) = x² + 1",
+    "original_retained": true,
+    "resumed": true,
+    "cloud_model_plan": true
+  }
+]

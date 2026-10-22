@@ -1,0 +1,353 @@
+{
+  "scope": "Comparison page only; generated pages are read for link integrity, not re-tested.",
+  "provider_calls": 0,
+  "network_requests": [],
+  "summary": {
+    "runs": 8,
+    "deliveries": 8,
+    "runs_reading_methods": 0,
+    "calls": 134,
+    "peak_upper_cny": 6.67164616
+  },
+  "links": [
+    {
+      "href": "pages/kv-A1/index.html",
+      "readable": true,
+      "bytes": 59797
+    },
+    {
+      "href": "pages/kv-B1/index.html",
+      "readable": true,
+      "bytes": 71446
+    },
+    {
+      "href": "pages/kv-A2/index.html",
+      "readable": true,
+      "bytes": 60408
+    },
+    {
+      "href": "pages/kv-B2/index.html",
+      "readable": true,
+      "bytes": 64188
+    },
+    {
+      "href": "pages/alarm-A1/index.html",
+      "readable": true,
+      "bytes": 60286
+    },
+    {
+      "href": "pages/alarm-B1/index.html",
+      "readable": true,
+      "bytes": 62591
+    },
+    {
+      "href": "pages/alarm-A2/index.html",
+      "readable": true,
+      "bytes": 57516
+    },
+    {
+      "href": "pages/alarm-B2/index.html",
+      "readable": true,
+      "bytes": 63230
+    },
+    {
+      "href": "teacher-example.html",
+      "readable": true,
+      "bytes": 18889
+    },
+    {
+      "href": "pages/kv-A1/960-first.png",
+      "readable": true,
+      "bytes": 100592
+    },
+    {
+      "href": "pages/kv-B1/960-reload.png",
+      "readable": true,
+      "bytes": 88295
+    },
+    {
+      "href": "pages/kv-A2/960-first.png",
+      "readable": true,
+      "bytes": 86422
+    },
+    {
+      "href": "pages/kv-B2/960-first.png",
+      "readable": true,
+      "bytes": 85757
+    },
+    {
+      "href": "pages/alarm-A1/960-first.png",
+      "readable": true,
+      "bytes": 90144
+    },
+    {
+      "href": "pages/alarm-B1/960-first.png",
+      "readable": true,
+      "bytes": 73343
+    },
+    {
+      "href": "pages/alarm-A2/960-first.png",
+      "readable": true,
+      "bytes": 86154
+    },
+    {
+      "href": "pages/alarm-B2/960-first.png",
+      "readable": true,
+      "bytes": 76436
+    },
+    {
+      "href": "teacher-example.png",
+      "readable": true,
+      "bytes": 75276
+    },
+    {
+      "href": "../../../../skills/presentation/methods/chart-reveal/v3/counterexamples.md",
+      "readable": true
+    }
+  ],
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "checks": [
+        {
+          "panel": "kv-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 1280,
+            "scroll": 1280,
+            "body": 1280
+          }
+        },
+        {
+          "panel": "kv-2",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 1280,
+            "scroll": 1280,
+            "body": 1280
+          }
+        },
+        {
+          "panel": "alarm-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 1280,
+            "scroll": 1280,
+            "body": 1280
+          }
+        },
+        {
+          "panel": "alarm-2",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 1280,
+            "scroll": 1280,
+            "body": 1280
+          }
+        },
+        {
+          "panel": "kv-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 1280,
+            "scroll": 1280,
+            "body": 1280
+          }
+        }
+      ],
+      "images": [
+        {
+          "src": "pages/kv-A1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-B1/960-reload.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-A2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-B2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-A1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-B1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-A2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-B2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "teacher-example.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        }
+      ],
+      "screenshot": "comparison-desktop.png",
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 720
+      },
+      "checks": [
+        {
+          "panel": "kv-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 320,
+            "scroll": 320,
+            "body": 320
+          }
+        },
+        {
+          "panel": "kv-2",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 320,
+            "scroll": 320,
+            "body": 320
+          }
+        },
+        {
+          "panel": "alarm-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 320,
+            "scroll": 320,
+            "body": 320
+          }
+        },
+        {
+          "panel": "alarm-2",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 320,
+            "scroll": 320,
+            "body": 320
+          }
+        },
+        {
+          "panel": "kv-1",
+          "only_corresponding_panel_visible": true,
+          "aria_pressed_correct": true,
+          "horizontal_overflow": false,
+          "bounds": {
+            "viewport": 320,
+            "scroll": 320,
+            "body": 320
+          }
+        }
+      ],
+      "images": [
+        {
+          "src": "pages/kv-A1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-B1/960-reload.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-A2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/kv-B2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-A1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-B1/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-A2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "pages/alarm-B2/960-first.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        },
+        {
+          "src": "teacher-example.png",
+          "complete": true,
+          "width": 960,
+          "height": 720
+        }
+      ],
+      "screenshot": "comparison-320.png",
+      "errors": []
+    }
+  ],
+  "status": "passed"
+}

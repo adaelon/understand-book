@@ -1,0 +1,34 @@
+{
+  "previous_release": "/opt/understand-book/releases/search-cache-20261021",
+  "release": "/opt/understand-book/releases/reader-latency-20261021",
+  "changed_files": [
+    "crates/base-schema/src/video.rs",
+    "crates/base-schema/tests/video_contract.rs",
+    "crates/read-tools/examples/video_load.rs",
+    "crates/read-tools/src/video_discourse.rs",
+    "crates/read-tools/src/video_graph.rs",
+    "crates/server/src/tests/video_publication_tests.rs",
+    "crates/server/src/tests/video_workspace_tests.rs",
+    "crates/server/src/workspace_publication.rs",
+    "packages/web/src/App.startup.test.ts",
+    "packages/web/src/App.vue",
+    "packages/web/src/components/SharedWorkspaceCatalog.vue",
+    "packages/web/src/components/SharedWorkspaces.test.ts",
+    "packages/web/src/network-client.test.ts",
+    "packages/web/src/network-client.ts",
+    "packages/web/src/video-question.performance.test.ts",
+    "packages/web/src/video-question.test.ts",
+    "packages/web/src/video-question.ts"
+  ],
+  "windows_version": "0.3.3",
+  "native_baseline": "E:\\allwork\\download\\agent\\understand-book\\tmp\\windows-release-20261021\\source",
+  "patches": [
+    "video-catalog-loading-20261021",
+    "question-submit-loading-20261021"
+  ],
+  "test_fixture_adjustments": [
+    "packages/web/src/components/AgentPresentation.test.ts",
+    "packages/web/src/presentation-document.test.ts"
+  ],
+  "test_fixture_reason": "Existing released test fixtures need action_contract: [] to match their existing generated type."
+}

@@ -1,0 +1,126 @@
+{
+  "artifact_versions": {
+    "base.json": {
+      "header": null,
+      "version": null
+    },
+    "music/build-report.json": {
+      "header": null,
+      "version": "music_build_report.v1"
+    },
+    "music_source_manifest.json": {
+      "header": null,
+      "version": "music_source_manifest.v1"
+    }
+  },
+  "build_readiness": {
+    "capabilities": {
+      "coverage": [
+        {
+          "detail": "原录音 STFT/chroma/DTW + 局部谱通量候选，未经过独立起音真值验收；159 个装饰音、延音或边界冲突未进入候选映射。end_ms 是 160 毫秒呈现停留，不表示实测止音。",
+          "end_ms": 101000.0,
+          "granularity": "note",
+          "method": "audio_alignment",
+          "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+          "start_ms": 0.0,
+          "status": "pending"
+        }
+      ],
+      "music": true,
+      "music_events": true,
+      "music_note_alignment": false,
+      "music_score": true
+    },
+    "reasons": [],
+    "route": "reader",
+    "stages": {
+      "music_prebuild": {
+        "status": "done"
+      }
+    },
+    "status": "music_ready"
+  },
+  "capabilities": {
+    "coverage": [
+      {
+        "detail": "原录音 STFT/chroma/DTW + 局部谱通量候选，未经过独立起音真值验收；159 个装饰音、延音或边界冲突未进入候选映射。end_ms 是 160 毫秒呈现停留，不表示实测止音。",
+        "end_ms": 101000.0,
+        "granularity": "note",
+        "method": "audio_alignment",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "start_ms": 0.0,
+        "status": "pending"
+      }
+    ],
+    "music": true,
+    "music_events": true,
+    "music_note_alignment": false,
+    "music_score": true
+  },
+  "files": {
+    "base.json": 2016,
+    "music/NOTICE.txt": 4883,
+    "music/audio/recording.mp3": 2425753,
+    "music/build-report.json": 826,
+    "music/demonstrations/upper-line-m3-4.wav": 138960,
+    "music/score/original.musicxml": 208557,
+    "music/score/page-1.svg": 255596,
+    "music/score/page-2.svg": 283550,
+    "music/score/page-3.svg": 246400,
+    "music_source_manifest.json": 578591,
+    "source.txt": 797
+  },
+  "previous_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+  },
+  "reference": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16258-5b0f-7873-b42e-04d9425d8551"
+  },
+  "resident_bytes": 26277,
+  "source_fingerprint": "489f70ee76cea0b1e7129eb067b418582db477635cd7a1d3a3f90de7a8d89012",
+  "teaching_readiness": {
+    "limitations": [],
+    "reason": "正式教学素材尚未发布",
+    "source_id": "music-schubert-d780-3-vetter",
+    "status": "preparing",
+    "teaching_map_revision": null
+  },
+  "tutor_readiness": {
+    "coverage": [
+      {
+        "detail": "原录音 STFT/chroma/DTW + 局部谱通量候选，未经过独立起音真值验收；159 个装饰音、延音或边界冲突未进入候选映射。end_ms 是 160 毫秒呈现停留，不表示实测止音。",
+        "end_ms": 101000.0,
+        "granularity": "note",
+        "method": "audio_alignment",
+        "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+        "start_ms": 0.0,
+        "status": "pending"
+      }
+    ],
+    "reason": "音乐谱面、事件与整体结构已就绪，可以开始伴听",
+    "required_stages": {
+      "music_prebuild": {
+        "status": "done"
+      }
+    },
+    "source_id": "music-schubert-d780-3-vetter",
+    "source_revision": "489f70ee76cea0b1e7129eb067b418582db477635cd7a1d3a3f90de7a8d89012",
+    "status": "ready",
+    "teaching_assets": {
+      "cognitive_materials": {
+        "status": "missing"
+      },
+      "formal_objects": {
+        "status": "missing"
+      },
+      "limitations": [],
+      "reason": "正式教学素材尚未发布",
+      "source_id": "music-schubert-d780-3-vetter",
+      "status": "preparing",
+      "teaching_map_revision": null
+    }
+  },
+  "version": "book_publication.v1"
+}

@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 1,
+  "position": 3,
+  "index": 3,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-03.json",
+  "ordinal": 4,
+  "started_utc": "2026-10-22T03:18:26.373833+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 21339,
+    "completion_tokens": 676,
+    "total_tokens": 22015,
+    "prompt_tokens_details": {
+      "cached_tokens": 14208
+    },
+    "prompt_cache_hit_tokens": 14208,
+    "prompt_cache_miss_tokens": 7131
+  },
+  "response_id": "a631338c-622d-483e-9ff4-fc311f471626",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标中更昂贵，并不保证验证误差单调下降。 [[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合的关系**\n\n- 惩罚太弱时，模型可能把训练样本中的噪声也当成规律，训练误差继续下降，但未见样本上的误差反而上升，这是过拟合的典型表现。 [[source:source_ref_c52685f9e6cb9140]]\n- 惩罚适当增强时，模型对大权重的依赖减少，对训练噪声的敏感程度可能降低，从而改善泛化。 [[source:source_ref_679b2138443382f8]]\n- 惩罚过强时，模型被压得过于保守，连训练数据中的主要关系也学不好，于是出现欠拟合，常表现为训练误差和验证误差都较高。 [[source:source_ref_c52685f9e6cb9140]] [[source:source_ref_679b2138443382f8]]\n- 因此，随着 lambda 增大，验证误差通常先降后升，呈 U 形；最优点在中间，不在两端。这是把上述两条原则合起来得到的推论，材料本身没有画出这条曲线。\n\n**验证集在选择中的作用**\n\nlambda 通常由验证集或交叉验证来选择，测试集不用于反复挑选 lambda。 [[source:source_ref_679b2138443382f8]] 验证集的作用是选择模型和超参数；测试集应留到最终评估。 [[source:source_ref_c52685f9e6cb9140]] 另外，增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。 [[source:source_ref_679b2138443382f8]]\n\n**比较页面应让你观察什么**\n\n1. **横轴是 lambda，纵轴是误差，两条曲线并列**：一条训练误差，一条验证误差。训练误差随 lambda 增大而上升是正常的；关键看验证误差在哪里最低。\n2. **标出验证误差最低点**：该点对应的 lambda 就是验证集选出的候选值，同时标出它两侧的“惩罚偏弱”和“惩罚过强”区域。\n3. **标出欠拟合区**：当 lambda 很大时，训练误差和验证误差都高，两条曲线靠拢且整体偏高，这就是欠拟合的形态，与过拟合时“训练低、验证高”的分离形态形成对照。\n4. **测试集单独放在最后**：只在选定 lambda 后显示一次测试结果，不参与曲线上的挑选，避免你被“反复试测试集”误导。\n5. **可拖动 lambda 的交互**：拖动时同步显示当前 lambda 下的训练误差、验证误差和平方权重和，让你看到惩罚项如何改变优化偏好，而不是只看一个最终数字。\n\n需要说明的是，材料只给出了 L2 目标式、惩罚过强导致欠拟合的结论，以及 lambda 由验证集选择的规则；上面第 3、5 点中“曲线形状”和“拖动交互”的具体呈现方式，是我根据这些原则设计的比较方案，不是材料原文。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 771.858,
+  "first_text_ms": 771.858,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 154.474,
+  "streaming": true,
+  "duration_ms": 4187.04,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 21339,
+    "cached_input_tokens": 14208,
+    "uncached_input_tokens": 7131,
+    "output_tokens": 676
+  },
+  "cost": {
+    "input_cny": "0.01483032",
+    "output_cny": "0.005408",
+    "total_cny": "0.02023832",
+    "total_rounded_micro_cny": 20239
+  }
+}

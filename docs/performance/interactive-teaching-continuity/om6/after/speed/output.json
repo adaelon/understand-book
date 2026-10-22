@@ -1,0 +1,98 @@
+{
+  "design": {
+    "operation": "design",
+    "operation_id": "om6-apply",
+    "design": {
+      "basis_refs": [
+        "usage:tutor-begin-1:user:turn_7e8a3a21769e3bd3"
+      ],
+      "blocks": [
+        {
+          "block_id": "distance-time",
+          "purpose": "让学习者看清：图上距离由已应用的速度和共同时间共同决定，输入框里的新数值在应用前不参与计算。",
+          "relation": "距离等于速度乘时间。页面把输入速度和应用速度分开保存：只有点“应用速度”后，输入值才写入应用速度，距离图才按新速度重算；在此之前，距离仍按上一次应用的速度计算。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      ],
+      "connections": [],
+      "focus_block_refs": [
+        "distance-time"
+      ],
+      "open_question_refs": [],
+      "organizing_model": "当前问题是操作层面的：输入速度已改为 2 米/秒，但页面状态显示 applied_speed 仍为 1、input_speed 为 2，visible_step 为 awaiting_apply，所以距离仍按 1 米/秒乘 10 秒得 10 米。要解释画面并给出让新结果出现的操作，需要说明输入值与已应用值的区别，以及距离等于速度乘时间这一关系。",
+      "previous_ref": "design:turn_7e8a3b21769e3d86:om5",
+      "representation": {
+        "kind": "text",
+        "reason": "当前障碍是页面状态与操作步骤，用文字对照输入速度、应用速度和距离即可说清，无需新建页面。"
+      },
+      "revision_reason": "学习者当前请求从比较两车速度转为解释“改了速度但距离没变”的画面并询问如何让新结果出现；原设计聚焦整段行程平均速度，与本轮操作问题不符，故把焦点收回到距离等于速度乘时间及输入值与已应用值的区别。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "能说明图上距离仍为 10 米是因为新速度尚未应用、距离按已应用速度 1 米/秒乘 10 秒计算，并指出点击“应用速度”后距离将变为 20 米。",
+        "learning_focus": "输入速度与已应用速度的区别及距离计算",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    }
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "explain-apply",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "prompt": "解释当前画面：输入速度 2 米/秒尚未应用，距离仍按已应用速度 1 米/秒乘 10 秒得 10 米；点击“应用速度”后 B 的距离变为 20 米。",
+      "interaction_intent": "direct_explanation",
+      "intent_origin": "current_request",
+      "intent_quote": "我把 B 的速度从 1 调到 2 米/秒了，为什么图上还是 10 米？先解释现在的画面，再告诉我怎么让它显示新结果。",
+      "design_ref": "design:turn_f3f677221eb81f2b:om6-apply",
+      "block_refs": [
+        "distance-time"
+      ],
+      "participation": {
+        "choice": "support",
+        "reason": "学习者直接询问画面为何未变以及如何让新结果出现，需要先说明输入速度与已应用速度的区别和距离计算，再给出操作步骤。",
+        "support": "页面把输入速度和应用速度分开保存；距离等于已应用速度乘共同时间，输入值在点击“应用速度”前不参与计算。",
+        "learner_inference": null
+      },
+      "responds_to": {
+        "disposition": "addressed",
+        "fact_refs": [
+          "usage:tutor-begin-1:user:turn_f3f677221eb81f2b"
+        ],
+        "invitation_ref": null
+      },
+      "delivery_text": "现在画面上 B 还是 10 米，是因为你改的 2 米/秒只进了输入框，还没有被页面采用。\n\n页面把两个速度分开保存：一个是输入框里的速度，现在是你填的 2 米/秒；另一个是已经应用的速度，页面记录它仍是 1 米/秒。距离图只按已应用的速度计算，所以 B 的距离还是 1 米/秒 × 10 秒 = 10 米，和 A 一样。\n\n要让新结果出现，点页面上的“应用速度”按钮。点击后，输入框里的 2 米/秒会写入已应用速度，距离图按新速度重算：B 的距离变成 2 米/秒 × 10 秒 = 20 米。共同时间仍是 10 秒，A 保持 1 米/秒，所以 A 仍是 10 米。",
+      "response_expectation": null,
+      "continuation": {
+        "recommended_option_id": "observe-apply",
+        "options": [
+          {
+            "option_id": "observe-apply",
+            "label": "我点了“应用速度”，帮我核对现在图上的距离和速度是否对得上",
+            "purpose": "把刚讲的应用步骤落到实际画面上，检查点击后 B 的距离是否按 2 米/秒 × 10 秒变成 20 米，并确认 A 仍为 10 米。",
+            "move_kind": "observe"
+          },
+          {
+            "option_id": "compare-double",
+            "label": "如果时间也改成 5 秒，B 应用 2 米/秒后距离会是多少？",
+            "purpose": "在已应用速度的前提下改变共同时间，检验距离随速度和时间两个因素同时变化的关系，而不只是重复速度翻倍的情形。",
+            "move_kind": "compare"
+          }
+        ]
+      }
+    }
+  },
+  "answer": "现在画面上 B 还是 10 米，是因为你改的 2 米/秒只进了输入框，还没有被页面采用。\n\n页面把两个速度分开保存：一个是输入框里的速度，现在是你填的 2 米/秒；另一个是已经应用的速度，页面记录它仍是 1 米/秒。距离图只按已应用的速度计算，所以 B 的距离还是 1 米/秒 × 10 秒 = 10 米，和 A 一样。\n\n要让新结果出现，点页面上的“应用速度”按钮。点击后，输入框里的 2 米/秒会写入已应用速度，距离图按新速度重算：B 的距离变成 2 米/秒 × 10 秒 = 20 米。共同时间仍是 10 秒，A 保持 1 米/秒，所以 A 仍是 10 米。"
+}

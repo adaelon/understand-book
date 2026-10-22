@@ -1,0 +1,31 @@
+{
+  "commit": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
+  "deployment": "passed",
+  "production_origin": "https://understandbook.top",
+  "browser": "completed with one existing unsupported endpoint",
+  "browser_checks_completed": 7,
+  "javascript_errors": 0,
+  "agent_model_requests": 0,
+  "strict_browser_report": "public-browser.json",
+  "strict_browser_assertion": "failed: expected no HTTP failures, observed one HTTP 501",
+  "known_issues": [
+    {
+      "feature": "Paper minimap Chinese labels",
+      "observed": "POST /api/workspaces/<workspace>/reader/paper_minimap.localize returns 501",
+      "effect": "Chinese-label localization is unavailable; PDF reading and chapter controls rendered successfully",
+      "evidence": "The current and previous main sources both call this endpoint from App.vue; workspace_registry.rs has no localize handler and falls through to authorization::deferred()",
+      "introduced_by_this_release": false
+    },
+    {
+      "feature": "Background material builds",
+      "observed": "DSH operator host root session and shared directories are not configured",
+      "effect": "Queue and administration pages are live; background execution is not connected"
+    },
+    {
+      "feature": "Teaching review v13",
+      "observed": "No new paid-model quality replay during this release",
+      "effect": "The self-contained-answer rule is shipped; the previously observed necessary-mechanism omission is not proven solved"
+    }
+  ],
+  "receipt_note": "Deployment and browser receipts were generated after the single implementation commit. The original browser failure report is retained."
+}

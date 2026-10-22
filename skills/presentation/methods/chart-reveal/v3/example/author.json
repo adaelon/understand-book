@@ -1,0 +1,19 @@
+{
+  "title": "三个数字，究竟在数什么？",
+  "initial_state": {"mode": "prefill", "positions": 4, "counts_open": false, "comparison_open": false, "scope_open": false},
+  "state_contract": {
+    "mode": "本次处理方式：prefill 为一次读入 positions 个输入位置；decode 为已有 positions 个位置的 KV 缓存后再处理 1 个新位置。",
+    "positions": "prefill 中本次读入的位置数，或 decode 中本次处理之前已经缓存的位置数；仅允许 4 或 8192。",
+    "counts_open": "是否展开当前计数、参数符号与公式。",
+    "comparison_open": "是否展开两种处理方式的原数对照。",
+    "scope_open": "是否展开教学模型条件与适用边界。"
+  },
+  "readable_content": "先看实际对象，再核对计数。默认一次读入 4 个 token：4 个位置要做新投影；因果注意力各 query 行分别看 1、2、3、4 个 key，共 10 个有效配对；本例只将最后位置送入词表，输出 1 行。切换为已有 4 个位置的 KV 缓存再处理 1 个新位置：旧缓存保留，只有 1 个新投影位置；新 query 看 4 个旧 key 加自身，共 5 对；词表仍只输出 1 行。切换到 8192 规模时，prefill 有 8192 行投影、33558528 对、1 行词表输出；decode 有 1 行新投影、8193 对、1 行词表输出。大规模图明确省略中间位置且不按实际数量比例画每格。原始表、公式、两模式对照与条件都可展开。",
+  "assumptions": [
+    "独立构造的教学模型，未使用原页面的 FLOPs 数据，不声称是完整 Transformer 计算量或延迟。",
+    "单序列因果注意力，当前位置可以关注自身；已有缓存有效且用于复用旧位置 K/V。",
+    "只数位置行与有效因果配对，不数 Q/K/V 等矩阵的乘法次数。",
+    "仅最后位置进入词表投影；训练或所有位置输出的模式需另行定义。"
+  ],
+  "source_ref_ids": [], "libraries": [], "asset_refs": []
+}

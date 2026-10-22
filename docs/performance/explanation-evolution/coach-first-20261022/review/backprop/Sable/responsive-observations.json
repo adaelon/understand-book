@@ -1,0 +1,38 @@
+[
+  {
+    "viewport": {
+      "width": 320,
+      "height": 420
+    },
+    "layout": {
+      "width": 320,
+      "docWidth": 320,
+      "bodyWidth": 320
+    },
+    "graphBox": {
+      "x": 32,
+      "y": -1270.34375,
+      "width": 256,
+      "height": 148.203125
+    },
+    "statusAfterBack": "当前 x = 2　y = 3　第 3/9 步：前向②：v"
+  },
+  {
+    "viewport": {
+      "width": 640,
+      "height": 240
+    },
+    "layout": {
+      "width": 640,
+      "docWidth": 640,
+      "bodyWidth": 640
+    },
+    "graphBox": {
+      "x": 43,
+      "y": -1473.09375,
+      "width": 554,
+      "height": 320.734375
+    },
+    "statusAfterBack": "当前 x = 2　y = 3　第 3/9 步：前向②：v"
+  }
+]

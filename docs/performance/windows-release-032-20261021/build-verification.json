@@ -1,0 +1,16 @@
+{
+  "native_inputs_match": [
+    "apps\\desktop\\src-tauri\\src\\cloud_auth.rs",
+    "apps\\desktop\\src-tauri\\src\\local_materials.rs",
+    "apps\\desktop\\src-tauri\\src\\main.rs",
+    "apps\\desktop\\src-tauri\\src\\reading_share.rs",
+    "apps\\desktop\\src-tauri\\windows\\installer-hooks.nsh",
+    "apps\\desktop\\src-tauri\\capabilities\\default.json"
+  ],
+  "version": "0.3.2",
+  "embedded_frontend_baseline": "tmp/local-library-20261021/frontend/packages/web",
+  "excluded_unpublished_features": [
+    "reading resumption changes in working-tree network-context.ts and network-client.ts"
+  ],
+  "candidate_bytes": 4899996
+}

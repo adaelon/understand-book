@@ -1,0 +1,251 @@
+{
+  "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+  "content_char_budget": 6000,
+  "open_questions": [],
+  "previous_work": [
+    {
+      "action_ref": null,
+      "assessment_ref": null,
+      "assessment_status": "unassessed",
+      "assistance_refs": [],
+      "attempt": null,
+      "binding": {
+        "chat_session_id": "om2-target-chat",
+        "control_revision": 0,
+        "session_revision": 0,
+        "source_id": "mu5-x",
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "turn_id": "om2-target-turn",
+        "tutor_session_id": "observation:mu5-x"
+      },
+      "delivery_ref": null,
+      "evidence_refs": [],
+      "fact_refs": [
+        "usage:observation:mu5-x:user:om2-target-turn"
+      ],
+      "help": [],
+      "help_truncated": false,
+      "historical": false,
+      "learner_quote_excerpt": {
+        "text": "继续原来的作品",
+        "truncated": false
+      },
+      "presentation_receipt": null,
+      "published_book_ref": null,
+      "response_origin": null,
+      "saved_state_ref": null,
+      "source_refs": [],
+      "support_delivery_refs": []
+    },
+    {
+      "action_ref": null,
+      "assessment_ref": null,
+      "assessment_status": "unassessed",
+      "assistance_refs": [],
+      "attempt": null,
+      "binding": {
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "control_revision": 0,
+        "session_revision": 0,
+        "source_id": "mu5-y",
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "turn_id": "turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a",
+        "tutor_session_id": "observation:mu5-y"
+      },
+      "current_mastery": false,
+      "delivery_ref": null,
+      "evidence_refs": [
+        "correction:om2-linked-correction"
+      ],
+      "fact_refs": [
+        "library-user:turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a:mu5-y:01a15829-570b-7011-b9b4-410dd50672db"
+      ],
+      "help": [],
+      "help_truncated": false,
+      "historical": true,
+      "learner_quote_excerpt": {
+        "text": "我是在看过例子之后才说出速度关系的",
+        "truncated": false
+      },
+      "original_goal": null,
+      "presentation_receipt": null,
+      "published_book_ref": {
+        "book_id": "mu5-y",
+        "publication_id": "01a15829-570b-7011-b9b4-410dd50672db"
+      },
+      "response_origin": null,
+      "saved_state_ref": null,
+      "selection": {
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "source_learning_workspace_id": null,
+        "through_seq": 10,
+        "turn_ids": [
+          "turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a"
+        ]
+      },
+      "source_refs": [
+        {
+          "evidence_range": {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          },
+          "publication_id": "01a15829-570b-7011-b9b4-410dd50672db",
+          "source_id": "mu5-y",
+          "source_ref_id": "w6-source-om2-selected",
+          "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7"
+        }
+      ],
+      "support_delivery_refs": []
+    },
+    {
+      "action_ref": null,
+      "assessment_ref": null,
+      "assessment_status": "unassessed",
+      "assistance_refs": [],
+      "attempt": null,
+      "binding": {
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "control_revision": 0,
+        "session_revision": 0,
+        "source_id": "mu5-x",
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "turn_id": "turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a",
+        "tutor_session_id": "observation:mu5-x"
+      },
+      "current_mastery": false,
+      "delivery_ref": null,
+      "evidence_refs": [],
+      "fact_refs": [
+        "usage:observation:mu5-x:user:turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a"
+      ],
+      "help": [],
+      "help_truncated": false,
+      "historical": true,
+      "learner_quote_excerpt": {
+        "text": "我是在看过例子之后才说出速度关系的",
+        "truncated": false
+      },
+      "original_goal": null,
+      "presentation_receipt": null,
+      "published_book_ref": {
+        "book_id": "mu5-x",
+        "publication_id": "01a15829-5616-7f83-aae4-b20b4ce4ff31"
+      },
+      "response_origin": null,
+      "saved_state_ref": null,
+      "selection": {
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "source_learning_workspace_id": null,
+        "through_seq": 10,
+        "turn_ids": [
+          "turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a"
+        ]
+      },
+      "source_refs": [
+        {
+          "evidence_range": {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          },
+          "publication_id": "01a15829-570b-7011-b9b4-410dd50672db",
+          "source_id": "mu5-y",
+          "source_ref_id": "w6-source-om2-selected",
+          "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7"
+        }
+      ],
+      "support_delivery_refs": []
+    }
+  ],
+  "read_more": [
+    {
+      "arguments": {
+        "event_id": "usage:observation:mu5-x:user:om2-target-turn",
+        "operation": "trace"
+      },
+      "tool": "tutor.step"
+    },
+    {
+      "arguments": {
+        "after": 0,
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "operation": "read"
+      },
+      "tool": "workspace.records.read"
+    },
+    {
+      "arguments": {
+        "after": 6,
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "limit": 1,
+        "operation": "read"
+      },
+      "tool": "workspace.records.read"
+    },
+    {
+      "arguments": {
+        "after": 8,
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "limit": 1,
+        "operation": "read"
+      },
+      "tool": "workspace.records.read"
+    },
+    {
+      "arguments": {
+        "after": 2,
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "limit": 1,
+        "operation": "read"
+      },
+      "tool": "workspace.records.read"
+    }
+  ],
+  "scope": {
+    "design_ref": null,
+    "focus_block_refs": null,
+    "learning_workspace_id": "01a15829-6021-7cc0-b866-f764bf68c34c",
+    "source_id": "mu5-x",
+    "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+    "tutor_session_id": "observation:mu5-x",
+    "workspace_goal_revision": 1
+  },
+  "teaching_implications": [
+    {
+      "action_ref": "library-user:turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a:mu5-y:01a15829-570b-7011-b9b4-410dd50672db",
+      "correction": {
+        "text": "这次表达得到过示例帮助，不代表独立运用。",
+        "truncated": false
+      },
+      "evidence_ref": "correction:om2-linked-correction",
+      "fact_refs": [
+        "library-user:turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a:mu5-y:01a15829-570b-7011-b9b4-410dd50672db"
+      ],
+      "historical": true,
+      "interpretation": {
+        "text": "原解释已被用户纠正，等待新的表现依据",
+        "truncated": false
+      },
+      "scope": {
+        "block_refs": [],
+        "design_ref": null,
+        "source_id": "mu5-y",
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "tutor_session_id": "observation:mu5-y"
+      },
+      "selection": {
+        "chat_session_id": "chat-01a15829-5dda-7783-b1fc-f842dd6360b4",
+        "source_learning_workspace_id": null,
+        "through_seq": 10,
+        "turn_ids": [
+          "turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a"
+        ]
+      },
+      "supersedes": "library-interpretation:turn_01a15829-5de4-7f13-8561-2ff4fa8ad66a:mu5-y:01a15829-570b-7011-b9b4-410dd50672db:om2-selected",
+      "teaching_implication": {
+        "text": "采用用户纠正重新确定讲解起点：这次表达得到过示例帮助，不代表独立运用。",
+        "truncated": false
+      }
+    }
+  ],
+  "truncated": false
+}

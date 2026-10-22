@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 2,
+  "position": 2,
+  "index": 2,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-02.json",
+  "ordinal": 15,
+  "started_utc": "2026-10-22T03:19:47.072291+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 20738,
+    "completion_tokens": 537,
+    "total_tokens": 21275,
+    "prompt_tokens_details": {
+      "cached_tokens": 13568
+    },
+    "prompt_cache_hit_tokens": 13568,
+    "prompt_cache_miss_tokens": 7170
+  },
+  "response_id": "eac73d51-2565-4dac-b8ad-bd682c2dbe44",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "不是“故意让模型变笨”，而是给优化目标加了一项“大权重税”，让模型在拟合训练数据时不能随意把权重调得很大。\n\n**文字讲清 L_train + λ·平方权重和**\n\nL2 正则化把训练目标从只看训练损失，改成：\n\nJ(w) = L_train(w) + λ · Σ_j w_j²\n\n- L_train(w)：模型在训练集上的误差，衡量“拟合得好不好”。\n- Σ_j w_j²：所有参数平方之和，衡量“权重有多大”。权重越大，模型对输入的小变化越敏感，越容易把训练样本里的噪声也当成规律。\n- λ ≥ 0：惩罚强度。λ = 0 时退化为普通训练；λ 越大，大权重越“贵”，优化时更倾向于把权重压小。\n\n所以正则化不是让模型学不会，而是改变“什么样的解算好”的标准：在拟合程度相近时，偏好权重更小的解。适当的惩罚可能降低模型对训练噪声的敏感度，从而改善泛化；惩罚过强则可能连主要关系都学不好，变成欠拟合。因此 λ 通常由验证集或交叉验证来选，测试集不参与反复挑选 λ。\n\n**你的数字例子**\n\n两个候选模型，L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。\n\n| λ | 模型一：0.05 + λ·10 | 模型二：0.09 + λ·1 | 目标值较小者 |\n|---|---|---|---|\n| 0 | 0.05 | 0.09 | 模型一 |\n| 0.01 | 0.05 + 0.10 = 0.15 | 0.09 + 0.01 = 0.10 | 模型二 |\n\nλ 从 0 变到 0.01 时，模型一多付 0.10 的惩罚，模型二只多付 0.01，于是偏好从“训练误差更低的模型一”翻转到“权重更小的模型二”。这正是正则化起作用的机制：它用一点训练误差换取更小的权重。\n\n但要注意这个算例的边界：它只说明惩罚改变了优化中的偏好，并不单独证明模型二的验证误差更低。哪个 λ 真正更好，仍要看同一验证集上的表现；增加正则化后训练误差上升，只要验证表现改善，就不等于模型变差。 [[source:source_ref_679b2138443382f8]]",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1078.365,
+  "first_text_ms": 1078.365,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 246.166,
+  "streaming": true,
+  "duration_ms": 3639.756,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 20738,
+    "cached_input_tokens": 13568,
+    "uncached_input_tokens": 7170,
+    "output_tokens": 537
+  },
+  "cost": {
+    "input_cny": "0.01488272",
+    "output_cny": "0.004296",
+    "total_cny": "0.01917872",
+    "total_rounded_micro_cny": 19179
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 1,
+  "position": 3,
+  "index": 7,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate-v2\\native-07.json",
+  "ordinal": 8,
+  "started_utc": "2026-10-22T03:28:15.607075+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 22898,
+    "completion_tokens": 693,
+    "total_tokens": 23591,
+    "prompt_tokens_details": {
+      "cached_tokens": 1536
+    },
+    "prompt_cache_hit_tokens": 1536,
+    "prompt_cache_miss_tokens": 21362
+  },
+  "response_id": "b6cd474e-3b9e-4e73-b75c-dcf774a7f3ce",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "lambda 越大并不一定越好。惩罚过强时，模型为了压低权重，可能连训练数据中的主要关系也学不好，于是训练误差和验证误差都偏高，这就是欠拟合。[[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n\n**过强惩罚、欠拟合与验证集选择的关系**\n\n- 正则化强度 lambda 控制对大权重的惩罚。lambda 增大后，训练目标里“权重代价”的占比上升，优化会更倾向于小权重。[[source:source_ref_679b2138443382f8]]\n- 适当的惩罚可能降低模型对训练噪声的敏感程度，从而改善泛化；惩罚过强则可能使模型欠拟合。[[source:source_ref_679b2138443382f8]]\n- 欠拟合的表现是训练与验证误差都较高，因为模型连训练数据中的主要关系也没有学好。[[source:source_ref_c52685f9e6cb9140]]\n- 因此，lambda 不能只凭训练目标值来选。训练目标值下降只说明“拟合损失加惩罚”这一组合变小，并不说明验证误差也下降。[[source:source_ref_679b2138443382f8]]\n- lambda 通常由验证集或交叉验证选择；测试集不用于反复挑选 lambda，而应留到最终评估。[[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n- 增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n**比较页面应让你观察什么**\n\n1. **固定条件**：数据划分、损失定义和误差指标保持不变，只改变 lambda。否则不同 lambda 的结果不可比。[[source:source_ref_c52685f9e6cb9140]]\n2. **两条曲线并列**：横轴是 lambda，纵轴同时画出训练误差和验证误差。不要只画训练目标值，因为训练目标值里已经包含惩罚项，不能代表未见数据上的表现。[[source:source_ref_679b2138443382f8]]\n3. **验证误差的最低点**：观察验证误差随 lambda 先降后升的转折。最低点附近是验证集支持的候选区间；越过最低点后，验证误差回升，提示惩罚可能过强。[[source:source_ref_679b2138443382f8]]\n4. **欠拟合区间的特征**：在 lambda 很大的一端，训练误差和验证误差都偏高，这对应欠拟合，而不是过拟合。[[source:source_ref_c52685f9e6cb9140]]\n5. **测试集的位置**：测试集结果只在选定 lambda 之后出现一次，用来报告最终评估，不参与反复挑选。[[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n\n一句话概括：lambda 的选择依据是验证集上的表现，训练目标值只是优化过程中的量；验证误差先降后升，说明存在一个合适的中间强度，而不是越大越好。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1729.125,
+  "first_text_ms": 1729.125,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 267.208,
+  "streaming": true,
+  "duration_ms": 4861.571,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 22898,
+    "cached_input_tokens": 1536,
+    "uncached_input_tokens": 21362,
+    "output_tokens": 693
+  },
+  "cost": {
+    "input_cny": "0.04278544",
+    "output_cny": "0.005544",
+    "total_cny": "0.04832944",
+    "total_rounded_micro_cny": 48330
+  }
+}

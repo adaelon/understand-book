@@ -1,0 +1,38 @@
+[
+  {
+    "viewport": {
+      "width": 320,
+      "height": 420
+    },
+    "layout": {
+      "width": 320,
+      "docWidth": 320,
+      "bodyWidth": 320
+    },
+    "statusAfterBack": "当前输入 x = 2，y = 3\n第 7 / 8 步\n回到 x：两路 57 与 16，相加得 73",
+    "graphBox": {
+      "x": 39,
+      "y": 346.4375,
+      "width": 242,
+      "height": 249.328125
+    }
+  },
+  {
+    "viewport": {
+      "width": 640,
+      "height": 240
+    },
+    "layout": {
+      "width": 640,
+      "docWidth": 640,
+      "bodyWidth": 640
+    },
+    "statusAfterBack": "当前输入 x = 2，y = 3\n第 7 / 8 步\n回到 x：两路 57 与 16，相加得 73",
+    "graphBox": {
+      "x": 60,
+      "y": 152.0625,
+      "width": 520,
+      "height": 535.75
+    }
+  }
+]

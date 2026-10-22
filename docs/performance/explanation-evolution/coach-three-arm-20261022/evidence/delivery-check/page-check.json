@@ -1,0 +1,2376 @@
+{
+  "provider_calls": 0,
+  "statistics": {
+    "scheduled": 12,
+    "started": 12,
+    "first_deliveries": 11,
+    "activity_limit_cny": "20",
+    "default_panel": "backprop-2",
+    "interrupted": 1,
+    "run_directory": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery",
+    "preserved_activity_peak_upper_cny": "4.43747728",
+    "this_round_peak_upper_cny": "14.8117068",
+    "previous_round_separate_peak_upper_cny": "6.55102280",
+    "cross_activity_peak_upper_cny": "21.36272960",
+    "usage_estimated_peak_cny": "11.66597880",
+    "retained_reservation_peak_cny": "3.145728",
+    "calls": 173,
+    "arm_totals": {
+      "A": {
+        "scheduled_runs": 4,
+        "started_runs": 4,
+        "first_deliveries": 4,
+        "failed_or_incomplete": [],
+        "interrupted": [],
+        "unstarted": [],
+        "calls": 65,
+        "peak_upper_cny": "4.55702992"
+      },
+      "B": {
+        "scheduled_runs": 4,
+        "started_runs": 4,
+        "first_deliveries": 3,
+        "failed_or_incomplete": [
+          "backprop-B1"
+        ],
+        "interrupted": [
+          "backprop-B1"
+        ],
+        "unstarted": [],
+        "calls": 42,
+        "peak_upper_cny": "6.16566512"
+      },
+      "C": {
+        "scheduled_runs": 4,
+        "started_runs": 4,
+        "first_deliveries": 4,
+        "failed_or_incomplete": [],
+        "interrupted": [],
+        "unstarted": [],
+        "calls": 66,
+        "peak_upper_cny": "4.08901176"
+      }
+    }
+  },
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "panels": [
+        {
+          "id": "backprop-2",
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          }
+        },
+        {
+          "id": "backprop-1",
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          }
+        },
+        {
+          "id": "ridge-1",
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          }
+        },
+        {
+          "id": "ridge-2",
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          }
+        },
+        {
+          "id": "backprop-2",
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          }
+        }
+      ],
+      "errors": [],
+      "requests": []
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 720
+      },
+      "panels": [
+        {
+          "id": "backprop-2",
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          }
+        },
+        {
+          "id": "backprop-1",
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          }
+        },
+        {
+          "id": "ridge-1",
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          }
+        },
+        {
+          "id": "ridge-2",
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          }
+        },
+        {
+          "id": "backprop-2",
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          }
+        }
+      ],
+      "errors": [],
+      "requests": []
+    }
+  ],
+  "links": [
+    {
+      "href": "README.md",
+      "readable": true
+    },
+    {
+      "href": "evidence/runs/summary.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/interruption-recovery.json",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-A1/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-A1/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Pine/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Pine/review.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Pine/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\both-zero-complete.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\cancellation-complete.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\focus-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\initial-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\interaction-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\local-sign-claim.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\mobile-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\mobile-expansion.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\mobile-formula-scroll.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\mobile-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\mobile-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\negative-complete.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\negative-values.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-1150.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-1750.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-2350.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-2950.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-3550.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-4150.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-4750.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-5350.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\read-960-600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\review.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\review.md",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-4.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-5.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-4.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-5.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\size-640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\step-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\step-5.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\step-8.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\step12-completion-claim.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\zero-v-complete.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\zero-v-contradiction.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Pine\\zero-x-complete.png",
+      "readable": true
+    },
+    {
+      "href": "evidence/backprop-A1/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C1/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C1/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Cedar/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Cedar/review.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Cedar/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\backward-u-arrows.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\backward-v-arrow.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\backward-x-arrow.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\both-zero-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\cancellation-accumulation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\cancellation-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\cancellation-hint.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\default-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\focused-visible-text.txt",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\initial-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\interaction-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\negative-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\omission-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-1200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-1800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-2400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-3000.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-3600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-4200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-4800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-5400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\read-960-600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\review.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\review.md",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\selftest-sign-claim.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-320-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\size-640-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\zero-contribution-claim.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\zero-v-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\zero-v-hint.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Cedar\\zero-x-graph.png",
+      "readable": true
+    },
+    {
+      "href": "evidence/backprop-C1/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-A2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-A2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Oak/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Oak/review.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Oak/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\both-zero-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\cancellation-comparison.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\cancellation-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\cancellation-zero-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\default-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\final-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\initial-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\interaction-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\negative-comparison.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\negative-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\negative-zero-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-1200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-1800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-2400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-3000.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-3600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-4200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-4800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-5400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-6000.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\read-960-6600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\review.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\review.md",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-320-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\size-640-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step-1-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step-11-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step-7-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step-9-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step-visibility.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step9-after-click-320.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step9-after-click-640.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\step9-after-click-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\zero-exception.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\zero-v-comparison.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\zero-v-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\zero-v-zero-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Oak\\zero-x-ledger.png",
+      "readable": true
+    },
+    {
+      "href": "evidence/backprop-A2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-B2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-B2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Maple/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Maple/review.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Maple/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\both-zero-contradiction.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\both-zero-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\both-zero-omission-detail.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\both-zero-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\cancellation-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\cancellation-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\cancellation-perturbation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\default-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\default-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\initial-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\interaction-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\mobile-backward-row.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\mobile-graph-right.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\mobile-pan.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\mobile-perturbation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\negative-forward-formula.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\negative-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\negative-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-1200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-1800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-2400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-3000.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-3600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-4200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-4800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-5400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\read-960-600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\review.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\review.md",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-4.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-320-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-3.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-4.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\size-640-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\stale-u-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\step-0-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\step-4-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\step-6-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\step-8-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\zero-v-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\zero-v-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\zero-x-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Maple\\zero-x-omitted.png",
+      "readable": true
+    },
+    {
+      "href": "evidence/backprop-B2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Birch/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Birch/review.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Birch/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\both-zero-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\cancellation-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\cancellation-omission.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\default-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\initial-960.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\interaction-results.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\local-sign-counterexample.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\mobile-graph-metrics.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\mobile-record.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\mobile-step-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\mobile-visible-text.txt",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-fixed-example.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-forward-record.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-local-positive-contribution-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-local-positive-contribution-omission.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\negative-omission.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-1200.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-1800.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-2400.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-3000.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-3600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\read-960-600.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\review.json",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\review.md",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-320-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\size-640-inputs.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\step-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\step-10.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\step-6.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\step-8.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\zero-v-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\backprop\\Birch\\zero-x-graph.png",
+      "readable": true
+    },
+    {
+      "href": "evidence/backprop-C2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-A1/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-A1/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Pearl/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Pearl/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Pearl/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-comparison-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-0-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-2-slope-caption.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate-minimum-card.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-0-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-10-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-10-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-normal-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-objective.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-returned-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-returned-normal-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\desktop-solution.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Pearl\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-A1/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-B1/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-B1/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Onyx/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Onyx/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Onyx/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\comparison-equality.txt",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\degenerate-visible-geometry.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-0-a1-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-0-a1-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate-profile.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-intercept.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-10-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-10-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-normal-comparison-equality.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-returned-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\desktop-returned-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-degenerate-0-fresh.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-degenerate-2-after-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-direct-return-normal-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-direct-return-normal-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-return-normal-2-after-degenerate-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-second-degenerate-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\profile-state-transitions.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Onyx\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-B1/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C1/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C1/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Opal/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Opal/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Opal/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-table-left.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-table-right.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\degenerate-visible-geometry.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-conclusion.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-degenerate-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-main-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-profile.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-degenerate-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-degenerate-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-main-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-main-10.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-main-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\desktop-state-returned-main-2.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Opal\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-C1/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-A2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-A2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Jade/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Jade/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Jade/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-check-instructions.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate-explanation.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-derivative.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-10-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-10-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-returned-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-returned-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-static-graph-0.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\desktop-static-graph-1.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Jade\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-A2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-B2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-B2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Coral/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Coral/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Coral/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-center-equation-right.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-table-right.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-0-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate-2-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-expansion.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-0-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-0-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-10-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-10-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-10-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-normal-2-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-proof.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-returned-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-returned-normal-2-plot.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\desktop-returned-normal-2-summary.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\horizontal-reading.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Coral\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-B2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C2/index.html",
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C2/960-first.png",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Amber/report.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Amber/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Amber/attachments.html",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\320-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-graph.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-operated.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-table.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\640-top.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-center.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-degenerate-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-degenerate-0-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-degenerate-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-degenerate-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-degenerate.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-global.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-initial.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-0-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-0-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-10-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-10-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-normal-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-returned-normal-2-controls.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-returned-normal-2-plots.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\desktop-solution.png",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\initial-dom.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\interaction-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\report.md",
+      "readable": true
+    },
+    {
+      "href": "review\\ridge\\Amber\\review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/ridge-C2/coach-evidence.json",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/topic-comparison.md",
+      "readable": true
+    },
+    {
+      "href": "review/backprop/review.json",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/topic-comparison.md",
+      "readable": true
+    },
+    {
+      "href": "review/ridge/review.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/coach-plan-observation.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/interim-evidence-note.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/final-evidence-note.json",
+      "readable": true
+    },
+    {
+      "href": "evidence/heldout/author-input/02-ridge-derivation.md",
+      "readable": true
+    },
+    {
+      "href": "evidence/heldout/evaluator-only/02-ridge-derivation.notes.md",
+      "readable": true
+    },
+    {
+      "href": "../coach-method-handoff-20261022/comparison.html",
+      "readable": true
+    }
+  ],
+  "status": "passed"
+}

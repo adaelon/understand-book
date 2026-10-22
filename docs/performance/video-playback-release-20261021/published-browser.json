@@ -1,0 +1,679 @@
+{
+  "kind": "Edge",
+  "status": "passed",
+  "requests": [
+    {
+      "path": "/assets/hls-bsuTaLC4.js",
+      "at_ms": 94,
+      "method": "GET",
+      "response_ms": 14324,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces",
+      "at_ms": 94,
+      "method": "POST",
+      "response_ms": 4109,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/tutor_readiness",
+      "at_ms": 10013,
+      "method": "GET",
+      "response_ms": 12105,
+      "status": 200
+    },
+    {
+      "path": "/api/tutor/state",
+      "at_ms": 10014,
+      "method": "GET",
+      "response_ms": 12105,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_playback",
+      "at_ms": 10014,
+      "method": "GET",
+      "response_ms": 15886,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_context",
+      "at_ms": 16219,
+      "method": "GET",
+      "response_ms": 17238,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_manifest",
+      "at_ms": 16221,
+      "method": "GET",
+      "response_ms": 17606,
+      "status": 404
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/manifest",
+      "at_ms": 16222,
+      "method": "GET",
+      "response_ms": 17068,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/asset_manifest",
+      "at_ms": 16222,
+      "method": "GET",
+      "response_ms": 17440,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_fingerprint",
+      "at_ms": 16223,
+      "method": "GET",
+      "response_ms": 17440,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/index.m3u8",
+      "at_ms": 16241,
+      "method": "GET",
+      "response_ms": 18419,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/profile/manifest",
+      "at_ms": 17446,
+      "method": "POST",
+      "response_ms": 18658,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/text",
+      "at_ms": 17447,
+      "method": "GET",
+      "response_ms": 18657,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/video_draft",
+      "at_ms": 18449,
+      "method": "POST",
+      "response_ms": 18980,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 18654,
+      "method": "GET",
+      "range": "bytes=0-1635",
+      "response_ms": 23130,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 18657,
+      "method": "GET",
+      "range": "bytes=1636-547380",
+      "response_ms": 19878,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/text",
+      "at_ms": 18661,
+      "method": "GET",
+      "response_ms": 19187,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/memory/recall",
+      "at_ms": 19190,
+      "method": "POST",
+      "response_ms": 19711,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/chat/history",
+      "at_ms": 19192,
+      "method": "POST",
+      "response_ms": 19715,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/profile/memory",
+      "at_ms": 19192,
+      "method": "POST",
+      "response_ms": 19988,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 22029,
+      "method": "GET",
+      "response_ms": 24530,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/adopt_same_source_publication",
+      "at_ms": 25911,
+      "method": "POST",
+      "response_ms": 26752,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 26612,
+      "method": "GET",
+      "range": "bytes=547381-975375",
+      "response_ms": 27319,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 28097,
+      "method": "GET",
+      "range": "bytes=125370604-125609487",
+      "response_ms": 29319,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 29769,
+      "method": "GET",
+      "response_ms": 31324,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 30055,
+      "method": "GET",
+      "range": "bytes=125609488-125813255",
+      "response_ms": 30569,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 31327,
+      "method": "GET",
+      "range": "bytes=125813256-125999309"
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/adopt_same_source_publication",
+      "at_ms": 31328,
+      "method": "POST",
+      "response_ms": 32264,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 31373,
+      "method": "GET",
+      "range": "bytes=220629413-220811096",
+      "response_ms": 32067,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 34191,
+      "method": "GET",
+      "range": "bytes=220811097-221005553",
+      "response_ms": 35180,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 35276,
+      "method": "GET",
+      "response_ms": 37908,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 37145,
+      "method": "GET",
+      "range": "bytes=221005554-221178465"
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 37191,
+      "method": "GET",
+      "range": "bytes=125370604-125609487",
+      "response_ms": 38759,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/adopt_same_source_publication",
+      "at_ms": 37942,
+      "method": "POST",
+      "response_ms": 42661,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 42844,
+      "method": "GET",
+      "range": "bytes=125609488-125813255",
+      "response_ms": 43376,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 45852,
+      "method": "GET",
+      "response_ms": 46762,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/adopt_same_source_publication",
+      "at_ms": 46766,
+      "method": "POST",
+      "response_ms": 47299,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 46767,
+      "method": "GET",
+      "range": "bytes=125813256-125999309",
+      "response_ms": 47473,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/detach",
+      "at_ms": 49030,
+      "method": "POST"
+    },
+    {
+      "path": "/api/auth/me",
+      "at_ms": 58670,
+      "method": "GET",
+      "response_ms": 59199,
+      "status": 200
+    },
+    {
+      "path": "/api/library",
+      "at_ms": 59200,
+      "method": "GET",
+      "response_ms": 59727,
+      "status": 200
+    },
+    {
+      "path": "/api/videos",
+      "at_ms": 59728,
+      "method": "GET",
+      "response_ms": 60267,
+      "status": 200
+    },
+    {
+      "path": "/api/learning-workspaces",
+      "at_ms": 60276,
+      "method": "GET",
+      "response_ms": 60840,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/resumption",
+      "at_ms": 60849,
+      "method": "GET",
+      "response_ms": 61522,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/cover",
+      "at_ms": 60867,
+      "method": "GET",
+      "response_ms": 62993,
+      "status": 200
+    },
+    {
+      "path": "/api/books/understanding-transformer-from-the-perspective-of-associative-memory/publications/01a0f58a-53e1-7262-92cb-e90ffa4b054d/pdf/original",
+      "at_ms": 60872,
+      "method": "GET",
+      "range": "bytes=0-262143",
+      "response_ms": 65124,
+      "status": 206
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "at_ms": 60873,
+      "method": "GET",
+      "range": "bytes=0-262143",
+      "response_ms": 67793,
+      "status": 206
+    },
+    {
+      "path": "/api/books/mastering-rust/publications/01a0f58a-4df3-7822-8f5d-f712568fd50a/assets/images/1_2-6ae1803c33bcc4b2.jpg",
+      "at_ms": 60874,
+      "method": "GET",
+      "response_ms": 62993,
+      "status": 200
+    },
+    {
+      "path": "/assets/hls-bsuTaLC4.js",
+      "at_ms": 61120,
+      "method": "GET",
+      "response_ms": 64118,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 61120,
+      "method": "GET",
+      "response_ms": 68928,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/attach",
+      "at_ms": 68929,
+      "method": "POST",
+      "response_ms": 71160,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/tutor_readiness",
+      "at_ms": 71166,
+      "method": "GET",
+      "response_ms": 72912,
+      "status": 200
+    },
+    {
+      "path": "/api/tutor/state",
+      "at_ms": 71168,
+      "method": "GET",
+      "response_ms": 72912,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_playback",
+      "at_ms": 71169,
+      "method": "GET",
+      "response_ms": 72912,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6",
+      "at_ms": 71172,
+      "method": "GET",
+      "response_ms": 73512,
+      "status": 200
+    },
+    {
+      "path": "/api/books/understanding-transformer-from-the-perspective-of-associative-memory/publications/01a0f58a-53e1-7262-92cb-e90ffa4b054d/pdf/original",
+      "at_ms": 71263,
+      "method": "GET",
+      "range": "bytes=2621440-2646720",
+      "response_ms": 72911,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_context",
+      "at_ms": 73292,
+      "method": "GET",
+      "response_ms": 74146,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_manifest",
+      "at_ms": 73293,
+      "method": "GET",
+      "response_ms": 74363,
+      "status": 404
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/manifest",
+      "at_ms": 73295,
+      "method": "GET",
+      "response_ms": 74603,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/asset_manifest",
+      "at_ms": 73296,
+      "method": "GET",
+      "response_ms": 74603,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_fingerprint",
+      "at_ms": 73296,
+      "method": "GET",
+      "response_ms": 74602,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/index.m3u8",
+      "at_ms": 73299,
+      "method": "GET",
+      "response_ms": 74617,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/book/open",
+      "at_ms": 73542,
+      "method": "POST",
+      "response_ms": 74603,
+      "status": 200
+    },
+    {
+      "path": "/api/books/understanding-transformer-from-the-perspective-of-associative-memory/publications/01a0f58a-53e1-7262-92cb-e90ffa4b054d/pdf/original",
+      "at_ms": 73543,
+      "method": "GET",
+      "range": "bytes=2359296-2621439",
+      "response_ms": 74618,
+      "status": 206
+    },
+    {
+      "path": "/api/books/a-survey-of-agent-memory-in-the-secondhalf/publications/01a0f587-8838-7cd0-85e4-a37c411584d2/pdf/original",
+      "at_ms": 74041,
+      "method": "GET",
+      "range": "bytes=16252928-16504341"
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 74618,
+      "method": "GET",
+      "range": "bytes=0-1635"
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 74620,
+      "method": "GET",
+      "range": "bytes=125609488-125813255"
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/profile/manifest",
+      "at_ms": 74628,
+      "method": "POST",
+      "response_ms": 79413,
+      "status": 409
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/text",
+      "at_ms": 74630,
+      "method": "GET",
+      "response_ms": 79411,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/tutor_readiness",
+      "at_ms": 74641,
+      "method": "GET",
+      "response_ms": 79410,
+      "status": 200
+    },
+    {
+      "path": "/api/tutor/state",
+      "at_ms": 74643,
+      "method": "GET",
+      "response_ms": 79411,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_playback",
+      "at_ms": 74643,
+      "method": "GET",
+      "response_ms": 79413,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video_context",
+      "at_ms": 79425,
+      "method": "GET",
+      "response_ms": 80167,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_manifest",
+      "at_ms": 79427,
+      "method": "GET",
+      "response_ms": 80841,
+      "status": 404
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/manifest",
+      "at_ms": 79428,
+      "method": "GET",
+      "response_ms": 80962,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/asset_manifest",
+      "at_ms": 79428,
+      "method": "GET",
+      "response_ms": 80838,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/source_fingerprint",
+      "at_ms": 79429,
+      "method": "GET",
+      "response_ms": 80838,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/index.m3u8",
+      "at_ms": 79435,
+      "method": "GET",
+      "response_ms": 80841,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/reader/video_draft",
+      "at_ms": 80622,
+      "method": "POST",
+      "response_ms": 81331,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 80963,
+      "method": "GET",
+      "range": "bytes=0-1635",
+      "response_ms": 81696,
+      "status": 206
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 80964,
+      "method": "GET",
+      "range": "bytes=125609488-125813255",
+      "response_ms": 81493,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/profile/manifest",
+      "at_ms": 81328,
+      "method": "POST",
+      "response_ms": 82402,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/text",
+      "at_ms": 81330,
+      "method": "GET",
+      "response_ms": 82403,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/text",
+      "at_ms": 82429,
+      "method": "GET",
+      "response_ms": 82949,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 82432,
+      "method": "GET",
+      "range": "bytes=125813256-125999309",
+      "response_ms": 82950,
+      "status": 206
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/memory/recall",
+      "at_ms": 82955,
+      "method": "POST",
+      "response_ms": 85078,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/chat/history",
+      "at_ms": 82968,
+      "method": "POST",
+      "response_ms": 85081,
+      "status": 200
+    },
+    {
+      "path": "/api/workspaces/ws-01a15ed7-1fba-7a52-805b-916562fa60f6/profile/memory",
+      "at_ms": 82971,
+      "method": "POST",
+      "response_ms": 85081,
+      "status": 200
+    },
+    {
+      "path": "/api/books/19ac880d-a788-43f4-9725-6c56f4980189/publications/01a15c89-da55-7d71-8329-a0ba9f25c86b/video/playback/media.mp4",
+      "at_ms": 85080,
+      "method": "GET",
+      "range": "bytes=125999310-126197105"
+    }
+  ],
+  "errors": [],
+  "model_requests": 0,
+  "video_element_ms": 16315,
+  "first_frame_ms": 26919,
+  "title": "CS336 第 2 讲：PyTorch 与资源核算",
+  "media": {
+    "duration": 4641.3325,
+    "width": 1920,
+    "height": 1080,
+    "currentTime": 0,
+    "source": "blob:https://understandbook.top/eed10ad3-f842-4edc-94c8-0966998856d2"
+  },
+  "playing_ms": 28050,
+  "seeks": [
+    {
+      "target": 2400,
+      "ms": 3276,
+      "time": 2400,
+      "presented": 2400
+    },
+    {
+      "target": 4600,
+      "ms": 5800,
+      "time": 4600,
+      "presented": 4600
+    }
+  ],
+  "saved": {
+    "video-position:reader:361e204a-50c7-40cd-9054-072b01a27659:1": {
+      "time": 2400,
+      "rate": 1.25
+    }
+  },
+  "reader_script": [
+    "/assets/reader-BS2FDkRu.js",
+    "/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092"
+  ],
+  "resumed": {
+    "time": 2400,
+    "rate": 1.25
+  }
+}

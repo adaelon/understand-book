@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 2,
+  "position": 2,
+  "index": 6,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline-q1\\native-06.json",
+  "ordinal": 15,
+  "started_utc": "2026-10-22T04:51:25.466098+00:00",
+  "price_version": "deepseek-flash-20261022-04-06",
+  "usage": {
+    "prompt_tokens": 42818,
+    "completion_tokens": 678,
+    "total_tokens": 43496,
+    "prompt_tokens_details": {
+      "cached_tokens": 9088
+    },
+    "prompt_cache_hit_tokens": 9088,
+    "prompt_cache_miss_tokens": 33730
+  },
+  "response_id": "f24c1eec-5568-4ddc-8607-0365d8224662",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "正则化不是让模型“变笨”，而是改变训练时优化的目标：在原来的训练损失之外，再为较大的权重加一笔代价。\n\n**公式怎么读**\n\n训练目标写成 J(w) = L_train(w) + λ·Σⱼ wⱼ²。第一项 L_train 是模型在训练集上的损失，衡量拟合得好不好；第二项 λ·Σⱼ wⱼ² 是惩罚项，Σⱼ wⱼ² 是所有权重平方之和，λ ≥ 0 决定惩罚的力度。λ 越大，大权重越“贵”，优化过程就越倾向于选择权重较小的解。权重小通常意味着模型对训练样本中的个别噪声不那么敏感，因此适当的惩罚可能改善泛化；但惩罚过强也会让模型连训练数据中的主要关系都学不好，变成欠拟合。 [[source:source_ref_679b2138443382f8]]\n\n**你的算例**\n\n设甲：L_train = 0.05，平方权重和 = 10；乙：L_train = 0.09，平方权重和 = 1。\n\n- λ = 0 时，惩罚项为零，目标值就是训练损失：甲 0.05，乙 0.09。甲的目标值更小，优化会偏向甲。\n- λ = 0.01 时，甲的惩罚项为 0.01 × 10 = 0.10，目标值 0.05 + 0.10 = 0.15；乙的惩罚项为 0.01 × 1 = 0.01，目标值 0.09 + 0.01 = 0.10。此时乙的目标值更小，优化偏好转向乙。\n\n所以 λ 从 0 调到 0.01，改变的是“训练损失低”和“权重小”这两件事在目标里的相对分量：甲在训练集上拟合得更紧，但它的权重代价高，被惩罚项抵消了优势。 [[source:source_ref_679b2138443382f8]]\n\n**这个算例能说明什么、不能说明什么**\n\n它说明惩罚改变了优化中的偏好，并不单独证明乙的验证误差更低。要判断哪个模型对未见数据更好，仍需看同一验证集上的表现；λ 本身通常由验证集或交叉验证来选，测试集不用于反复挑选 λ。另外，加大正则化后训练误差上升是正常现象，只要验证表现改善，就不能据此说模型变差了。 [[source:source_ref_679b2138443382f8]]\n\n**怎样做成直观比较**\n\n把两个模型的目标值拆成“训练损失”和“惩罚”两段堆叠条形图，横轴是目标值 J，λ 用一个滑块从 0 调到 0.01 甚至更大。λ = 0 时只看到训练损失那一段，甲短于乙；拖动滑块后，甲的惩罚段迅速变长，总长超过乙，偏好随之翻转。这样读者能直接看到：翻转来自惩罚段的变化，而不是训练损失本身变了。再在图上标出“验证误差需另行测量”，避免把目标值误读成泛化表现。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1315.688,
+  "first_text_ms": 1315.688,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 257.003,
+  "streaming": true,
+  "duration_ms": 4532.886,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 42818,
+    "cached_input_tokens": 9088,
+    "uncached_input_tokens": 33730,
+    "output_tokens": 678
+  },
+  "cost": {
+    "input_cny": "0.03391176",
+    "output_cny": "0.002712",
+    "total_cny": "0.03662376",
+    "total_rounded_micro_cny": 36624
+  }
+}

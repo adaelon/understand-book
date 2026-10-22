@@ -1,0 +1,2137 @@
+{
+  "budget_denials": 0,
+  "complete": true,
+  "http_attempts": 21,
+  "logical_model_calls": 21,
+  "successful_deliveries": 2,
+  "turns": [
+    {
+      "delivered": true,
+      "deliveries": [
+        {
+          "binding": {
+            "chat_session_id": "chat-01a161c7-741f-7d33-b41b-46435433be53",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_21066d8223f796e7",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_21066d8223f796e7:explain-overfit-and-choice-v2"
+          ],
+          "event_id": "delivery:turn_21066d8223f796e7:explain-overfit-and-choice-v2",
+          "kind": "message_delivered",
+          "occurred_at": "workspace-cache-live-1",
+          "payload": {
+            "answer": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。",
+            "answer_view": {
+              "parts": [
+                {
+                  "kind": "markdown",
+                  "text": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。"
+                },
+                {
+                  "kind": "sources",
+                  "source_ref_ids": [
+                    "source_ref_070022b13c140f81"
+                  ]
+                },
+                {
+                  "kind": "markdown",
+                  "text": "\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。"
+                }
+              ],
+              "sources": [
+                {
+                  "label": "正文",
+                  "source_ref_id": "source_ref_070022b13c140f81"
+                }
+              ]
+            },
+            "assessment_contract_ref": null,
+            "move": {
+              "actions": [],
+              "block_refs": [
+                "two-errors",
+                "overfit-definition",
+                "selection-by-validation"
+              ],
+              "capability": "explanation",
+              "design_ref": "design:turn_21066d8223f796e7:design-overfit-selection",
+              "intent_origin": "current_request",
+              "intent_quote": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+              "interaction_intent": "direct_explanation",
+              "interpretation_refs": [],
+              "kind": "explain",
+              "move_id": "explain-overfit-and-choice-v2",
+              "object_ids": [],
+              "preference_ref": null,
+              "presentation": null,
+              "prompt": "按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提（同一数据划分、同一度量）。",
+              "responds_to": {
+                "disposition": "addressed",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_21066d8223f796e7"
+                ]
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "结合材料说明过拟合指模型过度适应训练数据的偶然细节、训练误差低不保证验证误差低，并说明在数据划分与度量相同的前提下，A 与 B 的验证误差比较为何支持选 B。",
+                "learning_focus": "过拟合与模型选择",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "workspace-cache-live-overfitting",
+                    "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "object_versions": [],
+            "presentation": null,
+            "source_bindings": [
+              {
+                "book_id": "workspace-cache-live-overfitting",
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "ranges": [
+                    {
+                      "lid": "1.1",
+                      "range": {
+                        "end": 212,
+                        "start": 8
+                      }
+                    }
+                  ],
+                  "start_lid": "1.1"
+                },
+                "evidence_text_digest": "source-fnv1a64-6ff84030fdfbb158",
+                "label_snapshot": "正文",
+                "preview_snapshot": "训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数...",
+                "source_ref_id": "source_ref_070022b13c140f81"
+              }
+            ]
+          }
+        }
+      ],
+      "elapsed_including_post_coach_ms": 174204.8638,
+      "first_observed_markdown_patch": {
+        "elapsed_ms": 153611.7856,
+        "payload": {
+          "message_id": 9,
+          "operation": "replace",
+          "revision": 0,
+          "view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_070022b13c140f81"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文",
+                "source_ref_id": "source_ref_070022b13c140f81"
+              }
+            ]
+          }
+        },
+        "seq": 44,
+        "turn_id": "turn_21066d8223f796e7",
+        "type": "answer.patch"
+      },
+      "http_attempts_total": 12,
+      "http_status": 200,
+      "logical_model_calls_total": 12,
+      "prepare_and_capture_ms": 263.4565,
+      "reply": {
+        "answer": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_070022b13c140f81"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_070022b13c140f81"
+            }
+          ]
+        },
+        "effects": [],
+        "incomplete": false,
+        "memory_updates": [],
+        "profile_usage": {
+          "claimed_used_fact_ids": [],
+          "influences": [],
+          "injected_fact_ids": [],
+          "snapshot_revision": 0
+        },
+        "teaching_delivery_move_refs": [
+          "move:turn_21066d8223f796e7:explain-overfit-and-choice-v2"
+        ],
+        "tokens_spent": 430631,
+        "trace": [
+          {
+            "args": "{\"message\": \"我先找到这篇材料里讲训练误差、验证误差与过拟合的段落，再据此做纯文字讲解。\"}",
+            "model_tool_loop": 1,
+            "result_digest": "{\"reported\":true}",
+            "tool": "agent.progress"
+          },
+          {
+            "args": "{\"query\": \"过拟合 训练误差 验证误差 模型选择\", \"limit\": 8}",
+            "model_tool_loop": 1,
+            "result_digest": "{\"version\":\"search_ranked.v1\",\"query\":\"过拟合 训练误差 验证误差 模型选择\",\"total_candidates\":1,\"hits\":[{\"rank\":1,\"score\":5.2281232258481625,\"start_lid\":\"1.1\",\"end_lid\":\"1.1\",\"source_range_utf16\":{\"start\":0,\"end\":468",
+            "tool": "book.search"
+          },
+          {
+            "args": "{\"lid\": \"1.1\"}",
+            "model_tool_loop": 2,
+            "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+            "tool": "book.text"
+          },
+          {
+            "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未参与拟合参数的数据上计算，用来估计对同类新样本的泛化。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"overfit-definition\",\"purpose\":\"把过拟合说成一种可观察的现象：模型把训练数据里偶然的细节也学进去，于是训练误差很低，验证误差却可能明显更高。\",\"relation\":\"过拟合是模型过度适应训练数据的偶然细节；训练误差低并不保证验证误差低。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"selection-by-validation\",\"purpose\":\"把两条误差放到 A、B 两个模型上，说明为什么选择依据落在验证误差上，而不是训练误差的高低。\",\"relation\":\"在数据划分和度量相同的前提下，A 的训练误差 0.01 低于 B 的 0.08，但 A 的验证误差 0.30 高于 B 的 0.12；B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"organizing_model\":\"两种误差回答的是不同问题：训练误差衡量模型对已见数据的贴合程度，验证误差衡量它对未参与拟合的新样本的泛化。过拟合正是这两种误差被拉开的情形，因此模型选择应落在验证误差上，A 的 0.01 不能支持选 A。\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求纯文字讲解、不展示页面且暂时不出题；两个模型的两条误差可以直接在文字里并列对照，不需要可视化。\"},\"revision_reason\":\"用户首次提出当前请求，明确要结合材料用纯文字讲清过拟合概念，并解释 A、B 两条误差下为何选 B；据此建立三个相互衔接的关系块。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料说明过拟合指模型过度适应训练数据的偶然细节、训练误差低不保证验证误差低，并说明在数据划分与度量相同的前提下，A 与 B 的验证误差比较为何支持选 B。\",\"learning_focus\":\"过拟合与模型选择\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-overfit-selection\"}",
+            "model_tool_loop": 3,
+            "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未",
+            "tool": "tutor.step"
+          },
+          {
+            "args": "{\"quote\": \"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前提下，B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\"}",
+            "model_tool_loop": 4,
+            "result_digest": "{\"label\":\"正文\",\"preview\":\"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数...\",\"source_re",
+            "tool": "source.present"
+          },
+          {
+            "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+            "model_tool_loop": 6,
+            "result_digest": "{\"category\":\"validation\",\"error_code\":\"TEACHING_INVALID\",\"message\":\"教学稿需修订，尚未被选择：[R3] 位置：proposed_delivery.text 前提段：“如果 A、B 用的不是同一份验证集，或者 0.01 与 0.12 不是同一个指标……”；证据：该句把 A 的训练误差 0.01 与 B 的验证误差 0.12 设为需要",
+            "tool": "tutor.step"
+          },
+          {
+            "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+            "model_tool_loop": 7,
+            "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.continuation must satisfy anyOf (0 matching variants): $.move.continuation.options[0].purpose_note is not allowed; $.mo",
+            "tool": "tutor.step"
+          },
+          {
+            "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice-v2\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提（同一数据划分、同一度量）。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+            "model_tool_loop": 9,
+            "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066d8223f796e7:explain-overfit-and-choice-v2\"],\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达",
+            "tool": "tutor.step"
+          }
+        ],
+        "turns": 10
+      },
+      "runtime_incomplete": false,
+      "saved_turn": {
+        "domain": {
+          "effects": [],
+          "scene": {
+            "anchor_lid": "1.1",
+            "generation": 1,
+            "selection": null,
+            "workspace_id": "local"
+          },
+          "teaching": [
+            {
+              "receipt_ids": [
+                "assets:turn_21066d8223f796e7",
+                "usage:tutor-begin-1:user:turn_21066d8223f796e7",
+                "binding:turn_21066d8223f796e7"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "coach:start:tutor-begin-1:guidance"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "design:turn_21066d8223f796e7:design-overfit-selection"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "agent-work:turn_21066d8223f796e7:1"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "agent-work:turn_21066d8223f796e7:2",
+                "move:turn_21066d8223f796e7:explain-overfit-and-choice-v2"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "usage:tutor-begin-1:assistant:turn_21066d8223f796e7",
+                "delivery:turn_21066d8223f796e7:explain-overfit-and-choice-v2"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            }
+          ]
+        },
+        "goal_ref": {
+          "id": "goal_turn_21066d8223f796e7",
+          "revision": 2
+        },
+        "outcome": {
+          "answer": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "这篇材料把问题拆成两种误差，两者的计算对象不同。\n\n训练误差是在参与拟合的数据上算出来的误差：它只说明模型对见过的这批样本贴得多紧。验证误差是在没有参与拟合参数的数据上算出来的误差，材料说它用来估计模型对同类新样本的泛化能力。两者回答的不是同一个问题，所以 A 的 0.01 与它的 0.30 不能当成同一个量的大小。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_070022b13c140f81"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n过拟合，材料给的说法是“模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低”。把这个机制展开：训练集里既有这批样本共有的规律，也有只属于这批样本的偶然波动——比如某几个观测点恰好偏大或偏小。模型的拟合能力越强，越有余地把后者也一起拟合掉，训练集上的残差于是被压得很小。这些偶然波动不随新样本重复，换一批没参与拟合的样本它们不再出现，同一套参数在新数据上偏得更多。训练误差只在“已见数据的贴合程度”上计分，它本身没有能力暴露这件事；验证误差换上了没参与拟合的样本，差距才有机会显示出来。\n\n放到 A、B 这组数字上（材料说的是均方误差）：A 训练 0.01、验证 0.30；B 训练 0.08、验证 0.12。\n\n- 训练与验证的落差：A 是 0.30 − 0.01 = 0.29，B 只有 0.12 − 0.08 = 0.04。A 把训练集贴得更紧，代价是换到验证集后误差放大到训练时的 30 倍；材料把这称为“更明显的训练与验证差距”，也就是过拟合的迹象。\n- 选择要回答的是“哪个模型在同类新样本上误差更小”，而不是“哪个模型把训练样本拟合得更熟”。B 的验证误差 0.12 低于 A 的 0.30，材料据此判断 B 在这份验证集上泛化更好。\n- 所以应选 B：它的训练误差略高（0.08 对 0.01），但它对未参与拟合的样本误差低得多。拿训练误差当尺子会挑中 A，拿验证误差当尺子会挑中 B，而后者才是你真正关心的能力——在新数据上少错。\n\n这个结论有前提，材料也写明了：数据划分和度量相同。若 A、B 不是在同一份验证集上用同一指标评估，尤其是 A 的验证误差 0.30 与 B 的 0.12 不是同一指标，那么“B 在这份验证集上泛化更好、应选 B”就不成立。同理，读 A 的落差 0.29 也要求 0.01 与 0.30 按同一度量计算。\n\n下面这个类比是我加的示意，不是材料里的例子：两个学生做同一本题库，一个连题目里的印刷错误一起背下来，题库上几乎不出错，换一套同类型的新题就崩；另一个只掌握了题型规律，题库上错几道，新题却稳。要选人去做新题，会选第二个。\n\n一句话收束：判断是否过拟合，看的是训练误差与验证误差的相对落差；选择模型时主要看验证误差。A 的 0.01 只证明它很贴合训练集。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文",
+                "source_ref_id": "source_ref_070022b13c140f81"
+              }
+            ]
+          },
+          "effects": [],
+          "incomplete": false,
+          "memory_updates": [],
+          "profile_usage": {
+            "claimed_used_fact_ids": [],
+            "influences": [],
+            "injected_fact_ids": [],
+            "snapshot_revision": 0
+          },
+          "teaching_delivery_move_refs": [
+            "move:turn_21066d8223f796e7:explain-overfit-and-choice-v2"
+          ],
+          "tokens_spent": 430631,
+          "trace": [
+            {
+              "args": "{\"message\": \"我先找到这篇材料里讲训练误差、验证误差与过拟合的段落，再据此做纯文字讲解。\"}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"reported\":true}",
+              "tool": "agent.progress"
+            },
+            {
+              "args": "{\"query\": \"过拟合 训练误差 验证误差 模型选择\", \"limit\": 8}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"version\":\"search_ranked.v1\",\"query\":\"过拟合 训练误差 验证误差 模型选择\",\"total_candidates\":1,\"hits\":[{\"rank\":1,\"score\":5.2281232258481625,\"start_lid\":\"1.1\",\"end_lid\":\"1.1\",\"source_range_utf16\":{\"start\":0,\"end\":468",
+              "tool": "book.search"
+            },
+            {
+              "args": "{\"lid\": \"1.1\"}",
+              "model_tool_loop": 2,
+              "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+              "tool": "book.text"
+            },
+            {
+              "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未参与拟合参数的数据上计算，用来估计对同类新样本的泛化。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"overfit-definition\",\"purpose\":\"把过拟合说成一种可观察的现象：模型把训练数据里偶然的细节也学进去，于是训练误差很低，验证误差却可能明显更高。\",\"relation\":\"过拟合是模型过度适应训练数据的偶然细节；训练误差低并不保证验证误差低。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"selection-by-validation\",\"purpose\":\"把两条误差放到 A、B 两个模型上，说明为什么选择依据落在验证误差上，而不是训练误差的高低。\",\"relation\":\"在数据划分和度量相同的前提下，A 的训练误差 0.01 低于 B 的 0.08，但 A 的验证误差 0.30 高于 B 的 0.12；B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"organizing_model\":\"两种误差回答的是不同问题：训练误差衡量模型对已见数据的贴合程度，验证误差衡量它对未参与拟合的新样本的泛化。过拟合正是这两种误差被拉开的情形，因此模型选择应落在验证误差上，A 的 0.01 不能支持选 A。\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求纯文字讲解、不展示页面且暂时不出题；两个模型的两条误差可以直接在文字里并列对照，不需要可视化。\"},\"revision_reason\":\"用户首次提出当前请求，明确要结合材料用纯文字讲清过拟合概念，并解释 A、B 两条误差下为何选 B；据此建立三个相互衔接的关系块。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料说明过拟合指模型过度适应训练数据的偶然细节、训练误差低不保证验证误差低，并说明在数据划分与度量相同的前提下，A 与 B 的验证误差比较为何支持选 B。\",\"learning_focus\":\"过拟合与模型选择\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-overfit-selection\"}",
+              "model_tool_loop": 3,
+              "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"quote\": \"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前提下，B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\"}",
+              "model_tool_loop": 4,
+              "result_digest": "{\"label\":\"正文\",\"preview\":\"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数...\",\"source_re",
+              "tool": "source.present"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 6,
+              "result_digest": "{\"category\":\"validation\",\"error_code\":\"TEACHING_INVALID\",\"message\":\"教学稿需修订，尚未被选择：[R3] 位置：proposed_delivery.text 前提段：“如果 A、B 用的不是同一份验证集，或者 0.01 与 0.12 不是同一个指标……”；证据：该句把 A 的训练误差 0.01 与 B 的验证误差 0.12 设为需要",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 7,
+              "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.continuation must satisfy anyOf (0 matching variants): $.move.continuation.options[0].purpose_note is not allowed; $.mo",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice-v2\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提（同一数据划分、同一度量）。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 9,
+              "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066d8223f796e7:explain-overfit-and-choice-v2\"],\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达",
+              "tool": "tutor.step"
+            }
+          ],
+          "turns": 10
+        },
+        "question_anchor_lid": null,
+        "question_quote": null,
+        "run_summary": {
+          "activities": [
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 1808.5573,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": null,
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 7,
+                "messages_append_only": null,
+                "previous_image_count": null,
+                "previous_message_count": null,
+                "previous_reasoning_message_count": null,
+                "previous_step_id": null,
+                "previous_tool_count": null,
+                "reasoning_message_count": 0,
+                "request_index": 1,
+                "settings_changed": null,
+                "step_id": 1,
+                "tool_count": 12,
+                "tools_changed": null,
+                "unchanged_prefix_messages": null
+              },
+              "result_count": null,
+              "started_ms": 564.1151,
+              "status": "succeeded",
+              "step_id": 1,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 11648,
+                "input_tokens": 28552,
+                "output_tokens": 159,
+                "reasoning_output_tokens": 44,
+                "total_tokens": 28711
+              },
+              "usage_total_tokens": 28711
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": null,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "commentary",
+              "label": "我先找到这篇材料里讲训练误差、验证误差与过拟合的段落，再据此做纯文字讲解。",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "agent.commentary",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": null,
+              "status": "succeeded",
+              "step_id": 2,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 17.17529999999988,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "查找相关段落",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "book.search",
+              "parent_step_id": null,
+              "result_count": 1,
+              "started_ms": 2461.4671000000003,
+              "status": "succeeded",
+              "step_id": 3,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 1050.9900000000002,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 707,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 7,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 11,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 7,
+                "previous_reasoning_message_count": 0,
+                "previous_step_id": 1,
+                "previous_tool_count": 12,
+                "reasoning_message_count": 1,
+                "request_index": 2,
+                "settings_changed": false,
+                "step_id": 4,
+                "tool_count": 12,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 7
+              },
+              "result_count": null,
+              "started_ms": 2582.2457,
+              "status": "succeeded",
+              "step_id": 4,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 28672,
+                "input_tokens": 31080,
+                "output_tokens": 50,
+                "reasoning_output_tokens": 10,
+                "total_tokens": 31130
+              },
+              "usage_total_tokens": 31130
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 10.36259999999993,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "读取原文",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "book.text",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 3654.4739,
+              "status": "succeeded",
+              "step_id": 5,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 7006.847100000001,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 220,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 11,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": 9,
+                "image_count": 0,
+                "message_count": 15,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 11,
+                "previous_reasoning_message_count": 1,
+                "previous_step_id": 4,
+                "previous_tool_count": 12,
+                "reasoning_message_count": 2,
+                "request_index": 3,
+                "settings_changed": false,
+                "step_id": 6,
+                "tool_count": 13,
+                "tools_changed": true,
+                "unchanged_prefix_messages": 11
+              },
+              "result_count": null,
+              "started_ms": 3790.5612,
+              "status": "succeeded",
+              "step_id": 6,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 14080,
+                "input_tokens": 37865,
+                "output_tokens": 1282,
+                "reasoning_output_tokens": 528,
+                "total_tokens": 39147
+              },
+              "usage_total_tokens": 39147
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 176.92170000000078,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 10815.3123,
+              "status": "succeeded",
+              "step_id": 7,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 12377.405499999999,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 5390,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 15,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 18,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 15,
+                "previous_reasoning_message_count": 2,
+                "previous_step_id": 6,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 3,
+                "request_index": 4,
+                "settings_changed": false,
+                "step_id": 8,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 15
+              },
+              "result_count": null,
+              "started_ms": 11082.575200000001,
+              "status": "succeeded",
+              "step_id": 8,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 38272,
+                "input_tokens": 42058,
+                "output_tokens": 2092,
+                "reasoning_output_tokens": 1927,
+                "total_tokens": 44150
+              },
+              "usage_total_tokens": 44150
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 7.6916999999957625,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "整理来源",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "source.present",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 23475.1935,
+              "status": "succeeded",
+              "step_id": 9,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 6794.2127999999975,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 9642,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 18,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 21,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 18,
+                "previous_reasoning_message_count": 3,
+                "previous_step_id": 8,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 4,
+                "request_index": 5,
+                "settings_changed": false,
+                "step_id": 10,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 18
+              },
+              "result_count": null,
+              "started_ms": 23560.521,
+              "status": "succeeded",
+              "step_id": 10,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 44032,
+                "input_tokens": 47146,
+                "output_tokens": 1419,
+                "reasoning_output_tokens": 65,
+                "total_tokens": 48565
+              },
+              "usage_total_tokens": 48565
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 53571.989100000006,
+              "error_code": "TEACHING_INVALID",
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 30370.253,
+              "status": "rejected",
+              "step_id": 11,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 53407.46250000001,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 48286.31640000001,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "tutor_delivery_review",
+              "parent_step_id": 11,
+              "request_diagnostics": {
+                "first_changed_message": null,
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 2,
+                "messages_append_only": null,
+                "previous_image_count": null,
+                "previous_message_count": null,
+                "previous_reasoning_message_count": null,
+                "previous_step_id": null,
+                "previous_tool_count": null,
+                "reasoning_message_count": 0,
+                "request_index": 6,
+                "settings_changed": null,
+                "step_id": 12,
+                "tool_count": 0,
+                "tools_changed": null,
+                "unchanged_prefix_messages": null
+              },
+              "result_count": null,
+              "started_ms": 30480.9892,
+              "status": "succeeded",
+              "step_id": 12,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 7040,
+                "input_tokens": 12669,
+                "output_tokens": 12693,
+                "reasoning_output_tokens": 10812,
+                "total_tokens": 25362
+              },
+              "usage_total_tokens": 25362
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 8488.098599999998,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 1509,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 21,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 24,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 21,
+                "previous_reasoning_message_count": 4,
+                "previous_step_id": 10,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 5,
+                "request_index": 7,
+                "settings_changed": false,
+                "step_id": 13,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 21
+              },
+              "result_count": null,
+              "started_ms": 84136.8127,
+              "status": "succeeded",
+              "step_id": 13,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 47104,
+                "input_tokens": 53698,
+                "output_tokens": 1750,
+                "reasoning_output_tokens": 288,
+                "total_tokens": 55448
+              },
+              "usage_total_tokens": 55448
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": null,
+              "error_code": "TOOL_ARGUMENTS_INVALID",
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": null,
+              "status": "rejected",
+              "step_id": 14,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 8661.52900000001,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 2498,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 24,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 27,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 24,
+                "previous_reasoning_message_count": 5,
+                "previous_step_id": 13,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 6,
+                "request_index": 8,
+                "settings_changed": false,
+                "step_id": 15,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 24
+              },
+              "result_count": null,
+              "started_ms": 92792.1604,
+              "status": "succeeded",
+              "step_id": 15,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 53888,
+                "input_tokens": 59753,
+                "output_tokens": 2268,
+                "reasoning_output_tokens": 1102,
+                "total_tokens": 62021
+              },
+              "usage_total_tokens": 62021
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 34791.86099999999,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 101478.8766,
+              "status": "succeeded",
+              "step_id": 16,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 34568.717199999985,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 28652.19309999999,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "tutor_delivery_review",
+              "parent_step_id": 16,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 38861,
+                  "fields": [
+                    "content"
+                  ],
+                  "index": 1,
+                  "previous_bytes": 21623,
+                  "role": "user",
+                  "unchanged_prefix_bytes": 55
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 2,
+                "messages_append_only": false,
+                "previous_image_count": 0,
+                "previous_message_count": 2,
+                "previous_reasoning_message_count": 0,
+                "previous_step_id": 12,
+                "previous_tool_count": 0,
+                "reasoning_message_count": 0,
+                "request_index": 9,
+                "settings_changed": false,
+                "step_id": 17,
+                "tool_count": 0,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 1
+              },
+              "result_count": null,
+              "started_ms": 101608.041,
+              "status": "succeeded",
+              "step_id": 17,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 6912,
+                "input_tokens": 17168,
+                "output_tokens": 7765,
+                "reasoning_output_tokens": 5982,
+                "total_tokens": 24933
+              },
+              "usage_total_tokens": 24933
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 4655.114499999996,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 2363.810599999997,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 5933,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 27,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 30,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 27,
+                "previous_reasoning_message_count": 6,
+                "previous_step_id": 15,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 7,
+                "request_index": 10,
+                "settings_changed": false,
+                "step_id": 18,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 27
+              },
+              "result_count": null,
+              "started_ms": 136382.7244,
+              "status": "succeeded",
+              "step_id": 18,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 60672,
+                "input_tokens": 70152,
+                "output_tokens": 1012,
+                "reasoning_output_tokens": 267,
+                "total_tokens": 71164
+              },
+              "usage_total_tokens": 71164
+            }
+          ],
+          "effects": [],
+          "last_seq": 47,
+          "trace": [
+            {
+              "args": "{\"message\": \"我先找到这篇材料里讲训练误差、验证误差与过拟合的段落，再据此做纯文字讲解。\"}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"reported\":true}",
+              "tool": "agent.progress"
+            },
+            {
+              "args": "{\"query\": \"过拟合 训练误差 验证误差 模型选择\", \"limit\": 8}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"version\":\"search_ranked.v1\",\"query\":\"过拟合 训练误差 验证误差 模型选择\",\"total_candidates\":1,\"hits\":[{\"rank\":1,\"score\":5.2281232258481625,\"start_lid\":\"1.1\",\"end_lid\":\"1.1\",\"source_range_utf16\":{\"start\":0,\"end\":468",
+              "tool": "book.search"
+            },
+            {
+              "args": "{\"lid\": \"1.1\"}",
+              "model_tool_loop": 2,
+              "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+              "tool": "book.text"
+            },
+            {
+              "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未参与拟合参数的数据上计算，用来估计对同类新样本的泛化。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"overfit-definition\",\"purpose\":\"把过拟合说成一种可观察的现象：模型把训练数据里偶然的细节也学进去，于是训练误差很低，验证误差却可能明显更高。\",\"relation\":\"过拟合是模型过度适应训练数据的偶然细节；训练误差低并不保证验证误差低。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"selection-by-validation\",\"purpose\":\"把两条误差放到 A、B 两个模型上，说明为什么选择依据落在验证误差上，而不是训练误差的高低。\",\"relation\":\"在数据划分和度量相同的前提下，A 的训练误差 0.01 低于 B 的 0.08，但 A 的验证误差 0.30 高于 B 的 0.12；B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"organizing_model\":\"两种误差回答的是不同问题：训练误差衡量模型对已见数据的贴合程度，验证误差衡量它对未参与拟合的新样本的泛化。过拟合正是这两种误差被拉开的情形，因此模型选择应落在验证误差上，A 的 0.01 不能支持选 A。\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求纯文字讲解、不展示页面且暂时不出题；两个模型的两条误差可以直接在文字里并列对照，不需要可视化。\"},\"revision_reason\":\"用户首次提出当前请求，明确要结合材料用纯文字讲清过拟合概念，并解释 A、B 两条误差下为何选 B；据此建立三个相互衔接的关系块。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料说明过拟合指模型过度适应训练数据的偶然细节、训练误差低不保证验证误差低，并说明在数据划分与度量相同的前提下，A 与 B 的验证误差比较为何支持选 B。\",\"learning_focus\":\"过拟合与模型选择\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-overfit-selection\"}",
+              "model_tool_loop": 3,
+              "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"blocks\":[{\"block_id\":\"two-errors\",\"purpose\":\"让“训练误差低”和“对新样本好用”成为两个可分别核对的事实，这是理解过拟合的前置关系。\",\"relation\":\"训练误差在参与拟合的数据上计算；验证误差在未",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"quote\": \"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前提下，B 在这份验证集上泛化更好，A 表现出更明显的训练与验证差距。\"}",
+              "model_tool_loop": 4,
+              "result_digest": "{\"label\":\"正文\",\"preview\":\"训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数...\",\"source_re",
+              "tool": "source.present"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 6,
+              "result_digest": "{\"category\":\"validation\",\"error_code\":\"TEACHING_INVALID\",\"message\":\"教学稿需修订，尚未被选择：[R3] 位置：proposed_delivery.text 前提段：“如果 A、B 用的不是同一份验证集，或者 0.01 与 0.12 不是同一个指标……”；证据：该句把 A 的训练误差 0.01 与 B 的验证误差 0.12 设为需要",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 7,
+              "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.continuation must satisfy anyOf (0 matching variants): $.move.continuation.options[0].purpose_note is not allowed; $.mo",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"two-errors\",\"overfit-definition\",\"selection-by-validation\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"intent_origin\":\"current_request\",\"intent_quote\":\"请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-overfit-and-choice-v2\",\"object_ids\":[],\"prompt\":\"按用户要求，用纯文字结合材料讲清两件事：训练误差与验证误差各自衡量什么、过拟合是什么；以及在这组数字下为什么应选 B，并说明结论成立的前提（同一数据划分、同一度量）。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066d8223f796e7\"],\"invitation_ref\":null}},\"operation\":\"select\"}",
+              "model_tool_loop": 9,
+              "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066d8223f796e7:explain-overfit-and-choice-v2\"],\"design_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达",
+              "tool": "tutor.step"
+            }
+          ]
+        },
+        "source_bindings": [
+          {
+            "book_id": "workspace-cache-live-overfitting",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 212,
+                    "start": 8
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-6ff84030fdfbb158",
+            "label_snapshot": "正文",
+            "preview_snapshot": "训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数...",
+            "source_ref_id": "source_ref_070022b13c140f81"
+          }
+        ],
+        "status": "completed",
+        "turn_id": "turn_21066d8223f796e7",
+        "user": "请结合当前这篇材料，用纯文字讲清楚什么是过拟合，以及为什么模型 A 训练误差 0.01、验证误差 0.30，而模型 B 训练误差 0.08、验证误差 0.12 时，更应该选 B。请直接讲解，不用展示页面，也暂时不要出题。",
+        "user_turn_ordinal": 1
+      },
+      "time_to_first_public_answer_patch_ms": 153875.2421,
+      "turn": 1
+    },
+    {
+      "delivered": true,
+      "deliveries": [
+        {
+          "binding": {
+            "chat_session_id": "chat-01a161c7-741f-7d33-b41b-46435433be53",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "workspace-cache-live-overfitting",
+            "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+            "turn_id": "turn_21066e8223f7989a",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "causal_refs": [
+            "move:turn_21066e8223f7989a:explain-l2-penalty-v1"
+          ],
+          "event_id": "delivery:turn_21066e8223f7989a:explain-l2-penalty-v1",
+          "kind": "message_delivered",
+          "occurred_at": "workspace-cache-live-2",
+          "payload": {
+            "answer": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。",
+            "answer_view": {
+              "parts": [
+                {
+                  "kind": "markdown",
+                  "text": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。"
+                },
+                {
+                  "kind": "sources",
+                  "source_ref_ids": [
+                    "source_ref_a78478a608240e0c"
+                  ]
+                },
+                {
+                  "kind": "markdown",
+                  "text": "\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。"
+                },
+                {
+                  "kind": "sources",
+                  "source_ref_ids": [
+                    "source_ref_a78478a608240e0c"
+                  ]
+                },
+                {
+                  "kind": "markdown",
+                  "text": "\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。"
+                }
+              ],
+              "sources": [
+                {
+                  "label": "正文",
+                  "source_ref_id": "source_ref_a78478a608240e0c"
+                }
+              ]
+            },
+            "assessment_contract_ref": null,
+            "move": {
+              "actions": [],
+              "block_refs": [
+                "l2-objective",
+                "penalty-gradient",
+                "shrink-mechanism",
+                "no-guarantee"
+              ],
+              "capability": "explanation",
+              "design_ref": "design:turn_21066e8223f7989a:design-l2-penalty",
+              "intent_origin": "current_request",
+              "intent_quote": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+              "interaction_intent": "direct_explanation",
+              "interpretation_refs": [],
+              "kind": "explain",
+              "move_id": "explain-l2-penalty-v1",
+              "object_ids": [],
+              "preference_ref": null,
+              "presentation": null,
+              "prompt": "用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。",
+              "responds_to": {
+                "disposition": "addressed",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_21066e8223f7989a"
+                ]
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "结合材料写出含 λ=0.01 惩罚项的训练目标，说明惩罚项及其梯度如何在优化中起作用，并说明为什么它不保证验证误差一定下降。",
+                "learning_focus": "L2 正则化与泛化",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "workspace-cache-live-overfitting",
+                    "source_revision": "a3cfcf61cc5e9f61fe7a45efc554f17b63d82fac10f0343a95d592bfdd2b2d2e",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "object_versions": [],
+            "presentation": null,
+            "source_bindings": [
+              {
+                "book_id": "workspace-cache-live-overfitting",
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "ranges": [
+                    {
+                      "lid": "1.1",
+                      "range": {
+                        "end": 468,
+                        "start": 213
+                      }
+                    }
+                  ],
+                  "start_lid": "1.1"
+                },
+                "evidence_text_digest": "source-fnv1a64-9ba4d3e6a49de6b5",
+                "label_snapshot": "正文",
+                "preview_snapshot": "L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练...",
+                "source_ref_id": "source_ref_a78478a608240e0c"
+              }
+            ]
+          }
+        }
+      ],
+      "elapsed_including_post_coach_ms": 207416.6266,
+      "first_observed_markdown_patch": {
+        "elapsed_ms": 194406.41999999998,
+        "payload": {
+          "message_id": 7,
+          "operation": "replace",
+          "revision": 0,
+          "view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_a78478a608240e0c"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_a78478a608240e0c"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文",
+                "source_ref_id": "source_ref_a78478a608240e0c"
+              }
+            ]
+          }
+        },
+        "seq": 34,
+        "turn_id": "turn_21066e8223f7989a",
+        "type": "answer.patch"
+      },
+      "http_attempts_total": 21,
+      "http_status": 200,
+      "logical_model_calls_total": 21,
+      "prepare_and_capture_ms": 480.2712,
+      "reply": {
+        "answer": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。",
+        "answer_view": {
+          "parts": [
+            {
+              "kind": "markdown",
+              "text": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_a78478a608240e0c"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。"
+            },
+            {
+              "kind": "sources",
+              "source_ref_ids": [
+                "source_ref_a78478a608240e0c"
+              ]
+            },
+            {
+              "kind": "markdown",
+              "text": "\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。"
+            }
+          ],
+          "sources": [
+            {
+              "label": "正文",
+              "source_ref_id": "source_ref_a78478a608240e0c"
+            }
+          ]
+        },
+        "effects": [],
+        "incomplete": false,
+        "memory_updates": [],
+        "profile_usage": {
+          "claimed_used_fact_ids": [],
+          "influences": [],
+          "injected_fact_ids": [],
+          "snapshot_revision": 0
+        },
+        "teaching_delivery_move_refs": [
+          "move:turn_21066e8223f7989a:explain-l2-penalty-v1"
+        ],
+        "tokens_spent": 544511,
+        "trace": [
+          {
+            "args": "{\"lid\": \"1.1\"}",
+            "model_tool_loop": 1,
+            "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+            "tool": "book.text"
+          },
+          {
+            "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加参数平方和惩罚：J(w)=(1/n)∑[f_w(x_i)−y_i]^2+λ∑w_j^2；λ=0.01 表示参数平方和的权重是 0.01，而不是把训练误差减去 0.01；是否惩罚偏置按模型约定。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"penalty-gradient\",\"purpose\":\"让读者看出惩罚项在优化中实际做了什么动作：它以与权重大小成正比的方式把参数往零拉。\",\"relation\":\"惩罚项对单个参数 w_j 的梯度是 2λw_j，λ=0.01 时即 0.02w_j；权重越大，被拉回零的力越大。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"shrink-mechanism\",\"purpose\":\"把目标函数的两个加项与上一轮讲的过拟合现象接上：低训练误差由压低残差实现，惩罚项使这种压低不能靠把权重堆大来实现。\",\"relation\":\"训练损失压低残差，惩罚项压低权重数量级；两者相加后被选中的参数要同时兼顾，于是拟合不再依赖大权重放大输入中的偶然细节，这正是材料所说“在拟合训练样本与保持较小权重之间取舍”。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"no-guarantee\",\"purpose\":\"说明正则化改变的是模型解的性质，而不是对某份验证集作出承诺，因此验证误差需要实测。\",\"relation\":\"正则化可能降低方差、改善泛化，但不保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"organizing_model\":\"目标函数把“拟合训练样本”和“保持小权重”合成一个可优化的量，λ 决定两者的相对权重；正则化改变的是解的性质（方差与偏差的取舍），并不直接向某一份验证集作出承诺。\",\"previous_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求用文字和公式讲解、不展示页面也不出题；目标函数、惩罚梯度与验证误差的关系都可以在公式与文字中直接展开，不需要可视化。\"},\"revision_reason\":\"用户接着上一轮的过拟合解释，要求继续用文字和公式写出 λ=0.01 的训练目标、说明惩罚项及其梯度，并解释为何不保证验证误差下降；本轮焦点从“两种误差的对照与模型选择”转到“目标函数与优化机制”，保留上一轮块作为前置历史。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料写出含 λ=0.01 惩罚项的训练目标，说明惩罚项及其梯度如何在优化中起作用，并说明为什么它不保证验证误差一定下降。\",\"learning_focus\":\"L2 正则化与泛化\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-l2-penalty\"}",
+            "model_tool_loop": 2,
+            "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加",
+            "tool": "tutor.step"
+          },
+          {
+            "args": "{\"quote\": \"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练样本与保持较小权重之间取舍；对单个参数 w_j，惩罚项的梯度为 2λw_j。正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\"}",
+            "model_tool_loop": 3,
+            "result_digest": "{\"label\":\"正文\",\"preview\":\"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练...\",\"source_re",
+            "tool": "source.present"
+          },
+          {
+            "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v1\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+            "model_tool_loop": 5,
+            "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066e8223f7989a:explain-l2-penalty-v1\"],\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达建议，不新增验收条件。最终交付",
+            "tool": "tutor.step"
+          },
+          {
+            "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v2\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+            "model_tool_loop": 7,
+            "result_digest": "{\"category\":\"provider\",\"error_code\":\"TEACHING_REVIEW_FAILED\",\"message\":\"回答检查调用失败；当前稿未被接纳。请恢复检查调用，不要仅因此改写正文。原因：PROVIDER_ERROR: 模型输出抽不到合法 JSON 对象;原文={\\\"decision\\\":\\\"accept\\\",\\\"revision\\\":null,\\\"reading_",
+            "tool": "tutor.step"
+          }
+        ],
+        "turns": 8
+      },
+      "runtime_incomplete": false,
+      "saved_turn": {
+        "domain": {
+          "effects": [],
+          "scene": {
+            "anchor_lid": "1.1",
+            "generation": 1,
+            "selection": null,
+            "workspace_id": "local"
+          },
+          "teaching": [
+            {
+              "receipt_ids": [
+                "assets:turn_21066e8223f7989a",
+                "usage:tutor-begin-1:user:turn_21066e8223f7989a",
+                "binding:turn_21066e8223f7989a"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "design:turn_21066e8223f7989a:design-l2-penalty"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "agent-work:turn_21066e8223f7989a:1",
+                "move:turn_21066e8223f7989a:explain-l2-penalty-v1"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            },
+            {
+              "receipt_ids": [
+                "usage:tutor-begin-1:assistant:turn_21066e8223f7989a",
+                "delivery:turn_21066e8223f7989a:explain-l2-penalty-v1"
+              ],
+              "revision": 1,
+              "session_id": "tutor-begin-1"
+            }
+          ]
+        },
+        "goal_ref": {
+          "id": "goal_turn_21066e8223f7989a",
+          "revision": 2
+        },
+        "outcome": {
+          "answer": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。",
+          "answer_view": {
+            "parts": [
+              {
+                "kind": "markdown",
+                "text": "接着上一轮讲的两种误差，下面把 L2 正则化写成一个可求导的目标函数，看它在优化里具体做了什么。\n\n**一、λ=0.01 的训练目标**\n\n材料给的常见目标是\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + λΣ_j w_j^2，λ ≥ 0\n\n把 λ=0.01 代进去：\n\nJ(w) = (1/n)Σ_i [f_w(x_i) − y_i]^2 + 0.01·Σ_j w_j^2\n\n第一项是经验训练损失：n 个训练样本的预测值与真实值之差的平方取平均，也就是上一轮说的训练误差（均方误差）。第二项是惩罚项：把每个权重 w_j 各自平方后求和，再乘 0.01。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_a78478a608240e0c"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n0.01 的位置是权重，它乘在“参数平方和”这个整体上，表示这一项在目标函数里的相对分量；式子里没有 −0.01 这样的减项，训练误差也不会被扣掉 0.01。材料特意点出这点，是因为上一轮 A 的训练误差恰好也是 0.01；两个 0.01 只是数值上的巧合，一个是被比较的误差值，一个是惩罚项的系数，作用对象不同。\n\n两个条件也在材料里：λ ≥ 0 用来调节惩罚强度；偏置项是否惩罚要按模型约定。所以 Σ_j w_j^2 到底包含哪些参数，取决于这个约定，不能默认一定含偏置。\n\n**二、惩罚项及其梯度**\n\n对单个参数 w_j 求偏导，惩罚项贡献的梯度是\n\n∂(λΣ_k w_k^2)/∂w_j = 2λ w_j\n\nλ=0.01 时即为 0.02·w_j。"
+              },
+              {
+                "kind": "sources",
+                "source_ref_ids": [
+                  "source_ref_a78478a608240e0c"
+                ]
+              },
+              {
+                "kind": "markdown",
+                "text": "\n\n从这一个式子可以直接读出三件事。\n\n1. 方向：2λw_j 与 w_j 同号。沿梯度下降走一步 w_j ← w_j − η·∂J/∂w_j 时，这一步把 w_j 往零的方向推。\n2. 大小与 w_j 成正比：w_j = 1 时惩罚梯度是 0.02；w_j = 10 时是 0.2；w_j = 0 时惩罚梯度为零，此时惩罚项不再拉它。也就是说，权重越大，被拉回零的力越大。\n3. 它与数据项相减，而不单方面决定参数。完整的梯度是\n\n∂J/∂w_j = ∂L_data/∂w_j + 2λ w_j\n\n其中 L_data 表示第一项训练损失，这个分解是常规求导写法，材料只给出惩罚项那一项 2λw_j。参数最后停在哪里，取决于两项何时抵消：数据项还想把 w_j 推离零，惩罚项以 2λw_j 把它拉回，w_j 越大拉力越强，于是在某一点达到平衡。\n\n**三、这个拉力怎样缓解过拟合**\n\n材料的概括是：优化时模型在拟合训练样本与保持较小权重之间取舍。把它和上一轮的过拟合机制接上（下面这一步是我的展开，材料只给出“取舍”这一句）：\n\n- 要把训练残差压到极小，模型往往需要把某些权重堆得很大，让输出对输入的细微差别做出很陡的反应；训练集里的偶然波动也就跟着被拟合进去。\n- 加入 0.01·Σw_j^2 之后，大权重自身要付出代价：这一项随权重的平方增长，权重翻倍，它就变成四倍。\n- 所以被选中的参数是“残差小”与“权重不那么大”的折中解：输出随输入变化得更平缓，对只在训练集里出现的偶然波动反应更弱。这对应材料说的“降低方差”，即模型对具体训练样本的依赖变小，换一批同类样本时波动更小。\n\n这里有一个容易被 λ=0.01 误导的地方：0.01 只是权重，惩罚的实际大小还取决于权重量级。同一个 λ=0.01，若权重普遍在 10 附近，0.01·Σw_j^2 会明显大于权重都在 1 附近时，因此不能从 λ 的小数位直接推断影响很小。\n\n**四、为什么不能保证验证误差一定下降**\n\n材料的结论是：正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降。原因可以分几层看（除最后一层外为我的补充说明）：\n\n1. λ 不知道哪些方向是噪声。它按权重大小一视同仁地收缩；若某个大权重承载的恰好是真实规律，收缩会把这个真实信号也压小，偏差随之上升。降低方差与增加偏差同时发生，净效果取决于两者相抵后剩下多少。\n2. 净效果是“平均而言”的性质。期望泛化误差可以下降，而验证误差是在一份有限的验证集上算出来的估计，本身有抽样波动；平均上变好的模型，落在某份具体验证集上完全可能误差更高。\n3. 这是一个选择问题。材料说通常用验证数据选择 λ：选出来的 λ 只是在手上这份验证集上表现好的那个，换一份验证集，最优的 λ 可能移动。\n4. λ 太大会走过头：材料说 λ 太大可能造成欠拟合，即权重被压得太小、连真实规律也拟合不动。\n\n因此 L2 提供的是一个可调的折中，它改变的是解的性质（方差与偏差的配比），并不针对某一份验证集作出承诺；验证误差只能实测。若实测发现误差上升，按材料给出的做法是调整 λ（用验证数据重新选择），而不是因为出现这种情况就判定正则化公式失效。"
+              }
+            ],
+            "sources": [
+              {
+                "label": "正文",
+                "source_ref_id": "source_ref_a78478a608240e0c"
+              }
+            ]
+          },
+          "effects": [],
+          "incomplete": false,
+          "memory_updates": [],
+          "profile_usage": {
+            "claimed_used_fact_ids": [],
+            "influences": [],
+            "injected_fact_ids": [],
+            "snapshot_revision": 0
+          },
+          "teaching_delivery_move_refs": [
+            "move:turn_21066e8223f7989a:explain-l2-penalty-v1"
+          ],
+          "tokens_spent": 544511,
+          "trace": [
+            {
+              "args": "{\"lid\": \"1.1\"}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+              "tool": "book.text"
+            },
+            {
+              "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加参数平方和惩罚：J(w)=(1/n)∑[f_w(x_i)−y_i]^2+λ∑w_j^2；λ=0.01 表示参数平方和的权重是 0.01，而不是把训练误差减去 0.01；是否惩罚偏置按模型约定。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"penalty-gradient\",\"purpose\":\"让读者看出惩罚项在优化中实际做了什么动作：它以与权重大小成正比的方式把参数往零拉。\",\"relation\":\"惩罚项对单个参数 w_j 的梯度是 2λw_j，λ=0.01 时即 0.02w_j；权重越大，被拉回零的力越大。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"shrink-mechanism\",\"purpose\":\"把目标函数的两个加项与上一轮讲的过拟合现象接上：低训练误差由压低残差实现，惩罚项使这种压低不能靠把权重堆大来实现。\",\"relation\":\"训练损失压低残差，惩罚项压低权重数量级；两者相加后被选中的参数要同时兼顾，于是拟合不再依赖大权重放大输入中的偶然细节，这正是材料所说“在拟合训练样本与保持较小权重之间取舍”。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"no-guarantee\",\"purpose\":\"说明正则化改变的是模型解的性质，而不是对某份验证集作出承诺，因此验证误差需要实测。\",\"relation\":\"正则化可能降低方差、改善泛化，但不保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"organizing_model\":\"目标函数把“拟合训练样本”和“保持小权重”合成一个可优化的量，λ 决定两者的相对权重；正则化改变的是解的性质（方差与偏差的取舍），并不直接向某一份验证集作出承诺。\",\"previous_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求用文字和公式讲解、不展示页面也不出题；目标函数、惩罚梯度与验证误差的关系都可以在公式与文字中直接展开，不需要可视化。\"},\"revision_reason\":\"用户接着上一轮的过拟合解释，要求继续用文字和公式写出 λ=0.01 的训练目标、说明惩罚项及其梯度，并解释为何不保证验证误差下降；本轮焦点从“两种误差的对照与模型选择”转到“目标函数与优化机制”，保留上一轮块作为前置历史。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料写出含 λ=0.01 惩罚项的训练目标，说明惩罚项及其梯度如何在优化中起作用，并说明为什么它不保证验证误差一定下降。\",\"learning_focus\":\"L2 正则化与泛化\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-l2-penalty\"}",
+              "model_tool_loop": 2,
+              "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"quote\": \"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练样本与保持较小权重之间取舍；对单个参数 w_j，惩罚项的梯度为 2λw_j。正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\"}",
+              "model_tool_loop": 3,
+              "result_digest": "{\"label\":\"正文\",\"preview\":\"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练...\",\"source_re",
+              "tool": "source.present"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v1\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+              "model_tool_loop": 5,
+              "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066e8223f7989a:explain-l2-penalty-v1\"],\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达建议，不新增验收条件。最终交付",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v2\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+              "model_tool_loop": 7,
+              "result_digest": "{\"category\":\"provider\",\"error_code\":\"TEACHING_REVIEW_FAILED\",\"message\":\"回答检查调用失败；当前稿未被接纳。请恢复检查调用，不要仅因此改写正文。原因：PROVIDER_ERROR: 模型输出抽不到合法 JSON 对象;原文={\\\"decision\\\":\\\"accept\\\",\\\"revision\\\":null,\\\"reading_",
+              "tool": "tutor.step"
+            }
+          ],
+          "turns": 8
+        },
+        "question_anchor_lid": null,
+        "question_quote": null,
+        "run_summary": {
+          "activities": [
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 3027.4741999999997,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": null,
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 24,
+                "messages_append_only": null,
+                "previous_image_count": null,
+                "previous_message_count": null,
+                "previous_reasoning_message_count": null,
+                "previous_step_id": null,
+                "previous_tool_count": null,
+                "reasoning_message_count": 8,
+                "request_index": 1,
+                "settings_changed": null,
+                "step_id": 1,
+                "tool_count": 12,
+                "tools_changed": null,
+                "unchanged_prefix_messages": null
+              },
+              "result_count": null,
+              "started_ms": 387.95439999999996,
+              "status": "succeeded",
+              "step_id": 1,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 14976,
+                "input_tokens": 46483,
+                "output_tokens": 394,
+                "reasoning_output_tokens": 354,
+                "total_tokens": 46877
+              },
+              "usage_total_tokens": 46877
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 7.3378999999999905,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "读取原文",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "book.text",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 3431.0342,
+              "status": "succeeded",
+              "step_id": 2,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 14411.216500000002,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 1723,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 24,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": 9,
+                "image_count": 0,
+                "message_count": 28,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 24,
+                "previous_reasoning_message_count": 8,
+                "previous_step_id": 1,
+                "previous_tool_count": 12,
+                "reasoning_message_count": 9,
+                "request_index": 2,
+                "settings_changed": false,
+                "step_id": 3,
+                "tool_count": 13,
+                "tools_changed": true,
+                "unchanged_prefix_messages": 24
+              },
+              "result_count": null,
+              "started_ms": 3536.066,
+              "status": "succeeded",
+              "step_id": 3,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 18176,
+                "input_tokens": 61667,
+                "output_tokens": 2785,
+                "reasoning_output_tokens": 1811,
+                "total_tokens": 64452
+              },
+              "usage_total_tokens": 64452
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 182.78799999999683,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 17962.359200000003,
+              "status": "succeeded",
+              "step_id": 4,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 2928.319000000003,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 11356,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 28,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 31,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 28,
+                "previous_reasoning_message_count": 9,
+                "previous_step_id": 3,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 10,
+                "request_index": 3,
+                "settings_changed": false,
+                "step_id": 5,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 28
+              },
+              "result_count": null,
+              "started_ms": 18246.993,
+              "status": "succeeded",
+              "step_id": 5,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 63360,
+                "input_tokens": 74385,
+                "output_tokens": 540,
+                "reasoning_output_tokens": 338,
+                "total_tokens": 74925
+              },
+              "usage_total_tokens": 74925
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 7.706700000002456,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "整理来源",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "source.present",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 21190.4761,
+              "status": "succeeded",
+              "step_id": 6,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 16902.1604,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 2132,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 31,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 34,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 31,
+                "previous_reasoning_message_count": 10,
+                "previous_step_id": 5,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 11,
+                "request_index": 4,
+                "settings_changed": false,
+                "step_id": 7,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 31
+              },
+              "result_count": null,
+              "started_ms": 21288.6708,
+              "status": "succeeded",
+              "step_id": 7,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 74880,
+                "input_tokens": 84946,
+                "output_tokens": 3520,
+                "reasoning_output_tokens": 1774,
+                "total_tokens": 88466
+              },
+              "usage_total_tokens": 88466
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 97003.71479999999,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 38209.847,
+              "status": "succeeded",
+              "step_id": 8,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 96790.65669999999,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 91006.5753,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "tutor_delivery_review",
+              "parent_step_id": 8,
+              "request_diagnostics": {
+                "first_changed_message": null,
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 2,
+                "messages_append_only": null,
+                "previous_image_count": null,
+                "previous_message_count": null,
+                "previous_reasoning_message_count": null,
+                "previous_step_id": null,
+                "previous_tool_count": null,
+                "reasoning_message_count": 0,
+                "request_index": 5,
+                "settings_changed": null,
+                "step_id": 9,
+                "tool_count": 0,
+                "tools_changed": null,
+                "unchanged_prefix_messages": null
+              },
+              "result_count": null,
+              "started_ms": 38306.8121,
+              "status": "succeeded",
+              "step_id": 9,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 6912,
+                "input_tokens": 19783,
+                "output_tokens": 24093,
+                "reasoning_output_tokens": 22051,
+                "total_tokens": 43876
+              },
+              "usage_total_tokens": 43876
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 8543.325799999991,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": null,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 8470,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 34,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 37,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 34,
+                "previous_reasoning_message_count": 11,
+                "previous_step_id": 7,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 12,
+                "request_index": 6,
+                "settings_changed": false,
+                "step_id": 10,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 34
+              },
+              "result_count": null,
+              "started_ms": 135340.45080000002,
+              "status": "succeeded",
+              "step_id": 10,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 85888,
+                "input_tokens": 102989,
+                "output_tokens": 2228,
+                "reasoning_output_tokens": 462,
+                "total_tokens": 105217
+              },
+              "usage_total_tokens": 105217
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 42156.80439999999,
+              "error_code": "TEACHING_REVIEW_FAILED",
+              "evidence_refs": [],
+              "kind": "tool",
+              "label": "选择教学动作",
+              "model_first_text_ms": null,
+              "model_name": null,
+              "model_name_source": null,
+              "name": "tutor.step",
+              "parent_step_id": null,
+              "result_count": null,
+              "started_ms": 143899.3452,
+              "status": "failed",
+              "step_id": 11,
+              "usage": null,
+              "usage_total_tokens": null
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 42060.8542,
+              "error_code": "PROVIDER_ERROR",
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 36185.572600000014,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "tutor_delivery_review",
+              "parent_step_id": 11,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 67163,
+                  "fields": [
+                    "content"
+                  ],
+                  "index": 1,
+                  "previous_bytes": 48317,
+                  "role": "user",
+                  "unchanged_prefix_bytes": 5383
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 2,
+                "messages_append_only": false,
+                "previous_image_count": 0,
+                "previous_message_count": 2,
+                "previous_reasoning_message_count": 0,
+                "previous_step_id": 9,
+                "previous_tool_count": 0,
+                "reasoning_message_count": 0,
+                "request_index": 7,
+                "settings_changed": false,
+                "step_id": 12,
+                "tool_count": 0,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 1
+              },
+              "result_count": null,
+              "started_ms": 143992.8274,
+              "status": "failed",
+              "step_id": 12,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 8320,
+                "input_tokens": 24778,
+                "output_tokens": 8804,
+                "reasoning_output_tokens": 7125,
+                "total_tokens": 33582
+              },
+              "usage_total_tokens": 33582
+            },
+            {
+              "accepted_evidence_count": null,
+              "duration_ms": 8036.172800000029,
+              "error_code": null,
+              "evidence_refs": [],
+              "kind": "model",
+              "label": "生成回答",
+              "model_first_text_ms": 3744.8722000000125,
+              "model_name": "deepseek-v4-flash",
+              "model_name_source": "configured",
+              "name": "outer",
+              "parent_step_id": null,
+              "request_diagnostics": {
+                "first_changed_message": {
+                  "current_bytes": 3232,
+                  "fields": [
+                    "added"
+                  ],
+                  "index": 37,
+                  "previous_bytes": 0,
+                  "role": "assistant",
+                  "unchanged_prefix_bytes": 0
+                },
+                "first_changed_tool": null,
+                "image_count": 0,
+                "message_count": 40,
+                "messages_append_only": true,
+                "previous_image_count": 0,
+                "previous_message_count": 37,
+                "previous_reasoning_message_count": 12,
+                "previous_step_id": 10,
+                "previous_tool_count": 13,
+                "reasoning_message_count": 13,
+                "request_index": 8,
+                "settings_changed": false,
+                "step_id": 13,
+                "tool_count": 13,
+                "tools_changed": false,
+                "unchanged_prefix_messages": 37
+              },
+              "result_count": null,
+              "started_ms": 186333.2369,
+              "status": "succeeded",
+              "step_id": 13,
+              "usage": {
+                "cache_creation_input_tokens": null,
+                "cached_input_tokens": 103296,
+                "input_tokens": 119055,
+                "output_tokens": 1643,
+                "reasoning_output_tokens": 338,
+                "total_tokens": 120698
+              },
+              "usage_total_tokens": 120698
+            }
+          ],
+          "effects": [],
+          "last_seq": 37,
+          "trace": [
+            {
+              "args": "{\"lid\": \"1.1\"}",
+              "model_tool_loop": 1,
+              "result_digest": "{\"lid\":\"1.1\",\"text\":\"过拟合与正则化\\n训练误差是在参与拟合的数据上计算的误差；验证误差是在未用于拟合参数的数据上计算的误差，用于估计对同类新样本的泛化。过拟合是模型过度适应训练数据的偶然细节，训练误差低并不保证验证误差低。例如模型 A 的训练均方误差为 0.01、验证均方误差为 0.30；模型 B 的训练均方误差为 0.08、验证均方误差为 0.12。在数据划分和度量相同的前",
+              "tool": "book.text"
+            },
+            {
+              "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加参数平方和惩罚：J(w)=(1/n)∑[f_w(x_i)−y_i]^2+λ∑w_j^2；λ=0.01 表示参数平方和的权重是 0.01，而不是把训练误差减去 0.01；是否惩罚偏置按模型约定。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"penalty-gradient\",\"purpose\":\"让读者看出惩罚项在优化中实际做了什么动作：它以与权重大小成正比的方式把参数往零拉。\",\"relation\":\"惩罚项对单个参数 w_j 的梯度是 2λw_j，λ=0.01 时即 0.02w_j；权重越大，被拉回零的力越大。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"shrink-mechanism\",\"purpose\":\"把目标函数的两个加项与上一轮讲的过拟合现象接上：低训练误差由压低残差实现，惩罚项使这种压低不能靠把权重堆大来实现。\",\"relation\":\"训练损失压低残差，惩罚项压低权重数量级；两者相加后被选中的参数要同时兼顾，于是拟合不再依赖大权重放大输入中的偶然细节，这正是材料所说“在拟合训练样本与保持较小权重之间取舍”。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]},{\"block_id\":\"no-guarantee\",\"purpose\":\"说明正则化改变的是模型解的性质，而不是对某份验证集作出承诺，因此验证误差需要实测。\",\"relation\":\"正则化可能降低方差、改善泛化，但不保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\",\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}],\"focus_block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"organizing_model\":\"目标函数把“拟合训练样本”和“保持小权重”合成一个可优化的量，λ 决定两者的相对权重；正则化改变的是解的性质（方差与偏差的取舍），并不直接向某一份验证集作出承诺。\",\"previous_ref\":\"design:turn_21066d8223f796e7:design-overfit-selection\",\"representation\":{\"kind\":\"text\",\"reason\":\"用户明确要求用文字和公式讲解、不展示页面也不出题；目标函数、惩罚梯度与验证误差的关系都可以在公式与文字中直接展开，不需要可视化。\"},\"revision_reason\":\"用户接着上一轮的过拟合解释，要求继续用文字和公式写出 λ=0.01 的训练目标、说明惩罚项及其梯度，并解释为何不保证验证误差下降；本轮焦点从“两种误差的对照与模型选择”转到“目标函数与优化机制”，保留上一轮块作为前置历史。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"结合材料写出含 λ=0.01 惩罚项的训练目标，说明惩罚项及其梯度如何在优化中起作用，并说明为什么它不保证验证误差一定下降。\",\"learning_focus\":\"L2 正则化与泛化\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.1\",\"start_lid\":\"1.1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-l2-penalty\"}",
+              "model_tool_loop": 2,
+              "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"],\"blocks\":[{\"block_id\":\"l2-objective\",\"purpose\":\"让读者能把 λ=0.01 具体写进一个目标函数里，并看清 0.01 加在哪个位置、乘以什么。\",\"relation\":\"L2 正则化的目标是经验训练损失加",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"quote\": \"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练样本与保持较小权重之间取舍；对单个参数 w_j，惩罚项的梯度为 2λw_j。正则化可能降低方差、改善泛化，但不会保证每份验证集上的误差都下降；λ 太大可能造成欠拟合，通常用验证数据选择 λ。\"}",
+              "model_tool_loop": 3,
+              "result_digest": "{\"label\":\"正文\",\"preview\":\"L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练...\",\"source_re",
+              "tool": "source.present"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v1\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+              "model_tool_loop": 5,
+              "result_digest": "{\"delivery_move_refs\":[\"move:turn_21066e8223f7989a:explain-l2-penalty-v1\"],\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"editorial_feedback\":{\"guidance\":\"以下是基于实际阅读路径的表达建议，不新增验收条件。最终交付",
+              "tool": "tutor.step"
+            },
+            {
+              "args": "{\"move\":{\"block_refs\":[\"l2-objective\",\"penalty-gradient\",\"shrink-mechanism\",\"no-guarantee\"],\"capability\":\"explanation\",\"design_ref\":\"design:turn_21066e8223f7989a:design-l2-penalty\",\"intent_origin\":\"current_request\",\"intent_quote\":\"接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。\",\"interaction_intent\":\"direct_explanation\",\"kind\":\"explain\",\"move_id\":\"explain-l2-penalty-v2\",\"object_ids\":[],\"prompt\":\"用文字和公式说明：λ=0.01 时目标函数写成什么样、0.01 乘在什么上面；惩罚项对单个权重的梯度 2λw_j 如何影响优化；以及为什么正则化不能保证验证误差一定下降。\",\"responds_to\":{\"disposition\":\"addressed\",\"fact_refs\":[\"usage:tutor-begin-1:user:turn_21066e8223f7989a\"]}},\"operation\":\"select\"}",
+              "model_tool_loop": 7,
+              "result_digest": "{\"category\":\"provider\",\"error_code\":\"TEACHING_REVIEW_FAILED\",\"message\":\"回答检查调用失败；当前稿未被接纳。请恢复检查调用，不要仅因此改写正文。原因：PROVIDER_ERROR: 模型输出抽不到合法 JSON 对象;原文={\\\"decision\\\":\\\"accept\\\",\\\"revision\\\":null,\\\"reading_",
+              "tool": "tutor.step"
+            }
+          ]
+        },
+        "source_bindings": [
+          {
+            "book_id": "workspace-cache-live-overfitting",
+            "evidence_range": {
+              "end_lid": "1.1",
+              "ranges": [
+                {
+                  "lid": "1.1",
+                  "range": {
+                    "end": 468,
+                    "start": 213
+                  }
+                }
+              ],
+              "start_lid": "1.1"
+            },
+            "evidence_text_digest": "source-fnv1a64-9ba4d3e6a49de6b5",
+            "label_snapshot": "正文",
+            "preview_snapshot": "L2 正则化在经验训练损失上加参数平方和惩罚。若预测为 f_w(x)，常见目标是 J(w)= (1/n)∑[f_w(x_i)-y_i]^2 + λ∑w_j^2，其中 λ≥0 调节惩罚强度，是否惩罚偏置须按模型约定。λ=0.01 表示参数平方和的权重为 0.01，并不是把训练误差直接减去 0.01。优化时，模型在拟合训练...",
+            "source_ref_id": "source_ref_a78478a608240e0c"
+          }
+        ],
+        "status": "completed",
+        "turn_id": "turn_21066e8223f7989a",
+        "user": "接着刚才的解释，继续用文字和公式讲清楚 L2 正则化怎么缓解过拟合：写出 λ=0.01 的训练目标，解释惩罚项及其梯度，最后说明它为什么不能保证验证误差一定下降。不要展示页面，也暂时不要出题。",
+        "user_turn_ordinal": 2
+      },
+      "time_to_first_public_answer_patch_ms": 194886.69119999997,
+      "turn": 2
+    }
+  ]
+}

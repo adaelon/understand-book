@@ -1,0 +1,69 @@
+{
+  "operation": "design",
+  "operation_id": "om6-next",
+  "design": {
+    "basis_refs": [
+      "usage:tutor-begin-1:user:turn_59aa6ef502b461bb"
+    ],
+    "blocks": [
+      {
+        "block_id": "total-time",
+        "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+        "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      {
+        "block_id": "average-speed",
+        "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+        "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      {
+        "block_id": "two-levers",
+        "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+        "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      }
+    ],
+    "focus_block_refs": [
+      "total-time",
+      "average-speed",
+      "two-levers"
+    ],
+    "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+    "open_question_refs": [],
+    "previous_ref": "design:turn_59aa70f502b46521:om6-prior",
+    "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+    "representation": {
+      "kind": "text",
+      "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+    },
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+      "learning_focus": "同一路线缩短总时间的方案比较",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "start_lid": "1.1",
+          "end_lid": "1.1"
+        }
+      ]
+    }
+  }
+}

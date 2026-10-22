@@ -1,0 +1,1451 @@
+{
+  "kind": "workspace_fixed_transcript_cache_comparison.v1",
+  "experiment": "20261022T031803Z-2aa4f299-86b7-4949-91b0-afc442906f21",
+  "sample_description": "Workspace ordinary explanation and three follow-ups, fixed production request-builder transcript",
+  "endpoint": "https://api.deepseek.com/chat/completions",
+  "model": "deepseek-v4-flash",
+  "protocol": "native",
+  "indexes": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "repetitions": 2,
+  "planned_calls": 16,
+  "maximum_calls": 16,
+  "output_token_cap": 2048,
+  "order": "AB in odd repetitions, BA in even repetitions; chronological requests within each arm",
+  "delay_seconds": 2,
+  "price_snapshots": {
+    "deepseek-flash-20261022-01-04": {
+      "version": "deepseek-flash-20261022-01-04",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792630800,
+      "expires_at": 1792641600,
+      "input_micro_cny_per_million": 2000000,
+      "cached_input_micro_cny_per_million": 40000,
+      "output_micro_cny_per_million": 8000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    }
+  },
+  "price_selection": "Frozen file contents; select the applicable interval at each HTTP request's start time",
+  "limitations": [
+    "Fixed Runtime transcripts: new model outputs are retained for review, not used as later inputs; this is not autonomous end-to-end evaluation.",
+    "The output cap is identical between arms; length-limited responses and tool calls are reported and are not complete explanation samples.",
+    "Each arm and repetition has its own leading marker; this does not guarantee a fully cold provider tool prefix. The provider controls cache placement and eviction.",
+    "First text means the first nonempty assistant content delta at this client; reasoning and tool deltas have separate timing. This is not the Reader's first visible answer time.",
+    "Cost is computed from provider-reported usage and the recorded operator price snapshot, not an upstream invoice.",
+    "A short controlled sequence establishes only this workload's measurements, not application-wide cache savings or learning outcomes."
+  ],
+  "request_adjustments": [
+    "unique leading system marker per arm and repetition",
+    "configured provider model",
+    "identical max_tokens output cap",
+    "stream=true and include_usage=true",
+    "thinking disabled in both arms; recorded transcript lacks provider reasoning continuation"
+  ],
+  "results": [
+    {
+      "arm": "baseline",
+      "repetition": 1,
+      "position": 0,
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-00.json",
+      "ordinal": 1,
+      "started_utc": "2026-10-22T03:18:03.255169+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 19548,
+        "completion_tokens": 846,
+        "total_tokens": 20394,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19548
+      },
+      "response_id": "03c9f322-3bf9-4aff-84fe-9a0dddaf285f",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "# 训练误差下降，模型却可能变差的原因\n\n核心原因在于：**训练误差衡量的是模型在“已经见过的数据”上拟合得有多紧，而模型好不好，取决于它在“没见过的数据”上表现如何。** 这两件事并不总是一致。\n\n## 一、机制：把噪声当成规律\n\n训练集里既有真实规律，也有只属于这批样本的偶然波动（噪声）。如果模型容量足够大、训练足够久，它会把噪声也一并“记住”。于是：\n\n- 在训练集上，误差可以持续下降，甚至接近 0；\n- 在未见样本上，误差反而上升。\n\n这就是过拟合的典型表现。所以“训练误差低”本身不足以说明模型更好，应当比较**同一验证集**上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n书中给出的对照例子（相同数据划分与误差指标）：\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n如果目标是对未见数据的预测，验证结果支持选择乙：乙没有把训练集拟合得最紧，但验证误差更小。[[source:source_ref_c52685f9e6cb9140]]\n\n## 二、另一个方向：训练误差上升，也不等于模型变差\n\n正则化材料补充了相反的情形。L2 正则化把训练目标改为\n\n$$J(w)=L_{train}(w)+\\lambda\\sum_j w_j^2,\\quad \\lambda\\ge 0$$\n\nλ 越大，大权重越“昂贵”。适当的惩罚能降低模型对训练噪声的敏感度，从而改善泛化；惩罚过强则可能导致欠拟合。因此，**增加正则化强度后训练误差可能上升，只要验证表现改善，这不等于模型变差**。[[source:source_ref_679b2138443382f8]]\n\n材料还提醒：惩罚改变的是优化中的偏好，并不单独证明哪个模型验证误差更低。例如两个候选模型，训练损失分别为 0.05、0.09，平方权重和分别为 10、1：λ=0 时前者目标值 0.05 更小；λ=0.01 时目标值变为 0.15 与 0.10，后者更小。[[source:source_ref_679b2138443382f8]]\n\n所以判断标准始终是**验证集上的表现**，而不是训练误差的高低。\n\n## 三、三个数据集的分工\n\n| 数据集 | 用途 | 关键约束 |\n|---|---|---|\n| **训练集** | 参与参数拟合（模型从它身上学规律） | 它的误差只反映“拟合得紧不紧”，不能作为泛化依据 |\n| **验证集** | 选择模型和超参数（如 λ、模型结构） | 必须用**同一份**验证集比较候选模型；验证误差不是对所有未来数据的保证 |\n| **测试集** | 最终评估 | 应留到最终评估，不参与调参；λ 通常由验证集或交叉验证选择，测试集不用于反复挑选 λ |\n\n[[source:source_ref_c52685f9e6cb9140]] [[source:source_ref_679b2138443382f8]]\n\n一句话概括三者的关系：训练集用来“学”，验证集用来“选”，测试集用来“报”。如果测试集被反复用来挑选模型，它实际上就变成了验证集，最终报告的数字也就不再是对未见数据的诚实估计。\n\n## 四、顺带区分：欠拟合\n\n欠拟合是另一个方向的失败：模型连训练数据中的主要关系都没学好，常表现为**训练误差和验证误差都较高**。[[source:source_ref_c52685f9e6cb9140]] 这与过拟合（训练低、验证高）正好形成对照，也是判断“该加容量还是该加正则化”的起点。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1059.233,
+      "first_text_ms": 1059.233,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 593.445,
+      "streaming": true,
+      "duration_ms": 4847.315,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 19548,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 19548,
+        "output_tokens": 846
+      },
+      "cost": {
+        "input_cny": "0.039096",
+        "output_cny": "0.006768",
+        "total_cny": "0.045864",
+        "total_rounded_micro_cny": 45864
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 1,
+      "position": 1,
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-01.json",
+      "ordinal": 2,
+      "started_utc": "2026-10-22T03:18:10.109657+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20132,
+        "completion_tokens": 1529,
+        "total_tokens": 21661,
+        "prompt_tokens_details": {
+          "cached_tokens": 13056
+        },
+        "prompt_cache_hit_tokens": 13056,
+        "prompt_cache_miss_tokens": 7076
+      },
+      "response_id": "3b832cb2-4aea-40c1-928e-762f926bf706",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "## 先看数字：甲和乙到底差在哪\n\n两本书都强调同一个前提：比较必须在**相同的数据划分和相同的误差指标**下进行。在这个前提下：\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n- **训练误差**衡量的是模型在“参与拟合的那批数据”上拟合得有多紧。甲把训练集压到 0.01，说明它几乎把每个训练样本都记住了，包括样本里只属于这批数据的噪声。乙只压到 0.08，说明它没有把训练集拟合得最紧。\n- **验证误差**衡量的是模型在“没参与拟合、但参与了选择”的数据上的表现。甲是 0.30，乙是 0.12，乙在这份验证集上的误差明显更小。\n\n所以“训练误差越低越好”这个直觉的问题在于：它只看了模型对已经见过的数据的表现。模型把训练样本中特有的噪声也当成规律时，训练误差可以持续下降，而未见样本上的误差反而上升，这正是过拟合的典型表现；因此，一次训练误差较低本身不足以判断模型更好，应比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n**为什么选乙**：如果目标是对未见数据的预测，验证结果支持选择乙——乙没有把训练集拟合得最紧，但在这份验证集上的误差较小。[[source:source_ref_c52685f9e6cb9140]] 换句话说，甲多出来的那 0.07 训练误差优势，是用 0.18 的验证误差换来的，这笔交换在“预测新数据”这个目标下不划算。\n\n**两个必须保留的限定**：\n1. 验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]]\n2. 反方向也要防：欠拟合是连训练数据中的主要关系也没学好，常表现为训练与验证误差都较高。[[source:source_ref_c52685f9e6cb9140]] 所以不是“训练误差越高越好”，而是训练误差不能作为唯一判据。\n\n## 三个数据集的分工\n\n- **训练集**：参与参数拟合。模型从这里“学”，所以它的误差天然偏乐观。\n- **验证集**：用于选择模型和超参数。甲、乙之争就发生在这里；正则化强度 λ 也通常由验证集或交叉验证选择，测试集不用于反复挑选 λ。[[source:source_ref_679b2138443382f8]]\n- **测试集**：应留到最终评估。它不参与拟合、也不参与挑选，因此是唯一能较干净地反映“选定方案在未见数据上如何”的一关。[[source:source_ref_c52685f9e6cb9140]]\n\n一句话概括这条链：训练集决定“参数是多少”，验证集决定“选哪个方案”，测试集只回答“最终这个方案行不行”。一旦用测试集反复挑模型，它就被污染成了第二个验证集。\n\n## 为什么“训练误差上升”不等于“模型变差”\n\n这一点在正则化里最直观。L2 把训练目标改成 J(w)=L_train(w)+λ·Σw_j²，λ≥0 控制对大权重的惩罚强度。[[source:source_ref_679b2138443382f8]] 适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；惩罚过强也可能使模型欠拟合。[[source:source_ref_679b2138443382f8]] 所以增加正则化强度后训练误差可能上升，只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n书里还有一个算例，正好说明“训练项小”不等于“被选中的就是它”：两个候选的 L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。λ=0 时前者目标值 0.05 较小；λ=0.01 时目标值分别为 0.15 和 0.10，后者目标值较小。[[source:source_ref_679b2138443382f8]] 注意书里明确提醒：这个算例只说明惩罚改变优化中的偏好，不单独证明哪一个模型的验证误差更低。[[source:source_ref_679b2138443382f8]] 也就是说，训练目标里的数字只能告诉你“优化器偏好谁”，最终谁更好仍要回到验证集上比。\n\n## 怎样把它做成直观比较\n\n下面是我基于上面两条原则给出的呈现建议（具体图形样式是我的设计，不是书里的内容）：\n\n**1. 双柱对照图（最直接）**\n每个模型画两根并排柱：左柱训练误差、右柱验证误差，同一纵轴、同一刻度。甲呈现“左矮右高”的剪刀差，乙呈现“两柱接近”。剪刀差本身就是过拟合的视觉签名；两柱都高则是欠拟合的签名。把 0.01/0.30 和 0.08/0.12 画在一起，读者一眼就能看出“甲赢在左柱、输在右柱”。\n\n**2. 差距标注**\n在每组柱子上方标出“验证 − 训练”的差值：甲 +0.29，乙 +0.04。这个差值比两个绝对数更能说明“训练表现对未见数据的可迁移程度”。注意这是派生量，只作辅助读数，不替代原始误差。\n\n**3. 决策流程条**\n横向三步：训练集（拟合参数）→ 验证集（在甲、乙、各 λ 之间选）→ 测试集（只评一次）。在“验证集”这一步高亮“选乙”，在“测试集”这一步标注“不回头改选择”。这样把“为什么不能看训练误差选模型”变成流程上的硬约束，而不只是口头提醒。\n\n**4. 一条 λ 扫描曲线（可选，用于讲清“训练升、验证降”）**\n横轴 λ 从小到大，两条线：训练误差单调上升，验证误差先降后升，呈 U 形。在最低点标注“选这里”。这条曲线能同时解释两件事：为什么训练误差上升不必然是坏事，以及为什么惩罚过强会滑向欠拟合。需要说明的是，U 形是先降后升这一形状是我根据“适当惩罚改善泛化、过强则欠拟合”这两条已读结论做的示意，书里并未给出具体曲线数据。\n\n**5. 一句结论条放在图下**\n“训练误差回答‘拟合得多紧’，验证误差回答‘选哪个’，测试误差回答‘最终行不行’。”配上甲、乙的对比，读者不需要额外解释就能自己得出结论。\n\n如果你愿意，我可以把上面这套做成一个可交互的对比页面（拖动 λ 看两柱变化、切换甲/乙高亮），你确认后我就开始做。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 813.419,
+      "first_text_ms": 813.419,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 244.757,
+      "streaming": true,
+      "duration_ms": 8279.225,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20132,
+        "cached_input_tokens": 13056,
+        "uncached_input_tokens": 7076,
+        "output_tokens": 1529
+      },
+      "cost": {
+        "input_cny": "0.01467424",
+        "output_cny": "0.012232",
+        "total_cny": "0.02690624",
+        "total_rounded_micro_cny": 26907
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 1,
+      "position": 2,
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-02.json",
+      "ordinal": 3,
+      "started_utc": "2026-10-22T03:18:20.395951+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20738,
+        "completion_tokens": 590,
+        "total_tokens": 21328,
+        "prompt_tokens_details": {
+          "cached_tokens": 13568
+        },
+        "prompt_cache_hit_tokens": 13568,
+        "prompt_cache_miss_tokens": 7170
+      },
+      "response_id": "4893f9fc-9eaa-47e0-b4ff-35b2d9aa54a3",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是“故意让模型变笨”，而是给优化目标加了一项“大权重更贵”的代价，让模型在拟合训练数据时更克制。\n\n**文字讲清 L_train + λ·平方权重和**\n\nL2 正则化把训练目标改成 J(w) = L_train(w) + λ·Σⱼ wⱼ²。前一项 L_train 是模型在训练集上的误差，后一项是所有权重平方之和，λ ≥ 0 控制惩罚强度。λ = 0 时惩罚项消失，目标就是纯训练误差；λ 变大时，同样的权重会带来更大的代价，所以优化过程更倾向于选择权重较小的解。权重小通常意味着模型对输入的细微波动不那么敏感，因此可能减少对训练噪声的“记忆”，从而改善泛化；但惩罚过强也会压住真正有用的规律，导致欠拟合。所以 λ 不是越大越好，通常由验证集或交叉验证来选，测试集不参与反复挑选 λ。 [[source:source_ref_679b2138443382f8]]\n\n**你的数字例子**\n\n设甲：L_train = 0.05，平方权重和 = 10；乙：L_train = 0.09，平方权重和 = 1。\n\n- λ = 0：J甲 = 0.05 + 0 = 0.05，J乙 = 0.09 + 0 = 0.09。只看训练误差，甲更优。\n- λ = 0.01：J甲 = 0.05 + 0.01×10 = 0.15，J乙 = 0.09 + 0.01×1 = 0.10。此时乙的目标值更小，优化偏好从甲转向乙。\n\n关键在于：λ 从 0 变到 0.01 时，甲多付了 0.10 的惩罚，乙只多付 0.01，两者差距 0.09 超过了原本 0.04 的训练误差优势，排序因此翻转。这也说明“训练误差更低”只是 λ = 0 时的结论，一旦目标函数变了，最优选择就可能变。 [[source:source_ref_679b2138443382f8]]\n\n**两点边界**\n\n这个算例只说明惩罚改变了优化中的偏好，并不单独证明乙的验证误差更低；哪个 λ 更好，仍要看验证集表现。另外，加大正则化后训练误差上升是正常的，只要验证表现改善，就不等于模型变差。 [[source:source_ref_679b2138443382f8]] 这也和前面甲、乙的例子一致：训练误差低本身不足以判断模型更好，应在同一验证集上比较。 [[source:source_ref_c52685f9e6cb9140]]",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1246.21,
+      "first_text_ms": 1246.21,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 160.374,
+      "streaming": true,
+      "duration_ms": 3966.378,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20738,
+        "cached_input_tokens": 13568,
+        "uncached_input_tokens": 7170,
+        "output_tokens": 590
+      },
+      "cost": {
+        "input_cny": "0.01488272",
+        "output_cny": "0.00472",
+        "total_cny": "0.01960272",
+        "total_rounded_micro_cny": 19603
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 1,
+      "position": 3,
+      "index": 3,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-03.json",
+      "ordinal": 4,
+      "started_utc": "2026-10-22T03:18:26.373833+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 21339,
+        "completion_tokens": 676,
+        "total_tokens": 22015,
+        "prompt_tokens_details": {
+          "cached_tokens": 14208
+        },
+        "prompt_cache_hit_tokens": 14208,
+        "prompt_cache_miss_tokens": 7131
+      },
+      "response_id": "a631338c-622d-483e-9ff4-fc311f471626",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标中更昂贵，并不保证验证误差单调下降。 [[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合的关系**\n\n- 惩罚太弱时，模型可能把训练样本中的噪声也当成规律，训练误差继续下降，但未见样本上的误差反而上升，这是过拟合的典型表现。 [[source:source_ref_c52685f9e6cb9140]]\n- 惩罚适当增强时，模型对大权重的依赖减少，对训练噪声的敏感程度可能降低，从而改善泛化。 [[source:source_ref_679b2138443382f8]]\n- 惩罚过强时，模型被压得过于保守，连训练数据中的主要关系也学不好，于是出现欠拟合，常表现为训练误差和验证误差都较高。 [[source:source_ref_c52685f9e6cb9140]] [[source:source_ref_679b2138443382f8]]\n- 因此，随着 lambda 增大，验证误差通常先降后升，呈 U 形；最优点在中间，不在两端。这是把上述两条原则合起来得到的推论，材料本身没有画出这条曲线。\n\n**验证集在选择中的作用**\n\nlambda 通常由验证集或交叉验证来选择，测试集不用于反复挑选 lambda。 [[source:source_ref_679b2138443382f8]] 验证集的作用是选择模型和超参数；测试集应留到最终评估。 [[source:source_ref_c52685f9e6cb9140]] 另外，增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。 [[source:source_ref_679b2138443382f8]]\n\n**比较页面应让你观察什么**\n\n1. **横轴是 lambda，纵轴是误差，两条曲线并列**：一条训练误差，一条验证误差。训练误差随 lambda 增大而上升是正常的；关键看验证误差在哪里最低。\n2. **标出验证误差最低点**：该点对应的 lambda 就是验证集选出的候选值，同时标出它两侧的“惩罚偏弱”和“惩罚过强”区域。\n3. **标出欠拟合区**：当 lambda 很大时，训练误差和验证误差都高，两条曲线靠拢且整体偏高，这就是欠拟合的形态，与过拟合时“训练低、验证高”的分离形态形成对照。\n4. **测试集单独放在最后**：只在选定 lambda 后显示一次测试结果，不参与曲线上的挑选，避免你被“反复试测试集”误导。\n5. **可拖动 lambda 的交互**：拖动时同步显示当前 lambda 下的训练误差、验证误差和平方权重和，让你看到惩罚项如何改变优化偏好，而不是只看一个最终数字。\n\n需要说明的是，材料只给出了 L2 目标式、惩罚过强导致欠拟合的结论，以及 lambda 由验证集选择的规则；上面第 3、5 点中“曲线形状”和“拖动交互”的具体呈现方式，是我根据这些原则设计的比较方案，不是材料原文。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 771.858,
+      "first_text_ms": 771.858,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 154.474,
+      "streaming": true,
+      "duration_ms": 4187.04,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 21339,
+        "cached_input_tokens": 14208,
+        "uncached_input_tokens": 7131,
+        "output_tokens": 676
+      },
+      "cost": {
+        "input_cny": "0.01483032",
+        "output_cny": "0.005408",
+        "total_cny": "0.02023832",
+        "total_rounded_micro_cny": 20239
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 1,
+      "position": 0,
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-00.json",
+      "ordinal": 5,
+      "started_utc": "2026-10-22T03:18:32.571893+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 19548,
+        "completion_tokens": 821,
+        "total_tokens": 20369,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19548
+      },
+      "response_id": "e504678b-b247-4c06-9ad0-23bdea30caea",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "# 训练误差下降，模型却可能变差的原因\n\n核心在于：**训练误差衡量的是模型对已经见过的数据的拟合程度，而模型的好坏取决于它对未见数据的预测能力。** 这两件事并不总是一致。\n\n## 一、训练误差下降反而变差的原因\n\n材料给出的机制是：模型把训练样本中**特有的噪声**也当成了规律来学习。训练集里总有一些只属于这批样本的偶然波动，它们不是数据背后的真实关系。模型容量足够大、训练足够久时，它可以把这些偶然波动也拟合进去，于是训练误差持续下降；但学到的“规律”在未见样本上并不成立，因此未见样本上的误差反而上升。这就是过拟合的典型表现。[[source:source_ref_c52685f9e6cb9140]]\n\n所以，**一次训练误差较低本身不足以判断模型更好**，必须比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n材料中的算例很直观：在相同数据划分与误差指标下，模型甲训练误差 0.01、验证误差 0.30；模型乙训练误差 0.08、验证误差 0.12。若目标是对未见数据的预测，验证结果支持选择乙：乙没有把训练集拟合得最紧，但在这份验证集上误差更小。[[source:source_ref_c52685f9e6cb9140]]\n\n正则化材料从另一个角度说明了同一件事：增加正则化强度后训练误差可能上升，但只要验证表现改善，这**不等于模型变差**。[[source:source_ref_679b2138443382f8]] 原因是，适当的惩罚会减少模型对训练噪声的敏感程度，从而改善泛化；惩罚过强则可能走向欠拟合。[[source:source_ref_679b2138443382f8]]\n\n## 二、三个数据集的分工\n\n| 数据集 | 用途 | 关键约束 |\n|---|---|---|\n| 训练集 | 参与参数拟合 | 模型直接在这上面优化，所以它的误差会“偏乐观” |\n| 验证集 | 选择模型和超参数 | 用于比较候选模型、挑选正则化强度等 |\n| 测试集 | 最终评估 | 应留到最终评估，不参与反复调参 |\n\n具体到正则化：lambda 通常由验证集或交叉验证选择，**测试集不用于反复挑选 lambda**。[[source:source_ref_679b2138443382f8]] 原因在于，一旦用测试集反复挑选，测试集就变成了“参与决策的数据”，它给出的分数也就不再是对未见数据的独立估计。\n\n## 三、验证集不能保证未来表现\n\n验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]] 验证集的作用是“在候选方案之间做选择”，测试集的作用是“对选定方案做一次独立检验”，两者不能互相替代。\n\n## 四、反向的失败模式：欠拟合\n\n并非训练误差高就一定好。欠拟合是连训练数据中的主要关系也没有学好，常表现为训练与验证误差**都**较高。[[source:source_ref_c52685f9e6cb9140]] 因此，判断时要看两个误差的组合：训练低、验证高，说明过拟合；两者都高，说明欠拟合；两者都低且接近，才是比较理想的状态。\n\n## 五、一个容易混淆的点\n\n正则化材料中的算例提醒：惩罚项改变的是优化过程中的偏好，**不单独证明**哪一个模型的验证误差更低。[[source:source_ref_679b2138443382f8]] 也就是说，训练目标值的大小不能直接当作泛化能力的证据，最终仍要回到验证集（以及测试集）上的实测表现。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1244.449,
+      "first_text_ms": 1244.449,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 280.28,
+      "streaming": true,
+      "duration_ms": 4957.976,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 19548,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 19548,
+        "output_tokens": 821
+      },
+      "cost": {
+        "input_cny": "0.039096",
+        "output_cny": "0.006568",
+        "total_cny": "0.045664",
+        "total_rounded_micro_cny": 45664
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 1,
+      "position": 1,
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-01.json",
+      "ordinal": 6,
+      "started_utc": "2026-10-22T03:18:39.540401+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20132,
+        "completion_tokens": 1251,
+        "total_tokens": 21383,
+        "prompt_tokens_details": {
+          "cached_tokens": 13056
+        },
+        "prompt_cache_hit_tokens": 13056,
+        "prompt_cache_miss_tokens": 7076
+      },
+      "response_id": "ac3a3a6e-d528-48ba-8aea-f5300722623b",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "你的直觉有一半是对的：训练误差低本身是好事，但它只说明模型在“它见过的数据”上表现好。甲和乙的差别正好说明这一点。\n\n## 先把数字例子讲透\n\n前提是：两个模型使用**同一份数据划分、同一个误差指标**，所以 0.01 和 0.08 可以直接比较。\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n- **甲**：训练误差 0.01，几乎把训练集“背下来”了；但换到没参与拟合的验证集，误差跳到 0.30，是训练误差的 30 倍。这种“训练集上极好、新数据上很差”的落差，就是过拟合的典型表现：模型把训练样本里特有的噪声也当成了规律。\n- **乙**：训练误差 0.08，明显不如甲“贴合”训练集；但验证误差只有 0.12，比甲低得多。它没有把训练集拟合得最紧，却在这份验证集上表现更好。\n\n**为什么选乙**：如果目标是预测未见数据，那么“训练集上的分数”不是我们真正关心的指标，它只是拟合过程的副产品。真正接近目标的是验证误差，而验证集没有参与参数拟合，所以能反映模型面对新数据时的表现。甲在训练集上赢，乙在“新数据”上赢；目标决定该看哪一列。\n\n**两个必须说清的边界**：\n1. 验证误差不是对未来所有数据的保证。它只是这一份验证集上的估计，样本量小或划分特殊时会有波动。\n2. 所以最终还要在**未参与调参的测试集**上评估一次，那才是对泛化能力的最终检验。\n\n顺带说清另一头：如果两个模型的训练误差和验证误差**都**很高，那是欠拟合，即连训练数据里的主要关系都没学好，这时该做的是增强模型，而不是继续调参。\n\n## 怎样做成直观比较\n\n核心思路：**把“训练误差”和“验证误差”放在同一张图里，让两者的差距可见**，而不是只显示一个数字。\n\n**方案一：分组柱状图（最直接）**\n- 横轴两个组：甲、乙；每组两根柱子：训练误差（浅色）、验证误差（深色）。\n- 纵轴统一为误差值，从 0 开始，不要截断。\n- 一眼能看出：甲的深色柱远高于浅色柱（大落差），乙的两根柱子接近且都低。\n- 在甲的两根柱子之间画一条竖直虚线并标注“差距 0.29”，把“过拟合”变成可测量的量。\n\n**方案二：落差图（差距条形图）**\n- 只画“验证误差 − 训练误差”这一个量：甲 0.29，乙 0.04。\n- 适合强调“训练误差低不等于好”，因为甲在这张图上是明显的坏例子。\n\n**方案三：散点图（适合模型多的时候）**\n- 横轴训练误差，纵轴验证误差，每个模型一个点，甲、乙各标名字。\n- 画一条 45° 对角线（y = x）：点在对角线上方表示验证比训练差；离对角线越远，过拟合越明显。\n- 甲在右下（训练低、验证高），乙在左上偏中（训练略高、验证低）。这张图能同时表达“位置”和“落差”两件事。\n\n**方案四：交互式小演示（如果要让人“手感”到过拟合）**\n- 一个滑块控制模型复杂度（比如多项式阶数），图上同时画出训练误差曲线和验证误差曲线。\n- 训练误差随复杂度单调下降，验证误差先降后升，形成 U 形；两条曲线的分叉处就是过拟合开始的地方。\n- 甲、乙可以作为两个固定标记点钉在这张图上，让人看到它们分别落在 U 形的哪一侧。\n\n**呈现上的几个细节**：\n- 两列误差必须用**同一指标、同一数据划分**，否则图会误导；这一点要在图注里写明。\n- 用颜色而非仅靠位置区分训练/验证，并配图例。\n- 在图上明确标出“选择依据 = 验证误差”，避免观众又回去看训练误差那一列。\n- 如果还要展示测试集，把它画成第三根柱子或第三个点，并注明“仅用于最终评估，不参与选择”。\n\n## 一个补充视角：为什么“训练误差上升”也可能是进步\n\n工作区另一份材料从正则化的角度给了同一件事的另一种解释：L2 正则化把训练目标改成“训练损失 + λ·权重平方和”，λ 越大，大权重越昂贵。适当的惩罚能降低模型对训练噪声的敏感度，从而改善泛化；惩罚过强则会导致欠拟合。材料明确说：**增加正则化强度后训练误差可能上升，只要验证表现改善，这不等于模型变差**。[[source:source_ref_679b2138443382f8]]\n\n这正好解释了乙为什么可能“训练误差更高却更好”：它可能是一个被约束得更紧、更不敏感于噪声的模型。不过要注意，材料也强调，惩罚改变的是优化中的偏好，**不单独证明**哪个模型验证误差更低；λ 本身通常由验证集或交叉验证选择，测试集不用于反复挑选 λ。\n\n## 一句话总结\n\n训练误差衡量“记住”，验证误差衡量“迁移”，测试误差衡量“最终交付”。甲记住了训练集，乙学到了可迁移的规律；在预测未见数据这个目标下，选乙。[[source:source_ref_c52685f9e6cb9140]]",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 783.507,
+      "first_text_ms": 783.507,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 166.78,
+      "streaming": true,
+      "duration_ms": 7198.952,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20132,
+        "cached_input_tokens": 13056,
+        "uncached_input_tokens": 7076,
+        "output_tokens": 1251
+      },
+      "cost": {
+        "input_cny": "0.01467424",
+        "output_cny": "0.010008",
+        "total_cny": "0.02468224",
+        "total_rounded_micro_cny": 24683
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 1,
+      "position": 2,
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-02.json",
+      "ordinal": 7,
+      "started_utc": "2026-10-22T03:18:48.752076+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20738,
+        "completion_tokens": 704,
+        "total_tokens": 21442,
+        "prompt_tokens_details": {
+          "cached_tokens": 13568
+        },
+        "prompt_cache_hit_tokens": 13568,
+        "prompt_cache_miss_tokens": 7170
+      },
+      "response_id": "5825f6fb-1b41-4faa-939a-59b43ded8b3a",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是“故意让模型变笨”，而是给优化目标加了一项“大权重更贵”的代价，让模型在拟合训练数据时更克制。\n\n**文字讲清 J(w) = L_train(w) + λ·Σwⱼ²**\n\n- `L_train(w)`：模型在训练集上的误差，衡量“拟合得紧不紧”。\n- `Σwⱼ²`：所有参数（权重）平方之和，衡量“权重整体有多大”。平方让正负权重都算作代价，且大权重被放大得更厉害。\n- `λ ≥ 0`：惩罚强度。λ=0 时退化为只看训练误差；λ 越大，大权重越昂贵，优化时越倾向于把权重压小。\n- 因此训练时真正被最小化的是两者之和，而不是训练误差本身。权重被压小，模型对训练样本中个别噪声的敏感度可能下降，从而改善泛化；但惩罚过强也可能让模型连主要关系都学不好，变成欠拟合。所以 λ 不是越大越好，通常由验证集或交叉验证来选，测试集不参与反复挑 λ。 [[source:source_ref_679b2138443382f8]]\n\n**你的数字例子**\n\n设甲：L_train = 0.05，Σwⱼ² = 10；乙：L_train = 0.09，Σwⱼ² = 1。\n\n| λ | 甲：0.05 + λ·10 | 乙：0.09 + λ·1 | 目标值更小者 |\n|---|---|---|---|\n| 0 | 0.05 | 0.09 | 甲 |\n| 0.01 | 0.05 + 0.10 = **0.15** | 0.09 + 0.01 = **0.10** | 乙 |\n\nλ 从 0 变成 0.01 时，甲多付 0.10 的权重代价，乙只多付 0.01，于是排序翻转：原本训练误差更低的甲，在正则化目标下反而更“贵”。这正是“训练误差低不等于被选中”的机制——惩罚改变了优化中的偏好。 [[source:source_ref_679b2138443382f8]]\n\n**两点必须说清的边界**\n\n1. 这个算例只说明目标函数值谁更小，**不单独证明**哪个模型的验证误差更低。要判断泛化，还得看同一验证集上的表现；验证误差也不是对未来数据的保证，最终要在未参与调参的测试集上评估。 [[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n2. 加入正则化后训练误差可能上升，只要验证表现改善，这不等于模型变差——这与前面甲、乙的例子是同一个道理：训练误差只反映对已见数据的拟合程度。 [[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n\n一句话概括：正则化不是削弱模型能力，而是把“权重规模”计入成本，用一点训练拟合度换取对未见数据的稳健性；λ 就是这笔交换的汇率，汇率高低要靠验证集来定。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1132.149,
+      "first_text_ms": 1132.149,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 161.813,
+      "streaming": true,
+      "duration_ms": 4474.794,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20738,
+        "cached_input_tokens": 13568,
+        "uncached_input_tokens": 7170,
+        "output_tokens": 704
+      },
+      "cost": {
+        "input_cny": "0.01488272",
+        "output_cny": "0.005632",
+        "total_cny": "0.02051472",
+        "total_rounded_micro_cny": 20515
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 1,
+      "position": 3,
+      "index": 3,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-03.json",
+      "ordinal": 8,
+      "started_utc": "2026-10-22T03:18:55.237025+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 21339,
+        "completion_tokens": 657,
+        "total_tokens": 21996,
+        "prompt_tokens_details": {
+          "cached_tokens": 14208
+        },
+        "prompt_cache_hit_tokens": 14208,
+        "prompt_cache_miss_tokens": 7131
+      },
+      "response_id": "ef432b0c-9d71-40d0-9f8e-d0185c858f1b",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标中更昂贵，并不保证验证误差单调下降。[[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合的关系**\n\n- 惩罚太弱时，模型可能把训练样本中特有的噪声也当成规律，于是训练误差继续下降，而未见样本上的误差反而上升。[[source:source_ref_c52685f9e6cb9140]]\n- 惩罚适当，可能降低模型对训练噪声的敏感程度，从而改善泛化。[[source:source_ref_679b2138443382f8]]\n- 惩罚过强，模型连训练数据中的主要关系都学不好，就会欠拟合；欠拟合常表现为训练误差和验证误差都较高。[[source:source_ref_679b2138443382f8]] [[source:source_ref_c52685f9e6cb9140]]\n\n所以，随着 lambda 增大，验证误差通常先降后升，呈 U 形；最优点在中间，不在两端。这是把上述两条原则合起来得到的推论，材料本身没有画出这条曲线。\n\n**验证集在其中的作用**\n\nlambda 是超参数，通常由验证集或交叉验证来选择，测试集不用于反复挑选 lambda。[[source:source_ref_679b2138443382f8]] 训练误差上升本身不是变差的证据：增加正则化强度后训练误差可能上升，只要验证表现改善，就不等于模型变差。[[source:source_ref_679b2138443382f8]] 选定 lambda 后，最终仍要在未参与调参的测试集上评估；验证误差不是对所有未来数据的保证。[[source:source_ref_c52685f9e6cb9140]]\n\n**比较页面应让你观察什么**\n\n1. **横轴是 lambda，纵轴是误差，两条曲线并列**：一条训练误差，一条验证误差，使用同一数据划分和同一误差指标。[[source:source_ref_c52685f9e6cb9140]]\n2. **验证曲线的最低点**：它对应被选中的 lambda，而不是训练曲线的最低点。\n3. **左端**：训练误差低、验证误差高，说明惩罚不足，模型在拟合噪声。[[source:source_ref_c52685f9e6cb9140]]\n4. **右端**：两条曲线都抬高，说明惩罚过强，模型欠拟合。[[source:source_ref_679b2138443382f8]]\n5. **训练误差单调下降而验证误差回升的区段**：这是过拟合的直观信号，也是“训练误差越低越好”这一直觉失效的地方。[[source:source_ref_c52685f9e6cb9140]]\n6. **测试集单独标出，不参与选择**：它只作为最终评估点，不随 lambda 调参反复使用。[[source:source_ref_679b2138443382f8]]\n\n如果你需要，我可以把这个比较做成一个可拖动 lambda 的页面，让你直接看到验证曲线的最低点如何移动。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 832.25,
+      "first_text_ms": 832.25,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 146.082,
+      "streaming": true,
+      "duration_ms": 3709.994,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 21339,
+        "cached_input_tokens": 14208,
+        "uncached_input_tokens": 7131,
+        "output_tokens": 657
+      },
+      "cost": {
+        "input_cny": "0.01483032",
+        "output_cny": "0.005256",
+        "total_cny": "0.02008632",
+        "total_rounded_micro_cny": 20087
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 2,
+      "position": 0,
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-00.json",
+      "ordinal": 9,
+      "started_utc": "2026-10-22T03:19:00.954642+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 19548,
+        "completion_tokens": 947,
+        "total_tokens": 20495,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19548
+      },
+      "response_id": "81659016-5def-479e-9bc2-12a635793ac1",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "# 训练误差下降，模型却可能变差的原因\n\n核心在于：**训练误差衡量的是模型在“已经见过的数据”上拟合得有多紧，而模型好坏取决于它在“没见过的数据”上表现如何。** 这两件事并不总是一致。\n\n## 一、机制：把噪声当成规律\n\n模型在训练集上优化时，训练集里既有真实规律，也有只属于这批样本的偶然波动（噪声）。如果模型容量足够大、训练足够久，它会把噪声也一并“记住”。于是：\n\n- 训练误差持续下降，因为模型对这批样本越来越贴合；\n- 未见样本上的误差反而上升，因为那些被记住的噪声在新数据上不再出现，模型学到的“规律”就失效了。\n\n材料把这种情况称为过拟合的一种典型表现：模型把训练样本中特有的噪声也当成规律，训练误差可能持续下降，而未见样本上的误差反而上升。[[source:source_ref_c52685f9e6cb9140]]\n\n所以“训练误差低”本身不能作为模型更好的证据，必须比较**同一验证集**上的表现。\n\n## 二、一个具体对照\n\n材料给出的例子（相同数据划分与误差指标）：\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n甲把训练集拟合得更紧，但验证误差是乙的两倍多。若目标是对未见数据的预测，验证结果支持选择乙：乙没有把训练集拟合得最紧，但在这份验证集上误差较小。[[source:source_ref_c52685f9e6cb9140]]\n\n## 三、三个数据集的分工\n\n- **训练集**：参与参数拟合。模型直接在这上面优化，所以它的误差会“越练越低”，也因此不能用来判断泛化。\n- **验证集**：用于选择模型和超参数。上面那个甲、乙的比较，以及正则化强度 λ 的挑选，都发生在这一层。材料明确说 λ 通常由验证集或交叉验证选择，测试集不用于反复挑选 λ。[[source:source_ref_679b2138443382f8]]\n- **测试集**：留到最终评估。它不参与调参，因此它的结果才是对“最终方案”相对干净的一次检验。材料也提醒：验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]]\n\n一句话概括三者的关系：训练集用来“学”，验证集用来“选”，测试集用来“报”。如果拿测试集反复挑模型，测试集就退化成了验证集，最终评估也就失去意义。\n\n## 四、同一现象的另一面：正则化\n\n《正则化与模型选择》从另一个角度说明了“训练误差上升不等于模型变差”。L2 正则化把训练目标改为 J(w)=L_train(w)+λ·Σw_j²，λ≥0 控制对大权重的惩罚强度。[[source:source_ref_679b2138443382f8]]\n\n- 适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；\n- 惩罚过强也可能使模型欠拟合；\n- 材料明确写道：增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n材料还给了一个算例：两个候选模型的 L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。λ=0 时目标值 0.05 更小，前者占优；λ=0.01 时目标值变为 0.15 和 0.10，后者占优。这说明惩罚改变的是优化中的偏好，**并不单独证明哪一个模型的验证误差更低**——最终仍要靠验证集判断。[[source:source_ref_679b2138443382f8]]\n\n## 五、需要区分的另一种失败\n\n训练误差低而验证误差高，是过拟合。反过来，如果连训练数据中的主要关系都没学好，常表现为训练与验证误差都较高，那是欠拟合。[[source:source_ref_c52685f9e6cb9140]] 判断模型状态时，要同时看这两条曲线，而不是只看训练误差这一条。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 537.719,
+      "first_text_ms": 537.719,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 250.016,
+      "streaming": true,
+      "duration_ms": 4577.727,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 19548,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 19548,
+        "output_tokens": 947
+      },
+      "cost": {
+        "input_cny": "0.039096",
+        "output_cny": "0.007576",
+        "total_cny": "0.046672",
+        "total_rounded_micro_cny": 46672
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 2,
+      "position": 1,
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-01.json",
+      "ordinal": 10,
+      "started_utc": "2026-10-22T03:19:07.542569+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20132,
+        "completion_tokens": 1669,
+        "total_tokens": 21801,
+        "prompt_tokens_details": {
+          "cached_tokens": 13056
+        },
+        "prompt_cache_hit_tokens": 13056,
+        "prompt_cache_miss_tokens": 7076
+      },
+      "response_id": "f5c1b7e4-2e17-4bbd-8f53-861ee939a247",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "你的直觉“训练误差越低越好”只在一个前提下成立：模型面对的就是它训练时见过的那些数据。一旦目标是预测没见过的数据，训练误差就只是一个参考指标，不能单独用来判断模型好坏。\n\n## 一、为什么训练误差低，模型反而可能变差\n\n关键在于训练误差衡量的是“模型对已见样本拟合得有多紧”，而不是“模型学到了多少可迁移的规律”。\n\n模型在拟合训练集时，除了学到数据中真实存在的关系，还可能把只属于这批样本的偶然波动、噪声也一并当成规律记住。这类“记住噪声”的做法在训练集上几乎总能换来更低的误差，因为模型有更多自由度去贴合每一个点；但到了新样本上，这些被记住的噪声不再出现，模型反而会出错。这就是过拟合的典型表现：训练误差持续下降，未见样本上的误差反而上升。[[source:source_ref_c52685f9e6cb9140]]\n\n所以“训练误差低”和“模型好”之间没有必然联系。材料明确说：一次训练误差较低本身不足以判断模型更好，应比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n另一本材料从正则化的角度给出了同一现象的另一面：增加正则化强度后训练误差可能上升，但只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]] 换句话说，训练误差上升有时是模型放弃“死记噪声”的代价，而不是能力退化。\n\n## 二、甲 0.01/0.30 与乙 0.08/0.12：为什么选乙\n\n先明确这两个数字的含义：斜杠前是训练误差，斜杠后是验证误差，且两者是在相同的数据划分与误差指标下测得的。[[source:source_ref_c52685f9e6cb9140]]\n\n| 模型 | 训练误差 | 验证误差 | 读法 |\n|---|---|---|---|\n| 甲 | 0.01 | 0.30 | 训练集上几乎完美，换到验证集误差骤增 |\n| 乙 | 0.08 | 0.12 | 训练集上没那么紧，验证集上明显更准 |\n\n逐步拆开看：\n\n1. **甲的训练误差 0.01 说明什么**：它把训练集拟合得非常紧。这本身不是缺点，但结合验证误差 0.30 一起看，就出现了“训练集上极好、验证集上很差”的巨大落差。这个落差正是过拟合的信号：甲很可能把训练样本中特有的噪声也当成了规律。[[source:source_ref_c52685f9e6cb9140]]\n2. **乙的训练误差 0.08 说明什么**：它没有把训练集拟合得最紧，训练误差比甲高。但它的验证误差 0.12 远低于甲的 0.30。[[source:source_ref_c52685f9e6cb9140]]\n3. **为什么选乙**：如果目标是对未见数据的预测，验证结果支持选择乙。[[source:source_ref_c52685f9e6cb9140]] 验证集上的表现更接近“面对新数据时会怎样”，而训练误差只描述“面对旧数据时怎样”。甲在训练集上多赢的那 0.07，换来的是验证集上多输的 0.18，这笔交换在预测任务上是亏的。\n4. **一个必要的限定**：验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]] 所以准确的说法是“验证结果支持选乙”，而不是“乙一定更好”。\n\n顺带对照一下反方向：欠拟合是连训练数据中的主要关系也没有学好，常表现为训练与验证误差都较高。[[source:source_ref_c52685f9e6cb9140]] 甲、乙都不属于这种情况——甲是训练低、验证高，乙是两者都较低且接近，乙更接近“学到了主要关系又没有过度贴合噪声”的状态。\n\n## 三、三个数据集各自的分工\n\n| 数据集 | 用途 | 关键约束 |\n|---|---|---|\n| 训练集 | 参与参数拟合 | 模型直接在这上面优化，所以它的误差会“被压低”，不能作为最终判断依据 |\n| 验证集 | 用于选择模型和超参数 | 用来在候选模型之间做比较，比如在甲、乙之间选乙 |\n| 测试集 | 留到最终评估 | 应留到最终评估，不参与反复挑选 |\n\n三者的逻辑是一条链：训练集负责“学”，验证集负责“选”，测试集负责“报成绩”。[[source:source_ref_c52685f9e6cb9140]] 正则化材料补充了同一条纪律的具体用法：lambda 通常由验证集或交叉验证选择，测试集不用于反复挑选 lambda。[[source:source_ref_679b2138443382f8]] 原因很直接——一旦用测试集反复挑参数，测试集就变成了第二个验证集，它给出的成绩也就不再是“对未见数据”的诚实估计。\n\n## 四、怎样把它做成直观比较\n\n下面是我基于上述原理给出的可视化方案，不是材料原文。\n\n**方案 A：双柱对比图（最直接）**\n- 横轴两组：甲、乙；每组两根柱：训练误差（浅色）、验证误差（深色）。\n- 纵轴统一为误差值，范围 0 到 0.35。\n- 在每根柱顶标数值。视觉上会立刻看到：甲的浅柱极矮、深柱很高，形成“断崖”；乙的两根柱高度接近且都偏低。\n- 加一条水平虚线表示“可接受的验证误差上限”（假设值，需按你的任务设定），用来显示甲越线、乙未越线。\n\n**方案 B：训练—验证落差图（突出机制）**\n- 每个模型画一个点，横轴训练误差、纵轴验证误差，画一条 y=x 的对角线。\n- 对角线附近表示训练与验证表现一致；点越靠左上，说明训练越好而验证越差，过拟合越明显。\n- 甲会落在左上远处，乙落在靠近对角线且更靠左下的位置。这张图直接表达“训练误差低不等于好”，因为“好”的区域是左下角，而不是最左边。\n\n**方案 C：随训练推进的双曲线（讲“越来越低反而变差”）**\n- 横轴为训练轮数或模型复杂度，纵轴为误差，画两条曲线：训练误差单调下降，验证误差先降后升。\n- 在验证误差最低点标一条竖线，标注“此处之后开始过拟合”。\n- 这张图最适合回答你最初的问题：它把“训练误差越来越低”和“验证误差开始上升”同时画在一张图上，让两条线分道扬镳的那一刻成为视觉焦点。\n\n**方案 D：误差分解堆叠柱（进阶，解释“为什么”）**\n- 把验证误差拆成“可约误差”和“由方差带来的部分”等成分堆叠显示，甲的高柱主要来自方差部分。\n- 注意：这一拆分方式属于我补充的通用建模视角，材料本身只讲了噪声被当成规律这一机制，没有给出误差分解公式，使用时需自行确认与你所用教材的定义一致。\n\n**呈现建议**：如果只做一张图，选方案 C，因为它同时承载“训练误差下降”和“模型变差”两个事实；如果要在甲、乙之间做决策，选方案 A 或 B，因为它们直接对应“同一验证集上比较”这一判据。[[source:source_ref_c52685f9e6cb9140]]",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 809.171,
+      "first_text_ms": 809.171,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 162.083,
+      "streaming": true,
+      "duration_ms": 9301.872,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20132,
+        "cached_input_tokens": 13056,
+        "uncached_input_tokens": 7076,
+        "output_tokens": 1669
+      },
+      "cost": {
+        "input_cny": "0.01467424",
+        "output_cny": "0.013352",
+        "total_cny": "0.02802624",
+        "total_rounded_micro_cny": 28027
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 2,
+      "position": 2,
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-02.json",
+      "ordinal": 11,
+      "started_utc": "2026-10-22T03:19:18.856067+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20738,
+        "completion_tokens": 585,
+        "total_tokens": 21323,
+        "prompt_tokens_details": {
+          "cached_tokens": 13568
+        },
+        "prompt_cache_hit_tokens": 13568,
+        "prompt_cache_miss_tokens": 7170
+      },
+      "response_id": "393db3f1-ed8a-4204-92a7-9c1e7b1ff2e6",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是“故意让模型变笨”，而是给优化目标加了一项“大权重附加费”，让模型在拟合训练数据时不能随意把权重调得很大。\n\n**文字讲清 L_train + λ·平方权重和**\n\nL2 正则化把训练目标改成：\n\nJ(w) = L_train(w) + λ · Σ_j w_j²\n\n- L_train(w)：模型在训练集上的误差，也就是“拟合得好不好”。\n- Σ_j w_j²：所有参数平方之和，衡量权重整体有多大。\n- λ ≥ 0：惩罚强度。λ = 0 时退化为只看训练误差；λ 越大，大权重越“贵”。\n\n关键在于：训练时优化的不再是 L_train，而是 J。所以一个模型即使训练误差更低，只要它的权重很大，加上惩罚后总目标也可能更差。惩罚的作用是减少模型对训练噪声的敏感程度，从而可能改善泛化；但惩罚过强也会导致欠拟合。而且较大的 λ 并不保证验证误差单调下降。 [[source:source_ref_679b2138443382f8]]\n\n**你的数字例子**\n\n设甲：L_train = 0.05，平方权重和 = 10；乙：L_train = 0.09，平方权重和 = 1。\n\n| λ | 甲：0.05 + λ·10 | 乙：0.09 + λ·1 | 谁的目标更小 |\n|---|---|---|---|\n| 0 | 0.05 | 0.09 | 甲 |\n| 0.01 | 0.05 + 0.10 = 0.15 | 0.09 + 0.01 = 0.10 | 乙 |\n\nλ 从 0 变到 0.01 时，甲多付 0.10 的惩罚，乙只多付 0.01，于是排序翻转：原本训练误差更低的甲，在总目标上反而落后。这正是“训练误差低不等于更好”在优化目标层面的体现。\n\n但要注意这个算例的边界：它只说明惩罚改变了优化中的偏好，并不单独证明乙的验证误差更低。λ 本身通常由验证集或交叉验证来选，测试集不用于反复挑选 λ。 [[source:source_ref_679b2138443382f8]]\n\n**和上一轮的联系**\n\n增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。 [[source:source_ref_679b2138443382f8]] 这与“训练误差持续下降、未见样本误差反而上升”的过拟合表现是同一件事的两面：训练误差只是拟合过程的副产品，判断好坏要看同一验证集上的表现。 [[source:source_ref_c52685f9e6cb9140]]",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 824.068,
+      "first_text_ms": 824.068,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 246.88,
+      "streaming": true,
+      "duration_ms": 3924.771,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20738,
+        "cached_input_tokens": 13568,
+        "uncached_input_tokens": 7170,
+        "output_tokens": 585
+      },
+      "cost": {
+        "input_cny": "0.01488272",
+        "output_cny": "0.00468",
+        "total_cny": "0.01956272",
+        "total_rounded_micro_cny": 19563
+      }
+    },
+    {
+      "arm": "candidate",
+      "repetition": 2,
+      "position": 3,
+      "index": 3,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-03.json",
+      "ordinal": 12,
+      "started_utc": "2026-10-22T03:19:24.791579+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 21339,
+        "completion_tokens": 715,
+        "total_tokens": 22054,
+        "prompt_tokens_details": {
+          "cached_tokens": 14208
+        },
+        "prompt_cache_hit_tokens": 14208,
+        "prompt_cache_miss_tokens": 7131
+      },
+      "response_id": "7f9b9850-1d9e-4dbe-a1af-faa3bcbb01e1",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标中更昂贵，并不保证验证误差单调下降。 [[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合的关系**\n\n- 惩罚太弱时，模型可能把训练样本中的噪声也当成规律，于是训练误差继续下降，而未见样本上的误差反而上升，这就是过拟合。 [[source:source_ref_c52685f9e6cb9140]]\n- 惩罚适当加强时，模型对训练噪声的敏感程度可能降低，泛化因此改善。 [[source:source_ref_679b2138443382f8]]\n- 惩罚过强时，大权重被压得太厉害，模型连训练数据中的主要关系也学不好，于是出现欠拟合，常表现为训练误差和验证误差都较高。 [[source:source_ref_c52685f9e6cb9140]] [[source:source_ref_679b2138443382f8]]\n\n所以，lambda 与验证误差之间通常不是一条一直下降的直线，而是一条先降后升的曲线：曲线左侧是惩罚不足，右侧是惩罚过度，最低点附近才是合适的强度。这个“先降后升”的形状是我根据上述两段材料对过拟合和欠拟合的描述所做的综合，材料本身只说明“不保证单调下降”。\n\n**验证集在其中的作用**\n\nlambda 是超参数，通常由验证集或交叉验证来选择，测试集不用于反复挑选 lambda。 [[source:source_ref_679b2138443382f8]] 具体做法是：对每个候选 lambda 分别训练模型，然后比较它们在同一个验证集上的误差，选出验证误差最低的那个 lambda。注意，训练误差上升并不等于模型变差；只要验证表现改善，就说明这次调整是有效的。 [[source:source_ref_679b2138443382f8]] 选定 lambda 之后，再用未参与调参的测试集做最终评估。 [[source:source_ref_c52685f9e6cb9140]]\n\n**比较页面应该让你观察什么**\n\n1. **横轴是 lambda，纵轴是误差**，并且用对数刻度，因为 lambda 常常跨越好几个数量级。\n2. **两条曲线并列**：训练误差和验证误差。训练误差通常随 lambda 增大而上升；验证误差先降后升，呈 U 形。两条曲线之间的差距，就是过拟合程度的直观信号。\n3. **标出验证误差最低点**，并显示对应的 lambda 值，这就是“选中的强度”。\n4. **标出两侧的典型区域**：左侧是训练误差低、验证误差高，属于过拟合；右侧是两条曲线都高，属于欠拟合。\n5. **测试集结果单独放在最后**，只显示一次，不参与曲线上的选择，以免让人误以为可以用测试集来挑 lambda。\n6. **可以拖动 lambda 滑块**，实时看到当前 lambda 下的训练误差、验证误差和权重规模，从而体会“惩罚变强、权重变小、训练误差上升”这一连锁变化。\n\n需要说明的是，材料只给出了“不保证单调下降”和“过强会欠拟合”这两点，并没有给出具体的 U 形曲线数据；上面第 2 点中的曲线形状，是我根据这两点做的示意，实际曲线需要你用真实实验数据画出来。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 622.981,
+      "first_text_ms": 622.981,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 136.303,
+      "streaming": true,
+      "duration_ms": 4240.848,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 21339,
+        "cached_input_tokens": 14208,
+        "uncached_input_tokens": 7131,
+        "output_tokens": 715
+      },
+      "cost": {
+        "input_cny": "0.01483032",
+        "output_cny": "0.00572",
+        "total_cny": "0.02055032",
+        "total_rounded_micro_cny": 20551
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 2,
+      "position": 0,
+      "index": 0,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-00.json",
+      "ordinal": 13,
+      "started_utc": "2026-10-22T03:19:31.049947+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 19548,
+        "completion_tokens": 750,
+        "total_tokens": 20298,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "prompt_cache_hit_tokens": 0,
+        "prompt_cache_miss_tokens": 19548
+      },
+      "response_id": "0e298079-df82-42d8-a1da-32fea33cbd2c",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "# 训练误差下降，模型却可能变差的原因\n\n核心原因在于：**训练误差衡量的是模型对已经见过的数据的拟合程度，而模型的好坏取决于它对未见数据的预测能力。这两件事并不总是一致。**\n\n## 一、机制：把噪声当成规律\n\n过拟合的典型表现是：模型把训练样本中**特有的噪声**也当成了规律来学习。噪声在训练集里是固定存在的，模型只要把参数调整得足够“贴合”这些噪声，训练误差就会持续下降；但这些噪声在未见样本上不会重复出现，因此模型在未见样本上的误差反而上升。于是出现“训练误差越来越低、模型反而变差”的现象。[[source:source_ref_c52685f9e6cb9140]]\n\n所以，**一次训练误差较低本身不足以判断模型更好**，应当比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n## 二、一个具体算例\n\n在相同的数据划分与误差指标下：\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n如果目标是对未见数据的预测，验证结果支持选择**乙**：乙没有把训练集拟合得最紧，但在这份验证集上的误差较小。[[source:source_ref_c52685f9e6cb9140]]\n\n## 三、三个数据集的分工\n\n- **训练集**：参与参数拟合，也就是模型真正“学习”所用的数据。[[source:source_ref_c52685f9e6cb9140]]\n- **验证集**：用于选择模型和超参数。[[source:source_ref_c52685f9e6cb9140]] 正则化强度 λ 通常也由验证集或交叉验证来选择。[[source:source_ref_679b2138443382f8]]\n- **测试集**：应留到最终评估，不参与调参。[[source:source_ref_c52685f9e6cb9140]] 测试集不用于反复挑选 λ。[[source:source_ref_679b2138443382f8]]\n\n这样分工的理由是：如果测试集被反复用来挑选模型，它实际上就变成了验证集，最终评估也就不再“未参与调参”。因此，验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]]\n\n## 四、两个容易混淆的补充点\n\n1. **训练误差上升不等于模型变差。** 增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]] 这与“训练误差下降不等于模型变好”是同一枚硬币的两面：训练误差本身不是评判标准。\n2. **正则化也不是越强越好。** 适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；惩罚过强也可能使模型欠拟合。[[source:source_ref_679b2138443382f8]] 欠拟合是另一个方向的失败：连训练数据中的主要关系也没有学好，常表现为训练与验证误差都较高。[[source:source_ref_c52685f9e6cb9140]]\n\n一句话总结：**训练误差只说明模型“记住了多少”，验证集和测试集才说明模型“学到了多少可迁移的规律”。**",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1004.046,
+      "first_text_ms": 1004.046,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 155.199,
+      "streaming": true,
+      "duration_ms": 4212.07,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 19548,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 19548,
+        "output_tokens": 750
+      },
+      "cost": {
+        "input_cny": "0.039096",
+        "output_cny": "0.006",
+        "total_cny": "0.045096",
+        "total_rounded_micro_cny": 45096
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 2,
+      "position": 1,
+      "index": 1,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-01.json",
+      "ordinal": 14,
+      "started_utc": "2026-10-22T03:19:37.274405+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20132,
+        "completion_tokens": 1384,
+        "total_tokens": 21516,
+        "prompt_tokens_details": {
+          "cached_tokens": 13056
+        },
+        "prompt_cache_hit_tokens": 13056,
+        "prompt_cache_miss_tokens": 7076
+      },
+      "response_id": "72fd2254-1e84-4fc5-a533-212ae0697dc4",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "你的直觉有一半是对的：训练误差确实是模型“学得好不好”的一个信号，但它只衡量模型在**已经参与拟合的那批数据**上的表现。甲把训练集压到 0.01，说明它几乎把训练样本（包括其中的偶然噪声）都记住了；乙只到 0.08，说明它没有把训练集拟合得那么紧。问题在于，我们真正关心的是模型在**没见过的数据**上表现如何，而训练误差对这一点没有直接约束。 [[source:source_ref_c52685f9e6cb9140]]\n\n## 一、把甲 0.01/0.30 与乙 0.08/0.12 讲透\n\n前提是：两者使用**相同的数据划分、相同的误差指标**，并且比较的是**同一个验证集**。在这个前提下，两个数字分别代表：\n\n| 模型 | 训练误差 | 验证误差 | 读法 |\n|---|---|---|---|\n| 甲 | 0.01 | 0.30 | 训练集上几乎完美，换到未见数据上误差是乙的 2.5 倍 |\n| 乙 | 0.08 | 0.12 | 训练集上差一些，未见数据上明显更稳 |\n\n关键在**两个数字之间的落差**，而不在单个数字的大小：\n\n- 甲的落差是 0.30 − 0.01 = 0.29。训练时表现极好、验证时表现很差，这种巨大反差正是过拟合的典型表现：模型把训练样本中特有的噪声也当成了规律，于是训练误差可以继续下降，而未见样本上的误差反而上升。 [[source:source_ref_c52685f9e6cb9140]]\n- 乙的落差是 0.12 − 0.08 = 0.04。训练和验证表现接近，说明它学到的规律在训练集之外也成立。\n\n所以“选乙”的理由是：**如果目标是对未见数据的预测，验证结果支持选择乙**；乙没有把训练集拟合得最紧，但在这份验证集上的误差较小。 [[source:source_ref_c52685f9e6cb9140]] 换句话说，甲多出来的那 0.07 训练误差优势，是用 0.18 的验证误差劣势换来的，这笔交换在“预测新数据”的目标下是亏的。\n\n再补一个对照，帮你把“低训练误差”放回正确位置：如果某个模型训练误差和验证误差**都**很高，那是欠拟合，也就是连训练数据中的主要关系都没学好，同样不该选。 [[source:source_ref_c52685f9e6cb9140]] 所以训练误差低既不是充分条件，也不是无关信息；它要和验证误差**一起**看。\n\n还有一层机制值得知道：训练误差变高不一定意味着模型变差。加入正则化后训练误差可能上升，但只要验证表现改善，这不等于模型变差。 [[source:source_ref_679b2138443382f8]] 乙相对甲的情形正是这个逻辑的另一种体现：牺牲一点训练拟合度，换取更好的泛化。\n\n## 二、三个数据集各自的用途\n\n- **训练集**：参与参数拟合。模型直接在这批数据上调整参数，所以训练误差是“拟合程度”的度量，而不是泛化能力的度量。 [[source:source_ref_c52685f9e6cb9140]]\n- **验证集**：用于选择模型和超参数。甲、乙之间的取舍就发生在这里；正则化强度 λ 通常也由验证集或交叉验证选择，测试集不用于反复挑选 λ。 [[source:source_ref_c52685f9e6cb9140]] [[source:source_ref_679b2138443382f8]]\n- **测试集**：应留到最终评估。它不参与调参，因此能给出一个相对干净的估计。 [[source:source_ref_c52685f9e6cb9140]]\n\n三者构成一条单向的“使用顺序”：训练集用来拟合，验证集用来做决定，测试集用来在决定做完之后报告结果。一旦用测试集反复挑选模型，测试集就退化成了验证集，最终评估也就失去意义。\n\n一个必须说清的边界：**验证误差不是对所有未来数据的保证**。乙在验证集上更好，只说明在这份验证集上更好；最终仍要在未参与调参的测试集上评估。 [[source:source_ref_c52685f9e6cb9140]] 所以严格的说法是“验证结果支持选乙”，而不是“乙一定更好”。\n\n## 三、怎样把它做成直观比较\n\n下面几种做法都只用这两个数字和它们的落差，不需要额外数据。\n\n**1. 双柱对比图（最直接）**\n每个模型画两根柱：训练误差、验证误差，同一纵轴、同一刻度。甲呈现“一高一低”的剪刀差，乙呈现“两根差不多高”。视觉上立刻能看出问题不在柱子高低，而在两根柱子的**间距**。\n\n**2. 落差条形图（把重点放在差距上）**\n只画 |验证 − 训练|：甲 0.29，乙 0.04。这张图直接对应“过拟合程度”的直觉，适合放在双柱图旁边作为注解。\n\n**3. 训练曲线（最能说明“越来越低反而变差”）**\n横轴是训练轮数或模型复杂度，画两条线：训练误差单调下降，验证误差先降后升，形成一个 U 形。甲相当于 U 形右侧那个点（训练低、验证高），乙相当于谷底附近。这条曲线正是你最初那个疑问的图形化答案：训练误差下降和模型变好是两件不同的事。\n\n**4. 一张“决策卡”**\n写成两行判断规则，贴在图上：\n- 训练低、验证高 → 过拟合，别只看训练误差；\n- 训练高、验证也高 → 欠拟合，需要更强的模型或更少的约束。\n\n**5. 一个可交互的小演示（可选）**\n用滑块控制模型复杂度或 λ，实时显示训练误差与验证误差两条曲线，让“训练误差下降、验证误差上升”的分叉过程可以被亲手拖出来。这比静态图更能打破“训练误差越低越好”的直觉。\n\n如果你愿意，我可以把上面第 1、2、3 种合成一个可交互的对比页面（含甲、乙两组数据和一条可拖动的复杂度曲线），你直接看效果就行。",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 800.292,
+      "first_text_ms": 800.292,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 198.069,
+      "streaming": true,
+      "duration_ms": 7789.349,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20132,
+        "cached_input_tokens": 13056,
+        "uncached_input_tokens": 7076,
+        "output_tokens": 1384
+      },
+      "cost": {
+        "input_cny": "0.01467424",
+        "output_cny": "0.011072",
+        "total_cny": "0.02574624",
+        "total_rounded_micro_cny": 25747
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 2,
+      "position": 2,
+      "index": 2,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-02.json",
+      "ordinal": 15,
+      "started_utc": "2026-10-22T03:19:47.072291+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 20738,
+        "completion_tokens": 537,
+        "total_tokens": 21275,
+        "prompt_tokens_details": {
+          "cached_tokens": 13568
+        },
+        "prompt_cache_hit_tokens": 13568,
+        "prompt_cache_miss_tokens": 7170
+      },
+      "response_id": "eac73d51-2565-4dac-b8ad-bd682c2dbe44",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是“故意让模型变笨”，而是给优化目标加了一项“大权重税”，让模型在拟合训练数据时不能随意把权重调得很大。\n\n**文字讲清 L_train + λ·平方权重和**\n\nL2 正则化把训练目标从只看训练损失，改成：\n\nJ(w) = L_train(w) + λ · Σ_j w_j²\n\n- L_train(w)：模型在训练集上的误差，衡量“拟合得好不好”。\n- Σ_j w_j²：所有参数平方之和，衡量“权重有多大”。权重越大，模型对输入的小变化越敏感，越容易把训练样本里的噪声也当成规律。\n- λ ≥ 0：惩罚强度。λ = 0 时退化为普通训练；λ 越大，大权重越“贵”，优化时更倾向于把权重压小。\n\n所以正则化不是让模型学不会，而是改变“什么样的解算好”的标准：在拟合程度相近时，偏好权重更小的解。适当的惩罚可能降低模型对训练噪声的敏感度，从而改善泛化；惩罚过强则可能连主要关系都学不好，变成欠拟合。因此 λ 通常由验证集或交叉验证来选，测试集不参与反复挑选 λ。\n\n**你的数字例子**\n\n两个候选模型，L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。\n\n| λ | 模型一：0.05 + λ·10 | 模型二：0.09 + λ·1 | 目标值较小者 |\n|---|---|---|---|\n| 0 | 0.05 | 0.09 | 模型一 |\n| 0.01 | 0.05 + 0.10 = 0.15 | 0.09 + 0.01 = 0.10 | 模型二 |\n\nλ 从 0 变到 0.01 时，模型一多付 0.10 的惩罚，模型二只多付 0.01，于是偏好从“训练误差更低的模型一”翻转到“权重更小的模型二”。这正是正则化起作用的机制：它用一点训练误差换取更小的权重。\n\n但要注意这个算例的边界：它只说明惩罚改变了优化中的偏好，并不单独证明模型二的验证误差更低。哪个 λ 真正更好，仍要看同一验证集上的表现；增加正则化后训练误差上升，只要验证表现改善，就不等于模型变差。 [[source:source_ref_679b2138443382f8]]",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1078.365,
+      "first_text_ms": 1078.365,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 246.166,
+      "streaming": true,
+      "duration_ms": 3639.756,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 20738,
+        "cached_input_tokens": 13568,
+        "uncached_input_tokens": 7170,
+        "output_tokens": 537
+      },
+      "cost": {
+        "input_cny": "0.01488272",
+        "output_cny": "0.004296",
+        "total_cny": "0.01917872",
+        "total_rounded_micro_cny": 19179
+      }
+    },
+    {
+      "arm": "baseline",
+      "repetition": 2,
+      "position": 3,
+      "index": 3,
+      "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-03.json",
+      "ordinal": 16,
+      "started_utc": "2026-10-22T03:19:52.723097+00:00",
+      "price_version": "deepseek-flash-20261022-01-04",
+      "usage": {
+        "prompt_tokens": 21339,
+        "completion_tokens": 558,
+        "total_tokens": 21897,
+        "prompt_tokens_details": {
+          "cached_tokens": 14208
+        },
+        "prompt_cache_hit_tokens": 14208,
+        "prompt_cache_miss_tokens": 7131
+      },
+      "response_id": "1af79bbd-dd75-4634-bd4a-66024ad73b21",
+      "model": "deepseek-flash",
+      "choices": [
+        {
+          "index": 0,
+          "finish_reason": "stop",
+          "content": "不是。lambda 越大并不一定越好，它只是让大权重在优化目标里更“贵”，并不保证验证误差单调下降。 [[source:source_ref_679b2138443382f8]]\n\n**过强惩罚与欠拟合**\n\n惩罚太强时，模型为了压低权重，会连训练数据里的主要关系也学不进去，于是训练误差和验证误差都偏高，这就是欠拟合。 [[source:source_ref_c52685f9e6cb9140]] 反过来，惩罚适当，可能降低模型对训练噪声的敏感度，从而改善泛化；但增加正则化后训练误差上升，只要验证表现改善，就不等于模型变差。 [[source:source_ref_679b2138443382f8]]\n\n所以 lambda 的效果是一条先降后升的曲线：太小则过拟合，太大则欠拟合，中间某处验证误差最低。这个“中间最低”的形状是我根据上述两条原则做的推论，材料本身只说了“不保证单调下降”。\n\n**验证集在其中的角色**\n\nlambda 是超参数，通常由验证集或交叉验证来选，测试集不用于反复挑选 lambda。 [[source:source_ref_679b2138443382f8]] 也就是说，你扫一串 lambda，每个值都在训练集上拟合、在验证集上打分，挑验证误差最低的那个；测试集只在最后用一次，给出对未见数据的评估。 [[source:source_ref_c52685f9e6cb9140]]\n\n**比较页面应该让你观察什么**\n\n1. **横轴是 lambda（对数刻度）**，从 0 扫到明显过强的区间，而不是只给两个点。\n2. **两条曲线同图**：训练误差随 lambda 上升而上升；验证误差先降后升，呈 U 形。U 形谷底对应的 lambda 就是验证集选出的值。\n3. **标出三个区域**：左侧“惩罚不足、验证误差高”，谷底“验证误差最低”，右侧“惩罚过强、训练与验证都高（欠拟合）”。\n4. **可拖动的 lambda 滑块**，实时显示当前 lambda 下的训练误差、验证误差和平方权重和，让你看到权重被压小的同时训练误差在涨。\n5. **测试集单独一栏，默认隐藏或置灰**，只在选定 lambda 后点一次“最终评估”才显示，直观体现它不参与挑选。\n6. **固定数据划分与误差指标**，否则曲线之间的比较没有意义。 [[source:source_ref_c52685f9e6cb9140]]\n\n需要我把这个比较页面做出来吗？",
+          "tool_calls": []
+        }
+      ],
+      "first_delta_ms": 1036.643,
+      "first_text_ms": 1036.643,
+      "first_reasoning_ms": null,
+      "first_tool_ms": null,
+      "reasoning_characters": 0,
+      "stream_done": true,
+      "http_status": 200,
+      "response_headers_ms": 336.755,
+      "streaming": true,
+      "duration_ms": 3661.521,
+      "response_complete": true,
+      "output_truncated": false,
+      "complete_text_sample": true,
+      "measured_usage": {
+        "input_tokens": 21339,
+        "cached_input_tokens": 14208,
+        "uncached_input_tokens": 7131,
+        "output_tokens": 558
+      },
+      "cost": {
+        "input_cny": "0.01483032",
+        "output_cny": "0.004464",
+        "total_cny": "0.01929432",
+        "total_rounded_micro_cny": 19295
+      }
+    }
+  ],
+  "stop_reason": null,
+  "totals": {
+    "baseline": {
+      "all": {
+        "calls": 8,
+        "calls_with_usage": 8,
+        "input_tokens": 163514,
+        "cached_input_tokens": 81664,
+        "uncached_input_tokens": 81850,
+        "output_tokens": 6870,
+        "cache_hit_rate": 0.49943124136159595,
+        "cost": {
+          "input_cny": "0.16696656",
+          "output_cny": "0.054960",
+          "total_cny": "0.22192656",
+          "total_rounded_micro_cny": 221930
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 8,
+            "median": 1020.3445,
+            "min": 771.858,
+            "max": 1246.21
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 8,
+            "median": 1020.3445,
+            "min": 771.858,
+            "max": 1246.21
+          },
+          "duration_ms": {
+            "samples": 8,
+            "median": 4199.555,
+            "min": 3639.756,
+            "max": 8279.225
+          }
+        },
+        "complete_text_samples": 8,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "first_requests": {
+        "calls": 2,
+        "calls_with_usage": 2,
+        "input_tokens": 39096,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 39096,
+        "output_tokens": 1596,
+        "cache_hit_rate": 0.0,
+        "cost": {
+          "input_cny": "0.078192",
+          "output_cny": "0.012768",
+          "total_cny": "0.090960",
+          "total_rounded_micro_cny": 90960
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 2,
+            "median": 1031.6395,
+            "min": 1004.046,
+            "max": 1059.233
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 2,
+            "median": 1031.6395,
+            "min": 1004.046,
+            "max": 1059.233
+          },
+          "duration_ms": {
+            "samples": 2,
+            "median": 4529.692499999999,
+            "min": 4212.07,
+            "max": 4847.315
+          }
+        },
+        "complete_text_samples": 2,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "continuation_requests": {
+        "calls": 6,
+        "calls_with_usage": 6,
+        "input_tokens": 124418,
+        "cached_input_tokens": 81664,
+        "uncached_input_tokens": 42754,
+        "output_tokens": 5274,
+        "cache_hit_rate": 0.6563680496391198,
+        "cost": {
+          "input_cny": "0.08877456",
+          "output_cny": "0.042192",
+          "total_cny": "0.13096656",
+          "total_rounded_micro_cny": 130970
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 6,
+            "median": 925.031,
+            "min": 771.858,
+            "max": 1246.21
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 6,
+            "median": 925.031,
+            "min": 771.858,
+            "max": 1246.21
+          },
+          "duration_ms": {
+            "samples": 6,
+            "median": 4076.709,
+            "min": 3639.756,
+            "max": 8279.225
+          }
+        },
+        "complete_text_samples": 6,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "by_repetition": {
+        "1": {
+          "calls": 4,
+          "calls_with_usage": 4,
+          "input_tokens": 81757,
+          "cached_input_tokens": 40832,
+          "uncached_input_tokens": 40925,
+          "output_tokens": 3641,
+          "cache_hit_rate": 0.49943124136159595,
+          "cost": {
+            "input_cny": "0.08348328",
+            "output_cny": "0.029128",
+            "total_cny": "0.11261128",
+            "total_rounded_micro_cny": 112613
+          },
+          "timings": {
+            "first_text_ms": {
+              "samples": 4,
+              "median": 936.326,
+              "min": 771.858,
+              "max": 1246.21
+            },
+            "first_reasoning_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_tool_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_delta_ms": {
+              "samples": 4,
+              "median": 936.326,
+              "min": 771.858,
+              "max": 1246.21
+            },
+            "duration_ms": {
+              "samples": 4,
+              "median": 4517.1775,
+              "min": 3966.378,
+              "max": 8279.225
+            }
+          },
+          "complete_text_samples": 4,
+          "truncated_samples": 0,
+          "failed_samples": 0
+        },
+        "2": {
+          "calls": 4,
+          "calls_with_usage": 4,
+          "input_tokens": 81757,
+          "cached_input_tokens": 40832,
+          "uncached_input_tokens": 40925,
+          "output_tokens": 3229,
+          "cache_hit_rate": 0.49943124136159595,
+          "cost": {
+            "input_cny": "0.08348328",
+            "output_cny": "0.025832",
+            "total_cny": "0.10931528",
+            "total_rounded_micro_cny": 109317
+          },
+          "timings": {
+            "first_text_ms": {
+              "samples": 4,
+              "median": 1020.3445,
+              "min": 800.292,
+              "max": 1078.365
+            },
+            "first_reasoning_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_tool_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_delta_ms": {
+              "samples": 4,
+              "median": 1020.3445,
+              "min": 800.292,
+              "max": 1078.365
+            },
+            "duration_ms": {
+              "samples": 4,
+              "median": 3936.7955,
+              "min": 3639.756,
+              "max": 7789.349
+            }
+          },
+          "complete_text_samples": 4,
+          "truncated_samples": 0,
+          "failed_samples": 0
+        }
+      }
+    },
+    "candidate": {
+      "all": {
+        "calls": 8,
+        "calls_with_usage": 8,
+        "input_tokens": 163514,
+        "cached_input_tokens": 81664,
+        "uncached_input_tokens": 81850,
+        "output_tokens": 7349,
+        "cache_hit_rate": 0.49943124136159595,
+        "cost": {
+          "input_cny": "0.16696656",
+          "output_cny": "0.058792",
+          "total_cny": "0.22575856",
+          "total_rounded_micro_cny": 225762
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 8,
+            "median": 816.6195,
+            "min": 537.719,
+            "max": 1244.449
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 8,
+            "median": 816.6195,
+            "min": 537.719,
+            "max": 1244.449
+          },
+          "duration_ms": {
+            "samples": 8,
+            "median": 4526.2605,
+            "min": 3709.994,
+            "max": 9301.872
+          }
+        },
+        "complete_text_samples": 8,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "first_requests": {
+        "calls": 2,
+        "calls_with_usage": 2,
+        "input_tokens": 39096,
+        "cached_input_tokens": 0,
+        "uncached_input_tokens": 39096,
+        "output_tokens": 1768,
+        "cache_hit_rate": 0.0,
+        "cost": {
+          "input_cny": "0.078192",
+          "output_cny": "0.014144",
+          "total_cny": "0.092336",
+          "total_rounded_micro_cny": 92336
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 2,
+            "median": 891.0840000000001,
+            "min": 537.719,
+            "max": 1244.449
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 2,
+            "median": 891.0840000000001,
+            "min": 537.719,
+            "max": 1244.449
+          },
+          "duration_ms": {
+            "samples": 2,
+            "median": 4767.8515,
+            "min": 4577.727,
+            "max": 4957.976
+          }
+        },
+        "complete_text_samples": 2,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "continuation_requests": {
+        "calls": 6,
+        "calls_with_usage": 6,
+        "input_tokens": 124418,
+        "cached_input_tokens": 81664,
+        "uncached_input_tokens": 42754,
+        "output_tokens": 5581,
+        "cache_hit_rate": 0.6563680496391198,
+        "cost": {
+          "input_cny": "0.08877456",
+          "output_cny": "0.044648",
+          "total_cny": "0.13342256",
+          "total_rounded_micro_cny": 133426
+        },
+        "timings": {
+          "first_text_ms": {
+            "samples": 6,
+            "median": 816.6195,
+            "min": 622.981,
+            "max": 1132.149
+          },
+          "first_reasoning_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_tool_ms": {
+            "samples": 0,
+            "median": null,
+            "min": null,
+            "max": null
+          },
+          "first_delta_ms": {
+            "samples": 6,
+            "median": 816.6195,
+            "min": 622.981,
+            "max": 1132.149
+          },
+          "duration_ms": {
+            "samples": 6,
+            "median": 4357.821,
+            "min": 3709.994,
+            "max": 9301.872
+          }
+        },
+        "complete_text_samples": 6,
+        "truncated_samples": 0,
+        "failed_samples": 0
+      },
+      "by_repetition": {
+        "1": {
+          "calls": 4,
+          "calls_with_usage": 4,
+          "input_tokens": 81757,
+          "cached_input_tokens": 40832,
+          "uncached_input_tokens": 40925,
+          "output_tokens": 3433,
+          "cache_hit_rate": 0.49943124136159595,
+          "cost": {
+            "input_cny": "0.08348328",
+            "output_cny": "0.027464",
+            "total_cny": "0.11094728",
+            "total_rounded_micro_cny": 110949
+          },
+          "timings": {
+            "first_text_ms": {
+              "samples": 4,
+              "median": 982.1995,
+              "min": 783.507,
+              "max": 1244.449
+            },
+            "first_reasoning_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_tool_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_delta_ms": {
+              "samples": 4,
+              "median": 982.1995,
+              "min": 783.507,
+              "max": 1244.449
+            },
+            "duration_ms": {
+              "samples": 4,
+              "median": 4716.385,
+              "min": 3709.994,
+              "max": 7198.952
+            }
+          },
+          "complete_text_samples": 4,
+          "truncated_samples": 0,
+          "failed_samples": 0
+        },
+        "2": {
+          "calls": 4,
+          "calls_with_usage": 4,
+          "input_tokens": 81757,
+          "cached_input_tokens": 40832,
+          "uncached_input_tokens": 40925,
+          "output_tokens": 3916,
+          "cache_hit_rate": 0.49943124136159595,
+          "cost": {
+            "input_cny": "0.08348328",
+            "output_cny": "0.031328",
+            "total_cny": "0.11481128",
+            "total_rounded_micro_cny": 114813
+          },
+          "timings": {
+            "first_text_ms": {
+              "samples": 4,
+              "median": 716.076,
+              "min": 537.719,
+              "max": 824.068
+            },
+            "first_reasoning_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_tool_ms": {
+              "samples": 0,
+              "median": null,
+              "min": null,
+              "max": null
+            },
+            "first_delta_ms": {
+              "samples": 4,
+              "median": 716.076,
+              "min": 537.719,
+              "max": 824.068
+            },
+            "duration_ms": {
+              "samples": 4,
+              "median": 4409.2875,
+              "min": 3924.771,
+              "max": 9301.872
+            }
+          },
+          "complete_text_samples": 4,
+          "truncated_samples": 0,
+          "failed_samples": 0
+        }
+      }
+    }
+  },
+  "finished_utc": "2026-10-22T03:19:56.386039+00:00"
+}

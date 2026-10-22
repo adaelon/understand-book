@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 1,
+  "position": 1,
+  "index": 5,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-05.json",
+  "ordinal": 2,
+  "started_utc": "2026-10-22T03:27:50.977614+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 21539,
+    "completion_tokens": 83,
+    "total_tokens": 21622,
+    "prompt_tokens_details": {
+      "cached_tokens": 256
+    },
+    "prompt_cache_hit_tokens": 256,
+    "prompt_cache_miss_tokens": 21283
+  },
+  "response_id": "6d2fb392-18c7-44d1-b7db-ce929d3a8ef4",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"agent.progress\">\n<｜｜DSML｜｜ parameter name=\"update\" string=\"true\">我先把甲、乙两组数字按“训练集拟合”和“验证集检验”分开讲清楚，再做一个可操作的直观比较页：同一组数据上切换模型，观察训练误差与验证误差的走向。</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 947.959,
+  "first_text_ms": 947.959,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 409.287,
+  "streaming": true,
+  "duration_ms": 1289.028,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 21539,
+    "cached_input_tokens": 256,
+    "uncached_input_tokens": 21283,
+    "output_tokens": 83
+  },
+  "cost": {
+    "input_cny": "0.04257624",
+    "output_cny": "0.000664",
+    "total_cny": "0.04324024",
+    "total_rounded_micro_cny": 43241
+  }
+}

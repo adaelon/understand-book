@@ -1,0 +1,30 @@
+{
+  "backprop": [
+    [
+      "Aster",
+      "backprop-C2"
+    ],
+    [
+      "Rowan",
+      "backprop-C1"
+    ],
+    [
+      "Sable",
+      "backprop-D1"
+    ]
+  ],
+  "ridge": [
+    [
+      "Harbor",
+      "ridge-C2"
+    ],
+    [
+      "Lumen",
+      "ridge-D1"
+    ],
+    [
+      "Quartz",
+      "ridge-C1"
+    ]
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "previous_release": "/opt/understand-book/releases/cloud-20261021",
+  "release": "/opt/understand-book/releases/search-cache-20261021",
+  "files": [
+    "crates/runtime/src/web.rs",
+    "crates/runtime/src/lib.rs",
+    "crates/runtime/src/agent_prompt.rs",
+    "crates/runtime/src/orchestrator.rs",
+    "crates/runtime/src/run_context.rs",
+    "crates/runtime/src/tool_exposure.rs",
+    "crates/runtime/src/tool_registry.rs",
+    "crates/runtime/src/context_fragment.rs",
+    "crates/runtime/src/tutor.rs",
+    "crates/runtime/src/tool_contract_tests.rs",
+    "crates/runtime/src/tool_result.rs",
+    "crates/server/src/web_search.rs",
+    "crates/server/src/web_usage.rs",
+    "crates/server/src/web_usage.sql",
+    "crates/server/src/web_usage_tests.rs",
+    "crates/server/src/web_search_tests.rs",
+    "crates/server/src/lib.rs",
+    "crates/server/src/workspace_registry.rs",
+    "crates/server/src/control_store.rs",
+    "crates/server/src/model_spend_store.rs",
+    "crates/server/src/charge_admin.rs",
+    "crates/server/src/cost_summary.rs",
+    "crates/server/src/tests/tutor_example_tests.rs",
+    "apps/admin/src/lib/costs.ts",
+    "apps/admin/src/lib/types.ts",
+    "apps/admin/src/pages/cost-summary.tsx",
+    "apps/admin/src/pages/cost-summary.test.tsx",
+    "apps/admin/src/pages/charges.tsx",
+    "apps/admin/src/pages/charges-service.test.tsx",
+    "packages/web/src/account-costs.ts",
+    "packages/web/src/account-allowance.ts",
+    "packages/web/src/components/AccountCostSummary.vue",
+    "packages/web/src/components/AccountCostSummary.test.ts",
+    "crates/server/src/account_mail.rs"
+  ],
+  "preserved_published_frontend_files": [
+    "packages/web/src/local-materials.ts",
+    "packages/web/src/local-epub.ts",
+    "packages/web/src/components/LocalMaterials.vue",
+    "packages/web/src/components/LocalMaterialReader.vue",
+    "packages/web/src/components/LocalPdfReader.vue",
+    "packages/web/src/components/PersonalMaterials.vue",
+    "packages/web/src/NetworkApp.vue",
+    "packages/web/src/personal-preparations.ts",
+    "packages/web/src/components/PersonalPreparations.vue"
+  ],
+  "excluded": [
+    {
+      "file": "crates/runtime/src/lib.rs",
+      "hunk": "@@ -1367,6 +1368,13 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/lib.rs",
+      "hunk": "@@ -2017,6 +2025,24 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/lib.rs",
+      "hunk": "@@ -4316,6 +4355,32 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/agent_prompt.rs",
+      "reason": "Preserve deployed evidence-routing v5; exclude mathematical-structure instructions."
+    },
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -997,6 +1017,30 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -1581,9 +1625,14 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/orchestrator.rs",
+      "hunk": "@@ -8650,6 +8712,7 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/tool_registry.rs",
+      "hunk": "@@ -2154,6 +2191,11 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/tutor.rs",
+      "hunk": "@@ -469,6 +478,7 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/tool_result.rs",
+      "hunk": "@@ -326,6 +326,14 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/tool_result.rs",
+      "hunk": "@@ -1195,6 +1206,9 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/runtime/src/tool_result.rs",
+      "hunk": "@@ -1209,6 +1223,11 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/server/src/workspace_registry.rs",
+      "hunk": "@@ -505,6 +505,56 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/server/src/workspace_registry.rs",
+      "hunk": "@@ -517,26 +567,7 @@",
+      "reason": "Unpublished mathematical-structure, reading-resumption, or unrelated test change."
+    },
+    {
+      "file": "crates/server/src/tests/tutor_example_tests.rs",
+      "reason": "Preserve the actual deployed fixture question; local baseline contained an additional test-only adjustment."
+    }
+  ],
+  "scope": "Search/Fetch, shared-budget service accounting and cost UI, stable history tool names, TurnFrozen context placement, stable Tutor references.",
+  "schema_before": 19,
+  "schema_after": 20,
+  "desktop_installer": "Keep the existing published 0.3.1 bytes."
+}

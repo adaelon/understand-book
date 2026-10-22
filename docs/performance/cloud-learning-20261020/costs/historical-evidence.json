@@ -1,0 +1,57 @@
+{
+  "protocol": "cloud-learning-cost-evidence.v1",
+  "collected_on": "2026-10-20",
+  "monetary_cost_status": "unknown",
+  "samples": [
+    {
+      "activity": "public_material_preparation",
+      "source": "evals/semantic/results/2026-09-08-la9-v2/prebuild.json",
+      "book_id": "quantification-essence",
+      "measured_at": "2026-09-08T06:58:17.542Z",
+      "attempt_records": 530,
+      "stages": {
+        "book_structure": {"attempts": 25, "executor_ms": 2561519, "usage_missing": 25},
+        "pass1": {"attempts": 46, "executor_ms": 6004439, "usage_missing": 46},
+        "pass2": {"attempts": 37, "executor_ms": 1744224, "usage_missing": 37},
+        "profile_sidecar": {"attempts": 422, "executor_ms": 27043871, "usage_missing": 422}
+      },
+      "actual_provider_tokens": null,
+      "elapsed_wall_ms": null,
+      "actual_provider_cost_micro_cny": null,
+      "attribution": "Historical material build attempts. Stage executor durations overlap and do not establish wall-clock elapsed time; no reconstructed token estimates."
+    },
+    {
+      "activity": "personal_preparation_and_transcription",
+      "source": "docs/performance/workspace-e1-20261018/http-result.json",
+      "test_provider_calls": 49,
+      "synthetic_debited_micro_cny": 637,
+      "actual_provider_cost_micro_cny": null,
+      "attribution": "Real isolated upload, preparation engine, publication and quota chain; model responses and model prices were controlled fixtures. An actual eight-second MP4 was transcribed locally to two segments. This amount is a ledger test, not a supplier invoice or hardware cost."
+    },
+    {
+      "activity": "teaching_design_and_delivery",
+      "source": "docs/performance/interactive-teaching-continuity/om6/model-usage.json",
+      "model": "deepseek-v4-flash",
+      "actual_provider_calls": 15,
+      "total_tokens": 360143,
+      "missing_usage": 0,
+      "provider_elapsed_ms": 108834.4489,
+      "actual_provider_cost_micro_cny": null,
+      "attribution": "Actual two-stage Tutor design/select model samples, including three initial calls retained after failure or correction. Frozen runtime replay validates tool acceptance. These are not full live multi-step runtime totals."
+    },
+    {
+      "activity": "platform_physical_storage",
+      "source": "evals/semantic/results/2026-09-08-la9-v2/prebuild.json",
+      "stored_files": 7861,
+      "stored_bytes": 34814058,
+      "source_text_bytes": 335861,
+      "monthly_cost_micro_cny": null,
+      "attribution": "Historical prepared material snapshot includes indexes, intermediate artifacts and duplicated source representations. This is platform physical usage, not the user's C3 original/retained-file quota."
+    }
+  ],
+  "limitations": [
+    "No current attributable supplier, storage or compute rate is established by these samples.",
+    "Historical public preparation and local transcription lack sufficient usage or hardware-billing evidence for a monetary amount.",
+    "A single conversation or a single prepared material does not establish monthly or daily product prices."
+  ]
+}

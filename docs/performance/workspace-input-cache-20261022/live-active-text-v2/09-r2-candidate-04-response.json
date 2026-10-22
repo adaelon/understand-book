@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 2,
+  "position": 0,
+  "index": 4,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate-v2\\native-04.json",
+  "ordinal": 9,
+  "started_utc": "2026-10-22T03:28:22.478371+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 18249,
+    "completion_tokens": 860,
+    "total_tokens": 19109,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 18249
+  },
+  "response_id": "70104bdb-1fd3-4148-8365-2516b86633af",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"tutor_step\">\n<｜｜DSML｜｜ parameter name=\"operation\" string=\"true\">select</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"operation_id\" string=\"true\">select-generalization-1</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"design_ref\" string=\"true\">design:generalization-0</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"block_refs\" string=\"false\">[\"generalization\"]</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"move\" string=\"false\">{\"kind\": \"explain\", \"participation\": \"support\", \"target\": {\"capability\": \"relational_understanding\", \"expected_performance\": \"解释训练误差下降为何不保证模型更好，并说明三个数据集各自承担的作用\"}, \"reasoning_allocation\": {\"supplied_now\": \"训练集拟合、验证集选择、测试集最终评估的分工；过拟合使训练误差下降而未见数据误差上升；正则化改变优化偏好、验证集检验结果\", \"learner_inference\": null}, \"prompt\": \"直接解释训练误差下降与模型变差的关系，并讲清训练集、验证集、测试集的用途\"}</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"delivery_text\" string=\"true\">训练误差越来越低，模型却可能变差，原因在于训练误差衡量的是模型对**已经见过的训练样本**拟合得有多紧，而模型好不好要看它对**没见过的数据**预测得怎么样。训练集参与参数拟合；模型在拟合时可能把训练样本里特有的噪声也当成规律记住。这样训练误差可以持续下降，但遇到未见样本时误差反而上升，这就是过拟合的一种典型表现。所以一次训练误差较低本身不足以判断模型更好，应比较同一验证集上的表现。[[source:source_ref_c52685f9e6cb9140]]\n\n书里的例子说明了这一点：在相同的数据划分与误差指标下，模型甲训练误差 0.01、验证误差 0.30；模型乙训练误差 0.08、验证误差 0.12。若目标是对未见数据的预测，验证结果支持选择乙——乙没有把训练集拟合得最紧，但在这份验证集上的误差较小。[[source:source_ref_c52685f9e6cb9140]]\n\n三个数据集的分工可以这样记：\n\n- **训练集**：参与参数拟合，模型直接在上面学习。它上面的误差低，只说明模型把这份数据拟合得紧。\n- **验证集**：用于选择模型和超参数，比如比较甲、乙两个候选模型，或挑选正则化强度。它不参与参数拟合，因此能反映模型在没被直接拟合的数据上的表现。\n- **测试集**：留到最终评估，不参与调参。验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]]\n\n正则化材料补充了同一逻辑的另一面。L2 正则化把训练目标改为 J(w)=L_train(w)+lambda*sum_j(w_j^2)，lambda 越大，大权重越昂贵。适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；惩罚过强也可能使模型欠拟合。增加正则化强度后训练误差可能上升，但只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n这里有一个容易混淆的地方：正则化改变的是优化时偏好什么样的解，它本身不保证验证误差一定下降；lambda 通常由验证集或交叉验证选择，测试集不用于反复挑选 lambda。[[source:source_ref_679b2138443382f8]]\n\n作为对照，欠拟合是连训练数据中的主要关系也没有学好，常表现为训练与验证误差都较高。[[source:source_ref_c52685f9e6cb9140]] 因此判断模型是否变好，看的是它在未参与拟合的数据上的误差，而不是训练误差降到了多低。</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1453.113,
+  "first_text_ms": 1453.113,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 216.406,
+  "streaming": true,
+  "duration_ms": 4650.421,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 18249,
+    "cached_input_tokens": 0,
+    "uncached_input_tokens": 18249,
+    "output_tokens": 860
+  },
+  "cost": {
+    "input_cny": "0.036498",
+    "output_cny": "0.00688",
+    "total_cny": "0.043378",
+    "total_rounded_micro_cny": 43378
+  }
+}

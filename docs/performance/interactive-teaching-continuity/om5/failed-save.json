@@ -1,0 +1,61 @@
+{
+  "request": {
+    "session_id": "chat-01a158e6-48a1-7d10-a6c3-a04a20704173",
+    "turn_id": "turn_79a9f15964f4a028",
+    "reference": {
+      "kind": "presentation",
+      "presentation_id": "presentation-1792492850072602300-0",
+      "revision": 1
+    },
+    "state": {
+      "values": {
+        "controls": [
+          {
+            "key": "speed",
+            "type": "range",
+            "value": "2"
+          },
+          {
+            "key": "time",
+            "type": "range",
+            "value": "10"
+          }
+        ],
+        "page": {
+          "input_speed": 2,
+          "applied_speed": 1,
+          "time_s": 10,
+          "revealed": false,
+          "annotated": false
+        },
+        "parameter_edits": {}
+      },
+      "visible_step": "awaiting_apply",
+      "observed_result": "固定条件，只改变一个因素  快一倍，会远一倍吗？  两辆小车共用同一只时钟。先改变 B 的速度，再应用到图中，看看同一时间走了多远。 \n   同一起点，同一时刻，同一尺度 两条跑道；拖动或左右键改变共同时间  共同时间  10 s     0   5   10   15   20   25   30  A     0   5   10   15   20   25   30  B                 距离 / m · 两条跑道使用同一比例      A 已走  10  米   B 已走  10  米   B − A  0  米  共同 10 秒；A 走 10 米，B 走 10 米。图中 B 的速度为 1 米/秒。 \n   B 的输入速度 / 米每秒   2  \n   应用速度  重置  输入为 2 米/秒，等待应用；图仍按 1 米/秒显示。 \n  共同时间 / 秒   10   你可以直接改速度、应用、拖动时间，或带着当前画面提问。 \n    距离如何随时间变化  显示距离关系   显示共同条件   距离曲线；拖动或左右键改变共同时间   0   10   20   30  0  2  4  6  8  10        距离 / m  s  当前距离比 B / A = 1。 \n    模型与适用范围  构造的匀速运动。A 固定 1 米/秒，B 为 0–3 米/秒，无加速、摩擦或碰撞，观察 0–10 秒。",
+      "source_ref_ids": [],
+      "observation": {
+        "summary": "输入为 2 米/秒，等待应用；图仍按 1 米/秒显示。 共同 10 秒；A 走 10 米，B 走 10 米。图中 B 的速度为 1 米/秒。",
+        "state": {
+          "speed_b_m_s": 2,
+          "time_s": 10,
+          "phase": "awaiting_apply"
+        },
+        "rendered": {
+          "speed_b_m_s": 1,
+          "time_s": 10,
+          "distance_a_m": 10,
+          "distance_b_m": 10
+        }
+      }
+    },
+    "teacher_interaction": {
+      "command_id": "01a158e7-9b89-7452-aebf-04c9fba9eaa5",
+      "run_turn_id": "turn_79a9f45964f4a541",
+      "page_id": "98df20a0-0c10-4b12-85c0-234d105a3101",
+      "status": "observed",
+      "support": []
+    }
+  },
+  "status": 500,
+  "body": "{\"error_code\":\"PRESENTATION_COMMAND_ENDED\",\"category\":\"execution\",\"message\":\"This page command has ended; observe again.\"}"
+}

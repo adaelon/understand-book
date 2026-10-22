@@ -1,0 +1,15 @@
+# 来源窗口与证据范围
+
+Source windows are part of the evidence.
+
+来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。
+
+本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。
+
+如果问题只涉及第一秒的画面，优先把来源定位到零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。包含必要证据的较宽窗口仍可能支持结论：零至两秒的窗口包含第一秒，读者仍可在其中核对只涉及第一秒的陈述。窗口较宽不意味着陈述声称整段时间都成立，也不自动否定陈述；它主要增加读者寻找相关证据的成本。判断支持是否成立，要核对窗口内的实际内容；判断定位是否精确，要看是否清楚指出了相关位置。需要前后文才能理解时，应保留足够范围。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。
+
+练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。
+
+课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。
+
+The demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published.

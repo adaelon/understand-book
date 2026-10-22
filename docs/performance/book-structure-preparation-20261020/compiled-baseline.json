@@ -1,0 +1,114 @@
+{
+  "compact": {
+    "mode": "baseline",
+    "runtime": "compiled Bun sidecar + real stdio MCP",
+    "executable": "E:/allwork/download/agent/understand-book/tmp/book-structure-preparation-20261020/compiled-baseline/understand-book-build-x86_64-pc-windows-msvc.exe",
+    "samples": [
+      {
+        "sample": "initial",
+        "prepare_ms": 0,
+        "submit_ms": 656.3403000000035,
+        "refill_ms": 2350.4657000000007,
+        "next_start_ms": 1875.4550999999992,
+        "handoff_ms": 4882.261100000003,
+        "units": 32,
+        "chapters": 32,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-1",
+        "prepare_ms": 0,
+        "submit_ms": 522.6327999999994,
+        "refill_ms": 2723.9142999999967,
+        "next_start_ms": 3369.4414000000033,
+        "handoff_ms": 6615.9884999999995,
+        "units": 32,
+        "chapters": 32,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-2",
+        "prepare_ms": 0,
+        "submit_ms": 607.2062000000005,
+        "refill_ms": 5528.436600000001,
+        "next_start_ms": 2538.506999999998,
+        "handoff_ms": 8674.1498,
+        "units": 32,
+        "chapters": 32,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-3",
+        "prepare_ms": 0,
+        "submit_ms": 494.6252999999997,
+        "refill_ms": 2116.8549000000057,
+        "next_start_ms": 1797.5290999999997,
+        "handoff_ms": 4409.009300000005,
+        "units": 32,
+        "chapters": 32,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      }
+    ],
+    "scope": "Real stores, writer, driver refill and MCP handlers; deterministic candidates; excludes native spawn and model generation."
+  },
+  "fragmented": {
+    "mode": "baseline",
+    "runtime": "compiled Bun sidecar + real stdio MCP",
+    "executable": "E:/allwork/download/agent/understand-book/tmp/book-structure-preparation-20261020/compiled-baseline/understand-book-build-x86_64-pc-windows-msvc.exe",
+    "samples": [
+      {
+        "sample": "initial",
+        "prepare_ms": 0,
+        "submit_ms": 875.043800000014,
+        "refill_ms": 3795.490299999976,
+        "next_start_ms": 6327.692100000015,
+        "handoff_ms": 10998.226200000005,
+        "units": 16,
+        "chapters": 8,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-1",
+        "prepare_ms": 0,
+        "submit_ms": 1214.2361000000092,
+        "refill_ms": 2699.1759999999776,
+        "next_start_ms": 3244.3932000000204,
+        "handoff_ms": 7157.805300000007,
+        "units": 16,
+        "chapters": 8,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-2",
+        "prepare_ms": 0,
+        "submit_ms": 1242.8629000000074,
+        "refill_ms": 2784.2177000000083,
+        "next_start_ms": 3407.6258999999845,
+        "handoff_ms": 7434.7065,
+        "units": 16,
+        "chapters": 8,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-3",
+        "prepare_ms": 0,
+        "submit_ms": 1158.0996999999916,
+        "refill_ms": 5339.124899999995,
+        "next_start_ms": 4495.326300000015,
+        "handoff_ms": 10992.550900000002,
+        "units": 16,
+        "chapters": 8,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      }
+    ],
+    "scope": "Real stores, writer, driver refill and MCP handlers; deterministic candidates; excludes native spawn and model generation."
+  }
+}

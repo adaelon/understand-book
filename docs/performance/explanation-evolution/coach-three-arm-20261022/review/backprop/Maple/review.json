@@ -1,0 +1,58 @@
+{
+  "alias":"Maple",
+  "status":"reviewed",
+  "method":"Actual Reader iframe visible text, controls and screenshots in Edge headless; no source, generation record or condition mapping read.",
+  "operations":["Read complete default page and full 960×720 reading path", "Rewind from step 11 to 0 and advance through every step", "Go back twice and change both input sliders", "Test all six oracle states and toggle omission of 3u on/off in each", "At 320×420 and 640×240 inspect graph, controls, forward/backward tables, perturbation, paths and independent expansion; change input and operate previous/next", "At 320×420 actually pan the graph horizontally from left to right and inspect responsive table cards"],
+  "observed_complete_states":[
+    {"x":2,"y":3,"u":6,"v":8,"L":82,"g_v":16,"g_u":19,"g_x":73,"g_y":38},
+    {"x":-1,"y":2,"u":-2,"v":-3,"L":3,"g_v":-6,"g_u":-3,"g_x":-12,"g_y":3},
+    {"x":2,"y":-1,"u":-2,"v":0,"L":-6,"g_v":0,"g_u":3,"g_x":-3,"g_y":6},
+    {"x":0,"y":2,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":6,"g_y":0},
+    {"x":0,"y":0,"u":0,"v":0,"L":0,"g_v":0,"g_u":3,"g_x":0,"g_y":0},
+    {"x":1,"y":-2.5,"u":-2.5,"v":-1.5,"L":-5.25,"g_v":-3,"g_u":0,"g_x":-3,"g_y":0}
+  ],
+  "strengths":[
+    "All six final graph states, independently expanded derivatives and omission-table numbers are correct. The omitted 3u contribution changes g_u by 3, g_x by 3y and g_y by 3x, including correct zero differences.",
+    "Shared identity, the direct x→v path and the distinction between the local u→L factor and total u gradient are explained explicitly. The complete-path table and regrouping example explain why early aggregation is equivalent to separately multiplying every complete path.",
+    "The perturbation table separates the exact changes via v and 3u, their total, the first-order term and the Δu² remainder. In the cancellation test the first-order term is zero while the exact remainder remains positive, giving concrete evidence for local insensitivity without removing a path.",
+    "The complete default example is readable without interaction; the current step explanation sits next to the previous/next controls. Rewinding and changing inputs keep the graph title's input/step label synchronized. Uncomputed gradients are absent rather than represented as zero.",
+    "Each major computed section repeats its current input pair. The omission switch explicitly changes only the comparison table, keeping the complete graph available for comparison.",
+    "At 320×420, detailed tables become labelled cards and the graph has an explicit horizontal-pan hint. Panning the graph from left to right works; the right-hand v and L nodes are accessible. No document-wide horizontal overflow or control-blocking overlay was observed. 640×240 controls remain operable."
+  ],
+  "issues":[
+    {
+      "id":"Maple-1",
+      "severity":"zero-state explanatory contradiction",
+      "location":"这组输入里的零, y=0 paragraph; omission interpretation",
+      "visible_claim":"所以 ∂L/∂x = 0，不是 0",
+      "evidence":"At x=0,y=0, both contributions to x are correctly computed as zero, but the explanatory sentence explicitly says its gradient is 0 and is not 0. With the omission switch enabled, both input-gradient differences are correctly displayed as zero while the general prose still says all input gradients are wrong. The intermediate g_u changes by 3; both input gradients do not change in this supported state.",
+      "files":["both-zero-contradiction.png","both-zero-omitted.png","interaction-results.json"]
+    },
+    {
+      "id":"Maple-2",
+      "severity":"mathematical display error",
+      "location":"Forward substitution table and negative-input step calculation",
+      "visible_claim":"-3² + 3·-2 gives 3",
+      "evidence":"At x=-1,y=2, L=3 is numerically correct, but the written substitution needs (-3)². Under normal precedence the displayed -3² equals -9, making the written expression -15. The same problem occurs for v=-1.5 in the cancellation state.",
+      "files":["negative-forward-formula.png","interaction-results.json"]
+    },
+    {
+      "id":"Maple-3",
+      "severity":"state-dependent explanation inconsistency",
+      "location":"注意区分两处 ∂L/∂u after the backward table",
+      "visible_claim":"节点上的 ∂L/∂u = 16 + 3 才是所有路径加起来的总导数",
+      "evidence":"This sentence retains default numbers without a default-example label. At x=-1,y=2 the immediately preceding current-input table correctly has g_u=-6+3=-3, while the prose still claims the node's total is 16+3. In the cancellation state the graph total is -3+3=0 but the same fixed explanation remains.",
+      "files":["stale-u-explanation.png","cancellation-perturbation.png","interaction-results.json"]
+    },
+    {
+      "id":"Maple-4",
+      "severity":"notation clarity issue",
+      "location":"Backward table and per-step edge names",
+      "evidence":"The table begins with physical forward-edge names v→L and u→L, then calls the next local derivative v→u and later names u→x, u→y and v→x. The graph itself keeps the forward arrows u→v, x→u, y→u and x→v. The formulas are correct, but the same edge-name column switches between dependency direction and traversal direction without marking that change.",
+      "files":["initial-dom.json","stale-u-explanation.png","interaction-results.json"]
+    }
+  ],
+  "minor_text_note":"The introduction says 四个量、三条运算, although the model has five named quantities x,y,u,v,L. This is a small counting error, not a calculation failure.",
+  "judgment":"The arithmetic, shared-path regrouping, exact perturbation explanation and independent expansion are substantial strengths. The mobile table treatment and horizontally pannable graph are usable. Zero-state contradictions, stale default-gradient prose and negative-square formatting prevent treating the full explanation as consistently correct.",
+  "limitations":"Initial delivery observation only; no learner test or inferred learning gain."
+}

@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+import { readFile,writeFile } from 'node:fs/promises';
+import path from 'node:path';
+const root=path.resolve('tmp/windows-login-20261021');
+const browser=await chromium.connectOverCDP('http://127.0.0.1:19337');
+const page=browser.contexts()[0].pages()[0];
+await page.getByRole('button',{name:'登录网站账号',exact:true}).click();
+await page.getByRole('button',{name:'请在浏览器确认…',exact:true}).waitFor();
+console.log(await page.locator('body').innerText());
+await browser.close();

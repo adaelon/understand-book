@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "origin": "https://understandbook.top",
+  "checked_at": "2026-10-21T01:28:12.589Z",
+  "checks": [
+    "Mobile homepage and Windows download entry",
+    "Authenticated root opens cloud Reader",
+    "Plans, continuous-day durations and storage render without seeded products",
+    "Course catalog loads existing authorized releases",
+    "Production PKCE exchange, same account, independent desktop logout",
+    "Existing workspaces expose exam settings without rewriting goals",
+    "Admin product configuration and account entitlements",
+    "Admin course release management"
+  ],
+  "errors": [],
+  "httpFailures": [],
+  "model_requests": 0
+}

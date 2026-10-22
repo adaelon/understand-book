@@ -1,0 +1,16 @@
+{
+  "frozen_at": "2026-10-22T04:31:03.871412+00:00",
+  "files": [
+    "card.md",
+    "counterexamples.md",
+    "example/index.html",
+    "example/README.md",
+    "example/author.json",
+    "checks.md"
+  ],
+  "local_catalog_revision": 6,
+  "method_revision": 3,
+  "root_catalog_unchanged": true,
+  "copy": "E:\\allwork\\download\\agent\\understand-book\\tmp\\rsi-author-transfer-20261022\\common-source\\skills\\presentation\\methods\\chart-reveal\\v3",
+  "binary_a": "E:\\allwork\\download\\agent\\understand-book\\tmp\\rsi-author-transfer-20261022\\binaries\\author-A.exe"
+}

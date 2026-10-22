@@ -1,0 +1,181 @@
+{
+  "status": "frozen",
+  "purpose": "Compare coach-first C strategy with both unchanged previous C first deliveries per task; generate only two new D pages",
+  "authorization": {
+    "user_scope": "User authorized a local coach-first comparison; no online changes",
+    "limit_cny": "8",
+    "activity_limit_cny": "8",
+    "limit_origin": "Internal allocation fixed before the first freeze or call; not a user-specified monetary limit",
+    "limit_reason": "Two fixed new first deliveries; independent internal allowance confirmed by root before freeze; preserve conservative relay reservations and do not expand after freeze",
+    "pricing": "Reuse EX13 peak-price estimate and conservative reservation. Preserve missing-usage and failed-stream reservations; these are not an actual provider bill"
+  },
+  "previous_activity": {
+    "ledger": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\experiment\\activity-budget.json",
+    "peak_upper_cny": "14.81170680",
+    "earlier_activity_peak_upper_cny": "6.55102280",
+    "cross_activity_peak_upper_cny": "21.36272960",
+    "relationship": "Settled older activities retained separately; their combined total is added once to the new D activity and never charged against its fresh8 CNY cap"
+  },
+  "model": {
+    "request_name": "deepseek-v4-flash",
+    "output_tokens": null,
+    "limits": "Same main-author request settings and production per-request limits as prior C",
+    "served_model": "Record returned model on every call; alias alone does not prove a fixed backend version",
+    "presentation_plan": {
+      "output_tokens": 16384,
+      "reasoning_effort_deepseek": "low",
+      "scope": "D independently invokes the unchanged C coach prompt/configuration before the first author sampling; author_proposal is explicitly null"
+    }
+  },
+  "limits": {
+    "upstream_calls_per_task_arm": 32,
+    "batch_upstream_calls": 64,
+    "per_task_seconds": 1200,
+    "retry_policy": "No pilot, no replacement samples, no retry of failed samples. Ordinary generation/intervention failure and per-run32-call exhaustion remain and next fixed sample proceeds. Monetary exhaustion, provider stream failure, missing usage or timeout stop the batch and leave unstarted positions explicit. External interruption is retained; no automatic resume or rerun."
+  },
+  "arms": {
+    "D": {
+      "label": "Coach before author framework; selected full materials supplied",
+      "coach_enabled": true,
+      "planned_delivery": "selected_full_materials_before_first_author_sampling",
+      "behavior": "Explicit presentation admission invokes the coach before the main author starts. Same coach prompt/configuration and selected full-material supply as prior C, with author_proposal=null. Preserve an independently generated plan; do not replay old C plans."
+    }
+  },
+  "comparison": {
+    "estimand": "Directional page-quality comparison of two new coach-first D outputs with both prior C outputs for each same task; baseline pages are unchanged and not regenerated",
+    "shared": "Byte-identical task inputs, same author model/prompt/tools and per-run limits, same coach prompt/configuration, method catalog/materials, frozen Reader and fresh per-run history",
+    "changed": "Coach timing before first author sampling, necessary explicit presentation_planning_requested=true admission, and author_proposal=null instead of an earlier author framework/focus",
+    "limitations": "One new D versus two prior C outputs per task, noncontemporaneous runs and independently generated coach plans; cannot claim an isolated causal timing effect or learner-outcome improvement",
+    "failure_inclusion": "Retain both fixed positions regardless of intervention coverage or quality; no coverage gate and no replacement generation"
+  },
+  "catalog": {
+    "source": "../common-source/skills/presentation/methods/catalog.json; revision6 and11 method versions including chart-reveal@3; source-freeze.json records byte identity with prior verified catalog",
+    "candidate_status": "Local experiment only; online and formally adopted catalog remain unchanged",
+    "selection": "No method IDs or method_refs seeded in heldout author prompts. Coach may choose no method"
+  },
+  "tasks": {
+    "backprop": {
+      "input": "../heldout/author-input/01-shared-node-backprop.md"
+    },
+    "ridge": {
+      "input": "../heldout/author-input/02-ridge-derivation.md"
+    }
+  },
+  "order": [
+    {
+      "id": "backprop-D1",
+      "task": "backprop",
+      "arm": "D",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\heldout\\author-input\\01-shared-node-backprop.md"
+    },
+    {
+      "id": "ridge-D1",
+      "task": "ridge",
+      "arm": "D",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\heldout\\author-input\\02-ridge-derivation.md"
+    }
+  ],
+  "isolation": {
+    "source": "../source-freeze.json and ../build-logs/build-D-record.json:8 changed files from prior frozen C;1040 total source files,144 fixed prompt/method files byte-identical. Runtime/server rebuilt in directed server-test log (fresh=false), then identical artifacts reused by final extraction. No source changes during build.",
+    "author_input": "Byte-identical copies of original heldout inputs; no old outputs, evaluator notes or review findings in author context",
+    "task_exposure": "Only root and experiment custodian may inspect author tasks and oracle before generation; implementation agents do not receive them",
+    "history": "Fresh native memory, history and temp directory per run; no base-version or prior-conversation import",
+    "coach": "Same coach prompt/configuration with separate user request, actual source evidence, prior guidance and catalog; author_proposal is explicit null. SE8 sets presentation_planning_requested=true in request context, recorded from PreparedAgentChat in native input.json; no extra author instruction or rewritten user text.",
+    "reader": "../render-source/manifest.json; exact seven-file Reader reused from prior C",
+    "teaching_review": "Same observing fixture; no active Tutor review loop",
+    "production": "No deployment or production-workspace changes"
+  },
+  "outcomes": {
+    "primary": "First successful delivery in the initial user turn, allowing ordinary self-preview and patch. Review page correctness and communicative usefulness against task and independent oracle",
+    "linkage": "Separate selected methods, autonomous tool reads, host-forced actual material text, complete-file coverage, declared method_refs and visible application. None is a substitute for page quality",
+    "coach_record": "Record purpose=tutor_presentation_plan input/output, explicit-null author_proposal, and ordinal before the first main-author chat request. Record actual coach handoff and selected-material definitions in first-author request separately from later/pre-write supply. Later prepare must not create an additional coach request; violations stay visible without excluding quality samples.",
+    "forced_supply_record": "Each selected catalog file is a resident-agent.presentation.method-source.{method_id}.{revision}.{file}@method-source.v1 InstructionModule. Actual ordered system sampling_guidance.v1 definition contains presentation_method_source.v1 plus JSON {method_id,revision,file,characters,text}. Record exact character coverage and request order separately from tool reads. observations.supplied_files confirms successful runtime sampling per asset but has no request ordinal; a manifest alone never counts. Preserve response errors, absent receipts and partial intervention without excluding quality samples",
+    "also_archive": "First write and first delivery, public native/provider I/O, actual coach input/output, all method-read/forced-supply evidence, failures/incomplete outcomes, usage, conservative cost and unstarted IDs",
+    "evaluation": "Read full rendered page and exercise actual UI. Mechanism topic needs shared-node identity and path accumulation; derivation topic needs complete connected derivation and degenerate-case reasoning. Do not impose universal short-video or first-screen-chart criteria",
+    "viewports": [
+      {
+        "width": 960,
+        "height": 720
+      },
+      {
+        "width": 320,
+        "height": 420
+      },
+      {
+        "width": 640,
+        "height": 240
+      }
+    ],
+    "decision": "Small directional timing-strategy comparison using two new D and four prior C pages; coverage and order diagnostics do not prove or gate quality."
+  },
+  "binaries": {
+    "D": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-first-20261022\\binaries\\author-D.exe",
+    "verification": "../build-logs/build-D-record.json"
+  },
+  "validation": {
+    "status": "Frozen after root authorization:runtime20+three-arm4+server3 passes,one overlapping test=26 unique;5 offline runner/evidence checks passed. Provider calls during preparation:0.",
+    "runtime_tests": {
+      "log": "../logs/runtime-presentation-coach.log",
+      "passed": 20
+    },
+    "three_arm_tests": {
+      "log": "../logs/runtime-three-arm.log",
+      "passed": 4
+    },
+    "server_tests": {
+      "log": "../logs/server-presentation-planning.log",
+      "passed": 3
+    },
+    "unique_source_tests": 26,
+    "overlapping_tests": 1,
+    "runner_and_evidence_checks": {
+      "record": "offline-checks.json",
+      "passed": 5,
+      "provider_calls": 0
+    },
+    "input_and_reader_copy": "preparation-evidence.json",
+    "binary_verification": "../build-logs/build-D-record.json",
+    "source_freeze": "../source-freeze.json"
+  },
+  "baselines": [
+    {
+      "id": "backprop-C1",
+      "task": "backprop",
+      "arm": "C",
+      "repeat": 1,
+      "first_delivery_version": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\backprop-C1\\first-delivery-version.json",
+      "evidence_directory": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\backprop-C1",
+      "regenerate": false
+    },
+    {
+      "id": "backprop-C2",
+      "task": "backprop",
+      "arm": "C",
+      "repeat": 2,
+      "first_delivery_version": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\backprop-C2\\first-delivery-version.json",
+      "evidence_directory": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\backprop-C2",
+      "regenerate": false
+    },
+    {
+      "id": "ridge-C1",
+      "task": "ridge",
+      "arm": "C",
+      "repeat": 1,
+      "first_delivery_version": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\ridge-C1\\first-delivery-version.json",
+      "evidence_directory": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\ridge-C1",
+      "regenerate": false
+    },
+    {
+      "id": "ridge-C2",
+      "task": "ridge",
+      "arm": "C",
+      "repeat": 2,
+      "first_delivery_version": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\ridge-C2\\first-delivery-version.json",
+      "evidence_directory": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\ridge-C2",
+      "regenerate": false
+    }
+  ],
+  "frozen_on": "2026-10-22T12:38:13.871195+00:00"
+}

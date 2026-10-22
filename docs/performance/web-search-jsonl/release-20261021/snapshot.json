@@ -1,0 +1,20 @@
+{
+  "status": "complete",
+  "source_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "schema": 19,
+  "published_backup": {
+    "status": "passed",
+    "source_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+    "archive": "/opt/understand-book/backups/search-cache-20261021-publications/published",
+    "method": "Hard-link snapshot of immutable published materials on the same filesystem. Database and mutable user data are separately archived after stopping the service.",
+    "files": 8080,
+    "source_bytes": 4075743972,
+    "finished_at_utc": "2026-10-21T05:49:21.860499+00:00"
+  },
+  "mutable_archive": "/opt/understand-book/backups/search-cache-20261021/mutable.tar.gz",
+  "mutable_files": 629,
+  "mutable_archive_bytes": 13078132,
+  "configuration_backup": "/opt/understand-book/acceptance/search-cache-20261021/previous-configuration",
+  "finished_at_utc": "2026-10-21T06:00:55.754761+00:00",
+  "restore": "Extract mutable data into a fresh root, copy or link library/published from /opt/understand-book/backups/search-cache-20261021-publications/published, and relocate book_publications.directory."
+}

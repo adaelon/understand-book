@@ -1,0 +1,11 @@
+{
+  "negative_control": "Score chroma rotated six semitones, same actual recording/rhythm and DTW settings",
+  "real_score_mean_cost": 0.4575587213039398,
+  "transposed_score_mean_cost": 0.5677152276039124,
+  "supports_pitch_specific_matching_only": true,
+  "distinct_score_onsets": 380,
+  "refined_time_reversals": [],
+  "unresolved_notes": 47,
+  "elapsed_seconds": 8.575342099999943,
+  "status": "experimental_not_timing_accuracy_validation"
+}

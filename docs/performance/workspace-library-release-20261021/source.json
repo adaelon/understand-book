@@ -1,0 +1,36 @@
+{
+  "release": "/opt/understand-book/releases/workspace-library-20261021",
+  "previous_release": "/opt/understand-book/releases/reader-latency-20261021",
+  "files": [
+    "packages/web/src/NetworkApp.vue",
+    "packages/web/src/learning-library.css",
+    "packages/web/src/components/MaterialCover.vue",
+    "packages/web/src/components/SharedWorkspaceManifest.vue",
+    "packages/web/src/components/SharedWorkspaceCatalog.vue",
+    "packages/web/src/shared-workspaces.ts",
+    "packages/web/src/book-title.ts",
+    "packages/web/src/book-title.test.ts",
+    "packages/web/src/NetworkApp.learning-workspace.test.ts",
+    "packages/web/src/NetworkApp.resumption.test.ts",
+    "packages/web/src/components/CloudPlans.vue",
+    "packages/web/src/components/PersonalPreparations.vue",
+    "packages/web/src/personal-preparations.ts",
+    "crates/server/src/book_title.rs",
+    "crates/server/src/book_cover.rs",
+    "crates/server/src/published_library.rs",
+    "crates/server/src/authorization.rs",
+    "crates/server/src/multi_user_host.rs",
+    "crates/server/src/tests/video_publication_tests.rs",
+    "crates/server/src/cloud_storage.rs",
+    "crates/server/src/presentation_store.rs",
+    "crates/server/src/user_runtime.rs",
+    "crates/server/src/tests/cloud_storage_tests.rs",
+    "crates/server/src/tests/presentation_store_tests.rs"
+  ],
+  "windows_version": "0.3.4",
+  "excluded_unrelated_changes": [
+    "automatic reading resumption",
+    "additional presentation test modules",
+    "preparation-source formatting"
+  ]
+}

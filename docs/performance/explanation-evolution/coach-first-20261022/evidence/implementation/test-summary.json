@@ -1,0 +1,317 @@
+{
+  "prepared_at": "2026-10-22T12:59:28.057306+00:00",
+  "evidence_kind": "reused_existing_implementation_test_logs",
+  "evidence_note": "复用三份已有实现测试日志，按日志中的完全限定测试名去重；未重新运行测试，不用于教学质量评测。",
+  "tests_rerun": false,
+  "provider_calls": 0,
+  "teaching_quality_assessed": false,
+  "deduplication_key": "exact fully qualified test name as emitted by the test harness",
+  "status": "consistent",
+  "statistics": {
+    "log_count": 3,
+    "test_executions": 27,
+    "passed_executions": 27,
+    "failed_executions": 0,
+    "ignored_executions": 0,
+    "measured_executions": 0,
+    "unique_test_names": 26,
+    "unique_passed_tests": 26,
+    "unique_failed_tests": 0,
+    "duplicate_name_count": 1,
+    "duplicate_execution_count": 1,
+    "expected_unique_test_names": 26,
+    "expected_unique_count_matches": true,
+    "summary_counts_match_test_lines": true
+  },
+  "logs": [
+    {
+      "path": "tmp/coach-first-20261022/logs/runtime-presentation-coach.log",
+      "test_executions": 20,
+      "observed_counts": {
+        "passed": 20,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0
+      },
+      "summary_counts": {
+        "passed": 20,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 807
+      },
+      "summary_counts_match_test_lines": true,
+      "summaries": [
+        {
+          "line": 327,
+          "text": "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 807 filtered out; finished in 0.35s",
+          "status": "ok",
+          "passed": 20,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 807,
+          "duration": "0.35s"
+        }
+      ],
+      "tests": [
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_checks_context_before_calling_provider",
+          "status": "ok",
+          "line": 306
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_accepts_no_method_for_a_reasoned_reference_page",
+          "status": "ok",
+          "line": 307
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_keeps_user_author_and_actual_evidence_separate_at_provider_boundary",
+          "status": "ok",
+          "line": 308
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_keeps_observed_usage_when_provider_cannot_parse_its_response",
+          "status": "ok",
+          "line": 309
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_preserves_spend_stop_without_retry",
+          "status": "ok",
+          "line": 310
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_keeps_paid_usage_when_schema_or_method_validation_fails",
+          "status": "ok",
+          "line": 311
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_reuses_observed_usage_and_model_purpose",
+          "status": "ok",
+          "line": 312
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_limits_reasoning_only_for_supported_deepseek_profile",
+          "status": "ok",
+          "line": 313
+        },
+        {
+          "name": "tutor_coach::presentation::tests::presentation_coach_rejects_unknown_method_revision_and_missing_adaptation_without_retry",
+          "status": "ok",
+          "line": 314
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_turn_limit_cannot_buy_first_author",
+          "status": "ok",
+          "line": 315
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_spend_stop_and_cancel_block_first_author",
+          "status": "ok",
+          "line": 316
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_without_admission_does_not_sample_for_direct_answer",
+          "status": "ok",
+          "line": 317
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_cancellation_terminates_without_unavailable_fallback",
+          "status": "ok",
+          "line": 318
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_spend_stop_terminates_before_another_author_sampling",
+          "status": "ok",
+          "line": 319
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_unavailable_is_cached_through_prepare",
+          "status": "ok",
+          "line": 320
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_keeps_current_ui_action_when_user_supplement_is_empty",
+          "status": "ok",
+          "line": 321
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_provider_failure_is_reused_and_author_continues",
+          "status": "ok",
+          "line": 322
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::three_arm_prepare_actual_provider_boundary",
+          "status": "ok",
+          "line": 323
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_observing_prepare_reuses_plan_and_samples_selected_method",
+          "status": "ok",
+          "line": 324
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloads_seed_and_complete_materials_before_first_author",
+          "status": "ok",
+          "line": 325
+        }
+      ]
+    },
+    {
+      "path": "tmp/coach-first-20261022/logs/runtime-three-arm.log",
+      "test_executions": 4,
+      "observed_counts": {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0
+      },
+      "summary_counts": {
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 823
+      },
+      "summary_counts_match_test_lines": true,
+      "summaries": [
+        {
+          "line": 459,
+          "text": "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 823 filtered out; finished in 0.19s",
+          "status": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 823,
+          "duration": "0.19s"
+        }
+      ],
+      "tests": [
+        {
+          "name": "tutor_coach::presentation_trial::tests::three_arm_materials_supply_only_complete_selected_method_in_c",
+          "status": "ok",
+          "line": 454
+        },
+        {
+          "name": "tutor_coach::presentation_trial::tests::three_arm_observation_requires_actual_complete_source_definitions",
+          "status": "ok",
+          "line": 455
+        },
+        {
+          "name": "tutor_coach::presentation_trial::tests::three_arm_repeated_prepare_and_history_retirement_keep_one_complete_source",
+          "status": "ok",
+          "line": 456
+        },
+        {
+          "name": "orchestrator::tests::presentation_coach_prepare::three_arm_prepare_actual_provider_boundary",
+          "status": "ok",
+          "line": 457
+        }
+      ]
+    },
+    {
+      "path": "tmp/coach-first-20261022/logs/server-presentation-planning.log",
+      "test_executions": 3,
+      "observed_counts": {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0
+      },
+      "summary_counts": {
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_out": 1161
+      },
+      "summary_counts_match_test_lines": true,
+      "summaries": [
+        {
+          "line": 501,
+          "text": "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1161 filtered out; finished in 0.78s",
+          "status": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filtered_out": 1161,
+          "duration": "0.78s"
+        }
+      ],
+      "tests": [
+        {
+          "name": "tests::session_runtime_tests::presentation_planning_normalization_preserves_disabled_request_identity",
+          "status": "ok",
+          "line": 497
+        },
+        {
+          "name": "tests::session_runtime_tests::presentation_planning_request_rejects_non_boolean_values",
+          "status": "ok",
+          "line": 498
+        },
+        {
+          "name": "tests::session_runtime_tests::presentation_planning_request_reaches_run_context",
+          "status": "ok",
+          "line": 499
+        }
+      ]
+    }
+  ],
+  "duplicates": [
+    {
+      "name": "orchestrator::tests::presentation_coach_prepare::three_arm_prepare_actual_provider_boundary",
+      "execution_count": 2,
+      "occurrences": [
+        {
+          "log": "tmp/coach-first-20261022/logs/runtime-presentation-coach.log",
+          "line": 323,
+          "status": "ok"
+        },
+        {
+          "log": "tmp/coach-first-20261022/logs/runtime-three-arm.log",
+          "line": 457,
+          "status": "ok"
+        }
+      ]
+    }
+  ],
+  "unique_test_names": [
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_cancellation_terminates_without_unavailable_fallback",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_spend_stop_and_cancel_block_first_author",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_turn_limit_cannot_buy_first_author",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloaded_unavailable_is_cached_through_prepare",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_frontloads_seed_and_complete_materials_before_first_author",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_keeps_current_ui_action_when_user_supplement_is_empty",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_observing_prepare_reuses_plan_and_samples_selected_method",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_provider_failure_is_reused_and_author_continues",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_spend_stop_terminates_before_another_author_sampling",
+    "orchestrator::tests::presentation_coach_prepare::presentation_coach_without_admission_does_not_sample_for_direct_answer",
+    "orchestrator::tests::presentation_coach_prepare::three_arm_prepare_actual_provider_boundary",
+    "tests::session_runtime_tests::presentation_planning_normalization_preserves_disabled_request_identity",
+    "tests::session_runtime_tests::presentation_planning_request_reaches_run_context",
+    "tests::session_runtime_tests::presentation_planning_request_rejects_non_boolean_values",
+    "tutor_coach::presentation::tests::presentation_coach_accepts_no_method_for_a_reasoned_reference_page",
+    "tutor_coach::presentation::tests::presentation_coach_checks_context_before_calling_provider",
+    "tutor_coach::presentation::tests::presentation_coach_keeps_observed_usage_when_provider_cannot_parse_its_response",
+    "tutor_coach::presentation::tests::presentation_coach_keeps_paid_usage_when_schema_or_method_validation_fails",
+    "tutor_coach::presentation::tests::presentation_coach_keeps_user_author_and_actual_evidence_separate_at_provider_boundary",
+    "tutor_coach::presentation::tests::presentation_coach_limits_reasoning_only_for_supported_deepseek_profile",
+    "tutor_coach::presentation::tests::presentation_coach_preserves_spend_stop_without_retry",
+    "tutor_coach::presentation::tests::presentation_coach_rejects_unknown_method_revision_and_missing_adaptation_without_retry",
+    "tutor_coach::presentation::tests::presentation_coach_reuses_observed_usage_and_model_purpose",
+    "tutor_coach::presentation_trial::tests::three_arm_materials_supply_only_complete_selected_method_in_c",
+    "tutor_coach::presentation_trial::tests::three_arm_observation_requires_actual_complete_source_definitions",
+    "tutor_coach::presentation_trial::tests::three_arm_repeated_prepare_and_history_retirement_keep_one_complete_source"
+  ],
+  "source_patch_provenance": {
+    "build_record": "tmp/coach-first-20261022/build-logs/build-D-record.json",
+    "path": "tmp/coach-first-20261022/build-logs/old-C-to-D.patch",
+    "base": "tmp/coach-three-arm-20261022/common-source",
+    "candidate": "tmp/coach-first-20261022/common-source",
+    "scope": "Actual changed files only; patch base is the frozen C experiment source",
+    "evidence_note": "补丁基准来自已有构建记录：冻结的旧 C 实验源码；此次摘要生成未读取源码或重新比对补丁。"
+  },
+  "issues": []
+}

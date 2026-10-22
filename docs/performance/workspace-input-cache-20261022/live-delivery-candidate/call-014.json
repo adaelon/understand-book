@@ -1,0 +1,15 @@
+{
+  "duration_ms": 16766.5347,
+  "error": null,
+  "metric_note": "Provider text may be private or a protocol fragment; it is not public answer latency.",
+  "provider_first_text_ms": null,
+  "succeeded": true,
+  "usage": {
+    "cache_creation_input_tokens": null,
+    "cached_input_tokens": 74112,
+    "input_tokens": 82930,
+    "output_tokens": 3681,
+    "reasoning_output_tokens": 1626,
+    "total_tokens": 86611
+  }
+}

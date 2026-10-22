@@ -1,0 +1,66 @@
+{
+  "alias": "Harbor",
+  "conclusion": "可用于连续深入推导；核心数学与关键交互未发现错误，存在低影响图内排版问题",
+  "viewports": [
+    [
+      960,
+      720
+    ],
+    [
+      320,
+      420
+    ],
+    [
+      640,
+      240
+    ]
+  ],
+  "read_source": false,
+  "states": [
+    "normal-0",
+    "normal-2",
+    "normal-10",
+    "degenerate-0",
+    "degenerate-2",
+    "return-normal-2"
+  ],
+  "strengths": [
+    "连续中心化与配方证明",
+    "完整全局和唯一性论证",
+    "全部数值与状态同步",
+    "退化整族图形与条件正确",
+    "五观测与竖向残差保留"
+  ],
+  "findings": [
+    {
+      "id": "H1",
+      "severity": "low",
+      "title": "退化剖面图说明与纵轴标题重叠",
+      "reproduction": "960x720，λ=0，切换退化数据，查看右图左上角",
+      "impact": "J(a) 轴标题局部被遮叠",
+      "evidence": [
+        "degenerate-lambda0.png"
+      ]
+    },
+    {
+      "id": "H2",
+      "severity": "low",
+      "title": "窄屏图内标签约7px",
+      "reproduction": "320x420，滚到第6节图形",
+      "impact": "图内刻度和注记不易辨读，需依赖正文读数",
+      "evidence": [
+        "mobile-plot.png"
+      ]
+    }
+  ],
+  "evidence": {
+    "report": "review.md",
+    "observations": "observations.json",
+    "text": "visible-text.txt"
+  },
+  "limitations": [
+    "未进行真实学习者实验",
+    "未读源码",
+    "未改页面"
+  ]
+}

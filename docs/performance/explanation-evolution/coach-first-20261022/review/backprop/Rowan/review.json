@@ -1,0 +1,114 @@
+{
+  "alias": "Rowan",
+  "method": "independent browser-only review; no source or generation conditions read",
+  "viewports": [
+    [
+      960,
+      720
+    ],
+    [
+      320,
+      420
+    ],
+    [
+      640,
+      240
+    ]
+  ],
+  "tested_inputs": [
+    [
+      2,
+      3
+    ],
+    [
+      -1,
+      2
+    ],
+    [
+      2,
+      -1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      -2.5
+    ]
+  ],
+  "numeric_result": "all six match independent oracle",
+  "interactions": "all step states, back, change inputs at intermediate state, all presets; all extra buttons and disclosure panels",
+  "verdict": "数值和漏项模拟正确；正确模式传播说明与零/符号概括存在概念错误，小屏图偏小。",
+  "strengths": [
+    "漏项互动及误差传播完整",
+    "独立多项式展开详尽",
+    "正文解释不依赖操作"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "importance": "需要修正的核心说明",
+      "title": "正确模式文案把 u 的累计梯度用到了 x→v 直达边",
+      "location": "选择漏掉哪一份／两份都算（正确）下方说明",
+      "reproduction": "默认输入阅读该卡片；再输入 (1,-2.5) 并选择“两份都算（正确）”。",
+      "observed": "“这个总数再分别乘 x→u、x→v、y→u 的局部导数传回输入”。相消时“这个总数”为 0，卡片却正确显示 g_x=-3。",
+      "expected": "g_u 只乘 x→u 和 y→u；x→v 直达边使用 g_v。默认应为 19×3 + 16×1，相消时为 0×(-2.5) + (-3)×1。",
+      "impact": "与前文正确解释正面冲突；照此句操作会丢掉/算错本题要求保留的 x 直达分支。",
+      "evidence": [
+        "960-incorrect-propagation-caption.png",
+        "omission-observations.json"
+      ]
+    },
+    {
+      "id": "R2",
+      "importance": "需要修正的零与符号解释",
+      "title": "将零贡献和符号只归因于本边局部导数，漏掉上游累计的作用",
+      "location": "第 8 节与第 9 节第三个自检答案",
+      "reproduction": "输入 (1,-2.5) 阅读第 8 节；输入 (-1,2) 并展开“两份贡献一正一负…”。",
+      "observed": "第 8 节说某份为 0 意味着“那一条边的局部导数是 0”；自检说“每一份的符号由那条边的局部导数决定”。相消输入所有六个局部导数均非零，仍有 u→输入回传为 0；(-1,2) 时 u→v 局部导数 1 对应回传 -6。",
+      "expected": "回传贡献是下游累计梯度乘局部导数，零可来自累计梯度相消；符号也由两因子共同决定。",
+      "impact": "相消时数字、图与路径保留均正确，但概念总结无法解释这些正确结果。当前输入提示仅提示负号，没有补充相消原因。",
+      "evidence": [
+        "960-cancellation.png",
+        "numeric-observations.json",
+        "default-visible-text.txt",
+        "self-check-visible-text.txt"
+      ]
+    },
+    {
+      "id": "R3",
+      "importance": "轻微但明确的符号错误",
+      "title": "动态提示把有符号变化率说成绝对值",
+      "location": "当前输入下的提示",
+      "reproduction": "输入 (-1,2) 或 (2,-1)。",
+      "observed": "“L 会变小，变化率就是那个负数的绝对值”。",
+      "expected": "变化率是负数本身；绝对值可称为下降速率的大小。",
+      "impact": "对导数符号的定义不准确，与前一句正确的下降方向相混。",
+      "evidence": [
+        "numeric-observations.json"
+      ]
+    },
+    {
+      "id": "R4",
+      "importance": "移动端可读性问题",
+      "title": "320 像素宽时图中文字缩得过小",
+      "location": "工作台计算图",
+      "reproduction": "使用 320×420 视口，滚到图。",
+      "observed": "整张 SVG 缩至约 242×249 像素，节点梯度及 × 标签明显小于周围正文。",
+      "expected": "保留可读图中文字，或提供明确的移动端图替代。",
+      "impact": "图的路径乘数难以读清。下方完整文字清单仍可读，所以不是内容缺失或操作阻断。",
+      "evidence": [
+        "320-graph.png",
+        "responsive-observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "No real learner study; no inference about learning gains."
+  ]
+}

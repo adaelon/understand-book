@@ -1,0 +1,468 @@
+{
+  "boxes": [
+    {
+      "box": "ftyp",
+      "offset": 0,
+      "bytes": 32
+    },
+    {
+      "box": "moov",
+      "offset": 32,
+      "bytes": 5861907
+    },
+    {
+      "box": "moov/mvhd",
+      "offset": 40,
+      "bytes": 108
+    },
+    {
+      "box": "moov/trak",
+      "offset": 148,
+      "bytes": 2967322
+    },
+    {
+      "box": "moov/trak/tkhd",
+      "offset": 156,
+      "bytes": 92
+    },
+    {
+      "box": "moov/trak/edts",
+      "offset": 248,
+      "bytes": 36
+    },
+    {
+      "box": "moov/trak/mdia",
+      "offset": 284,
+      "bytes": 2967186
+    },
+    {
+      "box": "moov/trak/mdia/mdhd",
+      "offset": 292,
+      "bytes": 32
+    },
+    {
+      "box": "moov/trak/mdia/hdlr",
+      "offset": 324,
+      "bytes": 45
+    },
+    {
+      "box": "moov/trak/mdia/minf",
+      "offset": 369,
+      "bytes": 2967101
+    },
+    {
+      "box": "moov/trak/mdia/minf/vmhd",
+      "offset": 377,
+      "bytes": 20
+    },
+    {
+      "box": "moov/trak/mdia/minf/dinf",
+      "offset": 397,
+      "bytes": 36
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl",
+      "offset": 433,
+      "bytes": 2967037
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsd",
+      "offset": 441,
+      "bytes": 217
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stts",
+      "offset": 658,
+      "bytes": 742632
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stss",
+      "offset": 743290,
+      "bytes": 3732
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/ctts",
+      "offset": 747022,
+      "bytes": 1106464
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsc",
+      "offset": 1853486,
+      "bytes": 40
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsz",
+      "offset": 1853526,
+      "bytes": 556980
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stco",
+      "offset": 2410506,
+      "bytes": 556964
+    },
+    {
+      "box": "moov/trak",
+      "offset": 2967470,
+      "bytes": 2818894
+    },
+    {
+      "box": "moov/trak/tkhd",
+      "offset": 2967478,
+      "bytes": 92
+    },
+    {
+      "box": "moov/trak/edts",
+      "offset": 2967570,
+      "bytes": 36
+    },
+    {
+      "box": "moov/trak/mdia",
+      "offset": 2967606,
+      "bytes": 2818758
+    },
+    {
+      "box": "moov/trak/mdia/mdhd",
+      "offset": 2967614,
+      "bytes": 32
+    },
+    {
+      "box": "moov/trak/mdia/hdlr",
+      "offset": 2967646,
+      "bytes": 45
+    },
+    {
+      "box": "moov/trak/mdia/minf",
+      "offset": 2967691,
+      "bytes": 2818673
+    },
+    {
+      "box": "moov/trak/mdia/minf/smhd",
+      "offset": 2967699,
+      "bytes": 16
+    },
+    {
+      "box": "moov/trak/mdia/minf/dinf",
+      "offset": 2967715,
+      "bytes": 36
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl",
+      "offset": 2967751,
+      "bytes": 2818613
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsd",
+      "offset": 2967759,
+      "bytes": 123
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stts",
+      "offset": 2967882,
+      "bytes": 6424
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsc",
+      "offset": 2974306,
+      "bytes": 1455472
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stsz",
+      "offset": 4429778,
+      "bytes": 799568
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/stco",
+      "offset": 5229346,
+      "bytes": 556964
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/sgpd",
+      "offset": 5786310,
+      "bytes": 26
+    },
+    {
+      "box": "moov/trak/mdia/minf/stbl/sbgp",
+      "offset": 5786336,
+      "bytes": 28
+    },
+    {
+      "box": "moov/udta",
+      "offset": 5786364,
+      "bytes": 75575
+    },
+    {
+      "box": "free",
+      "offset": 5861939,
+      "bytes": 8
+    },
+    {
+      "box": "mdat",
+      "offset": 5861947,
+      "bytes": 220055077
+    }
+  ],
+  "metadata": {
+    "programs": [],
+    "streams": [
+      {
+        "index": 0,
+        "codec_name": "h264",
+        "codec_type": "video",
+        "width": 1920,
+        "height": 1080,
+        "avg_frame_rate": "1559487997/51982933",
+        "time_base": "1/16000",
+        "start_time": "0.000000",
+        "bit_rate": "311300",
+        "nb_frames": "139240"
+      },
+      {
+        "index": 1,
+        "codec_name": "aac",
+        "codec_type": "audio",
+        "avg_frame_rate": "0/0",
+        "time_base": "1/44100",
+        "start_time": "0.000000",
+        "bit_rate": "67995",
+        "nb_frames": "199887"
+      },
+      {
+        "index": 2,
+        "codec_name": "mjpeg",
+        "codec_type": "video",
+        "width": 1146,
+        "height": 644,
+        "avg_frame_rate": "0/0",
+        "time_base": "1/90000",
+        "start_time": "0.000000"
+      }
+    ],
+    "format": {
+      "start_time": "0.000000",
+      "duration": "4641.377000",
+      "size": "225917024",
+      "bit_rate": "389396"
+    }
+  },
+  "first_packets": {
+    "packets": [
+      {
+        "stream_index": 2,
+        "size": "75190",
+        "pos": "5786749",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.000000",
+        "dts_time": "-0.100000",
+        "duration_time": "0.033313",
+        "size": "18779",
+        "pos": "5861955",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.266688",
+        "dts_time": "-0.066687",
+        "duration_time": "0.033313",
+        "size": "127",
+        "pos": "5880734",
+        "flags": "__"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.133313",
+        "dts_time": "-0.033313",
+        "duration_time": "0.033313",
+        "size": "72",
+        "pos": "5880861",
+        "flags": "__"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.066687",
+        "dts_time": "0.000000",
+        "duration_time": "0.033313",
+        "size": "71",
+        "pos": "5880933",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.000000",
+        "dts_time": "0.000000",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881004",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.023220",
+        "dts_time": "0.023220",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881012",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.033313",
+        "dts_time": "0.033313",
+        "duration_time": "0.033313",
+        "size": "74",
+        "pos": "5881020",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.046440",
+        "dts_time": "0.046440",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881094",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.100000",
+        "dts_time": "0.066687",
+        "duration_time": "0.033313",
+        "size": "73",
+        "pos": "5881102",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.069660",
+        "dts_time": "0.069660",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881175",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.092880",
+        "dts_time": "0.092880",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881183",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.200000",
+        "dts_time": "0.100000",
+        "duration_time": "0.033313",
+        "size": "73",
+        "pos": "5881191",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.116100",
+        "dts_time": "0.116100",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881264",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.166688",
+        "dts_time": "0.133313",
+        "duration_time": "0.033313",
+        "size": "74",
+        "pos": "5881272",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.139320",
+        "dts_time": "0.139320",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881346",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.162540",
+        "dts_time": "0.162540",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881354",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.233313",
+        "dts_time": "0.166688",
+        "duration_time": "0.033313",
+        "size": "74",
+        "pos": "5881362",
+        "flags": "__"
+      },
+      {
+        "stream_index": 1,
+        "pts_time": "0.185760",
+        "dts_time": "0.185760",
+        "duration_time": "0.023220",
+        "size": "8",
+        "pos": "5881436",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.533312",
+        "dts_time": "0.200000",
+        "duration_time": "0.033313",
+        "size": "72",
+        "pos": "5881444",
+        "flags": "__"
+      }
+    ]
+  },
+  "first_video_packets": {
+    "packets": [
+      {
+        "stream_index": 0,
+        "pts_time": "0.000000",
+        "dts_time": "-0.100000",
+        "duration_time": "0.033313",
+        "size": "18779",
+        "pos": "5861955",
+        "flags": "K_"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.266688",
+        "dts_time": "-0.066687",
+        "duration_time": "0.033313",
+        "size": "127",
+        "pos": "5880734",
+        "flags": "__"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.133313",
+        "dts_time": "-0.033313",
+        "duration_time": "0.033313",
+        "size": "72",
+        "pos": "5880861",
+        "flags": "__"
+      },
+      {
+        "stream_index": 0,
+        "pts_time": "0.066687",
+        "dts_time": "0.000000",
+        "duration_time": "0.033313",
+        "size": "71",
+        "pos": "5880933",
+        "flags": "__"
+      }
+    ]
+  }
+}

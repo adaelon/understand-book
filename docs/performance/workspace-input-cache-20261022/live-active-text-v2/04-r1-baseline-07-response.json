@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 1,
+  "position": 3,
+  "index": 7,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-07.json",
+  "ordinal": 4,
+  "started_utc": "2026-10-22T03:27:58.990278+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 22613,
+    "completion_tokens": 70,
+    "total_tokens": 22683,
+    "prompt_tokens_details": {
+      "cached_tokens": 1536
+    },
+    "prompt_cache_hit_tokens": 1536,
+    "prompt_cache_miss_tokens": 21077
+  },
+  "response_id": "3fc43dbd-3610-40ee-929b-3bd3e5c4d27d",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"agent.progress\">\n<｜｜DSML｜｜ parameter name=\"brief\" string=\"true\">我会先说明 lambda 增大时惩罚与欠拟合的关系，再做一个可调 lambda 的比较页面，让你同时观察训练目标、训练误差和验证误差。</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1175.847,
+  "first_text_ms": 1175.847,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 343.604,
+  "streaming": true,
+  "duration_ms": 1436.557,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 22613,
+    "cached_input_tokens": 1536,
+    "uncached_input_tokens": 21077,
+    "output_tokens": 70
+  },
+  "cost": {
+    "input_cny": "0.04221544",
+    "output_cny": "0.00056",
+    "total_cny": "0.04277544",
+    "total_rounded_micro_cny": 42776
+  }
+}

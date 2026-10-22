@@ -1,0 +1,116 @@
+{
+  "version": "cloud-exam-cost-summary.v1",
+  "model": "deepseek-v4-flash",
+  "rounds": [
+    {
+      "name": "live",
+      "source": "live/run.json",
+      "cases": 4,
+      "usage": {
+        "requests": 13,
+        "total_tokens": 311881,
+        "missing_usage": 0,
+        "prompt_tokens": 302004,
+        "completion_tokens": 9877,
+        "cached_prompt_tokens": 154368
+      },
+      "provider_elapsed_ms": 62078.264699999985,
+      "synthetic_account_debit_micro_cny": 13,
+      "ledger_snapshot_unsettled_calls": 0
+    },
+    {
+      "name": "fixed",
+      "source": "fixed/run.json",
+      "cases": 4,
+      "usage": {
+        "requests": 18,
+        "total_tokens": 649668,
+        "missing_usage": 0,
+        "prompt_tokens": 638518,
+        "completion_tokens": 11150,
+        "cached_prompt_tokens": 417536
+      },
+      "provider_elapsed_ms": 70274.84790000002,
+      "synthetic_account_debit_micro_cny": 18,
+      "ledger_snapshot_unsettled_calls": 0
+    },
+    {
+      "name": "final-direct",
+      "source": "final-direct/run.json",
+      "cases": 1,
+      "usage": {
+        "requests": 4,
+        "total_tokens": 119463,
+        "missing_usage": 0,
+        "prompt_tokens": 116088,
+        "completion_tokens": 3375,
+        "cached_prompt_tokens": 75648
+      },
+      "provider_elapsed_ms": 20640.543,
+      "synthetic_account_debit_micro_cny": 4,
+      "ledger_snapshot_unsettled_calls": 0
+    },
+    {
+      "name": "scope-fixed",
+      "source": "scope-fixed/run.json",
+      "cases": 1,
+      "usage": {
+        "requests": 4,
+        "total_tokens": 119701,
+        "missing_usage": 0,
+        "prompt_tokens": 117263,
+        "completion_tokens": 2438,
+        "cached_prompt_tokens": 76032
+      },
+      "provider_elapsed_ms": 16517.8159,
+      "synthetic_account_debit_micro_cny": 4,
+      "ledger_snapshot_unsettled_calls": 0
+    },
+    {
+      "name": "review-integrated",
+      "source": "review-integrated/run.json",
+      "cases": 1,
+      "usage": {
+        "requests": 7,
+        "total_tokens": 178499,
+        "missing_usage": 0,
+        "prompt_tokens": 159111,
+        "completion_tokens": 19388,
+        "cached_prompt_tokens": 76672
+      },
+      "provider_elapsed_ms": 91914.33299999998,
+      "synthetic_account_debit_micro_cny": 6,
+      "ledger_snapshot_unsettled_calls": 1
+    },
+    {
+      "name": "grading-grounded",
+      "source": "grading-grounded/run.json",
+      "cases": 1,
+      "usage": {
+        "requests": 7,
+        "total_tokens": 207916,
+        "missing_usage": 0,
+        "prompt_tokens": 183756,
+        "completion_tokens": 24160,
+        "cached_prompt_tokens": 99072
+      },
+      "provider_elapsed_ms": 112035.20009999999,
+      "synthetic_account_debit_micro_cny": 7,
+      "ledger_snapshot_unsettled_calls": 0
+    }
+  ],
+  "total": {
+    "calls": 53,
+    "tokens": 1587128,
+    "prompt_tokens": 1516740,
+    "completion_tokens": 70388,
+    "cached_prompt_tokens": 899328,
+    "missing_usage": 0,
+    "provider_elapsed_ms": 373461.0046
+  },
+  "actual_provider_cost_micro_cny": null,
+  "actual_provider_cost_status": "unknown",
+  "rate_limitation": "All money amounts recorded by isolated fixture accounts use admission-only test rates. They are not supplier costs or product prices.",
+  "sampling_limitation": "Includes all initial failures and retries. Material text and available context changed; these rounds are not a controlled efficiency comparison.",
+  "ledger_limitation": "review-integrated captures one account-level memory_review while sent. Its full provider usage was later recorded, but final ledger settlement was not observed. Actual supplier cost remains unknown for every round."
+}

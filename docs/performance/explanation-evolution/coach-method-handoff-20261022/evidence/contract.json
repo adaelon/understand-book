@@ -1,0 +1,233 @@
+{
+  "status": "frozen",
+  "prepared_on": "2026-10-22T08:32:28.631754+00:00",
+  "purpose": "Measure the incremental effect of current-request coach method selection and explicit author handoff, using the existing native RSI/SE8 driver",
+  "authorization": {
+    "user_scope": "User authorized local source implementation and same-model comparison; no deployment, publication, or online workspace changes",
+    "limit_cny": "9.37361376",
+    "limit_status": "Same activity cap15; all three prior diagnostic batches retained at5.62638624, remaining9.37361376. One final pilot after verified planning-limit correction; no repeated pilot recovery.",
+    "limit_origin": "Internal batch cap, not an explicit monetary request from user",
+    "pricing": "Reuse EX13 peak upper estimate and worst-case request reservation; record actual usage and returned model names",
+    "activity_limit_cny": "15"
+  },
+  "model": {
+    "request_name": "deepseek-v4-flash",
+    "output_tokens": null,
+    "limits": "Preserve production per-request limits in both arms; do not restore the old universal 16K override",
+    "served_model": "Record actual provider response name on every call; alias identity is not an immutable backend-version claim",
+    "presentation_plan": {
+      "output_tokens": 16384,
+      "reasoning_effort_deepseek": "low",
+      "reasoning_effort_other_models": null,
+      "scope": "Only the current presentation planning completion, identically in A and B; main author request limits and effort unchanged."
+    }
+  },
+  "limits": {
+    "upstream_calls_per_task_arm": 32,
+    "batch_upstream_calls": 288,
+    "per_task_seconds": 1200,
+    "retry_policy": "No replacement of generation failures; pilot is retained separately and does not count as a heldout result"
+  },
+  "arms": {
+    "A": "Frozen experiment-only replacement at the same first-valid-prepare entry: original execute_coach planning prompt/schema with stage_start semantics, projected into the common handoff with methods=[]; no method-selection instructions added",
+    "B": "Current-request presentation coach at first valid prepare: purpose, learning_goal, reading_path, methods(method_id, revision, adaptation), needs_read and reason; main author receives the common handoff and reads selected methods",
+    "common": "Same candidate-inclusive method catalog and assets, author prompt and tools, prepare entry, one coach call per turn, within-turn reuse, author model and limits; observing fixture in both arms, no active Tutor review loop; v3 applies16K output and DeepSeek low reasoning only to the presentation plan completion in both arms, with None for other models and no main-author change"
+  },
+  "catalog": {
+    "source": "../common-source-v3/skills/presentation/methods/catalog.json; revision6 and11 method versions identical in A/B, chart-reveal@3 included; formal catalog remains revision5",
+    "candidate_status": "Isolated experiment only; formal adoption and online catalog are unchanged",
+    "selection": "Coach may select appropriate existing methods or justify none; no task fixture seeds a method ID or method_refs"
+  },
+  "pilot": {
+    "id": "pilot-B0",
+    "task": "pilot-transfer",
+    "arm": "B",
+    "repeat": 0,
+    "input": "../heldout/pilot-input/00-transfer-invariant.md",
+    "purpose": "Check actual coach-to-author linkage and full method input before spending on heldout pages; separate topic and input from both evaluation tasks",
+    "gate": "Root manually checks at least one coach-selected method actually adapted in the visible first-delivered page: exact id/revision appears in first-delivery method_refs; card, complete example HTML, adaptation README, and any catalog-listed counterexample all entered a later author request before first write, with continuous character coverage from zero to EOF. If none meets this, main must remain stopped. Record coverage for every recommended or declared method; auxiliary incomplete reads do not independently block the experiment, but must not be claimed as complete adoption. This gate establishes complete teacher-example input and visible adaptation, not page quality or learning benefit.",
+    "gate_frozen_before": "V2 paid pilot and all eight formal heldout runs; no selector prompt or task changes made for this clarification",
+    "failure_policy": "Final pilot after v3 freeze. If gate fails or generation fails, stop without additional pilot replacements; main remains unstarted.",
+    "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\pilot-input\\00-transfer-invariant.md"
+  },
+  "tasks": {
+    "backprop": {
+      "input": "../heldout/author-input/01-shared-node-backprop.md"
+    },
+    "ridge": {
+      "input": "../heldout/author-input/02-ridge-derivation.md"
+    }
+  },
+  "order": [
+    {
+      "id": "backprop-A1",
+      "task": "backprop",
+      "arm": "A",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\01-shared-node-backprop.md"
+    },
+    {
+      "id": "backprop-B1",
+      "task": "backprop",
+      "arm": "B",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\01-shared-node-backprop.md"
+    },
+    {
+      "id": "ridge-B1",
+      "task": "ridge",
+      "arm": "B",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\02-ridge-derivation.md"
+    },
+    {
+      "id": "ridge-A1",
+      "task": "ridge",
+      "arm": "A",
+      "repeat": 1,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\02-ridge-derivation.md"
+    },
+    {
+      "id": "backprop-B2",
+      "task": "backprop",
+      "arm": "B",
+      "repeat": 2,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\01-shared-node-backprop.md"
+    },
+    {
+      "id": "backprop-A2",
+      "task": "backprop",
+      "arm": "A",
+      "repeat": 2,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\01-shared-node-backprop.md"
+    },
+    {
+      "id": "ridge-A2",
+      "task": "ridge",
+      "arm": "A",
+      "repeat": 2,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\02-ridge-derivation.md"
+    },
+    {
+      "id": "ridge-B2",
+      "task": "ridge",
+      "arm": "B",
+      "repeat": 2,
+      "resolved_input": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\heldout\\author-input\\02-ridge-derivation.md"
+    }
+  ],
+  "isolation": {
+    "source": "../source-freeze-v3.json and ../logs-v3/pair-verification.json; common-source-v3 retains the19 common overlays and method paging fix. Only changed module since v2 is tutor_coach/presentation.rs planning generation policy. Sole A/B source difference remains its selector execution; A legacy prompt/schema unchanged. Both runtime/server freshly compiled;1038 nonvariant files directly compared per arm unchanged.",
+    "author_input": "Identical task prompt within each pair; no evaluator-only notes, pilot output, old page feedback, or method IDs seeded by fixtures",
+    "task_exposure": "Implementation agents do not receive heldout prompts or oracle. Root and the experiment custodian may inspect. Reviewers receive task prompt and oracle after generation, not arm identity or implementation findings",
+    "history": "Fresh native memory/history/temp per run; no import of base presentation or previous conversation",
+    "coach": "First valid prepare uses current request in both arms. Actual user request, author proposal, read-source evidence, prior coach guidance and catalog remain distinguishable inputs. One call per turn, repeated prepare reuses the same advice",
+    "teaching_review": "Observing fixture remains; this evaluates author planning and first delivery, not active continuous teaching-review efficacy",
+    "production": "No deployment or writes to production workspace",
+    "reader": "render-source/manifest.json; original seven Reader dependencies remain frozen and identical for all pages, unchanged by v2 paging"
+  },
+  "outcomes": {
+    "primary": "First successful delivery within the initial user turn, allowing ordinary author self-preview and patch",
+    "linkage": "Separate coach recommendation, actual successful source chunks in later author requests, continuous full-file coverage before first write, first-delivery method_refs, and visible adaptation. Preserve coverage for ALL recommended or declared methods, including auxiliary gaps. Root manually assesses page adaptation for pilot gate; no automatic quality pass.",
+    "also_archive": "First write; all public native and provider I/O; coach input/output and common handoff; timing/call count; method read files and body visibility; first and final delivered versions; failed or incomplete runs; usage and cost",
+    "coach_record": "Extract structured request purpose=tutor_presentation_plan and same-number response. Selected InstructionModule resident-agent.presentation.coach@coach-handoff.v1 appends the actual presentation_coach.v1 definition in sampling_guidance.v1 within ordered_messages; existing guidance ledger avoids repeat append and re-emits after compaction. An asset manifest entry alone is not handoff evidence. Parse JSON with trailing whitespace. Prepare receipts remain status-only. No additional native artifact; missing purpose attribution remains unknown rather than zero",
+    "evaluation": "Read full page and operate its real UI against independent oracle. Mechanism task: shared identity, path contributions and forward/backward states. Derivation task: uninterrupted valid derivation, global-minimum and degeneracy reasoning, graph/numbers/text consistency. No universal first-screen chart or short-video requirement",
+    "viewports": [
+      {
+        "width": 960,
+        "height": 720
+      },
+      {
+        "width": 320,
+        "height": 420
+      },
+      {
+        "width": 640,
+        "height": 240
+      }
+    ],
+    "decision": "Pilot only verifies at least one selected and actually applied method has complete teacher inputs before first write, matching delivery refs and visible page relationship; all auxiliary gaps remain reportable. Formal quality comparison still reads actual pages and oracle without treating method reads as quality. Small batch is directional evidence only; no learner-outcome claim."
+  },
+  "recovery": {
+    "activity_limit_cny": "15",
+    "prior_peak_upper_cny": "5.62638624",
+    "remaining_batch_limit_cny": "9.37361376",
+    "prior_batches": [
+      {
+        "path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\aborted-build-pilot",
+        "peak_upper_cny": "2.23608896",
+        "calls": 2,
+        "quality_eligible": false
+      },
+      {
+        "path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\paging-pilot",
+        "peak_upper_cny": "1.14066784",
+        "calls": 22,
+        "quality_eligible": false
+      },
+      {
+        "path": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\network-pilot",
+        "peak_upper_cny": "2.24962944",
+        "calls": 2,
+        "quality_eligible": false,
+        "reason": "Coach structured request ended at output limit (finish_reason:length); reset was secondary. No first delivery or formal heldout sample."
+      }
+    ],
+    "reason": "Both diagnostic pilots retained. V2 corrects method paging semantics identically in A/B, with verified rebuilt binaries; selector prompts, model, task inputs and Reader remain unchanged.",
+    "actual_charge_note": "Prior total includes 2.162688 retained reservation for an interrupted call with missing usage; actual provider charge unknown.",
+    "v2_freeze_status": "Frozen: source-freeze-v2.json, logs-v2/pair-verification.json, shared paging correction, author-A-paging.exe and author-B-paging.exe",
+    "withdrawn_recovery": {
+      "recorded_utc": "2026-10-22T08:27:36.461619+00:00",
+      "source_contract": "contract-v2.json",
+      "source_model_binaries_tasks_gate_unchanged": true,
+      "first_call_usage_peak_estimate_cny": "0.08694144",
+      "failed_call_retained_reservation_cny": "2.162688",
+      "accounting_note": "Failed call reported usage but the original relay retained the entire reservation because the stream errored. Preserve original accounting; this reservation is not an actual bill.",
+      "stop_policy": "Do not repeat the same paid request unchanged. Await root minimal output-limit correction and a newly frozen contract.",
+      "diagnosis": "Native response-001 reports Provider unfinished response:length; wire finish_reason:length, completion_tokens8192, reasoning_tokens7990 and stream_done:true. Connection reset was secondary to local early read termination, not evidence of a transient provider outage."
+    },
+    "v3_freeze_status": "Frozen: source-freeze-v3.json, logs-v3/pair-verification.json, author-A-plan.exe and author-B-plan.exe. Same model/tasks/Reader/pilot gate; planning completion policy16K+DeepSeek low in both arms, main author unchanged.",
+    "v3_reason": "Explicit length termination at8192 output tokens in the presentation coach; narrow shared fix gives planning16K output and DeepSeek low reasoning. Do not label as random networking or rerun unchanged.",
+    "final_pilot_policy": "Run one final diagnostic pilot only after v3 freeze. If it fails, leave all main runs unstarted and report evidence; no further automatic or repeated pilot recovery."
+  },
+  "budget_revision": {
+    "recorded_utc": "2026-10-22T08:06:13.236097+00:00",
+    "old_internal_cap_cny": "10",
+    "new_internal_cap_cny": "15",
+    "timing": "After both diagnostic pilots settled, before any of the original eight formal heldout runs started",
+    "reason": "Retain the originally planned balanced eight-run comparison and include all prior diagnostics and conservative reservation; no further expansion",
+    "authority": "Root internal allocation within existing implementation and experiment authorization, not a new user-specified monetary budget"
+  },
+  "prior_validation": {
+    "runtime_log": "../presentation-verified-tests.log",
+    "passed": 123,
+    "known_unrelated_failure": "source_presentation_tool_spec_exposes_quote_or_media_target still expects two input alternatives while the pre-change music schema has three. Its expectation and the schema exist in original-source; not modified in this task. Full first run in presentation-final-tests.log."
+  },
+  "validation": {
+    "presentation_plan_tests": "E:\\allwork\\download\\agent\\understand-book\\tmp\\presentation-coach-16384-tests-20261022.log",
+    "presentation_plan_passed": 9,
+    "provider_calls": 0,
+    "host_method_paging_reused": "../logs-v2/host-method-paging-test.json",
+    "host_method_paging_passed": true,
+    "pair_verification": "../logs-v3/pair-verification.json",
+    "prior_v2": {
+      "host_method_paging": "../logs-v2/host-method-paging-test.json",
+      "passed": true,
+      "provider_calls": 0,
+      "scope": "Real Server Author reconstructs every registered method source from 333-character pages, including EOF and error contracts; prior 123-test suite retained separately as prior_validation.",
+      "pair_verification": "../logs-v2/pair-verification.json",
+      "common_overlay_count": 19
+    }
+  },
+  "prior_v2_binaries": {
+    "A": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-A-paging.exe",
+    "B": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-B-paging.exe",
+    "verification": "../logs-v2/pair-verification.json"
+  },
+  "frozen_on": "2026-10-22T08:43:01.367927+00:00",
+  "binaries": {
+    "A": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-A-plan.exe",
+    "B": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-B-plan.exe",
+    "verification": "../logs-v3/pair-verification.json"
+  }
+}

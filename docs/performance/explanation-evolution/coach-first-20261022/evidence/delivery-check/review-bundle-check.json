@@ -1,0 +1,1509 @@
+{
+  "checked_at": "2026-10-22T13:09:02.672826+00:00",
+  "manifest": "tmp/coach-first-20261022/delivery/review-copy-plan.json",
+  "bundle": "docs/performance/explanation-evolution/coach-first-20261022",
+  "summary": {
+    "review_file_count": 8,
+    "attachment_file_count": 95,
+    "copied_file_count": 103,
+    "readable_file_count": 103,
+    "parsed_review_count": 8,
+    "markdown_reference_count": 90,
+    "checked_relative_reference_count": 90,
+    "skipped_reference_count": 0,
+    "missing_reference_count": 0,
+    "unreadable_file_count": 0,
+    "parse_error_count": 0
+  },
+  "passed": true,
+  "files": [
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/review.md",
+      "destination": "review/backprop/Aster/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/review.md",
+      "destination": "review/backprop/Rowan/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/review.md",
+      "destination": "review/backprop/Sable/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/topic-comparison.md",
+      "destination": "review/backprop/topic-comparison.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/review.md",
+      "destination": "review/ridge/Harbor/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/review.md",
+      "destination": "review/ridge/Lumen/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/review.md",
+      "destination": "review/ridge/Quartz/review.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/topic-comparison.md",
+      "destination": "review/ridge/topic-comparison.md",
+      "category": "reviews",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/320-graph.png",
+      "destination": "review/backprop/Aster/320-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/320-initial.png",
+      "destination": "review/backprop/Aster/320-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/640-graph.png",
+      "destination": "review/backprop/Aster/640-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/640-initial.png",
+      "destination": "review/backprop/Aster/640-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/960-cancellation.png",
+      "destination": "review/backprop/Aster/960-cancellation.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/960-initial.png",
+      "destination": "review/backprop/Aster/960-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/960-negative-prose.png",
+      "destination": "review/backprop/Aster/960-negative-prose.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/960-negative-square.png",
+      "destination": "review/backprop/Aster/960-negative-square.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/default-visible-text.txt",
+      "destination": "review/backprop/Aster/default-visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/extra-sign-observation.json",
+      "destination": "review/backprop/Aster/extra-sign-observation.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/numeric-observations.json",
+      "destination": "review/backprop/Aster/numeric-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/preset-observations.json",
+      "destination": "review/backprop/Aster/preset-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/responsive-observations.json",
+      "destination": "review/backprop/Aster/responsive-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/review.json",
+      "destination": "review/backprop/Aster/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Aster/step-observations.json",
+      "destination": "review/backprop/Aster/step-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/320-graph.png",
+      "destination": "review/backprop/Rowan/320-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/320-initial.png",
+      "destination": "review/backprop/Rowan/320-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/640-graph.png",
+      "destination": "review/backprop/Rowan/640-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/640-initial.png",
+      "destination": "review/backprop/Rowan/640-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/960-cancellation.png",
+      "destination": "review/backprop/Rowan/960-cancellation.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/960-incorrect-propagation-caption.png",
+      "destination": "review/backprop/Rowan/960-incorrect-propagation-caption.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/960-initial.png",
+      "destination": "review/backprop/Rowan/960-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/960-step1-graph.png",
+      "destination": "review/backprop/Rowan/960-step1-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/default-visible-text.txt",
+      "destination": "review/backprop/Rowan/default-visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/numeric-observations.json",
+      "destination": "review/backprop/Rowan/numeric-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/omission-observations.json",
+      "destination": "review/backprop/Rowan/omission-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/preset-observations.json",
+      "destination": "review/backprop/Rowan/preset-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/responsive-observations.json",
+      "destination": "review/backprop/Rowan/responsive-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/review.json",
+      "destination": "review/backprop/Rowan/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/self-check-visible-text.txt",
+      "destination": "review/backprop/Rowan/self-check-visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Rowan/step-observations.json",
+      "destination": "review/backprop/Rowan/step-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/320-graph.png",
+      "destination": "review/backprop/Sable/320-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/320-initial.png",
+      "destination": "review/backprop/Sable/320-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/640-graph.png",
+      "destination": "review/backprop/Sable/640-graph.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/640-initial.png",
+      "destination": "review/backprop/Sable/640-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/960-cancellation.png",
+      "destination": "review/backprop/Sable/960-cancellation.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/960-initial.png",
+      "destination": "review/backprop/Sable/960-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/960-stale-check-caption.png",
+      "destination": "review/backprop/Sable/960-stale-check-caption.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/960-step1-summary.png",
+      "destination": "review/backprop/Sable/960-step1-summary.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/default-visible-text.txt",
+      "destination": "review/backprop/Sable/default-visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/numeric-observations.json",
+      "destination": "review/backprop/Sable/numeric-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/preset-observations.json",
+      "destination": "review/backprop/Sable/preset-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/responsive-observations.json",
+      "destination": "review/backprop/Sable/responsive-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/review.json",
+      "destination": "review/backprop/Sable/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/backprop/review-evidence/Sable/step-observations.json",
+      "destination": "review/backprop/Sable/step-observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/degenerate-lambda0.png",
+      "destination": "review/ridge/Harbor/degenerate-lambda0.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/desktop-initial.png",
+      "destination": "review/ridge/Harbor/desktop-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/desktop-interaction.png",
+      "destination": "review/ridge/Harbor/desktop-interaction.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/mobile-centering.png",
+      "destination": "review/ridge/Harbor/mobile-centering.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/mobile-controls.png",
+      "destination": "review/ridge/Harbor/mobile-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/mobile-initial.png",
+      "destination": "review/ridge/Harbor/mobile-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/mobile-plot.png",
+      "destination": "review/ridge/Harbor/mobile-plot.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/observations.json",
+      "destination": "review/ridge/Harbor/observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/review.json",
+      "destination": "review/ridge/Harbor/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/short-controls.png",
+      "destination": "review/ridge/Harbor/short-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/short-initial.png",
+      "destination": "review/ridge/Harbor/short-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Harbor/visible-text.txt",
+      "destination": "review/ridge/Harbor/visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/centering-sign-error.png",
+      "destination": "review/ridge/Lumen/centering-sign-error.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/degenerate-demo-minus2.png",
+      "destination": "review/ridge/Lumen/degenerate-demo-minus2.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/degenerate-derivation.png",
+      "destination": "review/ridge/Lumen/degenerate-derivation.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/degenerate-lambda0.png",
+      "destination": "review/ridge/Lumen/degenerate-lambda0.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/desktop-initial.png",
+      "destination": "review/ridge/Lumen/desktop-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/desktop-interaction.png",
+      "destination": "review/ridge/Lumen/desktop-interaction.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/force-explanation.png",
+      "destination": "review/ridge/Lumen/force-explanation.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/mobile-centering.png",
+      "destination": "review/ridge/Lumen/mobile-centering.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/mobile-controls.png",
+      "destination": "review/ridge/Lumen/mobile-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/mobile-initial.png",
+      "destination": "review/ridge/Lumen/mobile-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/mobile-plot.png",
+      "destination": "review/ridge/Lumen/mobile-plot.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/mobile-table-right.png",
+      "destination": "review/ridge/Lumen/mobile-table-right.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/observations.json",
+      "destination": "review/ridge/Lumen/observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/review.json",
+      "destination": "review/ridge/Lumen/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/short-controls.png",
+      "destination": "review/ridge/Lumen/short-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/short-initial.png",
+      "destination": "review/ridge/Lumen/short-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Lumen/visible-text.txt",
+      "destination": "review/ridge/Lumen/visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/degenerate-family-error.png",
+      "destination": "review/ridge/Quartz/degenerate-family-error.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/degenerate-lambda0.png",
+      "destination": "review/ridge/Quartz/degenerate-lambda0.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/desktop-initial.png",
+      "destination": "review/ridge/Quartz/desktop-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/desktop-interaction.png",
+      "destination": "review/ridge/Quartz/desktop-interaction.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-centering.png",
+      "destination": "review/ridge/Quartz/mobile-centering.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-controls.png",
+      "destination": "review/ridge/Quartz/mobile-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-initial.png",
+      "destination": "review/ridge/Quartz/mobile-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-plot.png",
+      "destination": "review/ridge/Quartz/mobile-plot.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-table-right.png",
+      "destination": "review/ridge/Quartz/mobile-table-right.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/mobile-table.png",
+      "destination": "review/ridge/Quartz/mobile-table.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/observations.json",
+      "destination": "review/ridge/Quartz/observations.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/review.json",
+      "destination": "review/ridge/Quartz/review.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/short-controls.png",
+      "destination": "review/ridge/Quartz/short-controls.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/short-initial.png",
+      "destination": "review/ridge/Quartz/short-initial.png",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "blind-evaluation/ridge/review-evidence/Quartz/visible-text.txt",
+      "destination": "review/ridge/Quartz/visible-text.txt",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "heldout/author-input/01-shared-node-backprop.md",
+      "destination": "evidence/inputs/author-input/01-shared-node-backprop.md",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "heldout/author-input/02-ridge-derivation.md",
+      "destination": "evidence/inputs/author-input/02-ridge-derivation.md",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "heldout/evaluator-only/01-shared-node-backprop.notes.md",
+      "destination": "evidence/inputs/evaluator-only/01-shared-node-backprop.notes.md",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "heldout/evaluator-only/02-ridge-derivation.notes.md",
+      "destination": "evidence/inputs/evaluator-only/02-ridge-derivation.notes.md",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "heldout/evaluator-only/expected.json",
+      "destination": "evidence/inputs/evaluator-only/expected.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    },
+    {
+      "source": "evaluation-private/alias-map.json",
+      "destination": "evidence/review-alias-map.json",
+      "category": "attachments",
+      "readable": true,
+      "bytes_read": 1
+    }
+  ],
+  "reports": [
+    {
+      "document": "review/backprop/Aster/review.md",
+      "parsed": true,
+      "markdown_reference_count": 11
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "parsed": true,
+      "markdown_reference_count": 10
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "parsed": true,
+      "markdown_reference_count": 10
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "parsed": true,
+      "markdown_reference_count": 12
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "parsed": true,
+      "markdown_reference_count": 10
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "parsed": true,
+      "markdown_reference_count": 15
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "parsed": true,
+      "markdown_reference_count": 12
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "parsed": true,
+      "markdown_reference_count": 10
+    }
+  ],
+  "markdown_references": [
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Aster/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "640-graph.png",
+      "checked": true,
+      "target": "review/backprop/Aster/640-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "960-cancellation.png",
+      "checked": true,
+      "target": "review/backprop/Aster/960-cancellation.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "960-negative-prose.png",
+      "checked": true,
+      "target": "review/backprop/Aster/960-negative-prose.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "960-negative-square.png",
+      "checked": true,
+      "target": "review/backprop/Aster/960-negative-square.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "default-visible-text.txt",
+      "checked": true,
+      "target": "review/backprop/Aster/default-visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "extra-sign-observation.json",
+      "checked": true,
+      "target": "review/backprop/Aster/extra-sign-observation.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "numeric-observations.json",
+      "checked": true,
+      "target": "review/backprop/Aster/numeric-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "preset-observations.json",
+      "checked": true,
+      "target": "review/backprop/Aster/preset-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "responsive-observations.json",
+      "checked": true,
+      "target": "review/backprop/Aster/responsive-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Aster/review.md",
+      "kind": "link",
+      "reference": "step-observations.json",
+      "checked": true,
+      "target": "review/backprop/Aster/step-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Rowan/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "960-cancellation.png",
+      "checked": true,
+      "target": "review/backprop/Rowan/960-cancellation.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "960-incorrect-propagation-caption.png",
+      "checked": true,
+      "target": "review/backprop/Rowan/960-incorrect-propagation-caption.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "default-visible-text.txt",
+      "checked": true,
+      "target": "review/backprop/Rowan/default-visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "numeric-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/numeric-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "omission-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/omission-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "preset-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/preset-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "responsive-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/responsive-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "self-check-visible-text.txt",
+      "checked": true,
+      "target": "review/backprop/Rowan/self-check-visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Rowan/review.md",
+      "kind": "link",
+      "reference": "step-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/step-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Sable/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "960-cancellation.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-cancellation.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "960-initial.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "960-stale-check-caption.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-stale-check-caption.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "960-step1-summary.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-step1-summary.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "default-visible-text.txt",
+      "checked": true,
+      "target": "review/backprop/Sable/default-visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "numeric-observations.json",
+      "checked": true,
+      "target": "review/backprop/Sable/numeric-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "preset-observations.json",
+      "checked": true,
+      "target": "review/backprop/Sable/preset-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "responsive-observations.json",
+      "checked": true,
+      "target": "review/backprop/Sable/responsive-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/Sable/review.md",
+      "kind": "link",
+      "reference": "step-observations.json",
+      "checked": true,
+      "target": "review/backprop/Sable/step-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Aster/320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Aster/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Aster/960-negative-prose.png",
+      "checked": true,
+      "target": "review/backprop/Aster/960-negative-prose.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Aster/960-negative-square.png",
+      "checked": true,
+      "target": "review/backprop/Aster/960-negative-square.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Aster/review.md",
+      "checked": true,
+      "target": "review/backprop/Aster/review.md",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Rowan/320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Rowan/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Rowan/960-incorrect-propagation-caption.png",
+      "checked": true,
+      "target": "review/backprop/Rowan/960-incorrect-propagation-caption.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Rowan/omission-observations.json",
+      "checked": true,
+      "target": "review/backprop/Rowan/omission-observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Rowan/review.md",
+      "checked": true,
+      "target": "review/backprop/Rowan/review.md",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Sable/320-graph.png",
+      "checked": true,
+      "target": "review/backprop/Sable/320-graph.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Sable/960-cancellation.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-cancellation.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Sable/960-stale-check-caption.png",
+      "checked": true,
+      "target": "review/backprop/Sable/960-stale-check-caption.png",
+      "exists": true
+    },
+    {
+      "document": "review/backprop/topic-comparison.md",
+      "kind": "link",
+      "reference": "Sable/review.md",
+      "checked": true,
+      "target": "review/backprop/Sable/review.md",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "degenerate-lambda0.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/degenerate-lambda0.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "desktop-initial.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/desktop-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "desktop-interaction.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/desktop-interaction.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "mobile-centering.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/mobile-centering.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "mobile-controls.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/mobile-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "mobile-initial.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/mobile-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "mobile-plot.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/mobile-plot.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "observations.json",
+      "checked": true,
+      "target": "review/ridge/Harbor/observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "short-controls.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/short-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Harbor/review.md",
+      "kind": "link",
+      "reference": "visible-text.txt",
+      "checked": true,
+      "target": "review/ridge/Harbor/visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "centering-sign-error.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/centering-sign-error.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "degenerate-demo-minus2.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/degenerate-demo-minus2.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "degenerate-derivation.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/degenerate-derivation.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "degenerate-lambda0.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/degenerate-lambda0.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "desktop-initial.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/desktop-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "desktop-interaction.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/desktop-interaction.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "force-explanation.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/force-explanation.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "mobile-centering.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/mobile-centering.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "mobile-controls.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/mobile-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "mobile-initial.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/mobile-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "mobile-plot.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/mobile-plot.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "mobile-table-right.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/mobile-table-right.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "observations.json",
+      "checked": true,
+      "target": "review/ridge/Lumen/observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "short-controls.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/short-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Lumen/review.md",
+      "kind": "link",
+      "reference": "visible-text.txt",
+      "checked": true,
+      "target": "review/ridge/Lumen/visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "degenerate-family-error.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/degenerate-family-error.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "desktop-initial.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/desktop-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "desktop-interaction.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/desktop-interaction.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-centering.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-centering.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-controls.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-initial.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-initial.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-plot.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-plot.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-table-right.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-table-right.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "mobile-table.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/mobile-table.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "observations.json",
+      "checked": true,
+      "target": "review/ridge/Quartz/observations.json",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "short-controls.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/short-controls.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/Quartz/review.md",
+      "kind": "link",
+      "reference": "visible-text.txt",
+      "checked": true,
+      "target": "review/ridge/Quartz/visible-text.txt",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Harbor/degenerate-lambda0.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/degenerate-lambda0.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Harbor/mobile-centering.png",
+      "checked": true,
+      "target": "review/ridge/Harbor/mobile-centering.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Harbor/review.md",
+      "checked": true,
+      "target": "review/ridge/Harbor/review.md",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Lumen/centering-sign-error.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/centering-sign-error.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Lumen/degenerate-demo-minus2.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/degenerate-demo-minus2.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Lumen/degenerate-derivation.png",
+      "checked": true,
+      "target": "review/ridge/Lumen/degenerate-derivation.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Lumen/review.md",
+      "checked": true,
+      "target": "review/ridge/Lumen/review.md",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Quartz/degenerate-family-error.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/degenerate-family-error.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Quartz/desktop-interaction.png",
+      "checked": true,
+      "target": "review/ridge/Quartz/desktop-interaction.png",
+      "exists": true
+    },
+    {
+      "document": "review/ridge/topic-comparison.md",
+      "kind": "link",
+      "reference": "Quartz/review.md",
+      "checked": true,
+      "target": "review/ridge/Quartz/review.md",
+      "exists": true
+    }
+  ],
+  "unreadable_files": [],
+  "missing_references": [],
+  "parse_errors": []
+}

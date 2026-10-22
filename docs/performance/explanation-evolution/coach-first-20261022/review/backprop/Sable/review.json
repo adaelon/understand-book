@@ -1,0 +1,113 @@
+{
+  "alias": "Sable",
+  "method": "independent browser-only review; no source or generation conditions read",
+  "viewports": [
+    [
+      960,
+      720
+    ],
+    [
+      320,
+      420
+    ],
+    [
+      640,
+      240
+    ]
+  ],
+  "tested_inputs": [
+    [
+      2,
+      3
+    ],
+    [
+      -1,
+      2
+    ],
+    [
+      2,
+      -1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      -2.5
+    ]
+  ],
+  "numeric_result": "all six match independent oracle",
+  "interactions": "all step states, back, change inputs at intermediate state, all presets; all extra buttons and disclosure panels",
+  "verdict": "数值正确；路径层次与共享身份解释最佳，核对区残留默认贡献，小屏图太小。",
+  "strengths": [
+    "区分一条下游边与两条完整路径",
+    "反向箭头翻转与贡献颜色清楚",
+    "漏项卡与展开项路径对应完整"
+  ],
+  "findings": [
+    {
+      "id": "S1",
+      "importance": "需要修正的输入同步说明",
+      "title": "独立核对卡片保留默认贡献 19×3 与 16×1",
+      "location": "第 7 节“图中累计的结果”卡片",
+      "reproduction": "把输入调到 (1,-2.5) 或 (-1,2)，滚到独立核对。",
+      "observed": "数值结果随输入正确改变，但仍写“由 19×3 与 16×1 等贡献相加得到”。相消例卡片是 g_x=-3、g_y=0，旁边却引用相加为 73 的旧贡献。",
+      "expected": "随输入更新成 0×(-2.5) 与 (-3)×1，或明确标注这句只举默认例。",
+      "impact": "核对区本应帮助独立确认当前输入，却混入默认值，降低数值来源的可追溯性。",
+      "evidence": [
+        "960-stale-check-caption.png",
+        "numeric-observations.json"
+      ]
+    },
+    {
+      "id": "S2",
+      "importance": "移动端可读性问题",
+      "title": "320 像素宽时图中文字几乎不可辨读",
+      "location": "同一张图",
+      "reproduction": "使用 320×420 视口，滚到图。",
+      "observed": "图缩至约 256×148 像素，边上整条局部导数表达式与节点累计梯度非常小。",
+      "expected": "小屏应保留可读的图标签或切换成逐边、逐节点的呈现。",
+      "impact": "用图对照路径和导数很困难；下方三份文字列表完整可读，仍能完成阅读，影响主要落在图的使用。",
+      "evidence": [
+        "320-graph.png",
+        "responsive-observations.json"
+      ]
+    },
+    {
+      "id": "S3",
+      "importance": "轻微的阶段与方向文案错误",
+      "title": "反向起点与页尾约定的用语不一致",
+      "location": "第 5 / 9 步说明；适用范围与约定",
+      "reproduction": "重置后点下一步到第 5 步；展开页尾约定。",
+      "observed": "第 5 步说“L 的两条下游边”，而正文已定义 L 最下游，并正确说 L 有 0 条下游边。页尾说第 4 步起箭头翻转，但实际第 4 步仍为前向 L，第 5 步才反向。",
+      "expected": "称 L 的两条上游依赖边或反向回传边；把翻转阶段写为第 5 步。",
+      "impact": "核心图和状态条实际正确，错误限于解释方向与阶段的辅助文字。",
+      "evidence": [
+        "step-observations.json",
+        "960-stale-check-caption.png"
+      ]
+    },
+    {
+      "id": "S4",
+      "importance": "轻微编辑问题",
+      "title": "开头把三条模型式子称为四条",
+      "location": "标题下简介",
+      "reproduction": "打开页面即见。",
+      "observed": "“模型只有四条式子”后只列 u=xy、v=u+x、L=v²+3u 三条。",
+      "expected": "应为三条式子。",
+      "impact": "不会改变数学结果，但属于可直接修正的计数错误。",
+      "evidence": [
+        "960-initial.png",
+        "default-visible-text.txt"
+      ]
+    }
+  ],
+  "limitations": [
+    "No real learner study; no inference about learning gains."
+  ]
+}

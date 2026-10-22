@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "finished_at_utc": "2026-10-21T12:15:23.557888+00:00",
+  "checks": [
+    {
+      "path": "index.html",
+      "status": 200,
+      "bytes": 5360,
+      "candidate_html_matches_without_cdn_analytics": true
+    },
+    {
+      "path": "assets/home-CgaqwNrb.css",
+      "status": 200,
+      "bytes": 241674,
+      "exact_match": true
+    },
+    {
+      "path": "assets/home-hAxNmiMh.js",
+      "status": 200,
+      "bytes": 35660,
+      "exact_match": true
+    },
+    {
+      "path": "assets/LocalPdfReader-BCfWDNgA.js",
+      "status": 200,
+      "bytes": 2861,
+      "exact_match": true
+    },
+    {
+      "path": "assets/LocalPdfReader-BFUxjd6t.css",
+      "status": 200,
+      "bytes": 1123,
+      "exact_match": true
+    },
+    {
+      "path": "assets/lottie-DG5NakNH.js",
+      "status": 200,
+      "bytes": 308043,
+      "exact_match": true
+    },
+    {
+      "path": "assets/reader-s2772UIH.js",
+      "status": 200,
+      "bytes": 2373645,
+      "exact_match": true
+    },
+    {
+      "path": "assets/reader-y_wA4SGq.css",
+      "status": 200,
+      "bytes": 552359,
+      "exact_match": true
+    },
+    {
+      "path": "assets/understand-book-logo-B8eaKH2F.css",
+      "status": 200,
+      "bytes": 812,
+      "exact_match": true
+    },
+    {
+      "path": "assets/understand-book-logo-CJWWqHhJ.js",
+      "status": 200,
+      "bytes": 88771,
+      "exact_match": true
+    },
+    {
+      "path": "assets/webviewWindow-BvuWrlIj.js",
+      "status": 200,
+      "bytes": 19096,
+      "exact_match": true
+    },
+    {
+      "path": "assets/_commonjsHelpers-CqkleIqs.js",
+      "status": 200,
+      "bytes": 116,
+      "exact_match": true
+    },
+    {
+      "path": "downloads/UnderstandBookSetup.exe?v=0.3.4",
+      "status": 200,
+      "bytes": 4897161,
+      "exact_match": true
+    },
+    {
+      "path": "downloads/UnderstandBookSetup.exe",
+      "status": 200,
+      "bytes": 4897161,
+      "exact_match": true
+    }
+  ]
+}

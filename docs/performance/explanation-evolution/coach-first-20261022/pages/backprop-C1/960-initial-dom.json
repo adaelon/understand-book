@@ -1,0 +1,542 @@
+{
+  "viewport": {
+    "width": 960,
+    "height": 720
+  },
+  "scroll": {
+    "x": 0,
+    "y": 0,
+    "height": 5829,
+    "width": 960
+  },
+  "horizontal_overflow": false,
+  "text": "计算图 · 反向传播\n\nu 被用了两次，反向传播怎么不漏算\n\n这里只有一个模型，全部是实数：u = x·y，v = u + x，L = v² + 3u。u 只算一次，却有两处用它；x 也有两条路进入 L。下面先分清图上同时出现的三种数，再按依赖顺序算前向，然后从 L 往回走，看两份信息在哪里汇合、汇合之后才继续传回输入。\n\n1 先分清图上的三种数字\n\n节点代表一个量，箭头代表\"这个量由那个量算出来\"。同一张图上写着三种数，它们的作用完全不同：\n\n节点的前向数值：这个量当前等于多少，例如 u = 6。\n边上的局部导数：只对这一条边求导，把其他量都当作不变。例如边 x→u 上，u = x·y 对 x 的局部导数是 y；边 u→v 上，v = u + x 对 u 的局部导数是 1。\n节点的整体导数（图上写 dL/d·）：从 L 出发、沿所有路径回到这个量得到的总效果，例如 dL/du = 19。\n\n最容易混的一对数字都落在 u 上。边 u→L 的局部导数是 3，来自 L 里的 3u 这一项；节点 u 的整体导数是 19，是两条来路合起来的结果。图上把局部导数写成 ×3、×1 这样的乘数，表示\"把收到的梯度乘上它，再往下交\"。\n\n2 工作台：调输入，按步走\n\n拖动 x、y 看整张图重算；按步按钮从前向走到反向。状态条始终写着当前是哪组输入、第几步。\n\n当前输入 x = 2，y = 3\n第 8 / 8 步\n回到 y：一路 19 × 2 = 38\nx\n2\ny\n3\n默认 x=2, y=3\nx=0：∂u/∂y 变 0\ny=-1：v 变 0\nx=-3, y=3\n回到第 1 步\n上一步\n第 8 / 8 步\n下一步\n看全部\n×2\n×1\n×3\n×1\n×3\n×16\nL = 82\ndL/dL = 1\nv = 8\ndL/dv = 16\nu = 6\ndL/du = 19\ny = 3\ndL/dy = 38\nx = 2\ndL/dx = 73\n图上的数对应当前输入 x = 2、y = 3，显示到第 8 步。\n\n实线是前向的依赖箭头；accent 颜色的粗线是这一步正在算的边，虚线是回传的边。节点第一行是前向数值，第二行是整体导数 dL/d·，还没算到时显示 —。边上的 × 是这条边的局部导数。\n\n前向数值（节点）\nu = x·y\n2 × 3 = 6\nv = u + x\n6 + 2 = 8\nL = v² + 3u\n8² + 3×6 = 64 + 18 = 82\n边上的局部导数\nx → u\n∂u/∂x = y = 3\ny → u\n∂u/∂y = x = 2\nu → v\n∂v/∂u = 1\nx → v\n∂v/∂x = 1\nu → L\n∂L/∂u = 3\nv → L\n∂L/∂v = 2v = 16\n反向累积（按步出现）\ndL/dL = 1　（反向的种子，唯一从外面给进来的数）\ndL/dv = 2v × 1 = 16 × 1 = 16　（边 v→L 的局部导数乘上游的 1）\ndL/du = 3 + dL/dv × 1 = 3 + 16 = 19　（3 来自 u→L， 16 来自经 v）\ndL/dx = dL/du × y + dL/dv × 1 = 19 × 3 + 16 × 1 = 57 + 16 = 73\ndL/dy = dL/du × x = 19 × 2 = 38\n3 前向：三个数怎么算出来\n\n前向只有一个方向，每一步只用手上已经有的数。\n\n第一步，u = x·y = 2 × 3 = 6。这个 6 就是后面两处用到的同一个数。\n\n第二步，v = u + x = 6 + 2 = 8。这里出现两个来源：u 用的是刚算出的 6；x 用的是输入本身 2，没有经过 u。\n\n第三步，L = v² + 3u = 8² + 3 × 6 = 64 + 18 = 82。u 在这里第二次被使用，代入的还是 6。3u 里的系数 3 就是 L 对 u 在这一条边上的局部导数。\n\n前向走完，每个节点有了一个数，每条边也有了一个数。边上的数这样来：只对这一条边求导，其余量当作不变。u = x·y 对 x 求导得 y，所以边 x→u 上是 3；u 对 y 求导得 x，所以边 y→u 上是 2；v = u + x 里 u 与 x 的系数都是 1；L = v² + 3u 对 v 求导得 2v = 16，对 u 求导得 3。\n\n4 反向：三条规则和一个顺序\n\n反向只重复三件事，一直做到输入为止。\n\n在 L 上放种子。L 对 L 的导数是 1，这是唯一的起点。\n一条边做一次乘法。把上游那个量的整体导数，乘以这条边的局部导数，交给下游的量。\n一个量收齐所有来路再相加。它在图上有几条出边，就会收到几份；相加得到它的整体导数，这个整体导数才有资格继续往回传。\n\n顺序由依赖关系定。u 的值喂给 v，所以 v 的整体导数要先算出来，u 才可能收齐。反向的顺序就是前向的倒序：L → v → u → x、y。\n\n反过来做会缺数：先算 u 的时候，dL/dv 还不存在，边 u→v 就没有东西可乘，u 只能拿到直接边上的 3。\n\n5 在 u 汇合：3 加 16 等于 19\n\n从 L 往下走一步到 v。边 v→L 的局部导数是 2v = 16，上游的种子是 1，所以 dL/dv = 16 × 1 = 16。\n\n再往下到 u。u 有两条出边，因此收到两份：\n\n边 u→L（来自 3u）：局部导数 3，乘上游的 1，得 3。\n边 u→v（来自 v = u + x）：局部导数 1，乘上游的 16，得 16。\n\n两份相加：dL/du = 3 + 16 = 19。这两份记的是同一个 u 的两次使用，所以都进账。\n\n为什么相加，用具体运算看：把 u 单独放大一点点 ε，其余都不动。3u 这一项让 L 增加约 3ε；v 跟着增加 ε，L 里 v² 这一项让 L 增加约 2v·ε = 16ε。两件事同时发生，L 总共增加约 19ε。少记任意一项，估出的变化量都会偏小。\n\n这里\"把 u 单独放大\"是记账用的说法。实际上 u = x·y 跟着 x、y 走，而 dL/du 记的正是\"u 变化时 L 跟着变多快\"，u 有两处使用，两处都要记进来。19 收齐之后，才轮到 u 把梯度交回去——这一点决定了顺序：u 必须先等 v。\n\n回到 x。x 也有两条出边：\n\n边 x→u：局部导数 ∂u/∂x = y = 3，乘 u 的整体导数 19，得 57。\n边 x→v：局部导数 ∂v/∂x = 1，乘 v 的整体导数 16（这条边从 v 出发，用的是 16，不是 19），得 16。\n\ndL/dx = 57 + 16 = 73。\n\n回到 y。y 只有一条出边 y→u，局部导数 ∂u/∂y = x = 2，所以 dL/dy = 19 × 2 = 38。\n\n6 漏掉一份会怎样\n\n假设只保留经 v 的那一份，忘了边 u→L 上的 3。这时 dL/du 被算成 16，缺口继续往回传：dL/dx 变成 16×3 + 16×1 = 64（正确值 73），dL/dy 变成 16×2 = 32（正确值 38）。\n\n少掉的 9 和 6 有明确来路：漏掉的 3 在 u 处亏空，传到 x 要乘 ∂u/∂x = y = 3，于是差 9；传到 y 要乘 ∂u/∂y = x = 2，于是差 6。一个漏项会在每个下游输入上留下按局部导数缩放的误差。\n\n这种错误在图上不容易看出来，因为所有数字都像正常算出来的。它会在核对时暴露：展开式求导给出 73 和 38，与漏算的 64、32 对不上。\n\n选择漏掉哪一份\n两份都算（正确）\n漏掉 u→L 上的 3（只留经 v 的路）\n漏掉经 v 的那一份（只留 u→L）\ndL/du\n19\ndL/dx\n73\ndL/dy\n38\n\n两条来路都入账：3 + 16 = 19；这个总数再分别乘 x→u、x→v、y→u 的局部导数传回输入。\n\n7 独立核对：把 L 展开再求导\n\n把 u、v 代回去，L 只含 x、y：\n\nL = (xy + x)² + 3xy = x²y² + 2x²y + x² + 3xy\n\n中间用了一次 (xy + x)² = x²(y + 1)² = x²y² + 2x²y + x²。\n\n两种写法给出同一个 L\nL = (xy + x)² + 3xy\n(2·3 + 2)² + 3·2·3 = 64 + 18 = 82\nL = x²y² + 2x²y + x² + 3xy\n2²·3² + 2·2²·3 + 2² + 3·2·3 = 36 + 24 + 4 + 18 = 82\n对 x 求导（把 y 当常数）\n∂L/∂x = 2xy² + 4xy + 2x + 3y\n2·x·y²\n2·2·9 = 36\n4·x·y\n4·2·3 = 24\n2·x\n2·2 = 4\n3·y\n3·3 = 9\n\n∂L/∂x = 36 + 24 + 4 + 9 = 73\n\n对 y 求导（把 x 当常数）\n∂L/∂y = 2x²y + 2x² + 3x\n2·x²·y\n2·4·3 = 24\n2·x²\n2·4 = 8\n3·x\n3·2 = 6\n\n∂L/∂y = 24 + 8 + 6 = 38\n\n图上反向算出 dL/dx = 73、dL/dy = 38；展开式直接求导给出 73 和 38。两条路算出的数相同。\n\n8 负数与零怎么读\n\n输入可以取负，局部导数也可以取负，整体导数随之变号。导数为负的意思是：在这一点附近把该输入增大一点，L 会变小，那个负数是变化率。把 x 拖到 -3、y 保持 3，图上仍有同样的六条边和同样的加法，只是每份贡献带上了符号：dL/dv = -24，dL/du = 3 - 24 = -21，dL/dx = -21×3 - 24 = -87，dL/dy = -21×(-3) = 63。\n\n某一份恰好是 0 也有确定含义：那一条边的局部导数是 0，这条路径在这一瞬间不贡献，路径本身仍然在，别的路径照常贡献、照常相加。\n\n点预设“x=0：∂u/∂y 变 0”可以看到：u = 0，∂u/∂y = x = 0，于是 dL/dy = dL/du × 0 = 0。y 变化一点，L 的一阶变化为零。同时 v = u + x = 0，∂L/∂v = 2v = 0，经 v 的那一份对 u 的贡献也归零，dL/du 剩下直接边上的 3；x 的梯度是 3 × 3 = 9，全部来自 x→u 这一条路。\n\n点预设“y=-1：v 变 0”可以看到：v = u + x = x(y + 1) = 0，于是 ∂L/∂v = 2v = 0，经 v 的那一份对 u 的贡献是 0，dL/du = 3。这时如果把直接边上的 3 也漏掉，dL/du 会变成 0，两个输入梯度跟着全部变成 0——这正是\"漏算\"最安静的失败方式。\n\n当前输入下的提示\n\n这组输入下没有贡献为零的通道，也没有负号，四份贡献都是正数。\n\n9 自检\n\n先自己想，再展开对答案。\n\n漏掉 u→L 上的 3，为什么 dL/dy 会错成 16 × 2 = 32？\n为什么一定要先算 v 再算 u，不能反过来？\n两份贡献一正一负（或都为负）时还相加吗？",
+  "controls": [
+    {
+      "tag": "input",
+      "id": "in-x",
+      "role": null,
+      "type": "range",
+      "text": "",
+      "label": "输入 x，范围 -3 到 3，步长 0.5",
+      "labels": [
+        "x"
+      ],
+      "value": "2",
+      "min": "-3",
+      "max": "3",
+      "step": "0.5",
+      "checked": false,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 731.53125,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "input",
+      "id": "in-y",
+      "role": null,
+      "type": "range",
+      "text": "",
+      "label": "输入 y，范围 -3 到 3，步长 0.5",
+      "labels": [
+        "y"
+      ],
+      "value": "3",
+      "min": "-3",
+      "max": "3",
+      "step": "0.5",
+      "checked": false,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 810.71875,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "默认 x=2, y=3",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 864.71875,
+        "width": 102,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "x=0：∂u/∂y 变 0",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 167,
+        "y": 864.71875,
+        "width": 116.625,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "y=-1：v 变 0",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 291.625,
+        "y": 864.71875,
+        "width": 95.75,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "x=-3, y=3",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 395.375,
+        "y": 864.71875,
+        "width": 77.640625,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "btn-first",
+      "role": null,
+      "type": "button",
+      "text": "回到第 1 步",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 918.71875,
+        "width": 107.390625,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "btn-prev",
+      "role": null,
+      "type": "button",
+      "text": "上一步",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 172.390625,
+        "y": 918.71875,
+        "width": 74,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "btn-next",
+      "role": null,
+      "type": "button",
+      "text": "下一步",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": true,
+      "visible": true,
+      "bounds": {
+        "x": 358.390625,
+        "y": 918.71875,
+        "width": 74,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "btn-last",
+      "role": null,
+      "type": "button",
+      "text": "看全部",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": true,
+      "visible": true,
+      "bounds": {
+        "x": 440.390625,
+        "y": 918.71875,
+        "width": 74,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "两份都算（正确）",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 3692.640625,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "漏掉 u→L 上的 3（只留经 v 的路）",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 3742.640625,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "button",
+      "id": "",
+      "role": null,
+      "type": "button",
+      "text": "漏掉经 v 的那一份（只留 u→L）",
+      "label": null,
+      "labels": [],
+      "value": "",
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 3792.640625,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "summary",
+      "id": "",
+      "role": null,
+      "type": null,
+      "text": "漏掉 u→L 上的 3，为什么 dL/dy 会错成 16 × 2 = 32？",
+      "label": null,
+      "labels": [],
+      "value": null,
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 5560.046875,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "summary",
+      "id": "",
+      "role": null,
+      "type": null,
+      "text": "为什么一定要先算 v 再算 u，不能反过来？",
+      "label": null,
+      "labels": [],
+      "value": null,
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 5624.046875,
+        "width": 846,
+        "height": 44
+      }
+    },
+    {
+      "tag": "summary",
+      "id": "",
+      "role": null,
+      "type": null,
+      "text": "两份贡献一正一负（或都为负）时还相加吗？",
+      "label": null,
+      "labels": [],
+      "value": null,
+      "min": null,
+      "max": null,
+      "step": null,
+      "checked": null,
+      "disabled": false,
+      "visible": true,
+      "bounds": {
+        "x": 57,
+        "y": 5688.046875,
+        "width": 846,
+        "height": 44
+      }
+    }
+  ],
+  "headings": [
+    {
+      "text": "u 被用了两次，反向传播怎么不漏算",
+      "bounds": {
+        "x": 44,
+        "y": 68.15625,
+        "width": 872,
+        "height": 40.1875
+      }
+    },
+    {
+      "text": "1 先分清图上的三种数字",
+      "bounds": {
+        "x": 44,
+        "y": 239.5,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "2 工作台：调输入，按步走",
+      "bounds": {
+        "x": 44,
+        "y": 550.25,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "前向数值（节点）",
+      "bounds": {
+        "x": 68,
+        "y": 1610.015625,
+        "width": 396,
+        "height": 21.828125
+      }
+    },
+    {
+      "text": "边上的局部导数",
+      "bounds": {
+        "x": 496,
+        "y": 1610.015625,
+        "width": 396,
+        "height": 21.828125
+      }
+    },
+    {
+      "text": "反向累积（按步出现）",
+      "bounds": {
+        "x": 68,
+        "y": 1868.875,
+        "width": 824,
+        "height": 21.828125
+      }
+    },
+    {
+      "text": "3 前向：三个数怎么算出来",
+      "bounds": {
+        "x": 44,
+        "y": 2125.0625,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "4 反向：三条规则和一个顺序",
+      "bounds": {
+        "x": 44,
+        "y": 2470.296875,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "5 在 u 汇合：3 加 16 等于 19",
+      "bounds": {
+        "x": 44,
+        "y": 2817.53125,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "6 漏掉一份会怎样",
+      "bounds": {
+        "x": 44,
+        "y": 3386.015625,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "选择漏掉哪一份",
+      "bounds": {
+        "x": 57,
+        "y": 3664.5,
+        "width": 846,
+        "height": 20.140625
+      }
+    },
+    {
+      "text": "7 独立核对：把 L 展开再求导",
+      "bounds": {
+        "x": 44,
+        "y": 4038.515625,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "两种写法给出同一个 L",
+      "bounds": {
+        "x": 57,
+        "y": 4246.84375,
+        "width": 846,
+        "height": 20.140625
+      }
+    },
+    {
+      "text": "对 x 求导（把 y 当常数）",
+      "bounds": {
+        "x": 57,
+        "y": 4358.328125,
+        "width": 846,
+        "height": 20.140625
+      }
+    },
+    {
+      "text": "对 y 求导（把 x 当常数）",
+      "bounds": {
+        "x": 57,
+        "y": 4644.375,
+        "width": 846,
+        "height": 20.140625
+      }
+    },
+    {
+      "text": "8 负数与零怎么读",
+      "bounds": {
+        "x": 44,
+        "y": 4971.609375,
+        "width": 872,
+        "height": 42.234375
+      }
+    },
+    {
+      "text": "当前输入下的提示",
+      "bounds": {
+        "x": 57,
+        "y": 5349.59375,
+        "width": 846,
+        "height": 21.828125
+      }
+    },
+    {
+      "text": "9 自检",
+      "bounds": {
+        "x": 44,
+        "y": 5465.9375,
+        "width": 872,
+        "height": 42.234375
+      }
+    }
+  ],
+  "scroll_containers": [],
+  "graphics": {
+    "svg": 1,
+    "canvas": 0,
+    "images": 0
+  }
+}

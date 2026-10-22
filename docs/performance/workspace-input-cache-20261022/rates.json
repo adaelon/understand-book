@@ -1,0 +1,99 @@
+{
+  "rates": [
+    {
+      "version": "deepseek-flash-20261022-00-01",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792627200,
+      "expires_at": 1792630800,
+      "input_micro_cny_per_million": 1000000,
+      "cached_input_micro_cny_per_million": 20000,
+      "output_micro_cny_per_million": 4000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    },
+    {
+      "version": "deepseek-flash-20261022-01-04",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792630800,
+      "expires_at": 1792641600,
+      "input_micro_cny_per_million": 2000000,
+      "cached_input_micro_cny_per_million": 40000,
+      "output_micro_cny_per_million": 8000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    },
+    {
+      "version": "deepseek-flash-20261022-04-06",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792641600,
+      "expires_at": 1792648800,
+      "input_micro_cny_per_million": 1000000,
+      "cached_input_micro_cny_per_million": 20000,
+      "output_micro_cny_per_million": 4000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    },
+    {
+      "version": "deepseek-flash-20261022-06-10",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792648800,
+      "expires_at": 1792663200,
+      "input_micro_cny_per_million": 2000000,
+      "cached_input_micro_cny_per_million": 40000,
+      "output_micro_cny_per_million": 8000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    },
+    {
+      "version": "deepseek-flash-20261022-10-24",
+      "provider": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "starts_at": 1792663200,
+      "expires_at": 1792713600,
+      "input_micro_cny_per_million": 1000000,
+      "cached_input_micro_cny_per_million": 20000,
+      "output_micro_cny_per_million": 4000000,
+      "usage_contract": "deep_seek",
+      "image_meter": "unsupported",
+      "source": {
+        "currency": "CNY",
+        "original_prices": "CNY per million tokens: off-peak uncached input 1, cached input 0.02, output 4; peak rates double. deepseek-v4-flash alias is served by DeepSeek-V4.1-Flash-1017 at Flash rates.",
+        "cny_conversion": "1 CNY = 1 CNY (official CNY tariff; no currency conversion)",
+        "checked_on": "2026-10-22",
+        "official_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/"
+      }
+    }
+  ]
+}

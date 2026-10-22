@@ -1,0 +1,132 @@
+{
+  "id": "backprop-C2",
+  "version_file": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-three-arm-20261022\\runs-recovery\\backprop-C2\\first-delivery-version.json",
+  "viewports": [
+    {
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "screenshots": [
+        {
+          "file": "960-first.png",
+          "scroll_y": 0
+        },
+        {
+          "file": "960-scroll-1.png",
+          "scroll_y": 576
+        },
+        {
+          "file": "960-scroll-2.png",
+          "scroll_y": 1152
+        },
+        {
+          "file": "960-scroll-3.png",
+          "scroll_y": 2946
+        }
+      ],
+      "errors": [],
+      "requests": [],
+      "console_errors": [],
+      "initial_dom": "960-initial-dom.json",
+      "iframe_bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 960,
+        "height": 720
+      },
+      "host_messages": [
+        {
+          "kind": "ready"
+        }
+      ],
+      "status": "rendered"
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 420
+      },
+      "screenshots": [
+        {
+          "file": "320-first.png",
+          "scroll_y": 0
+        },
+        {
+          "file": "320-scroll-1.png",
+          "scroll_y": 336
+        },
+        {
+          "file": "320-scroll-2.png",
+          "scroll_y": 672
+        },
+        {
+          "file": "320-scroll-3.png",
+          "scroll_y": 6532
+        }
+      ],
+      "errors": [],
+      "requests": [],
+      "console_errors": [],
+      "initial_dom": "320-initial-dom.json",
+      "iframe_bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 420
+      },
+      "host_messages": [
+        {
+          "kind": "ready"
+        }
+      ],
+      "status": "rendered"
+    },
+    {
+      "viewport": {
+        "width": 640,
+        "height": 240
+      },
+      "screenshots": [
+        {
+          "file": "640-first.png",
+          "scroll_y": 0
+        },
+        {
+          "file": "640-scroll-1.png",
+          "scroll_y": 192
+        },
+        {
+          "file": "640-scroll-2.png",
+          "scroll_y": 384
+        },
+        {
+          "file": "640-scroll-3.png",
+          "scroll_y": 3986
+        }
+      ],
+      "errors": [],
+      "requests": [],
+      "console_errors": [],
+      "initial_dom": "640-initial-dom.json",
+      "iframe_bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 640,
+        "height": 240
+      },
+      "host_messages": [
+        {
+          "kind": "ready"
+        }
+      ],
+      "status": "rendered"
+    }
+  ],
+  "status": "completed",
+  "reference": {
+    "presentation_id": "presentation-1792667611274860500-6",
+    "revision": 1
+  },
+  "source_resolution": "No source documents are mounted; held-out inputs are self-contained."
+}

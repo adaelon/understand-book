@@ -1,0 +1,114 @@
+{
+  "alias": "Aster",
+  "method": "independent browser-only review; no source or generation conditions read",
+  "viewports": [
+    [
+      960,
+      720
+    ],
+    [
+      320,
+      420
+    ],
+    [
+      640,
+      240
+    ]
+  ],
+  "tested_inputs": [
+    [
+      2,
+      3
+    ],
+    [
+      -1,
+      2
+    ],
+    [
+      2,
+      -1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      -2.5
+    ]
+  ],
+  "numeric_result": "all six match independent oracle",
+  "interactions": "all step states, back, change inputs at intermediate state, all presets; all extra buttons and disclosure panels",
+  "verdict": "数值正确；细粒度步进和小屏列表突出，负号、路径用语与负数平方显示需要修正。",
+  "strengths": [
+    "共享身份与加法原因清晰",
+    "0–11步及未知态清楚",
+    "小屏逐边列表可读"
+  ],
+  "findings": [
+    {
+      "id": "A1",
+      "importance": "需要修正的概念表述",
+      "title": "把负的局部导数直接当作负的回传贡献",
+      "location": "负数和零贡献的意思；漏掉一条贡献，会错在哪里",
+      "reproduction": "把 x 调到 2、y 调到 -2，保持完整结果；阅读负数说明。另用负数预设 (-1,2) 阅读漏项说明。",
+      "observed": "正文说 y 为负时，u 支路给 x 的贡献也带负号；实际页面正确显示 g_u=-1、局部导数 y=-2，回传为 +2。漏项正文又断言只保留 u 支路会比正确值小，但 (-1,2) 时 -6 大于正确值 -12。",
+      "expected": "贡献的符号由累计梯度与局部导数的乘积决定；漏掉负项可使结果增大。",
+      "impact": "这些泛化恰好落在本题要区分的局部导数与回传贡献上，读者可能记住错误的符号规则，尽管数字计算正确。",
+      "evidence": [
+        "960-negative-prose.png",
+        "extra-sign-observation.json",
+        "numeric-observations.json",
+        "default-visible-text.txt"
+      ]
+    },
+    {
+      "id": "A2",
+      "importance": "需要修正的数学排版",
+      "title": "负数平方没有括号，显示出不成立的等式",
+      "location": "计算记录以及前向 L 的步骤说明",
+      "reproduction": "点“负数 -1, 2”，读计算记录的 L 行；也可输入 (1,-2.5)。",
+      "observed": "显示“L = v² + 3u = -3² + 3×-2 = 3”，以及“-1.5² + 3×-2.5 = -5.25”。",
+      "expected": "应显示 (-3)²、(-1.5)²；按通常运算优先级 -3²=-9。",
+      "impact": "最终值正确，但用于具体运算教学的中间等式错误，读者无法照着所显示的式子算出答案。",
+      "evidence": [
+        "960-negative-square.png",
+        "numeric-observations.json"
+      ]
+    },
+    {
+      "id": "A3",
+      "importance": "需澄清的路径概念",
+      "title": "把 y 的一条直接出边写成“只有一条路径”",
+      "location": "y 节点注释及最后一步说明",
+      "reproduction": "打开完整结果，读 y 节点及第 11 步；相消输入 (1,-2.5) 也保留该说法。",
+      "observed": "“y 只有一条路径，所以 dL/dy = …”。",
+      "expected": "y 只有一条直接下游边 y→u；到 L 有 y→u→v→L 与 y→u→L 两条完整路径，已在 u 汇合。",
+      "impact": "会混淆出边数与完整路径数，使学习者不易理解 19 已包含两路贡献。公式本身正确。",
+      "evidence": [
+        "960-cancellation.png",
+        "default-visible-text.txt"
+      ]
+    },
+    {
+      "id": "A4",
+      "importance": "轻微术语不一致",
+      "title": "第 5 步把 L 的两条入边称为出边",
+      "location": "第 5 / 11 步状态条",
+      "reproduction": "从第 0 步前进到第 5 步。",
+      "observed": "标题是“L 的两条出边”，正文同时写 L 接收上游的量；页面其余地方按前向依赖定义出边。",
+      "expected": "在该用法下称为 L 的两条入边，或明确说两条反向回传边。",
+      "impact": "不改变算式，但给依赖方向的学习增加不必要的术语冲突。",
+      "evidence": [
+        "step-observations.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "No real learner study; no inference about learning gains."
+  ]
+}

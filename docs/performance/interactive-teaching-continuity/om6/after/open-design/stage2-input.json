@@ -1,0 +1,3392 @@
+{
+  "accepted_design": {
+    "design": {
+      "basis_refs": [
+        "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+      ],
+      "blocks": [
+        {
+          "block_id": "total-time",
+          "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+          "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        {
+          "block_id": "average-speed",
+          "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+          "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        {
+          "block_id": "two-levers",
+          "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+          "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      ],
+      "focus_block_refs": [
+        "total-time",
+        "average-speed",
+        "two-levers"
+      ],
+      "open_question_refs": [],
+      "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+      "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+      "representation": {
+        "kind": "text",
+        "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+      },
+      "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+        "learning_focus": "同一路线缩短总时间的方案比较",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    },
+    "operation": "design",
+    "operation_id": "om6-next"
+  },
+  "packet": {
+    "context": {
+      "agent_working_state": {
+        "corrections": [],
+        "current_work": null,
+        "meaning": "Teacher work and review observations only. accepted_by_review means that review accepted the candidate; it is not proof of factual truth, actual delivery, or learner understanding. Full records and evidence are readable with tutor.step trace using review_ref. Older records may be outside this bounded view.",
+        "previous_work": []
+      },
+      "binding": {
+        "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+        "control_revision": 2,
+        "session_revision": 1,
+        "source_id": "sample-book",
+        "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+        "turn_id": "turn_f42ba05b56b158b7",
+        "tutor_session_id": "tutor-begin-1"
+      },
+      "chapter_scope": null,
+      "confirmed_preferences": [
+        {
+          "fact_id": "fact_24efcdb5da5752b2",
+          "preference": {
+            "claim": {
+              "key": "depth",
+              "value": "平时请简单一些，少推导公式。我倾向于减少停站。"
+            },
+            "kind": "explanation_preference"
+          }
+        }
+      ],
+      "constraints": [],
+      "current_design": {
+        "design": {
+          "basis_refs": [
+            "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+          ],
+          "blocks": [
+            {
+              "block_id": "total-time",
+              "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+              "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "average-speed",
+              "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+              "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "two-levers",
+              "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+              "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          ],
+          "connections": [],
+          "focus_block_refs": [
+            "total-time",
+            "average-speed",
+            "two-levers"
+          ],
+          "open_question_refs": [],
+          "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+          "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+          "representation": {
+            "kind": "text",
+            "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+          },
+          "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+            "learning_focus": "同一路线缩短总时间的方案比较",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "design_ref": "design:turn_f42ba05b56b158b7:om6-next"
+      },
+      "current_request": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+      "default_teaching_intent": null,
+      "goal_relation": "When proposing a stage or next step, explain how it serves the accepted workspace goal and its explicit constraints; a temporary question does not change that goal.",
+      "learner_context": {
+        "current_design": {
+          "design": {
+            "basis_refs": [
+              "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+            ],
+            "blocks": [
+              {
+                "block_id": "total-time",
+                "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+                "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "sample-book",
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              {
+                "block_id": "average-speed",
+                "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+                "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "sample-book",
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              {
+                "block_id": "two-levers",
+                "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+                "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "sample-book",
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            ],
+            "connections": [],
+            "focus_block_refs": [
+              "total-time",
+              "average-speed",
+              "two-levers"
+            ],
+            "open_question_refs": [],
+            "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+            "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+            "representation": {
+              "kind": "text",
+              "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+            },
+            "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+              "learning_focus": "同一路线缩短总时间的方案比较",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "design_ref": "design:turn_f42ba05b56b158b7:om6-next"
+        },
+        "current_target": {
+          "capability": "explanation",
+          "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+          "learning_focus": "同一路线缩短总时间的方案比较",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+        "entries": [],
+        "evidence_watermark": 0,
+        "interpretations": [],
+        "learner_grounding": {
+          "delivered_support": [
+            {
+              "action_ref": null,
+              "actor": null,
+              "answer": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+              "before_receipt": null,
+              "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+              "feedback": null,
+              "kind": "message_delivered",
+              "move": {
+                "actions": [],
+                "block_refs": [
+                  "total-time"
+                ],
+                "capability": "explanation",
+                "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+                "intent_origin": "neutral",
+                "intent_quote": null,
+                "interaction_intent": "neutral",
+                "interpretation_refs": [],
+                "kind": "compare",
+                "move_id": "om6-help",
+                "object_ids": [],
+                "preference_ref": null,
+                "presentation": null,
+                "prompt": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                "target": {
+                  "capability": "explanation",
+                  "expected_performance": "Distinguish moving time from total elapsed time",
+                  "learning_focus": "Whole-trip average speed",
+                  "object_refs": [],
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "source_id": "sample-book",
+                      "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                }
+              },
+              "presentation": null,
+              "presentations": null,
+              "scene": null,
+              "text": null
+            },
+            {
+              "action_ref": null,
+              "actor": "teacher",
+              "answer": null,
+              "before_receipt": null,
+              "delivery_ref": "om6-seen:turn_f42ba25b56b15c1d",
+              "feedback": null,
+              "kind": "help_displayed",
+              "move": null,
+              "presentation": null,
+              "presentations": null,
+              "scene": null,
+              "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。"
+            }
+          ],
+          "expressions": [
+            {
+              "assistance_refs": [
+                "om6-seen:turn_f42ba25b56b15c1d"
+              ],
+              "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+              "invitation_context_ref": null,
+              "presentations": [],
+              "response_origin": null,
+              "scene": null,
+              "support_delivery_refs": [
+                "delivery:turn_f42ba25b56b15c1d:om6-help"
+              ],
+              "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。"
+            }
+          ],
+          "interpretations": [],
+          "unavailable_basis_refs": [],
+          "unknown_when_absent": true
+        },
+        "learning_opportunity": {
+          "continuity": {
+            "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+            "content_char_budget": 6000,
+            "open_questions": [],
+            "previous_work": [
+              {
+                "action_ref": null,
+                "assessment_ref": null,
+                "assessment_status": "unassessed",
+                "assistance_refs": [
+                  "om6-seen:turn_f42ba25b56b15c1d"
+                ],
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "turn_id": "turn_f42b9f5b56b15704",
+                  "tutor_session_id": "tutor-begin-1"
+                },
+                "delivery_ref": null,
+                "evidence_refs": [],
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+                ],
+                "help": [
+                  {
+                    "actor": "teacher",
+                    "content_excerpt": {
+                      "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                      "truncated": false
+                    },
+                    "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+                  },
+                  {
+                    "content_excerpt": {
+                      "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                      "truncated": false
+                    },
+                    "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+                  }
+                ],
+                "help_truncated": false,
+                "historical": false,
+                "learner_quote_excerpt": {
+                  "text": "我倾向减少停站，但必要的休息要保留。",
+                  "truncated": false
+                },
+                "presentation_receipt": null,
+                "published_book_ref": null,
+                "response_origin": null,
+                "saved_state_ref": null,
+                "source_refs": [
+                  {
+                    "evidence_range": {
+                      "end_lid": "1.1",
+                      "start_lid": "1.1"
+                    },
+                    "publication_id": null,
+                    "source_id": "sample-book",
+                    "source_ref_id": null,
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+                  }
+                ],
+                "support_delivery_refs": [
+                  "delivery:turn_f42ba25b56b15c1d:om6-help"
+                ]
+              },
+              {
+                "action_ref": null,
+                "assessment_ref": null,
+                "assessment_status": "unassessed",
+                "assistance_refs": [
+                  "om6-seen:turn_f42ba25b56b15c1d"
+                ],
+                "attempt": null,
+                "binding": {
+                  "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+                  "control_revision": 2,
+                  "session_revision": 1,
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "turn_id": "turn_f42ba05b56b158b7",
+                  "tutor_session_id": "tutor-begin-1"
+                },
+                "delivery_ref": null,
+                "evidence_refs": [],
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+                ],
+                "help": [
+                  {
+                    "actor": "teacher",
+                    "content_excerpt": {
+                      "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                      "truncated": false
+                    },
+                    "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+                  },
+                  {
+                    "content_excerpt": {
+                      "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                      "truncated": false
+                    },
+                    "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+                  }
+                ],
+                "help_truncated": false,
+                "historical": false,
+                "learner_quote_excerpt": {
+                  "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+                  "truncated": false
+                },
+                "presentation_receipt": null,
+                "published_book_ref": null,
+                "response_origin": null,
+                "saved_state_ref": null,
+                "source_refs": [
+                  {
+                    "evidence_range": {
+                      "end_lid": "1.1",
+                      "start_lid": "1.1"
+                    },
+                    "publication_id": null,
+                    "source_id": "sample-book",
+                    "source_ref_id": null,
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+                  }
+                ],
+                "support_delivery_refs": [
+                  "delivery:turn_f42ba25b56b15c1d:om6-help"
+                ]
+              }
+            ],
+            "read_more": [
+              {
+                "arguments": {
+                  "event_id": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+                  "operation": "trace"
+                },
+                "tool": "tutor.step"
+              },
+              {
+                "arguments": {
+                  "event_id": "om6-seen:turn_f42ba25b56b15c1d",
+                  "operation": "trace"
+                },
+                "tool": "tutor.step"
+              },
+              {
+                "arguments": {
+                  "event_id": "delivery:turn_f42ba25b56b15c1d:om6-help",
+                  "operation": "trace"
+                },
+                "tool": "tutor.step"
+              },
+              {
+                "arguments": {
+                  "event_id": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+                  "operation": "trace"
+                },
+                "tool": "tutor.step"
+              }
+            ],
+            "scope": {
+              "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+              "focus_block_refs": [
+                "total-time",
+                "average-speed",
+                "two-levers"
+              ],
+              "learning_workspace_id": null,
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "tutor_session_id": "tutor-begin-1",
+              "workspace_goal_revision": null
+            },
+            "teaching_implications": [],
+            "truncated": false
+          },
+          "delivered_support": [
+            {
+              "answer_preview": {
+                "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                "truncated": false
+              },
+              "block_refs": [
+                "total-time"
+              ],
+              "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+              "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+              "displayed_help": [
+                {
+                  "action_ref": null,
+                  "actor": "teacher",
+                  "before_receipt": null,
+                  "fact_ref": "om6-seen:turn_f42ba25b56b15c1d",
+                  "scene": null,
+                  "text_preview": {
+                    "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                    "truncated": false
+                  }
+                }
+              ],
+              "learner_expressions": [
+                {
+                  "assistance_refs": [
+                    "om6-seen:turn_f42ba25b56b15c1d"
+                  ],
+                  "expression_preview": {
+                    "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+                    "truncated": false
+                  },
+                  "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+                  "fact_refs": [
+                    "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+                  ],
+                  "interpretations": [],
+                  "invitation_context_ref": null,
+                  "response_origin": null,
+                  "scene": null,
+                  "support_delivery_refs": [
+                    "delivery:turn_f42ba25b56b15c1d:om6-help"
+                  ]
+                },
+                {
+                  "assistance_refs": [
+                    "om6-seen:turn_f42ba25b56b15c1d"
+                  ],
+                  "expression_preview": {
+                    "text": "我倾向减少停站，但必要的休息要保留。",
+                    "truncated": false
+                  },
+                  "fact_ref": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+                  "fact_refs": [
+                    "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+                  ],
+                  "interpretations": [],
+                  "invitation_context_ref": null,
+                  "response_origin": null,
+                  "scene": null,
+                  "support_delivery_refs": [
+                    "delivery:turn_f42ba25b56b15c1d:om6-help"
+                  ]
+                }
+              ],
+              "participation": {
+                "choice": "support",
+                "learner_inference": null,
+                "reason": "The fixture delivers an explanation without requesting a new response.",
+                "support": "The complete journey includes stopped time as well as moving time."
+              },
+              "presentation": null,
+              "presentation_support": null,
+              "responding_to_expressions": [],
+              "response_expectation": null,
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Distinguish moving time from total elapsed time",
+                "learning_focus": "Whole-trip average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "sample-book",
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                    "start_lid": "1.1"
+                  }
+                ]
+              },
+              "teacher_actions": []
+            }
+          ],
+          "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+          "focus_block_refs": [
+            "total-time",
+            "average-speed",
+            "two-levers"
+          ],
+          "interpretation_refs": [],
+          "pending_response_invitation": null,
+          "return_context": null,
+          "unknown_when_absent": true
+        },
+        "path_progress": [],
+        "pending_activity": null,
+        "pending_assessment_refs": [],
+        "pending_response_invitation": null,
+        "projection_watermark": 0,
+        "stale": false,
+        "uninterpreted_fact_refs": [
+          "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+          "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+          "usage:tutor-begin-1:user:turn_f42ba25b56b15c1d"
+        ],
+        "unknown_when_absent": true
+      },
+      "limitations": [],
+      "material_scope": [
+        {
+          "role": "primary",
+          "scope_refs": [],
+          "source_id": "sample-book"
+        }
+      ],
+      "object_count": 0,
+      "objects": [],
+      "recent_facts": [
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 1,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42ba05b56b158b7",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "om6-next",
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42ba05b56b158b7"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": [
+            "delivery:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "Compare total distance and total time.",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42b9f5b56b15704",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+          ],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_f42b9f5b56b15704",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "now",
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42b9f5b56b15704"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 1,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42b9f5b56b15704",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "om6-response",
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42b9f5b56b15704"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "我倾向减少停站，但必要的休息要保留。",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": [
+            "delivery:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42ba25b56b15c1d",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [
+            "delivery:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "om6-seen:turn_f42ba25b56b15c1d",
+          "help_preview": {
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "help_displayed",
+          "move_id": null,
+          "occurred_at": "before-response",
+          "original_ref": null,
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42ba25b56b15c1d",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": [
+            "total-time"
+          ],
+          "causal_refs": [
+            "move:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "continuation": null,
+          "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+          "event_id": "delivery:turn_f42ba25b56b15c1d:om6-help",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "message_delivered",
+          "move_id": "om6-help",
+          "occurred_at": "now",
+          "original_ref": null,
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Distinguish moving time from total elapsed time",
+            "learning_focus": "Whole-trip average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "usage": null
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42ba25b56b15c1d",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [
+            "usage:tutor-begin-1:user:turn_f42ba25b56b15c1d"
+          ],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:assistant:turn_f42ba25b56b15c1d",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "now",
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42ba25b56b15c1d"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": {
+            "kind": "assistant_delivery"
+          }
+        },
+        {
+          "action": null,
+          "answer_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "assistance_count": 0,
+          "attempt": null,
+          "binding": {
+            "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "control_revision": 2,
+            "session_revision": 1,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "turn_id": "turn_f42ba25b56b15c1d",
+            "tutor_session_id": "tutor-begin-1"
+          },
+          "block_refs": null,
+          "causal_refs": [],
+          "continuation": null,
+          "design_ref": null,
+          "event_id": "usage:tutor-begin-1:user:turn_f42ba25b56b15c1d",
+          "help_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "interaction": null,
+          "invitation_context_ref": null,
+          "kind": "usage_observed",
+          "move_id": null,
+          "occurred_at": "om6-first",
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42ba25b56b15c1d"
+          },
+          "presentation_follow_up": null,
+          "prompt_preview": {
+            "text": "null",
+            "truncated": false
+          },
+          "responds_to": null,
+          "response_expectation": null,
+          "response_origin": null,
+          "response_preview": {
+            "text": "平时请简单一些，少推导公式。我倾向于减少停站。",
+            "truncated": false
+          },
+          "scene_receipt": null,
+          "scene_visible_step": null,
+          "support_delivery_refs": null,
+          "target": null,
+          "usage": {
+            "kind": "user_message"
+          }
+        }
+      ],
+      "status": "active",
+      "teaching_assets": {
+        "cognitive_materials": {
+          "status": "missing"
+        },
+        "formal_objects": {
+          "status": "missing"
+        },
+        "limitations": [],
+        "reason": "正式教学素材尚未发布",
+        "source_id": "sample-book",
+        "status": "preparing",
+        "teaching_map_revision": null
+      },
+      "user_intent": "理解当前阅读材料；从当前问题或阅读位置开始",
+      "workspace_goal_revision": null
+    },
+    "design_example": {
+      "design": {
+        "basis_refs": [],
+        "blocks": [
+          {
+            "block_id": "total-time",
+            "purpose": "Compare journeys even when one moves faster but stops.",
+            "relation": "Whole-trip time includes time spent stopped.",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "focus_block_refs": [
+          "total-time"
+        ],
+        "open_question_refs": [],
+        "organizing_model": "A trip is one total distance and all elapsed time; moving speed alone cannot tell us its average.",
+        "previous_ref": null,
+        "representation": {
+          "kind": "text",
+          "reason": "The current relationship can be established with the short trip example."
+        },
+        "revision_reason": "Make the time denominator visible before comparing speeds.",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "Distinguish moving time from total elapsed time",
+          "learning_focus": "Whole-trip average speed",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "operation": "design",
+      "operation_id": "om6-next"
+    },
+    "evidence": {
+      "displayed_help": {
+        "binding": {
+          "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "turn_id": "turn_f42ba25b56b15c1d",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [
+          "delivery:turn_f42ba25b56b15c1d:om6-help"
+        ],
+        "event_id": "om6-seen:turn_f42ba25b56b15c1d",
+        "kind": "help_displayed",
+        "occurred_at": "before-response",
+        "payload": {
+          "actor": "teacher",
+          "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+          "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。"
+        }
+      },
+      "original_expression": {
+        "binding": {
+          "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+          "control_revision": 2,
+          "session_revision": 1,
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "turn_id": "turn_f42b9f5b56b15704",
+          "tutor_session_id": "tutor-begin-1"
+        },
+        "causal_refs": [],
+        "event_id": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+        "kind": "usage_observed",
+        "occurred_at": "om6-response",
+        "payload": {
+          "assistance_refs": [
+            "om6-seen:turn_f42ba25b56b15c1d"
+          ],
+          "interaction": null,
+          "original_ref": {
+            "book_id": "sample-book",
+            "kind": "chat_turn",
+            "session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+            "turn_id": "turn_f42b9f5b56b15704"
+          },
+          "presentation_follow_up": null,
+          "response": "我倾向减少停站，但必要的休息要保留。",
+          "response_origin": null,
+          "support_delivery_refs": [
+            "delivery:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "usage": {
+            "kind": "user_message"
+          }
+        }
+      }
+    },
+    "request": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+    "source": "Average speed is total distance divided by total time. Equal distances need not take equal times. Th",
+    "tool_contract": {
+      "description": "Select one source-grounded move after reading original text this turn with book tools. Supply target with learning_focus, expected_performance, capability, exact source_bindings (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates. Examples use an average-speed teaching fixture, not learner facts. Replace its content, locations and references with actual material and events from this turn; read the source before selecting or interpreting.",
+      "name": "tutor.step",
+      "parameters": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "material"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "event_id": {},
+              "operation": {
+                "enum": [
+                  "trace"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "design": {},
+              "operation": {
+                "enum": [
+                  "design"
+                ]
+              },
+              "operation_id": {}
+            },
+            "required": [
+              "operation",
+              "operation_id",
+              "design"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "delivery_move_refs": {},
+              "move": {},
+              "operation": {
+                "enum": [
+                  "select"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "move"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "operation": {
+                "enum": [
+                  "outside"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action_ref": {},
+              "operation": {
+                "enum": [
+                  "assess"
+                ]
+              }
+            },
+            "required": [
+              "operation",
+              "action_ref"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "after": {},
+              "evidence_ref": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "understanding"
+                ]
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action_ref": {},
+              "interpretation": {},
+              "object_id": {},
+              "operation": {
+                "enum": [
+                  "evidence"
+                ]
+              },
+              "operation_id": {},
+              "response_quote": {},
+              "sources": {},
+              "supersedes": {}
+            },
+            "required": [
+              "operation",
+              "action_ref",
+              "object_id",
+              "operation_id",
+              "response_quote",
+              "sources",
+              "interpretation"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "block_refs": {},
+              "design_ref": {},
+              "fact_refs": {},
+              "interpretation": {},
+              "nature": {
+                "enum": [
+                  "hypothesis"
+                ]
+              },
+              "operation": {
+                "enum": [
+                  "evidence"
+                ]
+              },
+              "operation_id": {},
+              "supersedes": {},
+              "target": {},
+              "teaching_implication": {}
+            },
+            "required": [
+              "operation",
+              "nature",
+              "operation_id",
+              "target",
+              "fact_refs",
+              "interpretation",
+              "teaching_implication"
+            ]
+          }
+        ],
+        "examples": [
+          {
+            "operation": "material"
+          },
+          {
+            "after": 0,
+            "operation": "trace"
+          },
+          {
+            "design": {
+              "blocks": [
+                {
+                  "block_id": "total-time",
+                  "purpose": "Distinguish whole-journey average speed from moving-only speed.",
+                  "relation": "Time spent stopped still belongs to the whole journey.",
+                  "source_bindings": [
+                    {
+                      "end_lid": "1.1",
+                      "start_lid": "1.1"
+                    }
+                  ]
+                }
+              ],
+              "focus_block_refs": [
+                "total-time"
+              ],
+              "organizing_model": "A journey's average speed compares distance with all time spent on that journey.",
+              "representation": {
+                "kind": "text",
+                "reason": "One concrete journey and its stop make the missing time relationship usable in a short comparison."
+              },
+              "revision_reason": "Initial design for the learner's current request.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Explain why total time is the denominator",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "design",
+            "operation_id": "design-speed"
+          },
+          {
+            "move": {
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Picture the journey from departure to arrival: 10 minutes moving, then 5 minutes stopped before you arrive. The clock for this whole journey keeps running during the stop. Its elapsed time is therefore 15 minutes. That is the time used for this journey's average speed.",
+              "design_ref": "design:accepted-speed",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "explain",
+              "move_id": "explain-speed",
+              "object_ids": [],
+              "participation": {
+                "choice": "support",
+                "learner_inference": "Use that time boundary to decide whether a longer stop changes the whole-trip average when distance stays fixed.",
+                "reason": "The learner has not yet connected whole-trip time to time spent stopped; provide that connection first.",
+                "support": "The journey begins on departure and ends on arrival, so its elapsed time includes the stop."
+              },
+              "prompt": "Follow one journey on a timeline: 10 minutes moving and then 5 minutes stopped before arrival. Show that both intervals belong to this same journey. Establish that connection here without also introducing comparisons between journeys.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Connect the stopped interval to the elapsed time of this same whole journey.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "actions": [
+                "request_hint",
+                "reveal"
+              ],
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Whole-trip average speed is distance divided by all elapsed time. Both the time moving and the time stopped belong to that elapsed time. For 10 km with 10 minutes moving and 5 stopped, that means dividing 10 km by 15 minutes.",
+              "design_ref": "design:accepted-speed",
+              "explanation": "Total elapsed time rises from 15 to 18 minutes while the 10 km distance stays fixed, so whole-trip average speed falls.",
+              "hint": "Keep the 10 km numerator fixed and compare total elapsed time.",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "compare",
+              "move_id": "compare-times",
+              "object_ids": [],
+              "participation": {
+                "choice": "invite",
+                "learner_inference": "Whether a longer stop changes whole-trip average speed when distance and moving time stay fixed.",
+                "reason": "The learner can use the supplied whole-trip relationship to judge a changed stop, making the uncertain time connection visible.",
+                "support": "First supply total distance divided by all elapsed time, and identify moving and stopped time as parts of that elapsed time."
+              },
+              "prompt": "Make clear that whole-trip time includes moving and stopped time. Leave the learner to decide what happens to average speed when the same journey has a longer stop.",
+              "response_expectation": {
+                "block_refs": [
+                  "total-time"
+                ],
+                "public_prompt": "For the same 10 km journey, keep moving time fixed at 10 minutes and change only the stop from 5 to 8 minutes. Would whole-trip average speed rise, fall or stay the same? What changed in the relationship?"
+              },
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Use the supplied whole-trip time relationship to predict average speed when only the stop becomes longer.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "actions": [
+                "submit",
+                "reveal"
+              ],
+              "assessment": {
+                "feedback": "after_submit",
+                "rule": {
+                  "items": [
+                    {
+                      "criterion": "Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.",
+                      "id": "total-time",
+                      "source_lids": [
+                        "1.1"
+                      ]
+                    }
+                  ],
+                  "kind": "open"
+                },
+                "source_lids": [
+                  "1.1"
+                ],
+                "source_sufficient": true
+              },
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Whole-trip average speed is distance divided by all elapsed time, including stops. A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
+              "design_ref": "design:accepted-speed",
+              "explanation": "For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "question",
+              "move_id": "compare-journey-times",
+              "object_ids": [],
+              "participation": {
+                "choice": "invite",
+                "learner_inference": "Whether faster movement alone establishes a higher whole-trip average speed for these two journeys.",
+                "reason": "A comparison can distinguish moving-only speed from the whole-trip relationship after its premises are available.",
+                "support": "Supply average speed as distance divided by all elapsed time; the prompt supplies equal distances, moving times and the stop."
+              },
+              "prompt": "A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Use total elapsed time, including a stop, to judge whether higher moving speed implies higher whole-trip average speed for equal-distance journeys.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "You connected the stop to the time of this whole journey: the journey has not ended while the traveler is stopped, so that interval belongs in its elapsed time. That explains the denominator in this example.",
+              "design_ref": "design:accepted-speed",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "explain",
+              "move_id": "acknowledge-total-time",
+              "object_ids": [],
+              "participation": {
+                "choice": "conclude",
+                "reason": "The learner has already supplied the relevant relationship and reason for the current example; no further attempt is needed for this request."
+              },
+              "prompt": "Acknowledge the learner's stated connection between the stop and whole-trip time in this example, without claiming wider independent application.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Connect the stopped interval to the elapsed time of this same whole journey.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Draw two columns on paper: distance and elapsed time. For a 10 km ride lasting 10 minutes, put 10 km and 10 minutes on the first row. For a 5 minute stop, put 0 km and 5 minutes on the next row. Add each column: this journey covers 10 km in 15 minutes, including the stop. These totals supply the distance and time for average speed.",
+              "design_ref": "design:accepted-speed",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "explain",
+              "move_id": "start-journey-table",
+              "object_ids": [],
+              "participation": {
+                "choice": "support",
+                "learner_inference": null,
+                "reason": "The current obstacle is how to start the table; supply a usable method without diagnosing a conceptual error.",
+                "support": "Place each interval's distance and time on the same row, include the stop, then add each column."
+              },
+              "prompt": "Help the learner start a paper journey table before asking them to compare journeys.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Connect the stopped interval to the elapsed time of this same whole journey.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Compare plans using the same route distance and all elapsed time, including stops. Shorter stops can reduce total time; faster movement can also reduce it when road and safety conditions permit. Preserve any necessary rest stops. List moving time, stopped time and feasibility for each plan, then explain which constraints make a plan useful. Both changes may be combined; the average-speed relationship alone does not choose a unique plan.",
+              "design_ref": "design:accepted-speed",
+              "intent_origin": "neutral",
+              "interaction_intent": "neutral",
+              "kind": "compare",
+              "move_id": "compare-journey-options",
+              "object_ids": [],
+              "participation": {
+                "choice": "support",
+                "learner_inference": null,
+                "reason": "The learner asks for open plan analysis, so supply comparison criteria and reasons before requesting a decision.",
+                "support": "Compare total times and feasibility under the same distance and accepted constraints; retain multiple justified choices."
+              },
+              "prompt": "Give a framework for comparing travel plans under the learner's constraints; several plans may be reasonable.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Connect the stopped interval to the elapsed time of this same whole journey.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "move": {
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "delivery_text": "Define the average speed as the constant speed that would cover the same total distance d during the same elapsed time T. A constant speed v covers vT, so matching this journey gives vT = d. With T positive, dividing both sides by T gives v = d/T. In the earlier 10 km journey, 10 minutes moving plus 5 stopped gives T = 15 minutes = 0.25 hours, so the whole-trip average is 10/0.25 = 40 km/h. The stop belongs to that elapsed interval even though it adds no distance.",
+              "design_ref": "design:accepted-speed",
+              "intent_origin": "current_request",
+              "intent_quote": "This time, derive the formula directly using the previous journey.",
+              "interaction_intent": "direct_explanation",
+              "kind": "explain",
+              "move_id": "derive-speed-on-request",
+              "object_ids": [],
+              "participation": {
+                "choice": "conclude",
+                "reason": "The current explicit request asks for the full derivation with the previous example; complete it without a preliminary test or a new invitation."
+              },
+              "prompt": "Use the earlier journey to derive the whole-trip average-speed formula at the requested depth, even if an earlier preference favored simple examples.",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Connect the stopped interval to the elapsed time of this same whole journey.",
+                "learning_focus": "Average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "operation": "select"
+          },
+          {
+            "operation": "outside"
+          },
+          {
+            "action_ref": "action:to3-open",
+            "operation": "assess"
+          },
+          {
+            "operation": "understanding"
+          },
+          {
+            "action_ref": "action:to3-discrimination",
+            "interpretation": "The response distinguishes a source-supported quantity from an unsupported property.",
+            "object_id": "speed",
+            "operation": "evidence",
+            "operation_id": "to3-discrimination-evidence",
+            "response_quote": "The source supports total distance",
+            "sources": [
+              {
+                "lid": "1.1",
+                "quote": "total distance"
+              }
+            ]
+          },
+          {
+            "fact_refs": [
+              "action:to3-discrimination"
+            ],
+            "interpretation": "The response names total distance but leaves the role of total time unknown.",
+            "nature": "hypothesis",
+            "operation": "evidence",
+            "operation_id": "to3-hypothesis",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Explain why total time is the denominator",
+              "learning_focus": "Average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "teaching_implication": "Make the time relationship usable, then judge whether one unsolved application would clarify the learner's connection or whether the current request is already complete."
+          }
+        ],
+        "properties": {
+          "action_ref": {
+            "description": "An actual response event_id from context or trace. assess requires an unassessed formal submit/revise with a frozen open rubric; it runs one isolated, budgeted evaluator. Ungraded evidence requires a response to an evaluation activity with a formal object and no scoring contract.",
+            "type": "string"
+          },
+          "after": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "delivery_move_refs": {
+            "description": "select: exact earlier selections from this turn still included in the final support. Omission delivers only the new selection. Superseded plans are not deliveries.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "design": {
+            "additionalProperties": false,
+            "properties": {
+              "basis_refs": {
+                "default": [],
+                "description": "Actual learner-expression fact refs or current understanding evidence refs whose original expressions can be resolved. Delivered answers, displayed pages and clicks are support context, not understanding bases. An empty list is valid when choosing an explanation without a learner diagnosis.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "blocks": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "block_id": {
+                      "type": "string"
+                    },
+                    "purpose": {
+                      "description": "What understanding or useful judgment this connection enables. For chapter guidance, connect it to the selected question rather than listing a topic to cover.",
+                      "type": "string"
+                    },
+                    "relation": {
+                      "description": "A usable connection with its decisive conditions. Separate connections that the learner may need help establishing independently, rather than putting a whole topic and its cases inside one block.",
+                      "type": "string"
+                    },
+                    "source_bindings": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_lid": {
+                            "type": "string"
+                          },
+                          "source_id": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "source_revision": {
+                            "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                            "type": "string"
+                          },
+                          "start_lid": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "end_lid",
+                          "start_lid"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "block_id",
+                    "purpose",
+                    "relation",
+                    "source_bindings"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "connections": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "focus_block_refs": {
+                "description": "Current working scope, chosen from the learner's expressed foothold and unresolved connection. Moves and presentations must stay within it; revise the design before changing focus. Other blocks remain available for later work without being explained now.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "open_question_refs": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "organizing_model": {
+                "description": "The subject-matter relationship and current question guiding this plan, not a second learner profile. Any claim about this learner's understanding must follow the actual expressions resolved in learner_grounding; delivered help is not evidence of understanding. Keep unobserved understanding unknown while explaining the current question.",
+                "type": "string"
+              },
+              "previous_ref": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "representation": {
+                "description": "Choose how to make this connection usable from the actual confusion. text: why prose or an inline comparison suffices. presentation: why a persistent visible example helps and what concrete relationship the learner can observe, compare or change. It need not be requested by the learner. An accepted presentation choice exposes the page authoring tool in the next sampling. Existing page observations can support later text feedback without rebuilding the page.",
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "text"
+                        ],
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "reason"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "presentation"
+                        ],
+                        "type": "string"
+                      },
+                      "observation": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "observation",
+                      "reason"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "return_to": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "block_refs": {
+                        "default": [],
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "invitation_ref": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "scene_ref": {
+                        "description": "Teaching event_id carrying the saved page observation, such as a user usage fact with presentation_follow_up or a displayed/action fact with scene. Read that fact with tutor.step trace to return to its exact scene. This is not the receipt's saved_state_ref or a presentation_id.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revision_reason": {
+                "description": "Explain which current request or original expression changes the support, depth or focus. Use basis_refs for actual expression/evidence references from continuity; current explicit requests take precedence over historical teaching_implication or preferences. Preserve historical facts and help conditions.",
+                "type": "string"
+              },
+              "target": {
+                "additionalProperties": false,
+                "description": "A source-grounded focus; formal object identity is optional.",
+                "properties": {
+                  "capability": {
+                    "type": "string"
+                  },
+                  "expected_performance": {
+                    "description": "The source-grounded connection this support helps the learner explain or use now, under its decisive conditions and available help. Keep the working target reachable from their actual expression; the whole topic need not be completed in this delivery. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in private explanation or assessment. Accept equivalent wording; this is a revisable plan, not an answer phrase to reproduce.",
+                    "type": "string"
+                  },
+                  "learning_focus": {
+                    "type": "string"
+                  },
+                  "object_refs": {
+                    "default": [],
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "object_id": {
+                          "type": "string"
+                        },
+                        "object_revision": {
+                          "format": "uint64",
+                          "minimum": 0.0,
+                          "type": "integer"
+                        },
+                        "source_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "object_id",
+                        "object_revision",
+                        "source_id"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "source_bindings": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "end_lid": {
+                          "type": "string"
+                        },
+                        "source_id": {
+                          "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                          "type": "string"
+                        },
+                        "source_revision": {
+                          "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                          "type": "string"
+                        },
+                        "start_lid": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "end_lid",
+                        "start_lid"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "capability",
+                  "expected_performance",
+                  "learning_focus",
+                  "source_bindings"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "blocks",
+              "focus_block_refs",
+              "organizing_model",
+              "revision_reason",
+              "target",
+              "representation"
+            ],
+            "type": "object"
+          },
+          "design_ref": {
+            "description": "Exact accepted design revision for this interpretation.",
+            "type": "string"
+          },
+          "event_id": {
+            "description": "Read one exact trace event in bounded JSON text chunks; after is its character offset. Without event_id, after is the trace cursor.",
+            "type": "string"
+          },
+          "evidence_ref": {
+            "description": "Read one evidence interpretation with operation=understanding; after is the character offset.",
+            "type": "string"
+          },
+          "fact_refs": {
+            "description": "Actual learner-expression event_ids from the current context or trace. UI clicks and assistant deliveries cannot support a hypothesis.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "interpretation": {
+            "description": "What the learner actually expressed, with the help received and what remains unconfirmed. Missing detail alone is not a misconception. For nature=hypothesis provide target, fact_refs and teaching_implication; supersedes replaces an earlier unsupported or outdated interpretation.",
+            "type": "string"
+          },
+          "move": {
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "request_hint"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "hint": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "hint"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "reveal"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "explanation": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "explanation"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "assessment": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "assessment"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "actions": {
+                      "contains": {
+                        "enum": [
+                          "submit"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "actions"
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "actions": {
+                "items": {
+                  "enum": [
+                    "submit",
+                    "revise",
+                    "request_hint",
+                    "reveal",
+                    "skip",
+                    "self_report"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "assessment": {
+                "additionalProperties": false,
+                "description": "Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID]}]},source_lids:[LID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Use only source text read this turn. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately.",
+                "properties": {
+                  "feedback": {
+                    "description": "Criterion-level feedback is private until the learner explicitly reveals it.",
+                    "enum": [
+                      "after_submit",
+                      "on_reveal"
+                    ],
+                    "type": "string"
+                  },
+                  "rule": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "description": "Canonical choice tokens, submitted as a JSON array (or a single token).",
+                        "properties": {
+                          "choices": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "correct": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "kind": {
+                            "enum": [
+                              "choice_set"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "choices",
+                          "correct",
+                          "kind"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "items": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "criterion": {
+                                  "description": "Includes necessary conditions, accepted equivalents and permitted omissions.",
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "source_lids": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "required": [
+                                "criterion",
+                                "id",
+                                "source_lids"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "kind": {
+                            "enum": [
+                              "open"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "items",
+                          "kind"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "source_lids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source_sufficient": {
+                    "description": "An explicitly incomplete source cannot justify a correctness judgment.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "feedback",
+                  "rule",
+                  "source_lids",
+                  "source_sufficient"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "block_refs": {
+                "description": "Relationships actually supported by this move, within the current design's focus_block_refs. Its response invitation must stay within these relationships too.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "capability": {
+                "type": "string"
+              },
+              "continuation": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Optional future help AFTER this answer. Draft the full current explanation first; then prefer one genuinely distinct next step. Omit continuation entirely when no new in-scope insight remains. An alternative is useful only when it offers a different learning choice.",
+                    "properties": {
+                      "options": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "label": {
+                              "description": "A concrete request the reader can choose, phrased as the reader's action. Offer a new comparison, changed condition or observation within the parent target, not an explanation or worked example already in move.prompt.",
+                              "maxLength": 240,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "move_kind": {
+                              "enum": [
+                                "explain",
+                                "compare",
+                                "observe"
+                              ],
+                              "type": "string"
+                            },
+                            "option_id": {
+                              "maxLength": 64,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "purpose": {
+                              "description": "State the specific NEW insight beyond this turn's completed explanation and how it serves the accepted workspace goal and constraints when present. If this benefit is already delivered by move.prompt, remove the option. Repeating the same calculation with different numbers is not a new insight. Do not continue a stage belonging to an older goal version.",
+                              "maxLength": 240,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "option_id",
+                            "label",
+                            "purpose",
+                            "move_kind"
+                          ],
+                          "type": "object"
+                        },
+                        "maxItems": 2,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "recommended_option_id": {
+                        "maxLength": 64,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "recommended_option_id",
+                      "options"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "delivery_text": {
+                "description": "Exact public teaching body to deliver, including usable support and source references. This accepted text is the final body, not a plan for later generation. Keep ordinary invitation wording only in response_expectation.public_prompt; the runtime appends it once. Do not solve learner_inference here. Revise with select before final delivery when needed.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "design_ref": {
+                "description": "Exact accepted current design_ref already consumed in an earlier sampling.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "explanation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hint": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "intent_origin": {
+                "description": "current_action requires the frozen current_action snapshot. Its accepted_request is a public UI action, not user-authored text; omit intent_quote. For explain_selection use direct_explanation with kind=explain; for continue_answer use neutral even when kind=explain. current_request quotes only the real user_supplement, which takes priority over the UI action.",
+                "enum": [
+                  "current_request",
+                  "current_action",
+                  "session_default",
+                  "confirmed_preference",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              "intent_quote": {
+                "description": "Exact quote from current request when resolving an explicit interaction intent.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "interaction_intent": {
+                "enum": [
+                  "direct_explanation",
+                  "guided_inquiry",
+                  "neutral"
+                ],
+                "type": "string"
+              },
+              "interpretation_refs": {
+                "description": "Current evidence references actually adopted for this move; superseded interpretations cannot be adopted.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "kind": {
+                "enum": [
+                  "explain",
+                  "observe",
+                  "compare",
+                  "question",
+                  "source_focus"
+                ],
+                "type": "string"
+              },
+              "move_id": {
+                "type": "string"
+              },
+              "object_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "participation": {
+                "description": "The teacher's allocation of reasoning in this delivery, not the learner's intent.",
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "Supply a missing connection or help with an existing invitation; open no new task.",
+                    "properties": {
+                      "choice": {
+                        "enum": [
+                          "support"
+                        ],
+                        "type": "string"
+                      },
+                      "learner_inference": {
+                        "default": null,
+                        "description": "A useful connection still left to the learner after this help, if any. This is carried forward as unfinished work, not an invitation by itself.",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "reason": {
+                        "description": "Why the current expression and available support call for more help.",
+                        "type": "string"
+                      },
+                      "support": {
+                        "default": "",
+                        "description": "The missing connection supplied by this delivery, kept with the actual help.",
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "choice",
+                      "reason",
+                      "support",
+                      "learner_inference"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Leave one useful inference to the learner through response_expectation or a submit activity.",
+                    "properties": {
+                      "choice": {
+                        "enum": [
+                          "invite"
+                        ],
+                        "type": "string"
+                      },
+                      "learner_inference": {
+                        "description": "One manageable inference that the delivered support has not already answered.",
+                        "type": "string"
+                      },
+                      "reason": {
+                        "description": "Why trying this connection now would inform or advance this learner's understanding.",
+                        "type": "string"
+                      },
+                      "support": {
+                        "description": "Usable premises already available or supplied before the invitation in this delivery.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "choice",
+                      "learner_inference",
+                      "reason",
+                      "support"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "Finish the current request or acknowledge a sufficient attempt; open no new task.",
+                    "properties": {
+                      "choice": {
+                        "enum": [
+                          "conclude"
+                        ],
+                        "type": "string"
+                      },
+                      "reason": {
+                        "description": "Why the current request and actual expression need no further learner attempt now.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "choice",
+                      "reason"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "preference_ref": {
+                "description": "Confirmed preference fact_id from frozen context; only a weak default after current request and session mode.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "presentation": {
+                "properties": {
+                  "presentation_id": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "presentation_id",
+                  "revision"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "responds_to": {
+                "additionalProperties": false,
+                "properties": {
+                  "disposition": {
+                    "enum": [
+                      "continue",
+                      "addressed",
+                      "deferred"
+                    ],
+                    "type": "string"
+                  },
+                  "fact_refs": {
+                    "default": [],
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "invitation_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "disposition"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "response_expectation": {
+                "additionalProperties": false,
+                "properties": {
+                  "block_refs": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "public_prompt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "block_refs",
+                  "public_prompt"
+                ],
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "A source-grounded focus; formal object identity is optional.",
+                    "properties": {
+                      "capability": {
+                        "type": "string"
+                      },
+                      "expected_performance": {
+                        "description": "The source-grounded connection this support helps the learner explain or use now, under its decisive conditions and available help. Keep the working target reachable from their actual expression; the whole topic need not be completed in this delivery. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in private explanation or assessment. Accept equivalent wording; this is a revisable plan, not an answer phrase to reproduce.",
+                        "type": "string"
+                      },
+                      "learning_focus": {
+                        "type": "string"
+                      },
+                      "object_refs": {
+                        "default": [],
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "object_id": {
+                              "type": "string"
+                            },
+                            "object_revision": {
+                              "format": "uint64",
+                              "minimum": 0.0,
+                              "type": "integer"
+                            },
+                            "source_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "object_id",
+                            "object_revision",
+                            "source_id"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "source_bindings": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "end_lid": {
+                              "type": "string"
+                            },
+                            "source_id": {
+                              "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                              "type": "string"
+                            },
+                            "source_revision": {
+                              "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                              "type": "string"
+                            },
+                            "start_lid": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "end_lid",
+                            "start_lid"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "capability",
+                      "expected_performance",
+                      "learning_focus",
+                      "source_bindings"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Set the local working target when it changes. If omitted, reuse the latest delivered target for these relationships in the same design revision, otherwise use the accepted design target."
+              }
+            },
+            "required": [
+              "move_id",
+              "object_ids",
+              "capability",
+              "kind",
+              "prompt",
+              "interaction_intent",
+              "intent_origin"
+            ],
+            "type": "object"
+          },
+          "nature": {
+            "enum": [
+              "hypothesis"
+            ],
+            "type": "string"
+          },
+          "object_id": {
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "material",
+              "trace",
+              "design",
+              "select",
+              "outside",
+              "assess",
+              "understanding",
+              "evidence"
+            ],
+            "type": "string"
+          },
+          "operation_id": {
+            "description": "A new identity for this design revision or interpretation; retry the same input with the same identity.",
+            "type": "string"
+          },
+          "response_quote": {
+            "description": "Exact learner words from the referenced ungraded source-discrimination response.",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "properties": {
+                "lid": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "lid",
+                "quote"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "supersedes": {
+            "description": "An existing evidence_ref being revised, obtained from understanding.",
+            "type": "string"
+          },
+          "target": {
+            "additionalProperties": false,
+            "description": "A source-grounded focus; formal object identity is optional.",
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "expected_performance": {
+                "description": "The source-grounded connection this support helps the learner explain or use now, under its decisive conditions and available help. Keep the working target reachable from their actual expression; the whole topic need not be completed in this delivery. For a question, describe what to judge without stating its answer: this target is public. Store a prepared solution in private explanation or assessment. Accept equivalent wording; this is a revisable plan, not an answer phrase to reproduce.",
+                "type": "string"
+              },
+              "learning_focus": {
+                "type": "string"
+              },
+              "object_refs": {
+                "default": [],
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "object_id": {
+                      "type": "string"
+                    },
+                    "object_revision": {
+                      "format": "uint64",
+                      "minimum": 0.0,
+                      "type": "integer"
+                    },
+                    "source_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "object_id",
+                    "object_revision",
+                    "source_id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "source_bindings": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "end_lid": {
+                      "type": "string"
+                    },
+                    "source_id": {
+                      "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                      "type": "string"
+                    },
+                    "source_revision": {
+                      "description": "Omit: the runtime binds the current turn's source identity. If supplied, it must match the frozen Tutor binding; book.search_text source_revision identifies the search index, not the teaching source.",
+                      "type": "string"
+                    },
+                    "start_lid": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "end_lid",
+                    "start_lid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "capability",
+              "expected_performance",
+              "learning_focus",
+              "source_bindings"
+            ],
+            "type": "object"
+          },
+          "teaching_implication": {
+            "description": "A next step justified by the observed performance, help and remaining uncertainty in this task; revise when current evidence changes. It guides support only within its original scope and yields to the current explicit request. Assisted expression does not establish independent application; untested does not mean unable. Do not prescribe repeating source wording or a fixed teaching template.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "receipt": {
+    "design": {
+      "basis_refs": [
+        "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+      ],
+      "blocks": [
+        {
+          "block_id": "total-time",
+          "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+          "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        {
+          "block_id": "average-speed",
+          "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+          "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        {
+          "block_id": "two-levers",
+          "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+          "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      ],
+      "connections": [],
+      "focus_block_refs": [
+        "total-time",
+        "average-speed",
+        "two-levers"
+      ],
+      "open_question_refs": [],
+      "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+      "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+      "representation": {
+        "kind": "text",
+        "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+      },
+      "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+        "learning_focus": "同一路线缩短总时间的方案比较",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    },
+    "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+    "instruction": "This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding.",
+    "learner_context_update": {
+      "current_design": {
+        "design": {
+          "basis_refs": [
+            "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+          ],
+          "blocks": [
+            {
+              "block_id": "total-time",
+              "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+              "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "average-speed",
+              "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+              "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            {
+              "block_id": "two-levers",
+              "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+              "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          ],
+          "connections": [],
+          "focus_block_refs": [
+            "total-time",
+            "average-speed",
+            "two-levers"
+          ],
+          "open_question_refs": [],
+          "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+          "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+          "representation": {
+            "kind": "text",
+            "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+          },
+          "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+            "learning_focus": "同一路线缩短总时间的方案比较",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        },
+        "design_ref": "design:turn_f42ba05b56b158b7:om6-next"
+      },
+      "current_target": {
+        "capability": "explanation",
+        "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+        "learning_focus": "同一路线缩短总时间的方案比较",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+      "entries": [],
+      "evidence_watermark": 0,
+      "interpretations": [],
+      "learner_grounding": {
+        "delivered_support": [
+          {
+            "action_ref": null,
+            "actor": null,
+            "answer": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "before_receipt": null,
+            "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+            "feedback": null,
+            "kind": "message_delivered",
+            "move": {
+              "actions": [],
+              "block_refs": [
+                "total-time"
+              ],
+              "capability": "explanation",
+              "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+              "intent_origin": "neutral",
+              "intent_quote": null,
+              "interaction_intent": "neutral",
+              "interpretation_refs": [],
+              "kind": "compare",
+              "move_id": "om6-help",
+              "object_ids": [],
+              "preference_ref": null,
+              "presentation": null,
+              "prompt": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+              "target": {
+                "capability": "explanation",
+                "expected_performance": "Distinguish moving time from total elapsed time",
+                "learning_focus": "Whole-trip average speed",
+                "object_refs": [],
+                "source_bindings": [
+                  {
+                    "end_lid": "1.1",
+                    "source_id": "sample-book",
+                    "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                    "start_lid": "1.1"
+                  }
+                ]
+              }
+            },
+            "presentation": null,
+            "presentations": null,
+            "scene": null,
+            "text": null
+          },
+          {
+            "action_ref": null,
+            "actor": "teacher",
+            "answer": null,
+            "before_receipt": null,
+            "delivery_ref": "om6-seen:turn_f42ba25b56b15c1d",
+            "feedback": null,
+            "kind": "help_displayed",
+            "move": null,
+            "presentation": null,
+            "presentations": null,
+            "scene": null,
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。"
+          }
+        ],
+        "expressions": [
+          {
+            "assistance_refs": [
+              "om6-seen:turn_f42ba25b56b15c1d"
+            ],
+            "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+            "invitation_context_ref": null,
+            "presentations": [],
+            "response_origin": null,
+            "scene": null,
+            "support_delivery_refs": [
+              "delivery:turn_f42ba25b56b15c1d:om6-help"
+            ],
+            "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。"
+          }
+        ],
+        "interpretations": [],
+        "unavailable_basis_refs": [],
+        "unknown_when_absent": true
+      },
+      "learning_opportunity": {
+        "continuity": {
+          "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+          "content_char_budget": 6000,
+          "open_questions": [],
+          "previous_work": [
+            {
+              "action_ref": null,
+              "assessment_ref": null,
+              "assessment_status": "unassessed",
+              "assistance_refs": [
+                "om6-seen:turn_f42ba25b56b15c1d"
+              ],
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "turn_id": "turn_f42b9f5b56b15704",
+                "tutor_session_id": "tutor-begin-1"
+              },
+              "delivery_ref": null,
+              "evidence_refs": [],
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+              ],
+              "help": [
+                {
+                  "actor": "teacher",
+                  "content_excerpt": {
+                    "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                    "truncated": false
+                  },
+                  "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+                },
+                {
+                  "content_excerpt": {
+                    "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                    "truncated": false
+                  },
+                  "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+                }
+              ],
+              "help_truncated": false,
+              "historical": false,
+              "learner_quote_excerpt": {
+                "text": "我倾向减少停站，但必要的休息要保留。",
+                "truncated": false
+              },
+              "presentation_receipt": null,
+              "published_book_ref": null,
+              "response_origin": null,
+              "saved_state_ref": null,
+              "source_refs": [
+                {
+                  "evidence_range": {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  },
+                  "publication_id": null,
+                  "source_id": "sample-book",
+                  "source_ref_id": null,
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+                }
+              ],
+              "support_delivery_refs": [
+                "delivery:turn_f42ba25b56b15c1d:om6-help"
+              ]
+            },
+            {
+              "action_ref": null,
+              "assessment_ref": null,
+              "assessment_status": "unassessed",
+              "assistance_refs": [
+                "om6-seen:turn_f42ba25b56b15c1d"
+              ],
+              "attempt": null,
+              "binding": {
+                "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+                "control_revision": 2,
+                "session_revision": 1,
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "turn_id": "turn_f42ba05b56b158b7",
+                "tutor_session_id": "tutor-begin-1"
+              },
+              "delivery_ref": null,
+              "evidence_refs": [],
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+              ],
+              "help": [
+                {
+                  "actor": "teacher",
+                  "content_excerpt": {
+                    "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                    "truncated": false
+                  },
+                  "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+                },
+                {
+                  "content_excerpt": {
+                    "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                    "truncated": false
+                  },
+                  "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+                }
+              ],
+              "help_truncated": false,
+              "historical": false,
+              "learner_quote_excerpt": {
+                "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+                "truncated": false
+              },
+              "presentation_receipt": null,
+              "published_book_ref": null,
+              "response_origin": null,
+              "saved_state_ref": null,
+              "source_refs": [
+                {
+                  "evidence_range": {
+                    "end_lid": "1.1",
+                    "start_lid": "1.1"
+                  },
+                  "publication_id": null,
+                  "source_id": "sample-book",
+                  "source_ref_id": null,
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+                }
+              ],
+              "support_delivery_refs": [
+                "delivery:turn_f42ba25b56b15c1d:om6-help"
+              ]
+            }
+          ],
+          "read_more": [
+            {
+              "arguments": {
+                "event_id": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            },
+            {
+              "arguments": {
+                "event_id": "om6-seen:turn_f42ba25b56b15c1d",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            },
+            {
+              "arguments": {
+                "event_id": "delivery:turn_f42ba25b56b15c1d:om6-help",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            },
+            {
+              "arguments": {
+                "event_id": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+                "operation": "trace"
+              },
+              "tool": "tutor.step"
+            }
+          ],
+          "scope": {
+            "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+            "focus_block_refs": [
+              "total-time",
+              "average-speed",
+              "two-levers"
+            ],
+            "learning_workspace_id": null,
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "tutor_session_id": "tutor-begin-1",
+            "workspace_goal_revision": null
+          },
+          "teaching_implications": [],
+          "truncated": false
+        },
+        "delivered_support": [
+          {
+            "answer_preview": {
+              "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+              "truncated": false
+            },
+            "block_refs": [
+              "total-time"
+            ],
+            "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+            "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+            "displayed_help": [
+              {
+                "action_ref": null,
+                "actor": "teacher",
+                "before_receipt": null,
+                "fact_ref": "om6-seen:turn_f42ba25b56b15c1d",
+                "scene": null,
+                "text_preview": {
+                  "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                  "truncated": false
+                }
+              }
+            ],
+            "learner_expressions": [
+              {
+                "assistance_refs": [
+                  "om6-seen:turn_f42ba25b56b15c1d"
+                ],
+                "expression_preview": {
+                  "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+                  "truncated": false
+                },
+                "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+                ],
+                "interpretations": [],
+                "invitation_context_ref": null,
+                "response_origin": null,
+                "scene": null,
+                "support_delivery_refs": [
+                  "delivery:turn_f42ba25b56b15c1d:om6-help"
+                ]
+              },
+              {
+                "assistance_refs": [
+                  "om6-seen:turn_f42ba25b56b15c1d"
+                ],
+                "expression_preview": {
+                  "text": "我倾向减少停站，但必要的休息要保留。",
+                  "truncated": false
+                },
+                "fact_ref": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+                "fact_refs": [
+                  "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+                ],
+                "interpretations": [],
+                "invitation_context_ref": null,
+                "response_origin": null,
+                "scene": null,
+                "support_delivery_refs": [
+                  "delivery:turn_f42ba25b56b15c1d:om6-help"
+                ]
+              }
+            ],
+            "participation": {
+              "choice": "support",
+              "learner_inference": null,
+              "reason": "The fixture delivers an explanation without requesting a new response.",
+              "support": "The complete journey includes stopped time as well as moving time."
+            },
+            "presentation": null,
+            "presentation_support": null,
+            "responding_to_expressions": [],
+            "response_expectation": null,
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Distinguish moving time from total elapsed time",
+              "learning_focus": "Whole-trip average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            },
+            "teacher_actions": []
+          }
+        ],
+        "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+        "focus_block_refs": [
+          "total-time",
+          "average-speed",
+          "two-levers"
+        ],
+        "interpretation_refs": [],
+        "pending_response_invitation": null,
+        "return_context": null,
+        "unknown_when_absent": true
+      },
+      "path_progress": [],
+      "pending_activity": null,
+      "pending_assessment_refs": [],
+      "pending_response_invitation": null,
+      "projection_watermark": 0,
+      "stale": false,
+      "uninterpreted_fact_refs": [
+        "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+        "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+        "usage:tutor-begin-1:user:turn_f42ba25b56b15c1d"
+      ],
+      "unknown_when_absent": true
+    }
+  }
+}

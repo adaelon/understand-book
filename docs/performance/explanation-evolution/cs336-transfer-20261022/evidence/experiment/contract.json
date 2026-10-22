@@ -1,0 +1,52 @@
+{
+  "status": "frozen",
+  "frozen_on": "2026-10-22",
+  "purpose": "CS336 counterexample transfer: first natural author delivery on unseen tasks, using existing RSI/SE8 flow",
+  "authorization": {
+    "user_scope": "User authorized local same-model old/new heldout comparison; no production changes",
+    "limit_cny": 10,
+    "limit_origin": "Internal execution cap chosen for this experiment; not a user-specified amount",
+    "pricing": "Peak upper estimate: cache hit 0.04, cache miss 2, output 8 CNY per million; reserve worst case before each request"
+  },
+  "model": {
+    "request_name": "deepseek-v4-flash",
+    "output_tokens": null,
+    "limits": "Preserve frozen production per-request limits: Author 131072, ordinary author-unavailable chat 32768, unset auxiliary relay default 16384",
+    "served_model": "Record actual provider response for every call"
+  },
+  "limits": {"upstream_calls_per_task_arm": 32, "batch_upstream_calls": 256, "per_task_seconds": 1200},
+  "arms": {
+    "A": "Frozen current catalog revision 5; 9 method IDs, 10 versions",
+    "B": "Same code and existing methods; catalog revision 6 adds chart-reveal@3 selection cue, counterexample, runnable teacher example, adaptation and checks"
+  },
+  "tasks": {
+    "kv": {"input": "../heldout/author-input/01-kv-cache-memory.md"},
+    "alarm": {"input": "../heldout/author-input/02-factory-alarm-probability.md"}
+  },
+  "order": [
+    {"id":"kv-A1","task":"kv","arm":"A","repeat":1},
+    {"id":"kv-B1","task":"kv","arm":"B","repeat":1},
+    {"id":"alarm-B1","task":"alarm","arm":"B","repeat":1},
+    {"id":"alarm-A1","task":"alarm","arm":"A","repeat":1},
+    {"id":"kv-B2","task":"kv","arm":"B","repeat":2},
+    {"id":"kv-A2","task":"kv","arm":"A","repeat":2},
+    {"id":"alarm-A2","task":"alarm","arm":"A","repeat":2},
+    {"id":"alarm-B2","task":"alarm","arm":"B","repeat":2}
+  ],
+  "isolation": {
+    "source": "../common-source",
+    "candidate": "../candidate/freeze.json",
+    "author_input": "Identical input per task; no evaluator-only notes, no prior outputs or human fixes",
+    "method_selection": "Natural read_method selection; never force candidate reads or seed method_refs",
+    "history": "Fresh native memory/history/temp per run",
+    "teaching_review": "Tutor observing fixture; no active teaching-review loop; ordinary Author preview and delivery checks remain",
+    "production": "No deployment, no production workspace writes"
+  },
+  "outcomes": {
+    "primary": "First successful delivery within the initial natural user turn; normal self-preview and patch allowed",
+    "also_archive": "First write, all public tool calls/results, actual observed method reads, declared refs, first and final delivered versions, failures and usage",
+    "failure_policy": "No replacement or hidden retry. Ordinary generation failures retained; provider/budget/usage/timeout stops retain unstarted runs",
+    "evaluation": "Read actual rendered page and operate task controls against independent mathematical expectations. Judge whether objects/denominators are explained, one state connects diagrams and exact values, comparison is accurate, and reading route is coherent. Render 960x720,320x420,640x240. Preserve full derivation and lookup where useful. No automatic score or fixed short-video layout requirement",
+    "decision": "Candidate adoption requires observed transfer without material correctness or interaction regressions. No reads means natural uptake unproven; better appearance alone does not establish cause. Small batch is directional evidence only"
+  }
+}

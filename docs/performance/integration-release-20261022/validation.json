@@ -1,0 +1,103 @@
+{
+  "status": "passed",
+  "server": {
+    "unique_tests": 1159,
+    "final_outcomes": {
+      "ok": 1053,
+      "ignored": 106
+    },
+    "runs": [
+      {
+        "log": "server-tests.log",
+        "completed": {
+          "ok": 529,
+          "FAILED": 15,
+          "ignored": 14
+        },
+        "summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1158 filtered out; finished in 0.00s"
+        ]
+      },
+      {
+        "log": "server-continuation.log",
+        "completed": {
+          "ok": 506,
+          "ignored": 92,
+          "FAILED": 5
+        },
+        "summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1158 filtered out; finished in 0.00s",
+          "test result: FAILED. 505 passed; 5 failed; 92 ignored; 0 measured; 557 filtered out; finished in 324.85s"
+        ]
+      },
+      {
+        "log": "server-repaired.log",
+        "completed": {
+          "FAILED": 8,
+          "ok": 88,
+          "ignored": 3
+        },
+        "summary": [
+          "test result: FAILED. 88 passed; 8 failed; 3 ignored; 0 measured; 1060 filtered out; finished in 94.59s"
+        ]
+      },
+      {
+        "log": "server-final-repaired.log",
+        "completed": {
+          "ok": 6,
+          "FAILED": 2
+        },
+        "summary": [
+          "test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 1151 filtered out; finished in 28.67s"
+        ]
+      },
+      {
+        "log": "server-last-repaired.log",
+        "completed": {
+          "ok": 2
+        },
+        "summary": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1157 filtered out; finished in 21.03s"
+        ]
+      }
+    ],
+    "all_listed_tests_covered": true
+  },
+  "core": {
+    "total": 1484,
+    "passed_after_focused_repairs": 1482,
+    "skipped": 2,
+    "initial_failures_preserved": 15,
+    "focused_passes": [
+      6,
+      21,
+      39
+    ]
+  },
+  "reader": {
+    "total": 967,
+    "passed_after_focused_repairs": 967,
+    "initial_failed_mock_cases": 91,
+    "focused_two_files": 108
+  },
+  "admin": {
+    "passed": 65
+  },
+  "runtime": {
+    "passed": 807,
+    "ignored": 11
+  },
+  "desktop": {
+    "passed": 7,
+    "version": "0.3.6",
+    "native_webview2": "webview2.json"
+  },
+  "pdf_browser": {
+    "passed": 2,
+    "widths": [
+      1280,
+      390
+    ]
+  },
+  "model_requests": 0
+}

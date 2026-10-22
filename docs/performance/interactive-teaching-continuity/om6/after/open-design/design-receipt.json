@@ -1,0 +1,556 @@
+{
+  "design": {
+    "basis_refs": [
+      "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+    ],
+    "blocks": [
+      {
+        "block_id": "total-time",
+        "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+        "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      {
+        "block_id": "average-speed",
+        "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+        "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      },
+      {
+        "block_id": "two-levers",
+        "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+        "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "sample-book",
+            "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    ],
+    "connections": [],
+    "focus_block_refs": [
+      "total-time",
+      "average-speed",
+      "two-levers"
+    ],
+    "open_question_refs": [],
+    "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+    "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+    "representation": {
+      "kind": "text",
+      "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+    },
+    "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+      "learning_focus": "同一路线缩短总时间的方案比较",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "start_lid": "1.1"
+        }
+      ]
+    }
+  },
+  "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+  "instruction": "This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding.",
+  "learner_context_update": {
+    "current_design": {
+      "design": {
+        "basis_refs": [
+          "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+        ],
+        "blocks": [
+          {
+            "block_id": "total-time",
+            "purpose": "让读者能把一次行程的总时间拆成行驶时间与停留时间两部分，从而看出两类方案各自作用在哪一部分。",
+            "relation": "总时间 = 行驶时间 + 停留时间；行驶时间 = 路程 ÷ 行驶速度。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          {
+            "block_id": "average-speed",
+            "purpose": "让读者能用总路程和总时间算出全程平均速度，并看出它同时受行驶速度和停留时间影响。",
+            "relation": "全程平均速度 = 总路程 ÷ 总时间；总路程不变时，总时间越小，全程平均速度越大。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          {
+            "block_id": "two-levers",
+            "purpose": "让读者能分别说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪一部分时间，并比较两者的取舍。",
+            "relation": "减少非必要停留只缩短停留时间；提高行驶速度只缩短行驶时间；两者可以同时使用，但提高速度受安全条件限制，必要休息不能削减。",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "focus_block_refs": [
+          "total-time",
+          "average-speed",
+          "two-levers"
+        ],
+        "open_question_refs": [],
+        "organizing_model": "同一路线总路程固定，缩短总时间有两条互不冲突的途径：压缩停留时间（只减非必要停留，保留必要休息）和压缩行驶时间（在安全条件下提高行驶速度）。用总时间=行驶时间+停留时间拆开两部分，再用全程平均速度=总路程÷总时间比较方案，就能看清每种方案作用在哪一部分、代价是什么。",
+        "previous_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+        "representation": {
+          "kind": "text",
+          "reason": "用户要求直接给公式、比较方法和取舍，用文字加公式即可把两部分时间和两种方案的关系说清，无需页面。"
+        },
+        "revision_reason": "用户明确要求深入分析、直接给公式与比较方法和取舍，并说明必要休息必须保留、两种方向都可考虑；此前只给了一句总时间包含停留时间的提示，需要扩展为可比较的公式与取舍框架。",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+          "learning_focus": "同一路线缩短总时间的方案比较",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "start_lid": "1.1"
+            }
+          ]
+        }
+      },
+      "design_ref": "design:turn_f42ba05b56b158b7:om6-next"
+    },
+    "current_target": {
+      "capability": "explanation",
+      "expected_performance": "用总时间=行驶时间+停留时间拆解同一路线，说明减少非必要停留与在安全条件下提高行驶速度各自缩短哪部分时间，并用全程平均速度比较方案、说明取舍。",
+      "learning_focus": "同一路线缩短总时间的方案比较",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+    "entries": [],
+    "evidence_watermark": 0,
+    "interpretations": [],
+    "learner_grounding": {
+      "delivered_support": [
+        {
+          "action_ref": null,
+          "actor": null,
+          "answer": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+          "before_receipt": null,
+          "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+          "feedback": null,
+          "kind": "message_delivered",
+          "move": {
+            "actions": [],
+            "block_refs": [
+              "total-time"
+            ],
+            "capability": "explanation",
+            "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+            "intent_origin": "neutral",
+            "intent_quote": null,
+            "interaction_intent": "neutral",
+            "interpretation_refs": [],
+            "kind": "compare",
+            "move_id": "om6-help",
+            "object_ids": [],
+            "preference_ref": null,
+            "presentation": null,
+            "prompt": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "target": {
+              "capability": "explanation",
+              "expected_performance": "Distinguish moving time from total elapsed time",
+              "learning_focus": "Whole-trip average speed",
+              "object_refs": [],
+              "source_bindings": [
+                {
+                  "end_lid": "1.1",
+                  "source_id": "sample-book",
+                  "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                  "start_lid": "1.1"
+                }
+              ]
+            }
+          },
+          "presentation": null,
+          "presentations": null,
+          "scene": null,
+          "text": null
+        },
+        {
+          "action_ref": null,
+          "actor": "teacher",
+          "answer": null,
+          "before_receipt": null,
+          "delivery_ref": "om6-seen:turn_f42ba25b56b15c1d",
+          "feedback": null,
+          "kind": "help_displayed",
+          "move": null,
+          "presentation": null,
+          "presentations": null,
+          "scene": null,
+          "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。"
+        }
+      ],
+      "expressions": [
+        {
+          "assistance_refs": [
+            "om6-seen:turn_f42ba25b56b15c1d"
+          ],
+          "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+          "invitation_context_ref": null,
+          "presentations": [],
+          "response_origin": null,
+          "scene": null,
+          "support_delivery_refs": [
+            "delivery:turn_f42ba25b56b15c1d:om6-help"
+          ],
+          "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。"
+        }
+      ],
+      "interpretations": [],
+      "unavailable_basis_refs": [],
+      "unknown_when_absent": true
+    },
+    "learning_opportunity": {
+      "continuity": {
+        "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+        "content_char_budget": 6000,
+        "open_questions": [],
+        "previous_work": [
+          {
+            "action_ref": null,
+            "assessment_ref": null,
+            "assessment_status": "unassessed",
+            "assistance_refs": [
+              "om6-seen:turn_f42ba25b56b15c1d"
+            ],
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "turn_id": "turn_f42b9f5b56b15704",
+              "tutor_session_id": "tutor-begin-1"
+            },
+            "delivery_ref": null,
+            "evidence_refs": [],
+            "fact_refs": [
+              "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+            ],
+            "help": [
+              {
+                "actor": "teacher",
+                "content_excerpt": {
+                  "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                  "truncated": false
+                },
+                "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+              },
+              {
+                "content_excerpt": {
+                  "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                  "truncated": false
+                },
+                "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+              }
+            ],
+            "help_truncated": false,
+            "historical": false,
+            "learner_quote_excerpt": {
+              "text": "我倾向减少停站，但必要的休息要保留。",
+              "truncated": false
+            },
+            "presentation_receipt": null,
+            "published_book_ref": null,
+            "response_origin": null,
+            "saved_state_ref": null,
+            "source_refs": [
+              {
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                },
+                "publication_id": null,
+                "source_id": "sample-book",
+                "source_ref_id": null,
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+              }
+            ],
+            "support_delivery_refs": [
+              "delivery:turn_f42ba25b56b15c1d:om6-help"
+            ]
+          },
+          {
+            "action_ref": null,
+            "assessment_ref": null,
+            "assessment_status": "unassessed",
+            "assistance_refs": [
+              "om6-seen:turn_f42ba25b56b15c1d"
+            ],
+            "attempt": null,
+            "binding": {
+              "chat_session_id": "chat-01a15913-0d2d-7ec1-9a1f-ef775dce127c",
+              "control_revision": 2,
+              "session_revision": 1,
+              "source_id": "sample-book",
+              "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+              "turn_id": "turn_f42ba05b56b158b7",
+              "tutor_session_id": "tutor-begin-1"
+            },
+            "delivery_ref": null,
+            "evidence_refs": [],
+            "fact_refs": [
+              "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+            ],
+            "help": [
+              {
+                "actor": "teacher",
+                "content_excerpt": {
+                  "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                  "truncated": false
+                },
+                "fact_ref": "om6-seen:turn_f42ba25b56b15c1d"
+              },
+              {
+                "content_excerpt": {
+                  "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                  "truncated": false
+                },
+                "fact_ref": "delivery:turn_f42ba25b56b15c1d:om6-help"
+              }
+            ],
+            "help_truncated": false,
+            "historical": false,
+            "learner_quote_excerpt": {
+              "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+              "truncated": false
+            },
+            "presentation_receipt": null,
+            "published_book_ref": null,
+            "response_origin": null,
+            "saved_state_ref": null,
+            "source_refs": [
+              {
+                "evidence_range": {
+                  "end_lid": "1.1",
+                  "start_lid": "1.1"
+                },
+                "publication_id": null,
+                "source_id": "sample-book",
+                "source_ref_id": null,
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75"
+              }
+            ],
+            "support_delivery_refs": [
+              "delivery:turn_f42ba25b56b15c1d:om6-help"
+            ]
+          }
+        ],
+        "read_more": [
+          {
+            "arguments": {
+              "event_id": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          },
+          {
+            "arguments": {
+              "event_id": "om6-seen:turn_f42ba25b56b15c1d",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          },
+          {
+            "arguments": {
+              "event_id": "delivery:turn_f42ba25b56b15c1d:om6-help",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          },
+          {
+            "arguments": {
+              "event_id": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+              "operation": "trace"
+            },
+            "tool": "tutor.step"
+          }
+        ],
+        "scope": {
+          "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+          "focus_block_refs": [
+            "total-time",
+            "average-speed",
+            "two-levers"
+          ],
+          "learning_workspace_id": null,
+          "source_id": "sample-book",
+          "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+          "tutor_session_id": "tutor-begin-1",
+          "workspace_goal_revision": null
+        },
+        "teaching_implications": [],
+        "truncated": false
+      },
+      "delivered_support": [
+        {
+          "answer_preview": {
+            "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+            "truncated": false
+          },
+          "block_refs": [
+            "total-time"
+          ],
+          "delivery_ref": "delivery:turn_f42ba25b56b15c1d:om6-help",
+          "design_ref": "design:turn_f42ba25b56b15c1d:om6-prior",
+          "displayed_help": [
+            {
+              "action_ref": null,
+              "actor": "teacher",
+              "before_receipt": null,
+              "fact_ref": "om6-seen:turn_f42ba25b56b15c1d",
+              "scene": null,
+              "text_preview": {
+                "text": "相同路程下，行驶速度和停留时间都会影响总时间；必要休息需要保留。",
+                "truncated": false
+              }
+            }
+          ],
+          "learner_expressions": [
+            {
+              "assistance_refs": [
+                "om6-seen:turn_f42ba25b56b15c1d"
+              ],
+              "expression_preview": {
+                "text": "我之前倾向少停站，但必要休息必须保留。这次请深入分析同一路线缩短总时间的几种合理方案，可以减少非必要停留，也可以在安全条件下提高行驶速度；直接给公式、比较方法和取舍，不要让我先选一个唯一答案。",
+                "truncated": false
+              },
+              "fact_ref": "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_f42ba05b56b158b7"
+              ],
+              "interpretations": [],
+              "invitation_context_ref": null,
+              "response_origin": null,
+              "scene": null,
+              "support_delivery_refs": [
+                "delivery:turn_f42ba25b56b15c1d:om6-help"
+              ]
+            },
+            {
+              "assistance_refs": [
+                "om6-seen:turn_f42ba25b56b15c1d"
+              ],
+              "expression_preview": {
+                "text": "我倾向减少停站，但必要的休息要保留。",
+                "truncated": false
+              },
+              "fact_ref": "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+              "fact_refs": [
+                "usage:tutor-begin-1:user:turn_f42b9f5b56b15704"
+              ],
+              "interpretations": [],
+              "invitation_context_ref": null,
+              "response_origin": null,
+              "scene": null,
+              "support_delivery_refs": [
+                "delivery:turn_f42ba25b56b15c1d:om6-help"
+              ]
+            }
+          ],
+          "participation": {
+            "choice": "support",
+            "learner_inference": null,
+            "reason": "The fixture delivers an explanation without requesting a new response.",
+            "support": "The complete journey includes stopped time as well as moving time."
+          },
+          "presentation": null,
+          "presentation_support": null,
+          "responding_to_expressions": [],
+          "response_expectation": null,
+          "target": {
+            "capability": "explanation",
+            "expected_performance": "Distinguish moving time from total elapsed time",
+            "learning_focus": "Whole-trip average speed",
+            "object_refs": [],
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "sample-book",
+                "source_revision": "7f231adcec5094d4b9aab7e02729d04d9f42698c706d0fb7e7c74d1e3ff95b75",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teacher_actions": []
+        }
+      ],
+      "design_ref": "design:turn_f42ba05b56b158b7:om6-next",
+      "focus_block_refs": [
+        "total-time",
+        "average-speed",
+        "two-levers"
+      ],
+      "interpretation_refs": [],
+      "pending_response_invitation": null,
+      "return_context": null,
+      "unknown_when_absent": true
+    },
+    "path_progress": [],
+    "pending_activity": null,
+    "pending_assessment_refs": [],
+    "pending_response_invitation": null,
+    "projection_watermark": 0,
+    "stale": false,
+    "uninterpreted_fact_refs": [
+      "usage:tutor-begin-1:user:turn_f42ba05b56b158b7",
+      "usage:tutor-begin-1:user:turn_f42b9f5b56b15704",
+      "usage:tutor-begin-1:user:turn_f42ba25b56b15c1d"
+    ],
+    "unknown_when_absent": true
+  }
+}

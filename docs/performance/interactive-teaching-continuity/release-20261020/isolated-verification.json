@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "release": "om6-20261020",
+  "production_source": "previous production plus 57 scoped OM files; excludes unrelated working tree changes",
+  "server_tests": 4,
+  "web_tests": 30,
+  "web_typecheck_and_build": "passed",
+  "model_calls": 0,
+  "verification_source": "git baseline + previous production repair overlay + OM overlay; test fixtures updated for new action contract",
+  "build_retry": "Windows test compiler allocation failure; single-job, incremental-disabled, no-debug test build",
+  "completed_at_utc": "2026-10-20T12:32:22.408130+00:00"
+}

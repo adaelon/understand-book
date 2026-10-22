@@ -1,0 +1,23 @@
+{
+  "call_id": "call_00_8szhoUWF7gbWZm49Ka0h2920",
+  "response_file": "response-012.json",
+  "tool_call_index": 0,
+  "operation": "deliver",
+  "candidate_id": "candidate-1792667611274864400-7",
+  "reference": {
+    "presentation_id": "presentation-1792667611274860500-6",
+    "revision": 1
+  },
+  "result_status": "version_saved",
+  "result_evidence": {
+    "request_file": "request-013.json",
+    "value": {
+      "next": "Conclude normally; Runtime attaches this version to the final answer. History commit is still pending.",
+      "reference": {
+        "presentation_id": "presentation-1792667611274860500-6",
+        "revision": 1
+      },
+      "status": "version_saved"
+    }
+  }
+}

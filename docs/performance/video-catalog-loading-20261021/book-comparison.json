@@ -1,0 +1,22 @@
+[
+  {
+    "phase": "before",
+    "load_ms": 6431.0213,
+    "graph_transcript_search_unchanged": true
+  },
+  {
+    "phase": "after",
+    "load_ms": 3862.076,
+    "graph_transcript_search_unchanged": true
+  },
+  {
+    "phase": "before",
+    "load_ms": 5258.4447,
+    "graph_transcript_search_unchanged": true
+  },
+  {
+    "phase": "after",
+    "load_ms": 3995.0092,
+    "graph_transcript_search_unchanged": true
+  }
+]

@@ -1,0 +1,378 @@
+{
+  "status": "passed",
+  "started_at_utc": "2026-10-19T00:45:56.587243+00:00",
+  "finished_at_utc": "2026-10-19T00:47:04.387058+00:00",
+  "commit": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
+  "release": "/opt/understand-book/releases/full-release-20261019",
+  "previous_release": "/opt/understand-book/releases/review-delivery-20261018",
+  "data_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "schema_before": 14,
+  "schema_after": 18,
+  "backup": "/opt/understand-book/backups/full-release-20261019",
+  "configuration_backup": "/opt/understand-book/acceptance/full-release-20261019/previous-configuration",
+  "service_pid": 329887,
+  "stop_start_seconds": 13.64,
+  "before": {
+    "reader": {
+      "authorized_books": 11,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a0f58a-3382-7e03-890a-e3e36adfe89e"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true,
+      "restricted_book_http": 404
+    },
+    "admin": {
+      "authorized_books": 12,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understandbook",
+          "01a13fbf-8230-7173-856d-1f388850f13f"
+        ],
+        [
+          "understandbook",
+          "01a14006-1291-7dd1-8641-9c4a18148419"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true
+    }
+  },
+  "after": {
+    "reader": {
+      "authorized_books": 11,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a0f58a-3382-7e03-890a-e3e36adfe89e"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true,
+      "restricted_book_http": 404
+    },
+    "admin": {
+      "authorized_books": 12,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understandbook",
+          "01a13fbf-8230-7173-856d-1f388850f13f"
+        ],
+        [
+          "understandbook",
+          "01a14006-1291-7dd1-8641-9c4a18148419"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true
+    }
+  },
+  "public": {
+    "reader": {
+      "authorized_books": 11,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a0f58a-3382-7e03-890a-e3e36adfe89e"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true,
+      "restricted_book_http": 404
+    },
+    "admin": {
+      "authorized_books": 12,
+      "references": [
+        [
+          "a-survey-of-agent-memory-in-the-secondhalf",
+          "01a0f587-8838-7cd0-85e4-a37c411584d2"
+        ],
+        [
+          "ai-agent-engineering",
+          "01a0f58a-2aea-7742-a392-296745511508"
+        ],
+        [
+          "ai-infra-book-complete",
+          "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5"
+        ],
+        [
+          "kimik3",
+          "01a0f58a-39d3-7360-9238-fc2a104e5d46"
+        ],
+        [
+          "last-hit-positioning",
+          "01a135b5-df1a-7bd2-a1f9-255552a0e1ef"
+        ],
+        [
+          "mastering-rust",
+          "01a0f58a-4df3-7822-8f5d-f712568fd50a"
+        ],
+        [
+          "quantification-essence",
+          "01a0f58a-509b-7730-bfb5-6233a8aab536"
+        ],
+        [
+          "quickstart-demo",
+          "01a0f58a-517a-7e51-8d54-c824805b78d9"
+        ],
+        [
+          "sample-book",
+          "01a0f58a-5191-7ed3-a7a1-56cbd32ebc8c"
+        ],
+        [
+          "understandbook",
+          "01a13fbf-8230-7173-856d-1f388850f13f"
+        ],
+        [
+          "understandbook",
+          "01a14006-1291-7dd1-8641-9c4a18148419"
+        ],
+        [
+          "understanding-transformer-from-the-perspective-of-associative-memory",
+          "01a0f58a-53e1-7262-92cb-e90ffa4b054d"
+        ]
+      ],
+      "presentation_ready": true,
+      "manifest_and_body": true
+    }
+  },
+  "frontend": {
+    "home.html": {
+      "origin_matches_candidate": true,
+      "public_project_entry_resources_match": true,
+      "entry_assets_checked": 4,
+      "entry_assets": [
+        "/assets/home-C1eaPLP9.js",
+        "/assets/home-CgaqwNrb.css",
+        "/assets/understand-book-logo-B0I1ntSd.css",
+        "/assets/understand-book-logo-iwpP1fRF.js"
+      ]
+    },
+    "index.html": {
+      "origin_matches_candidate": true,
+      "public_project_entry_resources_match": true,
+      "entry_assets_checked": 5,
+      "entry_assets": [
+        "/assets/_commonjsHelpers-CqkleIqs.js",
+        "/assets/reader-B9bBb1aR.css",
+        "/assets/reader-QWLdISIB.js",
+        "/assets/understand-book-logo-B0I1ntSd.css",
+        "/assets/understand-book-logo-iwpP1fRF.js"
+      ]
+    },
+    "admin/index.html": {
+      "origin_matches_candidate": true,
+      "public_project_entry_resources_match": true,
+      "entry_assets_checked": 2,
+      "entry_assets": [
+        "/admin/assets/index-0HRoB7aF.js",
+        "/admin/assets/index-C9m2UbQ8.css"
+      ]
+    }
+  },
+  "model_calls": 0,
+  "operator_build_host": "awaiting DSH root session and shared directory configuration"
+}

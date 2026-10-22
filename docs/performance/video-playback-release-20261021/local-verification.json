@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "web_tests": 102,
+  "rust_tests": 7,
+  "typecheck": "passed",
+  "controlled_player": 13986,
+  "windows_version": "0.3.5",
+  "windows_local_reader": "passed",
+  "media_packet_comparison": "passed"
+}

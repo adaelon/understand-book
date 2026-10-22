@@ -1,0 +1,24 @@
+{
+  "files": [
+    "crates/server/src/lib.rs",
+    "crates/server/src/published_library.rs",
+    "crates/server/src/multi_user_host.rs",
+    "crates/server/src/authorization.rs",
+    "crates/server/src/video_media.rs",
+    "crates/server/src/bin/reader_maintenance.rs",
+    "packages/web/src/api.ts",
+    "packages/web/src/video-api.ts",
+    "packages/web/src/App.vue",
+    "packages/web/src/App.startup.test.ts",
+    "packages/web/src/components/VideoReaderPane.vue",
+    "packages/web/package.json",
+    "pnpm-lock.yaml",
+    "crates/server/src/tests/video_publication_tests.rs",
+    "packages/web/src/NetworkApp.vue",
+    "crates/server/src/video_playback.rs",
+    "packages/web/src/video-playback.ts",
+    "packages/web/src/video-playback.test.ts"
+  ],
+  "previous_release": "workspace-library-title-20261021",
+  "release": "video-playback-20261021"
+}

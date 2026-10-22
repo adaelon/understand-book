@@ -1,0 +1,55 @@
+{
+  "arm": "baseline",
+  "repetition": 2,
+  "position": 1,
+  "index": 5,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-05.json",
+  "ordinal": 14,
+  "started_utc": "2026-10-22T03:28:49.414778+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 21539,
+    "completion_tokens": 81,
+    "total_tokens": 21620,
+    "prompt_tokens_details": {
+      "cached_tokens": 256
+    },
+    "prompt_cache_hit_tokens": 256,
+    "prompt_cache_miss_tokens": 21283
+  },
+  "response_id": "532da573-1e3b-4e57-b7de-c4be27e2b0db",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"agent.progress\">\n<｜｜DSML｜｜ parameter name=\"update\" string=\"true\">我会先把甲、乙两组数字逐项拆开，说明为什么验证误差决定选择；然后做一个可操作的直观比较页，让你能切换“只看训练误差”和“同时看验证误差”两种视角。</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1107.349,
+  "first_text_ms": 1107.349,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 314.238,
+  "streaming": true,
+  "duration_ms": 1487.429,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 21539,
+    "cached_input_tokens": 256,
+    "uncached_input_tokens": 21283,
+    "output_tokens": 81
+  },
+  "cost": {
+    "input_cny": "0.04257624",
+    "output_cny": "0.000648",
+    "total_cny": "0.04322424",
+    "total_rounded_micro_cny": 43225
+  }
+}

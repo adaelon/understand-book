@@ -1,0 +1,12 @@
+{
+  "duplicate_link_no_new_fact": true,
+  "original_charges_retained": 2,
+  "original_evidence_unchanged": true,
+  "original_jsonl_unchanged": true,
+  "provider_calls_before_upgrade": 2,
+  "provider_calls_for_upgrade_and_link": 0,
+  "selected_record_count": 1,
+  "status": "passed",
+  "unselected_record_excluded": true,
+  "upgraded_control_schema": 19
+}

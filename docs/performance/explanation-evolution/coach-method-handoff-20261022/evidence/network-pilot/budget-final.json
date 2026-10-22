@@ -1,0 +1,6 @@
+{
+  "limit_cny": 11.6232432,
+  "calls": 2,
+  "peak_upper_cny": 2.24962944,
+  "stop": "ConnectionResetError: [WinError 10054] 远程主机强迫关闭了一个现有的连接。"
+}

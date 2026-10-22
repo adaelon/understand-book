@@ -1,0 +1,113 @@
+{
+  "design": {
+    "operation": "design",
+    "operation_id": "om6-next",
+    "design": {
+      "basis_refs": [
+        "usage:tutor-begin-1:user:turn_fb46357d30bb56e9",
+        "usage:tutor-begin-1:user:turn_fb46347d30bb5536"
+      ],
+      "blocks": [
+        {
+          "block_id": "borrowed-access",
+          "purpose": "让学习者看清两个 println! 各自读的是哪个值、通过什么路径读到，从而解释为什么两次读取都不需要移动所有权。",
+          "relation": "let bar = &foo; 创建对 foo 的共享借用，bar 的类型是 &Foo。println!(\"{:?}\", foo) 直接读取 foo 本身；println!(\"{:?}\", bar) 先解引用 bar 得到 foo 的值再读取。两次都只读取，不移动所有权，所以 foo 在两次打印后仍然有效。",
+          "source_bindings": [
+            {
+              "start_lid": "1.1",
+              "end_lid": "1.1"
+            }
+          ]
+        },
+        {
+          "block_id": "move-vs-borrow",
+          "purpose": "让学习者能判断把 &foo 改成 foo 后程序为何不能编译，以及错误发生在哪一步。",
+          "relation": "let bar = foo; 把 foo 的值移动进 bar，foo 随即失效。此后 println!(\"{:?}\", foo) 使用已移动的 foo，编译报错；而 println!(\"{:?}\", bar) 本身合法，因为 bar 现在拥有该值。",
+          "source_bindings": [
+            {
+              "start_lid": "1.1",
+              "end_lid": "1.1"
+            }
+          ]
+        }
+      ],
+      "connections": [],
+      "focus_block_refs": [
+        "borrowed-access",
+        "move-vs-borrow"
+      ],
+      "open_question_refs": [],
+      "organizing_model": "学习者已说出“bar 是 &Foo，foo 仍拥有值”，这是对借用结果的正确概括，但还没有把两个 println! 各自的读取路径与“只读不移动”这一条件连起来。本次直接逐行解释这两条读取路径，再对比把 &foo 改为 foo 后所有权被移动、foo 失效的后果，从而把“借用”与“移动”放在同一段代码里区分开。",
+      "previous_ref": "design:turn_fb46327d30bb51d0:om6-prior",
+      "revision_reason": "学习者明确要求逐行解释两个 println! 为何都能读到值，并说明把 &foo 改为 foo 的后果，且要求不出题；因此把焦点从单一的“共享借用允许读取”扩展到读取路径与移动的对比。",
+      "target": {
+        "capability": "explanation",
+        "expected_performance": "逐行说明两个 println! 各自通过哪条路径读取值、为什么都不移动所有权，并说明把 &foo 改为 foo 后 foo 为何失效、哪一行报错",
+        "learning_focus": "共享借用的读取路径与移动的对比",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      "representation": {
+        "kind": "text",
+        "reason": "当前问题是同一段短代码里两条读取路径与一次移动的对比，逐行文字说明即可把对象、动作和后果对齐，不需要可交互页面。"
+      }
+    }
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "om6-explain",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "prompt": "逐行解释两个 println! 各自通过哪条路径读到值、为什么都不移动所有权，并说明把 &foo 改为 foo 后 foo 为何失效、哪一行报错。",
+      "interaction_intent": "direct_explanation",
+      "intent_origin": "current_request",
+      "intent_quote": "这次直接逐行解释为什么两个 println! 都能读到值，顺带说明如果把 &foo 改为 foo 会怎样，不用先出题。",
+      "design_ref": "design:turn_0aee4b0e423fd020:om6-next",
+      "block_refs": [
+        "borrowed-access",
+        "move-vs-borrow"
+      ],
+      "participation": {
+        "choice": "support",
+        "reason": "学习者明确要求逐行解释并说明改动后果，且要求不出题；本次直接补齐两条读取路径与移动后果的连接，不留下需要作答的任务。",
+        "support": "逐行说明 foo 与 bar 各自的读取路径、println! 只读取不移动所有权，以及把 &foo 改为 foo 后 foo 被移动、后续使用 foo 的那一行报错。",
+        "learner_inference": null
+      },
+      "responds_to": {
+        "disposition": "addressed",
+        "fact_refs": [
+          "usage:tutor-begin-1:user:turn_0aee4b0e423fd020",
+          "usage:tutor-begin-1:user:turn_0aee4c0e423fd1d3"
+        ],
+        "invitation_ref": null
+      },
+      "delivery_text": "先看这段代码（来自原文 1.1 的借用示例）：\n\n```rust\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n```\n\n第 5 行 `let foo = Foo(0);`：`foo` 拥有一个 `Foo` 值，`foo` 是这个值的所有者。\n\n第 6 行 `let bar = &foo;`：`&` 是借用运算符，它在 `foo` 前面创建一个对 `foo` 的不可变借用，并把借用赋给 `bar`。`bar` 的类型是 `&Foo`，即引用类型。这一步只创建引用，`foo` 仍然是所有者，值没有被搬走。\n\n第 7 行 `println!(\"{:?}\", foo);`：这里直接写 `foo`，读取的是 `foo` 本身持有的值。`{:?}` 要求把值格式化输出，格式化只读取值，不取走所有权。所以这一行结束后 `foo` 依然有效。\n\n第 8 行 `println!(\"{:?}\", bar);`：这里写的是 `bar`，`bar` 是 `&Foo`。格式化输出会先顺着这个引用找到它指向的 `foo` 的值，再读取该值。读取同样不移动所有权，`foo` 仍然有效。\n\n所以两个 `println!` 都能读到值：第 7 行直接读 `foo`，第 8 行通过 `bar` 这个引用间接读 `foo`；两条路径都只读取，都不移动所有权。原文对此的说明是：程序可以编译，因为第二行变成了 `let bar = &foo;`，`bar` 的类型是 `&Foo`，并且由于这是不可变引用，不能通过 `bar` 修改 `Foo` 中的值。\n\n现在把第 6 行的 `&foo` 改成 `foo`：\n\n```rust\n    let bar = foo;\n```\n\n这一行把 `foo` 持有的值移动进 `bar`。移动之后，`bar` 成为该值的所有者，`foo` 不再持有值，也就不能再被使用。\n\n于是第 7 行 `println!(\"{:?}\", foo);` 会编译报错：它要读取的 `foo` 已经在第 6 行被移动走了。第 8 行 `println!(\"{:?}\", bar);` 本身没有问题，因为 `bar` 现在拥有这个值。\n\n把两段对照起来看：`&foo` 让 `bar` 只借用 `foo` 的值，`foo` 保留所有权，两次打印都合法；`foo` 让 `bar` 拿走所有权，`foo` 失效，之后再用 `foo` 的那一行就报错。",
+      "response_expectation": null,
+      "continuation": {
+        "recommended_option_id": "cond-mut-borrow",
+        "options": [
+          {
+            "option_id": "cond-mut-borrow",
+            "label": "如果第 6 行改成 &mut foo，还需要改哪些地方才能编译？",
+            "purpose": "把不可变借用换成可变借用，观察声明与使用条件如何随之改变，超出本次只读借用的范围。",
+            "move_kind": "explain"
+          },
+          {
+            "option_id": "cond-print-order",
+            "label": "如果先打印 bar 再打印 foo，结论会变吗？为什么？",
+            "purpose": "检验读取顺序是否影响所有权，区分“顺序”与“是否移动”这两个因素。",
+            "move_kind": "compare"
+          }
+        ]
+      }
+    }
+  },
+  "answer": "先看这段代码（来自原文 1.1 的借用示例）：\n\n```rust\n#[derive(Debug)]\nstruct Foo(u32);\n\nfn main() {\n    let foo = Foo(0);\n    let bar = &foo;\n    println!(\"Foo is {:?}\", foo);\n    println!(\"Bar is {:?}\", bar);\n}\n```\n\n第 5 行 `let foo = Foo(0);`：`foo` 拥有一个 `Foo` 值，`foo` 是这个值的所有者。\n\n第 6 行 `let bar = &foo;`：`&` 是借用运算符，它在 `foo` 前面创建一个对 `foo` 的不可变借用，并把借用赋给 `bar`。`bar` 的类型是 `&Foo`，即引用类型。这一步只创建引用，`foo` 仍然是所有者，值没有被搬走。\n\n第 7 行 `println!(\"{:?}\", foo);`：这里直接写 `foo`，读取的是 `foo` 本身持有的值。`{:?}` 要求把值格式化输出，格式化只读取值，不取走所有权。所以这一行结束后 `foo` 依然有效。\n\n第 8 行 `println!(\"{:?}\", bar);`：这里写的是 `bar`，`bar` 是 `&Foo`。格式化输出会先顺着这个引用找到它指向的 `foo` 的值，再读取该值。读取同样不移动所有权，`foo` 仍然有效。\n\n所以两个 `println!` 都能读到值：第 7 行直接读 `foo`，第 8 行通过 `bar` 这个引用间接读 `foo`；两条路径都只读取，都不移动所有权。原文对此的说明是：程序可以编译，因为第二行变成了 `let bar = &foo;`，`bar` 的类型是 `&Foo`，并且由于这是不可变引用，不能通过 `bar` 修改 `Foo` 中的值。\n\n现在把第 6 行的 `&foo` 改成 `foo`：\n\n```rust\n    let bar = foo;\n```\n\n这一行把 `foo` 持有的值移动进 `bar`。移动之后，`bar` 成为该值的所有者，`foo` 不再持有值，也就不能再被使用。\n\n于是第 7 行 `println!(\"{:?}\", foo);` 会编译报错：它要读取的 `foo` 已经在第 6 行被移动走了。第 8 行 `println!(\"{:?}\", bar);` 本身没有问题，因为 `bar` 现在拥有这个值。\n\n把两段对照起来看：`&foo` 让 `bar` 只借用 `foo` 的值，`foo` 保留所有权，两次打印都合法；`foo` 让 `bar` 拿走所有权，`foo` 失效，之后再用 `foo` 的那一行就报错。"
+}

@@ -1,0 +1,83 @@
+{
+  "viewport": {
+    "width": 960,
+    "height": 720
+  },
+  "dynamic": "5 · 调一调，看这台机器装不装得下\n\nB 是你同时服务几条序列，T 是每条序列记多少个 token，s 是缓存里每个元素占几个字节。三个控件改的是同一个状态，下面的堆叠条、四个读数和判定句一起重算。\n\n并发序列数 B\n16 条\n每条序列的缓存长度 T\n32 768 token\ntoken（可直接输入，便于检验边界）\n缓存中每个元素占 s 字节\n4 字节\n1 字节\n2 字节\n4 字节\n0\n6\n12 GiB\n18\n24 GiB\n权重 10 GiB（固定）\n其他开销 2 GiB（固定）\nKV 缓存（随 B、T、s 变）\n\n蓝段已顶到条的最右端并标上红色斜纹；超出 24 GiB 的 116.000 GiB 在条外，画不出来。\n\n总占用\n140.000 GiB\n上限 24 GiB\nKV 缓存\n128.000 GiB\n预算 12 GiB\n缓存余量\n超 116.000 GiB\n缓存越过 12 GiB 预算的量\n每条序列最长\n3 072\ntoken；到这一档正好把预算用尽\n装不下。总占用 140.000 GiB，比 24 GiB 多 116.000 GiB。同样是 16 条序列，每条要降到 3 072 token 以内才装得下（当前 32 768 token，需减少 29 696）；或者把 B 减小。\n再加一条序列\nT 翻倍\n回到初始参数\n恰好装满：B=3、T=32768、s=2\n超载：B=4、T=32768、s=2\ns=1 也刚好装满：B=6、T=32768\n\n拖动滑块、改下拉框或按上面的按钮，条和读数会一起更新。\n\n6 · 三个能自己回答的问题\n增加一条同样长的序列，多占多少\n\n一条序列的缓存是 T × 65 536 × s 字节，固定部分（权重、其他开销）与 B 无关。所以每多一条序列，只多这一整份。当前参数下：每条 32 768 token 的序列占 32 768 × 262 144 字节 ＝ 8.000 GiB（8 589 934 592 字节）。B 每增加 1 条，缓存就多这一份，权重和其他开销都不变。\n\n长度翻倍时，哪些量翻倍\n\nT 只出现在缓存项里。T 翻倍时缓存翻倍，权重 10 GiB 和其他 2 GiB 不动，所以总占用变成 12 GiB 加上两倍的缓存，而不是总量翻倍。当前参数下：T 从 32 768 变成 65 536：缓存从 128.000 GiB 变成 256.000 GiB，固定部分仍是 12 GiB，总占用从 140.000 GiB 变成 268.000 GiB。翻倍的只有缓存项。（65 536 token 超过了 32 768 的上限，这组数字只用来对照倍数关系。）\n\n这组参数还能容纳多长的上下文\n\n把判定式解出 T：T ≤ 12 × 2³⁰ ÷ (B × 65 536 × s) ＝ 196 608 ÷ (B × s)，取整数下界，再与 T 的参数上限 32 768 取较小值。当前参数下：每条序列最多 3 072 token（196 608 ÷ (16 × 4) ＝ 3 072）。当前 T＝32 768，超出 29 696 token，装不下。\n\n",
+  "controls": [
+    {
+      "tag": "INPUT",
+      "id": "inB",
+      "value": "16",
+      "text": "",
+      "disabled": false
+    },
+    {
+      "tag": "INPUT",
+      "id": "inT",
+      "value": "32768",
+      "text": "",
+      "disabled": false
+    },
+    {
+      "tag": "INPUT",
+      "id": "numT",
+      "value": "32768",
+      "text": "",
+      "disabled": false
+    },
+    {
+      "tag": "SELECT",
+      "id": "inS",
+      "value": "4",
+      "text": "1 字节\n2 字节\n4 字节",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnAdd",
+      "value": "",
+      "text": "再加一条序列",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnDbl",
+      "value": "",
+      "text": "T 翻倍",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnInit",
+      "value": "",
+      "text": "回到初始参数",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnExact",
+      "value": "",
+      "text": "恰好装满：B=3、T=32768、s=2",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnOver",
+      "value": "",
+      "text": "超载：B=4、T=32768、s=2",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "id": "btnHalf",
+      "value": "",
+      "text": "s=1 也刚好装满：B=6、T=32768",
+      "disabled": false
+    }
+  ],
+  "overflow": {
+    "width": 960,
+    "view": 960
+  }
+}

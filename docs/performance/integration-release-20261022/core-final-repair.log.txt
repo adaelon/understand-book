@@ -1,0 +1,71 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+stdout | test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+B1 initial captured: seven operations, four matched MCP calls, one durable commit
+
+stdout | test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+B1 warm-1 captured: seven operations, four matched MCP calls, one durable commit
+
+stdout | test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+B1 warm-2 captured: seven operations, four matched MCP calls, one durable commit
+
+stdout | test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+B1 warm-3 captured: seven operations, four matched MCP calls, one durable commit
+
+stdout | test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+B1 warm medians [
+  {
+    operation: 'snapshot',
+    elapsed_ms: 865.7077999999965,
+    counter_bookkeeping_ms: 1.060999999906926
+  },
+  {
+    operation: 'plan',
+    elapsed_ms: 952.2304000000004,
+    counter_bookkeeping_ms: 1.0647999998473097
+  },
+  {
+    operation: 'build.step',
+    elapsed_ms: 2098.2948000000033,
+    counter_bookkeeping_ms: 2.1029999999227584
+  },
+  {
+    operation: 'executor.open',
+    elapsed_ms: 114.06120000001101,
+    counter_bookkeeping_ms: 0.09370000004128087
+  },
+  {
+    operation: 'executor.input.next',
+    elapsed_ms: 71.24839999999676,
+    counter_bookkeeping_ms: 0.05810000000928994
+  },
+  {
+    operation: 'executor.generation.start',
+    elapsed_ms: 233.93870000000607,
+    counter_bookkeeping_ms: 0.2149000000572414
+  },
+  {
+    operation: 'executor.submit_candidate',
+    elapsed_ms: 3099.2723000000115,
+    counter_bookkeeping_ms: 0.25629999993543606
+  }
+]
+
+ ✓ test/automatic-build-control-plane-performance.test.ts (2 tests) 75880ms
+   ✓ B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP  75859ms
+ ✓ test/codex-executor-agent.test.ts (25 tests) 24426ms
+   ✓ Codex executor bootstrap publication > registers absent/same, explicitly migrates the known predecessor, and preserves conflicts  20197ms
+   ✓ Codex executor bootstrap publication > registers a personal executor agent inside an isolated CODEX_HOME  3674ms
+ ✓ test/teaching-object-fragments.test.ts (7 tests) 11138ms
+   ✓ large teaching object fragments > reopens only affected source-unit fragments after an object review failure  1679ms
+   ✓ large teaching object fragments > accepts fragmented extraction and alignment through the production writer, resuming stable final identities  8268ms
+   ✓ large teaching object fragments > partitions large candidate metadata and blocks formal publication until reconciliation  836ms
+ ✓ test/paper-metadata-router.test.ts (5 tests) 13106ms
+   ✓ paper metadata candidate router > keeps input/write/status/batch on the same routed eligibility and deterministic merge  12902ms
+
+ Test Files  4 passed (4)
+      Tests  39 passed (39)
+   Start at  22:00:52
+   Duration  140.49s (transform 3.52s, setup 0ms, collect 12.05s, tests 124.55s, environment 1ms, prepare 1.90s)
+

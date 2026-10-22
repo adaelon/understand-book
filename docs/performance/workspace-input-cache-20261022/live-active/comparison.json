@@ -1,0 +1,231 @@
+{
+  "kind": "offline_provider_request_comparison",
+  "protocol": "native",
+  "measurement": "Compact UTF-8 JSON with sorted object keys; array order preserved.",
+  "arms": {
+    "baseline": {
+      "samples": [
+        {
+          "index": 4,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-04.json",
+          "request_bytes": 183337,
+          "message_count": 14,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 91092
+        },
+        {
+          "index": 5,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-05.json",
+          "request_bytes": 218713,
+          "message_count": 25,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109996
+        },
+        {
+          "index": 6,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-06.json",
+          "request_bytes": 188565,
+          "message_count": 34,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 91719
+        },
+        {
+          "index": 7,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\baseline\\native-07.json",
+          "request_bytes": 222593,
+          "message_count": 45,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109926
+        }
+      ],
+      "transitions": [
+        {
+          "from_index": 4,
+          "to_index": 5,
+          "first_system_equal": true,
+          "tools_equal": false,
+          "prior_message_count": 14,
+          "common_message_prefix_count": 3,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 2405,
+          "common_serialized_messages_prefix_bytes": 2500,
+          "common_serialized_request_prefix_bytes": 2512
+        },
+        {
+          "from_index": 5,
+          "to_index": 6,
+          "first_system_equal": true,
+          "tools_equal": false,
+          "prior_message_count": 25,
+          "common_message_prefix_count": 13,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 4652,
+          "common_serialized_messages_prefix_bytes": 4757,
+          "common_serialized_request_prefix_bytes": 4769
+        },
+        {
+          "from_index": 6,
+          "to_index": 7,
+          "first_system_equal": true,
+          "tools_equal": false,
+          "prior_message_count": 34,
+          "common_message_prefix_count": 23,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 6942,
+          "common_serialized_messages_prefix_bytes": 7057,
+          "common_serialized_request_prefix_bytes": 7069
+        }
+      ],
+      "totals": {
+        "request_bytes": 813208,
+        "message_occurrences": 118,
+        "stable_system_transitions": 3,
+        "stable_tool_transitions": 0,
+        "preserved_history_transitions": 0
+      }
+    },
+    "candidate": {
+      "samples": [
+        {
+          "index": 4,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-04.json",
+          "request_bytes": 202101,
+          "message_count": 14,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109373
+        },
+        {
+          "index": 5,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-05.json",
+          "request_bytes": 219546,
+          "message_count": 25,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109373
+        },
+        {
+          "index": 6,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-06.json",
+          "request_bytes": 207831,
+          "message_count": 34,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109373
+        },
+        {
+          "index": 7,
+          "path": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-07.json",
+          "request_bytes": 223418,
+          "message_count": 45,
+          "first_system_bytes": 1620,
+          "tool_count": 20,
+          "tools_bytes": 109373
+        }
+      ],
+      "transitions": [
+        {
+          "from_index": 4,
+          "to_index": 5,
+          "first_system_equal": true,
+          "tools_equal": true,
+          "prior_message_count": 14,
+          "common_message_prefix_count": 3,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 2405,
+          "common_serialized_messages_prefix_bytes": 2500,
+          "common_serialized_request_prefix_bytes": 2512
+        },
+        {
+          "from_index": 5,
+          "to_index": 6,
+          "first_system_equal": true,
+          "tools_equal": true,
+          "prior_message_count": 25,
+          "common_message_prefix_count": 13,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 4652,
+          "common_serialized_messages_prefix_bytes": 4757,
+          "common_serialized_request_prefix_bytes": 4769
+        },
+        {
+          "from_index": 6,
+          "to_index": 7,
+          "first_system_equal": true,
+          "tools_equal": true,
+          "prior_message_count": 34,
+          "common_message_prefix_count": 23,
+          "prior_messages_preserved": false,
+          "common_complete_message_bytes": 6942,
+          "common_serialized_messages_prefix_bytes": 7057,
+          "common_serialized_request_prefix_bytes": 7069
+        }
+      ],
+      "totals": {
+        "request_bytes": 852896,
+        "message_occurrences": 118,
+        "stable_system_transitions": 3,
+        "stable_tool_transitions": 3,
+        "preserved_history_transitions": 0
+      }
+    }
+  },
+  "same_index_pairs": [
+    {
+      "index": 4,
+      "candidate_minus_baseline_request_bytes": 18764,
+      "first_system_equal": true,
+      "tools_equal": false,
+      "prior_message_count": 14,
+      "common_message_prefix_count": 13,
+      "prior_messages_preserved": false,
+      "common_complete_message_bytes": 91802,
+      "common_serialized_messages_prefix_bytes": 91880,
+      "common_serialized_request_prefix_bytes": 91892
+    },
+    {
+      "index": 5,
+      "candidate_minus_baseline_request_bytes": 833,
+      "first_system_equal": true,
+      "tools_equal": false,
+      "prior_message_count": 25,
+      "common_message_prefix_count": 21,
+      "prior_messages_preserved": false,
+      "common_complete_message_bytes": 12425,
+      "common_serialized_messages_prefix_bytes": 15021,
+      "common_serialized_request_prefix_bytes": 15033
+    },
+    {
+      "index": 6,
+      "candidate_minus_baseline_request_bytes": 19266,
+      "first_system_equal": true,
+      "tools_equal": false,
+      "prior_message_count": 34,
+      "common_message_prefix_count": 31,
+      "prior_messages_preserved": false,
+      "common_complete_message_bytes": 14715,
+      "common_serialized_messages_prefix_bytes": 17207,
+      "common_serialized_request_prefix_bytes": 17219
+    },
+    {
+      "index": 7,
+      "candidate_minus_baseline_request_bytes": 825,
+      "first_system_equal": true,
+      "tools_equal": false,
+      "prior_message_count": 45,
+      "common_message_prefix_count": 41,
+      "prior_messages_preserved": false,
+      "common_complete_message_bytes": 16952,
+      "common_serialized_messages_prefix_bytes": 19538,
+      "common_serialized_request_prefix_bytes": 19550
+    }
+  ],
+  "limitations": [
+    "Offline UTF-8 bytes and common message prefixes are not tokenizer counts or provider cache block positions."
+  ],
+  "provider_usage": null
+}

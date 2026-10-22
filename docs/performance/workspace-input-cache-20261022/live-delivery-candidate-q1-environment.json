@@ -1,0 +1,44 @@
+[
+  {
+    "Name": "cargo.exe",
+    "ProcessId": 34392,
+    "CreationDate": "2026-10-22T12:49:27.511297+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.cargo\\bin\\cargo.exe\" test -p read-tools -p memory -p runtime music --lib"
+  },
+  {
+    "Name": "cargo.exe",
+    "ProcessId": 16704,
+    "CreationDate": "2026-10-22T12:49:27.731629+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe\" test -p read-tools -p memory -p runtime music --lib"
+  },
+  {
+    "Name": "cargo.exe",
+    "ProcessId": 34072,
+    "CreationDate": "2026-10-22T12:51:35.960915+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.cargo\\bin\\cargo.exe\" test -p memory export_bindings_teachingtarget --lib"
+  },
+  {
+    "Name": "cargo.exe",
+    "ProcessId": 30604,
+    "CreationDate": "2026-10-22T12:51:36.065079+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe\" test -p memory export_bindings_teachingtarget --lib"
+  },
+  {
+    "Name": "rustc.exe",
+    "ProcessId": 27132,
+    "CreationDate": "2026-10-22T12:52:04.358853+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe\" --crate-name read_tools --edition=2021 crates\\read-tools\\src\\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg cfg(docsrs,test) --check-cfg \"cfg(feature, values())\" -C metadata=024f3f446d88343a -C extra-filename=-6bd4051c5873f419 --out-dir E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps -C incremental=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\incremental -L dependency=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps --extern base_schema=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libbase_schema-917748890246d845.rlib --extern book_tool_contracts=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libbook_tool_contracts-e354dea02ed7fd54.rlib --extern schemars=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libschemars-97cd5e132450ea8d.rlib --extern serde=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde-622d7c9c98b4b86c.rlib --extern serde_json=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde_json-4b05dd7d1df83247.rlib --extern ts_rs=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libts_rs-1672d2501d8be6ea.rlib --extern unicode_casefold=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libunicode_casefold-90406e05638e3e3c.rlib --extern unicode_normalization=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libunicode_normalization-f4c6e2f0a2596ab7.rlib"
+  },
+  {
+    "Name": "rustc.exe",
+    "ProcessId": 22076,
+    "CreationDate": "2026-10-22T12:52:10.971142+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe\" --crate-name memory --edition=2021 crates\\memory\\src\\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg cfg(docsrs,test) --check-cfg \"cfg(feature, values())\" -C metadata=95e3c86c6b197786 -C extra-filename=-baf07d25aec7f2cc --out-dir E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps -C incremental=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\incremental -L dependency=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps --extern base_schema=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libbase_schema-917748890246d845.rmeta --extern read_tools=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libread_tools-85443e7a01ce0a44.rmeta --extern rusqlite=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\librusqlite-562db2166b253ba8.rmeta --extern schemars=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libschemars-97cd5e132450ea8d.rmeta --extern serde=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde-622d7c9c98b4b86c.rmeta --extern serde_json=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde_json-4b05dd7d1df83247.rmeta --extern ts_rs=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libts_rs-1672d2501d8be6ea.rmeta --extern windows_sys=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libwindows_sys-c3cae1fae6f37924.rmeta -L native=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\build\\libsqlite3-sys-3605a303ca6aca75\\out"
+  },
+  {
+    "Name": "rustc.exe",
+    "ProcessId": 35488,
+    "CreationDate": "2026-10-22T12:52:15.690759+08:00",
+    "CommandLine": "\"C:\\Users\\Lenovo\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe\" --crate-name memory --edition=2021 crates\\memory\\src\\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg cfg(docsrs,test) --check-cfg \"cfg(feature, values())\" -C metadata=d3b337a1d9167418 -C extra-filename=-27692b428e974aba --out-dir E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps -C incremental=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\incremental -L dependency=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps --extern base_schema=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libbase_schema-917748890246d845.rlib --extern read_tools=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libread_tools-85443e7a01ce0a44.rlib --extern rusqlite=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\librusqlite-562db2166b253ba8.rlib --extern schemars=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libschemars-97cd5e132450ea8d.rlib --extern serde=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde-622d7c9c98b4b86c.rlib --extern serde_json=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libserde_json-4b05dd7d1df83247.rlib --extern tempfile=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libtempfile-684104824ec0bbf3.rlib --extern ts_rs=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libts_rs-1672d2501d8be6ea.rlib --extern windows_sys=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\deps\\libwindows_sys-c3cae1fae6f37924.rlib -L native=E:\\allwork\\download\\agent\\understand-book\\target\\debug\\build\\libsqlite3-sys-3605a303ca6aca75\\out"
+  }
+]

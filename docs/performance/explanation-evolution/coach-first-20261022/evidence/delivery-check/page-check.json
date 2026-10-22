@@ -1,0 +1,586 @@
+{
+  "checked_at": "2026-10-22T13:07:14.328Z",
+  "target": "docs/performance/explanation-evolution/coach-first-20261022/comparison.html",
+  "scope": "Comparison shell and directly referenced files; no generated-page execution or link recursion.",
+  "provider_calls": 0,
+  "statistics": {
+    "scheduled_new": 2,
+    "started_new": 2,
+    "delivered_new": 2,
+    "baseline_pages": 4,
+    "default_panel": "backprop",
+    "activity_limit_cny": "8",
+    "activity_peak_upper_cny": "1.91682816",
+    "activity_usage_estimated_peak_cny": "1.91682816",
+    "activity_retained_reservation_peak_cny": "0",
+    "previous_cross_activity_peak_upper_cny": "21.36272960",
+    "cross_activity_peak_upper_cny": "23.27955776"
+  },
+  "viewports": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "default_panel": "backprop",
+      "panels": [
+        {
+          "task": "backprop",
+          "cards": [
+            {
+              "id": "backprop-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "backprop-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "backprop-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "images": [
+            {
+              "src": "pages/backprop-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        },
+        {
+          "task": "ridge",
+          "cards": [
+            {
+              "id": "ridge-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "ridge-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "ridge-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "images": [
+            {
+              "src": "pages/ridge-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/ridge-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/ridge-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        },
+        {
+          "task": "backprop",
+          "cards": [
+            {
+              "id": "backprop-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "backprop-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "backprop-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "images": [
+            {
+              "src": "pages/backprop-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "network_requests": [],
+      "blocked_navigation": [],
+      "screenshots": [
+        "comparison-1440.png",
+        "backprop-1440.png",
+        "ridge-1440.png"
+      ]
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 720
+      },
+      "default_panel": "backprop",
+      "panels": [
+        {
+          "task": "backprop",
+          "cards": [
+            {
+              "id": "backprop-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "backprop-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "backprop-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          },
+          "images": [
+            {
+              "src": "pages/backprop-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        },
+        {
+          "task": "ridge",
+          "cards": [
+            {
+              "id": "ridge-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "ridge-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "ridge-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          },
+          "images": [
+            {
+              "src": "pages/ridge-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/ridge-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/ridge-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        },
+        {
+          "task": "backprop",
+          "cards": [
+            {
+              "id": "backprop-C1",
+              "variant": "C1"
+            },
+            {
+              "id": "backprop-C2",
+              "variant": "C2"
+            },
+            {
+              "id": "backprop-D1",
+              "variant": "D1"
+            }
+          ],
+          "bounds": {
+            "width": 320,
+            "document": 320,
+            "body": 320
+          },
+          "images": [
+            {
+              "src": "pages/backprop-C1/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-C2/960-first.png",
+              "width": 960,
+              "height": 720
+            },
+            {
+              "src": "pages/backprop-D1/960-first.png",
+              "width": 960,
+              "height": 720
+            }
+          ]
+        }
+      ],
+      "errors": [],
+      "network_requests": [],
+      "blocked_navigation": [],
+      "screenshots": [
+        "comparison-320.png",
+        "backprop-320.png",
+        "ridge-320.png"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "href": "#comparison",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/comparison.html",
+      "bytes": 25335,
+      "readable": true
+    },
+    {
+      "href": "README.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/README.md",
+      "bytes": 9538,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/comparison.html",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/comparison.html",
+      "bytes": 42709,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C1/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-C1/index.html",
+      "bytes": 75384,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C1/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-C1/960-first.png",
+      "bytes": 88388,
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Rowan/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/backprop/Rowan/review.md",
+      "bytes": 5709,
+      "readable": true
+    },
+    {
+      "href": "evidence/baseline/backprop-C1/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/baseline/backprop-C1/coach-evidence.json",
+      "bytes": 186209,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Cedar/review.json",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Cedar/review.json",
+      "bytes": 6019,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Cedar/review.md",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Cedar/review.md",
+      "bytes": 4108,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Cedar/attachments.html",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Cedar/attachments.html",
+      "bytes": 3175,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C2/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-C2/index.html",
+      "bytes": 66687,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-C2/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-C2/960-first.png",
+      "bytes": 93427,
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Aster/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/backprop/Aster/review.md",
+      "bytes": 5672,
+      "readable": true
+    },
+    {
+      "href": "evidence/baseline/backprop-C2/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/baseline/backprop-C2/coach-evidence.json",
+      "bytes": 164827,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Birch/review.json",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Birch/review.json",
+      "bytes": 6078,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Birch/review.md",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Birch/review.md",
+      "bytes": 4083,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/backprop/Birch/attachments.html",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/backprop/Birch/attachments.html",
+      "bytes": 3281,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-D1/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-D1/index.html",
+      "bytes": 75360,
+      "readable": true
+    },
+    {
+      "href": "pages/backprop-D1/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/backprop-D1/960-first.png",
+      "bytes": 74186,
+      "readable": true
+    },
+    {
+      "href": "review/backprop/Sable/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/backprop/Sable/review.md",
+      "bytes": 5773,
+      "readable": true
+    },
+    {
+      "href": "evidence/new/backprop-D1/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/new/backprop-D1/coach-evidence.json",
+      "bytes": 163856,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C1/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-C1/index.html",
+      "bytes": 74938,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C1/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-C1/960-first.png",
+      "bytes": 67857,
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Quartz/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/ridge/Quartz/review.md",
+      "bytes": 4767,
+      "readable": true
+    },
+    {
+      "href": "evidence/baseline/ridge-C1/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/baseline/ridge-C1/coach-evidence.json",
+      "bytes": 285622,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Opal/report.md",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Opal/report.md",
+      "bytes": 3239,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Opal/review.json",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Opal/review.json",
+      "bytes": 6378,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Opal/attachments.html",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Opal/attachments.html",
+      "bytes": 2439,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C2/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-C2/index.html",
+      "bytes": 66405,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-C2/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-C2/960-first.png",
+      "bytes": 87005,
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Harbor/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/ridge/Harbor/review.md",
+      "bytes": 4148,
+      "readable": true
+    },
+    {
+      "href": "evidence/baseline/ridge-C2/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/baseline/ridge-C2/coach-evidence.json",
+      "bytes": 298981,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Amber/report.md",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Amber/report.md",
+      "bytes": 2473,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Amber/review.json",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Amber/review.json",
+      "bytes": 5400,
+      "readable": true
+    },
+    {
+      "href": "../coach-three-arm-20261022/review/ridge/Amber/attachments.html",
+      "file": "docs/performance/explanation-evolution/coach-three-arm-20261022/review/ridge/Amber/attachments.html",
+      "bytes": 2815,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-D1/index.html",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-D1/index.html",
+      "bytes": 72933,
+      "readable": true
+    },
+    {
+      "href": "pages/ridge-D1/960-first.png",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/pages/ridge-D1/960-first.png",
+      "bytes": 76927,
+      "readable": true
+    },
+    {
+      "href": "review/ridge/Lumen/review.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/ridge/Lumen/review.md",
+      "bytes": 7089,
+      "readable": true
+    },
+    {
+      "href": "evidence/new/ridge-D1/coach-evidence.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/new/ridge-D1/coach-evidence.json",
+      "bytes": 277824,
+      "readable": true
+    },
+    {
+      "href": "review/backprop/topic-comparison.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/backprop/topic-comparison.md",
+      "bytes": 5305,
+      "readable": true
+    },
+    {
+      "href": "review/ridge/topic-comparison.md",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/review/ridge/topic-comparison.md",
+      "bytes": 5288,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/build-D-record.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/build-D-record.json",
+      "bytes": 19012,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/old-C-to-D.patch",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/old-C-to-D.patch",
+      "bytes": 34256,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/test-summary.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/test-summary.json",
+      "bytes": 13238,
+      "readable": true
+    },
+    {
+      "href": "evidence/source-freeze.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/source-freeze.json",
+      "bytes": 11458,
+      "readable": true
+    },
+    {
+      "href": "evidence/final-evidence-note.json",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/final-evidence-note.json",
+      "bytes": 11710,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/runtime-presentation-coach.log",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/runtime-presentation-coach.log",
+      "bytes": 14022,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/runtime-three-arm.log",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/runtime-three-arm.log",
+      "bytes": 132848,
+      "readable": true
+    },
+    {
+      "href": "evidence/implementation/server-presentation-planning.log",
+      "file": "docs/performance/explanation-evolution/coach-first-20261022/evidence/implementation/server-presentation-planning.log",
+      "bytes": 168147,
+      "readable": true
+    }
+  ],
+  "status": "passed"
+}

@@ -1,0 +1,46 @@
+
+running 8 tests
+test host::agent_run_tests::resident_fallback_keeps_question_and_paired_tool_history_before_retry ... ok
+test host::agent_run_tests::resident_goal_update_is_saved_while_run_is_pending ... ok
+test tests::agent_compaction_checkpoint_is_server_only_restartable_and_keeps_raw_messages ... ok
+test host::agent_run_tests::resident_completed_goal_edit_creates_related_goal_and_replace_supersedes_open_goal ... ok
+test tests::mu6_tests::w4_workspace_goal_tests::w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision ... FAILED
+test tests::tutor_loop_tests::tutor_open_assessment_is_isolated_budgeted_and_contract_checked ... ok
+test tests::cloud_course_e2e_tests::cloud_course_purchase_shared_video_private_goals_and_old_sources_survive_update ... ok
+test host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection ... FAILED
+
+failures:
+
+---- tests::mu6_tests::w4_workspace_goal_tests::w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision stdout ----
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+Service SQLite 3.53.2: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema=20
+
+thread 'tests::mu6_tests::w4_workspace_goal_tests::w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision' (103316) panicked at crates\server\src\tests\mu6_tests.rs:570:49:
+called `Result::unwrap()` on an `Err` value: ToolError { error_code: "SERVICE_WRITER_BUSY", category: "conflict", message: "Service root already has a writer or cannot be locked" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection stdout ----
+
+thread 'host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection' (9748) panicked at crates\server\src\agent_run_tests.rs:83:14:
+expected model request: Timeout
+
+
+failures:
+    host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection
+    tests::mu6_tests::w4_workspace_goal_tests::w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 1151 filtered out; finished in 28.67s
+

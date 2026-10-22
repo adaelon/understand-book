@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "worker": "/opt/understand-book/releases/om6-20261020/target/release/presentation_worker",
+  "checks": [
+    {
+      "case": "narrow",
+      "environment": [
+        320,
+        420,
+        "touch"
+      ],
+      "expected_issue": null,
+      "actual_issue_kinds": [],
+      "status": "passed"
+    },
+    {
+      "case": "short",
+      "environment": [
+        640,
+        240,
+        "touch"
+      ],
+      "expected_issue": null,
+      "actual_issue_kinds": [],
+      "status": "passed"
+    },
+    {
+      "case": "desktop",
+      "environment": [
+        960,
+        720,
+        "mouse"
+      ],
+      "expected_issue": null,
+      "actual_issue_kinds": [],
+      "status": "passed"
+    }
+  ],
+  "model_calls": 0
+}

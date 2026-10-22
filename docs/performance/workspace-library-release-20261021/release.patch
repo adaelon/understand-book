@@ -1,0 +1,1164 @@
+--- a/packages/web/src/NetworkApp.vue
++++ b/packages/web/src/NetworkApp.vue
+@@ -7,7 +7,9 @@
+ import VideoReaderPane from './components/VideoReaderPane.vue';
+ import type { PreparingVideo } from './video-api';
+ const videos = ref<PreparingVideo[]>([]), selectedVideo = ref<PreparingVideo | null>(null);
+-import BookCover from './components/BookCover.vue';
++import MaterialCover from './components/MaterialCover.vue';
++import { ArrowUpRight, ArrowRight, Plus, ChevronDown, BookOpen, Layers, Settings2 } from '@lucide/vue';
++import type { SharedBook } from './shared-workspaces';
+ import YeyeMascot from './components/YeyeMascot.vue';
+ import brandLogo from './assets/brand/understand-book-logo.svg';
+ import { bookTitle } from './book-title';
+@@ -59,8 +61,16 @@
+   accountLogin(undefined, '密码已更新，请使用新密码重新登录。');
+   channel?.postMessage('changed');
+ }
+-type CatalogBook = { published_book_ref: PublishedBookRef; title?: string | null; is_default?: boolean; cover?: import('./api').BookCoverSource | null };
++type CatalogBook = SharedBook & { is_default?: boolean };
+ const books = ref<CatalogBook[]>([]);
++const materialBooks = computed(() => books.value.map(book => {
++  const video = videos.value.find(video => video.publication && samePublication(video.publication, book.published_book_ref));
++  return { ...book, title: book.title?.trim() || video?.title, media_kind: video ? 'video' as const : book.media_kind };
++}));
++const pendingVideos = computed(() => videos.value.filter(video => !video.publication
++  || !books.value.some(book => samePublication(book.published_book_ref, video.publication!))));
++const materialFor = (reference: PublishedBookRef) => materialBooks.value.find(book => samePublication(book.published_book_ref, reference));
++const materialTitle = (reference: PublishedBookRef) => bookLabel(materialFor(reference) ?? { published_book_ref: reference });
+ const learningSpaces = ref<LearningWorkspace[]>([]), learningError = ref(''), learningLoading = ref(false);
+ const selectedLearningId = ref<string | null>(network.value.workspace?.learning_workspace_id ?? savedLearningSelection());
+ const selectedLearning = computed(() => learningSpaces.value.find(space => space.learning_workspace_id === selectedLearningId.value) ?? null);
+@@ -69,13 +79,14 @@
+   const saved = learningSpaces.value.find(space => space.learning_workspace_id === network.value.workspace?.learning_workspace_id)?.goal;
+   return saved && (!scene || saved.revision >= scene.revision) ? saved : scene;
+ });
+-const createGoal = ref(''), goalDraft = ref(''), editingGoal = ref(false);
++const createGoal = ref(''), goalDraft = ref(''), editingGoal = ref(false), createOpen = ref(false);
++const materialsOpen = ref(false);
+ const recordsOpen = ref(false), legacyRecordsOpen = ref(false);
+ const sharedOpen = ref(false);
+ const memberBooks = computed(() => selectedLearning.value?.members.map(member => ({ ...member,
+-  book: books.value.find(book => samePublication(book.published_book_ref, member.published_book_ref)),
++  book: materialFor(member.published_book_ref),
+ })) ?? []);
+-const availableBooks = computed(() => books.value.filter(book => !selectedLearning.value?.members.some(member => samePublication(member.published_book_ref, book.published_book_ref))));
++const availableBooks = computed(() => materialBooks.value.filter(book => !selectedLearning.value?.members.some(member => samePublication(member.published_book_ref, book.published_book_ref))));
+ function samePublication(left: PublishedBookRef, right: PublishedBookRef) { return left.book_id === right.book_id && left.publication_id === right.publication_id; }
+ async function loadLearningSpaces() {
+   learningLoading.value = true; learningError.value = '';
+@@ -87,6 +98,7 @@
+   selectedLearningId.value = space?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value);
+   editingGoal.value = false; goalDraft.value = ''; error.value = '';
+   recordsOpen.value = false; legacyRecordsOpen.value = false;
++  materialsOpen.value = false;
+ }
+ function updateLearning(space: LearningWorkspace) {
+   learningSpaces.value = [space, ...learningSpaces.value.filter(item => item.learning_workspace_id !== space.learning_workspace_id)];
+@@ -94,7 +106,7 @@
+ async function createLearning() {
+   if (!createGoal.value.trim() || busy.value) return;
+   busy.value = true; error.value = '';
+-  try { const space = await learningWorkspaces.create(createGoal.value.trim()); updateLearning(space); selectLearning(space); createGoal.value = ''; }
++  try { const space = await learningWorkspaces.create(createGoal.value.trim()); updateLearning(space); selectLearning(space); createGoal.value = ''; createOpen.value = false; }
+   catch (failure) { showFailure(failure); }
+   finally { busy.value = false; }
+ }
+@@ -175,7 +187,7 @@
+ }
+ const libraryOpen = ref(!network.value.workspace);
+ const resumption = ref<ReadingResumption | null>(null), resumptionError = ref(''), resumptionLoading = ref(false);
+-const resumptionBook = computed(() => books.value.find(book =>
++const resumptionBook = computed(() => materialBooks.value.find(book =>
+   book.published_book_ref.book_id === resumption.value?.published_book_ref.book_id
+   && book.published_book_ref.publication_id === resumption.value?.published_book_ref.publication_id));
+ watch(() => network.value.epoch, () => {
+@@ -209,10 +221,10 @@
+   } finally { busy.value = false; }
+ }
+ function bookLabel(book: CatalogBook) {
+-  const title = bookTitle({ title: book.title, book_id: book.published_book_ref.book_id });
++  const title = bookTitle({ title: materialFor(book.published_book_ref)?.title ?? book.title, book_id: book.published_book_ref.book_id });
+   const versions = books.value.filter(item => item.published_book_ref.book_id === book.published_book_ref.book_id);
+   if (versions.length === 1) return title;
+-  return `${title} · 版本 ${versions.indexOf(book) + 1}${book.is_default ? '（默认）' : ''}`;
++  return `${title} · 版本 ${versions.findIndex(item => samePublication(item.published_book_ref, book.published_book_ref)) + 1}${book.is_default ? '（默认）' : ''}`;
+ }
+ const readerApp = ref<InstanceType<typeof App> | null>(null);
+ const key = computed(sceneKey);
+@@ -518,63 +530,77 @@
+     <p v-if="linkedRequested && !linkedPresentation" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
+     <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
+       <header class="network-library-head">
+-        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="28" height="28" alt="" />你的学习</p><h1>学习工作区</h1></div>
+-        <p><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span> <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button> <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a> <button @click="logout">退出登录</button></p>
++        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="24" height="24" alt="" />UNDERSTAND BOOK</p><h1>学习工作区<span>把资料变成自己的理解。</span></h1></div>
++        <div class="library-head-actions">
++          <button class="create-workspace-toggle" :aria-expanded="createOpen" @click="createOpen = !createOpen"><Plus :size="16" />新建工作区</button>
++          <details class="network-account"><summary><span class="account-avatar">{{ (network.identity.email || network.identity.user_id).slice(0, 1).toUpperCase() }}</span><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span><ChevronDown :size="14" /></summary>
++            <div class="network-account-menu"><button @click="settingsOpen = true">个人设置</button><button @click="showMcp">MCP 接入</button><button @click="allowanceOpen = true">使用额度</button><a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a><button @click="logout">退出登录</button></div>
++          </details>
++        </div>
+       </header>
++      <form v-show="createOpen || !learningSpaces.length" class="learning-create" @submit.prevent="createLearning">
++        <label>这次想学会什么？<input v-model="createGoal" placeholder="比如：学习深度学习，或期末考试冲刺" required :disabled="busy" /></label>
++        <button :disabled="busy || !createGoal.trim()">创建工作区<ArrowRight :size="16" /></button>
++      </form>
++      <div class="learning-layout" :class="{ 'has-selection': selectedLearning }">
+       <section class="learning-spaces" aria-label="学习工作区" :aria-busy="learningLoading">
+-        <form class="learning-create" @submit.prevent="createLearning">
+-          <label>这次想学会什么？<input v-model="createGoal" placeholder="比如：学习深度学习，或期末考试冲刺" required :disabled="busy" /></label>
+-          <button :disabled="busy || !createGoal.trim()">创建工作区</button>
+-        </form>
++        <div class="learning-nav-heading"><span>我的工作区</span><span>{{ learningSpaces.length.toString().padStart(2, '0') }}</span></div>
+         <p v-if="learningError" role="alert">工作区暂时无法读取：{{ learningError }} <button @click="loadLearningSpaces">重试工作区</button></p>
+         <div class="learning-space-list">
+           <article v-for="space in learningSpaces" :key="space.learning_workspace_id" class="learning-space-card" :class="{ selected: selectedLearningId === space.learning_workspace_id }">
+-            <p>{{ space.goal.text }}</p><small>{{ space.members.length }} 份资料{{ space.archived ? ' · 已归档' : '' }}</small>
+-            <div><button :disabled="busy" @click="selectLearning(space)">管理工作区</button><button :disabled="busy || space.archived" @click="enterLearning(space)">打开工作区</button></div>
++            <button class="learning-space-select" :aria-pressed="selectedLearningId === space.learning_workspace_id" :disabled="busy" @click="selectLearning(space)">
++              <span class="workspace-cover-stack" aria-hidden="true"><span v-for="member in space.members.slice(0, 3)" :key="JSON.stringify(member.published_book_ref)" class="workspace-mini-cover"><MaterialCover :title="materialTitle(member.published_book_ref)" :cover="materialFor(member.published_book_ref)?.cover" :video="materialFor(member.published_book_ref)?.media_kind === 'video'" compact /></span><BookOpen v-if="!space.members.length" :size="28" /></span>
++              <span class="workspace-nav-copy"><strong>{{ space.goal.text }}</strong><small>{{ space.members.length }} 份资料{{ space.archived ? ' · 已归档' : '' }}</small></span>
++            </button>
++            <button class="workspace-enter" :disabled="busy || space.archived" @click="enterLearning(space)">打开工作区<ArrowUpRight :size="14" /></button>
+           </article>
+         </div>
++        <button v-if="selectedLearning" class="learning-legacy" :disabled="busy" @click="selectLearning(null)"><Layers :size="16" />全部资料</button>
++        <div class="shared-entry"><button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen"><BookOpen :size="16" />{{ sharedOpen ? '收起共享工作区' : '浏览共享预构建工作区' }}<ArrowUpRight :size="14" /></button><p>从准备好的课程与学习路线开始。</p></div>
+       </section>
+-      <section class="shared-entry">
+-        <button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen">{{ sharedOpen ? '收起共享工作区' : '浏览共享预构建工作区' }}</button>
+-        <SharedWorkspaceCatalog v-if="sharedOpen" :books="books" @started="startSharedLearning" />
+-      </section>
++      <div class="learning-content">
++      <SharedWorkspaceCatalog v-if="sharedOpen" :books="materialBooks" @started="startSharedLearning" />
+       <section v-if="selectedLearning" class="learning-details" aria-label="当前工作区">
+-        <header><div><span class="network-library-kicker">工作区大目标 · 第 {{ selectedLearning.goal.revision }} 版</span><h2>{{ selectedLearning.goal.text }}</h2></div>
+-          <button :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">修改大目标</button></header>
++        <header class="learning-goal-heading"><div><span class="network-library-kicker">当前学习目标 <span class="goal-revision">· 第 {{ selectedLearning.goal.revision }} 版</span></span><h2>{{ selectedLearning.goal.text }}</h2><p v-if="selectedLearning.goal.constraints.length" class="goal-constraints">{{ selectedLearning.goal.constraints.join('；') }}</p></div>
++          <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">继续学习<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">修改大目标</button></div></header>
+         <form v-if="editingGoal" class="learning-goal-edit" @submit.prevent="reviseGoal">
+           <label>工作区大目标<textarea v-model="goalDraft" required :disabled="busy" /></label>
+           <button :disabled="busy || !goalDraft.trim()">保存大目标</button><button type="button" :disabled="busy" @click="editingGoal = false">取消修改</button>
+         </form>
+-        <p v-if="selectedLearning.goal.constraints.length">{{ selectedLearning.goal.constraints.join('；') }}</p>
+-        <SharedWorkspaceInstance :workspace="selectedLearning" :books="books" @updated="updateSharedLearning" />
+-        <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" />
+-        <PersonalMaterials :key="`${network.identity.user_id}:${selectedLearning.learning_workspace_id}`" :workspace="selectedLearning" @ready="catalog" @open="reference => openBook(reference, selectedLearning!.learning_workspace_id)" @allowance="allowanceOpen = true" />
+-        <p v-if="!memberBooks.length" class="learning-empty">工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。</p>
+-        <h3>工作区资料</h3>
+-        <div class="learning-members">
+-          <article v-for="member in memberBooks" :key="JSON.stringify(member.published_book_ref)" class="learning-member">
+-            <strong>{{ member.book ? bookLabel(member.book) : member.published_book_ref.book_id }}</strong>
+-            <span v-if="!member.readable">资料暂不可读</span>
+-            <div><button :disabled="busy || !member.readable || selectedLearning.archived" @click="openBook(member.published_book_ref)">{{ network.workspace?.learning_workspace_id === selectedLearningId && samePublication(network.workspace.published_book_ref, member.published_book_ref) ? '继续阅读' : '开始阅读' }}</button>
+-              <button :disabled="busy || selectedLearning.archived" @click="changeMember(member.published_book_ref, false)">移出资料</button></div>
++        <div class="materials-heading"><div><h3>工作区资料 <span>{{ memberBooks.length }}</span></h3><p>从一份资料开始，带着问题继续探索。</p></div><button :disabled="busy || selectedLearning.archived" :aria-expanded="materialsOpen" @click="materialsOpen = !materialsOpen"><Plus :size="16" />添加资料</button></div>
++        <p v-if="!memberBooks.length" class="learning-empty"><BookOpen :size="32" />工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。</p>
++        <div class="learning-members" :class="{ 'few-materials': memberBooks.length <= 2 }">
++          <article v-for="member in memberBooks" :key="JSON.stringify(member.published_book_ref)" class="learning-member" :class="{ 'is-video': member.book?.media_kind === 'video' }">
++            <button class="member-open" :disabled="busy || !member.readable || selectedLearning.archived" @click="openBook(member.published_book_ref)">
++              <span class="member-cover"><MaterialCover :title="materialTitle(member.published_book_ref)" :cover="member.book?.cover" :video="member.book?.media_kind === 'video'" /></span>
++              <span class="member-copy"><span class="member-kind">{{ member.book?.media_kind === 'video' ? '课程视频' : '阅读资料' }}</span><strong>{{ materialTitle(member.published_book_ref) }}</strong><span v-if="!member.readable" class="member-unavailable">资料暂不可读</span><span class="member-read-action">{{ network.workspace?.learning_workspace_id === selectedLearningId && samePublication(network.workspace.published_book_ref, member.published_book_ref) ? '继续阅读' : '开始阅读' }}<ArrowUpRight :size="16" /></span></span>
++            </button>
++            <details class="member-menu"><summary :aria-label="`管理${materialTitle(member.published_book_ref)}`"><Settings2 :size="15" /></summary><button :disabled="busy || selectedLearning.archived" @click="changeMember(member.published_book_ref, false)">移出资料</button></details>
+           </article>
+         </div>
+-        <details v-if="!selectedLearning.archived" class="learning-add" :open="!memberBooks.length">
++        <div v-show="materialsOpen || !memberBooks.length" class="materials-add-panel">
++        <PersonalMaterials :key="`${network.identity.user_id}:${selectedLearning.learning_workspace_id}`" :workspace="selectedLearning" @ready="catalog" @open="reference => openBook(reference, selectedLearning!.learning_workspace_id)" @allowance="allowanceOpen = true" />
++        <details v-if="!selectedLearning.archived" class="learning-add" open>
+           <summary>加入资料</summary>
+-          <div v-for="book in availableBooks" :key="JSON.stringify(book.published_book_ref)" class="learning-add-book"><span>{{ bookLabel(book) }}</span><button :disabled="busy" @click="changeMember(book.published_book_ref, true)">加入工作区</button></div>
++          <div v-for="book in availableBooks" :key="JSON.stringify(book.published_book_ref)" class="learning-add-book"><span class="add-book-cover"><MaterialCover :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" compact /></span><span>{{ bookLabel(book) }}</span><button :disabled="busy" @click="changeMember(book.published_book_ref, true)">加入工作区</button></div>
+           <p v-if="!availableBooks.length">当前可用资料均已加入。</p>
+         </details>
++        </div>
++        <SharedWorkspaceInstance :workspace="selectedLearning" :books="materialBooks" @updated="updateSharedLearning" />
++        <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" />
++        <details class="workspace-settings"><summary><Settings2 :size="16" />工作区管理与学习记录<ChevronDown :size="14" /></summary><div class="workspace-settings-body">
+         <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? '收起已有学习记录' : '带入已有学习记录' }}</button>
+         <LearningRecordsPanel v-if="recordsOpen" :target="selectedLearning" :key="selectedLearning.learning_workspace_id" @refresh-goal="loadLearningSpaces" />
+         <div class="learning-archive"><p>{{ selectedLearning.archived ? '工作区已归档，学习记录与来源保留。恢复后可继续学习。' : '归档后暂停主动教学和新增后台整理，学习记录与来源保留。' }}</p><button :disabled="busy" @click="archiveLearning">{{ selectedLearning.archived ? '恢复工作区' : '归档工作区' }}</button></div>
+         <button class="learning-legacy" :disabled="busy" @click="selectLearning(null)">返回书架</button>
++        </div></details>
+       </section>
+-      <section class="learning-records-entry">
++      <section v-if="!selectedLearning" class="learning-records-entry">
+         <button :aria-expanded="legacyRecordsOpen" @click="legacyRecordsOpen = !legacyRecordsOpen">{{ legacyRecordsOpen ? '收起旧记录' : '旧聊天与学习记录' }}</button>
+         <LearningRecordsPanel v-if="legacyRecordsOpen" />
+       </section>
+       <section v-if="!selectedLearning && resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
+-        <div class="resumption-cover"><BookCover :title="bookTitle({ title: resumptionBook.title, book_id: resumption.published_book_ref.book_id })" :cover="resumptionBook.cover" /></div>
++        <div class="resumption-cover"><MaterialCover :title="bookLabel(resumptionBook)" :cover="resumptionBook.cover" :video="resumptionBook.media_kind === 'video'" /></div>
+         <div class="resumption-content">
+           <p class="network-library-kicker">接着上次读</p>
+           <h2>{{ bookLabel(resumptionBook) }}</h2>
+@@ -587,15 +613,17 @@
+       </section>
+       <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">正在读取接续记录…</p>
+       <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">重试</button></p>
+-      <h2 v-if="!selectedLearning" class="library-section-title">书架</h2>
++      <h2 v-if="!selectedLearning" class="library-section-title">全部资料<span>你的书籍、课程与阅读收藏</span></h2>
+       <div v-if="!selectedLearning" class="network-library-grid">
+-        <button v-for="video in videos" :key="video.video.media_id" class="network-book-card" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
+-        <button v-for="book in books" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
+-          <BookCover :title="bookTitle({ title: book.title, book_id: book.published_book_ref.book_id })" :cover="book.cover" />
++        <button v-for="video in pendingVideos" :key="video.video.media_id" class="network-book-card" :disabled="busy" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><span class="shelf-cover"><MaterialCover :title="video.title" video /></span><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
++        <button v-for="book in materialBooks" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
++          <span class="shelf-cover"><MaterialCover :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" /></span>
+           <strong>{{ bookLabel(book) }}</strong>
++          <span>{{ book.media_kind === 'video' ? '课程视频' : '阅读资料' }}</span>
+         </button>
+       </div>
+       <p v-if="!books.length && !videos.length">账号已创建，等待管理员开通材料。</p>
++      </div></div>
+     </main>
+     <AccountMcp v-if="mcpOpen" @close="closeMcp" />
+     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
+@@ -615,55 +643,10 @@
+ .workspace-goal-bar span { color: var(--muted); font-size: 11px; }
+ .workspace-goal-bar p { margin: 2px 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .workspace-goal-bar button { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+-.learning-spaces, .learning-details, .library-section-title { max-width: 1100px; margin: 0 auto 28px; }
+-.shared-entry { max-width: 1100px; margin: 0 auto 28px; }.shared-entry>button { padding: 10px 15px; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }.learning-archive { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }.learning-archive p { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 0; }
+-.learning-records-entry { max-width: 1100px; margin: 0 auto 28px; }.learning-records-entry > button { padding: 9px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }.learning-records-toggle { margin-right: 12px; }
+-.learning-create { display: flex; gap: 12px; align-items: end; padding: 20px; border-radius: 18px; background: var(--surface-soft, #f4f0e8); }
+-.learning-create label { flex: 1; margin: 0; color: var(--muted); font-size: 13px; }
+-.learning-create input, .learning-goal-edit textarea { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); color: var(--ink); padding: 10px; }
+-.learning-spaces button, .learning-details button { border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); cursor: pointer; }
+-.learning-create > button { flex: none; background: var(--brand-accent); color: var(--brand-on-accent); }
+-.learning-spaces button:disabled, .learning-details button:disabled { opacity: .5; cursor: default; }
+-.learning-space-list { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+-.learning-space-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; }
+-.learning-space-card.selected { border-color: var(--brand-accent); background: var(--surface-soft); }
+-.learning-space-card p { margin: 0 0 8px; line-height: 1.6; overflow-wrap: anywhere; }
+-.learning-space-card small { color: var(--muted); }
+-.learning-space-card > div, .learning-member > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: 13px; }
+-.learning-details { border-top: 1px solid var(--line); padding-top: 24px; }
+-.learning-details header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+-.learning-details header > div { min-width: 0; }
+-.learning-details header > button { flex: none; }
+-.learning-details h2 { margin: 6px 0 12px; font-weight: 500; font-size: 22px; overflow-wrap: anywhere; }
+-.learning-details h3, .library-section-title { font-size: 16px; font-weight: 500; }
+-.learning-goal-edit { max-width: 680px; }
+-.learning-goal-edit textarea { min-height: 80px; font: inherit; }
+-.learning-goal-edit button + button { margin-left: 8px; }
+-.learning-empty { color: var(--muted); line-height: 1.8; }
+-.learning-members { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+-.learning-member { min-width: 0; padding: 16px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
+-.learning-member > span { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
+-.learning-add { margin: 20px 0; }
+-.learning-add summary { cursor: pointer; padding: 12px 0; }
+-.learning-add-book { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+-.learning-add-book span { min-width: 0; overflow-wrap: anywhere; }
+-.learning-add-book button { flex: none; }
+-@media (max-width: 540px) {
+-  .workspace-goal-bar { padding: 6px 12px; gap: 8px; }
+-  .workspace-goal-bar button { min-height: 44px; font-size: 12px; }
+-  .learning-create { flex-direction: column; align-items: stretch; }
+-  .learning-create input, .learning-goal-edit textarea { font-size: 16px; }
+-  .learning-space-list, .learning-members { grid-template-columns: minmax(0, 1fr); }
+-  .learning-spaces button, .learning-details button { min-height: 44px; }
+-}
++@media (max-width: 540px) { .workspace-goal-bar { padding: 6px 12px; gap: 8px; }.workspace-goal-bar button { min-height: 44px; font-size: 12px; } }
+ .network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
+ .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
+ .network-login h1, .network-library-head h1 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; line-height: 1.45; }
+-.network-library { flex: 1; min-height: 0; overflow: auto; width: 100%; padding: clamp(20px, 5vw, 64px); box-sizing: border-box; }
+-.network-library-head { max-width: 1100px; margin: 0 auto 32px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+-.network-library-head h1 { margin: 6px 0 0; font-size: clamp(24px, 3vw, 32px); }
+-.network-library-head > p { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; min-width: 0; max-width: 100%; }
+-.account-email { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+ .network-library-kicker { margin: 0; color: var(--muted); font-size: 13px; }
+ .reading-resumption { max-width: 1100px; box-sizing: border-box; margin: 0 auto 40px; padding: clamp(20px, 4vw, 40px); display: flex; gap: clamp(20px, 4vw, 44px); align-items: center; border-radius: 28px; background: var(--surface, #f4f0e8); border: 1px solid var(--line); }
+ .resumption-cover { width: clamp(90px, 16vw, 155px); flex-shrink: 0; }
+@@ -678,14 +661,6 @@
+ .resumption-continue:hover:not(:disabled) { background: var(--brand-accent-deep); }
+ .resumption-continue:disabled { opacity: .6; cursor: wait; }
+ .resumption-status { max-width: 1100px; margin: 0 auto 24px; }
+-.network-library-grid { max-width: 1100px; margin: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 28px 24px; }
+-.network-book-card { display: flex; flex-direction: column; align-items: stretch; border: 0; border-radius: 8px; padding: 8px !important; min-width: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+-.network-book-card:hover { background: #00000005; }
+-.network-book-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+-.network-book-card:disabled { opacity: .65; cursor: wait; }
+-.network-book-card strong { display: block; margin-top: 14px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+-.network-book-card:nth-child(3n + 2) { --cover-color: #ece2d4; }
+-.network-book-card:nth-child(3n) { --cover-color: #dfe6ee; }
+ @media (max-width: 900px) {
+   .reading-resumption .resumption-mascot { display: none; }
+ }
+@@ -697,8 +672,6 @@
+   .resumption-cover :deep(.book-cover-mark) { font-size: 4px; }
+   .resumption-content { display: contents; }
+   .resumption-question { clear: both; }
+-  .network-library-head { align-items: start; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+-  .network-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 12px; }
+ }
+ label { display: grid; gap: .5rem; margin: 1rem 0; }
+ input, button { font: inherit; padding: .6rem; }
+@@ -715,3 +688,5 @@
+ .network-source > strong { display: block; margin-bottom: 12px; }
+ .network-linked-account .network-account-menu { position: absolute; top: auto; bottom: 100%; }
+ </style>
++
++<style scoped src="./learning-library.css"></style>
+--- a/packages/web/src/learning-library.css
++++ b/packages/web/src/learning-library.css
+@@ -0,0 +1,108 @@
++.network-library { --muted: #79746b; --sans: 'Noto Sans SC Variable', 'Microsoft YaHei', 'PingFang SC', sans-serif; flex: 1; min-height: 0; overflow: auto; width: 100%; padding: 32px clamp(20px, 4vw, 64px) 56px; box-sizing: border-box; background: #f7f5ef; color: #302d27; font-family: var(--sans); }
++.network-library button { font: inherit; font-size: 13px; cursor: pointer; }
++.network-library button:disabled { opacity: .45; cursor: default; }
++.network-library button:focus-visible, .network-library summary:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 4px; }
++.network-library-head { max-width: 1320px; margin: 0 auto 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
++.network-library-head .brand-signature { font: 500 10px/1.4 var(--sans); letter-spacing: .14em; color: #8a664e; }
++.network-library-head h1 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 18px; margin: 12px 0 0; font: 500 28px/1.4 var(--sans); letter-spacing: -.04em; }
++.network-library-head h1 > span { font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
++.library-head-actions { display: flex; gap: 20px; align-items: center; flex: none; }
++.create-workspace-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 9px 14px; background: #fffdf8; color: #5e4c3b; border: 1px solid #ded8cc; border-radius: 8px; }
++.network-library .network-account summary { display: flex; align-items: center; gap: 8px; padding: 6px 0; list-style: none; font-size: 12px; }
++.network-library .network-account summary::-webkit-details-marker { display: none; }
++.account-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: #6d725d; background: #e8eadd; font: 600 12px/1 var(--sans); }
++.account-email { max-width: 145px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
++.network-library .network-account-menu { position: absolute; min-width: 160px; padding: 8px; gap: 2px; }
++.network-library .network-account-menu button, .network-library .network-account-menu a { border: none; background: transparent; padding: 10px 12px; text-align: left; font-size: 13px; color: inherit; text-decoration: none; }
++.network-library .network-account-menu button:hover { background: var(--surface-soft); }
++.learning-create { max-width: 1320px; margin: 0 auto 28px; display: flex; gap: 14px; align-items: end; padding: 20px 24px; background: #eee9dd; border: 1px solid #e3dccd; border-radius: 12px; }
++.learning-create label { flex: 1; margin: 0; color: #665f51; font-size: 13px; }
++.learning-create input, .learning-goal-edit textarea { box-sizing: border-box; width: 100%; border: 1px solid #ded7c9; border-radius: 7px; background: #fffdf8; color: var(--ink); padding: 11px; font: inherit; }
++.learning-create > button { display: flex; align-items: center; gap: 10px; border: 0; border-radius: 8px; min-height: 42px; padding: 10px 18px; background: var(--brand-accent); color: white; }
++.learning-layout { display: grid; grid-template-columns: 258px minmax(0, 1fr); gap: 38px; max-width: 1320px; margin: auto; align-items: start; }
++.learning-spaces { min-width: 0; width: 100%; margin: 0; padding: 2px 22px 0 0; border-right: 1px solid #e8e3d9; }
++.learning-nav-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; margin-bottom: 16px; color: #726e61; font-size: 11px; letter-spacing: .08em; }
++.learning-nav-heading > span:last-child { color: #a79b89; font-family: var(--mono); }
++.learning-space-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; }
++.learning-space-card { position: relative; min-width: 0; padding: 12px; border: 1px solid transparent; border-radius: 10px; transition: background .15s, border-color .15s; }
++.learning-space-card:hover { background: #efede5; }
++.learning-space-card.selected { background: #f0e8db; border-color: #d8c4aa; }
++.learning-space-select { width: 100%; display: flex; align-items: start; gap: 12px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
++.workspace-cover-stack { position: relative; display: flex; align-items: center; justify-content: center; flex: 0 0 46px; width: 46px; height: 63px; color: #a29880; border-radius: 4px; background: #e9e5d8; }
++.workspace-mini-cover { display: block; width: 42px; height: 63px; position: absolute; left: 0; top: 0; z-index: 3; }
++.workspace-mini-cover:nth-child(2) { transform: translate(3px, 1px) rotate(5deg); z-index: 2; }
++.workspace-mini-cover:nth-child(3) { transform: translate(5px, 2px) rotate(10deg); z-index: 1; }
++.workspace-nav-copy { min-width: 0; flex: 1; }
++.workspace-nav-copy strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 13px; font-weight: 500; line-height: 1.65; overflow-wrap: anywhere; }
++.workspace-nav-copy small { display: block; margin-top: 7px; font-size: 11px; color: var(--muted); }
++.workspace-enter { display: flex; gap: 8px; align-items: center; margin: 10px 0 0 58px; padding: 2px 0; border: 0; background: transparent; color: #946335; font-size: 11px !important; }
++.learning-spaces .learning-legacy { display: flex; align-items: center; gap: 10px; margin: 20px 0; padding: 10px 12px; border: 0; background: transparent; color: #686150; }
++.shared-entry { margin: 24px 0 0; border-top: 1px solid #e5dfd3; padding-top: 20px; }
++.shared-entry > button { display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 0; color: #6d604c; font-size: 12px; text-align: left; }
++.shared-entry > button svg { flex: none; }.shared-entry > p { color: #888071; font-size: 11px; line-height: 1.8; margin: 8px 0 0; }
++.learning-content { min-width: 0; }
++.learning-details { margin: 0; padding: 0; border: 0; min-width: 0; }
++.learning-goal-heading { display: flex; align-items: center; gap: 28px; padding: 26px 28px; border-radius: 14px; background: #efebe1; border: 1px solid #e4ddcf; }
++.learning-goal-heading > div:first-child { flex: 1; min-width: 0; }
++.learning-goal-heading .network-library-kicker { color: #8b683f; font-size: 10px; letter-spacing: .07em; }
++.goal-revision { color: #9b907e; }
++.learning-details h2 { margin: 9px 0 0; font-size: clamp(18px, 1.7vw, 24px); font-weight: 500; line-height: 1.65; overflow-wrap: anywhere; letter-spacing: -.025em; }
++.goal-constraints { font-size: 12px; color: var(--muted); line-height: 1.7; margin: 10px 0 0; }
++.goal-actions { display: grid; gap: 8px; justify-items: center; flex: none; }
++.learning-details button { border: 1px solid #ded8cc; border-radius: 7px; background: #fffdf9; color: #504737; padding: 8px 12px; }
++.learning-details button.workspace-primary { display: inline-flex; align-items: center; gap: 20px; min-height: 43px; padding: 11px 18px; border-color: #9f4d18; background: #a95420; color: #fffaf3; }
++.workspace-primary:hover:not(:disabled) { background: #8c4116; }
++.learning-details button.goal-edit-button { border: 0; padding: 4px 8px; color: #8b7963; background: transparent; font-size: 11px; }
++.learning-goal-edit { margin: 18px 0; max-width: 100%; }.learning-goal-edit textarea { min-height: 100px; }.learning-goal-edit button + button { margin-left: 8px; }
++.materials-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 28px 0 18px; }
++.materials-heading h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; font-weight: 600; }
++.materials-heading h3 span { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 6px; background: #eae6da; color: #8c806d; font-size: 11px; font-weight: 500; }
++.materials-heading p { font-size: 11px; margin: 6px 0 0; color: #898171; }
++.materials-heading > button { display: flex; align-items: center; gap: 6px; flex: none; font-size: 12px; }
++.learning-members { display: grid; grid-template-columns: repeat(auto-fill, minmax(245px, 1fr)); gap: 20px; }
++.learning-members.few-materials { grid-template-columns: repeat(2, minmax(0, 1fr)); }
++.learning-member { min-width: 0; position: relative; border: 1px solid #e3dfd4; border-radius: 12px; background: #fffefb; overflow: visible; box-shadow: 0 3px 9px #48392004; transition: transform .18s, box-shadow .18s; }
++.learning-member:hover { transform: translateY(-2px); box-shadow: 0 6px 20px #4839200b; }
++.learning-details .member-open { display: flex; flex-direction: column; align-items: stretch; width: 100%; height: 100%; border: 0; border-radius: 12px; padding: 0; background: transparent; text-align: left; color: inherit; overflow: hidden; }
++.member-cover { display: flex; align-items: center; justify-content: center; height: 220px; padding: 20px; background: #edece4; }
++.member-cover :deep(.book-cover) { height: 180px; width: auto; flex: 0 0 auto; box-shadow: 3px 6px 10px #353e3021; }
++.member-cover :deep(.book-cover-name) { font-size: 14px; }.member-cover :deep(.book-cover-fallback) { padding: 16px 13px; gap: 10px; }.member-cover :deep(.book-cover-mark) { font-size: 6px; }
++.is-video .member-cover { padding: 0; background: #263d37; }.is-video .member-cover :deep(.material-video-cover) { height: 100%; border-radius: 11px 11px 0 0; }
++.learning-member:nth-child(3n + 2) { --cover-color: #e7decb; }.learning-member:nth-child(3n) { --cover-color: #dfe6ee; }
++.member-copy { flex: 1; display: flex; flex-direction: column; align-items: stretch; min-height: 136px; padding: 18px 20px 16px; }
++.member-kind { font-size: 10px; color: #9a7b53; letter-spacing: .06em; margin-bottom: 7px; }
++.member-copy > strong { font-size: 17px; font-weight: 550; line-height: 1.6; overflow-wrap: anywhere; margin-bottom: 18px; }
++.member-unavailable { font-size: 11px; color: #9e6449; }
++.member-read-action { display: flex; align-items: center; gap: 7px; margin-top: auto; color: #9c5727; font-size: 12px; }
++.member-menu { position: absolute; right: 14px; bottom: 11px; z-index: 5; }
++.member-menu > summary { list-style: none; display: grid; place-items: center; width: 30px; height: 30px; color: #9b9382; cursor: pointer; border-radius: 6px; }
++.member-menu > summary::-webkit-details-marker { display: none; }.member-menu[open] > summary { background: #eeeadf; }
++.member-menu > button { position: absolute; top: 100%; right: 0; white-space: nowrap; margin-top: 4px; box-shadow: 0 5px 18px #48392015; }
++.learning-empty { display: flex; align-items: center; gap: 20px; border: 1px dashed #d7cebb; border-radius: 12px; min-height: 150px; padding: 28px; color: #8e806c; font-size: 13px; line-height: 1.8; }
++.learning-empty svg { flex: none; }.materials-add-panel { margin: 20px 0; }
++.learning-add { margin: 18px 0; }.learning-add summary { padding: 10px 0; cursor: pointer; font-size: 13px; }
++.learning-add-book { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #e6dfd2; font-size: 13px; }.learning-add-book > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }.learning-add-book > button { flex: none; }
++.add-book-cover { display: block; width: 30px; height: 45px; flex: none; }
++.workspace-settings { margin-top: 26px; border-top: 1px solid #e3ddd0; font-size: 12px; }
++.workspace-settings > summary { display: flex; align-items: center; gap: 10px; list-style: none; padding: 16px 0; color: #817564; cursor: pointer; }.workspace-settings > summary::-webkit-details-marker { display: none; }.workspace-settings > summary > svg:last-child { margin-left: auto; }.workspace-settings[open] > summary > svg:last-child { transform: rotate(180deg); }
++.workspace-settings-body { padding-bottom: 20px; }.learning-archive { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 18px 0; }.learning-archive p { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 0; }.learning-records-toggle { margin-right: 12px; }
++.learning-records-entry { margin: 0 0 20px; }.learning-records-entry > button { padding: 0; background: none; border: 0; color: #897e6a; font-size: 12px; }
++.library-section-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 14px; margin: 0 0 20px; font-size: 20px; font-weight: 500; }.library-section-title > span { font-size: 12px; color: var(--muted); font-weight: 400; }
++.network-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; margin: 0; }
++.network-book-card { display: flex; flex-direction: column; align-items: stretch; min-width: 0; padding: 0; text-align: left; border: 0; border-radius: 10px; color: inherit; background: transparent; }
++.shelf-cover { display: flex; align-items: center; justify-content: center; height: 210px; padding: 18px; border-radius: 10px; background: #eeece2; }
++.shelf-cover :deep(.book-cover) { height: 172px; width: auto; }.shelf-cover :deep(.book-cover-name) { font-size: 15px; }.shelf-cover :deep(.material-video-cover) { height: 100%; }
++.network-book-card strong { margin-top: 14px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; font-weight: 500; }.network-book-card > span:last-child { margin-top: 5px; color: var(--muted); font-size: 11px; }
++@media (min-width: 1500px) { .member-cover { height: 220px; }.member-cover :deep(.book-cover) { height: 180px; } }
++@media (max-width: 1100px) { .learning-layout { grid-template-columns: 210px minmax(0, 1fr); gap: 24px; }.learning-spaces { padding-right: 16px; }.network-library-head h1 > span { display: none; }.learning-goal-heading { padding: 22px; gap: 18px; }.learning-members { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }.member-cover { height: 170px; }.member-cover :deep(.book-cover) { height: 140px; }.member-copy { padding: 16px; }.member-copy > strong { font-size: 14px; } }
++@media (max-width: 760px) {
++  .network-library { padding: 22px 18px 36px; }.network-library-head { align-items: start; gap: 12px; margin-bottom: 24px; }.network-library-head h1 { font-size: 24px; margin-top: 10px; }.network-library-head .brand-signature { font-size: 8px; gap: 6px; }.network-library-head .brand-logo { width: 19px; height: 19px; }
++  .library-head-actions { gap: 12px; }.create-workspace-toggle { min-height: 36px; padding: 8px 10px; font-size: 11px !important; }.account-email, .network-library .network-account summary > svg { display: none; }.network-library .network-account-menu { position: absolute; }
++  .learning-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }.learning-spaces { border: 0; padding: 0; }.learning-nav-heading { margin-bottom: 10px; }.learning-space-list { grid-auto-flow: column; grid-auto-columns: 240px; grid-template-columns: none; gap: 10px; overflow-x: auto; padding-bottom: 4px; }.learning-space-card { border-color: #e4ded2; padding: 10px; }.workspace-cover-stack { height: 45px; flex-basis: 30px; width: 30px; }.workspace-mini-cover { width: 30px; height: 45px; }.workspace-enter { display: none; }.workspace-nav-copy strong { -webkit-line-clamp: 1; }.workspace-nav-copy small { margin-top: 5px; }
++  .learning-spaces .learning-legacy { display: inline-flex; margin: 8px 10px 0 0; padding: 6px 0; font-size: 11px; }.shared-entry { display: inline-block; margin: 8px 0 0; padding: 6px 0; border: 0; }.shared-entry p { display: none; }.shared-entry > button { font-size: 11px; }
++  .learning-goal-heading { align-items: start; padding: 20px; flex-direction: column; gap: 16px; }.learning-details h2 { font-size: 18px; line-height: 1.7; }.goal-actions { display: flex; gap: 14px; width: 100%; justify-content: space-between; }.learning-details button.workspace-primary { gap: 20px; font-size: 12px; min-height: 40px; }.materials-heading { margin-top: 24px; }.materials-heading p { max-width: 200px; line-height: 1.6; }.materials-heading h3 { font-size: 16px; }
++  .learning-members { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }.member-cover { height: 145px; padding: 14px; }.member-cover :deep(.book-cover) { height: 117px; }.member-cover :deep(.book-cover-name) { font-size: 11px; }.member-cover :deep(.book-cover-fallback) { padding: 12px 8px; }.member-cover :deep(.book-cover-mark) { font-size: 4px; }.member-copy { padding: 13px 12px; min-height: 156px; }.member-copy > strong { font-size: 13px; margin-bottom: 14px; }.member-kind { font-size: 9px; }.member-read-action { font-size: 11px; gap: 4px; }.member-menu { right: 5px; bottom: 7px; }
++  .network-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }.shelf-cover { height: 180px; padding: 12px; }.shelf-cover :deep(.book-cover) { height: 156px; }.shelf-cover :deep(.book-cover-name) { font-size: 13px; }
++  .learning-create { flex-direction: column; align-items: stretch; padding: 18px; }.learning-create input, .learning-goal-edit textarea { font-size: 16px; }.learning-create > button { justify-content: center; }.learning-add-book { gap: 10px; font-size: 12px; }.learning-add-book > button { font-size: 11px; }
++}
++@media (prefers-reduced-motion: reduce) { .learning-space-card, .learning-member { transition: none; }.learning-member:hover { transform: none; } }
+--- a/packages/web/src/components/MaterialCover.vue
++++ b/packages/web/src/components/MaterialCover.vue
+@@ -0,0 +1,33 @@
++<script setup lang="ts">
++import { ref, watch } from 'vue';
++import { Play } from '@lucide/vue';
++import BookCover from './BookCover.vue';
++import type { BookCoverSource } from '../api';
++const props = defineProps<{ title: string; cover?: BookCoverSource | null; video?: boolean; compact?: boolean }>();
++const failed = ref(false);
++watch(() => props.cover?.url, () => { failed.value = false; });
++</script>
++
++<template>
++  <div v-if="video" class="material-video-cover" :class="{ compact }" aria-hidden="true">
++    <div class="video-cover-art"><span class="video-cover-eyebrow">VIDEO / 课程录像</span><strong>{{ title }}</strong><span class="video-cover-line"></span></div>
++    <img v-if="cover?.kind === 'image' && !failed" :src="cover.url" alt="" loading="lazy" decoding="async" @error="failed = true" />
++    <span class="video-cover-play"><Play :size="compact ? 14 : 22" fill="currentColor" :stroke-width="1.5" /></span>
++    <span v-if="!compact" class="video-cover-label">课程视频</span>
++  </div>
++  <BookCover v-else :title="title" :cover="cover" :compact="compact" />
++</template>
++
++<style scoped>
++.material-video-cover { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 10px; background: #263d37; color: #f9f4e8; }
++.video-cover-art { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px 26px 52px; background: radial-gradient(ellipse at 100% 0, #65857970, transparent 65%); }
++.video-cover-eyebrow { font: 9px/1.4 var(--sans); letter-spacing: .16em; color: #bdcfc3; }
++.video-cover-art strong { font-size: clamp(16px, 1.4vw, 22px); font-weight: 500; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
++.video-cover-line { width: 36px; height: 2px; background: #d5b78b; }
++.material-video-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
++.video-cover-play { position: absolute; bottom: 14px; left: 16px; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #ffffff70; border-radius: 50%; background: #1d302bba; color: white; }
++.video-cover-label { position: absolute; bottom: 21px; right: 14px; background: #1d302bc9; padding: 3px 7px; border-radius: 4px; font-size: 10px; }
++.compact { border-radius: 5px; height: 100%; aspect-ratio: auto; }
++.compact .video-cover-art { padding: 8px; }.compact .video-cover-art strong,.compact .video-cover-eyebrow,.compact .video-cover-line { display: none; }
++.compact .video-cover-play { width: 26px; height: 26px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
++</style>
+--- a/packages/web/src/components/SharedWorkspaceManifest.vue
++++ b/packages/web/src/components/SharedWorkspaceManifest.vue
+@@ -1,8 +1,11 @@
+ <script setup lang="ts">
+ import { sharedBookKey, sharedBookLabel, sharedCapability, type SharedBook, type SharedRelease } from '../shared-workspaces';
+ import type { PublishedBookRef } from '../network-context';
++import MaterialCover from './MaterialCover.vue';
+ const props = defineProps<{ release: SharedRelease; books: SharedBook[] }>();
+ const label = (reference: PublishedBookRef) => sharedBookLabel(reference, props.books, props.release.manifest.materials);
++const book = (reference: PublishedBookRef) => props.books.find(item => sharedBookKey(item.published_book_ref) === sharedBookKey(reference));
++const capabilities = (values: string[]) => [...new Set(values.map(sharedCapability))];
+ </script>
+ 
+ <template>
+@@ -10,9 +13,9 @@
+     <p class="publisher">{{ release.manifest.publisher }} · 第 {{ release.version }} 版</p>
+     <dl><div><dt>公开学习目标</dt><dd>{{ release.manifest.public_goal }}</dd></div><div><dt>适用范围</dt><dd>{{ release.manifest.applicability }}</dd></div><div><dt>建议基础</dt><dd>{{ release.manifest.prerequisites }}</dd></div></dl>
+     <h4>预构建资料</h4>
+-    <ul><li v-for="material in release.manifest.materials" :key="sharedBookKey(material.published_book_ref)">{{ label(material.published_book_ref) }}<span> · {{ material.required_capabilities.map(sharedCapability).join('、') }}</span></li></ul>
++    <ul class="manifest-materials"><li v-for="material in release.manifest.materials" :key="sharedBookKey(material.published_book_ref)"><div class="manifest-cover" :class="{ 'is-video': book(material.published_book_ref)?.media_kind === 'video' }"><MaterialCover :title="label(material.published_book_ref)" :cover="book(material.published_book_ref)?.cover" :video="book(material.published_book_ref)?.media_kind === 'video'" compact /></div><div><strong>{{ label(material.published_book_ref) }}</strong><div class="capabilities"><span v-for="capability in capabilities(material.required_capabilities)" :key="capability">{{ capability }}</span></div></div></li></ul>
+     <template v-if="release.manifest.topic_links.length"><h4>主题联系</h4><ul class="parts"><li v-for="(part, index) in release.manifest.topic_links" :key="index"><strong>{{ part.title }}</strong><p>{{ part.description }}</p><small>关联资料：{{ part.materials.map(label).join('、') }}</small></li></ul></template>
+-    <template v-if="release.manifest.suggested_route.length"><h4>建议学习路线</h4><ol class="parts"><li v-for="(part, index) in release.manifest.suggested_route" :key="index"><strong>{{ part.title }}</strong><p>{{ part.description }}</p><small>关联资料：{{ part.materials.map(label).join('、') }}</small></li></ol></template>
++    <template v-if="release.manifest.suggested_route.length"><h4>建议学习路线</h4><ol class="parts route-list"><li v-for="(part, index) in release.manifest.suggested_route" :key="index"><span class="route-number" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span><div><strong>{{ part.title }}</strong><p>{{ part.description }}</p><small>关联资料：{{ part.materials.map(label).join('、') }}</small></div></li></ol></template>
+     <section v-if="release.manifest.external_resources?.length" aria-label="外部链接导览">
+       <h4>外部链接导览</h4><p>前往原网站观看或阅读。以下链接未作为已解析的工作区资料。</p>
+       <ul class="parts"><li v-for="(resource, index) in release.manifest.external_resources" :key="index">
+@@ -29,4 +32,11 @@
+ 
+ <style scoped>
+ .shared-manifest { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }.publisher,dt,small,li>span { color: var(--muted); } dl { display: grid; gap: 12px; } dd { margin: 2px 0 0; } h4 { margin: 20px 0 8px; font-weight: 500; } ul,ol { padding-left: 22px; }.parts li { margin-bottom: 14px; }.parts p { margin: 3px 0; }.unavailable { background: var(--surface-soft); padding: 1px 14px; border-radius: 10px; }
++.manifest-materials { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
++.manifest-materials > li { display: flex; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); }
++.manifest-materials > li > div:last-child { min-width: 0; }.manifest-materials strong { font-weight: 500; font-size: 13px; }
++.manifest-cover { width: 46px; height: 69px; flex: none; }.manifest-cover.is-video { width: 96px; height: 64px; }
++.capabilities { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }.capabilities > span { font-size: 10px; color: #827356; padding: 2px 6px; background: #eee9de; border-radius: 4px; }
++.route-list { list-style: none; padding: 0; }.route-list > li { display: flex; gap: 16px; margin: 0; padding: 14px 0; border-bottom: 1px solid var(--line); }.route-list > li:last-child { border-bottom: 0; }.route-number { flex: none; font: 400 20px/1.6 var(--mono); color: #b4986c; }.route-list strong { font-size: 13px; font-weight: 550; }.route-list p { color: #746e61; font-size: 12px; }.route-list small { display: block; margin-top: 7px; font-size: 10px; }
++@media(max-width:540px){.manifest-materials { grid-template-columns: minmax(0,1fr); }.manifest-materials>li { gap: 12px; padding: 12px; }.manifest-cover.is-video { width: 72px; height: 50px; }}
+ </style>
+--- a/packages/web/src/components/SharedWorkspaceCatalog.vue
++++ b/packages/web/src/components/SharedWorkspaceCatalog.vue
+@@ -3,11 +3,13 @@
+ import { ApiError } from '../api';
+ import { network, type LearningWorkspace } from '../network-context';
+ import { sharedWorkspaces } from '../network-client';
+-import type { SharedBook, SharedRelease, SharedReleasePage } from '../shared-workspaces';
++import { sharedBookKey, sharedBookLabel, type SharedBook, type SharedRelease, type SharedReleasePage } from '../shared-workspaces';
++import MaterialCover from './MaterialCover.vue';
+ import SharedWorkspaceManifest from './SharedWorkspaceManifest.vue';
+ import { examSprints, sprintRequest, type ExamSprintInput } from '../exam-sprints';
+ 
+-defineProps<{ books: SharedBook[] }>();
++const props = defineProps<{ books: SharedBook[] }>();
++const materialBook = (reference: SharedBook['published_book_ref']) => props.books.find(book => sharedBookKey(book.published_book_ref) === sharedBookKey(reference));
+ const emit = defineEmits<{ started: [workspace: LearningWorkspace, message?: string] }>();
+ const page = ref<SharedReleasePage | null>(null), selected = ref<SharedRelease | null>(null);
+ const goal = ref(''), loading = ref(false), busy = ref(false), error = ref('');
+@@ -82,7 +84,7 @@
+       </article>
+     </template>
+     <template v-else-if="page && !loading">
+-      <div class="shared-list"><article v-for="release in page.items" :key="`${release.release_id}:${release.version}`" class="shared-card"><div><h3>{{ release.manifest.name }}</h3><small>{{ release.manifest.publisher }} · 第 {{ release.version }} 版</small></div><p>{{ release.manifest.public_goal }}</p><p class="status">{{ release.archived ? '已归档' : release.availability.status === 'ready' ? '资料已就绪' : '尚未完整就绪' }} · {{ release.manifest.materials.length }} 份资料</p><button :disabled="busy" @click="select(release)">查看目标与路线</button></article></div>
++      <div class="shared-list"><article v-for="release in page.items" :key="`${release.release_id}:${release.version}`" class="shared-card"><div class="shared-card-covers" aria-hidden="true"><div v-for="material in release.manifest.materials.slice(0, 3)" :key="sharedBookKey(material.published_book_ref)" :class="{ 'is-video': materialBook(material.published_book_ref)?.media_kind === 'video' }"><MaterialCover :title="sharedBookLabel(material.published_book_ref, books, release.manifest.materials)" :cover="materialBook(material.published_book_ref)?.cover" :video="materialBook(material.published_book_ref)?.media_kind === 'video'" compact /></div></div><div><h3>{{ release.manifest.name }}</h3><small>{{ release.manifest.publisher }} · 第 {{ release.version }} 版</small></div><p>{{ release.manifest.public_goal }}</p><p class="status">{{ release.archived ? '已归档' : release.availability.status === 'ready' ? '资料已就绪' : '尚未完整就绪' }} · {{ release.manifest.materials.length }} 份资料</p><button :disabled="busy" @click="select(release)">查看目标与路线</button></article></div>
+       <p v-if="!page.items.length">暂无可用的共享工作区。</p>
+       <nav v-if="page.total > page.limit" aria-label="共享工作区分页"><button :disabled="busy || !page.offset" @click="load(Math.max(0, page.offset - page.limit))">上一页共享工作区</button><span>{{ page.offset + 1 }}–{{ page.offset + page.items.length }} / {{ page.total }}</span><button :disabled="busy || page.offset + page.limit >= page.total" @click="load(page.offset + page.limit)">下一页共享工作区</button></nav>
+     </template>
+@@ -90,5 +92,6 @@
+ </template>
+ 
+ <style scoped>
++.shared-card-covers { display: flex; align-items: center; gap: 12px; margin: -18px -18px 18px; padding: 22px; border-radius: 11px 11px 0 0; background: #ede9df; min-height: 130px; }.shared-card-covers > div { width: 58px; height: 87px; }.shared-card-covers > .is-video { width: 142px; height: 87px; }
+ .shared-catalog { margin: 20px 0; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--canvas); }.heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; }.heading>div { min-width: 0; } h2,h3 { margin: 0; font-weight: 500; overflow-wrap: anywhere; }h2 { font-size: 20px; }h3 { font-size: 17px; } p { line-height: 1.75; overflow-wrap: anywhere; } .heading p,small,.status,.shared-goal p { color: var(--muted); font-size: 13px; }button { font: inherit; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--canvas); padding: 9px 12px; min-height: 40px; cursor: pointer; }button:disabled { opacity: .5; cursor: default; }.shared-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 14px; margin-top: 12px; }.shared-card { border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }.shared-goal { margin-top: 22px; padding: 18px; border-radius: 12px; background: var(--surface-soft); }.shared-goal label { display: block; line-height: 1.8; }.shared-goal textarea { display: block; box-sizing: border-box; width: 100%; min-height: 90px; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); color: var(--ink); padding: 10px; font: inherit; }.shared-goal button { background: var(--brand-accent); color: var(--brand-on-accent); }nav { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; }@media(max-width:540px){.shared-catalog { padding: 15px; }.heading { align-items: flex-start; flex-direction: column; }.shared-list { grid-template-columns: minmax(0,1fr); }.shared-goal { padding: 14px; }.shared-goal textarea { font-size: 16px; } }
+ </style>
+--- a/packages/web/src/shared-workspaces.ts
++++ b/packages/web/src/shared-workspaces.ts
+@@ -28,11 +28,15 @@
+   changes: { added_materials: PublishedBookRef[]; removed_materials: PublishedBookRef[]; public_goal_changed: boolean; composition_changed: boolean; required_capabilities_changed?: boolean; description_changed?: boolean };
+   preserved_private_materials: PublishedBookRef[];
+ }
+-export interface SharedBook { published_book_ref: PublishedBookRef; title?: string | null }
++export interface SharedBook {
++  published_book_ref: PublishedBookRef; title?: string | null;
++  cover?: import('./api').BookCoverSource | null; media_kind?: 'book' | 'video';
++}
+ export const sharedBookKey = (reference: PublishedBookRef) => JSON.stringify([reference.book_id, reference.publication_id]);
+ export function sharedBookLabel(reference: PublishedBookRef, books: SharedBook[], materials: SharedMaterial[]) {
+   const book = books.find(book => sharedBookKey(book.published_book_ref) === sharedBookKey(reference));
+   const index = materials.findIndex(material => sharedBookKey(material.published_book_ref) === sharedBookKey(reference));
+   return book ? bookTitle({ title: book.title, book_id: reference.book_id }) : (index >= 0 ? `资料 ${index + 1}` : '原版本资料');
+ }
+-export const sharedCapability = (value: string) => ({ text: '阅读原文', tutor: '资料理解', teaching: '教学材料' }[value] ?? '资料内容');
++export const sharedCapability = (value: string) => ({ text: '阅读原文', tutor: '资料理解', teaching: '教学材料',
++  transcript: '原文转写', translation: '双语字幕', visual_index: '画面索引', graph: '知识图谱', discourse: '讲解脉络', audio_review: '原声回听' }[value] ?? '资料内容');
+--- a/packages/web/src/book-title.ts
++++ b/packages/web/src/book-title.ts
+@@ -1,4 +1,10 @@
+ /** Display names are independent of the ID used to open a book or its version. */
+ export function bookTitle(book: { title?: string | null; name?: string; book_id: string }): string {
+-  return book.title?.trim() || (book.name?.trim() || book.book_id).replace(/[-_]+/g, ' ');
++  const title = book.title?.trim();
++  if (title) return title;
++  const name = book.name?.trim() || book.book_id;
++  // Imported publications can use opaque UUIDs or content IDs as their identity.
++  // They are useful for opening the material, but not as a reader-facing title.
++  if (/^(?:[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}|[a-f\d]{32,64})$/i.test(name)) return '未命名资料';
++  return name.replace(/[-_]+/g, ' ');
+ }
+--- a/packages/web/src/book-title.test.ts
++++ b/packages/web/src/book-title.test.ts
+@@ -6,3 +6,10 @@
+   expect(bookTitle({ title: ' ', name: 'memory-layout', book_id: 'id' })).toBe('memory layout');
+   expect(bookTitle({ book_id: 'attention_is-all' })).toBe('attention is all');
+ });
++
++it('keeps opaque publication identities out of reader-facing titles', () => {
++  const book_id = '19ac880d-a788-43f4-9725-6c56f4980189';
++  expect(bookTitle({ book_id })).toBe('未命名资料');
++  expect(bookTitle({ book_id, title: 'CS336 第 2 讲 · PyTorch' })).toBe('CS336 第 2 讲 · PyTorch');
++  expect(bookTitle({ book_id: 'f'.repeat(64) })).toBe('未命名资料');
++});
+--- a/packages/web/src/NetworkApp.learning-workspace.test.ts
++++ b/packages/web/src/NetworkApp.learning-workspace.test.ts
+@@ -10,7 +10,33 @@
+ } }));
+ import NetworkApp from './NetworkApp.vue';
+ 
+-afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
++afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
++
++it('shows published video metadata in workspace cards and shared routes without duplicating the video on the shelf', async () => {
++  installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
++  const reference = { book_id: '19ac880d-a788-43f4-9725-6c56f4980189', publication_id: 'lecture-v1' };
++  const value: LearningWorkspace = { learning_workspace_id: 'course', goal: { text: '学习张量运算', constraints: [], revision: 1, created_at: 1 },
++    goal_history: [], members: [{ published_book_ref: reference, readable: true, added_at: 1 }], archived: false, created_at: 1, updated_at: 1 };
++  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
++    if (url === '/api/auth/me') return Response.json(network.value.identity);
++    if (url === '/api/library') return Response.json({ books: [{ published_book_ref: reference, title: null, cover: { kind: 'image', url: '/api/course-frame.png' } }] });
++    if (url === '/api/videos') return Response.json({ videos: [{ video: { media_id: 'course-video', media_revision: '1' }, title: 'CS336 第 2 讲 · PyTorch', publication: reference, english_ready: true }] });
++    if (url === '/api/learning-workspaces') return Response.json({ workspaces: [value] });
++    if (url.endsWith('/reading-resumption')) return Response.json(null);
++    throw new Error(url);
++  }));
++  const wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true, PersonalMaterials: true, ExamSprintPanel: true, SharedWorkspaceInstance: true } } });
++  try {
++    await flushPromises();
++    expect(wrapper.findAll('.network-book-card')).toHaveLength(1);
++    expect(wrapper.get('.network-book-card').text()).toContain('CS336 第 2 讲 · PyTorch');
++    await wrapper.get('.learning-space-select').trigger('click'); await flushPromises();
++    expect(wrapper.get('.learning-member.is-video').text()).toContain('CS336 第 2 讲 · PyTorch');
++    expect(wrapper.get('.learning-member img').attributes('src')).toBe('/api/course-frame.png');
++    expect(wrapper.getComponent({ name: 'SharedWorkspaceInstance' }).props('books')[0].title).toBe('CS336 第 2 讲 · PyTorch');
++    expect(wrapper.text()).not.toContain(reference.book_id);
++  } finally { wrapper.unmount(); }
++});
+ 
+ it('creates empty goal workspaces, manages exact materials and restores each workspace draft through switches and refresh', async () => {
+   installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
+@@ -52,7 +78,7 @@
+   let wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
+   const flush = () => flushPromises();
+   const clickText = async (selector: string, text: string) => {
+-    const button = wrapper.findAll(selector).find(item => item.text() === text); expect(button).toBeTruthy(); await button!.trigger('click'); await flush();
++    const button = wrapper.findAll(selector).find(item => item.text() === text || (item.find('.member-read-action').exists() && item.get('.member-read-action').text() === text)); expect(button).toBeTruthy(); await button!.trigger('click'); await flush();
+   };
+   try {
+     await flush();
+--- a/packages/web/src/NetworkApp.resumption.test.ts
++++ b/packages/web/src/NetworkApp.resumption.test.ts
+@@ -92,6 +92,8 @@
+ });
+ it('previews only this window, then restores the exact publication, chat and saved position on click', async () => {
+   await start();
++  const versions = wrapper!.findAll('.network-book-card').filter(card => card.text().includes('能量守恒与变化')).map(card => card.text());
++  expect(versions[0]).toContain('版本 1（默认）'); expect(versions[1]).toContain('版本 2');
+   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('能量守恒与变化 · 版本 2');
+   expect(wrapper!.get('[aria-label="阅读接续"]').text()).toContain('为什么守恒？');
+   expect(wrapper!.find('.reader').exists()).toBe(false);
+--- a/packages/web/src/components/CloudPlans.vue
++++ b/packages/web/src/components/CloudPlans.vue
+@@ -40,6 +40,7 @@
+     <p v-if="error" role="alert">{{ error }}。请点击刷新重试。</p>
+     <section v-if="storage" class="entitlement" aria-label="个人云端空间">
+       <h4>个人云端空间</h4>
++      <p>空间用于保存上传的书籍、视频和课件原件。演示页、笔记等学习成果不占上传空间，保存无需存储套餐。</p>
+       <p>已保存 {{ cloudStorageSize(storage.used_bytes) }} · 上传中 {{ cloudStorageSize(storage.reserved_bytes) }}<template v-if="storage.limit_bytes !== null"> · 上限 {{ cloudStorageSize(storage.limit_bytes) }}</template></p>
+       <p v-if="storage.can_upload">还能使用 {{ cloudStorageSize(storage.available_bytes) }}。</p>
+       <p v-else-if="storage.over_limit">现有资料超过当前空间上限，请在个人资料区域整理后继续上传。</p>
+--- a/packages/web/src/components/PersonalPreparations.vue
++++ b/packages/web/src/components/PersonalPreparations.vue
+@@ -87,7 +87,7 @@
+ function storageTaskActive(item:StorageItem){return !!item.task_id&&items.value.some(task=>task.task_id===item.task_id&&['queued_prepare','preparing','queued','running'].includes(task.state));}
+ async function removeStorage(item:StorageItem){
+   if(blocked.value)return;
+-  const action=item.kind==='upload'&&!item.task_id?'cancel':'delete';
++  const action=!item.task_id?'cancel':'delete';
+   if(!window.confirm(action==='cancel'?`取消“${item.filename}”的上传并释放空间？`:`删除“${item.filename}”的私人文件并释放空间？文件删除后无法恢复，请先下载需要保留的内容。`))return;
+   storageBusy.value=true;error.value='';
+   try{
+@@ -118,6 +118,7 @@
+     <div class="storage-summary" aria-label="账号私人空间">
+       <template v-if="storage">
+         <div class="storage-heading"><strong>私人云端空间</strong><span>{{fileSize(storage.total_bytes)}} / {{storage.limit_bytes===null?'待开通套餐':fileSize(storage.limit_bytes)}}</span></div>
++        <p>仅计算上传的书籍、视频和课件原件；演示页、笔记等学习成果不占上传空间。</p>
+         <progress v-if="storage.limit_bytes!==null&&storage.limit_bytes>0" aria-label="私人空间占用" :value="Math.min(storage.total_bytes,storage.limit_bytes)" :max="storage.limit_bytes" />
+         <p>已保存 {{fileSize(storage.used_bytes)}} · 上传预留 {{fileSize(storage.reserved_bytes)}}<template v-if="storage.max_file_bytes!==null"> · 单份最多 {{fileSize(storage.max_file_bytes)}}</template></p>
+         <p v-if="storage.over_limit" class="storage-warning">已超过当前套餐空间，请整理资料或选择更高容量套餐后再上传。现有资料仍可在保留期内查看和导出。</p>
+@@ -131,11 +132,11 @@
+         <p class="preparation-note">这里汇总账号所有工作区的私人文件。公共课程不占私人空间；移出或归档工作区不会删除文件。删除前请先暂停相关准备，并将资料移出所有工作区。</p>
+         <p v-if="!storage.items.length">还没有占用私人空间的资料。</p>
+         <div v-for="item in storage.items" :key="item.storage_id" class="storage-item">
+-          <div><strong>{{item.filename}}</strong><span>{{fileSize(item.bytes)}} · {{item.state==='reserved'?'上传预留':item.kind==='generated'?'个人成果':'已保存原件'}}<template v-if="item.workspace_id!==workspaceId"> · 其他工作区</template></span></div>
++          <div><strong>{{item.filename}}</strong><span>{{fileSize(item.bytes)}} · {{item.state==='reserved'?'上传预留':'已保存原件'}}<template v-if="item.workspace_id!==workspaceId"> · 其他工作区</template></span></div>
+           <div class="actions">
+             <a v-if="item.download_url" :href="item.download_url" download>下载</a>
+-            <button v-if="item.kind==='upload'&&!item.task_id&&item.workspace_id===workspaceId&&!workspace.archived" :disabled="blocked||!!uploadSession" @click="resumeUpload(item)">继续上传</button>
+-            <button :disabled="blocked||storageTaskActive(item)" @click="removeStorage(item)">{{item.kind==='upload'&&!item.task_id?'取消上传':'删除文件'}}</button>
++            <button v-if="!item.task_id&&item.workspace_id===workspaceId&&!workspace.archived" :disabled="blocked||!!uploadSession" @click="resumeUpload(item)">继续上传</button>
++            <button :disabled="blocked||storageTaskActive(item)" @click="removeStorage(item)">{{!item.task_id?'取消上传':'删除文件'}}</button>
+             <span v-if="storageTaskActive(item)" class="preparation-note">请先暂停准备</span>
+           </div>
+         </div>
+--- a/packages/web/src/personal-preparations.ts
++++ b/packages/web/src/personal-preparations.ts
+@@ -9,7 +9,7 @@
+   materials:{label:string;kind:'book'|'video';state:string;published_book_ref:PublishedBookRef|null;plan_ready:boolean;progress:null|{message:string;completed:number;total:number;unit:string;status:string}}[];
+ }
+ export interface StorageItem {
+-  storage_id:string;kind:'upload'|'generated';filename:string;bytes:number;state:'reserved'|'used';
++  storage_id:string;kind:'upload';filename:string;bytes:number;state:'reserved'|'used';
+   workspace_id:string;task_id?:string|null;book_id?:string|null;publication_id?:string|null;updated_at:number;download_url?:string|null;
+ }
+ export interface AccountStorage {
+--- a/crates/server/src/book_title.rs
++++ b/crates/server/src/book_title.rs
+@@ -8,6 +8,14 @@
+     metadata.as_ref().and_then(|value| value["title"]["value"].as_str())
+         .map(str::trim).filter(|title| !title.is_empty()).map(str::to_owned)
+         .or_else(|| display_title.map(str::trim).filter(|title| !title.is_empty()).map(str::to_owned))
++        .or_else(|| {
++            let video: Value = serde_json::from_slice(&std::fs::read(directory.join("video_source_manifest.json")).ok()?).ok()?;
++            // Published transcripts have no heading. Keep the imported filename as
++            // their display title, including when prepared on a different OS.
++            let filename = video["source"]["original_path"].as_str()?.rsplit(['/', '\\']).next()?;
++            Path::new(filename).file_stem()?.to_str().map(|title| title.replace('_', " "))
++                .filter(|title| !title.trim().is_empty())
++        })
+         .or_else(|| {
+             // The title is at the front of imported Markdown. Listing the library
+             // must not load each book's entire source text.
+@@ -44,4 +52,15 @@
+         std::fs::write(dir.join("source.txt"), "# C# ##\n正文").unwrap();
+         assert_eq!(read(dir, None).as_deref(), Some("C#"));
+     }
++
++    #[test]
++    fn video_title_uses_original_filename_without_a_transcript_heading() {
++        let root = tempfile::tempdir().unwrap();
++        std::fs::write(root.path().join("source.txt"), "Today we will discuss tensors.\n").unwrap();
++        for path in [r"E:\courses\CS336_Lecture02_PyTorch.mp4", "/courses/CS336_Lecture02_PyTorch.mp4"] {
++            std::fs::write(root.path().join("video_source_manifest.json"), serde_json::json!({"source":{"original_path":path}}).to_string()).unwrap();
++            assert_eq!(read(root.path(), None).as_deref(), Some("CS336 Lecture02 PyTorch"));
++            assert_eq!(read(root.path(), Some("课程第二讲")).as_deref(), Some("课程第二讲"));
++        }
++    }
+ }
+--- a/crates/server/src/book_cover.rs
++++ b/crates/server/src/book_cover.rs
+@@ -44,9 +44,20 @@
+     Some(CoverDescriptor { kind, url: format!("/api/book/library/cover?{query}") })
+ }
+ 
++pub(crate) fn video_frame(manifest: &crate::published_library::PublicationManifest) -> Option<&str> {
++    if manifest.capabilities["video"] != true { return None; }
++    manifest.files.keys().find(|path| path.starts_with("video-enrichments/")
++        && (path.contains("/frames/") || path.ends_with("/frame.png")) && path.ends_with(".png"))
++        .map(String::as_str)
++}
++
+ pub(crate) fn published(directory: &Path, manifest: &crate::published_library::PublicationManifest) -> Option<CoverDescriptor> {
+     if let Some(path) = image(directory).filter(|p| manifest.files.contains_key(p)) {
+         return Some(CoverDescriptor { kind: "image", url: manifest.reference.url(&path) });
++    }
++    // Reuse an admitted course frame; listing a workspace never decodes video.
++    if video_frame(manifest).is_some() {
++        return Some(CoverDescriptor { kind: "image", url: manifest.reference.url("video/cover") });
+     }
+     manifest.files.contains_key("original.pdf").then(|| CoverDescriptor {
+         kind: "pdf", url: manifest.reference.url("pdf/original"),
+--- a/crates/server/src/published_library.rs
++++ b/crates/server/src/published_library.rs
+@@ -731,6 +731,7 @@
+             let cover = crate::book_cover::published(Path::new(&directory), &manifest);
+             let title = crate::book_title::read(Path::new(&directory), display_titles.get(&manifest.reference).map(String::as_str));
+             Ok(json!({"published_book_ref":manifest.reference,"is_default":is_default,
++                "media_kind":if manifest.capabilities["video"] == true { "video" } else { "book" },
+                 "source_fingerprint":manifest.source_fingerprint,"teaching_readiness":manifest.teaching_readiness,"cover":cover,"title":title}))
+         }).collect()
+     }
+@@ -979,10 +980,12 @@
+     manifest: &PublicationManifest,
+     path: &str,
+ ) -> Result<crate::BinaryReply, ToolError> {
++    let video_cover = path == "video/cover";
++    let path = if video_cover { crate::book_cover::video_frame(manifest).ok_or_else(unavailable)? } else { path };
+     relative(path)?;
+     // Runtime JSON/text uses typed endpoints. Never expose arbitrary admitted metadata.
+     if !manifest.files.contains_key(path)
+-        || !(path.starts_with("assets/") || path == "original.pdf")
++        || !(video_cover || path.starts_with("assets/") || path == "original.pdf")
+     {
+         return Err(unavailable());
+     }
+--- a/crates/server/src/authorization.rs
++++ b/crates/server/src/authorization.rs
+@@ -180,6 +180,7 @@
+             | "video_transcript"
+             | "video_context"
+             | "video/media"
++            | "video/cover"
+             | "asset_manifest"
+             | "formula_semantics"
+             | "pdf_source_map"
+--- a/crates/server/src/multi_user_host.rs
++++ b/crates/server/src/multi_user_host.rs
+@@ -815,14 +815,14 @@
+                         cookie: None, extra_headers, observation: None, waiting: None, media: None,
+                     });
+                 }
+-                let reply = if leaf.starts_with("assets/")
++                let reply = if leaf.starts_with("assets/") || leaf == "video/cover"
+                     || matches!(leaf.as_str(), "pdf/original" | "original.pdf")
+                 {
+                     let asset = library
+                         .asset(
+                             context.user_id(),
+                             &reference,
+-                            if leaf.starts_with("assets/") {
++                            if leaf.starts_with("assets/") || leaf == "video/cover" {
+                                 &leaf
+                             } else {
+                                 "original.pdf"
+--- a/crates/server/src/tests/video_publication_tests.rs
++++ b/crates/server/src/tests/video_publication_tests.rs
+@@ -1,5 +1,37 @@
+ use super::*;
+ use super::mu5_tests::Fixture;
++
++#[test]
++fn video_catalog_displays_original_title_and_published_frame() {
++    let f = Fixture::new();
++    let input = f.root.path().join("video-library-display");
++    super::video_draft_tests::fixture(&input);
++    let source_path = input.join("video_source_manifest.json");
++    let mut source: Value = serde_json::from_slice(&std::fs::read(&source_path).unwrap()).unwrap();
++    source["source"]["original_path"] = json!(r"E:\courses\CS336_Lecture02_PyTorch.mp4");
++    std::fs::write(&source_path, source.to_string()).unwrap();
++    batch(&input, "visual", "visual_index");
++    let mut library = f.access.library.lock().unwrap();
++    let publication = library.publish(&input).unwrap();
++    library.grant("A", &publication.reference).unwrap();
++    let catalog = library.list("A").unwrap();
++    let video = catalog.iter().find(|book| book["published_book_ref"] == json!(publication.reference)).unwrap();
++    assert_eq!(video["title"], "CS336 Lecture02 PyTorch");
++    assert_eq!(video["media_kind"], "video");
++    assert_eq!(video["cover"]["kind"], "image");
++    assert_eq!(video["cover"]["url"], publication.reference.url("video/cover"));
++    let cover_url = video["cover"]["url"].as_str().unwrap().to_owned();
++    drop(library);
++    let request = |token: &str| crate::multi_user_host::dispatch(
++        &f.access, &crate::multi_user_host::Site::new("https://reader.example").unwrap(), "GET", &cover_url,
++        &crate::multi_user_host::Headers(vec![("Host".into(), "reader.example".into()),
++            ("Cookie".into(), format!("{}={token}", crate::auth::COOKIE))]), "", crate::multi_user_host::now());
++    let response = request(&f.a);
++    assert_eq!(response.status, 200);
++    assert_eq!(response.content_type, "image/png");
++    assert_eq!(response.body, std::fs::read(input.join("video-enrichments/visual/frame.png")).unwrap());
++    assert_eq!(request(&f.b).status, 404);
++}
+ 
+ #[test]
+ fn video_publication_discourse_requires_artifact_and_preserves_other_contributions() {
+--- a/crates/server/src/cloud_storage.rs
++++ b/crates/server/src/cloud_storage.rs
+@@ -1,8 +1,8 @@
+-//! Account-wide reservations for originals and retained generated files.
+-//! Callers serialize upload admission in an IMMEDIATE control transaction; this
+-//! also coordinates writes from the independent presentation connection.
++//! Account-wide reservations for uploaded original materials.
++//! Learning artifacts use their own storage lifecycle, outside upload quotas.
++//! Callers serialize upload admission in an IMMEDIATE control transaction.
+ use crate::{admin_store::invalid, authorization::{missing, Authorization}, cloud_plans,
+-    control_store::{ControlStore, ServiceWriter}, user_storage_paths::error};
++    user_storage_paths::error};
+ use read_tools::ToolError;
+ use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
+ use serde_json::{json, Value};
+@@ -14,13 +14,13 @@
+ fn conflict(code: &str, message: &str) -> ToolError { error(code, "conflict", message) }
+ 
+ fn total(db: &Connection, owner: &str) -> Result<(i64, i64), ToolError> {
+-    db.query_row("SELECT COALESCE(sum(CASE WHEN state='used' THEN bytes ELSE 0 END),0),COALESCE(sum(CASE WHEN state='reserved' THEN bytes ELSE 0 END),0) FROM cloud_storage_objects WHERE owner_user_id=?",
++    db.query_row("SELECT COALESCE(sum(CASE WHEN state='used' THEN bytes ELSE 0 END),0),COALESCE(sum(CASE WHEN state='reserved' THEN bytes ELSE 0 END),0) FROM cloud_storage_objects WHERE owner_user_id=? AND kind='upload'",
+         [owner], |r| Ok((r.get(0)?, r.get(1)?))).map_err(storage)
+ }
+ 
+ fn admit(db: &Connection, owner: &str, bytes: i64, previous: i64, now: i64) -> Result<(), ToolError> {
+     let entitlement = cloud_plans::current(db, owner, now)?
+-        .ok_or_else(|| conflict("STORAGE_PLAN_REQUIRED", "请先开通有效学习套餐，再上传或保存新的文件"))?;
++        .ok_or_else(|| conflict("STORAGE_PLAN_REQUIRED", "请先开通有效学习套餐，再上传书籍、视频或课件原件"))?;
+     if bytes > entitlement.max_file_bytes {
+         return Err(conflict("STORAGE_FILE_TOO_LARGE", "这份文件超过套餐的单文件上限"));
+     }
+@@ -108,27 +108,12 @@
+                 }
+             }
+         }
+-        let presentation_root = root.join("users").join(owner).join("memory/agent-history.presentations");
+-        for directory in ["versions", "states", "assets"] {
+-            for path in files(&presentation_root.join(directory))? {
+-                register_existing_generated(db, root, owner, &path, now)?;
+-            }
+-        }
+         db.execute("INSERT INTO cloud_storage_adoptions(owner_user_id,adopted_at) VALUES(?,?)",params![owner,now]).map_err(storage)?;
+     }
+     // The worker attaches publication references after preparation. The original
+     // remains the single billable object when that publication is reused.
+     db.execute("UPDATE cloud_storage_objects AS s SET task_id=COALESCE(task_id,(SELECT b.task_id FROM operator_builds b,json_each(b.task_json,'$.materials') m WHERE json_extract(b.task_json,'$.user_id')=s.owner_user_id AND json_extract(m.value,'$.target_input')=s.path LIMIT 1)) WHERE owner_user_id=? AND kind='upload' AND state<>'deleted'", [owner]).map_err(storage)?;
+     db.execute("UPDATE cloud_storage_objects AS s SET book_id=(SELECT json_extract(task_json,'$.materials[0].published_book_ref.book_id') FROM operator_builds WHERE task_id=s.task_id),publication_id=(SELECT json_extract(task_json,'$.materials[0].published_book_ref.publication_id') FROM operator_builds WHERE task_id=s.task_id) WHERE owner_user_id=? AND kind='upload' AND task_id IS NOT NULL AND state<>'deleted'",[owner]).map_err(storage)?;
+-    Ok(())
+-}
+-
+-fn register_existing_generated(db: &Connection, root: &Path, owner: &str, path: &Path, now: i64) -> Result<(),ToolError> {
+-    let relative = path.strip_prefix(root).map_err(storage)?.to_string_lossy().replace('\\',"/");
+-    let bytes = i64::try_from(fs::metadata(path).map_err(storage)?.len()).map_err(storage)?;
+-    let id = format!("generated:{relative}");
+-    db.execute("INSERT OR IGNORE INTO cloud_storage_objects(owner_user_id,storage_id,kind,filename,path,bytes,state,created_at,updated_at) VALUES(?,?,'generated',?,?,?,'used',?,?)",
+-        params![owner,id,path.file_name().unwrap_or_default().to_string_lossy(),path.to_string_lossy(),bytes,now,now]).map_err(storage)?;
+     Ok(())
+ }
+ 
+@@ -138,7 +123,7 @@
+     let (used,reserved) = total(db,owner)?;
+     let limit = current.as_ref().map(|v|v.storage_bytes);
+     let all = used.saturating_add(reserved);
+-    let mut q = db.prepare("SELECT storage_id,kind,workspace_id,task_id,filename,bytes,state,book_id,publication_id,updated_at FROM cloud_storage_objects WHERE owner_user_id=? AND state<>'deleted' ORDER BY created_at DESC,storage_id").map_err(storage)?;
++    let mut q = db.prepare("SELECT storage_id,kind,workspace_id,task_id,filename,bytes,state,book_id,publication_id,updated_at FROM cloud_storage_objects WHERE owner_user_id=? AND kind='upload' AND state<>'deleted' ORDER BY created_at DESC,storage_id").map_err(storage)?;
+     let items = q.query_map([owner], |r| {
+         let id: String = r.get(0)?;
+         Ok(json!({"storage_id":id,"kind":r.get::<_,String>(1)?,"workspace_id":r.get::<_,Option<String>>(2)?,
+@@ -254,19 +239,6 @@
+                 let path=Path::new(path);
+                 if path.starts_with(root.join("personal-preparations").join(owner)) { remove_tree(path,&root.join("personal-preparations").join(owner))?; }
+             }
+-        }
+-    }
+-    // Session removal owns retained-artifact references; missing files release
+-    // their ledger entries rather than leaving phantom quota indefinitely.
+-    let mut q=db.prepare("SELECT storage_id,path,state,updated_at FROM cloud_storage_objects WHERE owner_user_id=? AND kind='generated' AND state<>'deleted'").map_err(storage)?;
+-    let generated=q.query_map([owner],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,i64>(3)?))).map_err(storage)?.collect::<Result<Vec<_>,_>>().map_err(storage)?;
+-    for (id,path,state,updated) in generated {
+-        if !Path::new(&path).exists() {
+-            if state=="used" || now-updated>UPLOAD_IDLE_SECONDS {
+-                db.execute("UPDATE cloud_storage_objects SET state='deleted',updated_at=? WHERE owner_user_id=? AND storage_id=?",params![now,owner,id]).map_err(storage)?;
+-            }
+-        } else {
+-            db.execute("UPDATE cloud_storage_objects SET state='used' WHERE owner_user_id=? AND storage_id=? AND state='reserved'",params![owner,id]).map_err(storage)?;
+         }
+     }
+     // Candidates are processing intermediates; delivered versions contain their
+@@ -333,28 +305,6 @@
+     Ok((path.into(),name))
+ }
+ 
+-/// A real retained-file write participates in account admission, unlike drafts,
+-/// previews and intermediate indexes. The writer closure runs before commit.
+-pub(crate) fn write_generated<T>(writer: Arc<ServiceWriter>, owner: &str, path: &Path, bytes: i64,
+-    write: impl FnOnce()->Result<T,ToolError>) -> Result<T,ToolError> {
+-    let mut control=ControlStore::open(writer.clone())?;
+-    let now=crate::multi_user_host::now();
+-    let tx=control.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+-    adopt(&tx,writer.root(),owner,now)?;
+-    let previous: i64=tx.query_row("SELECT bytes FROM cloud_storage_objects WHERE owner_user_id=? AND path=? AND state<>'deleted'",params![owner,path.to_string_lossy()],|r|r.get(0)).optional().map_err(storage)?.unwrap_or(0);
+-    admit(&tx,owner,bytes,previous,now)?;
+-    let relative=path.strip_prefix(writer.root()).map_err(storage)?.to_string_lossy().replace('\\',"/");
+-    tx.execute("INSERT INTO cloud_storage_objects(owner_user_id,storage_id,kind,filename,path,bytes,state,created_at,updated_at) VALUES(?,?,'generated',?,?,?,'reserved',?,?) ON CONFLICT(owner_user_id,path) DO UPDATE SET bytes=excluded.bytes,state='reserved',updated_at=excluded.updated_at",
+-        params![owner,format!("generated:{relative}"),path.file_name().unwrap_or_default().to_string_lossy(),path.to_string_lossy(),bytes,now,now]).map_err(storage)?;
+-    tx.commit().map_err(storage)?;
+-    let result=write();
+-    // A crash between the filesystem write and this update retains the complete
+-    // reservation; cleanup reconciles it from the saved file on the next read.
+-    let state=if path.is_file() {"used"} else {"deleted"};
+-    control.connection.execute("UPDATE cloud_storage_objects SET state=?,updated_at=? WHERE owner_user_id=? AND path=?",params![state,now,owner,path.to_string_lossy()]).map_err(storage)?;
+-    result
+-}
+-
+ #[cfg(test)]
+ #[path = "tests/cloud_storage_tests.rs"]
+ pub(crate) mod tests;
+--- a/crates/server/src/presentation_store.rs
++++ b/crates/server/src/presentation_store.rs
+@@ -58,7 +58,6 @@
+ pub(crate) struct PresentationStore {
+     root: PathBuf,
+     limits: Option<(u64, usize)>,
+-    cloud: Option<(std::sync::Arc<crate::control_store::ServiceWriter>, String)>,
+ }
+ 
+ #[cfg(test)]
+@@ -67,13 +66,13 @@
+     #[test]
+     fn mu7_private_quota_counts_candidates_versions_and_states_before_writing() {
+         let root = tempfile::tempdir().unwrap();
+-        let store = PresentationStore { root: root.path().into(), limits: Some((16, 2)), cloud: None };
++        let store = PresentationStore { root: root.path().into(), limits: Some((16, 2)) };
+         store.write_private(&root.path().join("candidates/a.json"), &"1234").unwrap();
+         store.write_private(&root.path().join("versions/p/1.json"), &"1234").unwrap();
+         let path = root.path().join("states/p/1/1.json");
+         assert_eq!(store.write_private(&path, &"x").unwrap_err().error_code, "PRESENTATION_STORAGE_LIMIT");
+         assert!(!path.exists());
+-        let store = PresentationStore { root: root.path().into(), limits: Some((13, 10)), cloud: None };
++        let store = PresentationStore { root: root.path().into(), limits: Some((13, 10)) };
+         assert_eq!(store.write_private(&path, &"xx").unwrap_err().error_code, "PRESENTATION_STORAGE_LIMIT");
+         assert!(!path.exists());
+         assert_eq!(fs::read_to_string(root.path().join("candidates/a.json")).unwrap(), "\"1234\"");
+@@ -109,17 +108,10 @@
+         Ok(Self {
+             root: user.presentation_root()?,
+             limits: user.presentation_limits,
+-            cloud: user.cloud_storage_writer.as_ref().zip(user.user_id()).map(|(writer,owner)|(writer.clone(),owner.to_owned())),
+         })
+     }
+     fn write_private<T: Serialize>(&self, path: &Path, value: &T) -> Result<(), ToolError> {
+         self.check_quota(path, value, false)?;
+-        if path.starts_with(self.root.join("versions")) || path.starts_with(self.root.join("states")) {
+-            if let Some((writer,owner))=&self.cloud {
+-                let bytes=i64::try_from(serde_json::to_vec(value).map_err(storage)?.len()).map_err(storage)?;
+-                return crate::cloud_storage::write_generated(writer.clone(),owner,path,bytes,||Self::write(path,value));
+-            }
+-        }
+         Self::write(path, value)
+     }
+     fn replace_private<T: Serialize>(&self, path: &Path, value: &T) -> Result<(), ToolError> {
+--- a/crates/server/src/user_runtime.rs
++++ b/crates/server/src/user_runtime.rs
+@@ -10,7 +10,6 @@
+ 
+ pub struct UserRuntime {
+     pub(crate) presentation_limits: Option<(u64, usize)>,
+-    pub(crate) cloud_storage_writer: Option<std::sync::Arc<crate::control_store::ServiceWriter>>,
+     // None is the visitor's unavailable Resident state, not an anonymous reader.
+     user_id: Option<String>,
+     pub(crate) last_access: std::time::Instant,
+@@ -32,7 +31,6 @@
+     ) -> Self {
+         Self {
+             presentation_limits: None,
+-            cloud_storage_writer: None,
+             user_id: Some(LOCAL_USER_ID.into()),
+             last_access: std::time::Instant::now(),
+             store,
+@@ -49,7 +47,6 @@
+     pub fn visitor(store: MemoryStore) -> Self {
+         Self {
+             presentation_limits: None,
+-            cloud_storage_writer: None,
+             user_id: None,
+             last_access: std::time::Instant::now(),
+             store,
+@@ -101,7 +98,6 @@
+         user.user_id = Some(paths.owner.clone());
+         user.session_store = session_store;
+         user.presentation_limits = Some((512 * 1024 * 1024, 4096));
+-        user.cloud_storage_writer = Some(writer);
+         let cursors = crate::agent_history_review_cursors(&user.agent_history);
+         user.store
+             .initialize_review_watermark_baseline(&cursors, now)?;
+--- a/crates/server/src/tests/cloud_storage_tests.rs
++++ b/crates/server/src/tests/cloud_storage_tests.rs
+@@ -1,5 +1,6 @@
+ use super::*;
+ use base64::Engine;
++use crate::control_store::ControlStore;
+ 
+ /// Existing allowance fixtures opt into sold storage rights without introducing
+ /// a second/overlapping period. Values are test-only, never product defaults.
+@@ -91,19 +92,44 @@
+ }
+ 
+ #[test]
+-fn retained_generated_files_share_the_upload_limit_and_failed_writes_release_reservations() {
++fn legacy_generated_records_do_not_consume_upload_space_or_block_originals() {
+     let f=Fixture::new(20,20);
++    for state in ["used","reserved"] {
++        let path=f.control.writer.root().join(format!("users/A/memory/agent-history.presentations/versions/{state}/1.json"));
++        fs::create_dir_all(path.parent().unwrap()).unwrap();
++        fs::write(&path,vec![b'x';100]).unwrap();
++        f.control.connection.execute("INSERT INTO cloud_storage_objects(owner_user_id,storage_id,kind,filename,path,bytes,state,created_at,updated_at) VALUES('A',?,'generated','1.json',?,100,?,?,?)",
++            params![format!("generated:{state}"),path.to_string_lossy(),state,f.now,f.now]).unwrap();
++    }
+     f.upload("w1","source",12,0,b"abcdefghijkl").unwrap();
+-    let path=f.control.writer.root().join("users/A/memory/agent-history.presentations/versions/lesson/1.json");
+-    fs::create_dir_all(path.parent().unwrap()).unwrap();
+-    assert_eq!(write_generated(f.control.writer.clone(),"A",&path,9,||{fs::write(&path,b"123456789").map_err(storage)}).unwrap_err().error_code,"STORAGE_LIMIT_EXCEEDED");
+-    assert!(!path.exists());
+-    assert!(write_generated(f.control.writer.clone(),"A",&path,8,||Err::<(),_>(storage("disk full"))).is_err());
+-    assert_eq!(f.status()["reserved_bytes"],0);
+-    write_generated(f.control.writer.clone(),"A",&path,8,||fs::write(&path,b"12345678").map_err(storage)).unwrap();
+-    assert_eq!(f.status()["used_bytes"],20);
+-    fs::remove_file(path).unwrap();
+-    assert_eq!(f.status()["used_bytes"],12);
++    let view=f.status();
++    assert_eq!(view["used_bytes"],12);assert_eq!(view["reserved_bytes"],0);
++    assert_eq!(view["available_bytes"],8);assert_eq!(view["items"].as_array().unwrap().len(),1);
++    assert_eq!(view["items"][0]["storage_id"],"source");
++    assert_eq!(f.remove("source","delete").unwrap()["total_bytes"],0);
++    cleanup(&f.control.connection,f.control.writer.root(),"A",f.now+2000).unwrap();
++    for state in ["used","reserved"] {
++        let path=f.control.writer.root().join(format!("users/A/memory/agent-history.presentations/versions/{state}/1.json"));
++        assert_eq!(fs::read(path).unwrap(),vec![b'x';100]);
++    }
++}
++
++#[test]
++fn existing_learning_artifact_files_are_not_adopted_as_uploads() {
++    let f=Fixture::new(20,20);
++    let presentations=f.control.writer.root().join("users/B/memory/agent-history.presentations");
++    for directory in ["versions","states","assets"] {
++        fs::create_dir_all(presentations.join(directory)).unwrap();
++        fs::write(presentations.join(directory).join("retained.json"),b"retained learning artifact").unwrap();
++    }
++    let view=request(&f.access,"B","GET",Value::Null,f.now).unwrap();
++    assert_eq!(view["total_bytes"],0);assert_eq!(view["items"],json!([]));
++    let count:i64=f.control.connection.query_row("SELECT count(*) FROM cloud_storage_objects WHERE owner_user_id='B'",[],|r|r.get(0)).unwrap();
++    assert_eq!(count,0);
++    for directory in ["versions","states","assets"] {
++        assert_eq!(fs::read(presentations.join(directory).join("retained.json")).unwrap(),b"retained learning artifact");
++    }
++    assert_eq!(reserve(&f.control.connection,"B","w","upload","book.pdf",&f.control.writer.root().join("book.pdf"),1,f.now).unwrap_err().error_code,"STORAGE_PLAN_REQUIRED");
+ }
+ 
+ #[test]
+--- a/crates/server/src/tests/presentation_store_tests.rs
++++ b/crates/server/src/tests/presentation_store_tests.rs
+@@ -16,6 +16,69 @@
+     state.user.history_path = Some(root.path().join("agent-history.json"));
+     let turn = next_turn(&mut state);
+     (root, state, turn)
++}
++
++fn learning_artifacts_with_upload_storage(condition: &str) {
++    let (root, mut state, _) = fixture();
++    let service_root = root.path().join("service");
++    let mut users = crate::user_registry::UserRegistry::open(&service_root).unwrap();
++    users.create_user("A").unwrap();
++    let control = crate::control_store::ControlStore::open(users.writer()).unwrap();
++    let now = crate::multi_user_host::now();
++    let upload_capacity = 16 * 1024;
++    if condition != "missing" {
++        let end = if condition == "expired" { now - 1 } else { now + 1000 };
++        control.connection.execute(
++            "INSERT INTO allowance_periods(period_id,user_id,starts_at,expires_at) VALUES('p','A',?,?)",
++            rusqlite::params![now - 1000, end],
++        ).unwrap();
++        crate::cloud_storage::tests::seed(&control.connection, "A", "p", upload_capacity, upload_capacity);
++        if condition == "full" {
++            let path = service_root.join("original.md");
++            std::fs::write(&path, vec![b'x'; upload_capacity as usize]).unwrap();
++            crate::cloud_storage::reserve(&control.connection, "A", "workspace", "original", "original.md", &path, upload_capacity, now).unwrap();
++            crate::cloud_storage::uploaded(&control.connection, "A", "original", now).unwrap();
++        }
++    }
++    let paths = crate::user_storage_paths::UserStoragePaths::for_service(&service_root, "A").unwrap();
++    state.user = crate::user_runtime::UserRuntime::open_service(&paths, users.writer(), "now").unwrap();
++    state.workspace.selected_chat = None;
++    assert_eq!(route_agent_new(&mut state, "now").status, 200);
++    let turn = next_turn(&mut state);
++    let candidate = create(&mut state, &turn, None, "Saved learning page");
++    let reference = persist(&mut state, &turn, &candidate);
++    finish(&mut state, &turn, &reference).unwrap();
++    let scene = PresentationState { observation: None, values: json!({"count":2}), visible_step: None,
++        observed_result: "Two pieces".into(), source_ref_ids: vec!["source-rp2".into()] };
++    let receipt = state.private_context().save_presentation_state(&turn.session_id, &turn.turn_id, &reference, scene.clone()).unwrap();
++
++    // Reopen the real service user's files and read through the public presentation route.
++    state.user = crate::user_runtime::UserRuntime::open_service(&paths, users.writer(), "later").unwrap();
++    assert_eq!(state.private_context().read_presentation_state(&receipt).unwrap().state, scene);
++    let response = post(&mut state, "/agent/presentation.read", &json!({
++        "session_id":turn.session_id,"turn_id":turn.turn_id,"reference":reference,
++    }).to_string());
++    assert_eq!(response.status, 200, "{}", response.body);
++    assert_eq!(serde_json::from_str::<Value>(&response.body).unwrap()["title"], "Saved learning page");
++    let space = crate::cloud_storage::summary(&control.connection, "A", now).unwrap();
++    assert_eq!(space["used_bytes"], if condition == "full" { upload_capacity } else { 0 });
++    assert_eq!(space["reserved_bytes"], 0);
++    assert_eq!(space["can_upload"], false);
++}
++
++#[test]
++fn learning_artifacts_save_without_a_storage_plan() {
++    learning_artifacts_with_upload_storage("missing");
++}
++
++#[test]
++fn learning_artifacts_save_after_storage_plan_expiry() {
++    learning_artifacts_with_upload_storage("expired");
++}
++
++#[test]
++fn learning_artifacts_save_when_upload_space_is_full() {
++    learning_artifacts_with_upload_storage("full");
+ }
+ 
+ #[test]

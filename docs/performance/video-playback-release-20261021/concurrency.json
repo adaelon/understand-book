@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "held_nginx_media_responses": 4,
+  "range_bytes_each": 1048576,
+  "bytes_consumed_each": 1024,
+  "api": "manifest",
+  "origin_api_ms": [
+    9.99,
+    13.92,
+    9.73,
+    11.86,
+    9.95
+  ],
+  "max_ms": 13.92,
+  "tls": "Isolated loopback nginx check; no product TLS settings changed",
+  "model_requests": 0
+}

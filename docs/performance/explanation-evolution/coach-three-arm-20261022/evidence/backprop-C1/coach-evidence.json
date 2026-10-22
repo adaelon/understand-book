@@ -1,0 +1,3767 @@
+{
+  "purpose_recording_complete": true,
+  "coach_call_count": 1,
+  "identified_coach_call_count": 1,
+  "coach_calls": [
+    {
+      "request_file": "request-002.json",
+      "response_file": "response-002.json",
+      "purpose": "tutor_presentation_plan",
+      "input": {
+        "current_request_context": {
+          "author_proposal": {
+            "focus": "关键局部是 u 处的汇合：让读者看清 3 与 16 乘 1 各来自哪条边、为什么相加、相加之后才把 19 继续传回 x 和 y。",
+            "framework": "全文固定同一个模型 x、y 到 u=xy、v=u+x、L=v^2+3u，记号统一：节点写前向数值与整体导数，边写局部导数并标成乘数。阅读路径：一、先区分三种数字（节点值、边局部导数、节点整体导数），点明边 u 到 L 上的 3 与节点 u 的 19 不同。二、工作台：滑杆调 x、y，逐步按钮走前向 3 步与反向 5 步，状态条写明当前输入与第几步。三、前向三行代入数值。四、反向三条规则与倒序理由：v 的梯度先算，u 才能收齐。五、核心局部：u 处 3 与 16 乘 1 相加成 19，再用 u 增加 eps 时 L 的一阶账说明为何相加，之后才把 19 传回 x、y。六、漏项对照：可分别漏掉任一份，显示错误梯度与误差按局部导数缩放的来路。七、展开 L 独立核对。八、负数与零的读法。九、自检问题。视觉约定：节点身份与位置不变，accent 标当前步，虚线标反向正在传的边，窄屏单列、图随容器缩放。",
+            "needs": [
+              "state"
+            ]
+          },
+          "current_source_evidence": [],
+          "current_user_request": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+          "current_web_evidence": {
+            "omitted": false,
+            "pages": []
+          },
+          "prior_coach_guidance": null,
+          "tutor_context": {
+            "confirmed_preferences": null,
+            "constraints": null,
+            "current_action": null,
+            "current_design": null,
+            "learner_context": {
+              "current_target": null,
+              "details": "Recent interpretations only; tutor.step understanding with after pages current records. evidence_ref reads exact details; trace pages earlier facts and event_id reads exact content.",
+              "entries": [],
+              "evidence_watermark": 0,
+              "interpretations": [],
+              "learner_grounding": {
+                "delivered_support": [],
+                "expressions": [
+                  {
+                    "assistance_refs": null,
+                    "fact_ref": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                    "invitation_context_ref": null,
+                    "presentations": [],
+                    "response_origin": null,
+                    "scene": null,
+                    "support_delivery_refs": null,
+                    "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n"
+                  }
+                ],
+                "interpretations": [],
+                "unavailable_basis_refs": [],
+                "unknown_when_absent": true
+              },
+              "learning_opportunity": {
+                "continuity": {
+                  "authority": "Original facts, input-time assistance and action-specific assessments. Historical selections retain their original scope; no current mastery is inferred. Teacher working state is separate.",
+                  "content_char_budget": 6000,
+                  "open_questions": [],
+                  "previous_work": [
+                    {
+                      "action_ref": null,
+                      "assessment_ref": null,
+                      "assessment_status": "unassessed",
+                      "assistance_refs": [],
+                      "attempt": null,
+                      "binding": {
+                        "chat_session_id": "chat_2026-10-16T04:00:00Z_0",
+                        "control_revision": 0,
+                        "session_revision": 0,
+                        "source_id": "sample-book",
+                        "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                        "turn_id": "turn_1a986d9fd8e2f279",
+                        "tutor_session_id": "observation:sample-book"
+                      },
+                      "delivery_ref": null,
+                      "evidence_refs": [],
+                      "fact_refs": [
+                        "usage:observation:sample-book:user:turn_1a986d9fd8e2f279"
+                      ],
+                      "help": [],
+                      "help_truncated": false,
+                      "historical": false,
+                      "learner_quote_excerpt": {
+                        "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+                        "truncated": false
+                      },
+                      "presentation_receipt": null,
+                      "published_book_ref": null,
+                      "response_origin": null,
+                      "saved_state_ref": null,
+                      "source_refs": [],
+                      "support_delivery_refs": []
+                    }
+                  ],
+                  "read_more": [
+                    {
+                      "arguments": {
+                        "event_id": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                        "operation": "trace"
+                      },
+                      "tool": "tutor.step"
+                    }
+                  ],
+                  "scope": {
+                    "design_ref": null,
+                    "focus_block_refs": null,
+                    "learning_workspace_id": null,
+                    "source_id": "sample-book",
+                    "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                    "tutor_session_id": "observation:sample-book",
+                    "workspace_goal_revision": null
+                  },
+                  "teaching_implications": [],
+                  "truncated": false
+                },
+                "delivered_support": [],
+                "design_ref": null,
+                "focus_block_refs": [],
+                "interpretation_refs": [],
+                "pending_response_invitation": null,
+                "return_context": null,
+                "unknown_when_absent": true
+              },
+              "path_progress": [],
+              "pending_activity": null,
+              "pending_assessment_refs": [],
+              "pending_response_invitation": null,
+              "projection_watermark": null,
+              "recent_facts": [
+                {
+                  "action": null,
+                  "answer_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "assistance_count": 0,
+                  "attempt": null,
+                  "binding": {
+                    "chat_session_id": "chat_2026-10-16T04:00:00Z_0",
+                    "control_revision": 0,
+                    "session_revision": 0,
+                    "source_id": "sample-book",
+                    "source_revision": "0107603fbb1d89b066d6a84f7d87b06ad645fabdcea25f9279a1d9c3bdd48877",
+                    "turn_id": "turn_1a986d9fd8e2f279",
+                    "tutor_session_id": "observation:sample-book"
+                  },
+                  "block_refs": null,
+                  "causal_refs": [],
+                  "continuation": null,
+                  "design_ref": null,
+                  "event_id": "usage:observation:sample-book:user:turn_1a986d9fd8e2f279",
+                  "help_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "interaction": null,
+                  "invitation_context_ref": null,
+                  "kind": "usage_observed",
+                  "move_id": null,
+                  "occurred_at": "2026-10-16T04:00:00Z",
+                  "original_ref": {
+                    "book_id": "sample-book",
+                    "kind": "chat_turn",
+                    "session_id": "chat_2026-10-16T04:00:00Z_0",
+                    "turn_id": "turn_1a986d9fd8e2f279"
+                  },
+                  "presentation_follow_up": null,
+                  "prompt_preview": {
+                    "text": "null",
+                    "truncated": false
+                  },
+                  "responds_to": null,
+                  "response_expectation": null,
+                  "response_origin": null,
+                  "response_preview": {
+                    "text": "# 一个中间量被用两次，反向传播怎么不漏算？\n\n我会求多项式的导数，也知道一条复合函数链可以把局部导数相乘，但看计算图时总弄不清：同一个中间量被两个地方使用，反向传播到底应该先算什么，回来的两份信息为什么要相加？请做一份完整可读的演示页，帮助我从具体运算理解这件事。\n\n只使用这个自包含的小模型：输入为 x、y，先算 u=x·y，再算 v=u+x，最后输出 L=v²+3u。u 是同一个计算结果，供 v 和输出里的 3u 共用；x 既进入 u，也直接进入 v。所有量都是实数，无须讨论矩阵、神经网络层或实现性能。\n\n初始输入 x=2、y=3。请让我能沿着实际依赖关系理解前向值如何算出，再看从 L 开始反向求导时每条路径怎样贡献，在哪里汇合、汇合之后才把什么继续传回输入。要分清节点的前向数值、边上的局部导数、最终对 L 的导数，不能只给一张标满符号的图或把全部导数公式直接列出来。\n\n交互允许将 x、y 分别调到 -3 至 3，步长 0.5；也允许逐步查看前向和反向计算。希望修改输入后仍能清楚知道当前显示的是哪组输入和哪一步。负数或某条贡献恰好为零也应有正确含义。完整讲解要让我在不操作时也能读懂默认例子，并能自己回答：如果把其中一条回传贡献漏掉，为什么会得到错误的输入梯度？最后用直接展开 L(x,y) 后求导的方式作一次独立核对。\n",
+                    "truncated": false
+                  },
+                  "scene_receipt": null,
+                  "scene_visible_step": null,
+                  "support_delivery_refs": null,
+                  "target": null,
+                  "usage": {
+                    "kind": "user_message"
+                  }
+                }
+              ],
+              "stale": true,
+              "uninterpreted_fact_refs": [
+                "usage:observation:sample-book:user:turn_1a986d9fd8e2f279"
+              ],
+              "unknown_when_absent": true
+            },
+            "learning_purpose": null,
+            "status": "observing"
+          },
+          "workspace_goal": null
+        },
+        "method_catalog": {
+          "methods": [
+            {
+              "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "discrete-update",
+              "name": "追踪一次离散更新",
+              "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+              "revision": 3
+            },
+            {
+              "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "object-transform",
+              "name": "保持身份的对象变换",
+              "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+              "revision": 2
+            },
+            {
+              "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "compare-one-factor",
+              "name": "固定条件，只改变一个因素",
+              "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+              "revision": 3
+            },
+            {
+              "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "compare-one-factor",
+              "name": "固定条件，只改变一个因素",
+              "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+              "revision": 2
+            },
+            {
+              "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "part-whole",
+              "name": "整体与部分保持对应",
+              "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+              "revision": 2
+            },
+            {
+              "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "process-reveal",
+              "name": "沿关系逐步展开过程",
+              "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+              "revision": 2
+            },
+            {
+              "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "evidence-chain",
+              "name": "从证据走到有边界的结论",
+              "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+              "revision": 2
+            },
+            {
+              "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "counterexamples.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "chart-reveal",
+              "name": "先看见数量关系，再核对参数",
+              "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+              "revision": 3
+            },
+            {
+              "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "chart-reveal",
+              "name": "先建立尺度，再揭示数据",
+              "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+              "revision": 2
+            },
+            {
+              "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md"
+              ],
+              "id": "scale-zoom",
+              "name": "保留定位的尺度缩放",
+              "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+              "revision": 2
+            },
+            {
+              "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+              "entrypoint": "example/index.html",
+              "files": [
+                "card.md",
+                "example/index.html",
+                "example/README.md",
+                "example/author.json",
+                "checks.md",
+                "runtime.js",
+                "adaptations/spring.html",
+                "adaptations/spring-author.json"
+              ],
+              "id": "spatial-linked-views",
+              "name": "三维结构与图解共用一个模型",
+              "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+              "revision": 1
+            }
+          ],
+          "revision": 6
+        }
+      },
+      "input_context_keys": [
+        "author_proposal",
+        "current_source_evidence",
+        "current_user_request",
+        "current_web_evidence",
+        "prior_coach_guidance",
+        "tutor_context",
+        "workspace_goal"
+      ],
+      "raw_output": {
+        "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+        "methods": [
+          {
+            "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+            "method_id": "process-reveal",
+            "revision": 2
+          }
+        ],
+        "needs_read": [],
+        "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+        "reading_path": [
+          "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+          "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+          "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+          "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+          "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+          "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+          "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+        ],
+        "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+      },
+      "error": null,
+      "response_missing": false,
+      "usage": {
+        "cache_creation_input_tokens": null,
+        "cached_input_tokens": 256,
+        "input_tokens": 5018,
+        "output_tokens": 2189,
+        "reasoning_output_tokens": 1262,
+        "total_tokens": 7207
+      },
+      "elapsed_ms": 13264
+    }
+  ],
+  "prepare_calls": [
+    {
+      "call_id": "call_00_fN54sy1Q1rzzgUuY7izy3692",
+      "response_file": "response-000.json",
+      "result_source": {
+        "request_file": "request-001.json"
+      },
+      "result_status": null,
+      "error_code": "PRESENTATION_ARGUMENTS_INVALID",
+      "coach_receipt": null,
+      "receipt_contains_full_plan": false
+    },
+    {
+      "call_id": "call_00_84rswUHMWwUtiPO3gonK3657",
+      "response_file": "response-001.json",
+      "result_source": {
+        "request_file": "request-003.json"
+      },
+      "result_status": "authoring_context_prepared",
+      "error_code": null,
+      "coach_receipt": {
+        "status": "ready"
+      },
+      "receipt_contains_full_plan": false
+    }
+  ],
+  "prepare_count": 2,
+  "prepare_count_with_coach_status": 1,
+  "repeated_prepare_without_extra_coach_call": false,
+  "handoff_samples": [
+    {
+      "request_file": "request-003.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-004.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-005.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-006.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-007.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-008.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-009.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-010.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-011.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-012.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-013.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-014.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-015.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-016.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    },
+    {
+      "request_file": "request-017.json",
+      "ordered_message_handoffs": [
+        {
+          "location": "/messages/14/content",
+          "handoff": {
+            "plan": {
+              "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+              "methods": [
+                {
+                  "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+                  "method_id": "process-reveal",
+                  "revision": 2
+                }
+              ],
+              "needs_read": [],
+              "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+              "reading_path": [
+                "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+                "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+                "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+                "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+                "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+                "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+                "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+              ],
+              "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+            },
+            "status": "ready"
+          },
+          "delivery_form": "sampling_guidance_definition"
+        }
+      ],
+      "ordered_message_count": 1,
+      "instruction_handoffs": [],
+      "coach_asset_declarations": [
+        {
+          "asset_id": "resident-agent.presentation.coach",
+          "revision": "coach-handoff.v1"
+        }
+      ],
+      "actual_definition_in_ordered_messages": true
+    }
+  ],
+  "distinct_sampled_handoffs": [
+    {
+      "plan": {
+        "learning_goal": "读者应能从默认数值例子说明：u 同时通向 v 和 L 时，反向传播必须先收齐 L→u 的直接贡献与 L→v→u 的间接贡献，才能得到 u 的总梯度；这个总梯度再沿 u 的入边传回 x、y，而 x 自身还有经 v 的另一条路径，因此也要相加。读者还应能用“漏掉一条贡献会怎样”和直接展开求导来核对这一结论。",
+        "methods": [
+          {
+            "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+            "method_id": "process-reveal",
+            "revision": 2
+          }
+        ],
+        "needs_read": [],
+        "purpose": "以机制理解为主，配合受控的交互探索和最后的独立核对：让读者沿着实际依赖关系看清前向值、边上的局部导数和节点总梯度的区别，并重点理解 u 处两份回传信息为何在相加后才有资格继续传回 x、y。",
+        "reading_path": [
+          "先在固定输入 x=2、y=3 下区分三种数字：节点上的前向数值、边上的局部导数、从 L 反传得到的节点总梯度；指出 u 上的“3”是边 u→L 的局部乘数，而 u 的总梯度要到两条来路收齐后才出现。",
+          "按依赖顺序逐步前向：由 x、y 算 u=x·y，由 u 和 x 算 v=u+x，再由 v 和 u 算 L=v²+3u；同一张图上标出 u 被 v 与 L 共用、x 同时进入 u 与 v，并保持节点身份和位置不变。",
+          "从 L 开始反向逐步查看：先得到 L→v 的局部导数与 v 的总梯度；在看到 L→u 的直接贡献和 L→v→u 的间接贡献都到齐前，不把 u 的总梯度定下来。",
+          "在 u 处把两份贡献并列核对：一份来自直接边 u→L，另一份来自 u→v 再经 v→L，说明相加对应的是 u 发生微小变化时两条路径的一阶影响同时存在，而不是把两个无关数字凑在一起。",
+          "收齐 u 的总梯度后，才把它沿 u→x、u→y 继续回传；在 x 处再次看到经 u 与直接经 v 的两条路径，并把它们相加，在 y 处只保留经 u 的路径。",
+          "用步进和滑杆改变 x、y，状态条始终标明当前输入和当前前向/反向步骤；专门观察负数与某条贡献为零的情形，确认零贡献表示该路径的一阶影响为零，而不是“没有这条路径”或“梯度不存在”。",
+          "用漏掉任一份贡献的对照说明错误输入梯度的来路与误差如何随局部导数变化，最后把 L 直接写成 x、y 的表达式并求导，与图中汇总的输入梯度独立核对。"
+        ],
+        "reason": "用户明确要求围绕自包含模型 u=x·y、v=u+x、L=v²+3u 理解共享中间量的回传汇合，并明确要求可调输入、分步查看、区分节点值/边局部导数/总梯度、处理负数与零贡献以及最终直接展开核对。当前没有宿主提供的材料证据，因此讲解设计只依据用户给出的模型与目标，不引用未提供的材料。选用“沿关系逐步展开过程”适合这个有限依赖流程：它能暴露 u 和 x 处的分支汇合，避免把依赖图压成错误线性顺序；而“整体与部分”不适合，因为回传贡献可正可负甚至为零，不是互不重叠的非负部分；数量图表也不是主轴，核心不是比较数值大小，而是追踪同一组输入下每一步的依赖与汇总关系。"
+      },
+      "status": "ready"
+    }
+  ],
+  "private_handoff_entered_author_request": true,
+  "sampling_guidance_definition_requests": [
+    "request-003.json",
+    "request-004.json",
+    "request-005.json",
+    "request-006.json",
+    "request-007.json",
+    "request-008.json",
+    "request-009.json",
+    "request-010.json",
+    "request-011.json",
+    "request-012.json",
+    "request-013.json",
+    "request-014.json",
+    "request-015.json",
+    "request-016.json",
+    "request-017.json"
+  ],
+  "asset_declared_without_definition_requests": [],
+  "duplicate_handoff_message_requests": [],
+  "selected_methods": [
+    {
+      "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+      "method_id": "process-reveal",
+      "revision": 2
+    }
+  ],
+  "forced_supply": {
+    "samples": [
+      {
+        "request_file": "request-003.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-003.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-003.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-003.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-003.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-003.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-003.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-003.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-003.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-003.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-004.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-004.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-004.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-004.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-004.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-004.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-004.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-004.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-004.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-004.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-005.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-005.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-005.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-005.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-005.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-005.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-005.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-005.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-005.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-005.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-006.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-006.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-006.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-006.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-006.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-006.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-006.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-006.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-006.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-006.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-007.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-007.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-007.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-007.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-007.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-007.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-007.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-007.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-007.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-007.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-008.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-008.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-008.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-008.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-008.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-008.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-008.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-008.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-008.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-008.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-009.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-009.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-009.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-009.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-009.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-009.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-009.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-009.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-009.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-009.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-010.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-010.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-010.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-010.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-010.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-010.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-010.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-010.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-010.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-010.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-011.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-011.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-011.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-011.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-011.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-011.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-011.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-011.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-011.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-011.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-012.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-012.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-012.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-012.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-012.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-012.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-012.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-012.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-012.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-012.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-013.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-013.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-013.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-013.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-013.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-013.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-013.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-013.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-013.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-013.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-014.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-014.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-014.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-014.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-014.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-014.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-014.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-014.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-014.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-014.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-015.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-015.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-015.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-015.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-015.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-015.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-015.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-015.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-015.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-015.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-016.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-016.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-016.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-016.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-016.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-016.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-016.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-016.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-016.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-016.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-017.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-017.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md",
+        "characters": 873,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "text_characters": 873,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-017.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-017.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html",
+        "characters": 26045,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "text_characters": 26045,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-017.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-017.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md",
+        "characters": 1668,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "text_characters": 1668,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-017.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-017.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json",
+        "characters": 850,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "text_characters": 850,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      },
+      {
+        "request_file": "request-017.json",
+        "message_index": 14,
+        "location": "/messages/14/content",
+        "response_file": "response-017.json",
+        "response_error": null,
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md",
+        "characters": 312,
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "text_characters": 312,
+        "actual_definition_present": true,
+        "full_text_length_matches": true,
+        "runtime_receipt_present": true
+      }
+    ],
+    "runtime_receipts": [
+      {
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.card.md",
+        "characters": 873,
+        "file": "card.md",
+        "method_id": "process-reveal",
+        "revision": 2
+      },
+      {
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/index.html",
+        "characters": 26045,
+        "file": "example/index.html",
+        "method_id": "process-reveal",
+        "revision": 2
+      },
+      {
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/README.md",
+        "characters": 1668,
+        "file": "example/README.md",
+        "method_id": "process-reveal",
+        "revision": 2
+      },
+      {
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.example/author.json",
+        "characters": 850,
+        "file": "example/author.json",
+        "method_id": "process-reveal",
+        "revision": 2
+      },
+      {
+        "asset_id": "resident-agent.presentation.method-source.process-reveal.2.checks.md",
+        "characters": 312,
+        "file": "checks.md",
+        "method_id": "process-reveal",
+        "revision": 2
+      }
+    ],
+    "actual_definition_count": 75,
+    "distinct_supplied_files": [
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "card.md"
+      },
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "checks.md"
+      },
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/README.md"
+      },
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/author.json"
+      },
+      {
+        "method_id": "process-reveal",
+        "revision": 2,
+        "file": "example/index.html"
+      }
+    ],
+    "runtime_recorded_file_count": 5,
+    "interpretation": "Actual system-message definitions are distinct from tool reads and asset manifests. Runtime receipts confirm successful sampling but contain no request ordinal; before-write coverage uses ordered requests and separately preserves response errors and receipt presence. Neither is page-quality evidence."
+  },
+  "selected_method_file_coverage": [
+    {
+      "method_id": "process-reveal",
+      "revision": 2,
+      "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+      "catalog_entry_found": true,
+      "selected_by_coach": true,
+      "declared_first_delivery": true,
+      "files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_delivery": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ]
+    }
+  ],
+  "declared_method_file_coverage": [
+    {
+      "method_id": "process-reveal",
+      "revision": 2,
+      "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+      "catalog_entry_found": true,
+      "selected_by_coach": true,
+      "declared_first_delivery": true,
+      "files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_delivery": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ]
+    }
+  ],
+  "all_recommended_or_declared_method_coverage": [
+    {
+      "method_id": "process-reveal",
+      "revision": 2,
+      "adaptation": "用逐步展开的方式固定 x、y，先按依赖顺序走完 x、y→u→v→L 的前向计算，再从 L 反向走；在 u 和 x 两个汇合点暂停，明确展示两条来路尚未收齐时不能提前把局部导数当成总梯度。展开时必须保留分支与汇合，不能把有共享中间量的图误排成单线顺序；改变输入后继续追踪同一组输入和同一步骤，负数与零贡献仍按同一规则相加，不把贡献当作必须为正的部分。",
+      "catalog_entry_found": true,
+      "selected_by_coach": true,
+      "declared_first_delivery": true,
+      "files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "tool_read_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [],
+          "total_character_values": [],
+          "observed_characters": 0,
+          "full_file_observed": false
+        }
+      ],
+      "forced_supply_files_before_first_write": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ],
+      "files_before_first_delivery": [
+        {
+          "file": "card.md",
+          "observed_ranges": [
+            [
+              0,
+              873
+            ]
+          ],
+          "total_character_values": [
+            873
+          ],
+          "observed_characters": 873,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/index.html",
+          "observed_ranges": [
+            [
+              0,
+              26045
+            ]
+          ],
+          "total_character_values": [
+            26045
+          ],
+          "observed_characters": 26045,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/README.md",
+          "observed_ranges": [
+            [
+              0,
+              1668
+            ]
+          ],
+          "total_character_values": [
+            1668
+          ],
+          "observed_characters": 1668,
+          "full_file_observed": true
+        },
+        {
+          "file": "example/author.json",
+          "observed_ranges": [
+            [
+              0,
+              850
+            ]
+          ],
+          "total_character_values": [
+            850
+          ],
+          "observed_characters": 850,
+          "full_file_observed": true
+        },
+        {
+          "file": "checks.md",
+          "observed_ranges": [
+            [
+              0,
+              312
+            ]
+          ],
+          "total_character_values": [
+            312
+          ],
+          "observed_characters": 312,
+          "full_file_observed": true
+        }
+      ]
+    }
+  ],
+  "complete_method_input_diagnostics": {
+    "complete_selected_declared_methods_before_first_write": [
+      {
+        "method_id": "process-reveal",
+        "revision": 2
+      }
+    ],
+    "at_least_one_complete_method": true,
+    "page_relationship_review": "Inspect actual page for visible useful adaptation. Input coverage never gates this experiment and does not prove quality.",
+    "auxiliary_method_gaps": "Retain all recommended or declared method coverage; gaps are reported but do not exclude samples."
+  },
+  "method_reads": [],
+  "method_read_call_count": 0,
+  "nonempty_method_read_calls_sampled": 0,
+  "interpretation": "Recorded input/output and body coverage only. Asset declarations do not prove handoff delivery; require actual presentation_coach.v1 definition in ordered_messages. Method recommendation, read, declaration and useful adaptation are distinct; no inferred teaching quality."
+}

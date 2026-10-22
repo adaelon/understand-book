@@ -1,0 +1,106 @@
+{
+  "ordinary": {
+    "mode": "baseline",
+    "runtime": "compiled Bun sidecar + real stdio MCP",
+    "executable": "E:\\allwork\\download\\agent\\understand-book\\tmp\\profile-discourse-preparation-20261020\\compiled-baseline\\understand-book-build-x86_64-pc-windows-msvc.exe",
+    "samples": [
+      {
+        "sample": "initial",
+        "prepare_ms": 0,
+        "submit_ms": 1541.5969000000005,
+        "refill_ms": 2364.4716999999982,
+        "next_start_ms": 1418.591800000002,
+        "handoff_ms": 5324.660400000001,
+        "units": 96,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-1",
+        "prepare_ms": 0,
+        "submit_ms": 711.100400000003,
+        "refill_ms": 2379.2525000000023,
+        "next_start_ms": 1327.2929000000004,
+        "handoff_ms": 4417.645800000006,
+        "units": 96,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-2",
+        "prepare_ms": 0,
+        "submit_ms": 752.1724000000031,
+        "refill_ms": 2338.1682,
+        "next_start_ms": 1341.7145999999993,
+        "handoff_ms": 4432.0552000000025,
+        "units": 96,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-3",
+        "prepare_ms": 0,
+        "submit_ms": 747.8197999999975,
+        "refill_ms": 2373.558400000009,
+        "next_start_ms": 1341.9103000000032,
+        "handoff_ms": 4463.28850000001,
+        "units": 96,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      }
+    ],
+    "scope": "Real stores, writer, driver refill and MCP handlers; deterministic candidates; excludes native spawn and model generation."
+  },
+  "fragment": {
+    "mode": "baseline",
+    "runtime": "compiled Bun sidecar + real stdio MCP",
+    "executable": "E:\\allwork\\download\\agent\\understand-book\\tmp\\profile-discourse-preparation-20261020\\compiled-baseline\\understand-book-build-x86_64-pc-windows-msvc.exe",
+    "samples": [
+      {
+        "sample": "initial",
+        "prepare_ms": 0,
+        "submit_ms": 1973.328999999998,
+        "refill_ms": 6767.9533999999985,
+        "next_start_ms": 2936.921100000007,
+        "handoff_ms": 11678.203500000003,
+        "units": 36,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-1",
+        "prepare_ms": 0,
+        "submit_ms": 1162.6459000000032,
+        "refill_ms": 4305.710099999997,
+        "next_start_ms": 2062.603199999983,
+        "handoff_ms": 7530.959199999983,
+        "units": 36,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-2",
+        "prepare_ms": 0,
+        "submit_ms": 1110.3276999999944,
+        "refill_ms": 4145.587499999994,
+        "next_start_ms": 1786.1913000000059,
+        "handoff_ms": 7042.106499999994,
+        "units": 36,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      },
+      {
+        "sample": "warm-3",
+        "prepare_ms": 0,
+        "submit_ms": 1175.5151000000187,
+        "refill_ms": 4243.703899999993,
+        "next_start_ms": 1897.366399999999,
+        "handoff_ms": 7316.585400000011,
+        "units": 36,
+        "semantic_attempts": 1,
+        "durable_commits": 1
+      }
+    ],
+    "scope": "Real stores, writer, driver refill and MCP handlers; deterministic candidates; excludes native spawn and model generation."
+  }
+}

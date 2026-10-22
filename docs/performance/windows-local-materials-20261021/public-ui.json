@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "results": [
+    {
+      "mode": "website",
+      "status": "passed",
+      "api_fixture": true,
+      "production_mutations": 0,
+      "errors": []
+    },
+    {
+      "mode": "desktop-030",
+      "status": "passed",
+      "api_fixture": true,
+      "production_mutations": 0,
+      "errors": []
+    },
+    {
+      "mode": "desktop-031",
+      "status": "passed",
+      "api_fixture": true,
+      "production_mutations": 0,
+      "errors": []
+    }
+  ]
+}

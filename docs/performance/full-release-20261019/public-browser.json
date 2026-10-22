@@ -1,0 +1,24 @@
+{
+  "status": "failed",
+  "origin": "https://understandbook.top",
+  "checked_at": "2026-10-19T00:46:53.696Z",
+  "checks": [
+    "Reader learning workspace and shared catalog load",
+    "Reader allowance and task/workspace costs open",
+    "Reader PDF and chapter control render at 1440px",
+    "Reader PDF and chapter control render at 390px",
+    "运营资料构建 opens with live API data",
+    "共享工作区发布 opens with live API data",
+    "全站用量 opens with live API data"
+  ],
+  "errors": [],
+  "httpFailures": [
+    {
+      "username": "reader",
+      "url": "https://understandbook.top/api/workspaces/ws-01a151a0-db42-7e03-95a2-b33036cb1bc1/reader/paper_minimap.localize",
+      "status": 501
+    }
+  ],
+  "model_requests": 0,
+  "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     status: 501,\n+     url: 'https://understandbook.top/api/workspaces/ws-01a151a0-db42-7e03-95a2-b33036cb1bc1/reader/paper_minimap.localize',\n+     username: 'reader'\n+   }\n+ ]\n- []\n"
+}

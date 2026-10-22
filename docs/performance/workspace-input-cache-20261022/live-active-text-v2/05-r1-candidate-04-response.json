@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 1,
+  "position": 0,
+  "index": 4,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate-v2\\native-04.json",
+  "ordinal": 5,
+  "started_utc": "2026-10-22T03:28:02.439682+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 18249,
+    "completion_tokens": 435,
+    "total_tokens": 18684,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 18249
+  },
+  "response_id": "aea5d6dd-7d7b-439b-a5b4-18b589fedc50",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"tutor_step\">\n<｜｜DSML｜｜ parameter name=\"operation\" string=\"true\">select</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"operation_id\" string=\"true\">select-generalization-1</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"design_ref\" string=\"true\">design:generalization-0</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"block_refs\" string=\"false\">[\"generalization\"]</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"move\" string=\"false\">{\"kind\": \"explain\", \"participation\": \"support\", \"target\": {\"capability\": \"relational_understanding\", \"expected_performance\": \"解释验证误差与训练目标为何不能混同\", \"learning_focus\": \"区分训练拟合、验证表现与正则化惩罚\", \"source_bindings\": [{\"end_lid\": \"1.1\", \"source_id\": \"overfitting\", \"source_revision\": \"c7835a6592d6ec8da01fb0e77b09bb5674ecb3b9aada9e84ed673afdacce1269\", \"start_lid\": \"1.1\"}, {\"end_lid\": \"1.1\", \"source_id\": \"regularization\", \"source_revision\": \"c7835a6592d6ec8da01fb0e77b09bb5674ecb3b9aada9e84ed673afdacce1269\", \"start_lid\": \"1.1\"}]}, \"reasoning_allocation\": {\"missing_connection_supplied\": \"训练误差只衡量对已见样本的拟合；把训练样本特有噪声当规律时，训练误差可继续下降而未见样本误差上升。验证集承担选择，测试集承担最终评估。\", \"learner_inference_left_open\": null}, \"prompt\": \"直接讲清训练误差下降与模型变差的关系，以及训练集、验证集、测试集的用途；不提问。\"}</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1377.568,
+  "first_text_ms": 1377.568,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 360.736,
+  "streaming": true,
+  "duration_ms": 3177.683,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 18249,
+    "cached_input_tokens": 0,
+    "uncached_input_tokens": 18249,
+    "output_tokens": 435
+  },
+  "cost": {
+    "input_cny": "0.036498",
+    "output_cny": "0.00348",
+    "total_cny": "0.039978",
+    "total_rounded_micro_cny": 39978
+  }
+}

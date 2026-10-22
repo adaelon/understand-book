@@ -1,0 +1,131 @@
+
+ RUN  v3.2.6 E:/allwork/download/agent/understand-book/packages/core
+
+ ✓ test/build-orchestrator.test.ts (21 tests) 102229ms
+   ✓ reuses an accepted BookStructure publication for Tutor after its generation route changes  12548ms
+   ✓ automatic build orchestrator > U2 resumes partial completed work after relocation and rejects the old executor  16299ms
+   ✓ automatic build orchestrator > U1 resumes an imported md snapshot after relocation and external edits  13018ms
+   ✓ automatic build orchestrator > U1 resumes an imported epub snapshot after relocation and external edits  10702ms
+   ✓ automatic build orchestrator > prepares the repaired BookStructure prompt alongside a frozen v2 policy  10382ms
+   ✓ automatic build orchestrator > omits Pass2 projection for a confirmed plan that excludes it and retains explicit inspection  9607ms
+   ✓ automatic build orchestrator > exposes BookStructure without Pass2 and invalidates it when a Pass2 audit arrives later  16164ms
+   ✓ automatic build orchestrator > paper Pass1 close preserves the trusted foundation manifest and PDF maps  4340ms
+   ✓ automatic build orchestrator > routes fresh paper lexicon fragments into an artifact-bound reducer without mutating build state  8556ms
+ ❯ test/automatic-build-control-plane-performance.test.ts (2 tests | 1 failed) 43737ms
+   ✓ B1 representative control plane > separates a successful exclusive create, an overwrite, and an existing-file rejection 23ms
+   × B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP 43711ms
+     → expected { kind: 'DONE', …(1) } to match object { kind: 'DONE', status: 'committed' }
+ ❯ test/codex-executor-agent.test.ts (25 tests | 1 failed) 8209ms
+   ✓ executor tool discovery > R3 publishes bounded owned-child diagnosis, original errors and both correction branches 7ms
+   ✓ executor tool discovery > carries issued control objects across isolated exec cells and serializes exact lifecycle errors 12ms
+   ✓ executor tool discovery > executes the published mapping against all four normalized MCP names 3ms
+   ✓ Codex executor bootstrap publication > publishes one project custom agent and two byte-identical release templates 6ms
+   ✓ Codex executor bootstrap publication > R2 validates only the effective V3 role projection and rejects role-local MCP transport 2ms
+   ✓ Codex executor bootstrap publication > R1 expects both plugin MCP configs to own one optional exact-four shared Executor server 3ms
+   ✓ Codex executor bootstrap publication > keeps plugin-owned Executor transport out of the project Codex config 2ms
+   ✓ Codex executor bootstrap publication > R1 expects all three Executor role assets to inherit MCP and contain zero local servers 2ms
+   ✓ Codex executor bootstrap publication > R3 publishes byte-identical plugin-owned Executor launchers with fixed V3 arguments 3ms
+   ✓ Codex executor bootstrap publication > publishes byte-identical explicit registration script and skill projections 16ms
+   ✓ Codex executor bootstrap publication > R3 Executor launcher invokes the selected binary and fails closed when it is absent  401ms
+   × Codex executor bootstrap publication > registers absent/same, explicitly migrates the known predecessor, and preserves conflicts 1062ms
+     → expected null to be +0 // Object.is equality
+   ✓ Codex executor bootstrap publication > registers a personal executor agent inside an isolated CODEX_HOME  6269ms
+   ✓ Codex executor bootstrap publication > publishes a byte-identical executor-only skill backed by the canonical wrapper 7ms
+   ✓ Codex executor bootstrap publication > RG5 separates zero-call bootstrap failure from observed MCP V2 session errors 3ms
+   ✓ Codex executor bootstrap publication > publishes the V3 first-terminal root orchestration contract byte-identically 6ms
+   ✓ Codex executor bootstrap publication > L1 requires fresh children, drains delivered terminals, and retains unsent failures 6ms
+   ✓ Codex executor bootstrap publication > L2 publishes the exact open-failure observation and retains legacy manual recovery 5ms
+   ✓ Codex executor bootstrap publication > R4 prohibits every shared Executor tool before the root action loop and at hard boundaries 1ms
+   ✓ Codex executor bootstrap publication > H0/R6 removes source release snapshot digests after direct file assertions 2ms
+   ✓ Codex executor bootstrap publication > R6 keeps thin-plugin parity on the shared V3 doctor and direct byte comparisons 8ms
+   ✓ Codex executor bootstrap publication > R1 runs the shared-boundary source release gate before compiled or installed evidence  373ms
+   ✓ Codex executor bootstrap publication > R1 requires release evidence to state that shared capability is not role-isolated 2ms
+   ✓ Codex executor bootstrap publication > publishes a deterministic T7 compiled executor release gate 4ms
+   ✓ Codex executor bootstrap publication > keeps source agent directories out of the plugin while gating the asset template 2ms
+ ❯ test/teaching-object-fragments.test.ts (7 tests | 1 failed) 6529ms
+   ✓ large teaching object fragments > reopens only affected source-unit fragments after an object review failure  2042ms
+   × large teaching object fragments > accepts fragmented extraction and alignment through the production writer, resuming stable final identities 2854ms
+     → teaching required work incomplete
+   ✓ large teaching object fragments > routes complete source coverage within the task budget (single long LID: false) 46ms
+   ✓ large teaching object fragments > routes complete source coverage within the task budget (single long LID: true) 298ms
+   ✓ large teaching object fragments > persists local proposals and resumes accepted fragments without publishing formal identities 100ms
+   ✓ large teaching object fragments > partitions large candidate metadata and blocks formal publication until reconciliation  1153ms
+   ✓ large teaching object fragments > rejects out-of-fragment evidence and premature formal identity assignments 33ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/automatic-build-control-plane-performance.test.ts > B1 representative control plane > measures the initial sample and three identical-state warm samples through real stores and MCP
+AssertionError: expected { kind: 'DONE', …(1) } to match object { kind: 'DONE', status: 'committed' }
+
+- Expected
++ Received
+
+  {
+    "kind": "DONE",
+-   "status": "committed",
++   "status": "retryable_failure",
+  }
+
+ ❯ test/automatic-build-control-plane-performance.test.ts:276:27
+    274|           candidate_sink_ref: started.candidate_sink_ref, candidate,
+    275|         });
+    276|         expect(committed).toMatchObject({ kind: "DONE", status: "commi…
+       |                           ^
+    277|         expect(fs.existsSync(newArtifact)).toBe(true);
+    278|         for (const [file, bytes] of accepted) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/codex-executor-agent.test.ts > Codex executor bootstrap publication > registers absent/same, explicitly migrates the known predecessor, and preserves conflicts
+AssertionError: expected null to be +0 // Object.is equality
+
+- Expected: 
+0
+
++ Received: 
+null
+
+ ❯ test/codex-executor-agent.test.ts:443:68
+    441| 
+    442|     const installed = run();
+    443|     expect(installed.status, installed.stderr || installed.stdout).toB…
+       |                                                                    ^
+    444|     expect(readFileSync(target)).toEqual(template);
+    445|     expect(readdirSync(path.dirname(target))).toEqual(["understand-boo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/teaching-object-fragments.test.ts > large teaching object fragments > accepts fragmented extraction and alignment through the production writer, resuming stable final identities
+Error: teaching required work incomplete
+ ❯ closeTeachingStage src/teaching-build.ts:569:107
+    567|   validateWholeSource(input);
+    568|   const state = routedState ?? routeTeachingBuildStages(input).find(s …
+    569|   if (!state || state.pending_tasks.length || state.teaching_blocked |…
+       |                                                                                                           ^
+    570|   const tasks = Object.values(state.generation_tasks ?? {}).map(t => (…
+    571|   const payloads = tasks.map(t => accepted(input.target, t)!.payload);
+ ❯ test/teaching-object-fragments.test.ts:110:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError ../../node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout ../../node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:608:17
+ ❯ processTimers node:internal/timers:543:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  3 failed | 1 passed (4)
+      Tests  3 failed | 52 passed (55)
+     Errors  1 error
+   Start at  21:52:13
+   Duration  181.58s (transform 4.91s, setup 0ms, collect 16.15s, tests 160.70s, environment 1ms, prepare 2.29s)
+

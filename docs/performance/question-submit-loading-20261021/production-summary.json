@@ -1,0 +1,178 @@
+[
+  {
+    "at": "2026-10-21T16:48:48+08:00",
+    "material": "video",
+    "last_activity_end_ms": 116257.082263,
+    "model_calls": 8,
+    "model_ms": 111560.58393400004,
+    "first_model_text_at_ms": 109749.918893,
+    "errors": [
+      "SOURCE_NOT_OBSERVED",
+      "SOURCE_NOT_OBSERVED",
+      "WORKSPACE_MATERIAL_UNAVAILABLE"
+    ]
+  },
+  {
+    "at": "2026-10-21T14:16:22+08:00",
+    "material": "book",
+    "last_activity_end_ms": 12953.089366,
+    "model_calls": 4,
+    "model_ms": 12403.729861,
+    "first_model_text_at_ms": 10653.224839,
+    "errors": []
+  },
+  {
+    "at": "2026-10-20T19:36:05+08:00",
+    "material": "book",
+    "last_activity_end_ms": 140398.044163,
+    "model_calls": 6,
+    "model_ms": 139618.16760100002,
+    "first_model_text_at_ms": 126275.605129,
+    "errors": [
+      "TOOL_ARGUMENTS_INVALID"
+    ]
+  },
+  {
+    "at": "2026-10-20T19:23:54+08:00",
+    "material": "book",
+    "last_activity_end_ms": 189690.593256,
+    "model_calls": 10,
+    "model_ms": 188684.61200499994,
+    "first_model_text_at_ms": 110814.38004599999,
+    "errors": [
+      "TEACHING_INVALID",
+      "TOOL_ARGUMENTS_INVALID"
+    ]
+  },
+  {
+    "at": "2026-10-20T19:04:09+08:00",
+    "material": "book",
+    "last_activity_end_ms": 738610.576861,
+    "model_calls": 32,
+    "model_ms": 699349.190032,
+    "first_model_text_at_ms": 258614.19718299998,
+    "errors": [
+      "PRESENTATION_ARGUMENTS_INVALID",
+      "PRESENTATION_AUTHORING_FAILED",
+      "PRESENTATION_AUTHORING_FAILED",
+      "TEACHING_INVALID",
+      "LID_PROVENANCE_REQUIRED",
+      "LID_PROVENANCE_REQUIRED",
+      "TEACHING_INVALID"
+    ]
+  },
+  {
+    "at": "2026-10-20T18:23:49+08:00",
+    "material": "book",
+    "last_activity_end_ms": 459378.303716,
+    "model_calls": 18,
+    "model_ms": 435616.026876,
+    "first_model_text_at_ms": 221451.037682,
+    "errors": [
+      "LID_PROVENANCE_REQUIRED",
+      "TEACHING_INVALID",
+      "TEACHING_INVALID",
+      "TEACHING_REVIEW_FAILED",
+      "PROVIDER_ERROR"
+    ]
+  },
+  {
+    "at": "2026-10-20T18:20:56+08:00",
+    "material": "book",
+    "last_activity_end_ms": 85699.76101,
+    "model_calls": 4,
+    "model_ms": 85385.840828,
+    "first_model_text_at_ms": 79033.19320600001,
+    "errors": [
+      "PRESENTATION_ARGUMENTS_INVALID",
+      "AGENT_NO_PROGRESS",
+      "AGENT_NO_PROGRESS",
+      "AGENT_NO_PROGRESS",
+      "PRESENTATION_AUTHORING_FAILED"
+    ]
+  },
+  {
+    "at": "2026-10-19T23:07:06+08:00",
+    "material": "book",
+    "last_activity_end_ms": 566101.3066819999,
+    "model_calls": 24,
+    "model_ms": 550119.282663,
+    "first_model_text_at_ms": 319918.01995700004,
+    "errors": [
+      "INVALID_SOURCE_RANGE",
+      "SOURCE_NOT_OBSERVED",
+      "SOURCE_NOT_OBSERVED",
+      "TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING",
+      "TOOL_ARGUMENTS_INVALID",
+      "TEACHING_INVALID",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_AUTHORING_FAILED",
+      "PRESENTATION_EXECUTION_FAILED"
+    ]
+  },
+  {
+    "at": "2026-10-19T22:52:26+08:00",
+    "material": "book",
+    "last_activity_end_ms": 404873.900628,
+    "model_calls": 21,
+    "model_ms": 390345.4218520001,
+    "first_model_text_at_ms": 90380.253947,
+    "errors": [
+      "PRESENTATION_ARGUMENTS_INVALID",
+      "AGENT_NO_PROGRESS",
+      "LID_PROVENANCE_REQUIRED",
+      "TEACHING_INVALID",
+      "PRESENTATION_ARGUMENTS_INVALID",
+      "PRESENTATION_AUTHORING_FAILED",
+      "AGENT_NO_PROGRESS"
+    ]
+  },
+  {
+    "at": "2026-10-19T22:39:09+08:00",
+    "material": "book",
+    "last_activity_end_ms": 264551.367601,
+    "model_calls": 15,
+    "model_ms": 252343.99649700007,
+    "first_model_text_at_ms": 90264.11319199999,
+    "errors": [
+      "LID_PROVENANCE_REQUIRED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED"
+    ]
+  },
+  {
+    "at": "2026-10-19T20:35:33+08:00",
+    "material": "book",
+    "last_activity_end_ms": 1241.6863620000001,
+    "model_calls": 2,
+    "model_ms": 1179.344747,
+    "first_model_text_at_ms": null,
+    "errors": [
+      "PROVIDER_ERROR",
+      "PROVIDER_ERROR"
+    ]
+  },
+  {
+    "at": "2026-10-19T16:45:21+08:00",
+    "material": "book",
+    "last_activity_end_ms": 459392.42680400005,
+    "model_calls": 24,
+    "model_ms": 437914.728245,
+    "first_model_text_at_ms": 437714.969574,
+    "errors": [
+      "LID_PROVENANCE_REQUIRED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_PREVIEW_FAILED",
+      "PRESENTATION_NOT_FOUND",
+      "TEACHING_INVALID",
+      "TEACHING_INVALID",
+      "PROVIDER_ERROR",
+      "PROVIDER_ERROR"
+    ]
+  }
+]

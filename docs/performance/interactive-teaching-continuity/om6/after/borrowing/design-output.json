@@ -1,0 +1,59 @@
+{
+  "operation": "design",
+  "operation_id": "om6-next",
+  "design": {
+    "basis_refs": [
+      "usage:tutor-begin-1:user:turn_fb46357d30bb56e9",
+      "usage:tutor-begin-1:user:turn_fb46347d30bb5536"
+    ],
+    "blocks": [
+      {
+        "block_id": "borrowed-access",
+        "purpose": "说明共享借用让 foo 和 bar 都能读取同一个值，而所有权仍在 foo。",
+        "relation": "let bar = &foo 创建类型为 &Foo 的共享借用；bar 指向 foo 拥有的值，foo 仍是所有者。读取 foo 或通过 bar 读取，都只读取值，不移动所有权，所以两个 println! 都能编译并读到值。",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      },
+      {
+        "block_id": "move-vs-borrow",
+        "purpose": "区分把 &foo 改成 foo 后发生的是所有权移动，而不是借用。",
+        "relation": "let bar = foo 把 Foo 值从 foo 移动进 bar；此后 foo 不再拥有该值，不能再被读取。若之后仍打印 foo，编译器报错；只打印 bar 则正常。",
+        "source_bindings": [
+          {
+            "start_lid": "1.1",
+            "end_lid": "1.1"
+          }
+        ]
+      }
+    ],
+    "connections": [],
+    "focus_block_refs": [
+      "borrowed-access",
+      "move-vs-borrow"
+    ],
+    "open_question_refs": [],
+    "organizing_model": "用户已能说出 bar 是 &Foo、foo 仍拥有值。当前问题是把这个结论落到逐行执行上：& 创建共享借用而不移动所有权，因此 foo 和 bar 都能读取；去掉 & 则变成移动，foo 失去所有权。",
+    "previous_ref": "design:turn_fb46327d30bb51d0:om6-prior",
+    "revision_reason": "用户明确要求直接逐行解释两个 println! 为何都能读到值，并说明把 &foo 改为 foo 的后果，且不要先出题；因此把焦点从单一 borrowed-access 扩展到借用与移动的对照，并以解释为主。",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "逐行说明 &foo 创建共享借用、所有权留在 foo，因此两个 println! 都能读取；并说明改为 foo 后所有权移入 bar、foo 不能再被读取",
+      "learning_focus": "共享借用与所有权移动的对照",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "start_lid": "1.1",
+          "end_lid": "1.1"
+        }
+      ]
+    },
+    "representation": {
+      "kind": "text",
+      "reason": "用户要求逐行解释，代码本身很短，用文字按行对照即可看清借用与移动的差别，无需页面。"
+    }
+  }
+}

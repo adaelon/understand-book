@@ -1,0 +1,1090 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delivered presentation</title></head><body style="margin:0"><iframe title="Delivered presentation" sandbox="allow-scripts" style="border:0;display:block;width:100%;height:100vh" srcdoc="&lt;!doctype html>&lt;html lang=&quot;zh-CN&quot;>&lt;head>&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'&quot;>&lt;style>:root { color-scheme: light dark; --canvas: #faf9f5; --ink: #252523; --surface: #efe9de; --line: #e6dfd8; --accent: #a9583e; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 12px; background: var(--canvas); color: var(--ink); font: 16px/1.65 system-ui, &quot;Microsoft YaHei&quot;, sans-serif; overflow-wrap: anywhere; }
+h1, h2, h3 { line-height: 1.3; margin: 0 0 .6em; }
+h1 { font-size: 1.45em; } h2 { font-size: 1.2em; }
+p { margin: .65em 0; }
+button, input, select, textarea { font: inherit; max-width: 100%; }
+button, select, textarea, input:not([type=range]) { color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .4em .7em; }
+button { cursor: pointer; } :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Source entrances stay compact even when an authored page styles all buttons. */
+button[data-source-ref] { display: inline-flex !important; align-items: center; width: auto !important; min-width: 0 !important; min-height: 24px !important; height: auto !important; padding: 2px 6px !important; margin: 0 2px !important; color: var(--accent); font-size: 12px !important; line-height: 1.4 !important; white-space: nowrap !important; vertical-align: baseline; }
+@media (pointer: coarse) { button[data-source-ref] { min-width: 44px !important; min-height: 44px !important; } }
+img, svg, canvas, video { max-width: 100%; height: auto; }
+pre { overflow-x: auto; padding: 12px; background: var(--surface); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; } td, th { text-align: left; padding: .6em; border-bottom: 1px solid var(--line); }
+.comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.card, .callout { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+&lt;/style>&lt;script>// Shared by the Reader and the server's real-browser presentation preview.
+function sourceChipLabel(sources, id) {
+  const index = sources.findIndex(source => source.source_ref_id === id);
+  if (index &lt; 0) return '来源不可用';
+  const label = sources[index].label;
+  const title = (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label).split(' / ').at(-1).trim();
+  const chars = Array.from(title);
+  return `${chars.length > 14 ? chars.slice(0, 14).join('') + '…' : title} [${index + 1}]`;
+}
+
+(function (config, staticCapture, createActions) {
+  const send = message => parent.postMessage({ channel: config.channel, ...message }, &quot;*&quot;);
+  let observer;
+  let stateReader;
+  let actionHandler;
+  const parameterEdits = {};
+  const parameters = (config.actionContract ?? []).filter(entry => entry.kind === &quot;set_parameters&quot;).flatMap(entry => entry.parameters);
+  let interaction;
+  let stateRestorer;
+  let restoring = true;
+  let commitTimer;
+  let hostGeneration;
+  let editing = false;
+  let zoom = 1;
+  const pendingCaptures = new Map();
+  const pendingHelp = new Map();
+  let helpRequest = 0;
+  function teachingRegion(regionId) {
+    if (!config.teachingBinding?.regions.some(region => region.region_id === regionId)) return null;
+    return Array.from(document.querySelectorAll('[data-teaching-region], [id]'))
+      .find(node => node.getAttribute('data-teaching-region') === regionId || node.id === regionId) ?? null;
+  }
+  window.presentation = Object.freeze({
+    initialState: config.initialState,
+    restoredState: config.restoredState ?? null,
+    registerActionHandler: handler => { actionHandler = handler; },
+    registerStateReader: reader => { stateReader = reader; },
+    registerStateRestorer: restorer => { stateRestorer = restorer; },
+    commitState: () => scheduleCommit(),
+    // Opens the host action form; only an explicit host submission records a learner action.
+    requestTeachingAction: (moveId, response) => send({ kind: &quot;teaching-action&quot;, move_id: moveId, response }),
+    // Only teaching help explicitly revealed on the page is reported. Moving
+    // sliders, expanding ordinary prose or locating a region is not an answer.
+    reportTeachingHelp: (moveId, kind, regionId) => new Promise((resolve, reject) => {
+      const region = teachingRegion(regionId);
+      const bounds = region?.getBoundingClientRect();
+      const text = region ? visibleText(region).trim() : '';
+      if (!region || !bounds || !text || !['hint', 'explanation'].includes(kind)
+        || bounds.bottom &lt;= 0 || bounds.top >= innerHeight || bounds.right &lt;= 0 || bounds.left >= innerWidth) {
+        reject(new Error('帮助区域尚未显示。')); return;
+      }
+      const requestId = ++helpRequest;
+      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error('帮助展示记录未确认。')); }, 15000);
+      pendingHelp.set(requestId, { resolve, reject, timer });
+      send({ kind: 'teaching-help', request_id: requestId, move_id: moveId, help_kind: kind, region_id: regionId, text });
+    }),
+  });
+  window.addEventListener(&quot;error&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;unhandledrejection&quot;, () => send({ kind: &quot;error&quot; }));
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== config.channel) return;
+    if (event.data.kind === 'interaction-cancel') {
+      if (interaction?.id === event.data.request_id) interaction.controller.abort();
+      return;
+    }
+    if (event.data.kind === 'interaction') {
+      const id = event.data.request_id;
+      if (restoring || interaction) {
+        send({ kind: 'interaction-result', request_id: id, status: 'failed', reason: 'The page is not ready for an operation.' });
+        return;
+      }
+      const current = { id, controller: new AbortController() };
+      interaction = current;
+      clearTimeout(commitTimer);
+      let before = {};
+      try { before = { ...stateReader?.()?.values }; } catch {}
+      const actions = createActions(config.actionContract, () => stateReader?.(), () => actionHandler, () => parameterEdits);
+      actions.execute(event.data.request, event.data.expected_values, current.controller.signal, event.data.expected_edits).then(status => {
+        if (!current.controller.signal.aborted) {
+          const action = event.data.request.action;
+          const after = stateReader?.()?.values ?? {};
+          const support = status !== 'applied' || action?.kind === 'highlight' ? [] :
+            (config.teachingBinding?.regions ?? []).filter(region =>
+              ['reveal', 'annotate'].includes(action.kind) ? region.region_id === action.region_id :
+                region.state_fields.some(key => before[key] !== after[key])
+            ).flatMap(region => {
+              const node = teachingRegion(region.region_id);
+              const text = node?.getClientRects().length ? visibleText(node).trim() : '';
+              return text ? [{ region_id: region.region_id, text }] : [];
+            });
+          capture(id, false, { status, support });
+        }
+      }).catch(failure => {
+        const result = { status: current.controller.signal.aborted ? 'cancelled' : 'failed', reason: String(failure.message ?? failure) };
+        if (current.controller.signal.aborted) send({ kind: 'interaction-result', request_id: id, ...result });
+        else capture(id, false, result);
+      }).finally(() => { if (interaction === current) interaction = undefined; });
+      return;
+    }
+    if (event.data.kind === 'locate-region') {
+      const region = teachingRegion(event.data.region_id);
+      if (region) {
+        region.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        region.animate([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+          { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+      }
+      send({ kind: 'region-located', region_id: event.data.region_id, located: !!region });
+      return;
+    }
+    if (event.data.kind === 'teaching-help-recorded') {
+      const pending = pendingHelp.get(event.data.request_id);
+      if (pending) {
+        clearTimeout(pending.timer); pendingHelp.delete(event.data.request_id);
+        if (event.data.error) pending.reject(new Error(event.data.error)); else pending.resolve();
+      }
+      return;
+    }
+    if (event.data.kind === &quot;zoom&quot; &amp;&amp; Number.isFinite(event.data.scale) &amp;&amp; event.data.scale >= .5 &amp;&amp; event.data.scale &lt;= 1.5) {
+      const next = event.data.scale;
+      if (next !== zoom) {
+        const x = window.scrollX / zoom, y = window.scrollY / zoom;
+        document.documentElement.style.zoom = String(next);
+        zoom = next;
+        window.scrollTo(x * zoom, y * zoom);
+      }
+      return;
+    }
+    if (event.data.kind === &quot;theme&quot;) {
+      if (Number.isInteger(event.data.generation)) hostGeneration = event.data.generation;
+      for (const [name, value] of Object.entries(event.data.values)) document.documentElement.style.setProperty(name, value);
+    }
+    if (event.data.kind === &quot;snapshot&quot;) capture(event.data.request_id);
+    if (event.data.kind === &quot;export-static&quot;) {
+      const id = event.data.request_id;
+      Promise.all([document.fonts.ready, ...Array.from(document.images, image => image.decode())])
+        .then(() => capture(id, true), () => send({ kind: &quot;static-error&quot;, request_id: id, message: &quot;图解图片资源加载失败，请重新加载后重试。&quot; }));
+    }
+  });
+  // The host owns source labels and actions; ordinary page rendering stays local.
+  function normalizeSources() {
+    observer.disconnect();
+    const refs = [];
+    document.querySelectorAll(&quot;[data-source-ref]&quot;).forEach(node => {
+      const id = node.getAttribute(&quot;data-source-ref&quot;);
+      refs.push(id);
+      const source = config.sources.find(source => source.source_ref_id === id);
+      node.textContent = sourceChipLabel(config.sources, id);
+      node.setAttribute(&quot;title&quot;, source ? source.label : &quot;来源不可用&quot;);
+      node.setAttribute(&quot;aria-label&quot;, source ? `${node.textContent}：${source.label}` : &quot;来源不可用&quot;);
+      if (node instanceof HTMLButtonElement) node.disabled = !source;
+    });
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+    return refs;
+  }
+  function capture(request_id, exporting = false, result) {
+    if (restoring || !observer) { pendingCaptures.set(request_id, exporting); return; }
+    const sourceRefs = normalizeSources();
+    const controls = Array.from(document.querySelectorAll(&quot;input, textarea, select&quot;))
+      .map((node, index) => ({
+      key: node.id || node.name || `control-${index}`, type: node.type,
+      value: node instanceof HTMLSelectElement &amp;&amp; node.multiple ? Array.from(node.selectedOptions, option => option.value) : node.value,
+      ...(node.type === &quot;checkbox&quot; || node.type === &quot;radio&quot; ? { checked: node.checked } : {}),
+      }));
+    try {
+    // A failed reader must not reuse an earlier semantic scene or hide the DOM
+    // that is still visible now. Read afresh for every capture.
+    let custom = {};
+    try { custom = stateReader ? stateReader() ?? {} : {}; } catch {}
+    // One synchronous browser read freezes parameters and actual rendered semantics together.
+    send({ kind: result ? &quot;interaction-result&quot; : exporting ? &quot;static-result&quot; : &quot;state&quot;, request_id, ...result, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') &amp;&amp; node.getClientRects().length > 0 &amp;&amp; getComputedStyle(node).visibility !== 'hidden' &amp;&amp; node.type !== 'hidden').map((node, index) => ({
+      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
+      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
+    })) } : {}), state: {
+      values: { controls, page: custom.values ?? null, parameter_edits: { ...parameterEdits } },
+      visible_step: custom.visible_step ?? document.querySelector(&quot;[data-presentation-step]&quot;)?.getAttribute(&quot;data-presentation-step&quot;) ?? null,
+      observed_result: visibleText(document.body).trim(), source_ref_ids: sourceRefs,
+      ...(custom.observation ? { observation: custom.observation } : {}),
+    } });
+    } catch (error) {
+      if (exporting) send({ kind: &quot;static-error&quot;, request_id, message: error instanceof Error ? error.message : String(error) });
+      else throw error;
+    }
+  }
+  function visibleText(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (!(node instanceof Element) || node.matches(&quot;script, style, [data-source-ref]&quot;)) return &quot;&quot;;
+    const style = getComputedStyle(node);
+    if (style.display === &quot;none&quot; || style.visibility === &quot;hidden&quot;) return &quot;&quot;;
+    const label = [node.getAttribute(&quot;alt&quot;), node.getAttribute(&quot;aria-label&quot;)].filter(Boolean).join(&quot; &quot;);
+    return [label, ...Array.from(node.childNodes, visibleText)].join(&quot; &quot;);
+  }
+  function scheduleCommit() {
+    if (restoring || interaction) return;
+    clearTimeout(commitTimer);
+    commitTimer = setTimeout(() => capture(), 0);
+  }
+  function isEditingTarget(node) {
+    return node instanceof Element &amp;&amp; !!node.closest(&quot;input, textarea, select, [contenteditable]:not([contenteditable='false'])&quot;);
+  }
+  function publishEditing(next) {
+    if (!Number.isInteger(hostGeneration) || editing === next) return;
+    editing = next;
+    send({ kind: &quot;editing-focus&quot;, generation: hostGeneration, editing });
+  }
+  document.addEventListener(&quot;click&quot;, event => {
+    const node = event.target instanceof Element ? event.target.closest(&quot;[data-source-ref], a&quot;) : null;
+    if (!node) return;
+    event.preventDefault();
+    const id = node.getAttribute(&quot;data-source-ref&quot;);
+    if (config.sources.some(source => source.source_ref_id === id)) send({ kind: &quot;source&quot;, source_ref_id: id });
+  }, true);
+  document.addEventListener(&quot;submit&quot;, event => event.preventDefault(), true);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    // Run after the page's own DOMContentLoaded handlers installed its controls.
+    setTimeout(async () => {
+    try {
+    restoring = true;
+    if (config.restoredState) {
+      const controls = config.restoredState.values?.controls ?? [];
+      document.querySelectorAll(&quot;input, textarea, select&quot;).forEach((node, index) => {
+        const saved = controls.find(control => control.key === (node.id || node.name || `control-${index}`) &amp;&amp; control.type === node.type);
+        if (!saved) return;
+        if (node instanceof HTMLSelectElement &amp;&amp; node.multiple) {
+          Array.from(node.options).forEach(option => { option.selected = saved.value.includes(option.value); });
+        } else if (node.type !== &quot;file&quot;) node.value = saved.value;
+        if (&quot;checked&quot; in saved) node.checked = saved.checked;
+        node.dispatchEvent(new Event(&quot;input&quot;, { bubbles: true }));
+        node.dispatchEvent(new Event(&quot;change&quot;, { bubbles: true }));
+      });
+      if (stateRestorer) await stateRestorer(config.restoredState);
+      if (!stateRestorer &amp;&amp; (config.restoredState.values?.page != null || config.restoredState.visible_step != null)) {
+        send({ kind: &quot;restore-partial&quot; });
+      }
+    }
+    restoring = false;
+    observer = new MutationObserver(normalizeSources);
+    // Only human control edits invalidate an observation. Timer/playback updates
+    // still appear in the snapshot, but do not masquerade as conflicting edits.
+    for (const kind of ['input', 'change', 'click']) document.addEventListener(kind, event => {
+      if (!event.isTrusted || interaction || !parameters.length) return;
+      let before;
+      try { before = { ...stateReader?.()?.values }; } catch { return; }
+      queueMicrotask(() => {
+        let after;
+        try { after = stateReader?.()?.values ?? {}; } catch { return; }
+        for (const key of parameters) {
+          const target = event.target;
+          if (before[key] !== after[key] || ((kind === 'input' || kind === 'change') &amp;&amp; target instanceof Element &amp;&amp; target.getAttribute('data-presentation-parameter') === key)) {
+            parameterEdits[key] = (parameterEdits[key] ?? 0) + 1;
+          }
+        }
+      });
+    }, true);
+    document.addEventListener(&quot;change&quot;, scheduleCommit);
+    document.addEventListener(&quot;focusin&quot;, event => publishEditing(isEditingTarget(event.target)));
+    document.addEventListener(&quot;focusout&quot;, () => queueMicrotask(() => publishEditing(isEditingTarget(document.activeElement))));
+    window.addEventListener(&quot;blur&quot;, () => publishEditing(false));
+    document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) publishEditing(false); });
+    document.addEventListener(&quot;click&quot;, event => {
+      if (!(event.target instanceof Element) || event.target.closest(&quot;[data-source-ref], a&quot;)) return;
+      if (event.target.closest(&quot;button, summary, [role=button], [data-presentation-step]&quot;)) scheduleCommit();
+    });
+    normalizeSources();
+    send({ kind: &quot;ready&quot; });
+    const captures = Array.from(pendingCaptures);
+    pendingCaptures.clear();
+    captures.forEach(([id, mode]) => capture(id, mode));
+    } catch {
+      restoring = true;
+      send({ kind: &quot;error&quot; });
+    }
+    });
+  });
+})({&quot;channel&quot;:&quot;rsi-render&quot;,&quot;sources&quot;:[],&quot;initialState&quot;:{&quot;step&quot;:12,&quot;x&quot;:2,&quot;y&quot;:3},&quot;restoredState&quot;:null}, (// Runs inside the existing opaque-origin frame. Freeze pixels and DOM synchronously
+// with the bridge's state read; decoding/rasterization happens later in the host.
+function () {
+  if (document.fonts.status !== 'loaded') throw new Error('图解字体尚未就绪，请稍后重试。');
+  const root = document.body;
+  const width = root.offsetWidth, height = Math.max(root.offsetHeight, root.scrollHeight);
+  if (!width || !height) throw new Error('当前图解没有可导出的画面。');
+  if ([...document.fonts].some(face => face.status === 'error')) throw new Error('图解字体加载失败，请重试。');
+  const rules = [], resources = new Set();
+  let serial = 0;
+  const copyStyle = (style, target) => {
+    for (const name of style) target.style.setProperty(name, style.getPropertyValue(name));
+    target.style.animation = 'none'; target.style.transition = 'none'; target.style.caretColor = 'transparent';
+  };
+  function clone(node) {
+    if (!(node instanceof Element)) return node.cloneNode(true);
+    if (node.matches('script,style,link,[data-presentation-mask]')) return document.createTextNode('');
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden') return document.createTextNode('');
+    if (node.matches('video,audio,iframe,object,embed') || node.shadowRoot)
+      throw new Error('当前图解包含尚不支持静态输出的媒体或嵌入内容。');
+    if (node instanceof HTMLElement &amp;&amp; /auto|scroll/.test(style.overflow + style.overflowX + style.overflowY)
+        &amp;&amp; (node.scrollWidth > node.clientWidth + 2 || node.scrollHeight > node.clientHeight + 2))
+      throw new Error('图解含滚动区域，请展开内容后重新导出，避免遗漏。');
+    for (const property of ['background-image', 'mask-image', 'list-style-image']) {
+      for (const match of style.getPropertyValue(property).matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)) {
+        if (match[1].startsWith('#')) continue;
+        if (!match[1].startsWith('data:')) throw new Error('图解包含未就绪的图片资源，请使用版本内资源。');
+        resources.add(match[1]);
+      }
+    }
+    if (node instanceof SVGImageElement) {
+      const href = node.href.baseVal;
+      if (!href.startsWith('data:')) throw new Error('SVG 图片资源无法嵌入，请使用版本内资源。');
+      resources.add(href);
+    }
+    let target;
+    if (node instanceof HTMLCanvasElement) {
+      if (!node.getContext('2d')) {
+        const gl = node.getContext('webgl2') || node.getContext('webgl');
+        if (!gl || gl.isContextLost()) throw new Error('三维画布尚未就绪，请重新加载图解。');
+        if (!gl.getContextAttributes().preserveDrawingBuffer)
+          throw new Error('三维画布未保留画面；制作时请开启 preserveDrawingBuffer 后重新导出。');
+      }
+      target = document.createElement('img');
+      try { target.src = node.toDataURL('image/png'); } catch { throw new Error('Canvas 资源无法读取，请重新加载图解。'); }
+    } else {
+      if (node instanceof HTMLImageElement &amp;&amp; (!node.complete || !node.naturalWidth))
+        throw new Error('图解图片资源尚未就绪或加载失败，请重试。');
+      target = node.cloneNode(false);
+      if (node instanceof HTMLTextAreaElement) target.textContent = node.value;
+      else for (const child of node.childNodes) target.append(clone(child));
+      // Serialize live control state while retaining the actual control's appearance and size.
+      if (node instanceof HTMLInputElement) {
+        target.setAttribute('value', node.value);
+        target.toggleAttribute('checked', node.checked);
+      } else if (node instanceof HTMLOptionElement) target.toggleAttribute('selected', node.selected);
+    }
+    copyStyle(style, target);
+    if (node instanceof HTMLCanvasElement) { target.style.width = style.width; target.style.height = style.height; }
+    for (const attr of [...target.attributes]) if (attr.name.startsWith('on')) target.removeAttribute(attr.name);
+    for (const pseudo of ['::before', '::after']) {
+      const value = getComputedStyle(node, pseudo);
+      if (!value.content || value.content === 'none' || value.content === 'normal') continue;
+      const id = `static-${++serial}`; target.classList.add(id);
+      const holder = document.createElement('span'); copyStyle(value, holder);
+      rules.push(`.${id}${pseudo}{${holder.style.cssText}}`);
+    }
+    return target;
+  }
+  const body = clone(root);
+  body.style.margin = '0'; body.style.width = `${width}px`; body.style.height = `${height}px`;
+  // Keep authored control/pseudo-element styling alongside the frozen computed styles.
+  const authoredRules = [];
+  for (const sheet of document.styleSheets) for (const rule of sheet.cssRules) {
+    if (rule instanceof CSSFontFaceRule) {
+      if ([...rule.style.getPropertyValue('src').matchAll(/url\([&quot;']?([^&quot;')]+)[&quot;']?\)/g)].some(match => !match[1].startsWith('data:')))
+        throw new Error('图解字体资源无法嵌入，请使用版本内字体。');
+    }
+    authoredRules.push(rule.cssText);
+  }
+  const style = document.createElement('style'); style.textContent = [...authoredRules, ...rules].join('\n'); body.prepend(style);
+  if (root.scrollWidth > width + 2) throw new Error('图解超出当前画布，请展开演示后重新导出。');
+  return { width, height, resources: [...resources], svg: `&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;${width}&quot; height=&quot;${height}&quot;>&lt;foreignObject width=&quot;100%&quot; height=&quot;100%&quot;>${new XMLSerializer().serializeToString(body)}&lt;/foreignObject>&lt;/svg>` };
+}), (function (contract, read, handler, edits = () => ({})) {
+  const entries = contract ?? [];
+  const region = id => Array.from(document.querySelectorAll('[data-teaching-region],[id]'))
+    .find(node => node.getAttribute('data-teaching-region') === id || node.id === id);
+  const control = key => Array.from(document.querySelectorAll('input,select,textarea'))
+    .find(node => node.getAttribute('data-presentation-parameter') === key);
+  const invocation = id => Array.from(document.querySelectorAll('[data-presentation-action]'))
+    .find(node => node.getAttribute('data-presentation-action') === id);
+  function inspect() {
+    const problems = [];
+    for (const entry of entries) {
+      if (entry.kind !== 'highlight' &amp;&amp; typeof handler() !== 'function') problems.push('Register registerActionHandler for declared actions.');
+      if (entry.kind === 'set_parameters') {
+        for (const key of entry.parameters) {
+          if (!control(key) || !(key in (read()?.values ?? {}))) problems.push(`Parameter ${key} needs a bound control and reader value.`);
+        }
+      } else if (entry.kind === 'invoke') {
+        if (!invocation(entry.action_id)) problems.push(`Action ${entry.action_id} needs a bound control.`);
+      } else if (!region(entry.region_id)) problems.push(`Region ${entry.region_id} does not exist.`);
+    }
+    return problems;
+  }
+  function locate(target) {
+    target.scrollIntoView({ block: 'center', behavior: 'instant' });
+    target.animate?.([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
+      { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
+  }
+  async function execute(request, expected, signal, expectedEdits) {
+    signal?.throwIfAborted();
+    const problems = inspect();
+    if (problems.length) throw new Error(problems.join(' '));
+    if (request.operation === 'observe') return 'observed';
+    const action = request.action;
+    const declared = entries.some(entry => entry.kind === action.kind &amp;&amp; (
+      action.kind === 'set_parameters' ? Object.keys(action.values).length > 0 &amp;&amp; Object.keys(action.values).every(key => entries.filter(item => item.kind === 'set_parameters').flatMap(item => item.parameters).includes(key))
+        : action.kind === 'invoke' ? entry.action_id === action.action_id : entry.region_id === action.region_id));
+    if (!declared) throw new Error('This action is not declared by this content version.');
+    const values = read()?.values ?? {};
+    if (Object.entries(expected ?? {}).some(([key, value]) => values[key] !== value
+      &amp;&amp; (!expectedEdits || (edits()[key] ?? 0) !== (expectedEdits[key] ?? 0)))) return 'conflict';
+    if (action.kind === 'set_parameters') {
+      for (const [key, value] of Object.entries(action.values)) {
+        const node = control(key);
+        if (!node || node.disabled || (values[key] !== null &amp;&amp; typeof value !== typeof values[key])) throw new Error(`Parameter ${key} is unavailable or has the wrong type.`);
+        if (typeof value === 'number' &amp;&amp; (!Number.isFinite(value)
+          || (node.min !== '' &amp;&amp; node.min != null &amp;&amp; value &lt; Number(node.min))
+          || (node.max !== '' &amp;&amp; node.max != null &amp;&amp; value > Number(node.max)))) throw new Error(`Parameter ${key} is outside its control range.`);
+      }
+    }
+    if (action.kind === 'invoke' &amp;&amp; invocation(action.action_id)?.disabled) throw new Error('This operation is currently disabled.');
+    if (action.kind === 'highlight') locate(region(action.region_id));
+    else await handler()(action, { signal });
+    signal?.throwIfAborted();
+    if (action.kind === 'set_parameters' &amp;&amp; Object.entries(action.values).some(([key, value]) => read()?.values?.[key] !== value)) {
+      throw new Error('The handler did not apply the requested parameters.');
+    }
+    if (['reveal', 'annotate'].includes(action.kind)) {
+      const target = region(action.region_id);
+      if (!target || !target.getClientRects().length || getComputedStyle(target).visibility === 'hidden' || !target.innerText?.trim()) {
+        throw new Error('The requested content has not become visible.');
+      }
+      locate(target);
+    }
+    return 'applied';
+  }
+  return { inspect, execute, locate };
+}));
+// Shared Reader/preview lifecycle. Returning never resumes a demo implicitly.
+(() => {
+  let hostVisible = true;
+  const pauseAll = () => document.querySelectorAll(&quot;video&quot;).forEach(video => video.pause());
+  window.addEventListener(&quot;message&quot;, event => {
+    if (event.source !== parent || event.data?.channel !== &quot;rsi-render&quot; || event.data.kind !== &quot;visibility&quot;) return;
+    hostVisible = event.data.visible;
+    if (!hostVisible) pauseAll();
+  });
+  document.addEventListener(&quot;visibilitychange&quot;, () => { if (document.hidden) pauseAll(); });
+  window.addEventListener(&quot;pagehide&quot;, pauseAll);
+  document.addEventListener(&quot;DOMContentLoaded&quot;, () => {
+    const visibility = new WeakMap();
+    const installed = new WeakSet();
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      visibility.set(entry.target, entry.isIntersecting);
+      if (!entry.isIntersecting) entry.target.pause();
+    }));
+    const visit = (node, action) => {
+      if (!(node instanceof Element)) return;
+      if (node.matches(&quot;video&quot;)) action(node);
+      node.querySelectorAll(&quot;video&quot;).forEach(action);
+    };
+    const install = video => {
+      observer.observe(video);
+      if (installed.has(video)) return;
+      installed.add(video);
+      video.controls = false; video.playsInline = true; video.autoplay = false; video.pause();
+      video.addEventListener(&quot;play&quot;, () => {
+        if (document.hidden || !hostVisible || visibility.get(video) === false) { video.pause(); return; }
+        document.querySelectorAll(&quot;video&quot;).forEach(other => { if (other !== video) other.pause(); });
+      });
+    };
+    visit(document.body, install);
+    new MutationObserver(records => records.forEach(record => {
+      record.addedNodes.forEach(node => visit(node, install));
+      record.removedNodes.forEach(node => visit(node, video => {
+        if (!video.isConnected) { video.pause(); observer.unobserve(video); }
+      }));
+    })).observe(document.body, { subtree: true, childList: true });
+  });
+})();
+&lt;/script>
+&lt;meta charset=&quot;utf-8&quot;>
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;>
+&lt;title>u 被用两次：反向传播为什么把两份回传相加&lt;/title>
+&lt;style>
+:root{
+  --canvas:#faf8f4; --ink:#1c1b19; --surface:#ffffff; --line:#d9d4cb;
+  --accent:#0f6b66; --local:#a8631b; --muted:#77726a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--canvas);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,&quot;Noto Sans SC&quot;,&quot;PingFang SC&quot;,&quot;Hiragino Sans GB&quot;,&quot;Microsoft YaHei&quot;,sans-serif;
+  font-size:16px;line-height:1.78;
+}
+.wrap{max-width:820px;margin:0 auto;padding:26px 16px 76px}
+h1{font-size:clamp(21px,5vw,29px);line-height:1.42;margin:0 0 12px;letter-spacing:-0.01em}
+h2{font-size:clamp(17px,3.6vw,20px);margin:36px 0 10px;line-height:1.55}
+h3{font-size:16px;margin:0 0 6px;line-height:1.5}
+p{margin:0 0 12px}
+ul{margin:0 0 12px;padding-left:1.2em}
+li{margin:0 0 7px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,&quot;Liberation Mono&quot;,monospace;font-variant-numeric:tabular-nums}
+.lede{color:#3b3833;font-size:17px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin:20px 0 8px}
+.status{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.pill{display:inline-flex;align-items:center;min-height:32px;padding:2px 12px;border-radius:999px;background:#f4f1ea;border:1px solid var(--line);font-size:14px;font-variant-numeric:tabular-nums}
+.pill.step{background:#eaf5f3;border-color:#b8d8d5;color:#0b4f4b}
+.srow{display:grid;grid-template-columns:22px minmax(0,1fr) 58px;gap:10px;align-items:center}
+.srow label{font-size:16px;font-weight:600;text-align:center}
+.srow output{font-size:15px;text-align:right;color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=&quot;range&quot;]{width:100%;height:44px;margin:0;accent-color:#0f6b66;background:transparent;display:block}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 2px}
+.presets button{
+  min-height:44px;min-width:44px;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--line);background:#fdfcf9;color:var(--ink);
+  font:inherit;font-size:14px;line-height:1.3;cursor:pointer;
+}
+.presets button:active{background:#f0ece3}
+.graphwrap{max-width:420px;margin:10px auto 4px}
+#graph{display:block;width:100%;height:auto}
+.legend{font-size:13px;color:var(--muted);text-align:center;margin:2px 0 14px;line-height:1.65}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:baseline}
+.legend .sw.g{background:#8b857a}
+.legend .sw.l{background:var(--local)}
+.legend .sw.a{background:var(--accent)}
+.stepnav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.stepnav button{
+  min-height:44px;min-width:44px;padding:8px 14px;border-radius:10px;
+  border:1px solid var(--line);background:#fdfcf9;color:var(--ink);
+  font:inherit;font-size:15px;cursor:pointer;
+}
+.stepnav button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.stepnav button[disabled]{opacity:.42;cursor:default}
+.stepcard{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fcfbf8}
+.tag{display:inline-block;font-size:12.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);margin-bottom:8px;background:#f2efe8;color:#4b4a46}
+.tag.loc{color:var(--local);border-color:#e2c9a8;background:#fbf3e8}
+.tag.grad{color:var(--accent);border-color:#b8d8d5;background:#eaf5f3}
+.tag.join{color:#fff;background:var(--accent);border-color:var(--accent)}
+.stepcard p{margin:0 0 10px}
+.formula{
+  margin:0;background:#fff;border:1px dashed var(--line);border-radius:8px;
+  padding:10px;font-size:14.5px;overflow-x:auto;white-space:nowrap;
+}
+.ledgers{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:14px}
+@media (min-width:660px){.ledgers{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.ledger{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fcfbf8;min-width:0}
+.ledger h4{margin:0 0 8px;font-size:14.5px;letter-spacing:.01em}
+.ledger .lnote{margin:8px 0 0;font-size:12.5px;color:var(--muted);line-height:1.6}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;padding:7px 0;border-top:1px dashed #e6e1d8}
+.lname{font-size:13.5px;color:#3b3833}
+.lexp{font-size:12.5px;color:#8d877c;word-break:break-word}
+.lval{font-size:16px;font-weight:600;color:#b6afa3;padding-top:2px}
+.lrow.on .lname{color:var(--ink)}
+.lrow.on .lexp{color:var(--local)}
+.lrow.on .lval{color:var(--local)}
+.ltotal{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:10px 0 0;border-top:1px solid var(--line);margin-top:2px}
+.ltotal span{font-size:12.5px;color:var(--muted)}
+.ltotal strong{font-size:16px;color:#b6afa3;font-weight:600}
+.ltotal.on strong{color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin:16px 0}
+.card p{margin:0 0 10px}
+.card p:last-child{margin-bottom:0}
+.card .small{font-size:14px;overflow-x:auto;white-space:nowrap}
+.verdict{font-size:14px;color:#2a2a28;background:#eaf5f3;border-radius:8px;padding:10px;line-height:1.6}
+.omrow{font-size:14.5px;line-height:1.7}
+.omrow b{color:var(--accent)}
+.note{font-size:13.5px;color:var(--muted);line-height:1.7}
+/* --- 计算图 --- */
+.node .nbox{fill:#fff;stroke:#d8d3ca;stroke-width:1.5}
+.node.on .nbox{stroke:#b3cbc8}
+.node.active .nbox{stroke:var(--accent);stroke-width:2.6}
+.node .nname{font-size:12.5px;fill:#8b857a;text-anchor:middle;letter-spacing:.06em}
+.node .nvalue{font-size:17px;fill:#b6afa3;text-anchor:middle;font-weight:600}
+.node.on .nvalue{fill:var(--ink)}
+.node .ngrad{font-size:10.5px;fill:#c3bdb1;text-anchor:middle}
+.node .ngrad.on{fill:var(--accent)}
+.edge{fill:none;stroke:#cfc9bd;stroke-width:1.8}
+.edge.lit{stroke:#84a9a5;stroke-width:2.6}
+.eback{fill:none;stroke:var(--accent);stroke-width:3.2;visibility:hidden}
+.eback.on{visibility:visible}
+.ebadge{font-size:12px;fill:var(--local);text-anchor:middle;font-weight:600;visibility:hidden}
+.ebadge.on{visibility:visible}
+&lt;/style>
+&lt;/head>
+&lt;body>
+&lt;main class=&quot;wrap&quot;>
+
+&lt;h1>一个中间量被用两次，反向传播怎么不漏算&lt;/h1>
+&lt;p class=&quot;lede&quot;>只用一个小模型：u = x·y，v = u + x，L = v² + 3u。u 是同一个计算结果，被 v 和输出里的 3u 各用一次；x 也进了两个地方。下面先用一张可操作的图把数值、边的局部导数、最终的梯度分清楚，再解释两份回传为什么相加、在哪里相加。&lt;/p>
+
+&lt;section class=&quot;panel&quot; aria-label=&quot;交互计算图&quot;>
+  &lt;div class=&quot;status&quot;>
+    &lt;span class=&quot;pill&quot; id=&quot;statusInputs&quot;>x = 2　y = 3&lt;/span>
+    &lt;span class=&quot;pill step&quot; id=&quot;statusStep&quot;>第 13 / 13 步&lt;/span>
+  &lt;/div>
+
+  &lt;div class=&quot;srow&quot;>
+    &lt;label for=&quot;sx&quot;>x&lt;/label>
+    &lt;input id=&quot;sx&quot; type=&quot;range&quot; min=&quot;-3&quot; max=&quot;3&quot; step=&quot;0.5&quot; value=&quot;2&quot;>
+    &lt;output id=&quot;ox&quot; for=&quot;sx&quot;>2&lt;/output>
+  &lt;/div>
+  &lt;div class=&quot;srow&quot;>
+    &lt;label for=&quot;sy&quot;>y&lt;/label>
+    &lt;input id=&quot;sy&quot; type=&quot;range&quot; min=&quot;-3&quot; max=&quot;3&quot; step=&quot;0.5&quot; value=&quot;3&quot;>
+    &lt;output id=&quot;oy&quot; for=&quot;sy&quot;>3&lt;/output>
+  &lt;/div>
+  &lt;div class=&quot;presets&quot;>
+    &lt;button type=&quot;button&quot; id=&quot;psDefault&quot;>默认：x=2, y=3&lt;/button>
+    &lt;button type=&quot;button&quot; id=&quot;psZero&quot;>v=0：一条贡献为 0&lt;/button>
+    &lt;button type=&quot;button&quot; id=&quot;psCancel&quot;>两份抵消&lt;/button>
+  &lt;/div>
+
+  &lt;div class=&quot;graphwrap&quot;>
+    &lt;svg id=&quot;graph&quot; viewBox=&quot;0 0 360 500&quot; role=&quot;img&quot; aria-labelledby=&quot;graphTitle&quot;>
+      &lt;title id=&quot;graphTitle&quot;>计算图：x 与 y 算出 u，u 与 x 算出 v，v 与 u 算出 L&lt;/title>
+      &lt;defs>
+        &lt;marker id=&quot;ar&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;>
+          &lt;path d=&quot;M0 0 L10 5 L0 10 z&quot; fill=&quot;#c3bdb1&quot;>&lt;/path>
+        &lt;/marker>
+        &lt;marker id=&quot;arA&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;>
+          &lt;path d=&quot;M0 0 L10 5 L0 10 z&quot; fill=&quot;#0f6b66&quot;>&lt;/path>
+        &lt;/marker>
+      &lt;/defs>
+      &lt;g id=&quot;edges&quot;>
+        &lt;path class=&quot;edge&quot; id=&quot;e-y-u&quot; d=&quot;M 100 87 L 150 151&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;edge&quot; id=&quot;e-x-u&quot; d=&quot;M 260 87 L 210 151&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;edge&quot; id=&quot;e-u-v&quot; d=&quot;M 180 221 L 180 275&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;edge&quot; id=&quot;e-v-L&quot; d=&quot;M 180 345 L 180 399&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;edge&quot; id=&quot;e-x-v&quot; d=&quot;M 320 87 C 348 160 348 250 236 300&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;edge&quot; id=&quot;e-u-L&quot; d=&quot;M 123 205 C 54 262 54 356 123 414&quot; marker-end=&quot;url(#ar)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-y-u&quot; d=&quot;M 150 151 L 100 87&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-x-u&quot; d=&quot;M 210 151 L 260 87&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-u-v&quot; d=&quot;M 180 275 L 180 221&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-v-L&quot; d=&quot;M 180 399 L 180 345&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-x-v&quot; d=&quot;M 236 300 C 348 250 348 160 320 87&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+        &lt;path class=&quot;eback&quot; id=&quot;eb-u-L&quot; d=&quot;M 123 414 C 54 356 54 262 123 205&quot; marker-end=&quot;url(#arA)&quot;>&lt;/path>
+      &lt;/g>
+      &lt;g id=&quot;nodes&quot;>
+        &lt;g class=&quot;node&quot; id=&quot;n-y&quot; transform=&quot;translate(74,52)&quot;>
+          &lt;rect class=&quot;nbox&quot; x=&quot;-56&quot; y=&quot;-35&quot; width=&quot;112&quot; height=&quot;70&quot; rx=&quot;12&quot;>&lt;/rect>
+          &lt;text class=&quot;nname&quot; y=&quot;-15&quot;>y&lt;/text>
+          &lt;text class=&quot;nvalue&quot; y=&quot;7&quot;>3&lt;/text>
+          &lt;text class=&quot;ngrad&quot; y=&quot;27&quot;>∂L/∂y = ?&lt;/text>
+        &lt;/g>
+        &lt;g class=&quot;node&quot; id=&quot;n-x&quot; transform=&quot;translate(286,52)&quot;>
+          &lt;rect class=&quot;nbox&quot; x=&quot;-56&quot; y=&quot;-35&quot; width=&quot;112&quot; height=&quot;70&quot; rx=&quot;12&quot;>&lt;/rect>
+          &lt;text class=&quot;nname&quot; y=&quot;-15&quot;>x&lt;/text>
+          &lt;text class=&quot;nvalue&quot; y=&quot;7&quot;>2&lt;/text>
+          &lt;text class=&quot;ngrad&quot; y=&quot;27&quot;>∂L/∂x = ?&lt;/text>
+        &lt;/g>
+        &lt;g class=&quot;node&quot; id=&quot;n-u&quot; transform=&quot;translate(180,186)&quot;>
+          &lt;rect class=&quot;nbox&quot; x=&quot;-56&quot; y=&quot;-35&quot; width=&quot;112&quot; height=&quot;70&quot; rx=&quot;12&quot;>&lt;/rect>
+          &lt;text class=&quot;nname&quot; y=&quot;-15&quot;>u&lt;/text>
+          &lt;text class=&quot;nvalue&quot; y=&quot;7&quot;>?&lt;/text>
+          &lt;text class=&quot;ngrad&quot; y=&quot;27&quot;>∂L/∂u = ?&lt;/text>
+        &lt;/g>
+        &lt;g class=&quot;node&quot; id=&quot;n-v&quot; transform=&quot;translate(180,310)&quot;>
+          &lt;rect class=&quot;nbox&quot; x=&quot;-56&quot; y=&quot;-35&quot; width=&quot;112&quot; height=&quot;70&quot; rx=&quot;12&quot;>&lt;/rect>
+          &lt;text class=&quot;nname&quot; y=&quot;-15&quot;>v&lt;/text>
+          &lt;text class=&quot;nvalue&quot; y=&quot;7&quot;>?&lt;/text>
+          &lt;text class=&quot;ngrad&quot; y=&quot;27&quot;>∂L/∂v = ?&lt;/text>
+        &lt;/g>
+        &lt;g class=&quot;node&quot; id=&quot;n-L&quot; transform=&quot;translate(180,434)&quot;>
+          &lt;rect class=&quot;nbox&quot; x=&quot;-56&quot; y=&quot;-35&quot; width=&quot;112&quot; height=&quot;70&quot; rx=&quot;12&quot;>&lt;/rect>
+          &lt;text class=&quot;nname&quot; y=&quot;-15&quot;>L&lt;/text>
+          &lt;text class=&quot;nvalue&quot; y=&quot;7&quot;>?&lt;/text>
+          &lt;text class=&quot;ngrad&quot; y=&quot;27&quot;>∂L/∂L = ?&lt;/text>
+        &lt;/g>
+      &lt;/g>
+      &lt;g id=&quot;badges&quot;>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-y-u&quot; x=&quot;106&quot; y=&quot;124&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×3&lt;/text>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-x-u&quot; x=&quot;256&quot; y=&quot;124&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×3&lt;/text>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-u-v&quot; x=&quot;218&quot; y=&quot;246&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×1&lt;/text>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-x-v&quot; x=&quot;316&quot; y=&quot;158&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×1&lt;/text>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-v-L&quot; x=&quot;218&quot; y=&quot;372&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×16&lt;/text>
+        &lt;text class=&quot;ebadge&quot; id=&quot;bd-u-L&quot; x=&quot;48&quot; y=&quot;303&quot; paint-order=&quot;stroke&quot; stroke=&quot;#ffffff&quot; stroke-width=&quot;4&quot;>×3&lt;/text>
+      &lt;/g>
+    &lt;/svg>
+  &lt;/div>
+  &lt;p class=&quot;legend&quot;>
+    &lt;span class=&quot;sw g&quot;>&lt;/span>节点里的前向数值&lt;span class=&quot;sw l&quot;>&lt;/span>边上的 ×n = 这条边的局部导数（下游对上游的偏导）&lt;span class=&quot;sw a&quot;>&lt;/span>∂L/∂· = 对 L 的梯度
+  &lt;/p>
+
+  &lt;div class=&quot;stepnav&quot;>
+    &lt;button type=&quot;button&quot; id=&quot;prev&quot;>上一步&lt;/button>
+    &lt;button type=&quot;button&quot; id=&quot;next&quot; class=&quot;primary&quot;>下一步&lt;/button>
+    &lt;button type=&quot;button&quot; id=&quot;replay&quot;>从头重放&lt;/button>
+  &lt;/div>
+
+  &lt;div class=&quot;stepcard&quot;>
+    &lt;span class=&quot;tag&quot; id=&quot;stepTag&quot;>梯度&lt;/span>
+    &lt;h3 id=&quot;stepTitle&quot;>y 只有一条路&lt;/h3>
+    &lt;p id=&quot;stepBody&quot;>y 只出现在 u = xy 里，所以只有一份贡献。&lt;/p>
+    &lt;p class=&quot;formula mono&quot; id=&quot;stepFormula&quot;>∂L/∂y = 38&lt;/p>
+  &lt;/div>
+
+  &lt;div class=&quot;ledgers&quot;>
+    &lt;div class=&quot;ledger&quot;>
+      &lt;h4>u 的账本 · 两条路&lt;/h4>
+      &lt;div id=&quot;ledgerU&quot;>&lt;/div>
+      &lt;p class=&quot;lnote&quot;>往 x、y 传的是合计；两条单独的贡献不再分头传。&lt;/p>
+    &lt;/div>
+    &lt;div class=&quot;ledger&quot;>
+      &lt;h4>x 的账本 · 两条路&lt;/h4>
+      &lt;div id=&quot;ledgerX&quot;>&lt;/div>
+      &lt;p class=&quot;lnote&quot;>x 是输入，合计就是 L 对它的最终梯度。&lt;/p>
+    &lt;/div>
+  &lt;/div>
+&lt;/section>
+
+&lt;div class=&quot;card&quot;>
+  &lt;h3>独立核对：把 L 直接展开成 x、y 的式子&lt;/h3>
+  &lt;p class=&quot;mono small&quot;>L = (xy + x)² + 3xy = x²y² + 2x²y + x² + 3xy&lt;/p>
+  &lt;p class=&quot;mono small&quot;>∂L/∂x = 2xy² + 4xy + 2x + 3y&lt;/p>
+  &lt;p class=&quot;mono small&quot; id=&quot;ckX&quot;>&lt;/p>
+  &lt;p class=&quot;mono small&quot;>∂L/∂y = 2x²y + 2x² + 3x&lt;/p>
+  &lt;p class=&quot;mono small&quot; id=&quot;ckY&quot;>&lt;/p>
+  &lt;p class=&quot;verdict&quot; id=&quot;ckVerdict&quot;>&lt;/p>
+&lt;/div>
+
+&lt;div class=&quot;card&quot;>
+  &lt;h3>漏掉一条会得到什么&lt;/h3>
+  &lt;p class=&quot;omrow&quot;>正确：&lt;span class=&quot;mono&quot; id=&quot;omGood&quot;>&lt;/span>&lt;/p>
+  &lt;p class=&quot;omrow&quot;>&lt;b>漏掉 u 的「3u 项」那份：&lt;/b>&lt;span class=&quot;mono&quot; id=&quot;omA&quot;>&lt;/span>&lt;/p>
+  &lt;p class=&quot;omrow&quot;>&lt;b>漏掉 x「直接进 v」那份：&lt;/b>&lt;span class=&quot;mono&quot; id=&quot;omB&quot;>&lt;/span>&lt;/p>
+  &lt;p class=&quot;note&quot; id=&quot;omNote&quot;>&lt;/p>
+&lt;/div>
+
+&lt;h2>这张图里，谁被用了两次&lt;/h2>
+&lt;p>模型只有三个式子：u = x·y，v = u + x，L = v² + 3u。画成图以后，一条边表示&quot;谁用到谁&quot;。其中有两条边一步跨过中间量：右边那条弧线从 x 直接连到 v，左边那条弧线从 u 直接连到 L。&lt;/p>
+&lt;p>数出边就能数出回传的份数：u 有两条出边（进 v、进 L 的 3u 项），所以 u 会收到两份贡献；x 有两条出边（进 u、直接进 v），同样两份；y 只有一条出边（进 u），只有一份。反向传播里&quot;被用两次就要相加&quot;的来源就在这里。&lt;/p>
+
+&lt;h2>前向：三个数各算一次&lt;/h2>
+&lt;p>默认 x = 2、y = 3：u = 2 × 3 = 6；v = 6 + 2 = 8；L = 8² + 3 × 6 = 64 + 18 = 82。每个节点只做一次算术，用的是上游已经算好的数值。图上灰色数字就是这三个值加上两个输入。&lt;/p>
+
+&lt;h2>反向：每条边乘一个局部导数&lt;/h2>
+&lt;p>反向要回答的是&quot;L 对某个量有多敏感&quot;。做法是从 L 往回走，每经过一条边就乘上这条边的局部导数，也就是这条边下游对上游的偏导。每个局部导数只看一条边：&lt;/p>
+&lt;ul>
+&lt;li>v→L：∂L/∂v = 2v；求它时把 3u 当作常数。&lt;/li>
+&lt;li>u→L：3u 这一项给出常数 3；求它时把 v² 当作常数。&lt;/li>
+&lt;li>u→v：∂v/∂u = 1。&lt;/li>
+&lt;li>u→x：∂u/∂x = y；求它时把 y 当作常数。&lt;/li>
+&lt;li>v→x：∂v/∂x = 1。&lt;/li>
+&lt;li>u→y：∂u/∂y = x；求它时把 x 当作常数。&lt;/li>
+&lt;/ul>
+&lt;p>默认输入下依次得到：∂L/∂L = 1，∂L/∂v = 1 × 16 = 16，∂L/∂u = 16 + 3 = 19，∂L/∂x = 19 × 3 + 16 × 1 = 73，∂L/∂y = 19 × 2 = 38。&lt;/p>
+
+&lt;h2>顺序：先算靠近 L 的，汇合点要等齐&lt;/h2>
+&lt;p>反向的先后由依赖关系决定：先 v→L，再 u→v 与 u→L，然后才轮到 u→x、v→x、u→y。u 在中间，它必须先收齐所有出边回传的贡献，才能把总数往 x、y 送。至于相邻的两条边谁先谁后，比如 u→x 与 v→x，顺序可以互换，结果不变。&lt;/p>
+&lt;p>如果把顺序弄反：u 一收到第一份 16 就往上游传，传出去的只是 2v；此时真正该传的是 2v + 3 = 19。漏账发生的具体位置就是这里——汇合点还没收齐就提前转发。&lt;/p>
+
+&lt;h2>为什么两份要相加&lt;/h2>
+&lt;p>把 u 当成可以单独变动的量，这正是偏导 ∂L/∂u 的含义。假设 u 增加一个很小的量 ε，由于 v = u + x，v 也跟着增加 ε：&lt;/p>
+&lt;ul>
+&lt;li>3u 这一项增加 3ε；&lt;/li>
+&lt;li>v² 增加约 2v·ε，默认 v = 8 时是 16ε；&lt;/li>
+&lt;li>L 一共增加约 19ε，除以 ε 得 19，也就是 2v + 3。&lt;/li>
+&lt;/ul>
+&lt;p>两处变化是同时发生的，所以 u 对 L 的灵敏度是两条路之和。取 ε = 0.01 试一遍：3u 从 18 变成 18.03，v 从 8 变成 8.01，v² 从 64 变成 64.1601，L 从 82 变成 82.1901，多了 0.1901，约等于 19 × 0.01。&lt;/p>
+
+&lt;h2>漏掉一条，得到的是错的输入梯度&lt;/h2>
+&lt;p>默认输入下正确的 ∂L/∂x 是 73。若 u 处只算了 2v = 16，∂L/∂x 就变成 16 × 3 + 16 = 64，少了 9；而 9 = 3 × y，正是被漏掉的那份 3 乘上 ∂u/∂x。若漏掉的是 x→v 这条直接边，∂L/∂x 就变成 19 × 3 = 57，少了 16，也就是 2v。&lt;/p>
+&lt;p>两种情况都会让梯度与展开求导的结果对不上，所以漏账可以当场查出来。有一个特例要留意：y = 0 时 3·y = 0，第一种漏算在 ∂L/∂x 上恰好显示不出差别，但 ∂L/∂u 已经少了 3，∂L/∂y 也跟着错 3x。&lt;/p>
+
+&lt;h2>零贡献、负贡献、互相抵消&lt;/h2>
+&lt;ul>
+&lt;li>某条贡献恰好为 0：取 x = −2、y = −1，得 u = 2、v = 0，于是 ∂L/∂v = 2v = 0。经 v 的那份贡献是 0，3u 那份仍是 3，所以 ∂L/∂u = 3，∂L/∂x = 3 × (−1) + 0 × 1 = −3。这份 0 照样写在账本里。&lt;/li>
+&lt;li>两份互相抵消：取 x = 3、y = −1.5，得 u = −4.5、v = −1.5，∂L/∂v = −3，∂L/∂u = −3 + 3 = 0。u 的梯度是 0，但 ∂L/∂x = 0 × (−1.5) + (−3) × 1 = −3，不为 0。相加得 0 与&quot;这条路不存在&quot;是两件事。&lt;/li>
+&lt;li>负数只表示方向：局部导数为负，说明这个量增大时 L 减小，乘法照做，符号照留。&lt;/li>
+&lt;/ul>
+
+&lt;h2>用展开求导再核对一次&lt;/h2>
+&lt;p>把 L 写成 x、y 的式子，不经过图和局部导数：&lt;/p>
+&lt;p class=&quot;mono&quot;>L = (xy + x)² + 3xy = x²y² + 2x²y + x² + 3xy&lt;/p>
+&lt;p class=&quot;mono&quot;>∂L/∂x = 2xy² + 4xy + 2x + 3y&lt;/p>
+&lt;p class=&quot;mono&quot;>∂L/∂y = 2x²y + 2x² + 3x&lt;/p>
+&lt;p>默认 x = 2、y = 3 时，∂L/∂x = 36 + 24 + 4 + 9 = 73，∂L/∂y = 24 + 8 + 6 = 38，与图上一致。&lt;/p>
+&lt;p>逐项还能和两条路对上：经由 u 的那份是 (2v + 3)·y = 2xy² + 2xy + 3y，直接进 v 的那份是 2v·1 = 2xy + 2x，两项相加得 2xy² + 4xy + 2x + 3y。展开式里的 4xy，正是两条路各出 2xy 合起来的。&lt;/p>
+
+&lt;h2>一句话带走&lt;/h2>
+&lt;p>一个量被 k 处使用，反向时就有 k 份贡献，收齐后相加，再把和往上游传；漏掉一份，输入梯度就正好少那一份乘上该边的局部导数。这份页面的规则只针对这一个小图和标量实数。&lt;/p>
+&lt;p class=&quot;note&quot;>正文里的数字都是默认 x = 2、y = 3 算出来的；改滑块后，交互区与两张核对卡会同步重算。&lt;/p>
+
+&lt;/main>
+
+&lt;script>
+(function(){
+  'use strict';
+  var MAXSTEP = 12;
+  var state = { x: 2, y: 3, step: MAXSTEP };
+
+  function stepClamp(v){
+    if (typeof v !== 'number' || isNaN(v)) return MAXSTEP;
+    return Math.max(0, Math.min(MAXSTEP, Math.round(v)));
+  }
+  function clamp(v){
+    if (typeof v !== 'number' || isNaN(v)) return 0;
+    v = Math.max(-3, Math.min(3, v));
+    return Math.round(v * 2) / 2;
+  }
+  function f(n){
+    if (typeof n !== 'number' || isNaN(n)) return '?';
+    var r = Math.round(n * 10000) / 10000;
+    if (r === 0) r = 0;
+    return String(r).replace('-', '\u2212');
+  }
+  function par(n){ return n &lt; 0 ? '(' + f(n) + ')' : f(n); }
+  function terms(a){
+    var s = f(a[0]);
+    for (var i = 1; i &lt; a.length; i++){
+      s += (a[i] &lt; 0 ? ' \u2212 ' + f(-a[i]) : ' + ' + f(a[i]));
+    }
+    return s;
+  }
+
+  function calc(x, y){
+    var u = x * y, v = u + x, L = v * v + 3 * u;
+    var gv = 2 * v, gu = 2 * v + 3;
+    var gxU = gu * y, gxD = gv;
+    return {
+      x: x, y: y, u: u, v: v, L: L,
+      gv: gv, gu: gu, gxU: gxU, gxD: gxD, gx: gxU + gxD, gy: gu * x,
+      dxE: 2 * x * y * y + 4 * x * y + 2 * x + 3 * y,
+      dyE: 2 * x * x * y + 2 * x * x + 3 * x
+    };
+  }
+
+  var STEPS = [
+    { tag: '输入', cls: '', title: '读入 x 和 y',
+      body: function(c){ return '这次用 x = ' + f(c.x) + '、y = ' + f(c.y) + '。图上后面每个数字都由这一对输入决定：拖动滑块换一组输入，全部重算。'; },
+      formula: function(c){ return 'x = ' + f(c.x) + '　　y = ' + f(c.y); } },
+
+    { tag: '前向值', cls: '', title: 'u = x · y',
+      body: function(c){ return '把 x 和 y 相乘，得到中间量 u。这个 u 会被用两次：一次进入 v，一次直接进入 L 的 3u 项。'; },
+      formula: function(c){ return 'u = ' + f(c.x) + ' × ' + f(c.y) + ' = ' + f(c.u); } },
+
+    { tag: '前向值', cls: '', title: 'v = u + x',
+      body: function(c){ return 'v 既用到 u，也直接用 x。x 因此有两条路通向 L：经过 u 再进 v，以及直接进 v。'; },
+      formula: function(c){ return 'v = ' + f(c.u) + ' + ' + f(c.x) + ' = ' + f(c.v); } },
+
+    { tag: '前向值', cls: '', title: 'L = v² + 3u',
+      body: function(c){ return '输出 L 用了 v 的平方，也直接用了 u。到这里，u 的两条去向都出现在图上了。'; },
+      formula: function(c){ return 'L = ' + f(c.v) + '² + 3 × ' + f(c.u) + ' = ' + f(c.v * c.v) + ' + ' + f(3 * c.u) + ' = ' + f(c.L); } },
+
+    { tag: '梯度', cls: 'grad', title: '反向起点：∂L/∂L = 1',
+      body: function(c){ return '反向传播从输出开始。L 对自身的变化率是 1，后面每一份贡献都从这 1 乘出来。'; },
+      formula: function(c){ return '∂L/∂L = 1'; } },
+
+    { tag: '局部导数 → 梯度', cls: 'loc', title: '边 v→L：局部导数 2v',
+      body: function(c){ return 'v 在 L 里只出现在 v² 中，所以 v 单独变一点，这一项的变化率是 2v。用上游的 1 乘它，得到 v 的梯度。'; },
+      formula: function(c){ return '∂L/∂v = 1 × 2v = 1 × ' + f(2 * c.v) + ' = ' + f(c.gv); } },
+
+    { tag: '局部导数 → u 的账本', cls: 'loc', title: '边 u→L：3u 这一项的局部导数是 3',
+      body: function(c){ return 'u 还直接出现在 3u 里。这条路不经过 v，单独给出常数 3。先把它记到 u 的账本上，暂时别汇总。'; },
+      formula: function(c){ return '1 × 3 = 3　→　u 的第 1 条贡献'; } },
+
+    { tag: '局部导数 → u 的账本', cls: 'loc', title: '边 u→v：局部导数 1',
+      body: function(c){ return 'v = u + x 对 u 的偏导是 1。用 v 的梯度乘 1，这是绕经 v 回来的那一份。'; },
+      formula: function(c){ return '∂L/∂v × ∂v/∂u = ' + f(c.gv) + ' × 1 = ' + f(c.gv) + '　→　u 的第 2 条贡献'; } },
+
+    { tag: '梯度（汇合）', cls: 'join', title: 'u 处汇合：两份相加',
+      body: function(c){ return 'u 的两条去向都回来了，这时才相加。理由是：u 动一点，L 会同时从 v² 和 3u 两处变化，两处变化都属于 ∂L/∂u。收齐之后，这个总数才能继续往 x、y 传。'; },
+      formula: function(c){ return '∂L/∂u = ' + f(c.gv) + ' + 3 = ' + f(c.gu) + '　（也就是 2v + 3）'; } },
+
+    { tag: '局部导数 → x 的账本', cls: 'loc', title: '边 u→x：局部导数 y',
+      body: function(c){ return 'u = xy 对 x 的偏导是 y。用 u 的梯度乘它，得到 x 经由 u 的那一份。'; },
+      formula: function(c){ return '∂L/∂u × ∂u/∂x = ' + f(c.gu) + ' × ' + f(c.y) + ' = ' + f(c.gxU) + '　→　x 的第 1 条贡献'; } },
+
+    { tag: '局部导数 → x 的账本', cls: 'loc', title: '边 v→x：局部导数 1',
+      body: function(c){ return 'x 还直接进了 v，v = u + x 对 x 的偏导是 1。这一份乘的是 v 的梯度，与 u 无关。'; },
+      formula: function(c){ return '∂L/∂v × ∂v/∂x = ' + f(c.gv) + ' × 1 = ' + f(c.gxD) + '　→　x 的第 2 条贡献'; } },
+
+    { tag: '梯度（汇合）', cls: 'join', title: 'x 处汇合：两份相加',
+      body: function(c){ return 'x 的两条路都回来了。到这里反向传播结束，两个输入的梯度都齐了。'; },
+      formula: function(c){ return '∂L/∂x = ' + f(c.gxU) + ' + ' + f(c.gxD) + ' = ' + f(c.gx); } },
+
+    { tag: '梯度', cls: 'grad', title: 'y 只有一条路',
+      body: function(c){ return 'y 只出现在 u = xy 里，所以只有一份贡献，不存在相加。如果 y 也被用在别处，这里就会成为第三次汇合。'; },
+      formula: function(c){ return '∂L/∂y = ∂L/∂u × ∂u/∂y = ' + f(c.gu) + ' × ' + f(c.x) + ' = ' + f(c.gy); } }
+  ];
+
+  var ACTIVE = [
+    ['x','y'], ['u'], ['v'], ['L'], ['L'], ['v'], ['u'], ['u'], ['u'], ['x'], ['x'], ['x'], ['y']
+  ];
+  var HILITE = {
+    0: {}, 1: {'y-u':'fwd','x-u':'fwd'}, 2: {'u-v':'fwd','x-v':'fwd'}, 3: {'v-L':'fwd','u-L':'fwd'},
+    4: {}, 5: {'v-L':'back'}, 6: {'u-L':'back'}, 7: {'u-v':'back'}, 8: {},
+    9: {'x-u':'back'}, 10: {'x-v':'back'}, 11: {}, 12: {'y-u':'back'}
+  };
+  var EDGE_IDS = ['y-u','x-u','u-v','x-v','v-L','u-L'];
+
+  function setNode(id, val, grad, fwdOn, gradOn, active){
+    var g = document.getElementById('n-' + id);
+    if (!g) return;
+    g.setAttribute('class', 'node' + (fwdOn ? ' on' : '') + (active ? ' active' : ''));
+    var v = g.querySelector('.nvalue');
+    if (v) v.textContent = fwdOn ? val : '?';
+    var gr = g.querySelector('.ngrad');
+    if (gr){
+      gr.textContent = grad;
+      gr.setAttribute('class', 'ngrad' + (gradOn ? ' on' : ''));
+    }
+  }
+
+  function ledgerHTML(rows, total){
+    var h = '';
+    for (var i = 0; i &lt; rows.length; i++){
+      var r = rows[i];
+      h += '&lt;div class=&quot;lrow' + (r.on ? ' on' : '') + '&quot;>'
+        + '&lt;div>&lt;div class=&quot;lname&quot;>' + r.name + '&lt;/div>&lt;div class=&quot;lexp mono&quot;>' + r.exp + '&lt;/div>&lt;/div>'
+        + '&lt;div class=&quot;lval mono&quot;>' + (r.on ? f(r.val) : '—') + '&lt;/div>'
+        + '&lt;/div>';
+    }
+    h += '&lt;div class=&quot;ltotal' + (total.on ? ' on' : '') + '&quot;>&lt;span>' + total.label + '&lt;/span>&lt;strong class=&quot;mono&quot;>' + total.value + '&lt;/strong>&lt;/div>';
+    return h;
+  }
+
+  function render(){
+    var x = state.x, y = state.y, s = state.step, c = calc(x, y);
+    var byId = function(id){ return document.getElementById(id); };
+
+    var sx = byId('sx'), sy = byId('sy');
+    if (sx) sx.value = String(x);
+    if (sy) sy.value = String(y);
+    if (byId('ox')) byId('ox').textContent = f(x);
+    if (byId('oy')) byId('oy').textContent = f(y);
+    if (byId('statusInputs')) byId('statusInputs').textContent = 'x = ' + f(x) + '　y = ' + f(y);
+    var st = STEPS[s];
+    if (byId('statusStep')) byId('statusStep').textContent = '第 ' + (s + 1) + ' / ' + (MAXSTEP + 1) + ' 步 · ' + st.title;
+
+    var fw = { x: true, y: true, u: s >= 1, v: s >= 2, L: s >= 3 };
+    var gd = { L: s >= 4, v: s >= 5, u: s >= 8, x: s >= 11, y: s >= 12 };
+    var act = ACTIVE[s] || [];
+    setNode('x', f(c.x), '∂L/∂x = ' + (gd.x ? f(c.gx) : '?'), true, gd.x, act.indexOf('x') >= 0);
+    setNode('y', f(c.y), '∂L/∂y = ' + (gd.y ? f(c.gy) : '?'), true, gd.y, act.indexOf('y') >= 0);
+    setNode('u', f(c.u), '∂L/∂u = ' + (gd.u ? f(c.gu) : '?'), fw.u, gd.u, act.indexOf('u') >= 0);
+    setNode('v', f(c.v), '∂L/∂v = ' + (gd.v ? f(c.gv) : '?'), fw.v, gd.v, act.indexOf('v') >= 0);
+    setNode('L', f(c.L), '∂L/∂L = ' + (gd.L ? '1' : '?'), fw.L, gd.L, act.indexOf('L') >= 0);
+
+    var hi = HILITE[s] || {};
+    var BADGE = {
+      'y-u': { min: 12, val: c.x },
+      'x-u': { min: 9, val: c.y },
+      'u-v': { min: 7, val: 1 },
+      'x-v': { min: 10, val: 1 },
+      'v-L': { min: 5, val: 2 * c.v },
+      'u-L': { min: 6, val: 3 }
+    };
+    for (var i = 0; i &lt; EDGE_IDS.length; i++){
+      var id = EDGE_IDS[i];
+      var path = byId('e-' + id), back = byId('eb-' + id), badge = byId('bd-' + id);
+      var mode = hi[id];
+      if (path) path.setAttribute('class', 'edge' + (mode === 'fwd' ? ' lit' : ''));
+      if (back) back.setAttribute('class', 'eback' + (mode === 'back' ? ' on' : ''));
+      if (badge){
+        badge.textContent = '×' + f(BADGE[id].val);
+        badge.setAttribute('class', 'ebadge' + (s >= BADGE[id].min ? ' on' : ''));
+      }
+    }
+
+    if (byId('stepTag')){
+      byId('stepTag').textContent = st.tag;
+      byId('stepTag').setAttribute('class', 'tag ' + st.cls);
+    }
+    if (byId('stepTitle')) byId('stepTitle').textContent = st.title;
+    if (byId('stepBody')) byId('stepBody').textContent = st.body(c);
+    if (byId('stepFormula')) byId('stepFormula').textContent = st.formula(c);
+    if (byId('prev')) byId('prev').disabled = (s === 0);
+    if (byId('next')) byId('next').disabled = (s === MAXSTEP);
+
+    var u1on = s >= 6, u2on = s >= 7, uMissing = (u1on ? 0 : 1) + (u2on ? 0 : 1);
+    if (byId('ledgerU')){
+      byId('ledgerU').innerHTML = ledgerHTML([
+        { name: '① L 里的 3u 项', exp: '1 × ∂(3u)/∂u = 1 × 3', val: 3, on: u1on },
+        { name: '② 经过 v', exp: '∂L/∂v × ∂v/∂u = ' + f(c.gv) + ' × 1', val: c.gv, on: u2on }
+      ], {
+        on: s >= 8,
+        label: s >= 8 ? '合计' : '还差 ' + uMissing + ' 条回传，暂不汇总',
+        value: s >= 8 ? '∂L/∂u = ' + f(c.gv) + ' + 3 = ' + f(c.gu) : '—'
+      });
+    }
+
+    var x1on = s >= 9, x2on = s >= 10, xMissing = (x1on ? 0 : 1) + (x2on ? 0 : 1);
+    if (byId('ledgerX')){
+      byId('ledgerX').innerHTML = ledgerHTML([
+        { name: '① 经由 u', exp: '∂L/∂u × ∂u/∂x = ' + f(c.gu) + ' × ' + f(c.y), val: c.gxU, on: x1on },
+        { name: '② 直接进 v', exp: '∂L/∂v × ∂v/∂x = ' + f(c.gv) + ' × 1', val: c.gxD, on: x2on }
+      ], {
+        on: s >= 11,
+        label: s >= 11 ? '合计' : '还差 ' + xMissing + ' 条回传，暂不汇总',
+        value: s >= 11 ? '∂L/∂x = ' + f(c.gxU) + ' + ' + f(c.gxD) + ' = ' + f(c.gx) : '—'
+      });
+    }
+
+    if (byId('ckX')){
+      byId('ckX').textContent = '= 2·' + par(x) + '·' + par(y) + '² + 4·' + par(x) + '·' + par(y)
+        + ' + 2·' + par(x) + ' + 3·' + par(y) + ' = '
+        + terms([2 * x * y * y, 4 * x * y, 2 * x, 3 * y]) + ' = ' + f(c.dxE);
+    }
+    if (byId('ckY')){
+      byId('ckY').textContent = '= 2·' + par(x) + '²·' + par(y) + ' + 2·' + par(x) + '² + 3·' + par(x) + ' = '
+        + terms([2 * x * x * y, 2 * x * x, 3 * x]) + ' = ' + f(c.dyE);
+    }
+    if (byId('ckVerdict')){
+      var ok = Math.abs(c.gx - c.dxE) &lt; 1e-9 &amp;&amp; Math.abs(c.gy - c.dyE) &lt; 1e-9;
+      byId('ckVerdict').textContent = ok
+        ? '图上 ∂L/∂x = ' + f(c.gx) + '，展开得 ' + f(c.dxE) + '；图上 ∂L/∂y = ' + f(c.gy) + '，展开得 ' + f(c.dyE) + '。两边一致。'
+        : '两边不一致：图上 ' + f(c.gx) + ' / ' + f(c.gy) + '，展开 ' + f(c.dxE) + ' / ' + f(c.dyE) + '。';
+    }
+
+    var missU = 2 * c.v;
+    var wrongA = missU * c.y + c.gv;
+    var wrongB = c.gxU;
+    if (byId('omGood')) byId('omGood').textContent = '∂L/∂x = ' + f(c.gu) + ' × ' + f(c.y) + ' + ' + f(c.gv) + ' × 1 = ' + f(c.gx);
+    if (byId('omA')) byId('omA').textContent = '∂L/∂u 只剩 2v = ' + f(missU) + '，于是 ∂L/∂x = ' + f(missU) + ' × ' + f(c.y) + ' + ' + f(c.gv) + ' = ' + f(wrongA) + '，比正确值少 ' + f(c.gx - wrongA) + '（正好是 3·y = 3 × ' + f(c.y) + '）。';
+    if (byId('omB')) byId('omB').textContent = '只用经由 u 的那份：∂L/∂x = ' + f(c.gu) + ' × ' + f(c.y) + ' = ' + f(wrongB) + '，比正确值少 ' + f(c.gx - wrongB) + '（正好是 2v = ' + f(c.gv) + '）。';
+    if (byId('omNote')){
+      byId('omNote').textContent = (c.y === 0)
+        ? '现在 y = 0，∂u/∂x 也是 0，所以第一种漏算在 ∂L/∂x 上恰好差 0；但 ∂L/∂u 已经少了 3，∂L/∂y 也跟着错 3x。'
+        : '展开核对给出的 ' + f(c.dxE) + ' 与这两个漏算值都不相等，所以漏账可以当场查出来。';
+    }
+  }
+
+  function wire(){
+    var byId = function(id){ return document.getElementById(id); };
+    if (byId('sx')) byId('sx').addEventListener('input', function(){ state.x = clamp(parseFloat(this.value)); render(); });
+    if (byId('sy')) byId('sy').addEventListener('input', function(){ state.y = clamp(parseFloat(this.value)); render(); });
+    if (byId('prev')) byId('prev').addEventListener('click', function(){ state.step = Math.max(0, state.step - 1); render(); });
+    if (byId('next')) byId('next').addEventListener('click', function(){ state.step = Math.min(MAXSTEP, state.step + 1); render(); });
+    if (byId('replay')) byId('replay').addEventListener('click', function(){ state.step = 0; render(); });
+
+    var presets = [['psDefault', 2, 3], ['psZero', -2, -1], ['psCancel', 3, -1.5]];
+    for (var i = 0; i &lt; presets.length; i++){
+      (function(p){
+        var el = byId(p[0]);
+        if (el) el.addEventListener('click', function(){
+          state.x = clamp(p[1]);
+          state.y = clamp(p[2]);
+          render();
+        });
+      })(presets[i]);
+    }
+  }
+
+  if (window.presentation){
+    if (window.presentation.initialState){
+      var ini = window.presentation.initialState;
+      if (typeof ini.x === 'number') state.x = clamp(ini.x);
+      if (typeof ini.y === 'number') state.y = clamp(ini.y);
+      if (typeof ini.step === 'number') state.step = stepClamp(ini.step);
+    }
+    if (window.presentation.registerStateReader){
+      window.presentation.registerStateReader(function(){
+        var st = STEPS[state.step];
+        var c = calc(state.x, state.y);
+        return {
+          values: { x: state.x, y: state.y, step: state.step },
+          visible_step: '第 ' + (state.step + 1) + ' 步：' + st.title,
+          observation: {
+            summary: '输入 x = ' + f(state.x) + '、y = ' + f(state.y) + '，当前第 ' + (state.step + 1) + ' 步（' + st.title + '）；图中 ∂L/∂x = ' + f(c.gx) + '，∂L/∂y = ' + f(c.gy) + '，∂L/∂u = ' + f(c.gu) + '。',
+            state: { x: state.x, y: state.y, step: state.step, gu: c.gu, gx: c.gx, gy: c.gy }
+          }
+        };
+      });
+    }
+    if (window.presentation.registerStateRestorer){
+      window.presentation.registerStateRestorer(function(saved){
+        try {
+          var vals = (saved &amp;&amp; saved.values) || {};
+          var p = vals.page || vals;
+          if (typeof p.x === 'number') state.x = clamp(p.x);
+          if (typeof p.y === 'number') state.y = clamp(p.y);
+          if (typeof p.step === 'number') state.step = stepClamp(p.step);
+        } catch (e) {}
+        render();
+      });
+    }
+  }
+
+  wire();
+  render();
+})();
+&lt;/script>
+
+&lt;/body>&lt;/html>"></iframe></body></html>

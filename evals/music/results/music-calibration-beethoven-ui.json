@@ -1,0 +1,96 @@
+{
+  "url": "http://127.0.0.1:4194",
+  "work": "Symphony No.9 in D minor, Op.125",
+  "occurrences": 72,
+  "pages": 17,
+  "publication": null,
+  "playback": {
+    "current_ms": 171738.206,
+    "paused": false,
+    "rate": 0.75,
+    "ready_state": 4
+  },
+  "shared_boundary_changed_and_discarded": true,
+  "saved_pending_revision": {
+    "coverage": [
+      {
+        "detail": "浏览器流程验证，沿用原候选时间；未进行人工复听核准。",
+        "end_ms": 173321.361,
+        "granularity": "measure",
+        "method": "manual",
+        "provenance_id": "calibration-295e5602-2ffc-46e7-b41f-4e55829ac835",
+        "start_ms": 171572.154,
+        "status": "pending"
+      }
+    ],
+    "end_ms": 173321.361,
+    "note_alignments": [],
+    "occurrences": [
+      {
+        "end_ms": 172621.678,
+        "measure": "93",
+        "occurrence_id": "measure-93-occurrence-1",
+        "order": 0,
+        "score_object_ids": [
+          "P8-m1-n1",
+          "P32-m1-n1",
+          "P33-m1-n1",
+          "P34-m1-n1",
+          "P35-m1-n1",
+          "P35-m1-n2",
+          "P35-m1-n3",
+          "P36-m1-n1",
+          "P36-m1-n2",
+          "P36-m1-n3"
+        ],
+        "start_ms": 171572.154
+      },
+      {
+        "end_ms": 173321.361,
+        "measure": "94",
+        "occurrence_id": "measure-94-occurrence-1",
+        "order": 1,
+        "score_object_ids": [
+          "P8-m2-n1",
+          "P32-m2-n1",
+          "P33-m2-n1",
+          "P34-m2-n1",
+          "P35-m2-n1",
+          "P35-m2-n2",
+          "P35-m2-n3",
+          "P35-m2-n4",
+          "P36-m2-n1",
+          "P36-m2-n2",
+          "P36-m2-n3",
+          "P36-m2-n4"
+        ],
+        "start_ms": 172621.678
+      }
+    ],
+    "provenance": [
+      {
+        "description": "浏览器流程验证，沿用原候选时间；未进行人工复听核准。",
+        "kind": "interpretation",
+        "processor": null,
+        "provenance_id": "calibration-295e5602-2ffc-46e7-b41f-4e55829ac835",
+        "source_url": null
+      }
+    ],
+    "reason": "界面流程验证，候选保留待检查",
+    "recording": {
+      "recording_id": "beethoven-op125-4-coates-damian",
+      "revision": "transfer-20240507-concat-mp3-20261022"
+    },
+    "score": {
+      "revision": "hauptstimme-download-20261022-excerpt",
+      "score_id": "beethoven-op125-4-openscore-m93-164"
+    },
+    "start_ms": 171572.154
+  },
+  "history_before": 1,
+  "history_after": 2,
+  "reopened_history": true,
+  "local_app_open_close_reopen": true,
+  "mobile_overflow": false,
+  "errors": []
+}

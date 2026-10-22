@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 1,
+  "position": 1,
+  "index": 5,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate-v2\\native-05.json",
+  "ordinal": 6,
+  "started_utc": "2026-10-22T03:28:07.630509+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 21841,
+    "completion_tokens": 75,
+    "total_tokens": 21916,
+    "prompt_tokens_details": {
+      "cached_tokens": 256
+    },
+    "prompt_cache_hit_tokens": 256,
+    "prompt_cache_miss_tokens": 21585
+  },
+  "response_id": "9a488ab8-f3da-4909-be10-dfc3763f47e4",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "<｜｜DSML｜｜ calls>\n<｜｜DSML｜｜ invoke name=\"presentation.author\">\n<｜｜DSML｜｜ parameter name=\"operation\" string=\"true\">read_method</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"method_id\" string=\"true\">compare-one-factor</｜｜DSML｜｜ parameter>\n<｜｜DSML｜｜ parameter name=\"revision\" string=\"false\">3</｜｜DSML｜｜ parameter>\n</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 1231.371,
+  "first_text_ms": 1231.371,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 441.064,
+  "streaming": true,
+  "duration_ms": 1373.278,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 21841,
+    "cached_input_tokens": 256,
+    "uncached_input_tokens": 21585,
+    "output_tokens": 75
+  },
+  "cost": {
+    "input_cny": "0.04318024",
+    "output_cny": "0.0006",
+    "total_cny": "0.04378024",
+    "total_rounded_micro_cny": 43781
+  }
+}

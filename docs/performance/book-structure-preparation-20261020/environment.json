@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-10-20T06:53:13.620Z",
+  "platform": "win32",
+  "os_release": "10.0.19044",
+  "arch": "x64",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "logical_cpus": 16,
+  "memory_gib": 13.871395111083984,
+  "node": "v24.9.0",
+  "baseline_head": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
+  "baseline_state": "baseline-compile includes pre-existing uncommitted changes; matching compiled-baseline binary retained",
+  "runtime": "Compiled Bun sidecar + real stdio MCP; no profiler during handoff measurements",
+  "concurrency": "Three live executor slots; no concurrent benchmark, build or test run started by this task"
+}

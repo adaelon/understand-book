@@ -1,0 +1,50 @@
+{
+  "method": "Two isolated Runtime crate copies from the same current tree. Baseline replaces only changed request-builder, author argument gate, Tutor schema examples and learner view with pre-change functions. Concurrent agent.progress changes are identical in both arms. Same new scenario fixture runs in both. Main worktree not swapped.",
+  "baseline_original": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\baseline\\runtime-src",
+  "runtime_copies": [
+    "tmp/workspace-cache-baseline-runtime",
+    "tmp/workspace-cache-candidate-runtime"
+  ],
+  "live_delivery": {
+    "harness": "crates/server/src/tests/workspace_cache_live_tests.rs",
+    "server_copies": [
+      "tmp/workspace-cache-baseline-server",
+      "tmp/workspace-cache-candidate-server"
+    ],
+    "common_changes": "Both arms use identical server code, test-only stream entry, existing shared agent.progress dispatch fixes and static fixture content. Relative include paths only are adjusted for isolated crate compilation.",
+    "provider": "Configured NativeAdapter; normal runtime profile/reasoning/tool selection. No scripted model, review or tool result.",
+    "scenario": "One real temporary source book, active Tutor, two consecutive text explanations; actual first delivered turn persisted and passed into the second.",
+    "warmup": "live-delivery-candidate: 19 HTTP requests, two successful deliveries. Overlapped baseline compilation; retained for quality and cost, excluded from latency comparison.",
+    "comparison_order": [
+      "live-delivery-baseline",
+      "live-delivery-candidate-idle"
+    ],
+    "limits": "24 actual HTTP attempts per run including retries and private model calls; no budget extension. Sequential comparison runs without local compilation.",
+    "not_exercised": [
+      "browser rendering",
+      "audio synthesis",
+      "workspace RAG lookup",
+      "video playback",
+      "presentation page creation"
+    ],
+    "timestamp": "Each actual HTTP start has UTC Unix milliseconds for rate selection."
+  },
+  "q1": {
+    "cache_isolation": "baseline-q1 and candidate-q1 share Q1 guidance and review rules; only cache implementation differs. Sixteen bounded real Native calls, same recorded histories.",
+    "fixed_replay_environment": "Local follow-up test compilation overlapped; timings retained but not used for speed attribution.",
+    "delivery_comparison": "Original baseline vs final Q1 cache + immutable-fact preflight + quality guidance; reused baseline costs are not counted twice.",
+    "delivery_environment": "Our compilation and fixed replay finished before real delivery started. Other tasks had cargo/rustc activity on this machine at start; see live-delivery-candidate-q1-environment.json. Latency is descriptive, not isolated causal evidence.",
+    "source_snapshots": [
+      "baseline-q1/effective-src",
+      "candidate-q1/effective-src",
+      "candidate-q1/crates/server/src/teaching.rs",
+      "candidate-q1/crates/memory/src/teaching.rs"
+    ],
+    "tests": [
+      "server-quality-tests.log",
+      "runtime-quality-tests.log",
+      "runtime-quality-retry.log",
+      "runtime-quality-fixture-fixed.log"
+    ]
+  }
+}

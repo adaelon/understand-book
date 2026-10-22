@@ -1,0 +1,229 @@
+[
+  {
+    "id": "three-days",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": true,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": true
+    },
+    "incomplete": false,
+    "sources": [
+      {
+        "id": "source_ref_d4f7d1caeb169c55",
+        "can_open": true,
+        "stale": false,
+        "quote": "如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=259&end_utf16=309"
+      }
+    ],
+    "source_parts": [
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_d4f7d1caeb169c55"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "changed-date-scope",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": true,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": true
+    },
+    "incomplete": false,
+    "sources": [
+      {
+        "id": "source_ref_d4f7d1caeb169c55",
+        "can_open": true,
+        "stale": false,
+        "quote": "如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=259&end_utf16=309"
+      },
+      {
+        "id": "source_ref_3efd4bf3db00e80d",
+        "can_open": true,
+        "stale": false,
+        "quote": "本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=148&end_utf16=198"
+      }
+    ],
+    "source_parts": [
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_d4f7d1caeb169c55"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_3efd4bf3db00e80d"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "direct-question",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": true,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": true
+    },
+    "incomplete": false,
+    "sources": [
+      {
+        "id": "source_ref_14997b9cdffa44e5",
+        "can_open": true,
+        "stale": false,
+        "quote": "来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=55&end_utf16=146"
+      },
+      {
+        "id": "source_ref_3efd4bf3db00e80d",
+        "can_open": true,
+        "stale": false,
+        "quote": "本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=148&end_utf16=198"
+      },
+      {
+        "id": "source_ref_27ca36e98331b592",
+        "can_open": true,
+        "stale": false,
+        "quote": "如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=259&end_utf16=346"
+      }
+    ],
+    "source_parts": [
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_14997b9cdffa44e5"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_3efd4bf3db00e80d"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_27ca36e98331b592"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "text-video-sources",
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": true,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": true,
+      "text_source_opens": true,
+      "video_source_opens": true,
+      "source_resolutions_succeeded": true
+    },
+    "incomplete": false,
+    "sources": [
+      {
+        "id": "source_ref_53b5d3ca9fae2f32",
+        "can_open": true,
+        "stale": false,
+        "quote": "解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=83&end_utf16=146"
+      },
+      {
+        "id": "source_ref_6a59b1901ac40da2",
+        "can_open": true,
+        "stale": false,
+        "quote": "课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=408&end_utf16=471"
+      },
+      {
+        "id": "src_01a159fdcb9176f1b533b4cede790455",
+        "can_open": true,
+        "stale": false,
+        "quote": "动态图案在两秒内持续变化。A test pattern changes over two seconds.",
+        "media_url": "/api/books/test-book/publications/01a159fc-a8e4-7410-83dd-21ae177080e4/video/media",
+        "publication": {
+          "book_id": "test-book",
+          "publication_id": "01a159fc-a8e4-7410-83dd-21ae177080e4"
+        },
+        "locations": [
+          {
+            "end_ms": 2000,
+            "start_ms": 0,
+            "video": {
+              "media_id": "test-video",
+              "media_revision": "1"
+            }
+          }
+        ]
+      },
+      {
+        "id": "source_ref_d4f7d0caeb169aa2",
+        "can_open": true,
+        "stale": false,
+        "quote": "如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。",
+        "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=259&end_utf16=309"
+      }
+    ],
+    "source_parts": [
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_53b5d3ca9fae2f32"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_6a59b1901ac40da2"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "src_01a159fdcb9176f1b533b4cede790455"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_d4f7d0caeb169aa2"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_6a59b1901ac40da2"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_53b5d3ca9fae2f32"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "source_ref_d4f7d0caeb169aa2"
+        ]
+      },
+      {
+        "kind": "sources",
+        "source_ref_ids": [
+          "src_01a159fdcb9176f1b533b4cede790455"
+        ]
+      }
+    ]
+  }
+]

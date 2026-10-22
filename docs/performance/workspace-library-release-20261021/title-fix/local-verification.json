@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "candidate_frontend_tests": 42,
+  "typecheck_and_build": true,
+  "windows_version": "0.3.4",
+  "installed_version": "0.3.4",
+  "native_formats": [
+    "txt",
+    "md",
+    "epub",
+    "pdf"
+  ],
+  "native_offline_reading": true,
+  "workspace_widths": [
+    1440,
+    1024,
+    390
+  ],
+  "storage_regression_tests": {
+    "count": 13,
+    "source": "docs/performance/upload-storage-scope-20261021"
+  },
+  "model_requests": 0,
+  "video_catalog_tests": 2
+}

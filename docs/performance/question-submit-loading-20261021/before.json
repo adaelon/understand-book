@@ -1,0 +1,333 @@
+{
+  "scenario": "500 ms per HTTP request, 80 ms between input events; simulated network, no model",
+  "input_events": 31,
+  "clicked_at_ms": 2480,
+  "submitted_at_ms": 31500,
+  "click_to_submit_ms": 29020,
+  "click_to_accepted_ms": 29520,
+  "http_requests": 64,
+  "draft_saves": 31,
+  "final_message_matches": true,
+  "requests": [
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 0
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 1000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 1500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 2000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 2500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 3000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 3500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 4000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 4500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 5000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 5500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 6000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 6500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 7000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 7500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 8000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 8500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 9000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 9500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 10000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 10500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 11000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 11500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 12000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 12500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 13000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 13500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 14000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 14500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 15000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 15500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 16000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 16500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 17000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 17500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 18000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 18500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 19000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 19500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 20000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 20500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 21000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 21500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 22000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 22500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 23000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 23500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 24000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 24500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 25000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 25500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 26000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 26500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 27000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 27500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 28000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 28500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 29000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 29500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 30000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/reader/video_draft",
+      "at_ms": 30500
+    },
+    {
+      "method": "GET",
+      "url": "/api/workspaces/w",
+      "at_ms": 31000
+    },
+    {
+      "method": "POST",
+      "url": "/api/workspaces/w/agent/runs",
+      "at_ms": 31500
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "alias":"Onyx",
+  "status":"evaluated; preliminary; no cross-sample comparison",
+  "method":"Independent full visible-DOM reading and native control interaction in the actual Reader iframe using Edge headless. Screenshots and rendered SVG geometry inspected; no implementation or generation materials read.",
+  "overall":"A complete and well explained derivation, accurate requested numerical states, and a useful comparison-slope interaction. Two observed graph defects undermine the visual explanation of the degenerate solution family and its transition to uniqueness.",
+  "strengths":[
+    "Explicitly proves that (a,b) and (a,c), with c=a*xbar+b, are in one-to-one correspondence, so the change of variables preserves the minimization problem.",
+    "Expands every squared-residual term and separately explains both vanished cross terms and the retained -2a*Sxy term. The table and Syy calculation support the numerical constants.",
+    "Completing the square produces a global lower bound, explains simultaneous attainability, establishes uniqueness of a and c, and then transfers uniqueness to a and b. The derivative calculation is clearly a cross-check.",
+    "The degenerate derivation correctly distinguishes the full family 2a+b=1.6 at lambda=0 from the unique a=0,b=1.6 at lambda>0, while explaining that the penalty adds no data about slope.",
+    "Normal lambda 0/2/10, degenerate lambda 0/2, and the return to normal all show correct a, b, SSE, penalty, and J. Degenerate lambda=0 says a is undetermined and labels b as belonging to an example line.",
+    "The extra comparison slider provides a concrete way to change an equally optimal line. At degenerate lambda=0, changing a0 from 0 to 1 changes the example b from 1.6 to -0.4 while SSE and J stay 21.2. At normal lambda=4,a0=1 the numerical explanation correctly says the comparison coincides with the optimum.",
+    "Fixed examples and current interaction state are explicitly distinguished. Continuous prose and formulas are readable at 960x720 and wrap at 320x420. Controls remain operable at 320x420 and 640x240 with no fixed-layer obstruction."
+  ],
+  "observedStates":[
+    {"data":"normal","lambda":0,"a":"1.400","b":"-1.200","SSE":"1.600","penalty":"0.000","J":"1.600"},
+    {"data":"normal","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867"},
+    {"data":"normal","lambda":10,"a":"0.700","b":"0.200","SSE":"6.500","penalty":"4.900","J":"11.400"},
+    {"data":"degenerate","lambda":0,"a":"不确定","b":"1.600（示例线）","SSE":"21.200","penalty":"0.000","J":"21.200"},
+    {"data":"degenerate, comparison slope 1","lambda":0,"a":"不确定","b":"-0.400（示例线）","SSE":"21.200","penalty":"0.000","J":"21.200"},
+    {"data":"degenerate","lambda":2,"a":"0.000","b":"1.600","SSE":"21.200","penalty":"0.000","J":"21.200"},
+    {"data":"normal after return","lambda":2,"a":"1.167","b":"-0.733","SSE":"2.144","penalty":"2.722","J":"4.867"}
+  ],
+  "issues":[
+    {
+      "id":"Onyx-1","severity":"material","location":"Section 5 scatterplot, degenerate data at lambda=0",
+      "finding":"The two grey dashed lines described as other equally optimal family members do not pass through (2,1.6). The adjustable red example line does pass through the mean point.",
+      "evidence":"With comparison a0=1, the displayed b is -0.400 and the caption says the two grey lines also have J=21.2. The mean marker is rendered at (214,141). Grey line endpoints are (40,185.3)–(388,257.9) and (40,241.8)–(388,-121.0); at x-pixel 214 their y-pixels are 221.6 and 60.4, corresponding to data y≈-1.4 and 4.6. They cross near (0,-0.4), not the marked mean point.",
+      "impact":"The examples visually contradict the central nonuniqueness claim: these two grey lines are not optimal for the shown data.",
+      "files":["desktop-degenerate-0-a1-plot.png","degenerate-visible-geometry.json","320-graph.png"]
+    },
+    {
+      "id":"Onyx-2","severity":"material","location":"Section 5 profile J(a) plot after state changes",
+      "finding":"A previous degenerate lambda=0 horizontal line and its 'every a equally good' annotation can remain on the graph after the current state becomes unique. The new parabola and optimum are then drawn together with the old claim.",
+      "evidence":"Observed after normal lambda=2 → degenerate lambda=0 → normal lambda=0 → normal lambda=2 → degenerate lambda=0 → degenerate lambda=2. After waiting 1.2 seconds, the profile simultaneously displays 'a=0.000, J=21.200' and '整段水平：J 恒为 21.200，a 任取都同样好', with an old horizontal segment over the new parabola. Also observed at normal lambda=4,a0=1 after leaving the nonunique state.",
+      "impact":"The graph continues to say all slopes are equally good when the visible current coefficient explanation correctly says the solution is unique. The annotations overlap and obscure each other.",
+      "files":["profile-degenerate-2-after-0.png","profile-state-transitions.json","desktop-normal-comparison-equality.png","comparison-equality.txt"]
+    },
+    {
+      "id":"Onyx-3","severity":"minor","location":"320x420 scatterplot",
+      "finding":"Chart ticks and the mean-point label become much smaller than the surrounding prose; precise chart reading is difficult on the narrow viewport, although the formulas, explanatory text, and numeric cards remain readable.",
+      "files":["320-graph.png","320-center.png","320-global.png"]
+    }
+  ],
+  "viewportEvidence":{
+    "960x720":"Read the complete visible text; captured centered expansion, square completion, intercept argument, degeneracy section, interaction states, scatterplots, and profiles.",
+    "320x420":"Document width remains 320. Long formulas wrap. The initial data table has a local horizontal scroll container (268px client width,319px content width). Lambda, dataset, and comparison sliders all operated successfully.",
+    "640x240":"Document width remains 640. Controls can be reached by ordinary vertical scrolling and operated; no fixed overlay covers them."
+  },
+  "consoleErrors":[],
+  "evidenceFiles":["initial-dom.json","interaction-evidence.json","degenerate-visible-geometry.json","profile-state-transitions.json"]
+}

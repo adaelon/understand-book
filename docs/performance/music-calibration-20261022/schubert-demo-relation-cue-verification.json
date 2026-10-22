@@ -1,0 +1,39 @@
+{
+  "new_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a1625b-808a-77d2-9cfb-1ecc62bd219f"
+  },
+  "previous_publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16258-5b0f-7873-b42e-04d9425d8551"
+  },
+  "input_workspace": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-schubert-demo-relation-cue",
+  "published_directory": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-acceptance-service\\library\\published\\music-schubert-d780-3-vetter\\01a1625b-808a-77d2-9cfb-1ecc62bd219f",
+  "cue_event_id": "two-staves",
+  "cue": "谱面示范按谱另行合成，并非原录音分轨；谱上上下两层原本同时进行。这一遍只跟上方旋律的走向。",
+  "manifest_changes": [
+    "events[two-staves].listen_for"
+  ],
+  "source_score_support": {
+    "measures": [
+      "3",
+      "4"
+    ],
+    "upper_voice": "1:1",
+    "lower_voice": "2:5",
+    "each_voice_has_pitched_notes_from_beat_zero": true,
+    "each_voice_covers_two_quarter_beats_in_each_measure": true
+  },
+  "original_media_score_current_demo_bytes_unchanged": true,
+  "all_alignment_coverage_pending": true,
+  "occurrence_count": 78,
+  "note_alignment_count": 900,
+  "publish_command": [
+    "E:\\allwork\\download\\agent\\understand-book\\target\\debug\\publish_book.exe",
+    "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-acceptance-service",
+    "import",
+    "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-schubert-demo-relation-cue"
+  ],
+  "publish_exit_code": 0,
+  "model_calls": 0
+}

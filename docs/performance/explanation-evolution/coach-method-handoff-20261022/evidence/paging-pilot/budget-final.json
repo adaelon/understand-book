@@ -1,0 +1,6 @@
+{
+  "limit_cny": 7.76391104,
+  "calls": 22,
+  "peak_upper_cny": 1.14066784,
+  "stop": "Root stopped after pilot: Coach selection and actual card/source reads occurred, but full example consumption failed: returned 0-6000 and 12000-18000 of 25860 characters with next_offset null. Repair real method pagination before heldout generation; preserve this pilot and its cost."
+}

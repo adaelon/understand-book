@@ -1,0 +1,332 @@
+{
+  "publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+  },
+  "recording": {
+    "recording_id": "schubert-d780-3-vetter",
+    "revision": "imslp456646"
+  },
+  "verification": "Real published media and Reader component; browser-only command transport adapter; no model or human listening claim.",
+  "actions": [
+    {
+      "action": "observe",
+      "receipt": {
+        "receipt_id": "browser-receipt-1",
+        "command_id": "browser-command-1",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "observed",
+        "current_ms": 0,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": null,
+        "error": null
+      }
+    },
+    {
+      "action": {
+        "kind": "seek",
+        "time_ms": 4200.125
+      },
+      "receipt": {
+        "receipt_id": "browser-receipt-2",
+        "command_id": "browser-command-2",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "applied",
+        "current_ms": 4200.125,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": null,
+        "error": null
+      }
+    },
+    {
+      "action": {
+        "kind": "demonstration",
+        "demonstration_id": "upper-line-m3-4",
+        "cue_event_id": "opening-entry"
+      },
+      "receipt": {
+        "receipt_id": "browser-receipt-3",
+        "command_id": "browser-command-3",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "applied",
+        "current_ms": 4200.125,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": "upper-line-m3-4",
+        "demonstration_state": {
+          "current_ms": 0,
+          "paused": false
+        },
+        "displayed_cue": {
+          "event_id": "opening-entry",
+          "text": "先听开头的伴奏，再尝试找出上方旋律开始的时刻。"
+        },
+        "error": null
+      }
+    },
+    {
+      "action": "observe",
+      "receipt": {
+        "receipt_id": "browser-receipt-4",
+        "command_id": "browser-command-4",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "observed",
+        "current_ms": 4200.125,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": "upper-line-m3-4",
+        "demonstration_state": {
+          "current_ms": 0,
+          "paused": false
+        },
+        "displayed_cue": {
+          "event_id": "opening-entry",
+          "text": "先听开头的伴奏，再尝试找出上方旋律开始的时刻。"
+        },
+        "error": null
+      }
+    },
+    {
+      "action": "observe",
+      "receipt": {
+        "receipt_id": "browser-receipt-5",
+        "command_id": "browser-command-5",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "observed",
+        "current_ms": 4200.125,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": "upper-line-m3-4",
+        "demonstration_state": {
+          "current_ms": 2.173,
+          "paused": true
+        },
+        "error": null
+      }
+    },
+    {
+      "action": {
+        "kind": "pause"
+      },
+      "receipt": {
+        "receipt_id": "browser-receipt-6",
+        "command_id": "browser-command-6",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "applied",
+        "current_ms": 4200.125,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": "upper-line-m3-4",
+        "demonstration_state": {
+          "current_ms": 2.173,
+          "paused": true
+        },
+        "error": null
+      }
+    },
+    {
+      "action": {
+        "kind": "play",
+        "start_ms": 580,
+        "end_ms": 4080,
+        "cue_event_id": "opening-entry"
+      },
+      "receipt": {
+        "receipt_id": "browser-receipt-7",
+        "command_id": "browser-command-7",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "applied",
+        "current_ms": 580,
+        "paused": false,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": null,
+        "displayed_cue": {
+          "event_id": "opening-entry",
+          "text": "先听开头的伴奏，再尝试找出上方旋律开始的时刻。"
+        },
+        "error": null
+      }
+    },
+    {
+      "action": {
+        "kind": "pause"
+      },
+      "receipt": {
+        "receipt_id": "browser-receipt-8",
+        "command_id": "browser-command-8",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "applied",
+        "current_ms": 658.323,
+        "paused": true,
+        "playback_rate": 1,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": null,
+        "displayed_cue": {
+          "event_id": "opening-entry",
+          "text": "先听开头的伴奏，再尝试找出上方旋律开始的时刻。"
+        },
+        "error": null
+      }
+    },
+    {
+      "action": "observe",
+      "receipt": {
+        "receipt_id": "browser-receipt-9",
+        "command_id": "browser-command-9",
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a16203-d21b-7f12-b3c7-fe12ede993de"
+        },
+        "recording": {
+          "recording_id": "schubert-d780-3-vetter",
+          "revision": "imslp456646"
+        },
+        "status": "observed",
+        "current_ms": 658.323,
+        "paused": true,
+        "playback_rate": 0.75,
+        "loop": null,
+        "focused_part_ids": [],
+        "focused_voices": [],
+        "occurrence_id": null,
+        "demonstration_id": null,
+        "error": null
+      }
+    }
+  ],
+  "errors": [],
+  "cue_before_play": {
+    "calls": [
+      {
+        "time": 1717.1000000005588,
+        "demo": true,
+        "cue": "这一遍留意先听开头的伴奏，再尝试找出上方旋律开始的时刻。作品导览 · 先找旋律进入的地方",
+        "event_id": "opening-entry",
+        "visible": true
+      },
+      {
+        "time": 2479.4000000003725,
+        "demo": false,
+        "cue": "这一遍留意先听开头的伴奏，再尝试找出上方旋律开始的时刻。作品导览 · 先找旋律进入的地方",
+        "event_id": "opening-entry",
+        "visible": true
+      }
+    ],
+    "paints": [
+      {
+        "event_id": "opening-entry",
+        "time": 1653.4000000003725
+      },
+      {
+        "event_id": "opening-entry",
+        "time": 2053.4000000003725
+      },
+      {
+        "event_id": "opening-entry",
+        "time": 2452.7000000001863
+      },
+      {
+        "event_id": "opening-entry",
+        "time": 2488.2000000001863
+      },
+      {
+        "event_id": "opening-entry",
+        "time": 2488.2000000001863
+      },
+      {
+        "event_id": "opening-entry",
+        "time": 2640
+      }
+    ]
+  },
+  "status": "passed"
+}

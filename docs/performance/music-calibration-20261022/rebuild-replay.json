@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "results": [
+    {
+      "work": "schubert",
+      "source_curation": "E:\\allwork\\download\\agent\\understand-book\\evals\\music\\schubert-curation.json",
+      "workspace": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-calibration-qa\\schubert",
+      "elapsed_ms": 7268,
+      "browser_revision_replayed": true,
+      "history_count": 2,
+      "history_unchanged": true,
+      "occurrences_unchanged": true,
+      "note_alignments_unchanged": true,
+      "coverage_unchanged": true,
+      "events_unchanged": true,
+      "structure_unchanged": true,
+      "original_audio_unchanged": true,
+      "actual_recording_alignment_status": "pending"
+    },
+    {
+      "work": "beethoven",
+      "source_curation": "E:\\allwork\\download\\agent\\understand-book\\evals\\music\\beethoven-curation.json",
+      "workspace": "E:\\allwork\\download\\agent\\understand-book\\.understand-book\\music-calibration-qa\\beethoven",
+      "elapsed_ms": 8907,
+      "browser_revision_replayed": true,
+      "history_count": 2,
+      "history_unchanged": true,
+      "occurrences_unchanged": true,
+      "note_alignments_unchanged": true,
+      "coverage_unchanged": true,
+      "events_unchanged": true,
+      "structure_unchanged": true,
+      "original_audio_unchanged": true,
+      "actual_recording_alignment_status": "pending"
+    }
+  ]
+}

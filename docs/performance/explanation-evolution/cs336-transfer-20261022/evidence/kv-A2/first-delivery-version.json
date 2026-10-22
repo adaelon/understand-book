@@ -1,0 +1,278 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1792645507716522600-11",
+    "revision": 1
+  },
+  "candidate_id": "candidate-1792645507716526800-12",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-10-16T04:00:00Z_0"
+  },
+  "created_by_turn_id": "turn_1a986d9fd8e2f279",
+  "based_on": null,
+  "content": {
+    "action_contract": [
+      {
+        "kind": "set_parameters",
+        "parameters": [
+          "B",
+          "T",
+          "s"
+        ]
+      },
+      {
+        "kind": "invoke",
+        "action_id": "reset",
+        "label": "回到初始参数"
+      }
+    ],
+    "method_refs": [],
+    "method_observations": {
+      "catalog": {
+        "methods": [
+          {
+            "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "discrete-update",
+            "name": "追踪一次离散更新",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+            "revision": 3,
+            "root": "skills/presentation/methods/discrete-update/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "object-transform",
+            "name": "保持身份的对象变换",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+            "revision": 2,
+            "root": "skills/presentation/methods/object-transform/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+            "revision": 3,
+            "root": "skills/presentation/methods/compare-one-factor/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/compare-one-factor/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "part-whole",
+            "name": "整体与部分保持对应",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+            "revision": 2,
+            "root": "skills/presentation/methods/part-whole/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "process-reveal",
+            "name": "沿关系逐步展开过程",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+            "revision": 2,
+            "root": "skills/presentation/methods/process-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "evidence-chain",
+            "name": "从证据走到有边界的结论",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+            "revision": 2,
+            "root": "skills/presentation/methods/evidence-chain/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先建立尺度，再揭示数据",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/chart-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "scale-zoom",
+            "name": "保留定位的尺度缩放",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+            "revision": 2,
+            "root": "skills/presentation/methods/scale-zoom/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md",
+              "runtime.js",
+              "adaptations/spring.html",
+              "adaptations/spring-author.json"
+            ],
+            "id": "spatial-linked-views",
+            "name": "三维结构与图解共用一个模型",
+            "needs": [
+              "three",
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+            "revision": 1,
+            "root": "skills/presentation/methods/spatial-linked-views/v1",
+            "status": "adopted"
+          }
+        ],
+        "revision": 5
+      },
+      "reads": []
+    },
+    "animation_assets": {},
+    "title": "一张显卡能留住多少上下文？",
+    "content_files": {
+      "index.html": "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>一张显卡能留住多少上下文？</title>\n<style>\n:root{--canvas:#f7f8fa;--ink:#16202b;--surface:#ffffff;--line:#d8dee7;--accent:#1f6feb;--fixed:#5b6b7f;--kv:#158f6d;--over:#c62828;--muted:#5a6675}\n*{box-sizing:border-box}\nhtml{-webkit-text-size-adjust:100%}\nbody{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.7 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Noto Sans SC\",\"PingFang SC\",\"Microsoft YaHei\",sans-serif}\n.page{max-width:880px;margin:0 auto;padding:20px 16px 56px}\nh1{font-size:1.55rem;line-height:1.35;margin:.2em 0 .5em}\nh2{font-size:1.2rem;line-height:1.45;margin:2.1em 0 .5em;padding-left:.6em;border-left:4px solid var(--accent)}\nh3{font-size:1.02rem;margin:1.5em 0 .3em}\np{margin:.6em 0}\nul,ol{margin:.6em 0;padding-left:1.35em}\nli{margin:.35em 0}\ncode{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#eef1f5;padding:.05em .32em;border-radius:4px;font-size:.94em}\n.lead{color:#33404e}\n.note{color:var(--muted);font-size:.92rem}\n.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0}\n.formula{background:#eef4ff;border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;margin:12px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}\n.bar{display:flex;height:44px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#eef1f5;margin:10px 0 6px}\n.track{flex:24 1 0;min-width:0;display:flex}\n.seg-fixed{background:var(--fixed);flex:0 0 auto}\n.seg-budget{background:repeating-linear-gradient(45deg,#cfe0ff,#cfe0ff 6px,#e7f0ff 6px,#e7f0ff 12px);flex:0 0 auto}\n.seg-kv{background:var(--kv);flex:0 0 auto}\n.seg-over{background:var(--over);flex:0 0 auto;display:none}\n.axis{display:flex;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}\n.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.86rem;margin:8px 0 0;color:#2b3743}\n.legend span{display:inline-flex;align-items:center;gap:6px}\n.sw{width:14px;height:14px;border-radius:3px;display:inline-block;flex:0 0 auto}\n.sw-fixed{background:var(--fixed)}\n.sw-kv{background:var(--kv)}\n.sw-over{background:var(--over)}\n.sw-budget{background:repeating-linear-gradient(45deg,#cfe0ff,#cfe0ff 3px,#e7f0ff 3px,#e7f0ff 6px);border:1px solid #b9cff4}\n.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}\n.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}\n.stat .k{font-size:.85rem;color:var(--muted)}\n.stat .v{font-size:1.28rem;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin-top:2px}\n.stat .sub{font-size:.8rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}\n.verdict{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:12px 0 0;font-weight:600}\n.verdict.ok{background:#e8f6ef;border-color:#9ed3ba;color:#0e6245}\n.verdict.exact{background:#eef4ff;border-color:#a9c4f5;color:#123f8c}\n.verdict.bad{background:#fdecec;border-color:#f0b4b4;color:#8f1d1d}\n.ctrl{margin:14px 0;min-width:0}\n.ctrl-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-weight:600}\n.ctrl-head output{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}\n.ctrl-head .unit{font-weight:400;color:var(--muted);font-size:.86rem}\ninput[type=range]{width:100%;height:44px;margin:4px 0 0;accent-color:var(--accent)}\nselect{width:100%;min-height:44px;font-size:1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);margin-top:6px}\n.btn{min-height:44px;min-width:44px;padding:10px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:.96rem;cursor:pointer}\n.btn:hover{border-color:var(--accent);color:var(--accent)}\n.btn:focus-visible{outline:3px solid #a9c4f5;outline-offset:2px}\ndetails{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:var(--surface)}\nsummary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}\ndetails p{margin:.5em 0 0}\n.steps{counter-reset:s;list-style:none;padding-left:0}\n.steps>li{position:relative;padding-left:2.2em;margin:.7em 0}\n.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:.1em;width:1.6em;height:1.6em;border-radius:50%;background:var(--accent);color:#fff;font-size:.8rem;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}\n.anchor{background:#fffbe8;border:1px solid #f0dda0;border-radius:8px;padding:10px 12px;margin:12px 0}\n</style>\n</head>\n<body>\n<div class=\"page\">\n\n<h1>一张显卡能留住多少上下文？</h1>\n<p class=\"lead\">装好模型的显卡，显存里同时住着两笔账：一笔装进去就不再变，一笔随对话变长、并发变多而持续长大。这篇讲解用一套具体配置把两笔账分开算清：每个已缓存的 token 占多少、三条参数变化时哪些量跟着变、最后怎样判断这台机器装不装得下。所有数字都来自同一套教学模型，最后有一个参数实验台，供你把上面读到的关系自己动手验一遍。</p>\n\n<h2>一、两笔账：装进去的，和越用越多的</h2>\n<p>模型权重占 10 GiB。它是模型本身的参数，装进显存后大小就定了，跑一段对话、十个对话，它都是 10 GiB。</p>\n<p>另有一笔固定开销 2 GiB，用于推理过程中模型固定要预留的运行空间。它同样与对话长短无关。这两笔合起来是 12 GiB，下文称为<strong>固定占用</strong>。</p>\n<p>剩下的部分才是会变动的那笔，称为 <strong>K/V 缓存</strong>。它记录的是已经处理过的 token 在模型内部留下的中间结果，模型每多读一个 token、每多接一条序列，这份记录就多一截。</p>\n<div class=\"formula\">显存总量 24 GiB ＝ 固定占用 12 GiB ＋ K/V 缓存<br>可留给缓存的预算 ＝ 24 GiB − 12 GiB ＝ 12 GiB</div>\n<div class=\"bar\" role=\"img\" aria-label=\"24 GiB 显存中，12 GiB 是固定占用，另 12 GiB 可留给 K/V 缓存\">\n  <div class=\"seg-fixed\" style=\"width:50%\"></div>\n  <div class=\"seg-budget\" style=\"width:50%\"></div>\n</div>\n<div class=\"axis\"><span>0</span><span>12 GiB</span><span>24 GiB</span></div>\n<div class=\"legend\"><span><i class=\"sw sw-fixed\"></i>固定占用 12 GiB（权重 10 + 其他开销 2）</span><span><i class=\"sw sw-budget\"></i>可留给缓存 12 GiB</span></div>\n<p>于是容量判断只有一条：K/V 缓存填到 12 GiB 以内就装得下，正好等于 12 GiB 也算装得下；超过 12 GiB 就装不下。后文所有计算都只是在算这一笔缓存有多大。</p>\n\n<h2>二、K/V 缓存到底记住了什么</h2>\n<p>生成下一个 token 时，模型要让新 token 去“查看”它前面每一个 token。这个查看动作发生在每一层、每个缓存头上，用的是前面那些 token 当时算出的两样东西：<strong>K</strong>（用来和其他 token 比相似度，决定该关注谁）和 <strong>V</strong>（被取用的内容载体）。</p>\n<p>前面那些 token 的 K 和 V 一旦算出来，后面的每一步都要重复使用，重算一遍代价很大。所以模型把它们写进显存留着，这就是 K/V 缓存。缓存里存的单位很具体：对每一个已缓存的 token，在每一层、每个缓存头上，存一份 K 向量和一份 V 向量。</p>\n<p>你在应用里熟悉的数组直觉可以直接搬过来，只是维度多一些。把整个缓存看成一个多维数组：</p>\n<div class=\"formula\">cache[ B ][ T ][ 32 层 × 8 头 ][ K 或 V ][ 128 元素 ]</div>\n<p>B 是并发序列数（同时处理的对话条数），T 是每条序列已缓存的 token 数，数组的元素是 s 字节的数。你熟悉的“数组元素占内存”在这里完全同构：缓存总量就是元素个数乘以每个元素的字节数。区别在于，这个数组的 B 和 T 两维由实际请求撑大，所以模型装好了，它还会继续长。</p>\n<p>由此可以直接回答开头那个疑问：显存继续涨，涨的是这份逐 token 的存档，权重和其他固定开销始终是 12 GiB。</p>\n\n<h2>三、为什么这些数量要相乘</h2>\n<p>把数组的每一维摊开，就得到一条乘法链。<strong>每一维都对应一次复制</strong>：多一层，就多存一层的那一份；多一个头，就多一份；多一个 token，就多一份；多一条并发序列，再整体乘一次。</p>\n<ol class=\"steps\">\n<li>单个 token、单条序列、单层单头：K 有 128 个元素，V 有 128 个元素，两者形状相同，合计 <strong>256 个元素</strong>。</li>\n<li>一层有 8 个头：8 × 256 ＝ <strong>2,048 个元素</strong>。</li>\n<li>模型有 32 层：32 × 2,048 ＝ <strong>65,536 个元素</strong>。这个数就是“每个 token、每条序列”的开销，它与 T、B、s 都无关，只由模型结构决定。</li>\n<li>换成长度：一条序列缓存了 T 个 token，就有 T 份上述内容，即 T × 65,536 个元素。</li>\n<li>换成并发：B 条序列各自独立缓存、互不共享内容，所以再乘 B：<strong>B × T × 65,536 个元素</strong>。</li>\n<li>换成字节：每个元素占 s 字节，乘 s 得到字节数。</li>\n</ol>\n<div class=\"formula\">K/V 缓存字节数 ＝ B × T × 32 × 8 × 128 × 2 × s ＝ B × T × 65,536 × s</div>\n<p>相加只出现在把不同性质的占用并到一起时（权重 10 GiB 加其他开销 2 GiB）。缓存内部这几维是同一份内容在层、头、token、序列上的重复，所以连乘。</p>\n<div class=\"anchor\"><strong>两个好用的锚点（s ＝ 2 时）：</strong><br>一个 token、一条序列的缓存 ＝ 65,536 × 2 ＝ 131,072 字节 ＝ 128 KiB。<br>1 GiB ＝ 1,073,741,824 字节，除以 128 KiB 正好 8,192。所以 8,192 个 token 的缓存恰好 1 GiB；反过来，1 GiB 能存 8,192 个“token·序列”。</div>\n<p class=\"note\">这里的条件要留住：正因为每条序列的缓存长度相同、内容互不共享，B 才是独立乘数。一旦序列之间能共用一部分缓存，这个乘法就不成立，按本页公式算出的容量会偏大。</p>\n\n<h2>四、把两笔账落到容量判断上</h2>\n<p>预算 12 GiB 换成字节是 12 × 2³⁰ ＝ 12,884,901,888 字节。装得下的条件写成：</p>\n<div class=\"formula\">B × T × 65,536 × s ≤ 12,884,901,888 字节</div>\n<p>给定 B 和 s 时，能容下的每序列长度上限就是把预算除以“每个 token·序列的字节数”：</p>\n<div class=\"formula\">T 上限 ＝ ⌊ 12,884,901,888 ÷ ( B × 65,536 × s ) ⌋，且 T 本身最多 32,768</div>\n<p>取整意味着上限是不会越界的那一档；恰好把预算用满也算装得下。</p>\n<h3>初始参数算一遍</h3>\n<p>B ＝ 4、T ＝ 8,192、s ＝ 2：每个 token·序列 131,072 字节；总共 4 × 8,192 ＝ 32,768 个 token·序列；32,768 × 131,072 ＝ 4,294,967,296 字节 ＝ 4 GiB。加上固定 12 GiB，总计 16 GiB，还剩 8 GiB。</p>\n<p>此时每条序列的长度上限：s ＝ 2 时全机可容纳 12,884,901,888 ÷ 131,072 ＝ 98,304 个 token·序列，平均给 4 条序列就是 24,576 个 token。若 B ＝ 2，按预算可到 49,152，但 T 自身最多 32,768，此时是 32,768 这个上限先卡住。</p>\n\n<h2>五、三个自问的答案</h2>\n<h3>1. 增加一条同样长的序列，多占多少</h3>\n<p>多出的量是 T × 65,536 × s。初始参数下是 8,192 × 131,072 ＝ 1,073,741,824 字节 ＝ 1 GiB，正好一整份。初始还剩 8 GiB 余量，所以还能再加 8 条：B 从 4 变成 12 时缓存 12 GiB，总计 24 GiB，正好装满，仍然算装得下；再加第 9 条就越界了。</p>\n<p>这条增量与 B 无关，只由当前的 T 和 s 决定：同样长度的序列，加第一条和加第八条各要 1 GiB。</p>\n<h3>2. 长度翻倍时，哪些量翻倍</h3>\n<p>保持 B 和 s 不变，T 翻倍，缓存内的 token 份数翻倍，所以 K/V 缓存翻倍；固定占用 12 GiB 一分不动；总计增加的量正好等于原来那一份缓存。初始参数把 T 从 8,192 翻到 16,384：缓存 4 GiB → 8 GiB，总计 16 GiB → 20 GiB，余量 8 GiB → 4 GiB。</p>\n<p>翻倍要用一下 T 的上限：T 已经是 16,384 时再想翻倍就是 32,768，刚好到顶；到顶之后就再不能靠加长上下文来翻倍了。</p>\n<h3>3. 这组参数还能容纳多长</h3>\n<p>用第四节的除法，一步得到每条序列的长度上限。初始参数（B ＝ 4、s ＝ 2）是 24,576 个 token。改 B 或 s 时这个上限按同样的比例变：B 加倍，上限减半；s 从 2 变 1，按预算算出的上限翻倍（B ＝ 4 时是 49,152，已经超过 T 的 32,768 上限，实际只能取 32,768）；s 从 2 变 4，上限减半（B ＝ 4 时是 12,288）。</p>\n<h3>装不下的时候会怎样</h3>\n<p>K/V 缓存一旦超过 12 GiB，总量就超过 24 GiB，这台机器装不下这组配置，差额就是缓存超出预算的那一截。要收回来，有三条各自起作用的路径，效果都能直接算：</p>\n<ul>\n<li><strong>减序列数 B</strong>：B 减半，缓存减半。</li>\n<li><strong>减长度 T</strong>：T 减半，缓存减半。这条会缩短每条序列能记住的上下文。</li>\n<li><strong>减小 s</strong>：s 从 4 降到 2、或从 2 降到 1，缓存减半。按本模型，s 只改变缓存的存储字节数，权重与其他开销仍是 12 GiB。</li>\n</ul>\n<p>举例：B ＝ 16、T ＝ 16,384、s ＝ 4。每个 token·序列 65,536 × 4 ＝ 262,144 字节；token·序列总数 16 × 16,384 ＝ 262,144；缓存 262,144 × 262,144 ＝ 68,719,476,736 字节 ＝ 64 GiB，比预算多 52 GiB。把 s 降到 2，缓存减半为 32 GiB，仍超 20 GiB；再把 B 降到 8，缓存 16 GiB，仍超 4 GiB；B 降到 4 时缓存 8 GiB，总计 20 GiB，装得下。</p>\n\n<h2>六、参数实验台：自己动手验一遍</h2>\n<p>三档控件改的是同一份状态，下面的读数、条形和判定都跟着重算。固定占用那一段在任何参数下都不会变，这是本页最值得盯着看的一点。</p>\n\n<div class=\"card\">\n  <div class=\"ctrl\">\n    <div class=\"ctrl-head\"><label for=\"in-b\">并发序列数 B</label><output id=\"out-b\">4</output><span class=\"unit\">条序列</span></div>\n    <input id=\"in-b\" data-presentation-parameter=\"B\" type=\"range\" min=\"1\" max=\"16\" step=\"1\" value=\"4\">\n  </div>\n  <div class=\"ctrl\">\n    <div class=\"ctrl-head\"><label for=\"in-t\">每条序列的缓存长度 T</label><output id=\"out-t\">8,192</output><span class=\"unit\">token</span></div>\n    <input id=\"in-t\" data-presentation-parameter=\"T\" type=\"range\" min=\"0\" max=\"32768\" step=\"1\" value=\"8192\">\n  </div>\n  <div class=\"ctrl\">\n    <div class=\"ctrl-head\"><label for=\"in-s\">缓存中每个元素占 s 字节</label></div>\n    <select id=\"in-s\" data-presentation-parameter=\"s\">\n      <option value=\"1\">1 字节</option>\n      <option value=\"2\" selected>2 字节</option>\n      <option value=\"4\">4 字节</option>\n    </select>\n    <p class=\"note\">s 只改变缓存的存储字节数，权重与其他开销仍是 12 GiB。</p>\n  </div>\n  <button class=\"btn\" id=\"btnReset\" data-presentation-action=\"reset\" type=\"button\">回到初始参数：B ＝ 4、T ＝ 8192、s ＝ 2</button>\n\n  <div class=\"bar\" id=\"bar\" role=\"img\" aria-label=\"显存占用示意\">\n    <div class=\"track\" id=\"track\">\n      <div class=\"seg-fixed\" id=\"segFixed\"></div>\n      <div class=\"seg-kv\" id=\"segKv\"></div>\n    </div>\n    <div class=\"seg-over\" id=\"segOver\"></div>\n  </div>\n  <div class=\"axis\" style=\"position:static;display:block;height:auto;margin-top:6px;color:#5a6675;font-size:.85rem;line-height:1.6\">条形从 0 画到 24 GiB 显存上限：灰色是固定占用 12 GiB（灰绿交界处就是 12 GiB 预算线），绿色是当前 K/V 缓存，浅色是还没用到的余量。参数大到装不下时，右侧追加一段红色，它表示超出 24 GiB 的部分，按同样比例单独画在刻度之外。\n  <div class=\"legend\">\n    <span><i class=\"sw sw-fixed\"></i>固定占用 12 GiB（权重 10 + 其他 2）</span>\n    <span><i class=\"sw sw-kv\"></i><span id=\"lgKv\">K/V 缓存 4 GiB</span></span>\n    <span id=\"lgOverWrap\"><i class=\"sw sw-over\"></i><span id=\"lgOver\">超出 0 GiB</span></span>\n  </div>\n\n  <div class=\"verdict ok\" id=\"verdict\">装得下：还剩 8 GiB 余量</div>\n\n  <div class=\"stats\">\n    <div class=\"stat\"><div class=\"k\">K/V 缓存</div><div class=\"v\" id=\"kvVal\">4 GiB</div><div class=\"sub\" id=\"kvSub\">4,294,967,296 字节</div></div>\n    <div class=\"stat\"><div class=\"k\">总计占用</div><div class=\"v\" id=\"totalVal\">16 GiB</div><div class=\"sub\" id=\"totalSub\">上限 24 GiB</div></div>\n    <div class=\"stat\"><div class=\"k\">相对预算</div><div class=\"v\" id=\"spaceVal\">剩 8 GiB</div><div class=\"sub\" id=\"spaceSub\">预算即 24 − 12 = 12 GiB</div></div>\n    <div class=\"stat\"><div class=\"k\">每条序列最多缓存</div><div class=\"v\" style=\"white-space:nowrap\"><span id=\"tmaxVal\">24,576</span><span style=\"font-size:.75em\"> token</span></div><div class=\"sub\" id=\"tmaxSub\">B = 4、s = 2 时每条序列的预算上限</div></div>\n    <div class=\"stat\"><div class=\"k\">再加一条同样长的序列</div><div class=\"v\" id=\"margVal\">+1 GiB</div><div class=\"sub\" id=\"margSub\">当前还能再加 8 条同长序列</div></div>\n  </div>\n\n  <div class=\"formula\" id=\"calc\">KV = 4 × 8,192 × 32 层 × 8 头 × 128 元素 × 2（K 和 V）× 2 字节 = 4,294,967,296 字节 = 4 GiB</div>\n</div>\n\n<h3>建议这样试</h3>\n<ul>\n<li>只拖 T 或只拖 B：看条形里绿的那段伸缩，深色的固定段一动不动。这就是“固定占用与增长占用”的区别。</li>\n<li>把 s 从 2 换成 1，再换成 4：绿段减半、翻倍，深色段仍不变。缓存的大小对 s 是成比例的。</li>\n<li>找“恰好装满”：B ＝ 3、T ＝ 32,768、s ＝ 2。此时缓存正好 12 GiB，总计 24 GiB，判定仍是可容纳。</li>\n<li>制造一次超界：B ＝ 16、T ＝ 16,384、s ＝ 4。条形右侧会多出一段红色的超出量，判定变成装不下，并给出差多少。</li>\n<li>盯住“再加一条同样长的序列”那一格：它只跟当前的 T 和 s 有关，改 B 时它不变。</li>\n</ul>\n\n<h2>七、留三个判断给自己</h2>\n<p>下面三问的答案都能从上面的关系直接推出。先自己算，再展开对照。</p>\n\n<details>\n<summary>问 1：B 从 4 调到 5，T ＝ 8,192、s ＝ 2 不变，总计占用变成多少？</summary>\n<p>17 GiB。多出来的 1 GiB 全部落在缓存一侧：8,192 × 131,072 ＝ 1 GiB；固定占用仍是 12 GiB。缓存从 4 GiB 变 5 GiB，总计 12 ＋ 5 ＝ 17 GiB。</p>\n</details>\n\n<details>\n<summary>问 2：B ＝ 4、s ＝ 2 不变，T 从 4,096 翻到 8,192，总计增加多少？哪些量翻倍？</summary>\n<p>总计从 14 GiB 增到 16 GiB，增加 2 GiB。翻倍的是缓存（2 GiB → 4 GiB）以及其中保存的 token 份数；固定 12 GiB 不变，所以总计只增加了缓存增加的那一份。</p>\n</details>\n\n<details>\n<summary>问 3：B ＝ 6、T ＝ 32,768、s ＝ 2 装得下吗？如果装不下，差多少，T 要降到多少才刚好？</summary>\n<p>装不下。每个 token·序列 131,072 字节，6 × 32,768 ＝ 196,608 个 token·序列，缓存 25,769,803,776 字节 ＝ 24 GiB，比 12 GiB 预算多 12 GiB。把 T 降到 16,384 时缓存 12 GiB，正好装满预算，总计 24 GiB，可容纳。</p>\n</details>\n\n<h2>八、适用范围</h2>\n<ul>\n<li>本页所有数字都在开头设定的教学模型下计算：24 GiB 显存、权重 10 GiB、其他开销 2 GiB、32 层、每层 8 个缓存头、每头 128 元素、每个 token 每层存一份 K 与一份 V，1 GiB ＝ 2³⁰ 字节。</li>\n<li>不计分块留白、显存碎片与临时分配，所以真实机器可用的缓存预算通常比这里的 12 GiB 更紧。</li>\n<li>所有并发序列的缓存长度相同，且内容互不共享；共享前缀能省下的那一部分不在本模型内。</li>\n<li>s 只改变缓存的存储字节数，不改变权重与其他开销；这里不讨论数值精度对效果的影响。</li>\n<li>K/V 缓存正好装满 12 GiB 时判为可容纳。</li>\n</ul>\n\n</div>\n\n<script>\n(function(){\n  var GIB=1073741824, TOTAL=24*GIB, FIXED=12*GIB, BUDGET=TOTAL-FIXED,\n      ELEMS=65536, T_CAP=32768, DEFAULTS={B:4,T:8192,s:2};\n  var st={B:DEFAULTS.B, T:DEFAULTS.T, s:DEFAULTS.s};\n\n  function $(id){ return document.getElementById(id); }\n  var elB=$('in-b'), elT=$('in-t'), elS=$('in-s');\n\n  function num(n){ return Math.round(n).toLocaleString('en-US'); }\n  function gib(bytes){\n    var g=bytes/GIB;\n    if(Math.abs(g-Math.round(g))<1e-9){ return String(Math.round(g)); }\n    var t=g.toFixed(3).replace(/0+$/,'');\n    if(t.charAt(t.length-1)==='.'){ t=t.slice(0,-1); }\n    return t;\n  }\n  function kvBytes(){ return st.B*st.T*ELEMS*st.s; }\n\n  function render(){\n    var kv=kvBytes(), total=FIXED+kv, head=BUDGET-kv;\n    var overTotal=Math.max(0,total-TOTAL);\n\n    $('out-b').textContent=String(st.B);\n    $('out-t').textContent=num(st.T);\n\n    $('kvVal').textContent=gib(kv)+' GiB';\n    $('kvSub').textContent=num(kv)+' 字节';\n\n    $('totalVal').textContent=gib(total)+' GiB';\n    $('totalSub').textContent=(overTotal>0)?('超出上限 '+gib(overTotal)+' GiB'):'上限 24 GiB';\n\n    $('spaceVal').textContent=(head>=0)?('剩 '+gib(head)+' GiB'):('超 '+gib(-head)+' GiB');\n    $('spaceSub').textContent='预算即 24 − 12 = 12 GiB';\n\n    var denom=st.B*ELEMS*st.s;\n    var tmaxRaw=(denom>0)?Math.floor(BUDGET/denom):0;\n    var tmaxShown=Math.min(tmaxRaw,T_CAP);\n    $('tmaxVal').textContent=num(tmaxShown);\n    $('tmaxSub').textContent=(tmaxRaw>T_CAP)\n      ? ('按预算可到 '+num(tmaxRaw)+'，但 T 上限是 32,768')\n      : ('B = '+st.B+'、s = '+st.s+' 时每条序列的预算上限');\n\n    var perSeq=st.T*ELEMS*st.s;\n    if(perSeq===0){\n      $('margVal').textContent='+0 GiB';\n      $('margSub').textContent='T = 0 时缓存为空，增加序列不增加占用';\n    }else{\n      $('margVal').textContent='+'+gib(perSeq)+' GiB';\n      if(head>=0){\n        $('margSub').textContent='当前还能再加 '+Math.floor(head/perSeq)+' 条同长序列';\n      }else{\n        $('margSub').textContent='已超出，需减少 '+Math.ceil((-head)/perSeq)+' 条序列才回到预算内';\n      }\n    }\n\n    var v=$('verdict'), txt, cls;\n    if(kv>BUDGET){ cls='bad'; txt='装不下：K/V 缓存比 12 GiB 预算多出 '+gib(kv-BUDGET)+' GiB'; }\n    else if(kv===BUDGET){ cls='exact'; txt='恰好装满预算：装得下，缓存正好 12 GiB，总计 24 GiB'; }\n    else { cls='ok'; txt='装得下：还剩 '+gib(BUDGET-kv)+' GiB 余量'; }\n    v.className='verdict '+cls;\n    v.textContent=txt;\n\n    $('calc').textContent='KV = '+st.B+' × '+num(st.T)+' × 32 层 × 8 头 × 128 元素 × 2（K 和 V）× '+st.s+' 字节 = '+num(kv)+' 字节 = '+gib(kv)+' GiB';\n\n    var kvInTrack=Math.min(kv,BUDGET);\n    $('segFixed').style.width=(FIXED/TOTAL*100)+'%';\n    $('segKv').style.width=(kvInTrack/TOTAL*100)+'%';\n    var so=$('segOver');\n    if(overTotal>0){ so.style.display='block'; so.style.flexGrow=String(overTotal/GIB); }\n    else { so.style.display='none'; so.style.flexGrow='0'; }\n\n    $('lgKv').textContent='K/V 缓存 '+gib(kv)+' GiB';\n    $('lgOver').textContent='超出 '+gib(overTotal)+' GiB';\n    $('lgOverWrap').style.display=(overTotal>0)?'inline-flex':'none';\n    $('bar').setAttribute('aria-label','显存占用：固定 12 GiB，K/V 缓存 '+gib(kv)+' GiB，总计 '+gib(total)+' GiB，上限 24 GiB');\n  }\n\n  function sync(){\n    elB.value=String(st.B);\n    elT.value=String(st.T);\n    elS.value=String(st.s);\n  }\n  function applyParams(p){\n    if(!p){ return; }\n    if(typeof p.B==='number' && isFinite(p.B)){ st.B=Math.min(16,Math.max(1,Math.round(p.B))); }\n    if(typeof p.T==='number' && isFinite(p.T)){ st.T=Math.min(T_CAP,Math.max(0,Math.round(p.T))); }\n    var sv=Number(p.s);\n    if(sv===1||sv===2||sv===4){ st.s=sv; }\n  }\n  function readControls(){\n    st.B=Number(elB.value); st.T=Number(elT.value); st.s=Number(elS.value);\n  }\n  function commit(){\n    if(window.presentation && window.presentation.commitState){ window.presentation.commitState(); }\n  }\n\n  elB.addEventListener('input',function(){ readControls(); render(); });\n  elT.addEventListener('input',function(){ readControls(); render(); });\n  elS.addEventListener('input',function(){ readControls(); render(); });\n  elB.addEventListener('change',function(){ readControls(); render(); commit(); });\n  elT.addEventListener('change',function(){ readControls(); render(); commit(); });\n  elS.addEventListener('change',function(){ readControls(); render(); commit(); });\n  $('btnReset').addEventListener('click',function(){\n    st.B=DEFAULTS.B; st.T=DEFAULTS.T; st.s=DEFAULTS.s;\n    sync(); render(); commit();\n  });\n\n  if(window.presentation && window.presentation.registerStateReader){\n    window.presentation.registerStateReader(function(){\n      var kv=kvBytes(), head=BUDGET-kv;\n      return {\n        values:{B:st.B, T:st.T, s:st.s},\n        visible_step:null,\n        observation:{\n          summary:'B='+st.B+'、T='+num(st.T)+'、s='+st.s+' 时 K/V 缓存为 '+gib(kv)+' GiB，相对 12 GiB 预算'+(head>=0?('剩余 '+gib(head)+' GiB'):('超出 '+gib(-head)+' GiB'))+'。',\n          state:{B:st.B, T:st.T, s:st.s, kv_gib:Number(gib(kv)), budget_gib:12, headroom_gib:Number(gib(head))}\n        }\n      };\n    });\n  }\n\n  if(window.presentation && window.presentation.registerStateRestorer){\n    window.presentation.registerStateRestorer(function(saved){\n      var p=null;\n      if(saved && saved.values){ p=saved.values.page ? saved.values.page : saved.values; }\n      applyParams(p); sync(); render();\n    });\n  }\n\n  if(window.presentation && window.presentation.registerActionHandler){\n    window.presentation.registerActionHandler(async function(action){\n      if(!action){ return; }\n      if(action.kind==='set_parameters'){ applyParams(action.values||{}); sync(); render(); return; }\n      if(action.kind==='invoke' && action.action_id==='reset'){\n        st.B=DEFAULTS.B; st.T=DEFAULTS.T; st.s=DEFAULTS.s; sync(); render(); commit(); return;\n      }\n    });\n  }\n\n  var initState=(window.presentation && window.presentation.initialState)?window.presentation.initialState:null;\n  if(initState){ applyParams({B:initState.B, T:initState.T, s:initState.s}); }\n  sync();\n  render();\n})();\n</script>\n</body>\n</html>"
+    },
+    "entrypoint": "index.html",
+    "readable_content": "这篇讲解用一套固定的教学模型（24 GiB 显存、权重 10 GiB、其他开销 2 GiB、32 层、每层 8 个缓存头、每头 128 元素），把显存占用拆成两笔：装进去就不再变的固定占用 12 GiB，和随对话变长、并发变多而增长的 K/V 缓存。\n\n第一节给出账本：24 GiB ＝ 固定 12 GiB ＋ K/V 缓存，因此可留给缓存的预算只有 12 GiB；缓存不超过 12 GiB 就装得下，正好等于 12 GiB 也算装得下。配一条静态堆叠条：深色固定段占一半，斜纹段表示可留给缓存的 12 GiB。\n\n第二节说明缓存存的是什么：生成下一个 token 时，模型要查看前面每个 token，用的是它们在每一层、每个缓存头上算出的 K（决定关注谁）与 V（被取用的内容）。为免重复计算，这些向量被写进显存。整个缓存可看成一个多维数组 cache[B][T][32 层 × 8 头][K 或 V][128 元素]，元素为 s 字节。这也解释了模型装好后显存为什么还涨：涨的是这份逐 token 的存档，而不是权重。\n\n第三节把每一维摊成一次复制：单 token 单层单头是 128 个 K 元素加 128 个 V 元素共 256 个；一层 8 头是 2,048 个；32 层是 65,536 个，即每个 token、每条序列的固定开销；再乘 T（token 份数）、乘 B（互不共享的并发序列）、乘 s（每元素字节数）。得到 KV 字节数 ＝ B × T × 65,536 × s。锚点：s＝2 时每 token 每序列 128 KiB，8,192 个 token 恰好 1 GiB。\n\n第四节给出判据 B × T × 65,536 × s ≤ 12,884,901,888 字节，以及 T 上限 ＝ 对预算除以（B × 65,536 × s）取整，且 T 最多 32,768。初始参数 B＝4、T＝8,192、s＝2 代入：缓存 4,294,967,296 字节 ＝ 4 GiB，总计 16 GiB，余 8 GiB；s＝2 时全机可容纳 98,304 个 token·序列，分给 4 条序列是每条 24,576 个 token；B＝2 时预算可到 49,152，但先被 32,768 上限卡住。\n\n第五节回答三个自问：增加一条同样长的序列多占 T × 65,536 × s，初始为 1 GiB，还剩 8 GiB 时最多加到 B＝12，此时缓存 12 GiB、总计 24 GiB，仍可容纳；长度翻倍时缓存翻倍、固定 12 GiB 不变、总计增加一份缓存（初始 4→8 GiB，总计 16→20 GiB），且 16,384 翻倍即到 32,768 上限；这组参数下每条序列上限 24,576，B 加倍上限减半，s 从 2 到 1 上限翻倍、到 4 上限减半。超界时给出差额与三条回收路径（减 B、减 T、减小 s 都使缓存减半），并用 B＝16、T＝16,384、s＝4 逐步演示：缓存 64 GiB、超 52 GiB；s 降到 2 仍超 20 GiB；B 降到 8 仍超 4 GiB；B 降到 4 时缓存 8 GiB、总计 20 GiB，装得下。\n\n第六节是参数实验台，含三个控件（B 为 1 至 16 的滑块、T 为 0 至 32768 的滑块、s 取值 1／2／4 的下拉框）与一个重置按钮。改动任一控件后页面同步重算：KV 缓存大小（GiB 与字节）、总计占用、相对预算的余量或超出量、每条序列最多能缓存多少 token、再加一条同样长序列多占多少（以及当前还能加几条），并给出装得下／恰好装满／装不下三种判定。堆叠条按同一尺度画 24 GiB：深色固定 12 GiB 段永远不动，绿段为 K/V 缓存，超过 24 GiB 的部分以红色超出段接在右侧。公式行把当前 B、T、s 代入逐步显示字节数与 GiB。初始显示 4 GiB 缓存、16 GiB 总计、剩 8 GiB、每序列上限 24,576、加一条 +1 GiB、还能加 8 条。页面还提示了四个可试的组合：拖 T 或 B 只看绿段伸缩；s 换 1 或 4 使绿段减半或翻倍；B＝3、T＝32,768、s＝2 恰好装满；B＝16、T＝16,384、s＝4 出现红色超出段。\n\n第七节留三个可展开对照的判断题：B 从 4 调到 5 时总计变 17 GiB；T 从 4,096 翻到 8,192 时总计从 14 GiB 增到 16 GiB、翻倍的是缓存；B＝6、T＝32,768、s＝2 时缓存 24 GiB、超 12 GiB，T 降到 16,384 才刚好装满。\n\n第八节列出适用范围：一切数字基于用户给定的教学模型；不计分块留白、碎片与临时分配；所有并发序列缓存长度相同且互不共享内容，共享前缀的节省不在模型内；s 只改变缓存字节数且不讨论数值精度效果；缓存恰好装满 12 GiB 判为可容纳。",
+    "source_bindings": [],
+    "assumptions": [
+      "教学模型与参数取值全部来自用户给定：24 GiB 显存、权重 10 GiB、其他开销 2 GiB、32 层、每层 8 个缓存头、每头 128 元素、每 token 每层存一份 K 与一份 V、1 GiB = 2^30 字节。",
+      "不计分块留白、显存碎片与临时分配。",
+      "K/V 缓存量等于 12 GiB 预算即判为可容纳。",
+      "改变 s 只改变缓存字节数，不改变权重与其他开销。",
+      "所有并发序列的缓存长度相同且互不共享内容，因此 B 作为独立乘数进入缓存公式。"
+    ],
+    "state_contract": {
+      "B": "并发序列数（同时处理的对话条数）；无单位，整数 1 至 16",
+      "T": "每条序列已缓存的 token 数（缓存长度）；单位 token，整数 0 至 32768",
+      "s": "缓存中每个元素占用的字节数；单位字节，取值 1、2 或 4"
+    },
+    "initial_state": {
+      "B": 4,
+      "T": 8192,
+      "s": 2
+    }
+  }
+}

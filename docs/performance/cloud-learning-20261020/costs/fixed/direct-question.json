@@ -1,0 +1,1063 @@
+{
+  "id": "direct-question",
+  "message": "我现在不会这道题，请直接讲这题，不要先给我诊断或先修测验：样例视频有两秒，我的陈述只涉及第一秒，为什么不能把整段视频当作精确证据窗口？请直接用这道题解释。不要制作交互页面。",
+  "sprint": {
+    "as_of": 1792511111,
+    "current_goal_revision": 2,
+    "goal_revision": 2,
+    "remaining_days": 1,
+    "settings": {
+      "daily_minutes": 30,
+      "entry_mode": "question",
+      "exam_date": "2026-10-21",
+      "syllabus": "只考视频时间片段定位；不考资料版本管理",
+      "utc_offset_minutes": 480
+    },
+    "updated_at": 1792511111
+  },
+  "status": "completed",
+  "usage_attribution": "Requests started while this case was running; background calls may overlap adjacent cases.",
+  "turn_id": "turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53",
+  "turn": {
+    "domain": {
+      "effects": [],
+      "scene": {
+        "anchor_lid": "1",
+        "generation": 2,
+        "learning_workspace_id": "01a159fc-ad27-72a3-8d97-24d42d37c0c5",
+        "selection": null,
+        "workspace_goal": {
+          "constraints": [
+            "考试日期：2026-10-21（UTC+480 分钟）；按当前日期安排复习。",
+            "已确认考试范围：只考视频时间片段定位；不考资料版本管理",
+            "每天可用复习时间：30 分钟。",
+            "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。"
+          ],
+          "created_at": 1792511111,
+          "revision": 2,
+          "text": "期末冲刺：能独立指出一条陈述对应的材料版本与视频时间片段"
+        },
+        "workspace_id": "ws-01a159fd-4096-7e90-a9e9-f541c644eeb7",
+        "workspace_members": [
+          {
+            "book_id": "cloud-course-original-text",
+            "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+          },
+          {
+            "book_id": "test-book",
+            "publication_id": "01a159fc-a8e4-7410-83dd-21ae177080e4"
+          }
+        ]
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53",
+            "usage:observation:cloud-course-original-text:user:turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53",
+            "binding:turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53"
+          ],
+          "revision": 0,
+          "session_id": "observation:cloud-course-original-text"
+        },
+        {
+          "receipt_ids": [
+            "library-delivery:turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53:cloud-course-original-text:01a159fc-9934-7aa3-9d3e-758fdf70162d",
+            "usage:observation:cloud-course-original-text:assistant:turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53"
+          ],
+          "revision": 0,
+          "session_id": "observation:cloud-course-original-text"
+        }
+      ]
+    },
+    "effect_labels": [],
+    "error": null,
+    "goal_ref": {
+      "id": "goal_turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53",
+      "revision": 2
+    },
+    "outcome": {
+      "answer": "**直接回答**：你标的那个时间片段，是给读者回看用的“这条陈述到底由哪几秒的画面支持”的记录。你的陈述只用到第一秒的画面，若标成 0–2 秒，窗口里就多出第二秒那一段——而第二秒在你的陈述里没有出现，读者按这个窗口回看时，看不出第二秒对结论起了什么作用，也就没法用它核对你的陈述。\n\n**课本给出的规则**\n\n来源窗口就是“证据覆盖的具体位置或时间范围”；写结论时要交代它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。\n\n这条规则落到这段示范视频上有明确写法：视频是持续两秒的动态图案，人工字幕是“动态图案在两秒内持续变化”。若问题只涉及第一秒的画面，来源应指向零至一秒；若陈述涉及整段变化，才可以指向零至两秒。\n\n**把规则用到你这道题上**\n\n视频总长是固定的（两秒），能选的只有窗口的宽窄。你这条陈述要成立，只有第一秒的画面被用到；把窗口拉到 0–2 秒，等于向读者声明你的结论覆盖了整段变化，而这一声明超出了你实际用到的画面。这就是“不精确”的具体含义：窗口比陈述的证据覆盖面宽，多出的部分无人核对。\n\n反过来也可以自查：假设（示例，用来说明写法）某条陈述写“图案从第一秒到第二秒换了样子”，它要成立必须同时看两处画面，标 0–1 秒就缺了比较对象，那时才该标 0–2 秒。这类判断与视频里图案具体长什么样无关，取决于你的陈述需要回看哪几秒。\n\n**答题时的一个动作**：写完一条陈述，问自己“这条陈述要成立，读者必须回看哪几秒”，答案就是窗口边界；若陈述里出现“整段”“一直在变”“和第一秒相比”这类说法，边界才推到整段。\n\n需要的话，我可以按这个判据出两条只考片段的陈述让你核对（不做交互页面）。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "**直接回答**：你标的那个时间片段，是给读者回看用的“这条陈述到底由哪几秒的画面支持”的记录。你的陈述只用到第一秒的画面，若标成 0–2 秒，窗口里就多出第二秒那一段——而第二秒在你的陈述里没有出现，读者按这个窗口回看时，看不出第二秒对结论起了什么作用，也就没法用它核对你的陈述。\n\n**课本给出的规则**\n\n来源窗口就是“证据覆盖的具体位置或时间范围”；写结论时要交代它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_14997b9cdffa44e5"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "。\n\n这条规则落到这段示范视频上有明确写法：视频是持续两秒的动态图案，人工字幕是“动态图案在两秒内持续变化”"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_3efd4bf3db00e80d"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "。若问题只涉及第一秒的画面，来源应指向零至一秒；若陈述涉及整段变化，才可以指向零至两秒"
+          },
+          {
+            "kind": "sources",
+            "source_ref_ids": [
+              "source_ref_27ca36e98331b592"
+            ]
+          },
+          {
+            "kind": "markdown",
+            "text": "。\n\n**把规则用到你这道题上**\n\n视频总长是固定的（两秒），能选的只有窗口的宽窄。你这条陈述要成立，只有第一秒的画面被用到；把窗口拉到 0–2 秒，等于向读者声明你的结论覆盖了整段变化，而这一声明超出了你实际用到的画面。这就是“不精确”的具体含义：窗口比陈述的证据覆盖面宽，多出的部分无人核对。\n\n反过来也可以自查：假设（示例，用来说明写法）某条陈述写“图案从第一秒到第二秒换了样子”，它要成立必须同时看两处画面，标 0–1 秒就缺了比较对象，那时才该标 0–2 秒。这类判断与视频里图案具体长什么样无关，取决于你的陈述需要回看哪几秒。\n\n**答题时的一个动作**：写完一条陈述，问自己“这条陈述要成立，读者必须回看哪几秒”，答案就是窗口边界；若陈述里出现“整段”“一直在变”“和第一秒相比”这类说法，边界才推到整段。\n\n需要的话，我可以按这个判据出两条只考片段的陈述让你核对（不做交互页面）。"
+          }
+        ],
+        "sources": [
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_14997b9cdffa44e5"
+          },
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_3efd4bf3db00e80d"
+          },
+          {
+            "label": "正文",
+            "source_ref_id": "source_ref_27ca36e98331b592"
+          }
+        ]
+      },
+      "effects": [],
+      "incomplete": false,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 148948,
+      "trace": [
+        {
+          "args": "{\"query\": \"精确\", \"page_size\": 20}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"9077cf33f3142ff5a2792e59ab64b4623df195eb7b1e19acf3a9584959ab2a2b\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"query\": \"时间片段\", \"page_size\": 20}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"9077cf33f3142ff5a2792e59ab64b4623df195eb7b1e19acf3a9584959ab2a2b\",\"exhaustive\":true,\"total_occurrences\":2,\"total_lids\":1,\"occurrences\":[{\"ordinal\":1,\"sta",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"lid\": \"1\"}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"lid\":\"1\",\"text\":\"# 来源窗口与证据范围\\n\\nSource windows are part of the evidence.\\n\\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\\n\\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"quote\": \"来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\",\"source_ref_id\":\"source_ref_14997b9cdffa44e5\"}",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"quote\": \"本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。\",\"source_ref_id\":\"source_ref_3efd4bf3db00e80d\"}",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"quote\": \"如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\",\"source_ref_id\":\"source_ref_27ca36e98331b592\"}",
+          "tool": "source.present"
+        }
+      ],
+      "turns": 4
+    },
+    "presentation_follow_up": null,
+    "published_book_ref": {
+      "book_id": "cloud-course-original-text",
+      "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+    },
+    "question_quote": null,
+    "question_source_label": null,
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 1936.7539,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": null,
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 9,
+            "messages_append_only": null,
+            "previous_image_count": null,
+            "previous_message_count": null,
+            "previous_reasoning_message_count": null,
+            "previous_step_id": null,
+            "previous_tool_count": null,
+            "reasoning_message_count": 0,
+            "request_index": 1,
+            "settings_changed": null,
+            "step_id": 1,
+            "tool_count": 16,
+            "tools_changed": null,
+            "unchanged_prefix_messages": null
+          },
+          "result_count": null,
+          "started_ms": 188.69910000000002,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 4480,
+            "input_tokens": 27135,
+            "output_tokens": 208,
+            "reasoning_output_tokens": 105,
+            "total_tokens": 27343
+          },
+          "usage_total_tokens": 27343
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 18.06690000000026,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "搜索原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.search_text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 2172.1322999999998,
+          "status": "succeeded",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 15.293900000000122,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "搜索原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.search_text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 2268.0507,
+          "status": "succeeded",
+          "step_id": 3,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 1321.835,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": {
+              "current_bytes": 911,
+              "fields": [
+                "added"
+              ],
+              "index": 9,
+              "previous_bytes": 0,
+              "role": "assistant",
+              "unchanged_prefix_bytes": 0
+            },
+            "first_changed_tool": 13,
+            "image_count": 0,
+            "message_count": 14,
+            "messages_append_only": true,
+            "previous_image_count": 0,
+            "previous_message_count": 9,
+            "previous_reasoning_message_count": 0,
+            "previous_step_id": 1,
+            "previous_tool_count": 16,
+            "reasoning_message_count": 1,
+            "request_index": 2,
+            "settings_changed": false,
+            "step_id": 4,
+            "tool_count": 17,
+            "tools_changed": true,
+            "unchanged_prefix_messages": 9
+          },
+          "result_count": null,
+          "started_ms": 2386.1092,
+          "status": "succeeded",
+          "step_id": 4,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 9728,
+            "input_tokens": 35472,
+            "output_tokens": 56,
+            "reasoning_output_tokens": 18,
+            "total_tokens": 35528
+          },
+          "usage_total_tokens": 35528
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 52.731899999999314,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "读取原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 3761.0105000000003,
+          "status": "succeeded",
+          "step_id": 5,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 8546.409,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": {
+              "current_bytes": 265,
+              "fields": [
+                "added"
+              ],
+              "index": 14,
+              "previous_bytes": 0,
+              "role": "assistant",
+              "unchanged_prefix_bytes": 0
+            },
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 17,
+            "messages_append_only": true,
+            "previous_image_count": 0,
+            "previous_message_count": 14,
+            "previous_reasoning_message_count": 1,
+            "previous_step_id": 4,
+            "previous_tool_count": 17,
+            "reasoning_message_count": 2,
+            "request_index": 3,
+            "settings_changed": false,
+            "step_id": 6,
+            "tool_count": 17,
+            "tools_changed": false,
+            "unchanged_prefix_messages": 14
+          },
+          "result_count": null,
+          "started_ms": 3914.3673,
+          "status": "succeeded",
+          "step_id": 6,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 35456,
+            "input_tokens": 38826,
+            "output_tokens": 1683,
+            "reasoning_output_tokens": 1457,
+            "total_tokens": 40509
+          },
+          "usage_total_tokens": 40509
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 19.278000000000247,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "整理来源",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "source.present",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 12501.4507,
+          "status": "succeeded",
+          "step_id": 7,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 40.867599999999584,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "整理来源",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "source.present",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 12581.7695,
+          "status": "succeeded",
+          "step_id": 8,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 19.001000000000204,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "整理来源",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "source.present",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 12680.6127,
+          "status": "succeeded",
+          "step_id": 9,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 10552.4972,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": 10504.7544,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": {
+              "current_bytes": 8205,
+              "fields": [
+                "added"
+              ],
+              "index": 17,
+              "previous_bytes": 0,
+              "role": "assistant",
+              "unchanged_prefix_bytes": 0
+            },
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 22,
+            "messages_append_only": true,
+            "previous_image_count": 0,
+            "previous_message_count": 17,
+            "previous_reasoning_message_count": 2,
+            "previous_step_id": 6,
+            "previous_tool_count": 17,
+            "reasoning_message_count": 3,
+            "request_index": 4,
+            "settings_changed": false,
+            "step_id": 10,
+            "tool_count": 17,
+            "tools_changed": false,
+            "unchanged_prefix_messages": 17
+          },
+          "result_count": null,
+          "started_ms": 12805.6792,
+          "status": "succeeded",
+          "step_id": 10,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 40448,
+            "input_tokens": 43912,
+            "output_tokens": 1656,
+            "reasoning_output_tokens": 1162,
+            "total_tokens": 45568
+          },
+          "usage_total_tokens": 45568
+        }
+      ],
+      "effects": [],
+      "last_seq": 49,
+      "trace": [
+        {
+          "args": "{\"query\": \"精确\", \"page_size\": 20}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"9077cf33f3142ff5a2792e59ab64b4623df195eb7b1e19acf3a9584959ab2a2b\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"query\": \"时间片段\", \"page_size\": 20}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"9077cf33f3142ff5a2792e59ab64b4623df195eb7b1e19acf3a9584959ab2a2b\",\"exhaustive\":true,\"total_occurrences\":2,\"total_lids\":1,\"occurrences\":[{\"ordinal\":1,\"sta",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"lid\": \"1\"}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"lid\":\"1\",\"text\":\"# 来源窗口与证据范围\\n\\nSource windows are part of the evidence.\\n\\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\\n\\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课",
+          "tool": "book.text"
+        },
+        {
+          "args": "{\"quote\": \"来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\",\"source_ref_id\":\"source_ref_14997b9cdffa44e5\"}",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"quote\": \"本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。\",\"source_ref_id\":\"source_ref_3efd4bf3db00e80d\"}",
+          "tool": "source.present"
+        },
+        {
+          "args": "{\"quote\": \"如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\"}",
+          "model_tool_loop": 3,
+          "result_digest": "{\"label\":\"正文\",\"preview\":\"如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\",\"source_ref_id\":\"source_ref_27ca36e98331b592\"}",
+          "tool": "source.present"
+        }
+      ],
+      "usage": {
+        "calls": [
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 4480,
+            "input_tokens": 27135,
+            "output_tokens": 208,
+            "reasoning_output_tokens": 105,
+            "total_tokens": 27343
+          },
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 9728,
+            "input_tokens": 35472,
+            "output_tokens": 56,
+            "reasoning_output_tokens": 18,
+            "total_tokens": 35528
+          },
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 35456,
+            "input_tokens": 38826,
+            "output_tokens": 1683,
+            "reasoning_output_tokens": 1457,
+            "total_tokens": 40509
+          },
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 40448,
+            "input_tokens": 43912,
+            "output_tokens": 1656,
+            "reasoning_output_tokens": 1162,
+            "total_tokens": 45568
+          }
+        ],
+        "known_total_tokens": 148948
+      }
+    },
+    "status": "completed",
+    "teaching_ref": null,
+    "turn_id": "turn_01a159fd-40cb-7a33-9ded-52fcf7b6ec53",
+    "usage": {
+      "calls": [
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 4480,
+          "input_tokens": 27135,
+          "output_tokens": 208,
+          "reasoning_output_tokens": 105,
+          "total_tokens": 27343
+        },
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 9728,
+          "input_tokens": 35472,
+          "output_tokens": 56,
+          "reasoning_output_tokens": 18,
+          "total_tokens": 35528
+        },
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 35456,
+          "input_tokens": 38826,
+          "output_tokens": 1683,
+          "reasoning_output_tokens": 1457,
+          "total_tokens": 40509
+        },
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 40448,
+          "input_tokens": 43912,
+          "output_tokens": 1656,
+          "reasoning_output_tokens": 1162,
+          "total_tokens": 45568
+        }
+      ],
+      "known_total_tokens": 148948
+    },
+    "user": "我现在不会这道题，请直接讲这题，不要先给我诊断或先修测验：样例视频有两秒，我的陈述只涉及第一秒，为什么不能把整段视频当作精确证据窗口？请直接用这道题解释。不要制作交互页面。",
+    "user_turn_ordinal": 1,
+    "video_question": null
+  },
+  "sources": [
+    {
+      "source_ref_id": "source_ref_14997b9cdffa44e5",
+      "resolved": {
+        "generation": 2,
+        "learning_workspace_goal": {
+          "constraints": [
+            "考试日期：2026-10-21（UTC+480 分钟）；按当前日期安排复习。",
+            "已确认考试范围：只考视频时间片段定位；不考资料版本管理",
+            "每天可用复习时间：30 分钟。",
+            "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。"
+          ],
+          "created_at": 1792511111,
+          "revision": 2,
+          "text": "期末冲刺：能独立指出一条陈述对应的材料版本与视频时间片段"
+        },
+        "learning_workspace_id": "01a159fc-ad27-72a3-8d97-24d42d37c0c5",
+        "learning_workspace_positions": {
+          "01a159fc-ad27-72a3-8d97-24d42d37c0c5": {
+            "book_id": "cloud-course-original-text",
+            "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+          }
+        },
+        "presentation": null,
+        "published_book_ref": {
+          "book_id": "cloud-course-original-text",
+          "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+        },
+        "reader": {
+          "book_id": "cloud-course-original-text",
+          "layout": {
+            "active_preset": "technical_read",
+            "focused_slot": "technical.agent",
+            "open_slots": [
+              "technical.structure_map",
+              "technical.agent"
+            ],
+            "panel_sizes": {
+              "technical.agent": {
+                "kind": "percent",
+                "value": 30
+              },
+              "technical.structure_map": {
+                "kind": "percent",
+                "value": 24
+              }
+            },
+            "pinned_evidence": [],
+            "rev": 0,
+            "slot_order": {
+              "left": [
+                "technical.structure_map"
+              ],
+              "right": [
+                "technical.agent"
+              ]
+            }
+          },
+          "open_panels": [],
+          "profile": {
+            "agent_tools": [
+              "reader.layout.apply"
+            ],
+            "allowed_layout_actions": [
+              "open_slot",
+              "close_slot",
+              "focus_slot",
+              "set_active_tab",
+              "pin_evidence",
+              "unpin_evidence",
+              "set_panel_size",
+              "reorder_slot",
+              "set_layout_preset",
+              "reset_layout"
+            ],
+            "layout_presets": [
+              "technical_read"
+            ],
+            "profile_id": "technical_learning",
+            "profile_version": "technical_learning_v0",
+            "ui_slots": [
+              "technical.structure_map",
+              "technical.agent",
+              "technical.evidence"
+            ]
+          },
+          "revision": 0,
+          "selection": null,
+          "viewport": {
+            "anchor_lid": "1",
+            "bottom_lid": "1",
+            "top_lid": "1",
+            "visible_lids": [
+              "1"
+            ],
+            "width": 20
+          },
+          "visible_position": null
+        },
+        "result": {
+          "can_open_in_reader": true,
+          "context_after": "\n\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader",
+          "context_before": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n",
+          "excerpt": {
+            "highlight": {
+              "end": 146,
+              "start": 55
+            },
+            "text": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\n\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published."
+          },
+          "heading_path": [],
+          "highlighted_quote": "来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。",
+          "label": "正文",
+          "material_title": "来源窗口与证据范围",
+          "source_ref_id": "source_ref_14997b9cdffa44e5",
+          "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=55&end_utf16=146",
+          "stale": false
+        },
+        "revision": 2,
+        "selected_chat": "chat-01a159fd-40a3-7b53-909c-a07bde44df08",
+        "workspace_id": "ws-01a159fd-4096-7e90-a9e9-f541c644eeb7"
+      }
+    },
+    {
+      "source_ref_id": "source_ref_3efd4bf3db00e80d",
+      "resolved": {
+        "generation": 2,
+        "learning_workspace_goal": {
+          "constraints": [
+            "考试日期：2026-10-21（UTC+480 分钟）；按当前日期安排复习。",
+            "已确认考试范围：只考视频时间片段定位；不考资料版本管理",
+            "每天可用复习时间：30 分钟。",
+            "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。"
+          ],
+          "created_at": 1792511111,
+          "revision": 2,
+          "text": "期末冲刺：能独立指出一条陈述对应的材料版本与视频时间片段"
+        },
+        "learning_workspace_id": "01a159fc-ad27-72a3-8d97-24d42d37c0c5",
+        "learning_workspace_positions": {
+          "01a159fc-ad27-72a3-8d97-24d42d37c0c5": {
+            "book_id": "cloud-course-original-text",
+            "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+          }
+        },
+        "presentation": null,
+        "published_book_ref": {
+          "book_id": "cloud-course-original-text",
+          "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+        },
+        "reader": {
+          "book_id": "cloud-course-original-text",
+          "layout": {
+            "active_preset": "technical_read",
+            "focused_slot": "technical.agent",
+            "open_slots": [
+              "technical.structure_map",
+              "technical.agent"
+            ],
+            "panel_sizes": {
+              "technical.agent": {
+                "kind": "percent",
+                "value": 30
+              },
+              "technical.structure_map": {
+                "kind": "percent",
+                "value": 24
+              }
+            },
+            "pinned_evidence": [],
+            "rev": 0,
+            "slot_order": {
+              "left": [
+                "technical.structure_map"
+              ],
+              "right": [
+                "technical.agent"
+              ]
+            }
+          },
+          "open_panels": [],
+          "profile": {
+            "agent_tools": [
+              "reader.layout.apply"
+            ],
+            "allowed_layout_actions": [
+              "open_slot",
+              "close_slot",
+              "focus_slot",
+              "set_active_tab",
+              "pin_evidence",
+              "unpin_evidence",
+              "set_panel_size",
+              "reorder_slot",
+              "set_layout_preset",
+              "reset_layout"
+            ],
+            "layout_presets": [
+              "technical_read"
+            ],
+            "profile_id": "technical_learning",
+            "profile_version": "technical_learning_v0",
+            "ui_slots": [
+              "technical.structure_map",
+              "technical.agent",
+              "technical.evidence"
+            ]
+          },
+          "revision": 0,
+          "selection": null,
+          "viewport": {
+            "anchor_lid": "1",
+            "bottom_lid": "1",
+            "top_lid": "1",
+            "visible_lids": [
+              "1"
+            ],
+            "width": 20
+          },
+          "visible_position": null
+        },
+        "result": {
+          "can_open_in_reader": true,
+          "context_after": "它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published.",
+          "context_before": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\n\n",
+          "excerpt": {
+            "highlight": {
+              "end": 198,
+              "start": 148
+            },
+            "text": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\n\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published."
+          },
+          "heading_path": [],
+          "highlighted_quote": "本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。",
+          "label": "正文",
+          "material_title": "来源窗口与证据范围",
+          "source_ref_id": "source_ref_3efd4bf3db00e80d",
+          "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=148&end_utf16=198",
+          "stale": false
+        },
+        "revision": 2,
+        "selected_chat": "chat-01a159fd-40a3-7b53-909c-a07bde44df08",
+        "workspace_id": "ws-01a159fd-4096-7e90-a9e9-f541c644eeb7"
+      }
+    },
+    {
+      "source_ref_id": "source_ref_27ca36e98331b592",
+      "resolved": {
+        "generation": 2,
+        "learning_workspace_goal": {
+          "constraints": [
+            "考试日期：2026-10-21（UTC+480 分钟）；按当前日期安排复习。",
+            "已确认考试范围：只考视频时间片段定位；不考资料版本管理",
+            "每天可用复习时间：30 分钟。",
+            "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。"
+          ],
+          "created_at": 1792511111,
+          "revision": 2,
+          "text": "期末冲刺：能独立指出一条陈述对应的材料版本与视频时间片段"
+        },
+        "learning_workspace_id": "01a159fc-ad27-72a3-8d97-24d42d37c0c5",
+        "learning_workspace_positions": {
+          "01a159fc-ad27-72a3-8d97-24d42d37c0c5": {
+            "book_id": "cloud-course-original-text",
+            "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+          }
+        },
+        "presentation": null,
+        "published_book_ref": {
+          "book_id": "cloud-course-original-text",
+          "publication_id": "01a159fc-9934-7aa3-9d3e-758fdf70162d"
+        },
+        "reader": {
+          "book_id": "cloud-course-original-text",
+          "layout": {
+            "active_preset": "technical_read",
+            "focused_slot": "technical.agent",
+            "open_slots": [
+              "technical.structure_map",
+              "technical.agent"
+            ],
+            "panel_sizes": {
+              "technical.agent": {
+                "kind": "percent",
+                "value": 30
+              },
+              "technical.structure_map": {
+                "kind": "percent",
+                "value": 24
+              }
+            },
+            "pinned_evidence": [],
+            "rev": 0,
+            "slot_order": {
+              "left": [
+                "technical.structure_map"
+              ],
+              "right": [
+                "technical.agent"
+              ]
+            }
+          },
+          "open_panels": [],
+          "profile": {
+            "agent_tools": [
+              "reader.layout.apply"
+            ],
+            "allowed_layout_actions": [
+              "open_slot",
+              "close_slot",
+              "focus_slot",
+              "set_active_tab",
+              "pin_evidence",
+              "unpin_evidence",
+              "set_panel_size",
+              "reorder_slot",
+              "set_layout_preset",
+              "reset_layout"
+            ],
+            "layout_presets": [
+              "technical_read"
+            ],
+            "profile_id": "technical_learning",
+            "profile_version": "technical_learning_v0",
+            "ui_slots": [
+              "technical.structure_map",
+              "technical.agent",
+              "technical.evidence"
+            ]
+          },
+          "revision": 0,
+          "selection": null,
+          "viewport": {
+            "anchor_lid": "1",
+            "bottom_lid": "1",
+            "top_lid": "1",
+            "visible_lids": [
+              "1"
+            ],
+            "width": 20
+          },
+          "visible_position": null
+        },
+        "result": {
+          "can_open_in_reader": true,
+          "context_after": "\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published.",
+          "context_before": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\n\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n",
+          "excerpt": {
+            "highlight": {
+              "end": 346,
+              "start": 259
+            },
+            "text": "# 来源窗口与证据范围\n\nSource windows are part of the evidence.\n\n来源窗口（也称证据窗口）是证据覆盖的具体位置或时间范围。解释一个结论时，应说明它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。“这门课讲过”不足以让读者找到支持结论的证据。\n\n本课程的配套示范视频是一段持续两秒的动态图案，没有讲课声音。人工字幕为“动态图案在两秒内持续变化”。它是用来练习来源定位的原创测试材料，不是学科教学视频。可以在工作区资料目录中找到这份视频，阅读字幕并查看对应的原始帧。\n\n如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。\n\n练习：说出支持陈述的材料、版本和时间范围。学习者自己能否说明理由需要根据作答判断；看过视频或看完两秒不等于已经掌握。\n\n课程后来发布新版本时，原来的回答仍应保留原资料发布编号和来源位置。这样用户采用新课程后，仍能回到当时实际读取的原文或视频片段。\n\nThe demonstration video contains a changing test pattern for two seconds. Identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published."
+          },
+          "heading_path": [],
+          "highlighted_quote": "如果问题只涉及第一秒的画面，来源应指向零至一秒这个时间片段；如果陈述涉及整段变化，可以指向零至两秒。文字讲义说明如何界定证据范围，视频提供可以实际回看的画面，两者的作用不同。",
+          "label": "正文",
+          "material_title": "来源窗口与证据范围",
+          "source_ref_id": "source_ref_27ca36e98331b592",
+          "source_url": "/?book_id=cloud-course-original-text&publication_id=01a159fc-9934-7aa3-9d3e-758fdf70162d&start_lid=1&end_lid=1&start_utf16=259&end_utf16=346",
+          "stale": false
+        },
+        "revision": 2,
+        "selected_chat": "chat-01a159fd-40a3-7b53-909c-a07bde44df08",
+        "workspace_id": "ws-01a159fd-4096-7e90-a9e9-f541c644eeb7"
+      }
+    }
+  ],
+  "answer": "**直接回答**：你标的那个时间片段，是给读者回看用的“这条陈述到底由哪几秒的画面支持”的记录。你的陈述只用到第一秒的画面，若标成 0–2 秒，窗口里就多出第二秒那一段——而第二秒在你的陈述里没有出现，读者按这个窗口回看时，看不出第二秒对结论起了什么作用，也就没法用它核对你的陈述。\n\n**课本给出的规则**\n\n来源窗口就是“证据覆盖的具体位置或时间范围”；写结论时要交代它来自哪份资料、哪个发布版本，以及原文位置或视频时间片段。\n\n这条规则落到这段示范视频上有明确写法：视频是持续两秒的动态图案，人工字幕是“动态图案在两秒内持续变化”。若问题只涉及第一秒的画面，来源应指向零至一秒；若陈述涉及整段变化，才可以指向零至两秒。\n\n**把规则用到你这道题上**\n\n视频总长是固定的（两秒），能选的只有窗口的宽窄。你这条陈述要成立，只有第一秒的画面被用到；把窗口拉到 0–2 秒，等于向读者声明你的结论覆盖了整段变化，而这一声明超出了你实际用到的画面。这就是“不精确”的具体含义：窗口比陈述的证据覆盖面宽，多出的部分无人核对。\n\n反过来也可以自查：假设（示例，用来说明写法）某条陈述写“图案从第一秒到第二秒换了样子”，它要成立必须同时看两处画面，标 0–1 秒就缺了比较对象，那时才该标 0–2 秒。这类判断与视频里图案具体长什么样无关，取决于你的陈述需要回看哪几秒。\n\n**答题时的一个动作**：写完一条陈述，问自己“这条陈述要成立，读者必须回看哪几秒”，答案就是窗口边界；若陈述里出现“整段”“一直在变”“和第一秒相比”这类说法，边界才推到整段。\n\n需要的话，我可以按这个判据出两条只考片段的陈述让你核对（不做交互页面）。",
+  "elapsed_ms": 24477.8517,
+  "provider_records": [
+    9,
+    10,
+    11,
+    12
+  ],
+  "usage": {
+    "requests": 4,
+    "total_tokens": 148948,
+    "missing_usage": 0,
+    "prompt_tokens": 145345,
+    "completion_tokens": 3603,
+    "cached_prompt_tokens": 90112
+  },
+  "validation": {
+    "checks": {
+      "execution_completed": true,
+      "delivery_not_incomplete": true,
+      "frozen_exam_calendar": true,
+      "no_negated_page_requirement": true
+    },
+    "all_passed": true,
+    "exam_calendars": [
+      {
+        "as_of": 1792511132,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792511132,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792511132,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      },
+      {
+        "as_of": 1792511132,
+        "current_local_date": "2026-10-20",
+        "exam_date": "2026-10-21",
+        "remaining_days": 1,
+        "utc_offset_minutes": 480,
+        "workspace_goal_revision": 2
+      }
+    ],
+    "semantic_review": "required"
+  }
+}

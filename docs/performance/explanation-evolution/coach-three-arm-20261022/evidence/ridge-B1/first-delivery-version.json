@@ -1,0 +1,279 @@
+{
+  "reference": {
+    "presentation_id": "presentation-1792666841944321900-3",
+    "revision": 1
+  },
+  "candidate_id": "candidate-1792666841944327200-4",
+  "owner": {
+    "book_id": "sample-book",
+    "session_id": "chat_2026-10-16T04:00:00Z_0"
+  },
+  "created_by_turn_id": "turn_1a986d9fd8e2f279",
+  "based_on": null,
+  "content": {
+    "method_refs": [],
+    "method_observations": {
+      "catalog": {
+        "methods": [
+          {
+            "boundary": "明确定义的离散更新；静态定义优先文本，连续物理过程使用自身时间模型",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "discrete-update",
+            "name": "追踪一次离散更新",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "混淆当前状态、更新量、下一状态或动画中间帧",
+            "revision": 3,
+            "root": "skills/presentation/methods/discrete-update/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "同一对象有明确映射和对应点；不同量纲或无对应关系的对象不作形变",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "object-transform",
+            "name": "保持身份的对象变换",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者能看见前后两张图，但无法对应同一对象或说明不变量",
+            "revision": 2,
+            "root": "skills/presentation/methods/object-transform/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "同页对照中的待应用输入、教师演示与学习者接手",
+            "revision": 3,
+            "root": "skills/presentation/methods/compare-one-factor/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有共同起点、时间和单位的明确模型；观察性数据不能直接解释为因果",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "compare-one-factor",
+            "name": "固定条件，只改变一个因素",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者把初始条件、时间和参数变化混在一起，无法解释结果差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/compare-one-factor/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "互不重叠且穷尽整体的非负部分；重叠集合和有负贡献的数据须另建表示",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "part-whole",
+            "name": "整体与部分保持对应",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "拆开以后丢失整体，或把面积、长度和占比混为一谈",
+            "revision": 2,
+            "root": "skills/presentation/methods/part-whole/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确输入、变换和依赖的有限流程；并行与循环需明确表示，不能画成错误线性顺序",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "process-reveal",
+            "name": "沿关系逐步展开过程",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者只记住步骤名字，无法追踪每一步如何改变同一批输入",
+            "revision": 2,
+            "root": "skills/presentation/methods/process-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "每条关键主张有可展示依据；构造材料必须标明，统计描述不能自行升级为因果或总体结论",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "evidence-chain",
+            "name": "从证据走到有边界的结论",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到结论，却分不清原始记录、计算、前提和可推断范围",
+            "revision": 2,
+            "root": "skills/presentation/methods/evidence-chain/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "机制理解先用可数对象与同状态联动；数值比较仍用同单位零基线图，查表与深入推导保留完整路径",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "counterexamples.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先看见数量关系，再核对参数",
+            "needs": [
+              "state"
+            ],
+            "obstacle": "参数齐全却不懂数字在数什么、如何由对象关系产生，或模式切换后须跨段回忆计数口径",
+            "revision": 3,
+            "root": "skills/presentation/methods/chart-reveal/v3",
+            "status": "adopted"
+          },
+          {
+            "boundary": "准确数据、统一单位和明确基线；负起点不用增长倍数，示意数据不得冒充观测",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "chart-reveal",
+            "name": "先建立尺度，再揭示数据",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "动画先吸引注意，读者却找不到单位、基线或数值差异",
+            "revision": 2,
+            "root": "skills/presentation/methods/chart-reveal/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "可建立尺度与位置关系的对象；概念层级或示意大小不可伪装成物理比例",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md"
+            ],
+            "id": "scale-zoom",
+            "name": "保留定位的尺度缩放",
+            "needs": [
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者看到放大细节，却丢失真实大小、单位和在整体中的位置",
+            "revision": 2,
+            "root": "skills/presentation/methods/scale-zoom/v2",
+            "status": "adopted"
+          },
+          {
+            "boundary": "有明确空间关系和可验证模型；相机只改变观察方式，三维不替代模型准确性",
+            "entrypoint": "example/index.html",
+            "files": [
+              "card.md",
+              "example/index.html",
+              "example/README.md",
+              "example/author.json",
+              "checks.md",
+              "runtime.js",
+              "adaptations/spring.html",
+              "adaptations/spring-author.json"
+            ],
+            "id": "spatial-linked-views",
+            "name": "三维结构与图解共用一个模型",
+            "needs": [
+              "three",
+              "state",
+              "continuous_scene"
+            ],
+            "obstacle": "读者无法把空间结构、运动、公式和图表对应，参数变化后各表示容易脱节",
+            "revision": 1,
+            "root": "skills/presentation/methods/spatial-linked-views/v1",
+            "status": "adopted"
+          }
+        ],
+        "revision": 6
+      },
+      "reads": [],
+      "supplied_files": []
+    },
+    "animation_assets": {},
+    "title": "带惩罚的直线拟合：把最优解从头推出来",
+    "content_files": {
+      "index.html": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>带惩罚的直线拟合：把最优解从头推出来</title><style>:root{--canvas:#fbfaf7;--ink:#1d1d1b;--surface:#fff;--line:#d9d5cc;--accent:#b4451f}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font-family:system-ui,-apple-system,\"Noto Sans SC\",\"PingFang SC\",\"Microsoft YaHei\",sans-serif;line-height:1.75;font-size:16px}main{max-width:860px;margin:0 auto;padding:20px 14px 60px}h1{font-size:1.42rem;line-height:1.35;margin:6px 0 8px}h2{font-size:1.14rem;margin:32px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}h3{font-size:1rem;margin:18px 0 4px}p{margin:10px 0}ul,ol{margin:10px 0;padding-left:1.35em}li{margin:5px 0}.eq{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:12px 0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92rem;white-space:pre-wrap;overflow-x:auto}.tag{display:inline-block;font-size:.72rem;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 8px;margin-left:6px;vertical-align:2px}.tw{overflow-x:auto;margin:12px 0}table{border-collapse:collapse;width:100%;font-size:.88rem;background:var(--surface)}th,td{border:1px solid var(--line);padding:5px 7px;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}caption{caption-side:bottom;font-size:.8rem;color:#5a5a52;text-align:left;padding-top:6px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin:16px 0}.ctrl{margin:12px 0}.ctrl-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.95rem}.ctrl-head output{font-family:ui-monospace,Consolas,monospace;color:var(--accent);font-weight:600}input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--accent)}select{width:100%;min-height:44px;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}.hint{font-size:.82rem;color:#5a5a52;margin-top:2px}.readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:12px 0}.ro{background:#f6f3ec;border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}.ro .k{display:block;font-size:.76rem;color:#5a5a52}.ro .v{display:block;font-family:ui-monospace,Consolas,monospace;font-size:1rem;font-weight:600}svg{display:block;width:100%;max-width:640px;height:auto;margin:6px auto 0}.note{background:#f6f3ec;border-left:3px solid var(--accent);padding:8px 10px;font-size:.9rem;margin:10px 0}.small{font-size:.86rem;color:#4a4a44}</style></head><body><main>\n<h1>带惩罚的直线拟合：把最优解从头推出来</h1>\n<p class=\"small\">五个观测点、一个惩罚项。下面从目标函数一路走到唯一性条件，再用一个可拖 λ 的面板核对同一组公式，最后讨论五个 x 都等于 2 的退化情形。文中的数值都来自这组固定数据；交互区切换数据组后，读数按新数据重算。</p>\n\n<h2>1. 目标函数：五个残差被压成两个数</h2>\n<div class=\"tw\"><table>\n<caption>固定示例：x=(0,1,2,3,4)，y=(-1,0,2,2,5)；uᵢ=xᵢ−2，ȳ=1.6，n=5。</caption>\n<thead><tr><th>i</th><th>xᵢ</th><th>yᵢ</th><th>uᵢ=xᵢ−2</th><th>yᵢ−ȳ</th><th>uᵢ(yᵢ−ȳ)</th><th>uᵢ²</th></tr></thead>\n<tbody>\n<tr><td>1</td><td>0</td><td>−1</td><td>−2</td><td>−2.6</td><td>5.2</td><td>4</td></tr>\n<tr><td>2</td><td>1</td><td>0</td><td>−1</td><td>−1.6</td><td>1.6</td><td>1</td></tr>\n<tr><td>3</td><td>2</td><td>2</td><td>0</td><td>0.4</td><td>0</td><td>0</td></tr>\n<tr><td>4</td><td>3</td><td>2</td><td>1</td><td>0.4</td><td>0.4</td><td>1</td></tr>\n<tr><td>5</td><td>4</td><td>5</td><td>2</td><td>3.4</td><td>6.8</td><td>4</td></tr>\n<tr><td>合计</td><td>10</td><td>8</td><td>0</td><td>0</td><td>14</td><td>10</td></tr>\n</tbody></table></div>\n<p>要最小化的量是</p>\n<div class=\"eq\">J(a,b) = Σᵢ₌₁⁵ [yᵢ − (a·xᵢ + b)]² + λ·a²，  λ ≥ 0</div>\n<p>三个说明，后面每一步都会用到：</p>\n<ul>\n<li><b>第一项是总和。</b>把五个残差 rᵢ = yᵢ − (a·xᵢ + b) 各自平方再相加，单位是 y 的平方。如果换成平均值口径 (1/5)Σrᵢ²，整条目标差一个常数因子：平均值 + λa² = (1/5)[Σrᵢ² + 5λa²]，等于把惩罚系数放大成 5λ。本页的 λ 一律按总和口径读，这也是这里不除以 n 的原因。</li>\n<li><b>第二项只含 a。</b>截距 b 不进入惩罚，这一条会在第 4 节决定\"直线为什么始终经过均值点\"。</li>\n<li><b>λ 是给定常数，不是被优化的量。</b>J 的自变量只有 (a, b) 两个数。</li>\n</ul>\n\n<h2>2. 换坐标：把直线写成\"均值点处的取值 + 斜率 × 横坐标偏差\"</h2>\n<p>先算两个均值：x̄ = 10/5 = 2，ȳ = 8/5 = 1.6。再定义偏差 uᵢ = xᵢ − x̄（表第 4 列，合计为 0），以及一个新量 c = a·x̄ + b。</p>\n<div class=\"eq\">a·xᵢ + b = a·(x̄ + uᵢ) + b = (a·x̄ + b) + a·uᵢ = c + a·uᵢ</div>\n<p>c 就是直线在 x = x̄ 处的取值。反过来 b = c − a·x̄。所以 (a,b) 与 (a,c) 是一一对应的换元：给定 (a,c) 唯一决定 (a,b)，反之也唯一。既然只是换写法，\"在 (a,b) 上最小化 J\"和\"在 (a,c) 上最小化 J\"有同一批最优点。这就是这次改写可以用的理由。</p>\n<h3>2.1 逐项展开残差</h3>\n<div class=\"eq\">rᵢ = yᵢ − c − a·uᵢ = (yᵢ − ȳ) − (c − ȳ) − a·uᵢ\n\nΣ rᵢ² = Σ(yᵢ−ȳ)² + n·(c−ȳ)² + a²·Σuᵢ²\n        − 2(c−ȳ)·Σ(yᵢ−ȳ) − 2a·Σuᵢ(yᵢ−ȳ) + 2(c−ȳ)·a·Σuᵢ</div>\n<h3>2.2 交叉项消失的地方，以及留下的那一项</h3>\n<ul>\n<li>含 (c−ȳ) 的项 −2(c−ȳ)Σ(yᵢ−ȳ)：因为 ȳ 是均值，Σ(yᵢ−ȳ) = 0（表第 5 列合计为 0），这一项整体消失。</li>\n<li>含 (c−ȳ)·a 的项 +2(c−ȳ)aΣuᵢ：因为 uᵢ 是相对均值的偏差，Σuᵢ = 0（表第 4 列合计为 0），这一项也消失。</li>\n<li>留下的交叉项 −2a·Σuᵢ(yᵢ−ȳ) = −2a·Sxy。它一般不为零：uᵢ 与 (yᵢ−ȳ) 可以同号，本组数据 Sxy = 14 &gt; 0，横坐标偏大的点纵坐标也偏大。</li>\n</ul>\n<p>机制一句话：中心化让两组偏差各自求和为零，于是\"整体抬高/压低的那个位移 c−ȳ\"与\"斜率 a\"之间没有可搭的乘积项；a 的一次项只剩下来自数据同向程度的那一份，权重正是 x 的偏差与 y 的偏差的同向程度。</p>\n<h3>2.3 加上惩罚并代入这组数</h3>\n<div class=\"eq\">Sxx = Σuᵢ² = 4+1+0+1+4 = 10\nSxy = Σuᵢ(yᵢ−ȳ) = 5.2+1.6+0+0.4+6.8 = 14\nSyy = Σ(yᵢ−ȳ)² = 6.76+2.56+0.16+0.16+11.56 = 21.2\n\nJ = Syy + n(c−ȳ)² + (Sxx+λ)a² − 2·Sxy·a\n  = 21.2 + 5(c−1.6)² + (10+λ)a² − 28a</div>\n<p>每一项的角色：21.2 是\"只用 ȳ 预测全部点\"时的误差平方总和；5(c−1.6)² 是把整条线搬离均值高度的代价；最后两项决定斜率。注意 −28a 与 λ 无关，它来自数据本身的倾斜。</p>\n\n<h2>3. 配方：下界、取到点、唯一性</h2>\n<p>把只含 a 的两块合并成一个平方。λ ≥ 0 时 10+λ ≥ 10 &gt; 0，除以它是安全的：</p>\n<div class=\"eq\">(10+λ)a² − 28a = (10+λ)·(a − 14/(10+λ))² − 196/(10+λ)</div>\n<p>核对：右边展开得 (10+λ)a² − 28a + 196/(10+λ)，再减去 196/(10+λ) 就回到左边。代回 J：</p>\n<div class=\"eq\">J = [21.2 − 196/(10+λ)] + 5·(c−1.6)² + (10+λ)·(a − 14/(10+λ))²</div>\n<h3>3.1 全局最小值</h3>\n<ul>\n<li>两个平方项的系数 5 &gt; 0 与 10+λ &gt; 0 都是正的，平方本身非负，因此对任意 (a, c) 都有 J ≥ 21.2 − 196/(10+λ)。</li>\n<li>等号当且仅当 c = 1.6 且 a = 14/(10+λ)。这两个条件互不牵制，可以同时满足。</li>\n<li>下界被真正取到，所以这个点就是全局最小点。这一步直接给出\"最小值\"，而不只是\"某个点导数为零\"。</li>\n</ul>\n<h3>3.2 什么时候唯一</h3>\n<p>正系数乘非负平方，只有平方等于零才取到下界。当 Sxx+λ = 10+λ &gt; 0 时，a 只有唯一取值能取到下界；同时 n = 5 &gt; 0 使 c 也只有唯一取值。于是 (a,c) 唯一，换回 (a,b) 也唯一。对本组数据，λ = 0 时 10+0 = 10 &gt; 0，所以 λ ≥ 0 的每一档都有唯一最小解。要让唯一性失效，需要 Sxx+λ = 0，也就是 Sxx = 0 且 λ = 0——第 6 节的数据正是这种情形。</p>\n<h3>3.3 与求导对照</h3>\n<div class=\"eq\">∂J/∂a = 2(10+λ)a − 28，∂J/∂c = 10(c−1.6)\n\n令两式为零：a = 14/(10+λ)，c = 1.6</div>\n<p>结果与配方一致，两种看法分工不同：求导只给出候选点，配方给出\"这是最小值、并且唯一点\"的理由。J 关于 (a,c) 是二次函数且二次项系数全正，所以候选点就是全局最小点。</p>\n<p>λ = 2 的具体数值：a = 14/12 = 7/6 ≈ 1.167，c = 1.6，J 的最小值 = 21.2 − 196/12 = 21.2 − 16.333 = 4.867。</p>\n\n<h2>4. 回代 b：截距为什么跟着变</h2>\n<div class=\"eq\">b = c − a·x̄ = 1.6 − 2a\n\nλ = 0：a = 1.4，   b = −1.2，  J = 1.6\nλ = 2：a ≈ 1.167， b ≈ −0.733，J ≈ 4.867\nλ = 10：a = 0.7，  b = 0.2，   J = 11.4</div>\n<p>变化率（对 λ 求导）：da/dλ = −14/(10+λ)² &lt; 0，db/dλ = 28/(10+λ)² &gt; 0。在 λ = 2 处，λ 每增加 1，斜率约减少 0.097、截距约增加 0.194。这是该点的局部速率，整段并不匀速。</p>\n<p>截距为什么会动，来自 b 的最优条件：∂J/∂b = −2Σ(yᵢ − a·xᵢ − b) = 0 给出 Σrᵢ = 0，即平均残差为零，等价于</p>\n<div class=\"eq\">a·x̄ + b = ȳ，本组数据即 2a + b = 1.6</div>\n<p>这条条件里没有 λ，因为惩罚项不含 b。所以每一档 λ 的最优点都必须落在这条约束上：a 被 λ 压低，b 只能在约束上反向补偿。几何上就是直线绕着 (2, 1.6) 转动。λ = 0 时这条同样成立，普通最小二乘的残差和也是零。</p>\n\n<h2>5. 交互：在同一个 J 上改 λ</h2>\n<div class=\"panel\">\n<div class=\"ctrl\"><div class=\"ctrl-head\"><label for=\"lambda\">λ（惩罚强度）</label><output id=\"lambdaOut\" for=\"lambda\">2</output></div>\n<input id=\"lambda\" type=\"range\" min=\"0\" max=\"10\" step=\"0.5\" value=\"2\" data-presentation-parameter=\"lambda\">\n<div class=\"hint\">范围 0–10，步长 0.5。拖动后直线、读数与下面的 J(a) 曲线同时更新。</div></div>\n<div class=\"ctrl\"><label for=\"dataset\">数据组</label>\n<select id=\"dataset\" data-presentation-parameter=\"dataset\">\n<option value=\"original\">原始数据：x = 0, 1, 2, 3, 4</option>\n<option value=\"degenerate\">退化数据：五个 x 都等于 2</option>\n</select></div>\n<div class=\"ctrl\" id=\"demoWrap\"><div class=\"ctrl-head\"><label for=\"demoA\">对比直线：斜率 a₀</label><output id=\"demoAOut\" for=\"demoA\">0</output></div>\n<input id=\"demoA\" type=\"range\" min=\"-2\" max=\"3\" step=\"0.5\" value=\"0\" data-presentation-parameter=\"demo_a\">\n<div class=\"hint\">另画一条过均值点的灰虚线 ŷ = a₀·(x − 2) + 1.6，并给出它的 SSE 与 J。原始数据时它在 J(a) 曲线上比最优点高，差额写在下方说明里；退化数据且 λ = 0 时，它就是并列解族里被画出的那一条，J 与最优点相同。</div></div>\n<svg id=\"chart1\" viewBox=\"0 0 400 300\" role=\"img\" aria-label=\"散点与当前 λ 的拟合直线\"><g id=\"g1\"></g></svg>\n<p class=\"small\" id=\"chartNote\">散点固定；红线是当前 λ 的最小解直线。</p>\n<div class=\"readouts\" id=\"readout-region\">\n<div class=\"ro\"><span class=\"k\">斜率 a</span><span class=\"v\" id=\"roA\">—</span></div>\n<div class=\"ro\"><span class=\"k\">截距 b</span><span class=\"v\" id=\"roB\">—</span></div>\n<div class=\"ro\"><span class=\"k\">未加惩罚的误差平方和 SSE = Σrᵢ²</span><span class=\"v\" id=\"roSSE\">—</span></div>\n<div class=\"ro\"><span class=\"k\">惩罚项 λa²</span><span class=\"v\" id=\"roPen\">—</span></div>\n<div class=\"ro\"><span class=\"k\">目标值 J = SSE + λa²</span><span class=\"v\" id=\"roJ\">—</span></div>\n<div class=\"ro\"><span class=\"k\">直线在 x̄ = 2 处的值 c</span><span class=\"v\" id=\"roC\">—</span></div>\n</div>\n<div class=\"eq\" id=\"formulaLine\">—</div>\n<div class=\"note\" id=\"statusNote\">—</div>\n<svg id=\"chart2\" viewBox=\"0 0 400 170\" role=\"img\" aria-label=\"J 随 a 变化的曲线与最小点\"><g id=\"g2\"></g></svg>\n<p class=\"small\">上图把 c 固定在其最优值后，画出 J 随 a 变化的整条曲线。曲线的最低点应当与上面算出的 a 一致——这是核对，不是证明；理由在第 3 节。</p>\n</div>\n<p>面板里的读数按当前 λ 与当前数据组重算。SSE 与 J 分开显示：前者只看残差，后者再加上 λa²。拖 λ 时可以用眼睛确认两件事：直线始终穿过绿圈标出的 (2, 1.6)，以及斜率下降时截距同步上升。</p>\n\n<h2>6. 退化数据：五个 x 都等于 2</h2>\n<p>把数据换成 x = (2,2,2,2,2)、y 不变，仍用第 2 节的分解式。此时 x̄ = 2、ȳ = 1.6 不变，偏差 uᵢ 全部为零：</p>\n<div class=\"eq\">Sxx = 0，Sxy = 0，Syy = 21.2\nJ = 21.2 + 5(c−1.6)² + λa²，其中 c = 2a + b</div>\n<h3>6.1 λ = 0：一整族并列最优</h3>\n<div class=\"eq\">J = 21.2 + 5(2a+b−1.6)²\n\n最小值 21.2，条件只有 2a + b = 1.6</div>\n<p>对任意 a 取 b = 1.6 − 2a，J 都等于 21.2：a = 0 → b = 1.6；a = 1 → b = −0.4；a = −1 → b = 3.6。三条直线的 J 完全相同，无穷多条直线并列最优。数据能确定的只有 c = 2a + b（也就是 x = 2 这一处的预测值 1.6），a 与 b 单独都不被确定。此时给出一个\"唯一 a\"的读数，等于隐瞒了一个自由度；面板因此显示\"不确定\"，并只把示例线当作族中的一条画出来。</p>\n<h3>6.2 λ &gt; 0：唯一</h3>\n<div class=\"eq\">J = 21.2 + 5(c−1.6)² + λ·a²，λ &gt; 0</div>\n<p>λa² 除 a = 0 外严格为正，所以最小化必须先取 a = 0，再由 c = 1.6 定出 b = 1.6。解唯一，J 的最小值仍是 21.2（惩罚项在最优点上为 0）。公式 a = Sxy/(Sxx+λ) = 0/(0+λ) = 0 在 λ &gt; 0 时照样成立；λ = 0 时它变成 0/0，公式失效的位置与唯一性失效的位置是同一处。</p>\n<h3>6.3 正则化在这里做了什么</h3>\n<p>x 没有变化时，数据只能定位\"在 x = 2 处的预测值\"。任何通过 (2,1.6) 的直线，配合相应的截距，都给出同样的残差：把 a 改大造成的整体倾斜，可以在这一列上完全用 b 抵消。也就是说数据无法区分斜率与截距。</p>\n<p>λa² 给斜率的绝对值附加代价（因为平方，a &gt; 0 与 a &lt; 0 都要付费），于是在同样好的族里按\"a 离 0 最近\"挑出一条，选出 a = 0、b = 1.6。它做的是一件事：把并列解变成一条按规则选出的解。关于 y 随 x 怎样变化，它没有增加任何信息，J 的最小值也一点没降。</p>\n<p>这个挑法依赖\"惩罚只落在 a 上\"这一设定。假设同一道题把惩罚换成 λb²（λ &gt; 0），退化数据的解就变成 b = 0、a = 0.8（因为 2a + b = 1.6 且 b² 最小），最小值仍是 21.2。两者都能选出唯一解，选中的点不同；本页的 J 只惩罚 a，所以上面被选出的是 a = 0、b = 1.6。</p>\n\n<h2>7. 回到你列出的四个问题</h2>\n<ol>\n<li><b>增大 λ 为什么改变斜率。</b>a 方向上的二次系数从 Sxx = 10 涨到 10+λ，同样大的 a 要付 2(10+λ)a 的边际代价，平衡点 a = 14/(10+λ) 因此向 0 移动；Sxy = 14 &gt; 0 时单调下降，局部速率 −14/(10+λ)²。</li>\n<li><b>截距为什么跟着变。</b>b 的最优条件恒为 2a + b = 1.6，与 λ 无关。a 下降 0.1，b 必须上升 0.2 才留在这条约束上，直线绕 (2,1.6) 转。</li>\n<li><b>为什么仍经过均值点。</b>惩罚不含 b，所以 Σrᵢ = 0 在每一档 λ 都成立，等价于 a·x̄ + b = ȳ，即直线在 x̄ = 2 处的取值永远等于 1.6。</li>\n<li><b>x 没有变化时正则化解决什么。</b>解决\"并列最优里取哪一条\"，也就是解的选取（可识别性与唯一性）。代价是把斜率压向 0；它不改善拟合，也不提供 x 与 y 之间关系的信息。</li>\n</ol>\n<p class=\"small\">要自己复现这条推导，顺序是：换坐标 (a,b)→(a,c) → 展开并消掉两个交叉项 → 对 a 配方读出下界与取到点 → 换回 b = c − a·x̄ → 检查 Sxx+λ &gt; 0 判断唯一性。第 3 节与第 6 节用的是同一个分解式，差别只在 Sxx 与 Sxy 是否为零。</p>\n</main><script>(function(){var DATA={original:{x:[0,1,2,3,4],y:[-1,0,2,2,5]},degenerate:{x:[2,2,2,2,2],y:[-1,0,2,2,5]}};var state={lambda:2,dataset:'original',demoA:0};\nfunction stats(key){var d=DATA[key],x=d.x,y=d.y,n=x.length,i,sx=0,sy=0;for(i=0;i<n;i++){sx+=x[i];sy+=y[i];}var xb=sx/n,yb=sy/n,sxx=0,sxy=0,syy=0,u,v;for(i=0;i<n;i++){u=x[i]-xb;v=y[i]-yb;sxx+=u*u;sxy+=u*v;syy+=v*v;}return{x:x,y:y,n:n,xb:xb,yb:yb,sxx:sxx,sxy:sxy,syy:syy};}\nfunction solve(){var s=stats(state.dataset),lam=state.lambda,den=s.sxx+lam,uniq=den>1e-9,a=null,b,aUsed;if(uniq){a=s.sxy/den;b=s.yb-a*s.xb;aUsed=a;}else{aUsed=state.demoA;b=s.yb-aUsed*s.xb;}var c=aUsed*s.xb+b,sse=0,i,r;for(i=0;i<s.n;i++){r=s.y[i]-(aUsed*s.x[i]+b);sse+=r*r;}var pen=lam*aUsed*aUsed;return{s:s,lam:lam,uniq:uniq,a:a,b:b,aUsed:aUsed,c:c,sse:sse,pen:pen,J:sse+pen};}\nfunction n3(v){return (Math.abs(v)<5e-4?0:v).toFixed(3);}\nfunction n1(v){var t=(Math.abs(v)<5e-4?0:v).toFixed(1);return t.indexOf('.0')===t.length-2?t.slice(0,-2):t;}\nvar C1={W:400,H:300,L:40,R:12,T:12,B:30,xmin:-0.7,xmax:4.7,ymin:-3.2,ymax:6.4};\nfunction px1(x){return C1.L+(x-C1.xmin)/(C1.xmax-C1.xmin)*(C1.W-C1.L-C1.R);}\nfunction py1(y){return C1.T+(C1.ymax-y)/(C1.ymax-C1.ymin)*(C1.H-C1.T-C1.B);}\nvar C2={W:400,H:170,L:40,R:12,T:12,B:28,amin:-0.8,amax:2.6};\nfunction px2(a){return C2.L+(a-C2.amin)/(C2.amax-C2.amin)*(C2.W-C2.L-C2.R);}\nfunction seg(a,b,attrs){var ya=a*C1.xmin+b,yb2=a*C1.xmax+b;return '<line x1=\"'+px1(C1.xmin).toFixed(1)+'\" y1=\"'+py1(ya).toFixed(1)+'\" x2=\"'+px1(C1.xmax).toFixed(1)+'\" y2=\"'+py1(yb2).toFixed(1)+'\" clip-path=\"url(#clip1)\" '+attrs+'/>';}\nfunction chart1(r){var s=r.s,gx,gy,o='',i,dxs=[],jitter=(state.dataset==='degenerate');\nfor(i=0;i<s.n;i++){dxs.push(jitter?(i-2)*0.06:0);}\no+='<defs><clipPath id=\"clip1\"><rect x=\"'+C1.L+'\" y=\"'+C1.T+'\" width=\"'+(C1.W-C1.L-C1.R)+'\" height=\"'+(C1.H-C1.T-C1.B)+'\"/></clipPath></defs>';\no+='<rect x=\"'+C1.L+'\" y=\"'+C1.T+'\" width=\"'+(C1.W-C1.L-C1.R)+'\" height=\"'+(C1.H-C1.T-C1.B)+'\" fill=\"#fffdf8\" stroke=\"#e6e2d9\"/>';\nfor(gx=0;gx<=4;gx++){o+='<line x1=\"'+px1(gx).toFixed(1)+'\" y1=\"'+C1.T+'\" x2=\"'+px1(gx).toFixed(1)+'\" y2=\"'+py1(C1.ymin).toFixed(1)+'\" stroke=\"#f1ede4\"/>';o+='<text x=\"'+px1(gx).toFixed(1)+'\" y=\"'+(py1(C1.ymin)+14)+'\" font-size=\"12\" text-anchor=\"middle\" fill=\"#5a5a52\">'+gx+'</text>';}\nfor(gy=-3;gy<=6;gy++){o+='<line x1=\"'+C1.L+'\" y1=\"'+py1(gy).toFixed(1)+'\" x2=\"'+px1(C1.xmax).toFixed(1)+'\" y2=\"'+py1(gy).toFixed(1)+'\" stroke=\"#f1ede4\"/>';o+='<text x=\"'+(C1.L-4)+'\" y=\"'+(py1(gy)+4).toFixed(1)+'\" font-size=\"12\" text-anchor=\"end\" fill=\"#5a5a52\">'+gy+'</text>';}\no+='<text x=\"'+(C1.W-6)+'\" y=\"'+(py1(C1.ymin)+14)+'\" font-size=\"12\" text-anchor=\"end\" fill=\"#5a5a52\">x</text>';\nif(!r.uniq){var d;for(d=-1;d<=1;d+=2){var ag=r.aUsed+d*1.5;if(Math.abs(ag)>6){continue;}o+=seg(ag,r.b,'stroke=\"#b7b1a3\" stroke-width=\"1.6\" stroke-dasharray=\"7 5\"');}}\nif(r.uniq&&Math.abs(state.demoA-r.aUsed)>0.01){o+=seg(state.demoA,s.yb-state.demoA*s.xb,'stroke=\"#7a746a\" stroke-width=\"1.7\" stroke-dasharray=\"6 4\"');}\no+=seg(r.aUsed,r.b,'stroke=\"#b4451f\" stroke-width=\"2.6\"');\nfor(i=0;i<s.n;i++){var xv=s.x[i]+dxs[i],yh=r.aUsed*s.x[i]+r.b;o+='<line x1=\"'+px1(xv).toFixed(1)+'\" y1=\"'+py1(s.y[i]).toFixed(1)+'\" x2=\"'+px1(xv).toFixed(1)+'\" y2=\"'+py1(yh).toFixed(1)+'\" stroke=\"#b4451f\" stroke-width=\"1.3\" stroke-dasharray=\"3 3\" opacity=\"0.8\"/>';}\nfor(i=0;i<s.n;i++){o+='<circle cx=\"'+px1(s.x[i]+dxs[i]).toFixed(1)+'\" cy=\"'+py1(s.y[i]).toFixed(1)+'\" r=\"4.4\" fill=\"#1d1d1b\" stroke=\"#fffdf8\" stroke-width=\"1.4\"/>';}\no+='<circle cx=\"'+px1(s.xb).toFixed(1)+'\" cy=\"'+py1(s.yb).toFixed(1)+'\" r=\"7\" fill=\"none\" stroke=\"#2f6b4f\" stroke-width=\"2\"/>';\nvar mlx=px1(s.xb)+11,manch='start';if(state.dataset==='degenerate'){mlx=px1(s.xb)-11;manch='end';}\no+='<text x=\"'+mlx.toFixed(1)+'\" y=\"'+(py1(s.yb)-11).toFixed(1)+'\" font-size=\"12\" text-anchor=\"'+manch+'\" fill=\"#2f6b4f\">均值点 ('+n1(s.xb)+', '+n1(s.yb)+')</text>';\nreturn o;}\nfunction chart2(r){var s=r.s,lam=r.lam,i,a,v,maxJ=-1e9,pts=[],o='',f=function(t){return s.syy+(s.sxx+lam)*t*t-2*s.sxy*t;};\nfor(i=0;i<=160;i++){a=C2.amin+(C2.amax-C2.amin)*i/160;v=f(a);pts.push([a,v]);if(v>maxJ){maxJ=v;}}\nvar ymax=Math.max(maxJ*1.05,5),my=function(t){return C2.T+(ymax-t)/ymax*(C2.H-C2.T-C2.B);},d='M';\no+='<rect x=\"'+C2.L+'\" y=\"'+C2.T+'\" width=\"'+(C2.W-C2.L-C2.R)+'\" height=\"'+(C2.H-C2.T-C2.B)+'\" fill=\"#fffdf8\" stroke=\"#e6e2d9\"/>';\n[0,ymax/2,ymax].forEach(function(t){o+='<line x1=\"'+C2.L+'\" y1=\"'+my(t).toFixed(1)+'\" x2=\"'+(C2.W-C2.R)+'\" y2=\"'+my(t).toFixed(1)+'\" stroke=\"#f1ede4\"/>';o+='<text x=\"'+(C2.L-4)+'\" y=\"'+(my(t)+4).toFixed(1)+'\" font-size=\"11\" text-anchor=\"end\" fill=\"#5a5a52\">'+t.toFixed(0)+'</text>';});\nfor(i=0;i<pts.length;i++){d+=(i?' L':' ')+px2(pts[i][0]).toFixed(1)+' '+my(pts[i][1]).toFixed(1);}\no+='<path d=\"'+d+'\" fill=\"none\" stroke=\"#2f6b4f\" stroke-width=\"2.2\"/>';\nif(r.uniq){var aa=r.a,ja=f(aa);o+='<circle cx=\"'+px2(aa).toFixed(1)+'\" cy=\"'+my(ja).toFixed(1)+'\" r=\"5\" fill=\"#b4451f\"/>';o+='<text x=\"'+(px2(aa)+9).toFixed(1)+'\" y=\"'+(my(ja)-8).toFixed(1)+'\" font-size=\"11\" fill=\"#b4451f\">a='+n3(aa)+', J='+n3(ja)+'</text>';}\nif(r.uniq&&Math.abs(state.demoA-r.a)>0.01){var a0v=state.demoA,j0v=f(a0v);if(j0v<=ymax){o+='<circle cx=\"'+px2(a0v).toFixed(1)+'\" cy=\"'+my(j0v).toFixed(1)+'\" r=\"4.2\" fill=\"none\" stroke=\"#7a746a\" stroke-width=\"1.8\"/>';}}\nelse{o+='<line x1=\"'+C2.L+'\" y1=\"'+my(f(0)).toFixed(1)+'\" x2=\"'+(C2.W-C2.R)+'\" y2=\"'+my(f(0)).toFixed(1)+'\" stroke=\"#b4451f\" stroke-width=\"3\"/>';o+='<text x=\"'+(C2.L+8)+'\" y=\"'+(my(f(0))-8).toFixed(1)+'\" font-size=\"11\" fill=\"#b4451f\">整段水平：J 恒为 '+n3(f(0))+'，a 任取都同样好</text>';}\n[0,1,2].forEach(function(t){o+='<text x=\"'+px2(t).toFixed(1)+'\" y=\"'+(C2.H-C2.B+16)+'\" font-size=\"11\" text-anchor=\"middle\" fill=\"#5a5a52\">'+t+'</text>';});\no+='<text x=\"'+(C2.W-6)+'\" y=\"'+(C2.H-C2.B+16)+'\" font-size=\"11\" text-anchor=\"end\" fill=\"#5a5a52\">a</text>';\no+='<text x=\"'+(C2.L+4)+'\" y=\"'+(C2.T+12)+'\" font-size=\"11\" fill=\"#5a5a52\">J(a)</text>';\nreturn o;}\nvar els={};['lambda','dataset','demoA','lambdaOut','demoAOut','demoWrap','g1','g2','roA','roB','roSSE','roPen','roJ','roC','formulaLine','statusNote','chartNote'].forEach(function(id){els[id]=document.getElementById(id);});\nfunction sync(){els.lambda.value=String(state.lambda);els.dataset.value=state.dataset;els.demoA.value=String(state.demoA);}\nfunction render(){var r=solve();els.lambdaOut.textContent=n1(state.lambda);els.demoAOut.textContent=n1(state.demoA);\nels.demoWrap.hidden=false;\nels.g1.innerHTML=chart1(r);els.g2.innerHTML=chart2(r);\nels.roA.textContent=r.uniq?n3(r.a):'不确定';\nels.roB.textContent=r.uniq?n3(r.b):n3(r.b)+'（示例线）';\nels.roSSE.textContent=n3(r.sse);els.roPen.textContent=n3(r.pen);els.roJ.textContent=n3(r.J);els.roC.textContent=n3(r.c);\nvar s=r.s,fl='';\nif(r.uniq){fl='a = S_xy / (S_xx + λ) = '+n1(s.sxy)+' / ('+n1(s.sxx)+' + '+n1(r.lam)+') = '+n3(r.a)+'\\nb = ȳ − a·x̄ = '+n1(s.yb)+' − '+n1(s.xb)+'×'+n3(r.a)+' = '+n3(r.b)+'\\nJ = SSE + λa² = '+n3(r.sse)+' + '+n3(r.pen)+' = '+n3(r.J);}\nelse{fl='S_xx = 0，S_xy = 0，λ = 0：a = S_xy/(S_xx+λ) = 0/0，公式在这里失效，a 不被数据确定。\\n能确定的只有 c = 2a + b = '+n3(r.c)+'；给定任一个 a，b = '+n1(s.yb)+' − '+n1(s.xb)+'·a 就给出同样好的直线。\\n画面上这条是示例线：a = '+n1(state.demoA)+'，b = '+n3(r.b)+'，SSE = '+n3(r.sse)+'，λa² = 0，J = '+n3(r.J)+'。';}\nels.formulaLine.textContent=fl;\nvar note;\nif(!r.uniq){note='当前：退化数据，λ = 0。所有满足 2a + b = 1.6 的直线 J 都等于 '+n3(r.J)+'，并列最优；a 与 b 单独都不被确定，读数里的 b 属于画出的那条示例线。';}\nelse if(state.dataset==='degenerate'){note='当前：退化数据，λ = '+n1(r.lam)+' > 0。惩罚项把 a 压到 0，再由 2a + b = 1.6 定出 b = 1.6，解唯一；J 的最小值仍是 '+n3(r.J)+'，其中惩罚项为 0。';}\nelse{note='当前：原始数据，λ = '+n1(r.lam)+'。唯一最小解 a = '+n3(r.a)+'、b = '+n3(r.b)+'。SSE 只算残差平方和，J 是在它之上再加 '+n3(r.pen)+' 的惩罚。';}\nvar a0=state.demoA,b0=r.s.yb-a0*r.s.xb,sse0=0,ii0,rr0;\nfor(ii0=0;ii0<r.s.n;ii0++){rr0=r.s.y[ii0]-(a0*r.s.x[ii0]+b0);sse0+=rr0*rr0;}\nvar j0=sse0+r.lam*a0*a0,gap=j0-r.J;\nnote+=' 对比直线 a₀ = '+n1(a0)+'（b₀ = '+n3(b0)+'）：SSE = '+n3(sse0)+'，λa₀² = '+n3(r.lam*a0*a0)+'，J = '+n3(j0)+'。';\nnote+=r.uniq?(gap>5e-4?'它比最优点高 '+n3(gap)+'。':'它与最优点重合。'):'把 a₀ 换成任何别的值，画出的直线同样好，J 都还是 '+n3(j0)+'。';\nels.statusNote.textContent=note;\nvar cn=state.dataset==='degenerate'?'散点固定；五个点的横坐标都等于 2，画面上左右各错开 0.06 个单位，只为分辨点，不改变任何数值。红色虚线是残差 rᵢ = yᵢ − (a·xᵢ + b)，因为横坐标都是 2，所有残差都量到同一处的 c = 2a + b。':'散点固定；红线是当前 λ 的最小解直线，绿圈是均值点 ('+n1(r.s.xb)+', '+n1(r.s.yb)+')，任何 λ 下直线都经过它。红色虚线是残差 rᵢ = yᵢ − (a·xᵢ + b)，每一段的长度平方对应 SSE 里的一个加项。';\nif(!r.uniq){cn+='灰色虚线是同一族里另外两条直线，它们的 J 也都等于 21.2。';}else{cn+='灰虚线是对比滑块那条直线（斜率 a₀，同样过均值点）；它的 SSE 与 J 写在下面说明里。';}\nels.chartNote.textContent=cn;}\nels.lambda.addEventListener('input',function(){state.lambda=parseFloat(this.value);render();});\nels.dataset.addEventListener('change',function(){state.dataset=this.value;render();});\nels.demoA.addEventListener('input',function(){state.demoA=parseFloat(this.value);render();});\nif(window.presentation){window.presentation.registerStateReader(function(){var r=solve();return {values:{lambda:state.lambda,dataset:state.dataset,demo_a:state.demoA},visible_step:null,observation:{summary:r.uniq?'λ='+n1(state.lambda)+'，数据组 '+state.dataset+'：唯一最小解 a='+n3(r.a)+'，b='+n3(r.b)+'，J='+n3(r.J):'λ=0 且退化数据：a 不被确定，只确定 2a+b='+n3(r.c)+'，所有等价直线 J 都是 '+n3(r.J),state:{lambda:state.lambda,dataset:state.dataset,demo_a:state.demoA,a:r.uniq?Number(n3(r.a)):null,b:Number(n3(r.b)),sse:Number(n3(r.sse)),penalty:Number(n3(r.pen)),J:Number(n3(r.J)),unique:r.uniq}}};});\nwindow.presentation.registerStateRestorer(function(saved){var raw=(saved&&saved.values)||{},v=raw.page||raw;if(typeof v.lambda==='number'){state.lambda=v.lambda;}if(v.dataset==='original'||v.dataset==='degenerate'){state.dataset=v.dataset;}if(typeof v.demo_a==='number'){state.demoA=v.demo_a;}sync();render();});}\nsync();render();})();</script></body></html>"
+    },
+    "entrypoint": "index.html",
+    "readable_content": "这是一份中文推导长页，用固定数据 x=(0,1,2,3,4)、y=(-1,0,2,2,5) 推出带 L2 惩罚（只惩罚斜率）的直线拟合最优解。目标函数为五个残差平方的总和加 λa²（λ≥0，单位为 y 的平方）。页面先给数据表与目标函数，说明目标是总和而非平均值：若改用平均平方误差，同一个 λ 相当于惩罚系数 5λ。随后引入 u_i=x_i−x̄、c=a·x̄+b，把预测值写成 c+a·u_i，逐项展开残差平方和，说明含 d=c−ȳ 的两个交叉项分别因 Σ(y_i−ȳ)=0 与 Σu_i=0 消失，而 −2S_xy·a 保留，并代入 n=5、x̄=2、ȳ=1.6、S_xx=10、S_xy=14、S_yy=21.2 得到 J=21.2+5(c−1.6)²+(10+λ)a²−28a。接着对 a 配方，读出下界 21.2−196/(10+λ)、取到点 a=14/(10+λ)、回代 b=1.6−2a，以及唯一性条件 S_xx+λ>0，并说明这是全局最小而非仅驻点，附上和一阶条件的一致性核对。交互面板含 λ 滑块（0–10，步长 0.5，初始 2）、数据组切换，以及只在退化数据且 λ=0 时出现的示例斜率滑块；读数分开显示斜率、截距、未加惩罚的 SSE、惩罚项 λa²、J 与直线在 x̄=2 处的值，另有 J(a) 曲线小图标出最小点。λ=2 时 a≈1.167、b≈−0.733、SSE≈2.144、λa²≈2.722、J≈4.867；λ=0 时 a=1.4、b=−1.2、J=1.6；λ=10 时 a=0.7、b=0.2、J=11.4。退化数据（五个 x 都是 2）下 S_xx=S_xy=0：λ=0 时只确定 2a+b=1.6，页面画出多条同样好的直线并明确标注不唯一，J 都是 21.2；λ>0 时 a=0、b=1.6 唯一。结尾回答增大 λ 为何压低斜率、截距为何绕均值点补偿、直线为何始终过 (2,1.6)，以及 x 没有变化时正则化只解决\"从并列解里挑一条\"的选取问题。内容为自包含代数推导，不含外部资料引用。",
+    "source_bindings": [],
+    "assumptions": [],
+    "state_contract": {
+      "dataset": "数据组选择：original 表示 x=(0,1,2,3,4)，degenerate 表示五个 x 都等于 2；两组的 y 相同",
+      "demo_a": "对比直线的斜率 a₀；-2 到 3，步长 0.5；只用于画出一条对照直线并算出它的 SSE 与 J，不参与最优化；在退化数据且 λ=0 时它就是并列解族中被画出的那一条",
+      "lambda": "惩罚强度 λ；无量纲常数，0 到 10，步长 0.5；0 表示不加惩罚"
+    },
+    "initial_state": {
+      "dataset": "original",
+      "demo_a": 0,
+      "lambda": 2
+    }
+  }
+}

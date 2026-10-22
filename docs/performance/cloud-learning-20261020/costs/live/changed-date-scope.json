@@ -1,0 +1,476 @@
+{
+  "id": "changed-date-scope",
+  "message": "我刚修改了工作区的考试日期和范围。请按当前设置重新安排今天30分钟，只安排考试范围内的内容。不要先做诊断，不要制作交互页面。",
+  "sprint": {
+    "as_of": 1792510203,
+    "current_goal_revision": 2,
+    "goal_revision": 2,
+    "remaining_days": 1,
+    "settings": {
+      "daily_minutes": 30,
+      "entry_mode": "question",
+      "exam_date": "2026-10-21",
+      "syllabus": "只考视频时间片段定位；不考资料版本管理",
+      "utc_offset_minutes": 480
+    },
+    "updated_at": 1792510203
+  },
+  "status": "completed",
+  "usage_attribution": "Requests started while this case was running; background calls may overlap adjacent cases.",
+  "turn_id": "turn_01a159ef-1669-7b82-8e11-bbe184650f1d",
+  "turn": {
+    "domain": {
+      "effects": [],
+      "scene": {
+        "anchor_lid": "1",
+        "generation": 2,
+        "learning_workspace_id": "01a159ee-e5f5-7bc3-b964-c09aafc5118c",
+        "selection": null,
+        "workspace_goal": {
+          "constraints": [
+            "考试日期：2026-10-21（UTC+480 分钟）；按当前日期安排复习。",
+            "已确认考试范围：只考视频时间片段定位；不考资料版本管理",
+            "每天可用复习时间：30 分钟。",
+            "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。"
+          ],
+          "created_at": 1792510203,
+          "revision": 2,
+          "text": "期末冲刺：能独立指出一条陈述对应的材料版本与视频时间片段"
+        },
+        "workspace_id": "ws-01a159ef-1637-7f63-b476-7d0ab182f258",
+        "workspace_members": [
+          {
+            "book_id": "cloud-course-original-text",
+            "publication_id": "01a159ee-de04-7d10-ba7d-9bcfe541c784"
+          },
+          {
+            "book_id": "test-book",
+            "publication_id": "01a159ee-e44d-7fe3-a827-9ff44828bd78"
+          }
+        ]
+      },
+      "teaching": [
+        {
+          "receipt_ids": [
+            "assets:turn_01a159ef-1669-7b82-8e11-bbe184650f1d",
+            "usage:observation:cloud-course-original-text:user:turn_01a159ef-1669-7b82-8e11-bbe184650f1d",
+            "binding:turn_01a159ef-1669-7b82-8e11-bbe184650f1d"
+          ],
+          "revision": 0,
+          "session_id": "observation:cloud-course-original-text"
+        },
+        {
+          "receipt_ids": [
+            "usage:observation:cloud-course-original-text:assistant:turn_01a159ef-1669-7b82-8e11-bbe184650f1d"
+          ],
+          "revision": 0,
+          "session_id": "observation:cloud-course-original-text"
+        }
+      ]
+    },
+    "effect_labels": [],
+    "error": null,
+    "goal_ref": {
+      "id": "goal_turn_01a159ef-1669-7b82-8e11-bbe184650f1d",
+      "revision": 1
+    },
+    "outcome": {
+      "answer": "已按工作区当前设置重排（考试 2026-10-21，今天是 2026-10-20，还剩 1 天；范围只考视频时间片段定位，不含版本管理）。按你的要求，我没有先做诊断，也不制作交互页面；以下用文字给你今天的 30 分钟安排。\n\n需要说明一点：我尝试读取材料正文，但用字面检索没有取到可引用的文本，所以下面的安排按“给定一条陈述，在候选片段里定出起止时间”这个动作来拆分，不指定材料里的具体条目。\n\n**固定答题格式（先确定下来，不要中途增加）**\n每条只写两行：`陈述 → 起止时间`；第二行写一句“我凭哪句话认定它在这个片段”，例如片段中出现该术语、或说出该结论的那一帧。两行缺一行，这条就不算做完。\n\n| 时间 | 练什么 | 怎么做 |\n|---|---|---|\n| 0–4 分 | 确认要求 | 确认两件事：起止时间写到什么精度（能否只给“大概第 3 分钟”这类粗略位置）；边界按什么取。若老师没给容差，就自己固定一条规则：起点取该内容第一次被说出的位置，终点取它讲完的位置。今天全程用这一条，不再临时更换。 |\n| 4–19 分 | 核心定位 | 3 条陈述，每条限时 5 分钟。流程固定：① 从陈述里挑出 2 个最能定位的词；② 用这两个词在时间轴上缩小候选片段范围；③ 只打开候选片段进行核对；④ 写下起止时间和依据的那句话。超过 5 分钟就记下卡在哪里，然后进入下一条。 |\n| 19–26 分 | 分类纠错 | 只看刚才 3 条里最慢或错的那 1 条，重做一遍，并判断卡点属于哪一类：**片段选错**（词语在多个片段出现，你挑错了那一个）还是**边界偏**（片段选对了，时间给宽或给窄）。这两类的改法不同：前者需要再加一个限定词来区分，后者需要回到原文核对起点和终点。 |\n| 26–30 分 | 固化 | 把今天的规则压缩成 3 行清单，明天开考前直接读。示例格式（内容按你今天的实际卡点改）：先挑 2 个定位词；用两个词都出现的片段；边界取“第一次说到”到“讲完为止”。 |\n\n**为什么这么排**\n- 只剩一天时，定位依赖于反复执行和计时，真正需要熟的是流程而不是背内容；限时是为了把“不会”和“太慢”分开，这两者在考场上的后果不同。\n- 把“片段选错”和“边界偏”分开处理，是因为它们的修复动作相反：前者要增加限定词缩小范围，后者要回去核对端点。混在一起重做，改了也不知道改对了哪一步。\n- 留 7 分钟纠错而不是再刷新题，是因为定位错误通常只差一处，同一处修一次比多做三条更可能带进考场。\n- 版本管理今天完全不做，按你的范围设定排除。\n\n如果你把今天想练的几条陈述发给我，我可以把它们塞进上面 4–19 分那一段，按同样的时间预算给你具体题目。",
+      "answer_view": {
+        "parts": [
+          {
+            "kind": "markdown",
+            "text": "已按工作区当前设置重排（考试 2026-10-21，今天是 2026-10-20，还剩 1 天；范围只考视频时间片段定位，不含版本管理）。按你的要求，我没有先做诊断，也不制作交互页面；以下用文字给你今天的 30 分钟安排。\n\n需要说明一点：我尝试读取材料正文，但用字面检索没有取到可引用的文本，所以下面的安排按“给定一条陈述，在候选片段里定出起止时间”这个动作来拆分，不指定材料里的具体条目。\n\n**固定答题格式（先确定下来，不要中途增加）**\n每条只写两行：`陈述 → 起止时间`；第二行写一句“我凭哪句话认定它在这个片段”，例如片段中出现该术语、或说出该结论的那一帧。两行缺一行，这条就不算做完。\n\n| 时间 | 练什么 | 怎么做 |\n|---|---|---|\n| 0–4 分 | 确认要求 | 确认两件事：起止时间写到什么精度（能否只给“大概第 3 分钟”这类粗略位置）；边界按什么取。若老师没给容差，就自己固定一条规则：起点取该内容第一次被说出的位置，终点取它讲完的位置。今天全程用这一条，不再临时更换。 |\n| 4–19 分 | 核心定位 | 3 条陈述，每条限时 5 分钟。流程固定：① 从陈述里挑出 2 个最能定位的词；② 用这两个词在时间轴上缩小候选片段范围；③ 只打开候选片段进行核对；④ 写下起止时间和依据的那句话。超过 5 分钟就记下卡在哪里，然后进入下一条。 |\n| 19–26 分 | 分类纠错 | 只看刚才 3 条里最慢或错的那 1 条，重做一遍，并判断卡点属于哪一类：**片段选错**（词语在多个片段出现，你挑错了那一个）还是**边界偏**（片段选对了，时间给宽或给窄）。这两类的改法不同：前者需要再加一个限定词来区分，后者需要回到原文核对起点和终点。 |\n| 26–30 分 | 固化 | 把今天的规则压缩成 3 行清单，明天开考前直接读。示例格式（内容按你今天的实际卡点改）：先挑 2 个定位词；用两个词都出现的片段；边界取“第一次说到”到“讲完为止”。 |\n\n**为什么这么排**\n- 只剩一天时，定位依赖于反复执行和计时，真正需要熟的是流程而不是背内容；限时是为了把“不会”和“太慢”分开，这两者在考场上的后果不同。\n- 把“片段选错”和“边界偏”分开处理，是因为它们的修复动作相反：前者要增加限定词缩小范围，后者要回去核对端点。混在一起重做，改了也不知道改对了哪一步。\n- 留 7 分钟纠错而不是再刷新题，是因为定位错误通常只差一处，同一处修一次比多做三条更可能带进考场。\n- 版本管理今天完全不做，按你的范围设定排除。\n\n如果你把今天想练的几条陈述发给我，我可以把它们塞进上面 4–19 分那一段，按同样的时间预算给你具体题目。"
+          }
+        ],
+        "sources": []
+      },
+      "effects": [],
+      "incomplete": true,
+      "memory_updates": [],
+      "profile_usage": {
+        "claimed_used_fact_ids": [],
+        "influences": [],
+        "injected_fact_ids": [],
+        "snapshot_revision": 0
+      },
+      "tokens_spent": 68955,
+      "trace": [
+        {
+          "args": "{}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"available\":true,\"at\":null,\"spine_index\":null,\"spine_unit\":null,\"key_stops\":[],\"throughlines\":[],\"warning\":null}",
+          "tool": "book.structure"
+        },
+        {
+          "args": "{\"operation\": \"revise\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"basis_quote\": \"请按当前设置重新安排今天30分钟，只安排考试范围内的内容。不要先做诊断，不要制作交互页面。\", \"interpretation\": \"按工作区当前设置（考试 2026-10-21、仅考视频时间片段定位、每天 30 分钟）重排今天的 30 分钟；不先做诊断，不制作交互页面，只需文字安排与理由。\", \"requirements\": [{\"id\": \"schedule\", \"description\": \"给出一份今天 30 分钟的安排，内容只覆盖考试范围（视频时间片段定位），并说明先练什么以及为什么\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"verification\": \"content\"}, {\"id\": \"constraints\", \"description\": \"不先做诊断，不制作交互页面；只以文字形式交付\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"verification\": \"content\"}]}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"error_code\":\"GOAL_UPDATE_INVALID\",\"category\":\"validation\",\"message\":\"removing presentation delivery needs an explicit text-only user request\"}",
+          "tool": "goal.update"
+        },
+        {
+          "args": "{\"query\": \"00:\", \"match_mode\": \"exact\", \"page_size\": 5}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"2e8293a42cee59861b138134ec864c5610fff2cc69a4d0960ecc5d18088331ed\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"query\": \"片段\", \"match_mode\": \"exact\", \"page_size\": 5}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"2e8293a42cee59861b138134ec864c5610fff2cc69a4d0960ecc5d18088331ed\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        }
+      ],
+      "turns": 3,
+      "warning": "PRESENTATION_SANDBOX_UNAVAILABLE"
+    },
+    "presentation_follow_up": null,
+    "published_book_ref": {
+      "book_id": "cloud-course-original-text",
+      "publication_id": "01a159ee-de04-7d10-ba7d-9bcfe541c784"
+    },
+    "question_quote": null,
+    "question_source_label": null,
+    "run_summary": {
+      "activities": [
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 6740.1875,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": null,
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 8,
+            "messages_append_only": null,
+            "previous_image_count": null,
+            "previous_message_count": null,
+            "previous_reasoning_message_count": null,
+            "previous_step_id": null,
+            "previous_tool_count": null,
+            "reasoning_message_count": 0,
+            "request_index": 1,
+            "settings_changed": null,
+            "step_id": 1,
+            "tool_count": 12,
+            "tools_changed": null,
+            "unchanged_prefix_messages": null
+          },
+          "result_count": null,
+          "started_ms": 152.1439,
+          "status": "succeeded",
+          "step_id": 1,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 512,
+            "input_tokens": 17987,
+            "output_tokens": 1218,
+            "reasoning_output_tokens": 853,
+            "total_tokens": 19205
+          },
+          "usage_total_tokens": 19205
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 14.554800000000796,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "查看书籍结构",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.structure",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 6931.9481,
+          "status": "succeeded",
+          "step_id": 2,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 20.775300000000243,
+          "error_code": "GOAL_UPDATE_INVALID",
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "更新当前任务",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "goal.update",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 6996.9442,
+          "status": "rejected",
+          "step_id": 3,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 4433.923999999999,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": null,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": {
+              "current_bytes": 5403,
+              "fields": [
+                "added"
+              ],
+              "index": 8,
+              "previous_bytes": 0,
+              "role": "assistant",
+              "unchanged_prefix_bytes": 0
+            },
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 12,
+            "messages_append_only": true,
+            "previous_image_count": 0,
+            "previous_message_count": 8,
+            "previous_reasoning_message_count": 0,
+            "previous_step_id": 1,
+            "previous_tool_count": 12,
+            "reasoning_message_count": 1,
+            "request_index": 2,
+            "settings_changed": false,
+            "step_id": 4,
+            "tool_count": 12,
+            "tools_changed": false,
+            "unchanged_prefix_messages": 8
+          },
+          "result_count": null,
+          "started_ms": 7109.297500000001,
+          "status": "succeeded",
+          "step_id": 4,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 19200,
+            "input_tokens": 21853,
+            "output_tokens": 720,
+            "reasoning_output_tokens": 582,
+            "total_tokens": 22573
+          },
+          "usage_total_tokens": 22573
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 17.197399999999107,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "搜索原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.search_text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 11579.6542,
+          "status": "succeeded",
+          "step_id": 5,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 15.650099999998929,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "tool",
+          "label": "搜索原文",
+          "model_first_text_ms": null,
+          "model_name": null,
+          "model_name_source": null,
+          "name": "book.search_text",
+          "parent_step_id": null,
+          "result_count": null,
+          "started_ms": 11653.2023,
+          "status": "succeeded",
+          "step_id": 6,
+          "usage": null,
+          "usage_total_tokens": null
+        },
+        {
+          "accepted_evidence_count": null,
+          "duration_ms": 11228.093599999998,
+          "error_code": null,
+          "evidence_refs": [],
+          "kind": "model",
+          "label": "生成回答",
+          "model_first_text_ms": 11153.728800000003,
+          "model_name": "deepseek-v4-flash",
+          "model_name_source": "configured",
+          "name": "outer",
+          "parent_step_id": null,
+          "request_diagnostics": {
+            "first_changed_message": {
+              "current_bytes": 3129,
+              "fields": [
+                "added"
+              ],
+              "index": 12,
+              "previous_bytes": 0,
+              "role": "assistant",
+              "unchanged_prefix_bytes": 0
+            },
+            "first_changed_tool": null,
+            "image_count": 0,
+            "message_count": 16,
+            "messages_append_only": true,
+            "previous_image_count": 0,
+            "previous_message_count": 12,
+            "previous_reasoning_message_count": 1,
+            "previous_step_id": 4,
+            "previous_tool_count": 12,
+            "reasoning_message_count": 2,
+            "request_index": 3,
+            "settings_changed": false,
+            "step_id": 7,
+            "tool_count": 12,
+            "tools_changed": false,
+            "unchanged_prefix_messages": 12
+          },
+          "result_count": null,
+          "started_ms": 11770.043599999999,
+          "status": "succeeded",
+          "step_id": 7,
+          "usage": {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 22528,
+            "input_tokens": 25334,
+            "output_tokens": 1843,
+            "reasoning_output_tokens": 1108,
+            "total_tokens": 27177
+          },
+          "usage_total_tokens": 27177
+        }
+      ],
+      "effects": [],
+      "last_seq": 55,
+      "trace": [
+        {
+          "args": "{}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"available\":true,\"at\":null,\"spine_index\":null,\"spine_unit\":null,\"key_stops\":[],\"throughlines\":[],\"warning\":null}",
+          "tool": "book.structure"
+        },
+        {
+          "args": "{\"operation\": \"revise\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"basis_quote\": \"请按当前设置重新安排今天30分钟，只安排考试范围内的内容。不要先做诊断，不要制作交互页面。\", \"interpretation\": \"按工作区当前设置（考试 2026-10-21、仅考视频时间片段定位、每天 30 分钟）重排今天的 30 分钟；不先做诊断，不制作交互页面，只需文字安排与理由。\", \"requirements\": [{\"id\": \"schedule\", \"description\": \"给出一份今天 30 分钟的安排，内容只覆盖考试范围（视频时间片段定位），并说明先练什么以及为什么\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"verification\": \"content\"}, {\"id\": \"constraints\", \"description\": \"不先做诊断，不制作交互页面；只以文字形式交付\", \"basis_turn_id\": \"turn_01a159ef-1669-7b82-8e11-bbe184650f1d\", \"verification\": \"content\"}]}",
+          "model_tool_loop": 1,
+          "result_digest": "{\"error_code\":\"GOAL_UPDATE_INVALID\",\"category\":\"validation\",\"message\":\"removing presentation delivery needs an explicit text-only user request\"}",
+          "tool": "goal.update"
+        },
+        {
+          "args": "{\"query\": \"00:\", \"match_mode\": \"exact\", \"page_size\": 5}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"2e8293a42cee59861b138134ec864c5610fff2cc69a4d0960ecc5d18088331ed\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        },
+        {
+          "args": "{\"query\": \"片段\", \"match_mode\": \"exact\", \"page_size\": 5}",
+          "model_tool_loop": 2,
+          "result_digest": "{\"version\":\"search_text.v1\",\"source_revision\":\"2e8293a42cee59861b138134ec864c5610fff2cc69a4d0960ecc5d18088331ed\",\"exhaustive\":true,\"total_occurrences\":0,\"total_lids\":0,\"occurrences\":[],\"section_counts",
+          "tool": "book.search_text"
+        }
+      ],
+      "usage": {
+        "calls": [
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 512,
+            "input_tokens": 17987,
+            "output_tokens": 1218,
+            "reasoning_output_tokens": 853,
+            "total_tokens": 19205
+          },
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 19200,
+            "input_tokens": 21853,
+            "output_tokens": 720,
+            "reasoning_output_tokens": 582,
+            "total_tokens": 22573
+          },
+          {
+            "cache_creation_input_tokens": null,
+            "cached_input_tokens": 22528,
+            "input_tokens": 25334,
+            "output_tokens": 1843,
+            "reasoning_output_tokens": 1108,
+            "total_tokens": 27177
+          }
+        ],
+        "known_total_tokens": 68955
+      }
+    },
+    "status": "completed",
+    "teaching_ref": null,
+    "turn_id": "turn_01a159ef-1669-7b82-8e11-bbe184650f1d",
+    "usage": {
+      "calls": [
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 512,
+          "input_tokens": 17987,
+          "output_tokens": 1218,
+          "reasoning_output_tokens": 853,
+          "total_tokens": 19205
+        },
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 19200,
+          "input_tokens": 21853,
+          "output_tokens": 720,
+          "reasoning_output_tokens": 582,
+          "total_tokens": 22573
+        },
+        {
+          "cache_creation_input_tokens": null,
+          "cached_input_tokens": 22528,
+          "input_tokens": 25334,
+          "output_tokens": 1843,
+          "reasoning_output_tokens": 1108,
+          "total_tokens": 27177
+        }
+      ],
+      "known_total_tokens": 68955
+    },
+    "user": "我刚修改了工作区的考试日期和范围。请按当前设置重新安排今天30分钟，只安排考试范围内的内容。不要先做诊断，不要制作交互页面。",
+    "user_turn_ordinal": 1,
+    "video_question": null
+  },
+  "sources": [],
+  "answer": "已按工作区当前设置重排（考试 2026-10-21，今天是 2026-10-20，还剩 1 天；范围只考视频时间片段定位，不含版本管理）。按你的要求，我没有先做诊断，也不制作交互页面；以下用文字给你今天的 30 分钟安排。\n\n需要说明一点：我尝试读取材料正文，但用字面检索没有取到可引用的文本，所以下面的安排按“给定一条陈述，在候选片段里定出起止时间”这个动作来拆分，不指定材料里的具体条目。\n\n**固定答题格式（先确定下来，不要中途增加）**\n每条只写两行：`陈述 → 起止时间`；第二行写一句“我凭哪句话认定它在这个片段”，例如片段中出现该术语、或说出该结论的那一帧。两行缺一行，这条就不算做完。\n\n| 时间 | 练什么 | 怎么做 |\n|---|---|---|\n| 0–4 分 | 确认要求 | 确认两件事：起止时间写到什么精度（能否只给“大概第 3 分钟”这类粗略位置）；边界按什么取。若老师没给容差，就自己固定一条规则：起点取该内容第一次被说出的位置，终点取它讲完的位置。今天全程用这一条，不再临时更换。 |\n| 4–19 分 | 核心定位 | 3 条陈述，每条限时 5 分钟。流程固定：① 从陈述里挑出 2 个最能定位的词；② 用这两个词在时间轴上缩小候选片段范围；③ 只打开候选片段进行核对；④ 写下起止时间和依据的那句话。超过 5 分钟就记下卡在哪里，然后进入下一条。 |\n| 19–26 分 | 分类纠错 | 只看刚才 3 条里最慢或错的那 1 条，重做一遍，并判断卡点属于哪一类：**片段选错**（词语在多个片段出现，你挑错了那一个）还是**边界偏**（片段选对了，时间给宽或给窄）。这两类的改法不同：前者需要再加一个限定词来区分，后者需要回到原文核对起点和终点。 |\n| 26–30 分 | 固化 | 把今天的规则压缩成 3 行清单，明天开考前直接读。示例格式（内容按你今天的实际卡点改）：先挑 2 个定位词；用两个词都出现的片段；边界取“第一次说到”到“讲完为止”。 |\n\n**为什么这么排**\n- 只剩一天时，定位依赖于反复执行和计时，真正需要熟的是流程而不是背内容；限时是为了把“不会”和“太慢”分开，这两者在考场上的后果不同。\n- 把“片段选错”和“边界偏”分开处理，是因为它们的修复动作相反：前者要增加限定词缩小范围，后者要回去核对端点。混在一起重做，改了也不知道改对了哪一步。\n- 留 7 分钟纠错而不是再刷新题，是因为定位错误通常只差一处，同一处修一次比多做三条更可能带进考场。\n- 版本管理今天完全不做，按你的范围设定排除。\n\n如果你把今天想练的几条陈述发给我，我可以把它们塞进上面 4–19 分那一段，按同样的时间预算给你具体题目。",
+  "elapsed_ms": 23943.0985,
+  "provider_records": [
+    3,
+    4,
+    5
+  ],
+  "usage": {
+    "requests": 3,
+    "total_tokens": 68955,
+    "missing_usage": 0,
+    "prompt_tokens": 65174,
+    "completion_tokens": 3781,
+    "cached_prompt_tokens": 42240
+  }
+}

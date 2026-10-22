@@ -1,0 +1,55 @@
+{
+  "arm": "candidate",
+  "repetition": 2,
+  "position": 0,
+  "index": 0,
+  "source": "E:\\allwork\\download\\agent\\understand-book\\docs\\performance\\workspace-input-cache-20261022\\requests\\candidate\\native-00.json",
+  "ordinal": 9,
+  "started_utc": "2026-10-22T03:19:00.954642+00:00",
+  "price_version": "deepseek-flash-20261022-01-04",
+  "usage": {
+    "prompt_tokens": 19548,
+    "completion_tokens": 947,
+    "total_tokens": 20495,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "prompt_cache_hit_tokens": 0,
+    "prompt_cache_miss_tokens": 19548
+  },
+  "response_id": "81659016-5def-479e-9bc2-12a635793ac1",
+  "model": "deepseek-flash",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "content": "# 训练误差下降，模型却可能变差的原因\n\n核心在于：**训练误差衡量的是模型在“已经见过的数据”上拟合得有多紧，而模型好坏取决于它在“没见过的数据”上表现如何。** 这两件事并不总是一致。\n\n## 一、机制：把噪声当成规律\n\n模型在训练集上优化时，训练集里既有真实规律，也有只属于这批样本的偶然波动（噪声）。如果模型容量足够大、训练足够久，它会把噪声也一并“记住”。于是：\n\n- 训练误差持续下降，因为模型对这批样本越来越贴合；\n- 未见样本上的误差反而上升，因为那些被记住的噪声在新数据上不再出现，模型学到的“规律”就失效了。\n\n材料把这种情况称为过拟合的一种典型表现：模型把训练样本中特有的噪声也当成规律，训练误差可能持续下降，而未见样本上的误差反而上升。[[source:source_ref_c52685f9e6cb9140]]\n\n所以“训练误差低”本身不能作为模型更好的证据，必须比较**同一验证集**上的表现。\n\n## 二、一个具体对照\n\n材料给出的例子（相同数据划分与误差指标）：\n\n| 模型 | 训练误差 | 验证误差 |\n|---|---|---|\n| 甲 | 0.01 | 0.30 |\n| 乙 | 0.08 | 0.12 |\n\n甲把训练集拟合得更紧，但验证误差是乙的两倍多。若目标是对未见数据的预测，验证结果支持选择乙：乙没有把训练集拟合得最紧，但在这份验证集上误差较小。[[source:source_ref_c52685f9e6cb9140]]\n\n## 三、三个数据集的分工\n\n- **训练集**：参与参数拟合。模型直接在这上面优化，所以它的误差会“越练越低”，也因此不能用来判断泛化。\n- **验证集**：用于选择模型和超参数。上面那个甲、乙的比较，以及正则化强度 λ 的挑选，都发生在这一层。材料明确说 λ 通常由验证集或交叉验证选择，测试集不用于反复挑选 λ。[[source:source_ref_679b2138443382f8]]\n- **测试集**：留到最终评估。它不参与调参，因此它的结果才是对“最终方案”相对干净的一次检验。材料也提醒：验证误差不是对所有未来数据的保证，最终仍要在未参与调参的测试集上评估。[[source:source_ref_c52685f9e6cb9140]]\n\n一句话概括三者的关系：训练集用来“学”，验证集用来“选”，测试集用来“报”。如果拿测试集反复挑模型，测试集就退化成了验证集，最终评估也就失去意义。\n\n## 四、同一现象的另一面：正则化\n\n《正则化与模型选择》从另一个角度说明了“训练误差上升不等于模型变差”。L2 正则化把训练目标改为 J(w)=L_train(w)+λ·Σw_j²，λ≥0 控制对大权重的惩罚强度。[[source:source_ref_679b2138443382f8]]\n\n- 适当的惩罚可能减少模型对训练噪声的敏感程度，从而改善泛化；\n- 惩罚过强也可能使模型欠拟合；\n- 材料明确写道：增加正则化强度后训练误差可能上升；只要验证表现改善，这不等于模型变差。[[source:source_ref_679b2138443382f8]]\n\n材料还给了一个算例：两个候选模型的 L_train 分别为 0.05 和 0.09，平方权重和分别为 10 和 1。λ=0 时目标值 0.05 更小，前者占优；λ=0.01 时目标值变为 0.15 和 0.10，后者占优。这说明惩罚改变的是优化中的偏好，**并不单独证明哪一个模型的验证误差更低**——最终仍要靠验证集判断。[[source:source_ref_679b2138443382f8]]\n\n## 五、需要区分的另一种失败\n\n训练误差低而验证误差高，是过拟合。反过来，如果连训练数据中的主要关系都没学好，常表现为训练与验证误差都较高，那是欠拟合。[[source:source_ref_c52685f9e6cb9140]] 判断模型状态时，要同时看这两条曲线，而不是只看训练误差这一条。",
+      "tool_calls": []
+    }
+  ],
+  "first_delta_ms": 537.719,
+  "first_text_ms": 537.719,
+  "first_reasoning_ms": null,
+  "first_tool_ms": null,
+  "reasoning_characters": 0,
+  "stream_done": true,
+  "http_status": 200,
+  "response_headers_ms": 250.016,
+  "streaming": true,
+  "duration_ms": 4577.727,
+  "response_complete": true,
+  "output_truncated": false,
+  "complete_text_sample": true,
+  "measured_usage": {
+    "input_tokens": 19548,
+    "cached_input_tokens": 0,
+    "uncached_input_tokens": 19548,
+    "output_tokens": 947
+  },
+  "cost": {
+    "input_cny": "0.039096",
+    "output_cny": "0.007576",
+    "total_cny": "0.046672",
+    "total_rounded_micro_cny": 46672
+  }
+}

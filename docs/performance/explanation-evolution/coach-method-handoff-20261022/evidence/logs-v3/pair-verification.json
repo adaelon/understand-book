@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-10-22T08:41:51.874358+00:00",
+  "A": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-A-plan.exe",
+  "B": "E:\\allwork\\download\\agent\\understand-book\\tmp\\coach-method-handoff-20261022\\binaries\\author-B-plan.exe",
+  "A_B_bytes_equal": false,
+  "compiler_artifact_fresh": {
+    "A": {
+      "runtime": false,
+      "server": false
+    },
+    "B": {
+      "runtime": false,
+      "server": false
+    }
+  },
+  "nonvariant_files_byte_compared_each_arm": {
+    "A": 1038,
+    "B": 1038
+  },
+  "nonvariant_changes": [],
+  "overlay_files_equal_current_production": true,
+  "source_restored_to_B": true,
+  "only_arm_source_difference": "crates/runtime/src/tutor_coach/presentation.rs",
+  "changed_since_v2": [
+    "crates/runtime/src/tutor_coach/presentation.rs"
+  ],
+  "generation_policy_both_arms": {
+    "output_token_limit": 16384,
+    "output_reserve_tokens": 16384,
+    "reasoning_effort": "low only when matched_model starts with deepseek-; otherwise None",
+    "A_legacy_prompt_schema_unchanged": true,
+    "resident_author_limits_unchanged": true
+  },
+  "legacy_super_execute_prompt_schema_unchanged": true,
+  "prior_pairs_retained": true,
+  "host_paging_test_reused": "logs-v2/host-method-paging-test.json",
+  "provider_calls_by_build_worker": 0
+}
