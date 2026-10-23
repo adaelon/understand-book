@@ -1,6 +1,6 @@
 # Understand Book Windows: local library and cloud learning
 
-Current release: **0.3.6** (2026-10-22). [Download](https://understandbook.top/downloads/UnderstandBookSetup.exe?v=0.3.6). Includes local PDF reading/OCR, cloud learning workspaces, music tools, and segmented video playback; [release evidence and unfinished work](../../docs/performance/integration-release-20261022/README.md).
+Current release: **0.3.7** (2026-10-23). [Download](https://understandbook.top/downloads/UnderstandBookSetup.exe?v=0.3.7). Adds score selection, screenshot questions and source-backed music facts to the hosted Reader; retains local PDF reading/OCR, cloud learning workspaces and segmented video playback. The local installation has also been upgraded to 0.3.7. See [release evidence and known issues](../../docs/performance/music-score-images-release-20261023/README.md).
 
 Windows starts with a bundled local library. Import copies files into the application's local-data
 `local-materials` directory without contacting the server or checking a storage subscription.
@@ -80,14 +80,14 @@ separate account-authorized remote service.
 
 ## Verification and limits
 
-The current **0.3.1** x64 release is published (4,899,391 bytes). Native persistence/range tests,
+The historical **0.3.1** x64 release was published (4,899,391 bytes). Native persistence/range tests,
 11 relevant web tests, type checking, the bundled reader and NSIS build pass. A real hidden WebView2
 opened TXT/MD/EPUB/PDF, retained the copy after removing the original, and reloaded/read offline with
 zero cloud requests. Deployed web assets and the full public installer match the candidate bytes.
 See [release evidence](../../docs/performance/windows-local-materials-20261021/README.md).
 This restores local file storage and original-source reading. AI processing of local files without
 creating a persistent cloud copy is not connected yet; existing cloud preparation remains separate.
-The user's existing installation has not been replaced. The 0.3.0 results below are historical.
+The user's existing installation was not replaced during that release; the current 0.3.7 upgrade is recorded above. The 0.3.0 results below are historical.
 
 Targeted checks: `cargo check -p understand-book-desktop --bin UnderstandBook`,
 `cargo test -p understand-book-desktop --bin UnderstandBook`, web `desktop-auth.test.ts`, and

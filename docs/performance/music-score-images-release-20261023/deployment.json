@@ -1,0 +1,22 @@
+{
+  "status": "published",
+  "started_at_utc": "2026-10-23T05:00:37.670500+00:00",
+  "finished_at_utc": "2026-10-23T05:00:51.765168+00:00",
+  "release": "/opt/understand-book/releases/music-score-images-20261023",
+  "previous_release": "/opt/understand-book/releases/music-schubert-20261023",
+  "service_pid": 677907,
+  "backup": "/opt/understand-book/backups/music-score-images-20261023",
+  "data_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "schema": 20,
+  "maintenance_seconds": 14.05,
+  "publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+  },
+  "course_version": 3,
+  "previous_accounts_retained": true,
+  "windows_version": "0.3.7",
+  "source_commit": "ac003358814389927236be698639d7226c6180ec",
+  "installer_bytes": 10982070,
+  "model_requests": 0
+}

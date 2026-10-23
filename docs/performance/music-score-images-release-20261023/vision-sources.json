@@ -1,0 +1,1125 @@
+[
+  {
+    "can_open_in_reader": true,
+    "context_after": "",
+    "context_before": "",
+    "heading_path": [],
+    "highlighted_quote": "第 1 小节：调号：4 个降号\n第 1 小节：拍号：2/4\n第 1 小节：Allegro moderato；文件播放速度：每分钟 80 个四分音符\n作品调性：F minor。作品调性确认为 F 小调：Mutopia 作品页标为 F Minor，原 MusicXML 标题亦写 fa mineur。原谱四降号的 mode=major 与上游 LilyPond 的 key as major 编码一致；保留这些原始调号编码，作品调性按作品来源核定，不将该编码解读为作品是降 A 大调。",
+    "label": "舒伯特 · 音乐瞬间第 3 首 · 00:00 · 谱面",
+    "material_title": "舒伯特 · 音乐瞬间第 3 首",
+    "media_url": "/api/book/music/source/turn_f581e3ae9701daf1/src_01a16709e4177a6099e8d903fd76ac0b/audio",
+    "music": {
+      "label": "舒伯特 · 音乐瞬间第 3 首 · 00:00 · 谱面",
+      "material": {
+        "coverage": [
+          {
+            "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+            "end_ms": 101041.633,
+            "granularity": "measure",
+            "method": "audio_alignment",
+            "provenance_id": "vetter-audio-review-20261023",
+            "start_ms": 0,
+            "status": "accepted"
+          },
+          {
+            "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+            "end_ms": 101041.633,
+            "granularity": "note",
+            "method": "audio_alignment",
+            "provenance_id": "vetter-audio-review-20261023",
+            "start_ms": 0,
+            "status": "accepted"
+          }
+        ],
+        "heard_audio": false,
+        "observation_kind": "prepared_music_material",
+        "occurrences": [
+          {
+            "end_ms": 1894.447,
+            "measure": "1",
+            "occurrence_id": "measure-1-occurrence-1",
+            "order": 0,
+            "start_ms": 0
+          },
+          {
+            "end_ms": 3073.001,
+            "measure": "2",
+            "occurrence_id": "measure-2-occurrence-1",
+            "order": 1,
+            "start_ms": 1894.447
+          },
+          {
+            "end_ms": 4187.99,
+            "measure": "3",
+            "occurrence_id": "measure-3-occurrence-1",
+            "order": 2,
+            "start_ms": 3073.001
+          }
+        ],
+        "provenance": [
+          {
+            "description": "直接读取原 MusicXML 的谱表、声部、音高、时值和休止；事件播放区间目前来自待复核 DTW 候选，不构成已接纳录音听核。",
+            "kind": "score",
+            "processor": "MusicXML structural reading; score events reviewed from actual XML",
+            "provenance_id": "score-noctave-20261022",
+            "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+          },
+          {
+            "description": "Kong 与 Transkun 两个不输入谱面的钢琴转写独立检出同音起音；按原声频谱逐段检查。",
+            "kind": "audio_analysis",
+            "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+            "provenance_id": "vetter-audio-review-20261023/dual-model",
+            "source_url": null
+          },
+          {
+            "description": "2026-10-23 核对 Mutopia-2007/08/11-1023 作品页（Moments Musicaux No. 3 in F Minor，D.780 / Op.94 No.3）、上游 MomentsNo3.ly（key as major）及本地 Noctave MusicXML（标题 fa mineur，fifths=-4，mode=major）。作品调性采用 F minor，原始谱文件和调号编码原样保留。Allegro moderato 来自原 XML 的 direction/words；sound tempo=80 是文件播放参数，非录音实测速度。",
+            "kind": "reference",
+            "processor": "Curator source comparison, 2026-10-23",
+            "provenance_id": "schubert-tonality-review-20261023",
+            "source_url": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1023"
+          },
+          {
+            "description": "直接读取原 MusicXML 的调号编码、拍号、文字指示、节拍器标记与播放速度参数，保留小节、拍位及谱面锚点。sound tempo 是文件播放参数，不是录音速度测量；encoded_mode 是原调号编码，不替代经核对的作品调性。",
+            "kind": "score",
+            "processor": "MusicXML score marks v1",
+            "provenance_id": "musicxml-score-marks",
+            "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+          }
+        ],
+        "read": {
+          "alignments": [
+            {
+              "attack": true,
+              "end_ms": 665.853,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n2",
+              "start_ms": 630.222
+            },
+            {
+              "attack": true,
+              "end_ms": 1006.654,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n4",
+              "start_ms": 968.494
+            },
+            {
+              "attack": true,
+              "end_ms": 1015.545,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n3",
+              "start_ms": 983.561
+            },
+            {
+              "attack": true,
+              "end_ms": 1316.948,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n5",
+              "start_ms": 1284.131
+            },
+            {
+              "attack": true,
+              "end_ms": 1636.702,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n7",
+              "start_ms": 1598.999
+            },
+            {
+              "attack": true,
+              "end_ms": 1639.73,
+              "occurrence_id": "measure-1-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m1-n6",
+              "start_ms": 1605.018
+            },
+            {
+              "attack": true,
+              "end_ms": 1936.485,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n2",
+              "start_ms": 1899.447
+            },
+            {
+              "attack": true,
+              "end_ms": 2262.546,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n4",
+              "start_ms": 2221.776
+            },
+            {
+              "attack": true,
+              "end_ms": 2262.974,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n3",
+              "start_ms": 2224.485
+            },
+            {
+              "attack": true,
+              "end_ms": 2572.006,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n5",
+              "start_ms": 2533.343
+            },
+            {
+              "attack": true,
+              "end_ms": 2887.081,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n6",
+              "start_ms": 2846.291
+            },
+            {
+              "attack": true,
+              "end_ms": 2887.8,
+              "occurrence_id": "measure-2-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m2-n7",
+              "start_ms": 2849.318
+            },
+            {
+              "attack": true,
+              "end_ms": 3119.919,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n1",
+              "start_ms": 3078.001
+            },
+            {
+              "attack": true,
+              "end_ms": 3142.826,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n7",
+              "start_ms": 3101.44
+            },
+            {
+              "attack": true,
+              "end_ms": 3164.999,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n2",
+              "start_ms": 3122.711
+            },
+            {
+              "attack": true,
+              "end_ms": 3498.445,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n9",
+              "start_ms": 3461.48
+            },
+            {
+              "attack": true,
+              "end_ms": 3498.564,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n3",
+              "start_ms": 3461.898
+            },
+            {
+              "attack": true,
+              "end_ms": 3512.424,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n8",
+              "start_ms": 3468.015
+            },
+            {
+              "attack": true,
+              "end_ms": 3651.368,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n4",
+              "start_ms": 3589.363
+            },
+            {
+              "attack": true,
+              "end_ms": 3704.487,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n5",
+              "start_ms": 3665.935
+            },
+            {
+              "attack": true,
+              "end_ms": 3725.292,
+              "occurrence_id": "measure-3-occurrence-1",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "score_object_id": "P1-m3-n10",
+              "start_ms": 3688.763
+            }
+          ],
+          "guidance": "score_marks includes key, time and tempo declarations governing the selected notes, plus directions in their measures. Each mark keeps its original measure/beat, source anchors and provenance even when inherited from an earlier measure. encoded_mode is the raw key-signature encoding; use separately sourced work_tonality for the work's tonal identity and its documented reconciliation. sound_tempo_quarter_bpm is a MusicXML playback parameter, not a printed metronome mark or measured recording tempo. These score facts do not require accepted audio alignment or listening. Repeated score objects can have several performance occurrences. attack=false denotes sustained/tied notes; note end is not a measured acoustic release unless the provenance establishes it.",
+          "next_offset": null,
+          "objects": [
+            {
+              "beat": 0,
+              "duration_beats": 2,
+              "measure": "1",
+              "midi_pitch": null,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": true,
+              "source_id": "P1-m1-n1",
+              "svg_element_id": "P1-m1-n1",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n2",
+              "svg_element_id": "P1-m1-n2",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n3",
+              "svg_element_id": "P1-m1-n3",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 65,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n4",
+              "svg_element_id": "P1-m1-n4",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n5",
+              "svg_element_id": "P1-m1-n5",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n6",
+              "svg_element_id": "P1-m1-n6",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "1",
+              "midi_pitch": 65,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m1-n7",
+              "svg_element_id": "P1-m1-n7",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 2,
+              "measure": "2",
+              "midi_pitch": null,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": true,
+              "source_id": "P1-m2-n1",
+              "svg_element_id": "P1-m2-n1",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n2",
+              "svg_element_id": "P1-m2-n2",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n3",
+              "svg_element_id": "P1-m2-n3",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 65,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n4",
+              "svg_element_id": "P1-m2-n4",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n5",
+              "svg_element_id": "P1-m2-n5",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n6",
+              "svg_element_id": "P1-m2-n6",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "2",
+              "midi_pitch": 65,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m2-n7",
+              "svg_element_id": "P1-m2-n7",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 0,
+              "measure": "3",
+              "midi_pitch": 70,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n1",
+              "svg_element_id": "P1-m3-n1",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 68,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n2",
+              "svg_element_id": "P1-m3-n2",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.25,
+              "measure": "3",
+              "midi_pitch": 68,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n3",
+              "svg_element_id": "P1-m3-n3",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0.75,
+              "duration_beats": 0.25,
+              "measure": "3",
+              "midi_pitch": 70,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n4",
+              "svg_element_id": "P1-m3-n4",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 1,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 68,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n5",
+              "svg_element_id": "P1-m3-n5",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 67,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n6",
+              "svg_element_id": "P1-m3-n6",
+              "tie": "none",
+              "voice": "1:1"
+            },
+            {
+              "beat": 0,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n7",
+              "svg_element_id": "P1-m3-n7",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n8",
+              "svg_element_id": "P1-m3-n8",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 0.5,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 65,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n9",
+              "svg_element_id": "P1-m3-n9",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 53,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n10",
+              "svg_element_id": "P1-m3-n10",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 60,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n11",
+              "svg_element_id": "P1-m3-n11",
+              "tie": "none",
+              "voice": "2:5"
+            },
+            {
+              "beat": 1.5,
+              "duration_beats": 0.5,
+              "measure": "3",
+              "midi_pitch": 64,
+              "page_id": "page-1",
+              "part_id": "P1",
+              "rest": false,
+              "source_id": "P1-m3-n12",
+              "svg_element_id": "P1-m3-n12",
+              "tie": "none",
+              "voice": "2:5"
+            }
+          ],
+          "score_marks": [
+            {
+              "beat": 0,
+              "mark_id": "P1-m1-mark1",
+              "measure": "1",
+              "measure_index": 1,
+              "part_id": "P1",
+              "provenance_id": "musicxml-score-marks",
+              "score_object_ids": [
+                "P1-m1-n1",
+                "P1-m1-n2"
+              ],
+              "staff": null,
+              "value": {
+                "encoded_mode": "major",
+                "fifths": -4,
+                "kind": "key_signature"
+              }
+            },
+            {
+              "beat": 0,
+              "mark_id": "P1-m1-mark2",
+              "measure": "1",
+              "measure_index": 1,
+              "part_id": "P1",
+              "provenance_id": "musicxml-score-marks",
+              "score_object_ids": [
+                "P1-m1-n1",
+                "P1-m1-n2"
+              ],
+              "staff": null,
+              "value": {
+                "components": [
+                  {
+                    "beat_type": 4,
+                    "beats": "2"
+                  }
+                ],
+                "kind": "time_signature",
+                "symbol": null
+              }
+            },
+            {
+              "beat": 0,
+              "mark_id": "P1-m1-mark3",
+              "measure": "1",
+              "measure_index": 1,
+              "part_id": "P1",
+              "provenance_id": "musicxml-score-marks",
+              "score_object_ids": [
+                "P1-m1-n1"
+              ],
+              "staff": "1",
+              "value": {
+                "kind": "direction",
+                "metronome": null,
+                "sound_tempo_quarter_bpm": 80,
+                "words": [
+                  "Allegro moderato"
+                ]
+              }
+            }
+          ],
+          "total": 26,
+          "work_tonality": {
+            "explanation": "作品调性确认为 F 小调：Mutopia 作品页标为 F Minor，原 MusicXML 标题亦写 fa mineur。原谱四降号的 mode=major 与上游 LilyPond 的 key as major 编码一致；保留这些原始调号编码，作品调性按作品来源核定，不将该编码解读为作品是降 A 大调。",
+            "mode": "minor",
+            "provenance_ids": [
+              "schubert-tonality-review-20261023",
+              "musicxml-score-marks"
+            ],
+            "tonic": "F"
+          }
+        },
+        "view": "score"
+      },
+      "preview": "第 1 小节：调号：4 个降号\n第 1 小节：拍号：2/4\n第 1 小节：Allegro moderato；文件播放速度：每分钟 80 个四分音符\n作品调性：F minor。作品调性确认为 F 小调：Mutopia 作品页标为 F Minor，原 MusicXML 标题亦写 fa mineur。原谱四降号的 mode=major 与上游 LilyPond 的 key as major 编码一致；保留这些原始调号编码，作品调性按作品来源核定，不将该编码解读为作品是降 A 大调。",
+      "target": {
+        "audio": {
+          "end_ms": 4000,
+          "recording": {
+            "recording_id": "schubert-d780-3-vetter",
+            "revision": "imslp456646"
+          },
+          "start_ms": 0
+        },
+        "event_ids": [],
+        "occurrence_ids": [
+          "measure-1-occurrence-1",
+          "measure-2-occurrence-1",
+          "measure-3-occurrence-1"
+        ],
+        "provenance_ids": [
+          "musicxml-score-marks",
+          "schubert-tonality-review-20261023",
+          "score-noctave-20261022",
+          "vetter-audio-review-20261023/dual-model"
+        ],
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a166d8-fabf-73d2-9502-4bf3d55da1b7"
+        },
+        "score": {
+          "score": {
+            "revision": "download-20261022",
+            "score_id": "schubert-d780-3-noctave"
+          },
+          "source_ids": [
+            "P1-m1-n1",
+            "P1-m1-n2",
+            "P1-m1-n3",
+            "P1-m1-n4",
+            "P1-m1-n5",
+            "P1-m1-n6",
+            "P1-m1-n7",
+            "P1-m2-n1",
+            "P1-m2-n2",
+            "P1-m2-n3",
+            "P1-m2-n4",
+            "P1-m2-n5",
+            "P1-m2-n6",
+            "P1-m2-n7",
+            "P1-m3-n1",
+            "P1-m3-n10",
+            "P1-m3-n11",
+            "P1-m3-n12",
+            "P1-m3-n2",
+            "P1-m3-n3",
+            "P1-m3-n4",
+            "P1-m3-n5",
+            "P1-m3-n6",
+            "P1-m3-n7",
+            "P1-m3-n8",
+            "P1-m3-n9"
+          ]
+        }
+      },
+      "title": "舒伯特 · 音乐瞬间第 3 首"
+    },
+    "music_score_pages": [
+      {
+        "page_id": "page-1",
+        "url": "/api/book/music/source/turn_f581e3ae9701daf1/src_01a16709e4177a6099e8d903fd76ac0b/score/page-1"
+      }
+    ],
+    "source_ref_id": "src_01a16709e4177a6099e8d903fd76ac0b",
+    "stale": false
+  },
+  {
+    "can_open_in_reader": true,
+    "context_after": "",
+    "context_before": "",
+    "heading_path": [],
+    "highlighted_quote": "Franz Schubert · Moments musicaux, D.780 / Op.94",
+    "label": "舒伯特 · 音乐瞬间第 3 首 · 00:00 · 预构建分析",
+    "material_title": "舒伯特 · 音乐瞬间第 3 首",
+    "media_url": "/api/book/music/source/turn_f581e3ae9701daf1/src_01a16709e4717772a05458240d2ec6a8/audio",
+    "music": {
+      "label": "舒伯特 · 音乐瞬间第 3 首 · 00:00 · 预构建分析",
+      "material": {
+        "coverage": [
+          {
+            "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+            "end_ms": 101041.633,
+            "granularity": "measure",
+            "method": "audio_alignment",
+            "provenance_id": "vetter-audio-review-20261023",
+            "start_ms": 0,
+            "status": "accepted"
+          },
+          {
+            "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+            "end_ms": 101041.633,
+            "granularity": "note",
+            "method": "audio_alignment",
+            "provenance_id": "vetter-audio-review-20261023",
+            "start_ms": 0,
+            "status": "accepted"
+          }
+        ],
+        "heard_audio": false,
+        "observation_kind": "prepared_music_material",
+        "occurrences": [],
+        "provenance": [
+          {
+            "description": "2026-10-23 核对 Mutopia-2007/08/11-1023 作品页（Moments Musicaux No. 3 in F Minor，D.780 / Op.94 No.3）、上游 MomentsNo3.ly（key as major）及本地 Noctave MusicXML（标题 fa mineur，fifths=-4，mode=major）。作品调性采用 F minor，原始谱文件和调号编码原样保留。Allegro moderato 来自原 XML 的 direction/words；sound tempo=80 是文件播放参数，非录音实测速度。",
+            "kind": "reference",
+            "processor": "Curator source comparison, 2026-10-23",
+            "provenance_id": "schubert-tonality-review-20261023",
+            "source_url": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1023"
+          },
+          {
+            "description": "直接读取原 MusicXML 的调号编码、拍号、文字指示、节拍器标记与播放速度参数，保留小节、拍位及谱面锚点。sound tempo 是文件播放参数，不是录音速度测量；encoded_mode 是原调号编码，不替代经核对的作品调性。",
+            "kind": "score",
+            "processor": "MusicXML score marks v1",
+            "provenance_id": "musicxml-score-marks",
+            "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+          }
+        ],
+        "read": {
+          "coverage": [
+            {
+              "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+              "end_ms": 101041.633,
+              "granularity": "measure",
+              "method": "audio_alignment",
+              "provenance_id": "vetter-audio-review-20261023",
+              "start_ms": 0,
+              "status": "accepted"
+            },
+            {
+              "detail": "全曲跟随原录音；逐项处理装饰音、延续音及谱本差异。19 个未确认独立发声的谱音不显示光点。",
+              "end_ms": 101041.633,
+              "granularity": "note",
+              "method": "audio_alignment",
+              "provenance_id": "vetter-audio-review-20261023",
+              "start_ms": 0,
+              "status": "accepted"
+            }
+          ],
+          "demonstrations": [
+            {
+              "content_type": "audio/wav",
+              "demonstration_id": "upper-line-m3-4",
+              "duration_ms": 3150.0226757369614,
+              "kind": "score_synthesis",
+              "media_path": "music/demonstrations/upper-line-m3-4.wav",
+              "part_ids": [
+                "P1"
+              ],
+              "provenance_id": "score-synthesis:upper-line-m3-4",
+              "score_object_ids": [
+                "P1-m3-n1",
+                "P1-m3-n2",
+                "P1-m3-n3",
+                "P1-m3-n4",
+                "P1-m3-n5",
+                "P1-m3-n6",
+                "P1-m4-n1",
+                "P1-m4-n2",
+                "P1-m4-n3",
+                "P1-m4-n4",
+                "P1-m4-n5",
+                "P1-m4-n6",
+                "P1-m4-n7",
+                "P1-m4-n8"
+              ],
+              "title": "谱面合成示范 · 第 3–4 小节上方线条"
+            }
+          ],
+          "guidance": "Read events or score for a bounded range. Score reads include source-anchored key signatures, meters and tempo/direction marks, with inherited notation context. work.tonality is a separately sourced work-level conclusion; a key signature's encoded_mode is the raw file value. Navigation-only sections do not imply detailed analysis. Score synthesis is not a separated recording stem.",
+          "parts": [
+            {
+              "group": "其他",
+              "instrument": "Piano",
+              "name": "Piano",
+              "part_id": "P1",
+              "voices": [
+                "1:1",
+                "2:5",
+                "1:2",
+                "1:3"
+              ]
+            }
+          ],
+          "provenance": [
+            {
+              "description": "直接读取原 MusicXML 的谱表、声部、音高、时值和休止；事件播放区间目前来自待复核 DTW 候选，不构成已接纳录音听核。",
+              "kind": "score",
+              "processor": "MusicXML structural reading; score events reviewed from actual XML",
+              "provenance_id": "score-noctave-20261022",
+              "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+            },
+            {
+              "description": "实际处理原录音，whitened_stft_chroma_bass_dtw_v1；20 毫秒帧。该结果尚未人工听核，不能宣称逐音符已校准。",
+              "kind": "audio_analysis",
+              "processor": "whitened_stft_chroma_bass_dtw_v1",
+              "provenance_id": "audio-alignment:whitened_stft_chroma_bass_dtw_v1",
+              "source_url": null
+            },
+            {
+              "description": "Kong 与 Transkun 两个不输入谱面的钢琴转写独立检出同音起音；按原声频谱逐段检查。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/dual-model",
+              "source_url": null
+            },
+            {
+              "description": "一个钢琴转写模型检出、另一个漏检；以原声频谱复核位置。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/single-model-spectral-review",
+              "source_url": null
+            },
+            {
+              "description": "第 30 小节低音以原声频谱及 Transkun 的 35.657 秒起音为准，排除 Kong 提前约 184 毫秒的候选。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/transkun-spectral-correction",
+              "source_url": null
+            },
+            {
+              "description": "第 8—10、16—18 小节部分低音，录音对应声部比此谱本高八度；映射实际起音至原谱位置，未改谱或录音。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/edition-voicing",
+              "source_url": null
+            },
+            {
+              "description": "第 61 小节录音为 D 自然音，谱本为 D 降音；映射实际装饰音及后续起音，保留谱本。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/edition-accidental",
+              "source_url": null
+            },
+            {
+              "description": "原声频谱为延续音、无独立再次敲击；保留较淡的持续音标记，attack=false。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/sustained-without-reattack",
+              "source_url": null
+            },
+            {
+              "description": "两套转写及原声频谱复核未建立独立发声音；只记录谱面对应位置，unobserved=true，不绘制发声光点。此标记不断言演奏者漏弹。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261022/unobserved-tone",
+              "source_url": null
+            },
+            {
+              "description": "78 小节全曲逐音位置校准。原始录音独立双模型转写、全曲 17 段频谱目视复核、逐项保留谱本差异。14 个未确认独立发声的谱音不亮点。未宣称人类听核或绝对误差真值。",
+              "kind": "audio_analysis",
+              "processor": "scripts/music/finalize_schubert.py; review/full-01.png through full-17.png",
+              "provenance_id": "vetter-audio-review-20261022",
+              "source_url": null
+            },
+            {
+              "description": "Kong 与 Transkun 两个不输入谱面的钢琴转写独立检出同音起音；按原声频谱逐段检查。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/dual-model",
+              "source_url": null
+            },
+            {
+              "description": "一个钢琴转写模型检出、另一个漏检；以原声频谱复核位置。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/single-model-spectral-review",
+              "source_url": null
+            },
+            {
+              "description": "第 30 小节低音以原声频谱及 Transkun 的 35.657 秒起音为准，排除 Kong 提前约 184 毫秒的候选。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/transkun-spectral-correction",
+              "source_url": null
+            },
+            {
+              "description": "第 8—10、16—18 小节部分低音，录音对应声部比此谱本高八度；映射实际起音至原谱位置，未改谱或录音。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/edition-voicing",
+              "source_url": null
+            },
+            {
+              "description": "第 61 小节录音为 D 自然音，谱本为 D 降音；映射实际装饰音及后续起音，保留谱本。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/edition-accidental",
+              "source_url": null
+            },
+            {
+              "description": "原声频谱为延续音、无独立再次敲击；保留较淡的持续音标记，attack=false。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/sustained-without-reattack",
+              "source_url": null
+            },
+            {
+              "description": "两套转写及原声频谱复核未建立独立发声音；只记录谱面对应位置，unobserved=true，不绘制发声光点。此标记不断言演奏者漏弹。",
+              "kind": "audio_analysis",
+              "processor": "Kong high-resolution piano AMT; Transkun 2.0.1; original-audio harmonic spectrum; AI visual review, not human listening",
+              "provenance_id": "vetter-audio-review-20261023/unobserved-tone",
+              "source_url": null
+            },
+            {
+              "description": "78 小节全曲逐音位置校准。原始录音独立双模型转写、全曲 17 段频谱目视复核、逐项保留谱本差异。19 个未确认独立发声的谱音不亮点；19 个延续音的淡点按实际能量衰减结束。未宣称人类听核或绝对误差真值。",
+              "kind": "audio_analysis",
+              "processor": "scripts/music/finalize_schubert.py; review/full-01.png through full-17.png",
+              "provenance_id": "vetter-audio-review-20261023",
+              "source_url": null
+            },
+            {
+              "description": "2026-10-23 核对 Mutopia-2007/08/11-1023 作品页（Moments Musicaux No. 3 in F Minor，D.780 / Op.94 No.3）、上游 MomentsNo3.ly（key as major）及本地 Noctave MusicXML（标题 fa mineur，fifths=-4，mode=major）。作品调性采用 F minor，原始谱文件和调号编码原样保留。Allegro moderato 来自原 XML 的 direction/words；sound tempo=80 是文件播放参数，非录音实测速度。",
+              "kind": "reference",
+              "processor": "Curator source comparison, 2026-10-23",
+              "provenance_id": "schubert-tonality-review-20261023",
+              "source_url": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1023"
+            },
+            {
+              "description": "直接读取原 MusicXML 的调号编码、拍号、文字指示、节拍器标记与播放速度参数，保留小节、拍位及谱面锚点。sound tempo 是文件播放参数，不是录音速度测量；encoded_mode 是原调号编码，不替代经核对的作品调性。",
+              "kind": "score",
+              "processor": "MusicXML score marks v1",
+              "provenance_id": "musicxml-score-marks",
+              "source_url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+            },
+            {
+              "description": "谱面合成示范：按选定谱音以 80 BPM 生成基础音色，装饰音采用 80 毫秒的呈现时值；不是原录音的分轨。",
+              "kind": "score_synthesis",
+              "processor": "understand-book score oscillator v1",
+              "provenance_id": "score-synthesis:upper-line-m3-4",
+              "source_url": null
+            }
+          ],
+          "recording": {
+            "content_type": "audio/mpeg",
+            "duration_ms": 101041.633,
+            "kind": "performance",
+            "media_path": "music/audio/recording.mp3",
+            "performers": "Harald Vetter, piano",
+            "source": {
+              "recording_id": "schubert-d780-3-vetter",
+              "revision": "imslp456646"
+            },
+            "title": "Harald Vetter · Allegro moderato in F minor"
+          },
+          "rights": [
+            {
+              "asset_kind": "recording",
+              "attribution": "Franz Schubert, Moments musicaux D.780 No.3; piano and recording publisher: Harald Vetter; IMSLP #456646; https://creativecommons.org/licenses/by/4.0/ . Original recording unchanged.",
+              "distribution": "allowed",
+              "license": "CC BY 4.0",
+              "title": "Harald Vetter 演奏录音",
+              "url": "https://imslp.org/wiki/Moments_musicaux,_D.780_(Schubert,_Franz)"
+            },
+            {
+              "asset_kind": "score",
+              "attribution": "Franz Schubert; typesetting Claude Chaudron / Mutopia-2007/08/11-1023; MusicXML conversion Noctave. https://creativecommons.org/publicdomain/zero/1.0/ . Source file unchanged; SVG is a derived rendering.",
+              "distribution": "allowed",
+              "license": "CC0 1.0",
+              "title": "Noctave MusicXML 谱本",
+              "url": "https://noctavepiano.com/partitions/schubert-moment-musical-d780-3/"
+            },
+            {
+              "asset_kind": "font",
+              "attribution": "Leipzig music font, Etienne Darbellay, Jean-Francois Marti and Laurent Pugin; copyright and license in music/NOTICE.txt",
+              "distribution": "allowed",
+              "license": "SIL Open Font License 1.1",
+              "title": "Leipzig music font",
+              "url": "https://github.com/rism-digital/leipzig/tree/a8838c6fe6bf3aaf4bfb5d831436b4f7594dbf9c"
+            }
+          ],
+          "score": {
+            "musicxml_path": "music/score/original.musicxml",
+            "source": {
+              "revision": "download-20261022",
+              "score_id": "schubert-d780-3-noctave"
+            },
+            "title": "Noctave · 据 Mutopia / Claude Chaudron 公版谱转录"
+          },
+          "score_marks_available": true,
+          "structure": [
+            {
+              "coverage": "navigation_only",
+              "description": "78 小节的完整谱本与 Harald Vetter 的完整录音；当前深度事件只覆盖开头及重复材料案例，音符时间仍待复核。",
+              "end_ms": 101041.633,
+              "event_ids": [
+                "opening-entry",
+                "same-material-returns",
+                "two-staves"
+              ],
+              "parent_id": null,
+              "section_id": "whole-piece",
+              "start_ms": 0,
+              "title": "整首作品"
+            }
+          ],
+          "work": {
+            "composer": "Franz Schubert",
+            "movement": "No.3 in F minor · Allegro moderato",
+            "title": "Moments musicaux, D.780 / Op.94",
+            "tonality": {
+              "explanation": "作品调性确认为 F 小调：Mutopia 作品页标为 F Minor，原 MusicXML 标题亦写 fa mineur。原谱四降号的 mode=major 与上游 LilyPond 的 key as major 编码一致；保留这些原始调号编码，作品调性按作品来源核定，不将该编码解读为作品是降 A 大调。",
+              "mode": "minor",
+              "provenance_ids": [
+                "schubert-tonality-review-20261023",
+                "musicxml-score-marks"
+              ],
+              "tonic": "F"
+            },
+            "work_id": "schubert-d780"
+          }
+        },
+        "view": "overview"
+      },
+      "preview": "Franz Schubert · Moments musicaux, D.780 / Op.94",
+      "target": {
+        "audio": {
+          "end_ms": 101041.633,
+          "recording": {
+            "recording_id": "schubert-d780-3-vetter",
+            "revision": "imslp456646"
+          },
+          "start_ms": 0
+        },
+        "event_ids": [],
+        "occurrence_ids": [],
+        "provenance_ids": [
+          "musicxml-score-marks",
+          "schubert-tonality-review-20261023"
+        ],
+        "publication": {
+          "book_id": "music-schubert-d780-3-vetter",
+          "publication_id": "01a166d8-fabf-73d2-9502-4bf3d55da1b7"
+        },
+        "score": null
+      },
+      "title": "舒伯特 · 音乐瞬间第 3 首"
+    },
+    "music_score_pages": [],
+    "source_ref_id": "src_01a16709e4717772a05458240d2ec6a8",
+    "stale": false
+  }
+]

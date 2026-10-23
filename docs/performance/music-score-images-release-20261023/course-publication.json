@@ -1,0 +1,187 @@
+{
+  "actor": "admin",
+  "created_at": 1792731651,
+  "kind": "workspace-releases",
+  "ok": true,
+  "operation_id": "publish-schubert-score-facts-20261023",
+  "parameters": {
+    "expected_version": 2,
+    "manifest": {
+      "applicability": "古典音乐入门与钢琴作品聆听；逐音跟谱、谱面截图提问与来源核对",
+      "materials": [
+        {
+          "published_book_ref": {
+            "book_id": "music-schubert-d780-3-vetter",
+            "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+          },
+          "required_capabilities": [
+            "music",
+            "music_events",
+            "music_note_alignment",
+            "music_score"
+          ]
+        }
+      ],
+      "name": "舒伯特 · 音乐瞬间第 3 首",
+      "prerequisites": "无需识谱基础，可以先听作品再探索声部",
+      "public_goal": "边听原声边看谱，理解钢琴主题与伴奏的关系",
+      "publisher": "Understand Book",
+      "suggested_route": [
+        {
+          "description": "听完整曲，再关注旋律进入和伴奏的变化；谱面示范用于比较，保留与真人录音的区别。",
+          "materials": [
+            {
+              "book_id": "music-schubert-d780-3-vetter",
+              "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+            }
+          ],
+          "title": "先听原声，再比较上下谱表"
+        }
+      ],
+      "topic_links": []
+    },
+    "release_id": "schubert-moment-musical-3",
+    "visible_to_users": [
+      "adaelon",
+      "admin",
+      "puff",
+      "reader"
+    ]
+  },
+  "user_id": "admin",
+  "workspace_release": {
+    "allowed_tiers": [],
+    "archived": false,
+    "availability": {
+      "audience": [
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "adaelon"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "admin"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "puff"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "reader"
+        }
+      ],
+      "materials": [
+        {
+          "available_capabilities": [
+            "music",
+            "music_events",
+            "music_note_alignment",
+            "music_score",
+            "text",
+            "tutor"
+          ],
+          "missing_capabilities": [],
+          "publication_available": true,
+          "published_book_ref": {
+            "book_id": "music-schubert-d780-3-vetter",
+            "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+          }
+        }
+      ],
+      "status": "ready"
+    },
+    "created_at": 1792731651,
+    "latest_version": 3,
+    "manifest": {
+      "applicability": "古典音乐入门与钢琴作品聆听；逐音跟谱、谱面截图提问与来源核对",
+      "materials": [
+        {
+          "published_book_ref": {
+            "book_id": "music-schubert-d780-3-vetter",
+            "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+          },
+          "required_capabilities": [
+            "music",
+            "music_events",
+            "music_note_alignment",
+            "music_score"
+          ]
+        }
+      ],
+      "name": "舒伯特 · 音乐瞬间第 3 首",
+      "prerequisites": "无需识谱基础，可以先听作品再探索声部",
+      "public_goal": "边听原声边看谱，理解钢琴主题与伴奏的关系",
+      "publisher": "Understand Book",
+      "suggested_route": [
+        {
+          "description": "听完整曲，再关注旋律进入和伴奏的变化；谱面示范用于比较，保留与真人录音的区别。",
+          "materials": [
+            {
+              "book_id": "music-schubert-d780-3-vetter",
+              "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+            }
+          ],
+          "title": "先听原声，再比较上下谱表"
+        }
+      ],
+      "topic_links": []
+    },
+    "publisher_user_id": "admin",
+    "readiness_at_publication": {
+      "audience": [
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "adaelon"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "admin"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "puff"
+        },
+        {
+          "missing_grants": [],
+          "ready": true,
+          "user_id": "reader"
+        }
+      ],
+      "materials": [
+        {
+          "available_capabilities": [
+            "music",
+            "music_events",
+            "music_note_alignment",
+            "music_score",
+            "text",
+            "tutor"
+          ],
+          "missing_capabilities": [],
+          "publication_available": true,
+          "published_book_ref": {
+            "book_id": "music-schubert-d780-3-vetter",
+            "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+          }
+        }
+      ],
+      "status": "ready"
+    },
+    "release_id": "schubert-moment-musical-3",
+    "version": 3,
+    "visible_to_users": [
+      "adaelon",
+      "admin",
+      "puff",
+      "reader"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "publication": {
+    "book_id": "music-schubert-d780-3-vetter",
+    "publication_id": "01a16721-f123-7850-a8fd-b59c4beb1a1f"
+  },
+  "surfaces": [
+    {
+      "viewport": {
+        "width": 1500,
+        "height": 1000
+      },
+      "image": {
+        "width": 1160,
+        "height": 228,
+        "dark_pixels": 27816
+      },
+      "crop": true,
+      "preview": true,
+      "clipboard": true,
+      "upload": true,
+      "png_request_match": true,
+      "failed_draft_retained": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 621,
+        "height": 156,
+        "dark_pixels": 9269
+      },
+      "crop": true,
+      "preview": true,
+      "clipboard": true,
+      "upload": true,
+      "png_request_match": true,
+      "failed_draft_retained": true
+    }
+  ],
+  "errors": [],
+  "model_requests": 0,
+  "submission_check": "Browser admission intercepted with 409; existing server/provider regressions verify downstream image handling.",
+  "initial_mobile_attempt": "Retried only the mobile surface after a public login timeout and corrected the script to use the mobile return-to-listening button."
+}

@@ -1,5 +1,7 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-23 13:00:51 HKT 已上线谱面事实全链路与谱面截图提问，当前 release `music-score-images-20261023`、schema 20、验证时 PID 677907。舒伯特默认发布为 `01a16721-f123-7850-a8fd-b59c4beb1a1f`，课程第 3 版；Windows 0.3.7 已公开下载并更新本机安装。维护窗口 14.05 秒，历史账号授权与原数据根保留。候选服务、公网事实与媒体、完整安装包比对通过；真实模型图片联测含两条可解析来源。见[发布、验收与已知问题](performance/music-score-images-release-20261023/README.md)。以下保留历史发布记录。
+
 2026-10-21 已上线视频按需分段播放与启动链路修复，当前 release `video-playback-20261021`、schema 20、验证时 PID 551569。派生媒体先授权再由 nginx 发送，通过 `opt-understand\x2dbook-media.mount` 将播放缓存只读挂载到 `/opt/understand-book/media`，私有数据根保持 0700。Windows 0.3.5 已发布并安装。公网 Edge 完整阅读页首帧本次实测 26.919 秒，之前 90 秒内未出画面；限速对照为 67.490 → 13.986 秒。配置、数据准确性、Windows 验收与回退见 [视频播放发布记录](performance/video-playback-release-20261021/README.md)。以下保留历史发布记录。
 
 2026-10-21 20:32:05 HKT 已上线工作区封面与布局、视频可读标题及学习成果保存范围修复；当前 release `workspace-library-title-20261021`、schema 20、PID 541359。Windows 0.3.4 已发布并完成本机安装。见 [发布、验证与恢复记录](performance/workspace-library-release-20261021/README.md)。以下保留历史发布记录。
@@ -57,9 +59,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/context-cache-20261015`，Tutor 指导 `tb4.v5`；包含上下文缓存稳定性与既有命令行书籍热发布，沿用既有前端。Rust `--release`，schema14。旧 release 被资源链接引用，须保留。见[本次发布记录](performance/context-cache-cc-20261015/deployment/README.md)。
+- release：`/opt/understand-book/releases/music-score-images-20261023`；服务、沙箱 worker、Reader 与 Windows 下载目录已同步更新。Rust `--release`，schema20。旧 release 被资源链接引用，须保留。见[本次发布记录](performance/music-score-images-release-20261023/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema14；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema20；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 
