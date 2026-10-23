@@ -9,9 +9,10 @@ import type { MusicProvenance } from "./MusicProvenance";
 import type { MusicRecording } from "./MusicRecording";
 import type { MusicRights } from "./MusicRights";
 import type { MusicScore } from "./MusicScore";
+import type { MusicScoreMark } from "./MusicScoreMark";
 import type { MusicScoreObject } from "./MusicScoreObject";
 import type { MusicScorePage } from "./MusicScorePage";
 import type { MusicStructure } from "./MusicStructure";
 import type { MusicWork } from "./MusicWork";
 
-export type MusicSourceManifest = { version: string, book_id: string, title: string, work: MusicWork, score: MusicScore, recording: MusicRecording, rights: Array<MusicRights>, parts: Array<MusicPart>, pages: Array<MusicScorePage>, score_objects: Array<MusicScoreObject>, occurrences: Array<MusicOccurrence>, note_alignments: Array<MusicNoteAlignment>, coverage: Array<MusicCoverage>, provenance: Array<MusicProvenance>, events: Array<MusicEvent>, structure: Array<MusicStructure>, demonstrations: Array<MusicDemonstration>, };
+export type MusicSourceManifest = { version: string, book_id: string, title: string, work: MusicWork, score: MusicScore, recording: MusicRecording, rights: Array<MusicRights>, parts: Array<MusicPart>, pages: Array<MusicScorePage>, score_objects: Array<MusicScoreObject>, occurrences: Array<MusicOccurrence>, note_alignments: Array<MusicNoteAlignment>, coverage: Array<MusicCoverage>, provenance: Array<MusicProvenance>, events: Array<MusicEvent>, structure: Array<MusicStructure>, demonstrations: Array<MusicDemonstration>, score_marks?: Array<MusicScoreMark>, };

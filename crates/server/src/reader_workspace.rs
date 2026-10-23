@@ -77,9 +77,17 @@ impl ReaderWorkspace {
 
     /// Same-source enrichment changes resources, never the Reader or chat selection.
     pub(crate) fn adopt_same_source_publication(&mut self, publication: Arc<crate::published_library::PublishedBook>) -> Result<(), read_tools::ToolError> {
-        let before = self.book.load_video_source(&self.book_dir)?.0;
-        let after = publication.book.load_video_source(publication.directory())?.0;
-        if before.material != after.material { return Err(crate::published_library::invalid()); }
+        if self.book_dir.join(crate::music_media::MANIFEST).exists() {
+            let before = crate::music_media::load(&self.book_dir)?;
+            let after = crate::music_media::load(publication.directory())?;
+            if before.book_id != after.book_id || before.recording != after.recording || before.score != after.score {
+                return Err(crate::published_library::invalid());
+            }
+        } else {
+            let before = self.book.load_video_source(&self.book_dir)?.0;
+            let after = publication.book.load_video_source(publication.directory())?.0;
+            if before.material != after.material { return Err(crate::published_library::invalid()); }
+        }
         self.book = publication.book.clone();
         self.book_dir = publication.directory.clone();
         self.publication = Some(publication);

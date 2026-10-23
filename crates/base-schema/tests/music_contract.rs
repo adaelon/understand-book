@@ -5,6 +5,43 @@ fn fixture() -> MusicSourceManifest {
 }
 
 #[test]
+fn music_score_facts_require_real_score_anchors_and_tonality_provenance() {
+    let mut m = fixture();
+    let note = m.score_objects[0].clone();
+    m.provenance.push(MusicProvenance { provenance_id: "marks".into(), kind: MusicProvenanceKind::Score,
+        description: "Original MusicXML declarations".into(), source_url: None, processor: None });
+    m.score_marks.push(MusicScoreMark { mark_id: "key".into(), part_id: note.part_id, measure: note.measure,
+        measure_index: 1, beat: 0.0, staff: None, value: MusicScoreMarkValue::KeySignature { fifths: -4, encoded_mode: Some("major".into()) },
+        score_object_ids: vec![note.source_id], provenance_id: "marks".into() });
+    m.work.tonality = Some(MusicTonality { tonic: "F".into(), mode: "minor".into(), explanation: "Reviewed work-level conclusion".into(), provenance_ids: vec!["marks".into()] });
+    m.validate().unwrap();
+    let restored: MusicSourceManifest = serde_json::from_value(serde_json::to_value(&m).unwrap()).unwrap();
+    assert_eq!(restored, m);
+    m.score_marks[0].score_object_ids = vec!["absent".into()];
+    assert!(m.validate().unwrap_err().contains("score mark source"));
+    m.score_marks = restored.score_marks;
+    m.work.tonality.as_mut().unwrap().provenance_ids = vec!["absent".into()];
+    assert!(m.validate().unwrap_err().contains("work tonality"));
+    fixture().validate().unwrap(); // Existing immutable publications omit these additions.
+}
+
+#[test]
+fn music_question_preserves_unindexed_notation_images_and_checks_image_bounds() {
+    let m = fixture();
+    let publication = PublishedBookRef { book_id: m.book_id.clone(), publication_id: "release-1".into() };
+    let mut q: MusicQuestionContext = serde_json::from_value(serde_json::json!({
+        "draft_id":"staff-lines", "publication":publication,
+        "audio":{"recording":m.recording.source,"start_ms":0,"end_ms":1000},
+        "score":null,"occurrence_id":null,"focused_part_ids":[],
+        "image":{"png_base64":"score-pixels","width":800,"height":240,"origin":"selection"}
+    })).unwrap();
+    q.validate(&m, &publication).unwrap();
+    assert_eq!(serde_json::to_value(&q).unwrap()["image"]["png_base64"], "score-pixels");
+    q.image.as_mut().unwrap().width = 2049;
+    assert!(q.validate(&m, &publication).is_err());
+}
+
+#[test]
 fn music_repeated_score_objects_have_independent_occurrences_and_overlapping_chord_notes() {
     let m = fixture();
     m.validate().unwrap();
@@ -54,6 +91,19 @@ fn music_synthetic_timing_cannot_claim_performance_coverage() {
 }
 
 #[test]
+fn music_reviewed_unobserved_tone_survives_publication_without_a_false_attack() {
+    let mut m = fixture();
+    m.note_alignments[0].unobserved = true;
+    assert!(m.validate().unwrap_err().contains("note alignment"));
+    m.note_alignments[0].attack = false;
+    m.validate().unwrap();
+    let json = serde_json::to_value(&m).unwrap();
+    assert_eq!(json["note_alignments"][0]["unobserved"], true);
+    assert!(json["note_alignments"][1].get("unobserved").is_none());
+    assert_eq!(serde_json::from_value::<MusicSourceManifest>(json).unwrap(), m);
+}
+
+#[test]
 fn music_successor_preserves_sources_while_layout_and_alignment_can_change() {
     let old = fixture();
     let mut next = old.clone();
@@ -79,7 +129,7 @@ fn music_question_is_pinned_to_original_publication_and_recording_range() {
     let q = MusicQuestionContext { draft_id: "question-1".into(), publication: publication.clone(),
         audio: MusicAudioLocation { recording: m.recording.source.clone(), start_ms: 2100.0, end_ms: 2600.0 },
         score: Some(MusicScoreLocation { score: m.score.source.clone(), source_ids: vec!["score/note/c".into()] }),
-        occurrence_id: Some("repeat".into()), focused_part_ids: vec!["piano".into()], focused_voices: vec![] };
+        occurrence_id: Some("repeat".into()), focused_part_ids: vec!["piano".into()], focused_voices: vec![], image: None };
     q.validate(&m, &publication).unwrap();
     let mut newer = publication.clone(); newer.publication_id = "release-2".into();
     assert!(q.validate(&m, &newer).unwrap_err().contains("question publication"));

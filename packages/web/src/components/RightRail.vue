@@ -406,7 +406,7 @@ function hostedTeachingPresentations(turn: ChatTurn): PresentationRef[] {
     && (!workspaceVisible.value || workspaceKey.value === presentationKey(turn.turnId!, part)));
 }
 function submitMessage() {
-  if (imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !props.videoQuestion?.image)) return;
+  if (imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !questionImage.value)) return;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
@@ -415,6 +415,8 @@ function submitMessage() {
   } else emit('send-agent');
 }
 const imageInput = ref<InstanceType<typeof QuestionImageInput>>(), imageLoading = ref(false);
+const imagesEnabled = computed(() => props.videoImagesEnabled || props.musicMode);
+const questionImage = computed(() => props.musicMode ? props.musicQuestion?.image : props.videoQuestion?.image);
 function questionImageLoading(active: boolean) { imageLoading.value = active; emit('question-image-loading', active); }
 function presentationSent(message: string, receipt: PresentationFollowUp) {
   followTranscript.value = true;
@@ -1257,10 +1259,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
     <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
       <div v-show="mobileConversation" class="mobile-conversation-header">
         <button class="mobile-back" type="button" :aria-label="musicMode ? '返回聆听' : '返回阅读'" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
-        <button ref="mobileLearningButton" class="mobile-learning-title" type="button" aria-label="学习与会话" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.videoImagesEnabled ? '视频伴读' : '问这本书' }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.videoImagesEnabled ? '一起弄懂正在看的内容' : '围绕这本书聊一聊') }}</small></button>
+        <button ref="mobileLearningButton" class="mobile-learning-title" type="button" aria-label="学习与会话" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.musicMode ? '音乐伴听' : props.videoImagesEnabled ? '视频伴读' : '问这本书' }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.musicMode ? '从声音或谱面问起' : props.videoImagesEnabled ? '一起弄懂正在看的内容' : '围绕这本书聊一聊') }}</small></button>
         <div ref="mobileRecordsHost" class="mobile-records" />
       </div>
-      <h3 v-show="!mobileConversation" class="rail-title"><YeyeMascot ref="fullscreenCompanion" variant="avatar" :size="32" :active="companionActive && !mobileConversation && !!props.fullscreen && !historyOpen" />{{ props.videoImagesEnabled ? '视频伴读' : '问这本书' }}</h3>
+      <h3 v-show="!mobileConversation" class="rail-title"><YeyeMascot ref="fullscreenCompanion" variant="avatar" :size="32" :active="companionActive && !mobileConversation && !!props.fullscreen && !historyOpen" />{{ props.musicMode ? '音乐伴听' : props.videoImagesEnabled ? '视频伴读' : '问这本书' }}</h3>
       <div v-if="!props.fullscreen" class="context-tabs" role="tablist" :aria-label="musicMode ? '辅助聆听功能' : '辅助阅读功能'">
       <button
         v-for="tab in tabs.slice(0, 2)"
@@ -1402,7 +1404,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
           <p v-if="turn.musicQuestion" class="turn-video-context">音乐问题 · {{ videoTime(turn.musicQuestion.audio.start_ms) }}–{{ videoTime(turn.musicQuestion.audio.end_ms) }}<span v-if="turn.musicQuestion.occurrence_id"> · 当前演奏片段</span></p>
           <p v-if="turn.videoQuestion" class="turn-video-context">视频问题 · {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? ' · 已选区域' : '' }}<span v-if="turn.videoQuestion.range"> · 时间范围 {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
-          <details v-if="turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl(turn.videoQuestion.image)" alt="本次提问图片" />查看提问图片</summary><img :src="questionImageUrl(turn.videoQuestion.image)" alt="本次提问图片放大预览" /></details>
+          <details v-if="turn.musicQuestion?.image || turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" alt="本次提问图片" />查看提问图片</summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" alt="本次提问图片放大预览" /></details>
           <p class="u-msg">{{ turn.user }}</p>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending" />
@@ -1551,8 +1553,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         <div v-if="showConversationWelcome" class="empty conversation-welcome">
           <YeyeMascot class="welcome-mascot" :size="mobileConversation ? 128 : 144" motion="idle" :active="companionActive" />
-          <h3>{{ props.musicMode ? '这首作品，想先听懂什么？' : props.videoImagesEnabled ? '没听懂的，一起弄懂。' : '这一节，想先弄明白什么？' }}</h3>
-          <p>{{ props.videoImagesEnabled ? '从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。' : props.learningTitle ? '接着上次学习，也可以随时调整目标。' : props.musicMode ? '从听到的一个片段问起，也可以说说想了解什么。' : '选一个目的开始，也可以直接写下你的问题。' }}</p>
+          <h3>{{ props.musicMode ? '听不懂、看不懂，都可以问。' : props.videoImagesEnabled ? '没听懂的，一起弄懂。' : '这一节，想先弄明白什么？' }}</h3>
+          <p>{{ props.videoImagesEnabled ? '从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。' : props.learningTitle ? '接着上次学习，也可以随时调整目标。' : props.musicMode ? '不认识谱线、音符或符号？在乐谱上框选，或上传、粘贴截图，直接问「这是什么」。' : '选一个目的开始，也可以直接写下你的问题。' }}</p>
           <button v-if="props.learningTitle && !props.videoImagesEnabled" type="button" class="question-example"
             :disabled="sending || learningPurposeBusy || !learningPurposeReady" @click="emit('resume-learning')">{{ tutorEnabled ? '继续上次学习' : '开启并继续上次学习' }} <span aria-hidden="true">→</span></button>
           <LearningPurposeEntry v-else-if="!props.videoImagesEnabled" :music-mode="props.musicMode" :available="!!learningPurposeAvailable" :ready="!!learningPurposeReady"
@@ -1595,8 +1597,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         </div>
         <div v-if="composeTall && (!mobileConversation || mobileComposerVisible)" class="compose-caption"><span>草稿会保留</span><button type="button" aria-label="收起输入" @click="collapseAgentInput">收起</button></div>
-        <div v-show="!mobileConversation || mobileComposerVisible" class="agent-compose-row" :class="{ 'video-compose': videoImagesEnabled }">
-        <QuestionImageInput v-if="videoImagesEnabled" ref="imageInput" :image="videoQuestion?.image" :disabled="sending || questionInputBlocked" @change="emit('question-image', $event)" @loading="questionImageLoading" />
+        <div v-show="!mobileConversation || mobileComposerVisible" class="agent-compose-row" :class="{ 'video-compose': imagesEnabled }">
+        <QuestionImageInput v-if="imagesEnabled" ref="imageInput" :image="questionImage" :disabled="sending || questionInputBlocked" @change="emit('question-image', $event)" @loading="questionImageLoading" />
         <textarea
           ref="agentInputRef"
           data-workspace-input="agent"
@@ -1604,14 +1606,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :value="props.agentInput"
           rows="1"
           :aria-label="musicMode ? '围绕当前音乐提问' : '围绕当前阅读内容提问'"
-          :placeholder="props.askDraft ? '围绕引用来源提问...' : props.videoImagesEnabled ? '这里为什么这样？问问伴读…' : props.musicMode ? '说说你听到了什么，或想听懂什么…' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
+          :placeholder="props.askDraft ? '围绕引用来源提问...' : props.videoImagesEnabled ? '这里为什么这样？问问伴读…' : props.musicMode ? '看不懂的谱线、音符，截图问问…' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
           @paste="imageInput?.paste($event)"
         />
         <div class="composer-controls">
-          <button v-if="videoImagesEnabled" type="button" class="attach-image" :aria-label="videoQuestion?.image ? '替换图片' : '添加图片'" title="添加图片，也可直接粘贴" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
+          <button v-if="imagesEnabled" type="button" class="attach-image" :aria-label="questionImage ? '替换图片' : '添加图片'" title="添加图片，也可直接粘贴" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
           <div v-if="videoQuestion" class="video-binding" aria-label="问题绑定位置" :title="`问题绑定 ${videoTime(videoQuestion.frame.actual_pts_ms)}${videoQuestion.region ? ' · 已选区域' : ''}`">
             <span>{{ videoQuestion.range ? `${videoTime(videoQuestion.range.start_ms)}–${videoTime(videoQuestion.range.end_ms)}` : videoTime(videoQuestion.frame.actual_pts_ms) }}{{ videoQuestion.region ? ' · 选区' : '' }}</span>
             <button type="button" aria-label="取消草稿" title="取消草稿" :disabled="imageLoading || sending" @click="emit('cancel-video-draft')"><X :size="12" aria-hidden="true" /></button>
@@ -1622,7 +1624,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
         </div>
         <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? '正在停止' : '停止'" :title="stopping ? '正在停止' : '停止生成'" :disabled="stopping" @click="stopAgent"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
-        <button v-else type="button" class="send-agent" :aria-label="props.sending ? '发送中' : '发送'" title="发送（Ctrl+Enter）" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !props.videoQuestion?.image)" @click="submitMessage">
+        <button v-else type="button" class="send-agent" :aria-label="props.sending ? '发送中' : '发送'" title="发送（Ctrl+Enter）" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !questionImage)" @click="submitMessage">
           <ArrowUp :size="20" aria-hidden="true" />
         </button>
         </div>

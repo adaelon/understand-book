@@ -665,22 +665,29 @@ impl WorkspaceRegistry {
                 value["result"] = json!({"status":"busy"}); return Ok(value);
             }
             let old = scene.workspace.publication.as_ref().unwrap().clone();
+            let music = old.directory().join(crate::music_media::MANIFEST).exists();
+            let projection = |publication: &crate::published_library::PublishedBook| {
+                if music { crate::music_media::projection(publication.directory()) }
+                else { crate::video_publication::projection(&publication.book, publication.directory()) }
+            };
+            let media_key = if music { "music" } else { "video" };
             let next = library.lock().unwrap().video_successor(owner, &old.reference)?;
             let Some(next) = next else {
                 value["result"] = json!({"status":"current"});
                 if input["publication_id"].as_str().is_some_and(|id| id != old.reference.publication_id) {
-                    value["result"]["video"] = crate::video_publication::projection(&old.book, old.directory())?;
+                    value["result"][media_key] = projection(&old)?;
                 }
                 return Ok(value);
             };
             // Build the projection before committing, so a read failure cannot half-adopt.
-            let video = crate::video_publication::projection(&next.book, next.directory())?;
+            let media = projection(&next)?;
             scene.workspace.adopt_same_source_publication(next)?;
             if let Err(e) = self.persist(owner, &mut scene, false) {
                 scene.workspace.adopt_same_source_publication(old)?;
                 return Err(e);
             }
-            let mut value = view(&scene); value["result"] = json!({"status":"adopted","video":video});
+            let mut value = view(&scene); value["result"] = json!({"status":"adopted"});
+            value["result"][media_key] = media;
             return Ok(value);
         }
         if action == "reader/video_draft" {

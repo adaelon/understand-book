@@ -12,7 +12,7 @@ if (option('--calibration')) {
   console.log(JSON.stringify({ book_id: manifest.book_id, coverage: manifest.coverage }));
 } else if (option('--inspect-score')) {
   const parsed = parseMusicScore(musicXmlFromBytes(readFileSync(option('--inspect-score'))));
-  const result = JSON.stringify({ parts: parsed.parts, notes: parsed.notes, measure_durations: parsed.measure_durations }, null, 2);
+  const result = JSON.stringify({ parts: parsed.parts, notes: parsed.notes, marks: parsed.marks, measure_durations: parsed.measure_durations }, null, 2);
   if (output) writeFileSync(output, result + '\n'); else console.log(result);
 } else {
   if (!option('--input') || !output) throw new Error('Usage: node --import tsx scripts/music-build.mjs --input curation.json --output workspace');

@@ -13,7 +13,8 @@ describe('music import', () => {
     const folder = mkdtempSync(path.join(os.tmpdir(), 'music-import-')), bookDir = path.join(folder, 'workspace');
     writeFileSync(path.join(folder, 'source.musicxml'), xml);
     writeFileSync(path.join(folder, 'source.wav'), synthesizeScoreDemonstration(parseMusicScore(xml).notes, 120).wav);
-    const curation: MusicCuration = { version: 'music_curation.v1', book_id: 'test-music', title: 'One note', work: { work_id: 'test-work', title: 'One note', composer: 'Test', movement: null },
+    const curation: MusicCuration = { version: 'music_curation.v1', book_id: 'test-music', title: 'One note', work: { work_id: 'test-work', title: 'One note', composer: 'Test', movement: null,
+      tonality: { tonic: 'C', mode: 'major', explanation: 'Fixture composer designation, independently retained from the score encoding.', provenance_ids: ['score'] } },
       score: { source: { score_id: 'test-score', revision: '1' }, title: 'Selected score', musicxml_path: 'source.musicxml' },
       recording: { source: { recording_id: 'test-recording', revision: '1' }, title: 'Score demonstration', performers: 'Basic tone synthesizer', media_path: 'source.wav', kind: 'score_synthesis' },
       rights: [{ asset_kind: 'score', title: 'Test score', url: 'https://example.com/score', license: 'CC0', attribution: 'Test', distribution: 'allowed' }, { asset_kind: 'recording', title: 'Test demonstration', url: 'https://example.com/audio', license: 'CC0', attribution: 'Test', distribution: 'allowed' }],
@@ -25,6 +26,9 @@ describe('music import', () => {
     expect(first.recording.duration_ms).toBeGreaterThan(600);
     expect(first.pages).toHaveLength(1);
     expect(readMusicManifest(bookDir)).toEqual(first);
+    expect(first.work.tonality).toEqual(curation.work.tonality);
+    expect(first.score_marks?.[0].value).toEqual({ kind: 'time_signature', components: [{ beats: '1', beat_type: 4 }], symbol: null });
+    expect(first.provenance.find(p => p.provenance_id === first.score_marks?.[0].provenance_id)?.kind).toBe('score');
     const guide = readFileSync(path.join(bookDir, 'source.txt'), 'utf8');
     expect(guide).toContain('音乐伴听导读');
     expect(JSON.parse(readFileSync(path.join(bookDir, 'base.json'), 'utf8')).book_id).toBe('test-music');

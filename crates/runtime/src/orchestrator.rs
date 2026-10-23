@@ -6780,7 +6780,8 @@ fn run_context_inner(
             .upsert(fragment)
             .map_err(context_fragment_error)?;
     }
-    let music_source = state.music_source_context()?;
+    let mut music_source = state.music_source_context()?;
+    let music_question_image = music_source.as_mut().map(crate::music::take_question_image).transpose()?.flatten();
     context.tool_exposure_state.music_available = music_source.is_some() || state.library_available();
     if let Some(music) = &music_source {
         context.tool_exposure_state.activate("music.read");
@@ -6790,7 +6791,7 @@ fn run_context_inner(
     }
     let video_source = state.video_source_context()?;
     context.tool_exposure_state.video_available = video_source.is_some() || state.library_available();
-    let question_image = reader_input.video_question.as_ref().and_then(|q| q.image.as_ref());
+    let question_image = reader_input.video_question.as_ref().and_then(|q| q.image.as_ref()).or(music_question_image.as_ref());
     context.question_image = question_image.cloned();
     if let Some(question) = &reader_input.video_question {
         let mut question_metadata = question.clone();

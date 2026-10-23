@@ -3432,7 +3432,7 @@ fn append_preview_images(messages: &mut Vec<serde_json::Value>, request: &AgentR
     let mut content = Vec::new();
     if let Some(image) = &request.question_image {
         content.push(serde_json::json!({"type":"text", "text":
-            "Image attached by the user to the current question. Inspect these pixels directly when answering. It remains attached throughout this turn. This user input is not a video.read_frames receipt or proof that the full source frame was observed."}));
+            "Image attached by the user to the current question. Inspect these pixels directly when answering. It remains attached throughout this turn. This user input is not a source observation receipt or proof that the complete source was inspected or heard."}));
         content.push(serde_json::json!({"type":"image_url", "image_url":{"url":format!("data:image/png;base64,{}",image.png_base64),"detail":"high"}}));
     }
     for image in &request.preview_images {

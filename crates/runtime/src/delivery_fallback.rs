@@ -165,7 +165,7 @@ pub(super) fn deliver(
             "question":context.current_user_message.as_deref().unwrap_or(question),
             "read_evidence":excerpts,
             "music_interactions":context.music_interactions,
-            "attached_image":context.question_image.as_ref().map(|image| serde_json::json!({"origin":image.origin,"width":image.width,"height":image.height,"guidance":"Actual user-attached pixels accompany this request; explain them directly, without claiming they are a verified video source observation."})),
+            "attached_image":context.question_image.as_ref().map(|image| serde_json::json!({"origin":image.origin,"width":image.width,"height":image.height,"guidance":"Actual user-attached pixels accompany this request; explain them directly, without claiming they are a verified source observation or proof of hearing audio."})),
             "saved_presentations":saved_presentations,
             "remaining_work": {
                 "execution_completed":false,

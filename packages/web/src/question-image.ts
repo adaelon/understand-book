@@ -25,6 +25,41 @@ export function captureQuestionImage(video: HTMLVideoElement, region: FrameRegio
     Math.min(video.videoHeight - top, Math.round(height * video.videoHeight)), 'selection');
 }
 
+export type ImageRect = [number, number, number, number];
+export function scoreImageRect(box: { left: number; top: number; width: number; height: number }, start: { x: number; y: number }, end: { x: number; y: number }): ImageRect | null {
+  if (box.width <= 0 || box.height <= 0) return null;
+  const clamp = (n: number) => Math.max(0, Math.min(1, n));
+  const x1 = clamp((start.x - box.left) / box.width), y1 = clamp((start.y - box.top) / box.height);
+  const x2 = clamp((end.x - box.left) / box.width), y2 = clamp((end.y - box.top) / box.height);
+  if (Math.abs(x2 - x1) * box.width < 4 || Math.abs(y2 - y1) * box.height < 4) return null;
+  return [Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)];
+}
+
+/** Snapshot the rendered notation, including its glyph definitions and current voice colors. */
+export async function captureScoreQuestionImage(svg: SVGSVGElement, rect: ImageRect): Promise<VideoQuestionImage> {
+  const box = svg.getBoundingClientRect();
+  if (!box.width || !box.height) throw new Error('请等待乐谱显示后重新框选');
+  const [x, y, w, h] = rect;
+  const width = box.width * w, height = box.height * h;
+  const scale = Math.min(2, 2048 / Math.max(width, height));
+  const outputWidth = Math.max(1, Math.round(width * scale)), outputHeight = Math.max(1, Math.round(height * scale));
+  const ns = 'http://www.w3.org/2000/svg', root = document.createElementNS(ns, 'svg');
+  root.setAttribute('width', String(outputWidth)); root.setAttribute('height', String(outputHeight));
+  root.setAttribute('viewBox', `${x * box.width} ${y * box.height} ${width} ${height}`);
+  const background = document.createElementNS(ns, 'rect');
+  background.setAttribute('width', String(box.width)); background.setAttribute('height', String(box.height)); background.setAttribute('fill', '#fffefa');
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute('width', String(box.width)); clone.setAttribute('height', String(box.height));
+  clone.style.width = `${box.width}px`; clone.style.height = `${box.height}px`; clone.style.color = getComputedStyle(svg).color;
+  root.append(background, clone);
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(root)], { type: 'image/svg+xml' }));
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('无法生成谱面截图，请使用系统截图后粘贴')); image.src = url; });
+    return pixels(image, 0, 0, outputWidth, outputHeight, 'selection');
+  } finally { URL.revokeObjectURL(url); }
+}
+
 export async function questionImageFromFile(file: File): Promise<VideoQuestionImage> {
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw new Error('请选择 PNG、JPEG 或 WebP 图片');
   if (file.size > 20 * 1024 * 1024) throw new Error('原图片超过 20 MiB，请裁小后上传');

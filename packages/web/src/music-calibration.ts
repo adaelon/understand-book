@@ -10,7 +10,7 @@ export interface MusicCalibrationContext {
 }
 export interface CalibrationNoteDraft {
   occurrence_id: string; score_object_id: string;
-  start_ms: number | null; end_ms: number | null; attack: boolean;
+  start_ms: number | null; end_ms: number | null; attack: boolean; unobserved?: boolean;
 }
 export interface CalibrationDraft {
   start_ms: number; end_ms: number;
@@ -32,7 +32,8 @@ export function createCalibrationDraft(manifest: MusicSourceManifest, first: num
       if (!object || object.rest) return [];
       const previous = notes.get(`${occurrence.occurrence_id}/${id}`);
       return [{ occurrence_id: occurrence.occurrence_id, score_object_id: id, start_ms: previous?.start_ms ?? null, end_ms: previous?.end_ms ?? null,
-        attack: previous?.attack ?? (object.tie !== 'continue' && object.tie !== 'stop') }];
+        attack: previous?.attack ?? (object.tie !== 'continue' && object.tie !== 'stop'),
+        ...(previous?.unobserved ? { unobserved: true } : {}) }];
     })),
     reason: '', evidence: '', reviewed: false, acceptance: 'pending',
   };
@@ -58,11 +59,14 @@ export function calibrationRevision(manifest: MusicSourceManifest, draft: Calibr
     const occurrence = draft.occurrences.find(item => item.occurrence_id === note.occurrence_id)!;
     if (note.start_ms < occurrence.start_ms || note.start_ms >= occurrence.end_ms) throw new Error('音符起点必须位于所属小节内。');
     const previous = oldNotes.get(`${note.occurrence_id}/${note.score_object_id}`);
-    const unchanged = previous && previous.start_ms === note.start_ms && previous.end_ms === note.end_ms && previous.attack === note.attack;
+    // Explicitly confirming a new attack supersedes an unobserved-tone decision.
+    const unobserved = note.unobserved && !note.attack;
+    const unchanged = previous && previous.start_ms === note.start_ms && previous.end_ms === note.end_ms && previous.attack === note.attack
+      && !!previous.unobserved === !!unobserved;
     if (!unchanged && !draft.reviewed) throw new Error('新增或修改音符时间需要复听依据；请先核对录音并勾选复听确认，仍可保存为待核候选。');
     const object = manifest.score_objects.find(item => item.source_id === note.score_object_id)!;
     if (note.attack && (object.tie === 'continue' || object.tie === 'stop')) throw new Error('延音线接续音不能标记为重新起音。');
-    notes.push({ ...note, start_ms: note.start_ms, end_ms: note.end_ms, provenance_id: unchanged ? previous.provenance_id : provenanceId });
+    notes.push({ ...note, unobserved, start_ms: note.start_ms, end_ms: note.end_ms, provenance_id: unchanged ? previous.provenance_id : provenanceId });
   }
   if (draft.acceptance === 'note' && notes.length !== draft.notes.length) throw new Error(`还有 ${draft.notes.length - notes.length} 个音符没有时间，不能接纳逐音符定位。`);
   if (draft.acceptance !== 'pending' && (draft.occurrences[0].start_ms !== draft.start_ms || draft.occurrences.at(-1)!.end_ms !== draft.end_ms || draft.occurrences.some((item, index) => index > 0 && item.start_ms !== draft.occurrences[index - 1].end_ms))) throw new Error('接纳的窗口需要被连续小节完整覆盖，不能留下时间空隙。');

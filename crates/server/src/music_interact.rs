@@ -21,6 +21,9 @@ pub(crate) fn question(workspace: &crate::reader_workspace::ReaderWorkspace, inp
         return Err(unavailable());
     }
     question.validate(&source, &reference).map_err(|e| error("MUSIC_QUESTION_INVALID", e))?;
+    if let Some(image) = &question.image {
+        crate::video_draft::validate_image(image).map_err(|e| error("MUSIC_QUESTION_INVALID", e.message))?;
+    }
     Ok(Some(question))
 }
 

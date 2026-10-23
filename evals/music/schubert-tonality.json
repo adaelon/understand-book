@@ -1,0 +1,15 @@
+{
+  "tonality": {
+    "tonic": "F",
+    "mode": "minor",
+    "explanation": "作品调性确认为 F 小调：Mutopia 作品页标为 F Minor，原 MusicXML 标题亦写 fa mineur。原谱四降号的 mode=major 与上游 LilyPond 的 key as major 编码一致；保留这些原始调号编码，作品调性按作品来源核定，不将该编码解读为作品是降 A 大调。",
+    "provenance_ids": ["schubert-tonality-review-20261023", "musicxml-score-marks"]
+  },
+  "provenance": {
+    "provenance_id": "schubert-tonality-review-20261023",
+    "kind": "reference",
+    "description": "2026-10-23 核对 Mutopia-2007/08/11-1023 作品页（Moments Musicaux No. 3 in F Minor，D.780 / Op.94 No.3）、上游 MomentsNo3.ly（key as major）及本地 Noctave MusicXML（标题 fa mineur，fifths=-4，mode=major）。作品调性采用 F minor，原始谱文件和调号编码原样保留。Allegro moderato 来自原 XML 的 direction/words；sound tempo=80 是文件播放参数，非录音实测速度。",
+    "source_url": "https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1023",
+    "processor": "Curator source comparison, 2026-10-23"
+  }
+}

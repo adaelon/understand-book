@@ -9,6 +9,17 @@ const manifest = {
 } as MusicSourceManifest;
 function ready(first = 0) { const draft = createCalibrationDraft(manifest, first, first); draft.reason = 'Candidate correction'; draft.evidence = 'Manual time entry, awaiting listening'; return draft; }
 describe('local music calibration revisions', () => {
+  it('preserves unobserved tones until a reviewer explicitly confirms an attack', () => {
+    const source = structuredClone(manifest);
+    source.note_alignments[0].attack = false; source.note_alignments[0].unobserved = true;
+    const draft = createCalibrationDraft(source, 0, 0);
+    draft.reason = 'Retain evidence'; draft.evidence = 'Existing audio review';
+    expect(calibrationRevision(source, draft, 'new').note_alignments[0]).toMatchObject({ unobserved: true, provenance_id: 'old' });
+    draft.notes[0].attack = true;
+    expect(() => calibrationRevision(source, draft, 'new')).toThrow('复听依据');
+    draft.reviewed = true;
+    expect(calibrationRevision(source, draft, 'new').note_alignments[0]).toMatchObject({ unobserved: false, attack: true, provenance_id: 'new' });
+  });
   it('keeps repeated occurrences distinct and missing tie continuations blank', () => {
     const first = ready(), repeat = ready(1);
     expect(first.notes).toHaveLength(2); expect(first.notes[0].start_ms).toBe(100);

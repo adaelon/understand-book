@@ -44,6 +44,42 @@ fn save(directory: &Path, value: &Value) {
 }
 
 #[test]
+fn music_publication_score_facts_reopen_with_original_provenance_and_pages() {
+    let f = Fixture::new(); let input = f.root.path().join("score-facts");
+    let mut manifest = fixture(&input);
+    manifest["provenance"].as_array_mut().unwrap().extend([
+        json!({"provenance_id":"notation","kind":"score","description":"Original MusicXML","source_url":null,"processor":null}),
+        json!({"provenance_id":"edition","kind":"reference","description":"Publisher identifies F minor","source_url":"https://example.test/edition","processor":null}),
+    ]);
+    manifest["work"]["tonality"] = json!({"tonic":"F","mode":"minor","explanation":"Reviewed against the original edition","provenance_ids":["edition"]});
+    manifest["score_marks"] = json!([{"mark_id":"tempo","part_id":"p","measure":"1","measure_index":1,"beat":0,"staff":null,
+        "value":{"kind":"direction","words":["Allegro moderato"],"metronome":null,"sound_tempo_quarter_bpm":80},
+        "score_object_ids":["s1"],"provenance_id":"notation"}]);
+    save(&input,&manifest);
+    let mut library = f.access.library.lock().unwrap();
+    let publication = library.publish(&input).unwrap().reference;
+    library.grant("A",&publication).unwrap();
+    let loaded = library.load("A",&publication).unwrap();
+    let source = loaded.book.load_music_source(loaded.directory()).unwrap();
+    let read = read_tools::music::read(&source,&publication,&serde_json::from_value(json!({"view":"score","limit":1})).unwrap()).unwrap();
+    let saved = read.sources[0].clone();
+    let binding = SourceBinding { music:Some(saved.clone()),media:None,source_ref_id:"notation-source".into(),book_id:publication.book_id.clone(),
+        publication_id:Some(publication.publication_id.clone()),source_revision:None,evidence_range:None,evidence_text_digest:String::new(),
+        label_snapshot:saved.label.clone(),preview_snapshot:saved.preview.clone() };
+    manifest["work"]["tonality"]["explanation"] = json!("Revised editorial explanation"); save(&input,&manifest);
+    let newer = library.publish(&input).unwrap().reference;
+    assert_ne!(newer,publication);
+    let popup = crate::music_source::popup(&binding,Ok((&loaded.book,loaded.directory())),publication.url("music/audio"));
+    assert_eq!(popup["stale"],false);
+    assert_eq!(popup["can_open_in_reader"],true);
+    assert_eq!(popup["music"]["target"]["publication"],json!(publication));
+    assert_eq!(popup["music"]["material"]["read"]["work_tonality"]["explanation"],"Reviewed against the original edition");
+    assert!(popup["highlighted_quote"].as_str().unwrap().contains("Allegro moderato"));
+    assert_eq!(popup["music_score_pages"].as_array().unwrap().len(),1);
+    assert!(popup["music"]["material"]["provenance"].as_array().unwrap().iter().any(|p| p["provenance_id"]=="edition"));
+}
+
+#[test]
 fn music_publication_shares_material_preserves_versions_and_authenticates_all_assets() {
     let f = Fixture::new();
     let input = f.root.path().join("music-source");
@@ -90,6 +126,33 @@ fn music_publication_shares_material_preserves_versions_and_authenticates_all_as
     assert_eq!(response.status, 200);
     f.access.library.lock().unwrap().revoke("A", &first.reference).unwrap();
     assert_ne!(f.call(&f.a, "GET", &first.reference.url("music/audio"), json!({})).0, 200);
+}
+
+#[test]
+fn music_reader_adopts_calibration_without_replacing_chat_or_old_publication() {
+    let f = Fixture::new(); let input = f.root.path().join("music-update");
+    let mut source = fixture(&input);
+    source["coverage"][0]["status"] = json!("pending"); save(&input, &source);
+    let original = f.access.library.lock().unwrap().publish(&input).unwrap().reference;
+    f.access.library.lock().unwrap().grant("A", &original).unwrap();
+    let scene = f.create(&f.a, &original, "music-window");
+    let scene = f.action(&f.a, &scene, "music-window", "chat/new", json!({}));
+    source["coverage"][0]["status"] = json!("accepted");
+    source["note_alignments"][1]["start_ms"] = json!(1030); save(&input, &source);
+    let revised = f.access.library.lock().unwrap().publish(&input).unwrap().reference;
+    let updated = f.action(&f.a, &scene, "music-window", "reader/adopt_same_source_publication", json!({"publication_id":original.publication_id}));
+    assert_eq!(updated["result"]["status"], "adopted");
+    assert_eq!(updated["published_book_ref"], json!(revised));
+    assert_eq!(updated["result"]["music"]["publication"], json!(revised));
+    assert_eq!(updated["result"]["music"]["manifest"]["coverage"][0]["status"], "accepted");
+    for key in ["reader", "selected_chat", "generation"] { assert_eq!(updated[key], scene[key], "preserve {key}"); }
+    assert_eq!(f.get(&f.a, &updated)["published_book_ref"], json!(revised));
+    let late = f.action(&f.a, &updated, "music-window", "reader/adopt_same_source_publication", json!({"publication_id":original.publication_id}));
+    assert_eq!(late["result"]["status"], "current");
+    assert_eq!(late["result"]["music"]["publication"], json!(revised));
+    let old = f.ok(&f.a, "GET", &original.url("music_context"), json!({}));
+    assert_eq!(old["manifest"]["coverage"][0]["status"], "pending");
+    assert_eq!(old["manifest"]["note_alignments"][1]["start_ms"].as_f64(), Some(1010.0));
 }
 
 #[test]

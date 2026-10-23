@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Play, Pause, RotateCcw, Repeat2, Focus, Music2, MessageCircle, Minus, Plus, X, ChevronDown, Volume2, SlidersHorizontal, Maximize2, Minimize2, ArrowUpRight, Check } from '@lucide/vue';
+import { Play, Pause, RotateCcw, Repeat2, Focus, Music2, MessageCircle, Minus, Plus, X, ChevronDown, Volume2, SlidersHorizontal, Maximize2, Minimize2, ArrowUpRight, Check, Scan } from '@lucide/vue';
 import type { MusicContext, MusicCommand, MusicPlaybackReceipt, MusicQuestionContext } from '../music-api';
 import type { MusicEvent, MusicDemonstration } from '../../../core/src/music-contract';
 import { MUSIC_PART_COLORS, MUSIC_TRAIL_MS, MusicTimeline, musicQuestion, musicTime } from '../music-playback';
@@ -8,9 +8,10 @@ import { MusicScoreMarkers } from '../music-score';
 import { registerMusicPlayer } from '../music-interaction';
 import { musicRoleColors, musicRoleGroups, type MusicRoleGroup } from '../music-roles';
 import { recordMusicTiming } from '../music-performance';
+import { captureScoreQuestionImage, scoreImageRect, type ImageRect } from '../question-image';
 
 const props = defineProps<{ context: MusicContext; owner: string; question?: MusicQuestionContext | null; selectionDisabled?: boolean }>();
-const emit = defineEmits<{ (event: 'question', context: MusicQuestionContext): void; (event: 'clear-question'): void }>();
+const emit = defineEmits<{ (event: 'question', context: MusicQuestionContext): void; (event: 'clear-question'): void; (event: 'image-loading', active: boolean): void }>();
 const manifest = computed(() => props.context.manifest);
 const pane = ref<HTMLElement>(), focusToggle = ref<HTMLButtonElement>();
 const focusMenu = ref(false), fullscreen = ref(false), canFullscreen = ref(false);
@@ -25,6 +26,48 @@ const displayedCue = ref<{ event_id: string; text: string } | null>(null);
 const displayedCueTitle = computed(() => manifest.value.events.find(event => event.event_id === displayedCue.value?.event_id)?.title);
 const pageMarkup = ref<Record<string, string>>({});
 const pageHosts = new Map<string, HTMLElement>(), markers = new Map<string, MusicScoreMarkers>();
+const selecting = ref(false), capturing = ref(false), selectionError = ref('');
+const selectionBox = ref<{ left: number; top: number; width: number; height: number } | null>(null);
+let selectionContext: MusicQuestionContext | null = null;
+let scoreDrag: { id: number; svg: SVGSVGElement; box: DOMRect; start: { x: number; y: number }; rect: ImageRect | null } | null = null;
+function cancelSelection() { selecting.value = false; selectionBox.value = null; selectionContext = null; scoreDrag = null; }
+function beginSelection() {
+  if (props.selectionDisabled || capturing.value) return;
+  if (selecting.value) { cancelSelection(); return; }
+  selectionError.value = ''; details.value = false; focusMenu.value = false;
+  const current = captureQuestion();
+  selectionContext = props.question ? JSON.parse(JSON.stringify(props.question)) : current;
+  following.value = false; selecting.value = true;
+}
+function startScoreSelection(event: PointerEvent) {
+  if (!selecting.value || props.selectionDisabled || event.button !== 0 || scoreDrag) return;
+  const svg = (event.target as Element).closest('.music-score-page')?.querySelector('svg');
+  if (!svg) return;
+  scoreDrag = { id: event.pointerId, svg, box: svg.getBoundingClientRect(), start: { x: event.clientX, y: event.clientY }, rect: null };
+  scoreSurface.value?.setPointerCapture(event.pointerId); event.preventDefault();
+}
+function moveScoreSelection(event: PointerEvent) {
+  if (!scoreDrag || scoreDrag.id !== event.pointerId) return;
+  const { box, start } = scoreDrag;
+  scoreDrag.rect = scoreImageRect(box, start, { x: event.clientX, y: event.clientY });
+  const surface = scoreSurface.value!.getBoundingClientRect(), rect = scoreDrag.rect;
+  selectionBox.value = rect ? { left: box.left - surface.left + rect[0] * box.width, top: box.top - surface.top + rect[1] * box.height, width: rect[2] * box.width, height: rect[3] * box.height } : null;
+}
+async function finishScoreSelection(event: PointerEvent) {
+  if (!scoreDrag || scoreDrag.id !== event.pointerId || !selectionContext) return;
+  moveScoreSelection(event);
+  const { svg, rect } = scoreDrag, question = selectionContext, source = props.context;
+  if (!rect) { scoreDrag = null; selectionBox.value = null; selectionError.value = '请拖出一个框，圈住想问的谱线、音符或符号'; return; }
+  const image = captureScoreQuestionImage(svg, rect);
+  cancelSelection(); capturing.value = true; emit('image-loading', true);
+  try {
+    const pixels = await image;
+    if (disposed || props.context !== source) return;
+    if (document.fullscreenElement === pane.value) await document.exitFullscreen();
+    emit('question', { ...question, image: pixels });
+  } catch (failure) { if (!disposed) selectionError.value = (failure as Error).message; }
+  finally { capturing.value = false; if (!disposed) emit('image-loading', false); }
+}
 const playerId = crypto.randomUUID();
 let controlRevision = 0;
 let lastReceipt: { id: string; revision: number } | null = null;
@@ -59,7 +102,7 @@ const focusLabel = computed(() => {
 const materialHint = computed(() => manifest.value.recording.kind === 'score_synthesis' ? '谱面合成 · 音频由乐谱生成，并非原录音' : noteCoverageReady.value ? '原录音 · 已校准逐音符跟谱' : anyCoverageReady.value ? '原录音 · 已有片段定位，逐音符跟谱待校准' : '原录音 · 录音与谱面的对齐待校准，可以自由回听、查看谱面');
 function resetFocus() { userControl(); selectedRole.value = null; focused.value = []; focusedVoices.value = []; paint(); }
 function dismissMenus(event: PointerEvent) { const target = event.target as Element; if (!target.closest('.music-focus-control')) focusMenu.value = false; if (!target.closest('.music-guide, .music-details-toggle')) details.value = false; }
-function closeMenus(event: KeyboardEvent) { if (event.key !== 'Escape') return; if (focusMenu.value) { focusMenu.value = false; focusToggle.value?.focus(); } details.value = false; }
+function closeMenus(event: KeyboardEvent) { if (event.key !== 'Escape') return; cancelSelection(); if (focusMenu.value) { focusMenu.value = false; focusToggle.value?.focus(); } details.value = false; }
 async function toggleFullscreen() { try { if (document.fullscreenElement === pane.value) await document.exitFullscreen(); else await pane.value?.requestFullscreen(); } catch { error.value = '暂时无法进入全屏，请使用窗口内的乐谱视图。'; } }
 function syncFullscreen() { fullscreen.value = document.fullscreenElement === pane.value; }
 function partColor(id: string, voice?: string) { const index = manifest.value.parts.length === 1 && voice ? manifest.value.parts[0].voices.indexOf(voice) : manifest.value.parts.findIndex(part => part.part_id === id); return MUSIC_PART_COLORS[Math.max(0, index) % MUSIC_PART_COLORS.length]; }
@@ -106,7 +149,7 @@ function sync() {
   paint();
 }
 function tick() { if (import.meta.env.DEV) { const now = performance.now(); if (lastFrameTime) recordMusicTiming('playing_frame_interval', now - lastFrameTime); lastFrameTime = now; } sync(); if (!disposed && !player.value?.paused) frame = requestAnimationFrame(tick); }
-function onPlay() { demoPlayer.value?.pause(); paused.value = false; buffering.value = false; cancelAnimationFrame(frame); lastFrameTime = 0; tick(); }
+function onPlay() { cancelSelection(); demoPlayer.value?.pause(); paused.value = false; buffering.value = false; cancelAnimationFrame(frame); lastFrameTime = 0; tick(); }
 function onPause() { paused.value = true; cancelAnimationFrame(frame); sync(); remember(); }
 function paint() {
   const started = import.meta.env.DEV ? performance.now() : 0;
@@ -177,7 +220,7 @@ function seekSection(start: number | null) { details.value = false; userControl(
 function setLoop(start: number, end: number) { if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > manifest.value.recording.duration_ms) throw new Error('请选择录音内有效的循环片段'); exitDemo(); loop.value = { start_ms: start, end_ms: end }; stopAt.value = null; if (position.value < start || position.value >= end) seek(start); }
 function toggleLoop() { userControl(); if (loop.value) { loop.value = null; return; } const span = activeEvent.value ?? activeOccurrence.value; if (span) setLoop(span.start_ms, span.end_ms); }
 async function listenEvent(event: MusicEvent) { userControl(); try { loop.value = null; seek(event.start_ms); stopAt.value = event.end_ms; resumeFollow(); await displayCue(event.event_id); await play(); } catch (failure) { error.value = (failure as Error).message; } }
-function captureQuestion(draftId = crypto.randomUUID()) { userControl(); const audio = player.value; if (!audio?.readyState) throw new Error('请等待录音加载后提问'); audio.pause(); demoPlayer.value?.pause(); sync(); return musicQuestion(manifest.value, props.context.publication, position.value, focused.value, draftId, focusedVoices.value); }
+function captureQuestion(draftId = crypto.randomUUID()) { userControl(); player.value?.pause(); demoPlayer.value?.pause(); sync(); return musicQuestion(manifest.value, props.context.publication, position.value, focused.value, draftId, focusedVoices.value); }
 async function ask() {
   try {
     const question = captureQuestion();
@@ -229,10 +272,12 @@ async function loadScores() {
   } catch (failure) { if (generation === loadGeneration) scoreError.value = (failure as Error).message; }
   finally { if (generation === loadGeneration) scoreLoading.value = false; }
 }
-watch(zoom, async () => { await nextTick(); rebuildMarkers(); });
+watch(zoom, async () => { cancelSelection(); await nextTick(); rebuildMarkers(); });
+watch(() => props.selectionDisabled, disabled => { if (disabled) cancelSelection(); });
+watch(() => props.question?.draft_id, cancelSelection);
 watch([focused, focusedVoices], applyFocus, { deep: true });
 watch(() => activeEvents.value.map(event => event.event_id).join('|'), () => { if (selectedRole.value) focusRole(roleGroups.value.find(group => group.key === selectedRole.value)); applyRoleColors(); applyFocus(); paint(); if (selectedRole.value && following.value) followRole(); });
-watch(() => props.context, () => { userControl(); exitDemo(); focusMenu.value = false; details.value = false; pageMarkup.value = {}; focused.value = []; focusedVoices.value = []; loop.value = null; void loadScores(); });
+watch(() => props.context, () => { cancelSelection(); userControl(); exitDemo(); focusMenu.value = false; details.value = false; pageMarkup.value = {}; focused.value = []; focusedVoices.value = []; loop.value = null; void loadScores(); });
 onMounted(() => { canFullscreen.value = !!document.fullscreenEnabled; document.addEventListener('fullscreenchange', syncFullscreen); });
 onBeforeUnmount(() => { document.removeEventListener('fullscreenchange', syncFullscreen); });
 onMounted(() => { void loadScores(); surfaceResize = new ResizeObserver(() => { lastFollow = ''; paint(); if (selectedRole.value && following.value) followRole(); }); if (scoreSurface.value) surfaceResize.observe(scoreSurface.value); releasePlayer = registerMusicPlayer({ id: playerId, execute, accepted: receipt => { if (receipt.status !== 'failed') lastReceipt = { id: receipt.receipt_id, revision: commandRevisions.get(receipt.command_id) ?? -1 }; commandRevisions.delete(receipt.command_id); } }); });
@@ -279,23 +324,26 @@ defineExpose({ captureQuestion, seek, execute, openSource, playerId });
       </div>
       <span class="music-material-tag" :class="{ pending: !noteCoverageReady, synthesis: manifest.recording.kind === 'score_synthesis' }" :title="materialHint"><i></i>{{ manifest.recording.kind === 'score_synthesis' ? '谱面合成' : '原录音' }}<span v-if="!noteCoverageReady" class="music-precision-label"> · 跟谱待校准</span></span>
       <div class="music-toolbar-spacer"></div>
+      <button class="music-screenshot" :class="{ active: selecting }" :aria-pressed="selecting" :disabled="selectionDisabled || capturing || scoreLoading || !!scoreError" :aria-label="selecting ? '取消框选谱面' : '框选谱面提问'" title="框住看不懂的谱线、音符或符号" @click="beginSelection"><Scan :size="15" /><span>{{ capturing ? '截图中…' : selecting ? '取消框选' : '框选谱面' }}</span></button>
       <button class="music-follow-toggle" :disabled="!activeOccurrence && !hasSelectedRole" :class="{ 'is-detached': !following }" :aria-label="!activeOccurrence && hasSelectedRole ? '回到主题谱面' : '回到播放位置'" :title="!activeOccurrence && hasSelectedRole ? '回到主题谱面' : '回到播放位置'" @click="resumeFollow"><Focus :size="14" /><span>{{ !following ? '回到播放位置' : activeOccurrence ? `第 ${activeOccurrence.measure} 小节` : hasSelectedRole ? '主题谱面' : '跟随' }}</span></button>
       <div class="music-zoom"><button :disabled="zoom <= .75" aria-label="缩小乐谱" @click="zoom = Math.max(.75, zoom - .25)"><Minus :size="14" /></button><span>{{ Math.round(zoom * 100) }}%</span><button :disabled="zoom >= 2" aria-label="放大乐谱" @click="zoom = Math.min(2, zoom + .25)"><Plus :size="14" /></button></div>
       <button v-if="canFullscreen" class="music-fullscreen" :aria-label="fullscreen ? '退出全屏乐谱' : '全屏乐谱'" :title="fullscreen ? '退出全屏乐谱' : '全屏乐谱'" @click="toggleFullscreen"><Minimize2 v-if="fullscreen" :size="15" /><Maximize2 v-else :size="15" /></button>
     </div>
 
     <div class="music-score-stage">
-      <div ref="scoreSurface" class="music-score-surface" tabindex="0" aria-label="乐谱，可滚动查看" @wheel.passive="browseScore" @touchmove.passive="browseScore" @pointerdown="browseScore" @keydown="keyBrowse">
+      <div ref="scoreSurface" class="music-score-surface" :class="{ 'is-selecting': selecting }" tabindex="0" aria-label="乐谱，可滚动查看" @wheel.passive="browseScore" @touchmove.passive="browseScore" @pointerdown="browseScore(); startScoreSelection($event)" @pointermove="moveScoreSelection" @pointerup="finishScoreSelection" @pointercancel="cancelSelection" @lostpointercapture="scoreDrag = null" @keydown="keyBrowse" @scroll="selectionBox = null; scoreDrag = null">
         <div v-if="scoreLoading" class="music-score-state" role="status">正在展开乐谱…</div>
         <div v-if="scoreError" class="music-score-state" role="alert">{{ scoreError }} <button @click="loadScores">重试</button></div>
         <div class="music-score-sheets" :style="{ width: `${zoom * 100}%` }"><div v-for="page in manifest.pages" :key="page.page_id" :ref="element => setPageHost(page.page_id, element)" class="music-score-page" :data-page="page.page_id" :aria-label="`乐谱 ${page.page_id}`" v-html="pageMarkup[page.page_id] || ''"></div></div>
       </div>
+      <div v-if="selectionBox" class="music-score-selection" :style="{ left: `${selectionBox.left}px`, top: `${selectionBox.top}px`, width: `${selectionBox.width}px`, height: `${selectionBox.height}px` }"></div>
+      <div v-if="selecting || capturing || selectionError" class="music-selection-hint" :role="selectionError ? 'alert' : 'status'"><span>{{ selectionError || (capturing ? '正在生成谱面截图…' : '拖动框住想问的地方，不用知道它叫什么') }}</span><button v-if="!capturing" :aria-label="selecting ? '取消框选' : '关闭截图提示'" @click="cancelSelection(); selectionError = ''"><X :size="14" /></button></div>
       <div v-if="demo" class="music-demo-player"><div class="music-demo-heading"><span class="music-demo-eyebrow">拆开听 · 谱面合成</span><strong>{{ demo.title }}</strong><span>用来辨认声部，并非原录音分轨</span></div><button aria-label="返回原录音" title="返回原录音" @click="closeDemo"><X :size="17" /></button><div v-if="displayedCue" class="music-play-cue" :data-event-id="displayedCue.event_id" role="status"><strong>这一遍留意</strong><p>{{ displayedCue.text }}</p><small>作品导览 · {{ displayedCueTitle }}</small></div><audio ref="demoPlayer" :src="demoUrl" controls preload="metadata" @pointerdown="userControl" @keydown="userControl" @play="player?.pause()" /></div>
     </div>
 
     <div v-if="!demo && displayedCue" class="music-play-cue music-cue-strip" :data-event-id="displayedCue.event_id" role="status"><span class="music-cue-kicker">这一遍留意</span><div><p>{{ displayedCue.text }}</p><small>作品导览 · {{ displayedCueTitle }}</small></div></div>
     <div v-else-if="!demo && activeEvent" class="music-listening-cue music-cue-strip"><span class="music-cue-kicker">听见 · {{ activeEvent.title }}</span><p>{{ activeEvent.listen_for }}</p><button title="重听这一段" aria-label="重听这一段" @click="listenEvent(activeEvent)"><RotateCcw :size="16" /></button></div>
-    <div v-if="question" class="music-question-anchor"><MessageCircle :size="14" /><span>正在问 {{ musicTime(question.audio.start_ms) }}–{{ musicTime(question.audio.end_ms) }} 这一段</span><button @click="emit('clear-question')" aria-label="取消片段提问"><X :size="14" /></button></div>
+    <div v-if="question" class="music-question-anchor"><MessageCircle :size="14" /><span>{{ question.image ? '已附谱面图片，可以直接问「这是什么」' : `正在问 ${musicTime(question.audio.start_ms)}–${musicTime(question.audio.end_ms)} 这一段` }}</span><button :disabled="selectionDisabled" @click="emit('clear-question')" aria-label="取消片段提问"><X :size="14" /></button></div>
     <footer class="music-player-bar" :class="{ 'is-playing': !paused }">
       <div class="music-player-controls">
         <button class="music-play" :aria-label="paused ? '播放音乐' : '暂停音乐'" @click="togglePlay"><Play v-if="paused" :size="19" fill="currentColor" /><Pause v-else :size="19" fill="currentColor" /></button>
@@ -343,6 +391,14 @@ defineExpose({ captureQuestion, seek, execute, openSource, playerId });
 .music-zoom button:hover,.music-fullscreen:hover{background:#e9ebdf;color:#304c3b}
 .music-fullscreen{flex-shrink:0;color:#7e877a}
 .music-score-stage{flex:1;min-height:0;position:relative;display:flex}
+.music-screenshot{display:flex;align-items:center;gap:5px;flex-shrink:0;border:1px solid #d8dece;background:#f5f6ed;color:#4d6548;padding:5px 8px;font-size:10px;white-space:nowrap}
+.music-screenshot.active{background:#e6ecdd;border-color:#a3b697;color:#304c3b}
+.music-score-surface.is-selecting{cursor:crosshair;touch-action:none;user-select:none}
+.music-score-selection{position:absolute;z-index:8;pointer-events:none;border:2px solid #aa744c;background:#ba85571a;box-sizing:border-box}
+.music-selection-hint{position:absolute;z-index:9;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);box-sizing:border-box;padding:9px 12px;border:1px solid #d9c9a8;border-radius:8px;background:#fffaf0;box-shadow:0 3px 14px #263d361a;color:#6e593b;font-size:11px;line-height:1.6}
+.music-selection-hint span{min-width:0}
+.music-selection-hint button{display:grid;place-items:center;flex-shrink:0;border:0;background:transparent;color:inherit;padding:0;width:24px}
+@container music (max-width:600px){.music-screenshot{width:28px;padding:4px;justify-content:center}.music-screenshot span{display:none}.music-selection-hint{width:max-content}}
 .music-score-surface{flex:1;min-height:0;min-width:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#bfc8b7 transparent;overscroll-behavior:contain;position:relative;outline-offset:-3px;background:#eeeee5}
 .music-score-sheets{min-width:100%;margin:auto;padding:18px 24px 36px;box-sizing:border-box}
 .music-score-page{background:var(--music-paper);margin:0 auto 20px;box-shadow:0 1px 2px #2637260a,0 7px 22px #26372608;border:1px solid #e7e5da}

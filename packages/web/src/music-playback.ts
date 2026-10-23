@@ -22,6 +22,7 @@ export const MUSIC_PART_COLORS = ['#bd5939', '#398574', '#7869a7', '#b58938', '#
 export const MUSIC_TRAIL_MS = 420;
 export function musicTime(ms: number): string { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 export function musicNoteOpacity(note: MusicNoteAlignment, ms: number, playing: boolean): number {
+  if (note.unobserved) return 0;
   if (ms < note.start_ms || ms >= note.end_ms + MUSIC_TRAIL_MS) return 0;
   if (ms < note.end_ms) return 1;
   return playing ? Math.max(0, 1 - (ms - note.end_ms) / MUSIC_TRAIL_MS) : 0;

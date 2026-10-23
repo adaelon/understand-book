@@ -41,7 +41,7 @@ const musicMode = computed(() => !!musicContext.value);
 const mediaMode = computed(() => videoMode.value || musicMode.value);
 const musicPane = ref<InstanceType<typeof MusicReaderPane>>();
 const musicQuestionContext = ref<MusicQuestionContext | null>(null);
-function askMusic(context: MusicQuestionContext) { musicQuestionContext.value = context; agentInput.value ||= '刚才这一段，应该注意听什么？'; workspaceRef.value?.showAssistant('agent'); }
+function askMusic(context: MusicQuestionContext) { musicQuestionContext.value = context; if (!context.image) agentInput.value ||= '刚才这一段，应该注意听什么？'; workspaceRef.value?.showAssistant('agent'); }
 function clearMusicQuestion() { musicQuestionContext.value = null; }
 const videoDetailsLoading = ref(false), videoDetailsError = ref('');
 const videoFrameReady = ref(false);
@@ -99,14 +99,32 @@ function enterMusicSource(source: import('./music-api').MusicSourceSnapshot) {
 }
 function cancelVideoDraft() { videoQuestion.clear(); agentInput.value = ''; }
 let imageContext: import('../../core/src/generated/VideoQuestionContext').VideoQuestionContext | undefined;
+let musicImageContext: MusicQuestionContext | undefined;
+const musicImageError = ref('');
 const questionImagePreparing = ref(false);
 function prepareQuestionImage(active: boolean) {
   questionImagePreparing.value = active;
-  if (!active) { imageContext = undefined; return; }
+  if (!active) { imageContext = undefined; musicImageContext = undefined; return; }
+  if (musicContext.value) {
+    musicImageError.value = '';
+    try { musicImageContext = musicQuestionContext.value ?? musicPane.value?.captureQuestion(); }
+    catch (error) { musicImageError.value = (error as Error).message; }
+    return;
+  }
   try { imageContext = videoQuestion.draft.value?.context ?? videoPane.value?.captureQuestion(crypto.randomUUID()); }
   catch (error) { videoQuestion.error.value = (error as Error).message; }
 }
 function setQuestionImage(image: import('../../core/src/generated/VideoQuestionImage').VideoQuestionImage | null) {
+  if (musicContext.value) {
+    try {
+      if (!image && !musicQuestionContext.value) return;
+      const context = musicQuestionContext.value ?? musicImageContext ?? musicPane.value?.captureQuestion();
+      if (!context) throw new Error('请等待乐谱加载');
+      musicQuestionContext.value = { ...context, image };
+      musicImageError.value = '';
+    } catch (error) { musicImageError.value = (error as Error).message; }
+    return;
+  }
   try { videoQuestion.setImage(image, imageContext); }
   catch (error) { videoQuestion.error.value = (error as Error).message; }
 }
@@ -2411,8 +2429,22 @@ async function init() {
       return;
     }
     desktopNeedsBook.value = false;
-    const [video, music] = await Promise.all([api.videoPlayback(), api.musicContext()]);
+    const [video, initialMusic] = await Promise.all([api.videoPlayback(), api.musicContext()]);
+    let music = initialMusic;
     if (!current()) return;
+    // Standalone listening resumes the current calibration of the same recording.
+    // Shared courses and explicit historical sources retain their chosen versions.
+    if (music && network.value.enabled && !network.value.workspace?.learning_workspace_id
+      && !recapProps.recapTarget && !recapProps.mcpSource && !recapProps.chatDraft?.message) {
+      try {
+        const update = await api.adoptMusicPublication(music.publication.publication_id);
+        if (!current()) return;
+        if (update.music) music = update.music;
+      } catch (failure) {
+        if (!current()) return;
+        banner.value = failure instanceof Error ? failure.message : '新版跟谱暂时无法读取，请稍后刷新。';
+      }
+    }
     musicContext.value = music; musicQuestionContext.value = null;
     videoPlayback.value = video;
     publishedVideo.value = null;
@@ -4120,6 +4152,9 @@ function applyAgentHistory(history: AgentHistoryResponse, completedRun?: RunSnap
   for (const turn of history.current.turns) if (turn.video_question && turn.video_question.draft_id === videoQuestion.draft.value?.context.draft_id) {
     videoQuestion.accepted(turn.video_question!.draft_id); agentInput.value = '';
   }
+  for (const turn of history.current.turns) if (turn.music_question && turn.music_question.draft_id === musicQuestionContext.value?.draft_id) {
+    musicQuestionContext.value = null; agentInput.value = '';
+  }
   if (residentRun.snapshot.value && residentRun.snapshot.value.descriptor.session_id !== history.current.id) residentRun.forget();
   const previousChat = activeChatSessionId.value === history.active_session_id ? chat.value : [];
   activeChatSessionId.value = history.active_session_id;
@@ -4440,7 +4475,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     if (disposed || submission !== submissionSequence) return;
     requestStarted = true;
     const result = await api.agentRunCreate(msg, {
-      music_question: musicQuestionContext.value ?? undefined,
+      music_question: turn.musicQuestion ?? undefined,
       presentation_follow_up: presentationFollowUp,
       ...videoMeta,
       ...goalMeta,
@@ -4501,13 +4536,13 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
 }
 
 async function sendAgent() {
-  if (agentHistoryLoading.value || agentHistoryError.value || sending.value) return;
+  if (questionImagePreparing.value || agentHistoryLoading.value || agentHistoryError.value || sending.value) return;
   if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
-  const msg = agentInput.value.trim() || (videoQuestion.draft.value?.context.image ? '请解释这张图片。' : '');
+  const msg = agentInput.value.trim() || (musicQuestionContext.value?.image ? '我是初学者，请从零解释这张谱面截图里的线条、音符和符号。' : videoQuestion.draft.value?.context.image ? '请解释这张图片。' : '');
   if (!msg) return;
   const draft = askDraft.value;
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
-  if (!publishedVideo.value) agentInput.value = "";
+  if (!mediaMode.value) agentInput.value = "";
   askDraft.value = null;
   await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {}, submittedDraft);
 }
@@ -5397,7 +5432,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @mousedown="startResize('left', $event)"
       ></div>
 
-      <MusicReaderPane v-if="musicContext" ref="musicPane" :key="`${musicContext.publication.book_id}/${musicContext.publication.publication_id}`" :context="musicContext" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :question="musicQuestionContext" :selection-disabled="sending || agentHistoryLoading" @question="askMusic" @clear-question="clearMusicQuestion" />
+      <MusicReaderPane v-if="musicContext" ref="musicPane" :key="`${musicContext.publication.book_id}/${musicContext.publication.publication_id}`" :context="musicContext" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :question="musicQuestionContext" :selection-disabled="questionImagePreparing || sending || agentHistoryLoading" @question="askMusic" @image-loading="prepareQuestionImage" @clear-question="clearMusicQuestion" />
       <VideoReaderPane v-else-if="videoMode && videoInitial" ref="videoPane" :initial="videoInitial" :published="publishedVideo || undefined" :playback="videoPlayback || undefined" :details-loading="videoDetailsLoading" :details-error="videoDetailsError" :owner="[readerPreferenceOwner() || 'local', network.workspace?.learning_workspace_id].filter(Boolean).join(':')" :media-url="videoMediaUrl" :question="videoQuestion.draft.value?.context" :selection-disabled="videoDetailsLoading || !publishedVideo || questionImagePreparing || videoQuestion.restoring.value || sending || videoAdoption.adopting.value" :adoption-error="videoAdoption.error.value" @select-region="videoQuestion.selectRegion" @clear-region="videoQuestion.clearRegion" @select-range="videoQuestion.selectRange" @clear-range="videoQuestion.clearRange" @frame-ready="videoFrameReady = $event" embedded />
       <PdfReaderPane
         v-else-if="activeReaderSurface === 'pdf'"
@@ -5498,12 +5533,14 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @recap-publication="recapEmit('recap-publication', $event)"
         :fullscreen="agentFullscreen"
         :agent-input="agentInput"
+        :music-question="musicQuestionContext"
         :video-question="videoQuestion.draft.value?.context"
         :video-images-enabled="!!publishedVideo"
         @question-image="setQuestionImage"
         @question-image-loading="prepareQuestionImage"
-        :video-error="videoQuestion.error.value"
-        :question-input-blocked="(videoMode && (videoDetailsLoading || !publishedVideo || agentHistoryLoading)) || videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && (acceptingRun || (!videoFrameReady && !videoQuestion.draft.value)))"
+        :video-error="musicMode ? musicImageError : videoQuestion.error.value"
+        :question-send-blocked="questionImagePreparing ? '正在添加图片…' : undefined"
+        :question-input-blocked="(musicMode && acceptingRun) || (videoMode && (videoDetailsLoading || !publishedVideo || agentHistoryLoading)) || videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && (acceptingRun || (!videoFrameReady && !videoQuestion.draft.value)))"
         @update:agent-input="onAgentInput"
         @cancel-video-draft="cancelVideoDraft"
         :history-loading="agentHistoryLoading"

@@ -17,6 +17,9 @@ export type { MusicRights } from "./generated/MusicRights";
 export type { MusicPart } from "./generated/MusicPart";
 export type { MusicScorePage } from "./generated/MusicScorePage";
 export type { MusicScoreObject } from "./generated/MusicScoreObject";
+export type { MusicScoreMark } from "./generated/MusicScoreMark";
+export type { MusicScoreMarkValue } from "./generated/MusicScoreMarkValue";
+export type { MusicTonality } from "./generated/MusicTonality";
 export type { MusicOccurrence } from "./generated/MusicOccurrence";
 export type { MusicNoteAlignment } from "./generated/MusicNoteAlignment";
 export type { MusicCoverage } from "./generated/MusicCoverage";
@@ -45,9 +48,18 @@ export const MusicScoreLocationZ = z.object({ score: MusicScoreRefZ, source_ids:
 export const MusicVoiceFocusZ: z.ZodType<MusicVoiceFocus> = z.object({ part_id: id, voice: id });
 export const MusicScoreObjectZ = z.object({ source_id: id, part_id: id, measure: id, beat: time, duration_beats: time,
   voice: id, midi_pitch: z.number().int().min(0).max(127).nullable(), rest: z.boolean(), tie: z.enum(["none", "start", "continue", "stop"]), page_id: id, svg_element_id: id });
+export const MusicTonalityZ = z.object({ tonic: id, mode: id, explanation: id, provenance_ids: z.array(id).min(1) });
+export const MusicScoreMarkZ = z.object({ mark_id: id, part_id: id, measure: id, measure_index: z.number().int().positive(), beat: z.number().finite(), staff: id.nullable(),
+  score_object_ids: z.array(id).min(1), provenance_id: id,
+  value: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('key_signature'), fifths: z.number().int(), encoded_mode: id.nullable() }),
+    z.object({ kind: z.literal('time_signature'), components: z.array(z.object({ beats: id, beat_type: z.number().int().positive() })).min(1), symbol: id.nullable() }),
+    z.object({ kind: z.literal('direction'), words: z.array(id), metronome: z.object({ beat_unit: id, dots: z.number().int().nonnegative(), per_minute: id }).nullable(), sound_tempo_quarter_bpm: time.positive().nullable() }),
+  ]),
+});
 export const MusicSourceManifestZ: z.ZodType<MusicSourceManifest> = z.object({
   version: z.literal("music_source_manifest.v1"), book_id: id, title: id,
-  work: z.object({ work_id: id, title: id, composer: id, movement: id.nullable() }),
+  work: z.object({ work_id: id, title: id, composer: id, movement: id.nullable(), tonality: MusicTonalityZ.nullable().optional() }),
   score: z.object({ source: MusicScoreRefZ, title: id, musicxml_path: relativePath }),
   recording: z.object({ source: MusicRecordingRefZ, title: id, performers: id, media_path: relativePath, content_type: id,
     duration_ms: time.positive(), kind: z.enum(["performance", "score_synthesis"]) }),
@@ -56,9 +68,10 @@ export const MusicSourceManifestZ: z.ZodType<MusicSourceManifest> = z.object({
   parts: z.array(z.object({ part_id: id, name: id, instrument: id, group: id, voices: z.array(id).min(1) })),
   pages: z.array(z.object({ page_id: id, path: relativePath, width: time.positive(), height: time.positive() })),
   score_objects: z.array(MusicScoreObjectZ),
+  score_marks: z.array(MusicScoreMarkZ).optional(),
   occurrences: z.array(z.object({ occurrence_id: id, order: z.number().int().nonnegative().max(0xffffffff), measure: id,
     start_ms: time, end_ms: time, score_object_ids: z.array(id).min(1) })),
-  note_alignments: z.array(z.object({ occurrence_id: id, score_object_id: id, start_ms: time, end_ms: time, attack: z.boolean(), provenance_id: id })),
+  note_alignments: z.array(z.object({ occurrence_id: id, score_object_id: id, start_ms: time, end_ms: time, attack: z.boolean(), provenance_id: id, unobserved: z.boolean().optional() })),
   coverage: z.array(z.object({ start_ms: time, end_ms: time, granularity: z.enum(["phrase", "measure", "note"]),
     method: z.enum(["manual", "audio_alignment", "score_synthesis"]), status: z.enum(["accepted", "pending", "failed"]), provenance_id: id, detail: id })),
   provenance: z.array(z.object({ provenance_id: id, kind: z.enum(["score", "audio_analysis", "human_listening", "reference", "interpretation", "score_synthesis"]),
@@ -75,7 +88,9 @@ export const MusicSourceManifestZ: z.ZodType<MusicSourceManifest> = z.object({
 });
 export const MusicQuestionContextZ: z.ZodType<MusicQuestionContext> = z.object({ draft_id: id,
   publication: z.object({ book_id: id, publication_id: id }), audio: MusicAudioLocationZ,
-  score: MusicScoreLocationZ.nullable(), occurrence_id: id.nullable(), focused_part_ids: z.array(id), focused_voices: z.array(MusicVoiceFocusZ).optional() });
+  score: MusicScoreLocationZ.nullable(), occurrence_id: id.nullable(), focused_part_ids: z.array(id), focused_voices: z.array(MusicVoiceFocusZ).optional(),
+  image: z.object({ png_base64: z.string().min(1).max(5_592_408), width: z.number().int().min(1).max(2048),
+    height: z.number().int().min(1).max(2048), origin: z.enum(['selection', 'upload']) }).nullable().optional() });
 
 function requireValid(ok: boolean, field: string): asserts ok {
   if (!ok) throw new Error(`invalid music contract: ${field}`);
@@ -103,6 +118,17 @@ export function validateMusicSourceManifest(input: unknown): MusicSourceManifest
   const measureObjects = new Map<string, number>();
   for (const n of m.score_objects) measureObjects.set(n.measure, (measureObjects.get(n.measure) ?? 0) + 1);
   for (const p of m.parts) requireValid(unique(p.voices), "part");
+  if (m.work.tonality) {
+    const tonality = m.work.tonality;
+    requireValid(unique(tonality.provenance_ids) && tonality.provenance_ids.every(id => ['score', 'reference'].includes(provenance.get(id)?.kind ?? '')), 'work tonality');
+  }
+  requireValid(unique((m.score_marks ?? []).map(mark => mark.mark_id)), 'score mark identity');
+  for (const mark of m.score_marks ?? []) {
+    requireValid(parts.has(mark.part_id) && unique(mark.score_object_ids)
+      && mark.score_object_ids.every(id => { const note = notes.get(id); return note?.part_id === mark.part_id && note.measure === mark.measure; })
+      && provenance.get(mark.provenance_id)?.kind === 'score', 'score mark source');
+    if (mark.value.kind === 'direction') requireValid(!!(mark.value.words.length || mark.value.metronome || mark.value.sound_tempo_quarter_bpm), 'score mark value');
+  }
   const svgIds = new Map<string, Set<string>>();
   for (const n of m.score_objects) {
     const mapped = svgIds.get(n.page_id) ?? new Set<string>();
@@ -123,7 +149,7 @@ export function validateMusicSourceManifest(input: unknown): MusicSourceManifest
     const p = provenance.get(a.provenance_id);
     requireValid(validInterval(a.start_ms, a.end_ms, duration) && !!p && (p.kind === "human_listening" || p.kind === "audio_analysis" || p.kind === "score_synthesis" && m.recording.kind === "score_synthesis")
       && !!o && o.score_object_ids.includes(a.score_object_id) && a.start_ms >= o.start_ms && a.start_ms < o.end_ms
-      && !!n && !n.rest && (!a.attack || n.tie !== "continue" && n.tie !== "stop") && !mapped.has(a.score_object_id), "note alignment");
+      && !!n && !n.rest && (!a.attack || !a.unobserved && n.tie !== "continue" && n.tie !== "stop") && !mapped.has(a.score_object_id), "note alignment");
     mapped.add(a.score_object_id); aligned.set(a.occurrence_id, mapped);
   }
   for (const granularity of ["phrase", "measure", "note"]) {

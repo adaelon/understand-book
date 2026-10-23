@@ -50,6 +50,25 @@ it('allows sending an image-only video question and locks sending while an uploa
   wrapper.unmount();
 });
 
+it('attaches music screenshots, allows image-only questions, and shows the image in history', async () => {
+  const question = { draft_id: 'score-question', publication: { book_id: 'b', publication_id: 'p' },
+    audio: { recording: { recording_id: 'r', revision: '1' }, start_ms: 0, end_ms: 1000 },
+    score: null, occurrence_id: null, focused_part_ids: [],
+    image: { png_base64: 'score-pixels', width: 640, height: 240, origin: 'selection' as const } };
+  const wrapper = mount(RightRail, { props: { ...baseProps, musicMode: true, musicQuestion: question,
+    chat: [{ turnId: 'music-turn', user: '这个符号是什么？', musicQuestion: question, effectLabels: [] }] as never }, shallow: true });
+  expect(wrapper.get('.attach-image').attributes('aria-label')).toBe('替换图片');
+  expect(wrapper.findComponent({ name: 'QuestionImageInput' }).props('image')).toEqual(question.image);
+  expect(wrapper.get('.turn-question-image img').attributes('src')).toBe('data:image/png;base64,score-pixels');
+  await wrapper.get('.send-agent').trigger('click'); expect(wrapper.emitted('send-agent')).toHaveLength(1);
+  wrapper.findComponent({ name: 'QuestionImageInput' }).vm.$emit('loading', true); await nextTick();
+  expect(wrapper.get('.send-agent').attributes('disabled')).toBeDefined();
+  wrapper.findComponent({ name: 'QuestionImageInput' }).vm.$emit('loading', false);
+  await wrapper.setProps({ musicQuestion: { ...question, image: null } });
+  expect(wrapper.get('.send-agent').attributes('disabled')).toBeDefined();
+  expect(wrapper.get('.attach-image').attributes('aria-label')).toBe('添加图片');
+});
+
 it('requests formula details when the panel opens, selection changes or a read is retried', async () => {
   const wrapper = mount(RightRail, { props: { ...baseProps, formulaSelected: true }, shallow: true });
   await wrapper.get('#reader-tab-formula').trigger('click');

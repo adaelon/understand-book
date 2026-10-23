@@ -32,4 +32,10 @@ describe('music recording timeline', () => {
     expect(musicNoteOpacity(tied, 2100, true)).toBeGreaterThan(0);
     expect(musicNoteOpacity(tied, 900, true)).toBe(0);
   });
+  it('keeps a reviewed unobserved score tone silent during playback, pauses and seeks', () => {
+    const note = { start_ms: 1000, end_ms: 2000, attack: false, unobserved: true } as MusicNoteAlignment;
+    for (const playing of [true, false]) for (const ms of [900, 1000, 1500, 2100]) {
+      expect(musicNoteOpacity(note, ms, playing)).toBe(0);
+    }
+  });
 });

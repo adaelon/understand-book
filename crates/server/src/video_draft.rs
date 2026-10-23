@@ -67,7 +67,7 @@ pub(crate) fn command(w: &mut reader_workspace::ReaderWorkspace, user: &user_run
     Ok(json!({"draft":w.video_drafts.get(&window)}))
 }
 
-fn validate_image(image: &base_schema::VideoQuestionImage) -> Result<(), ToolError> {
+pub(crate) fn validate_image(image: &base_schema::VideoQuestionImage) -> Result<(), ToolError> {
     use base64::Engine;
     let bytes = base64::engine::general_purpose::STANDARD.decode(&image.png_base64)
         .map_err(|_| invalid("问题图片编码无效，请重新粘贴或上传"))?;

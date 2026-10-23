@@ -1,6 +1,6 @@
 //! Curated music uses immutable score/recording sources and revisable interpretation.
 //! A performance occurrence disambiguates repeated measures; no transcript is required.
-use crate::PublishedBookRef;
+use crate::{PublishedBookRef, VideoQuestionImage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -39,7 +39,14 @@ record!(MusicScoreRef { score_id: String, revision: String });
 // Half-open [start_ms, end_ms) on the original media timeline, never inferred from notation tempo.
 record!(MusicAudioLocation { recording: MusicRecordingRef, start_ms: f64, end_ms: f64 });
 record!(MusicScoreLocation { score: MusicScoreRef, source_ids: Vec<String> });
-record!(MusicWork { work_id: String, title: String, composer: String, movement: Option<String> });
+// A reviewed work-level tonality is distinct from the mode encoded in a key signature.
+record!(MusicTonality { tonic: String, mode: String, explanation: String, provenance_ids: Vec<String> });
+record!(MusicWork {
+    work_id: String, title: String, composer: String, movement: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<MusicTonality>", optional = nullable)]
+    tonality: Option<MusicTonality>,
+});
 record!(MusicScore { source: MusicScoreRef, title: String, musicxml_path: String });
 record!(MusicRecording { source: MusicRecordingRef, title: String, performers: String, media_path: String, content_type: String, duration_ms: f64, kind: MusicRecordingKind });
 record!(MusicRights { asset_kind: MusicAssetKind, title: String, url: String, license: String, attribution: String, distribution: MusicDistribution });
@@ -52,9 +59,38 @@ record!(MusicScoreObject {
     voice: String, midi_pitch: Option<u8>, rest: bool, tie: MusicTie,
     page_id: String, svg_element_id: String,
 });
+record!(MusicMeterComponent { beats: String, beat_type: u32 });
+record!(MusicMetronome { beat_unit: String, dots: u32, per_minute: String });
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
+#[ts(export, export_to = "../../../packages/core/src/generated/")]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MusicScoreMarkValue {
+    KeySignature { fifths: i32, encoded_mode: Option<String> },
+    TimeSignature { components: Vec<MusicMeterComponent>, symbol: Option<String> },
+    Direction { words: Vec<String>, metronome: Option<MusicMetronome>, sound_tempo_quarter_bpm: Option<f64> },
+}
+impl MusicScoreMarkValue {
+    pub fn is_tempo(&self) -> bool {
+        matches!(self, Self::Direction { metronome, sound_tempo_quarter_bpm, .. }
+            if metronome.is_some() || sound_tempo_quarter_bpm.is_some())
+    }
+}
+// Existing note/rest anchors locate marks in the original score and source popup.
+// measure_index is score order, independent of printed labels and performance repeats.
+record!(MusicScoreMark {
+    mark_id: String, part_id: String, measure: String, measure_index: u32, beat: f64,
+    staff: Option<String>, value: MusicScoreMarkValue, score_object_ids: Vec<String>, provenance_id: String,
+});
 // Each occurrence includes the complete measure, across all parts. A repeat creates a new occurrence.
 record!(MusicOccurrence { occurrence_id: String, order: u32, measure: String, start_ms: f64, end_ms: f64, score_object_ids: Vec<String> });
-record!(MusicNoteAlignment { occurrence_id: String, score_object_id: String, start_ms: f64, end_ms: f64, attack: bool, provenance_id: String });
+record!(MusicNoteAlignment {
+    occurrence_id: String, score_object_id: String, start_ms: f64, end_ms: f64, attack: bool, provenance_id: String,
+    // A reviewed score/recording discrepancy still has a musical position, but
+    // must not produce a sounding marker when no independent tone was observed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(as = "Option<bool>", optional)]
+    unobserved: bool,
+});
 record!(MusicCoverage { start_ms: f64, end_ms: f64, granularity: MusicGranularity, method: MusicAlignmentMethod, status: MusicCoverageStatus, provenance_id: String, detail: String });
 record!(MusicProvenance { provenance_id: String, kind: MusicProvenanceKind, description: String, source_url: Option<String>, processor: Option<String> });
 record!(MusicEvidence { provenance_id: String, score_object_ids: Vec<String>, audio: Option<MusicAudioLocation> });
@@ -87,6 +123,9 @@ record!(MusicSourceManifest {
     pages: Vec<MusicScorePage>, score_objects: Vec<MusicScoreObject>, occurrences: Vec<MusicOccurrence>,
     note_alignments: Vec<MusicNoteAlignment>, coverage: Vec<MusicCoverage>, provenance: Vec<MusicProvenance>,
     events: Vec<MusicEvent>, structure: Vec<MusicStructure>, demonstrations: Vec<MusicDemonstration>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[ts(as = "Option<Vec<MusicScoreMark>>", optional)]
+    score_marks: Vec<MusicScoreMark>,
 });
 record!(MusicQuestionContext {
     draft_id: String, publication: PublishedBookRef, audio: MusicAudioLocation,
@@ -95,6 +134,10 @@ record!(MusicQuestionContext {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[ts(as = "Option<Vec<MusicVoiceFocus>>", optional)]
     focused_voices: Vec<MusicVoiceFocus>,
+    // User-attached pixels may show any notation, including unindexed staff lines and symbols.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<VideoQuestionImage>", optional = nullable)]
+    image: Option<VideoQuestionImage>,
 });
 // Exact source anchors from a frozen publication; these are not proof of listening to the audio.
 record!(MusicSourceTarget {
@@ -190,6 +233,30 @@ impl MusicSourceManifest {
         for p in &self.provenance {
             require(text(&p.description) && p.source_url.as_ref().is_none_or(|v| text(v)) && p.processor.as_ref().is_none_or(|v| text(v)), "provenance")?;
         }
+        if let Some(tonality) = &self.work.tonality {
+            require(text(&tonality.tonic) && text(&tonality.mode) && text(&tonality.explanation)
+                && !tonality.provenance_ids.is_empty() && unique(tonality.provenance_ids.iter().map(String::as_str))
+                && tonality.provenance_ids.iter().all(|id| provenance.get(id.as_str()).is_some_and(|p|
+                    matches!(p.kind, MusicProvenanceKind::Score | MusicProvenanceKind::Reference))), "work tonality")?;
+        }
+        require(unique(self.score_marks.iter().map(|mark| mark.mark_id.as_str())), "score mark identity")?;
+        for mark in &self.score_marks {
+            require(parts.contains_key(mark.part_id.as_str()) && text(&mark.measure) && mark.measure_index > 0 && mark.beat.is_finite()
+                && mark.staff.as_ref().is_none_or(|staff| text(staff))
+                && !mark.score_object_ids.is_empty() && unique(mark.score_object_ids.iter().map(String::as_str))
+                && mark.score_object_ids.iter().all(|id| notes.get(id.as_str()).is_some_and(|n| n.part_id == mark.part_id && n.measure == mark.measure))
+                && provenance.get(mark.provenance_id.as_str()).is_some_and(|p| p.kind == MusicProvenanceKind::Score), "score mark source")?;
+            require(match &mark.value {
+                MusicScoreMarkValue::KeySignature { encoded_mode, .. } => encoded_mode.as_ref().is_none_or(|v| text(v)),
+                MusicScoreMarkValue::TimeSignature { components, symbol } => !components.is_empty()
+                    && components.iter().all(|c| text(&c.beats) && c.beat_type > 0) && symbol.as_ref().is_none_or(|s| text(s)),
+                MusicScoreMarkValue::Direction { words, metronome, sound_tempo_quarter_bpm } =>
+                    (!words.is_empty() || metronome.is_some() || sound_tempo_quarter_bpm.is_some())
+                    && words.iter().all(|w| text(w))
+                    && metronome.as_ref().is_none_or(|m| text(&m.beat_unit) && text(&m.per_minute))
+                    && sound_tempo_quarter_bpm.is_none_or(positive),
+            }, "score mark value")?;
+        }
         let mut svg_ids = BTreeSet::new();
         for n in &self.score_objects {
             require(parts.get(n.part_id.as_str()).is_some_and(|p| p.voices.contains(&n.voice)) && pages.contains(n.page_id.as_str())
@@ -212,7 +279,7 @@ impl MusicSourceManifest {
                 matches!(p.kind, MusicProvenanceKind::HumanListening | MusicProvenanceKind::AudioAnalysis)
                 || p.kind == MusicProvenanceKind::ScoreSynthesis && r.kind == MusicRecordingKind::ScoreSynthesis)
                 && o.is_some_and(|o| o.score_object_ids.contains(&a.score_object_id) && a.start_ms >= o.start_ms && a.start_ms < o.end_ms)
-                && n.is_some_and(|n| !n.rest && (!a.attack || !matches!(n.tie, MusicTie::Continue | MusicTie::Stop)))
+                && n.is_some_and(|n| !n.rest && (!a.attack || !a.unobserved && !matches!(n.tie, MusicTie::Continue | MusicTie::Stop)))
                 && aligned.insert((a.occurrence_id.as_str(), a.score_object_id.as_str())), "note alignment")?;
         }
         for granularity in [MusicGranularity::Phrase, MusicGranularity::Measure, MusicGranularity::Note] {
@@ -285,6 +352,7 @@ impl MusicSourceManifest {
 
 impl MusicQuestionContext {
     pub fn validate(&self, manifest: &MusicSourceManifest, publication: &PublishedBookRef) -> Result<(), String> {
+        if let Some(image) = &self.image { image.validate()?; }
         require(text(&self.draft_id) && self.publication == *publication && text(&publication.publication_id) && publication.book_id == manifest.book_id, "question publication")?;
         self.audio.validate(manifest)?;
         if let Some(score) = &self.score {

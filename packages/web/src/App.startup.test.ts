@@ -11,7 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
 const api = vi.hoisted(() => Object.fromEntries([
-  "videoPlayback", "videoContext", "musicContext", "videoDraft", "adoptVideoPublication", "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
+  "videoPlayback", "videoContext", "musicContext", "adoptMusicPublication", "videoDraft", "adoptVideoPublication", "goto", "desktopStatus", "buildWorkbench", "manifest", "assetManifest", "sourceFingerprint",
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
@@ -795,6 +795,81 @@ it('mounts the video before transcript and draft responses without replacing its
   draft.resolve({ draft: null }); await flushPromises();
   expect(pane.props('detailsLoading')).toBe(false);
   expect(wrapper.getComponent({ name: 'VideoReaderPane' }).vm).toBe(pane.vm);
+});
+
+it.each([false, true])('loads the current music calibration while respecting a shared course selection (%s)', async shared => {
+  installIdentity({ user_id: 'music-learner', csrf_token: 'csrf' });
+  const publication = { book_id: book, publication_id: 'pending-music' };
+  installWorkspace({ workspace_id: 'music-scene', learning_workspace_id: shared ? 'music-course' : undefined,
+    generation: 1, revision: 1, selected_chat: `${book}-chat`, published_book_ref: publication, reader: await api.state() } as never);
+  const old = { publication, manifest: { title: 'Schubert', coverage: [{ status: 'pending' }] }, audio_url: '/old-audio' };
+  const revised = { ...old, publication: { ...publication, publication_id: 'calibrated-music' },
+    manifest: { title: 'Schubert', coverage: [{ status: 'accepted' }] }, audio_url: '/current-audio' };
+  api.musicContext.mockResolvedValue(old);
+  api.adoptMusicPublication.mockResolvedValue({ status: 'adopted', music: revised });
+  const wrapper = start(); await flushPromises();
+  expect(wrapper.getComponent({ name: 'MusicReaderPane' }).props('context')).toEqual(shared ? old : revised);
+  if (shared) expect(api.adoptMusicPublication).not.toHaveBeenCalled();
+  else expect(api.adoptMusicPublication).toHaveBeenCalledWith('pending-music');
+});
+
+it.each(['selection', 'upload'] as const)('sends a music %s as pixels, retains a rejected draft, and clears it after acceptance', async origin => {
+  const { ApiError } = await import('./api');
+  const publication = { book_id: book, publication_id: 'music-publication' };
+  api.musicContext.mockResolvedValue({ publication, manifest: { title: 'Music', coverage: [{ status: 'accepted' }] }, audio_url: '/music.wav' });
+  const context = { draft_id: 'music-image', publication, score: null, occurrence_id: null, focused_part_ids: [],
+    audio: { recording: { recording_id: 'recording', revision: '1' }, start_ms: 1200, end_ms: 2000 } };
+  const image = { png_base64: 'music-pixels', width: 640, height: 240, origin };
+  const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true,
+    stubs: { ReaderWorkspace: learningWorkspaceStub, MusicReaderPane: { name: 'MusicReaderPane', props: ['context', 'question', 'selectionDisabled'], methods: { captureQuestion: () => context }, template: '<div />' } } } });
+  wrappers.push(wrapper); await flushPromises();
+  const rail = wrapper.getComponent({ name: 'RightRail' }), pane = wrapper.getComponent({ name: 'MusicReaderPane' });
+  if (origin === 'selection') pane.vm.$emit('question', { ...context, image });
+  else {
+    rail.vm.$emit('question-image-loading', true); await flushPromises();
+    rail.vm.$emit('send-agent'); await flushPromises();
+    expect(api.agentRunCreate).not.toHaveBeenCalled();
+    rail.vm.$emit('question-image', image); rail.vm.$emit('question-image-loading', false);
+  }
+  await flushPromises();
+  expect(rail.props('musicQuestion').image).toEqual(image);
+  expect(rail.props('agentInput')).toBe('');
+  api.agentRunCreate.mockRejectedValueOnce(new ApiError(409, 'MUSIC_QUESTION_INVALID', 'conflict', '请重试'));
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(api.agentRunCreate.mock.calls[0][0]).toContain('我是初学者');
+  expect(api.agentRunCreate.mock.calls[0][1].music_question).toEqual({ ...context, image });
+  expect(rail.props('musicQuestion').image).toEqual(image);
+  rail.vm.$emit('update:agentInput', '这五条线是什么？'); await flushPromises();
+  const admission = deferred<unknown>(); api.agentRunCreate.mockReturnValueOnce(admission.promise);
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(rail.props('agentInput')).toBe('这五条线是什么？');
+  expect(rail.props('questionInputBlocked')).toBe(true);
+  expect(api.agentRunCreate.mock.calls[1][1].music_question.audio.start_ms).toBe(1200);
+  admission.resolve({ book_id: book, session_id: `${book}-chat`, turn_id: 'music-accepted' }); await flushPromises();
+  expect(rail.props('musicQuestion')).toBeNull();
+  expect(rail.props('agentInput')).toBe('');
+});
+
+it('clears a music image draft when history confirms admission after a lost creation response', async () => {
+  const publication = { book_id: book, publication_id: 'music-publication' };
+  api.musicContext.mockResolvedValue({ publication, manifest: { title: 'Music', coverage: [{ status: 'accepted' }] }, audio_url: '/music.wav' });
+  const question = { draft_id: 'accepted-music-image', publication, score: null, occurrence_id: null, focused_part_ids: [],
+    audio: { recording: { recording_id: 'recording', revision: '1' }, start_ms: 1200, end_ms: 2000 },
+    image: { png_base64: 'pixels', width: 100, height: 80, origin: 'selection' } };
+  const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { ReaderWorkspace: learningWorkspaceStub } } });
+  wrappers.push(wrapper); await flushPromises();
+  const rail = wrapper.getComponent({ name: 'RightRail' });
+  wrapper.getComponent({ name: 'MusicReaderPane' }).vm.$emit('question', question); await flushPromises();
+  api.agentRunCreate.mockRejectedValueOnce(new Error('creation response lost'));
+  api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
+    turn_id: 'accepted-image-turn', user: '原提问', status: 'failed', effect_labels: [], music_question: question,
+    error: { category: 'provider', error_code: 'PROVIDER_ERROR', message: '回答未完成' },
+  }] } });
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  expect(rail.props('musicQuestion')).toBeNull();
+  expect(rail.props('agentInput')).toBe('');
+  expect(rail.props('chat')[0].musicQuestion.image).toEqual(question.image);
 });
 
 it('VI6 opens a local published video without interpreting preparation as a build workbench', async () => {

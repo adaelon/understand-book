@@ -260,6 +260,12 @@ Server history now separates its durable model from public Agent views. Each com
 
 Legacy Agent answers are adapted only in the read path. A conservative Markdown-aware scanner recognizes the historical `[LID: real.node]` citation shape only outside fenced, indented, inline, and raw HTML code, escaped text, links, images, and reference definitions. It verifies the candidate against the active canonical book, derives a deterministic opaque ref, and builds the same typed answer view without mutating history. Bare numbers, invalid nodes, and ambiguous prose remain byte-for-byte visible. The source endpoints reconstruct the same temporary binding from turn/ref, so restart replay is stable; changing books or deleting the owning history makes the ref unavailable. Since old turns never stored a digest snapshot, this compatibility path intentionally binds only to a currently valid explicit node and does not invent stale recovery.
 
+## Music question images
+
+`MusicReaderPane` snapshots any selected area of a rendered score SVG, retaining embedded glyph definitions and voice colors. `App` binds this or a pasted/uploaded picture to the frozen `MusicQuestionContext`; `RightRail` reuses the video attachment input and displays saved pictures in history. Score screenshots can refer to unindexed notation or a different position from the playback context.
+
+Server admission validates the optional image using the existing PNG limits and preserves it in the Run and history. `music::take_question_image` removes PNG bytes from textual music context and leaves compact attachment metadata. The orchestrator passes the pixels through the existing `AgentRequestPlan.question_image` path throughout the turn, including finalization and available-answer fallback. User pictures remain user input; they do not create a source observation or a claim of listening. Validation and UI evidence are recorded in [music acceptance](验收-音乐伴听.md#谱面截图提问2026-10-23).
+
 ## Decision Index
 
 - **Budget-routable model work units and truthful build recovery**: [ADR-0100](adr/0100-budget-routable-model-work-units-and-truthful-build-recovery.md).

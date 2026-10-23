@@ -1346,6 +1346,7 @@ export const api = {
   videoPlayback: () => http<import("./video-api").VideoPlayback | null>("GET", "/book/video_playback"),
   videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
   musicContext: () => http<import('./music-api').MusicContext | null>('GET', '/book/music_context'),
+  adoptMusicPublication: (publication_id: string) => http<{ status: 'busy' | 'current' | 'adopted' | 'selection_required'; music?: import('./music-api').MusicContext }>('POST', '/reader/adopt_same_source_publication', { publication_id }),
   musicCalibrationContext: () => http<import('./music-calibration').MusicCalibrationContext | null>('GET', '/build_workbench/music/context'),
   musicCalibrate: (revision: import('./music-calibration').MusicAlignmentRevision) => http<import('./music-calibration').MusicCalibrationContext>('POST', '/build_workbench/music/calibrate', revision),
   musicRespond: (body: Record<string, unknown>) => http<{ claimed?: boolean; accepted?: boolean; receipt?: import('./music-api').MusicPlaybackReceipt }>('POST', '/agent/music/respond', body),

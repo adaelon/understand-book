@@ -2,7 +2,7 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { afterEach, expect, it, vi } from 'vitest';
 import QuestionImageInput from './QuestionImageInput.vue';
-import { captureQuestionImage } from '../question-image';
+import { captureQuestionImage, scoreImageRect } from '../question-image';
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function canvas() {
   const drawImage = vi.fn();
@@ -10,6 +10,12 @@ function canvas() {
   vi.spyOn(HTMLCanvasElement.prototype,'toDataURL').mockReturnValue('data:image/png;base64,cGl4ZWxz');
   return drawImage;
 }
+it('selects any score region in either drag direction, clips edges, and ignores clicks', () => {
+  const box = { left: 20, top: 100, width: 1000, height: 500 };
+  expect(scoreImageRect(box, { x: 520, y: 350 }, { x: -10, y: 50 })).toEqual([0, 0, .5, .5]);
+  expect(scoreImageRect(box, { x: 20, y: 100 }, { x: 1020, y: 600 })).toEqual([0, 0, 1, 1]);
+  expect(scoreImageRect(box, { x: 50, y: 150 }, { x: 51, y: 151 })).toBeNull();
+});
 it('captures a right-edge crop directly from the displayed video without seeking', () => {
   const draw = canvas(), video = document.createElement('video');
   Object.defineProperties(video,{ readyState:{value:2},videoWidth:{value:1920},videoHeight:{value:1080} });

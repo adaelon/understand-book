@@ -233,6 +233,15 @@ pub struct VideoQuestionImage {
     pub origin: VideoQuestionImageOrigin,
 }
 
+impl VideoQuestionImage {
+    pub fn validate(&self) -> Result<(), String> {
+        require(self.width > 0 && self.height > 0 && self.width <= 2048 && self.height <= 2048,
+            "问题图片尺寸须为 1–2048 像素")?;
+        require(!self.png_base64.is_empty() && self.png_base64.len() <= 5_592_408,
+            "问题图片须为不超过 4 MiB 的 PNG")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/core/src/generated/")]
@@ -602,10 +611,7 @@ impl VideoQuestionContext {
             manifest.source.validate_location(r)?;
         }
         if let Some(image) = &self.image {
-            require(image.width > 0 && image.height > 0 && image.width <= 2048 && image.height <= 2048,
-                "问题图片尺寸须为 1–2048 像素")?;
-            require(!image.png_base64.is_empty() && image.png_base64.len() <= 5_592_408,
-                "问题图片须为不超过 4 MiB 的 PNG")?;
+            image.validate()?;
             require(image.origin != VideoQuestionImageOrigin::Selection || self.region.is_some(),
                 "框选截图需要对应的选区")?;
         }

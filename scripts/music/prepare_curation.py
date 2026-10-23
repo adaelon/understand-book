@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "evals/music"
+tonality_review = json.loads((OUT / "schubert-tonality.json").read_text(encoding="utf-8"))
 score = ET.parse(OUT / "assets/schubert-d780-3-noctave.musicxml").getroot()
 source_notes = []
 for part in score.findall("part"):
@@ -18,7 +19,7 @@ curation = {
     "version": "music_curation.v1",
     "book_id": "music-schubert-d780-3-vetter",
     "title": "舒伯特 · 音乐瞬间第 3 首",
-    "work": {"work_id": "schubert-d780", "title": "Moments musicaux, D.780 / Op.94", "composer": "Franz Schubert", "movement": "No.3 in F minor · Allegro moderato"},
+    "work": {"work_id": "schubert-d780", "title": "Moments musicaux, D.780 / Op.94", "composer": "Franz Schubert", "movement": "No.3 in F minor · Allegro moderato", "tonality": tonality_review["tonality"]},
     "score": {"source": {"score_id": "schubert-d780-3-noctave", "revision": "download-20261022"}, "title": "Noctave · 据 Mutopia / Claude Chaudron 公版谱转录", "musicxml_path": "assets/schubert-d780-3-noctave.mxl"},
     "recording": {"source": {"recording_id": "schubert-d780-3-vetter", "revision": "imslp456646"}, "title": "Harald Vetter · Allegro moderato in F minor", "performers": "Harald Vetter, piano", "media_path": "assets/schubert-d780-3-vetter.mp3", "kind": "performance"},
     "rights": [
@@ -35,6 +36,7 @@ curation = {
     "demonstration_requests": [{"demonstration_id": "upper-line-m3-4", "title": "第 3–4 小节上方线条", "score_object_ids": ids(3,4,staff="1",pitched=True), "tempo_bpm": 80}],
     "guide": "# 舒伯特 · 音乐瞬间第 3 首\n\n先完整听一小段，再带着一个问题重听。你可以从开头寻找旋律的进入，比较相同材料的两次出现，或切换关注上、下谱表。\n\n## 当前材料\n\n原声为 Harald Vetter 的钢琴演奏；谱本为 Noctave 据 Mutopia 公版谱转换的 MusicXML。谱面事实和原录音分别提供依据。演奏时间目前为自动分析候选，正在校准；事件范围用于回听定位，尚不代表逐音符同步已经核准。\n\n## 素材署名\n\n录音：Franz Schubert, Moments musicaux D.780 No.3；钢琴及录音发布者 Harald Vetter；IMSLP #456646；CC BY 4.0，原录音未修改。谱本：Claude Chaudron / Mutopia，经 Noctave 转换，CC0 1.0。谱面合成示范由选定谱音生成，区别于原演奏。\n",
 }
+curation["provenance"].append(tonality_review["provenance"])
 for event in curation["events"]:
     event["roles"] = [
         {"part_id": "P1", "voice_ids": ["1:1"], "role": "上谱表的旋律线条", "theme_id": "schubert-d780-3-opening-theme"},

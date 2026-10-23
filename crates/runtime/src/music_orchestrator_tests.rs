@@ -1,7 +1,7 @@
 // Included in orchestrator::tests to exercise the real tool dispatcher and projections.
 mod music_dispatch {
     use super::*;
-    struct Port { store:MemoryStore,reader:Reader,player_ms:f64,paused:bool,loop_range:Option<crate::music::MusicLoop>,calls:Vec<String> }
+    struct Port { store:MemoryStore,reader:Reader,player_ms:f64,paused:bool,loop_range:Option<crate::music::MusicLoop>,calls:Vec<String>,question_image:Option<base_schema::VideoQuestionImage> }
     fn source() -> read_tools::music::MusicSourceSnapshot {
         serde_json::from_value(serde_json::json!({"target":{"publication":{"book_id":"b","publication_id":"music-pub1"},
             "audio":{"recording":{"recording_id":"rec","revision":"1"},"start_ms":1000,"end_ms":2000},"score":null,
@@ -33,7 +33,7 @@ fn music_available_answer_keeps_actual_material_and_applied_playback() {
     impl ResidentStatePort for Port {
         fn music_source_context(&mut self)->Result<Option<serde_json::Value>,ToolError> {
             Ok(Some(serde_json::json!({"publication":source().target.publication,"recording":source().target.audio.recording,
-                "question_context":{"draft_id":"frozen-question","audio":source().target.audio,"occurrence_id":"repeat2"},"player_ms":self.player_ms})))
+                "question_context":{"draft_id":"frozen-question","audio":source().target.audio,"occurrence_id":"repeat2","image":self.question_image},"player_ms":self.player_ms})))
         }
         fn read_music(&mut self,_:Option<&base_schema::PublishedBookRef>,request:read_tools::music::MusicRead)->Result<read_tools::music::MusicReadResult,ToolError> {
             self.calls.push("read".into());assert_eq!(request.view,"events");let source=source();
@@ -52,8 +52,32 @@ fn music_available_answer_keeps_actual_material_and_applied_playback() {
         fn reader_input(&mut self,b:&Book,q:&str)->crate::run_context::ReaderInputSnapshot{crate::run_context::ReaderInputSnapshot::capture(b,&self.reader,q)}
     }
     #[test]
+    fn music_question_image_reaches_first_and_finalization_model_requests_as_pixels() {
+        let b = book();
+        let image = base_schema::VideoQuestionImage { png_base64:"music-question-pixels".into(), width:800, height:240, origin:base_schema::VideoQuestionImageOrigin::Selection };
+        let mut port = Port { store:MemoryStore::open(tmp("music-question-image")).unwrap(),reader:Reader::new(&b,1),player_ms:1200.0,paused:true,loop_range:None,calls:vec![],question_image:Some(image.clone()) };
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("read","music.read",r#"{"view":"events"}"#)]), turn_final("The five horizontal lines form a staff.")],vec![]);
+        let profile = default_profile_snapshot(&b,&port.store,"t0");
+        let mut context = RunContext::new(new_session(),OuterConfig { max_turns:Some(1),..Default::default() },adapter.model_runtime_profile());
+        run_context(&b,&mut port,&adapter,&mut context,&profile,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"What do these lines mean?","t0").unwrap();
+        let plans = adapter.seen_plans.borrow();
+        assert_eq!(plans.len(),2);
+        for plan in plans.iter() {
+            assert_eq!(plan.question_image.as_ref(),Some(&image));
+            let messages = serde_json::to_string(&plan.ordered_messages()).unwrap();
+            assert!(!messages.contains("music-question-pixels"),"PNG bytes must not be serialized as prompt text");
+            assert!(messages.contains("attached_image"));
+            let body = crate::native_chat_request_projection("fixture",plan).0;
+            assert!(body["messages"].as_array().unwrap().iter().any(|m| m["content"].as_array().is_some_and(|parts|
+                parts.iter().any(|part|part["image_url"]["url"] == "data:image/png;base64,music-question-pixels"))));
+        }
+        assert!(plans[1].tools.is_empty());
+        assert!(context.music_interactions.is_empty(),"Notation questions must not require audio playback");
+    }
+    #[test]
     fn music_runtime_reads_cites_and_waits_for_actual_receipt_with_frozen_question() {
-        let b=book();let mut port=Port{store:MemoryStore::open(tmp("music-runtime" )).unwrap(),reader:Reader::new(&b,1),player_ms:1200.0,paused:true,loop_range:None,calls:vec![]};
+        let b=book();let mut port=Port{store:MemoryStore::open(tmp("music-runtime" )).unwrap(),reader:Reader::new(&b,1),player_ms:1200.0,paused:true,loop_range:None,calls:vec![],question_image:None};
         let target=source().target;
         let observe=serde_json::json!({"operation":"observe","publication":target.publication,"recording":target.audio.recording});
         let act=serde_json::json!({"operation":"act","publication":target.publication,"recording":target.audio.recording,"based_on":"actual-state-1","action":{"kind":"play","start_ms":1000,"end_ms":2000}});

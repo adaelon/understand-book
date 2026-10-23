@@ -3,5 +3,6 @@ import type { MusicAudioLocation } from "./MusicAudioLocation";
 import type { MusicScoreLocation } from "./MusicScoreLocation";
 import type { MusicVoiceFocus } from "./MusicVoiceFocus";
 import type { PublishedBookRef } from "./PublishedBookRef";
+import type { VideoQuestionImage } from "./VideoQuestionImage";
 
-export type MusicQuestionContext = { draft_id: string, publication: PublishedBookRef, audio: MusicAudioLocation, score: MusicScoreLocation | null, occurrence_id: string | null, focused_part_ids: Array<string>, focused_voices?: Array<MusicVoiceFocus>, };
+export type MusicQuestionContext = { draft_id: string, publication: PublishedBookRef, audio: MusicAudioLocation, score: MusicScoreLocation | null, occurrence_id: string | null, focused_part_ids: Array<string>, focused_voices?: Array<MusicVoiceFocus>, image?: VideoQuestionImage | null, };

@@ -158,6 +158,32 @@ fn music_question_freezes_repeat_and_original_time_in_run_and_history() {
 }
 
 #[test]
+fn music_question_pixels_survive_admission_and_history_without_an_indexed_score_target() {
+    use base64::Engine;
+    let (_root, mut state, _, reference) = fixture();
+    let mut bytes = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut bytes, 2, 1);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.write_header().unwrap().write_image_data(&[255, 0, 0, 0, 255, 0]).unwrap();
+    }
+    let image = json!({"png_base64":base64::engine::general_purpose::STANDARD.encode(bytes),"width":2,"height":1,"origin":"selection"});
+    let input = json!({"message":"这条线是什么意思？","music_question":{
+        "draft_id":"staff-lines","publication":reference,
+        "audio":{"recording":{"recording_id":"recording","revision":"1"},"start_ms":1200,"end_ms":1500},
+        "score":null,"occurrence_id":null,"focused_part_ids":[],"image":image}});
+    let prepared = prepare_agent_chat(&mut state, &input.to_string(), "now").map_err(|r|r.body).unwrap();
+    assert_eq!(json!(prepared.scope.music_question.as_ref().unwrap().image), image);
+    let turn = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == prepared.turn_ref.turn_id).unwrap();
+    assert_eq!(crate::authorization::turn_json(turn)["music_question"]["image"], image);
+    let mut invalid = input.clone(); invalid["music_question"]["image"]["width"] = json!(3);
+    assert_eq!(crate::music_interact::question(&state.workspace, &invalid).unwrap_err().error_code, "MUSIC_QUESTION_INVALID");
+    invalid["music_question"]["image"]["width"] = json!(2);
+    invalid["music_question"]["image"]["png_base64"] = json!("broken");
+    assert!(crate::music_interact::question(&state.workspace, &invalid).is_err());
+}
+
+#[test]
 fn music_network_receipt_releases_workspace_locks_and_sources_keep_original_publication() {
     let f = super::mu5_tests::Fixture::new();
     let input=f.root.path().join("music-player");

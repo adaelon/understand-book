@@ -8,6 +8,14 @@ function fixture(): MusicSourceManifest {
 }
 
 describe("curated music source contracts", () => {
+  it('preserves score screenshots even without indexed score objects and rejects oversized images', () => {
+    const m = fixture(), publication = { book_id: m.book_id, publication_id: 'release-1' };
+    const q: MusicQuestionContext = { draft_id: 'staff-lines', publication,
+      audio: { recording: m.recording.source, start_ms: 0, end_ms: 1000 }, score: null, occurrence_id: null, focused_part_ids: [],
+      image: { png_base64: 'score-pixels', width: 800, height: 240, origin: 'selection' } };
+    expect(validateMusicQuestionContext(q, m, publication).image).toEqual(q.image);
+    expect(() => validateMusicQuestionContext({ ...q, image: { ...q.image, width: 2049 } }, m, publication)).toThrow();
+  });
   it("supports repeated occurrences and simultaneous chord notes without a transcript", () => {
     const m = validateMusicSourceManifest(fixture());
     expect(m.note_alignments).toHaveLength(4);
@@ -39,6 +47,13 @@ describe("curated music source contracts", () => {
     expect(() => validateMusicSourceManifest(m)).not.toThrow();
     m.coverage.push({ ...m.coverage[0] });
     expect(() => validateMusicSourceManifest(m)).toThrow("coverage overlap");
+  });
+  it("retains reviewed unobserved tones without inventing attacks or dropping coverage", () => {
+    const m = fixture(); m.note_alignments[0].unobserved = true;
+    expect(() => validateMusicSourceManifest(m)).toThrow("note alignment");
+    m.note_alignments[0].attack = false;
+    expect(validateMusicSourceManifest(m).note_alignments[0].unobserved).toBe(true);
+    expect(musicCapabilities(m)).toContain("music_note_alignment");
   });
   it("permits layout and semantic revisions while preserving source anchors", () => {
     const old = fixture(), next = fixture();

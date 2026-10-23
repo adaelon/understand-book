@@ -4,7 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
 import { validateMusicMaterialSuccessor, validateMusicSourceManifest, type MusicSourceManifest, type MusicRecording, type MusicDemonstration } from './music-contract';
-import { musicXmlFromBytes, parseMusicScore, renderMusicScore } from './music-score';
+import { musicXmlFromBytes, parseMusicScore, renderMusicScore, MUSIC_SCORE_MARKS_PROVENANCE_ID } from './music-score';
 import { synthesizeScoreDemonstration, type MusicDemonstrationRequest } from './music-demonstrations';
 import { videoTool } from './video-dependencies';
 import { markdownToBlocks } from './md-adapter';
@@ -12,6 +12,7 @@ import { segment } from './segment';
 import { publishAutomaticBuildArtifactSet } from './automatic-build-publication';
 import { reviseMusicAlignment, type MusicAlignmentRevision } from './music-alignment';
 import { bindMusicEventOccurrences } from './music-events';
+import { MusicTonalityZ } from './music-contract';
 
 const execute = promisify(execFile);
 export const MUSIC_MANIFEST_FILE = 'music_source_manifest.json';
@@ -27,7 +28,7 @@ export interface MusicCuration extends Pick<MusicSourceManifest, 'book_id' | 'ti
 export interface MusicBuildProgress { phase: string; completed: number; total: number }
 export interface MusicBuildOptions { curationPath: string; bookDir: string; onProgress?: (progress: MusicBuildProgress) => void; signal?: AbortSignal; ffprobe?: string; ffmpeg?: string }
 const curationShape = z.object({ version: z.literal('music_curation.v1'), book_id: z.string().min(1), title: z.string().min(1),
-  work: z.object({ work_id: z.string().min(1), title: z.string().min(1), composer: z.string().min(1), movement: z.string().nullable() }),
+  work: z.object({ work_id: z.string().min(1), title: z.string().min(1), composer: z.string().min(1), movement: z.string().nullable(), tonality: MusicTonalityZ.nullable().optional() }),
   score: z.object({ source: z.object({ score_id: z.string().min(1), revision: z.string().min(1) }), title: z.string().min(1), musicxml_path: z.string().min(1) }),
   recording: z.object({ source: z.object({ recording_id: z.string().min(1), revision: z.string().min(1) }), title: z.string().min(1), performers: z.string(), media_path: z.string().min(1), kind: z.enum(['performance', 'score_synthesis']) }),
   rights: z.array(z.unknown()),
@@ -106,7 +107,7 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
     const parsed = parseMusicScore(musicXmlFromBytes(readFileSync(xmlInput)));
     writeFileSync(path.join(bookDir, musicxmlPath), parsed.musicxml);
     writeFileSync(path.join(bookDir, 'music/score/render-input.musicxml'), parsed.render_xml);
-    writeJson(path.join(bookDir, 'music/score/parsed.json'), { parts: parsed.parts, notes: parsed.notes, measure_durations: parsed.measure_durations });
+    writeJson(path.join(bookDir, 'music/score/parsed.json'), { parts: parsed.parts, notes: parsed.notes, marks: parsed.marks, measure_durations: parsed.measure_durations });
     const rendered = await renderMusicScore(parsed);
     const sidecar = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
     const notice = readFileSync(sidecar ? path.join(path.dirname(sidecar), 'resources/music/NOTICE.txt') : new URL('../assets/music/NOTICE.txt', import.meta.url), 'utf8');
@@ -117,7 +118,10 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
     progress('music_score', 1);
     progress('music_alignment', 0);
     const alignment = curation.alignment_path ? JSON.parse(readFileSync(path.resolve(inputDir, curation.alignment_path), 'utf8')) : {};
-    const provenance = [...(curation.provenance ?? []), ...(alignment.provenance ?? [])];
+    const provenance = [...(curation.provenance ?? []), ...(alignment.provenance ?? [])].filter(p => p.provenance_id !== MUSIC_SCORE_MARKS_PROVENANCE_ID);
+    if (parsed.marks.length) provenance.push({ provenance_id: MUSIC_SCORE_MARKS_PROVENANCE_ID, kind: 'score',
+      description: '直接读取原 MusicXML 的调号编码、拍号、文字指示、节拍器标记与播放速度参数，保留小节、拍位及谱面锚点。sound tempo 是文件播放参数，不是录音速度测量；encoded_mode 是原调号编码，不替代经核对的作品调性。',
+      source_url: curation.rights.find(right => right.asset_kind === 'score')?.url ?? null, processor: 'MusicXML score marks v1' });
     progress('music_alignment', 1);
     progress('music_events', 0);
     const demonstrations: MusicDemonstration[] = [];
@@ -134,7 +138,7 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
       score: { ...curation.score, musicxml_path: musicxmlPath }, recording,
       rights: [...curation.rights.filter(right => !(right.asset_kind === 'font' && right.title === 'Leipzig music font')),
         { asset_kind: 'font', title: 'Leipzig music font', url: 'https://github.com/rism-digital/leipzig/tree/a8838c6fe6bf3aaf4bfb5d831436b4f7594dbf9c', license: 'SIL Open Font License 1.1', attribution: 'Leipzig music font, Etienne Darbellay, Jean-Francois Marti and Laurent Pugin; copyright and license in music/NOTICE.txt', distribution: 'allowed' }],
-      parts: curation.parts ?? parsed.parts, pages: rendered.pages, score_objects: rendered.score_objects,
+      parts: curation.parts ?? parsed.parts, pages: rendered.pages, score_objects: rendered.score_objects, score_marks: parsed.marks,
       occurrences: alignment.occurrences ?? curation.occurrences ?? [], note_alignments: alignment.note_alignments ?? curation.note_alignments ?? [], coverage: alignment.coverage ?? curation.coverage ?? [],
       provenance, events: curation.events ?? [], structure: curation.structure ?? [], demonstrations });
     manifest.events = bindMusicEventOccurrences(manifest);

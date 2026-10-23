@@ -31,6 +31,14 @@ function mockMediaPlayback(onPlay?: (audio: HTMLMediaElement) => void) {
 function accept(receipt: MusicPlaybackReceipt) { registered.value!.accepted({ ...receipt, receipt_id: 'server-receipt' }); }
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 describe('mounted music player receipts', () => {
+  it('captures a notation question before audio metadata is available', () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(0);
+    const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
+    const question = wrapper.vm.captureQuestion();
+    expect(question.audio).toEqual({ recording: context.manifest.recording.source, start_ms: 0, end_ms: 1000 });
+    expect(question.score).toBeNull();
+    wrapper.unmount();
+  });
   it('opens a curated excerpt on the original recording time axis and preserves a saved listener position', async () => {
     vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(2);
     vi.spyOn(HTMLMediaElement.prototype, 'duration', 'get').mockReturnValue(10);
