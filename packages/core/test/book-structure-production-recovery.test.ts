@@ -73,7 +73,7 @@ describe("BSR5 current-input preparation and action recovery", () => {
     let state = f.get();
     for (let i = 0; i < 20 && !state.structure_blocked; i++) {
       for (const task of tasks(state)) f.submit(task, "phase" in task.input && task.input.phase === "reconcile"
-        ? { edits: [], merges: [], unresolved: ["The transfer prerequisite needs source review."] } : structureProductionResponse(task));
+        ? { edits: [], merges: [], unresolved: ["The transfer prerequisite needs source review."] } : undefined);
       state = f.get();
     }
     expect(state).toMatchObject({ closed: false, structure_blocked: "The transfer prerequisite needs source review.",

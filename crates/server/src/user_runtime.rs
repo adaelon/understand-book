@@ -98,6 +98,7 @@ impl UserRuntime {
         user.user_id = Some(paths.owner.clone());
         user.session_store = session_store;
         user.presentation_limits = Some((512 * 1024 * 1024, 4096));
+        crate::board_delivery::repair(&mut user, now)?;
         let cursors = crate::agent_history_review_cursors(&user.agent_history);
         user.store
             .initialize_review_watermark_baseline(&cursors, now)?;
@@ -155,6 +156,10 @@ impl UserRuntime {
 
     pub fn learning_store_for_workspace(&self, learning_workspace_id: Option<&str>) -> Result<LearningStore, ToolError> {
         Ok(self.store.learning_store()?.with_workspace(learning_workspace_id))
+    }
+
+    pub fn learning_store_for_source(&self, learning_workspace_id: Option<&str>, source_id: &str) -> Result<LearningStore, ToolError> {
+        Ok(self.learning_store_for_workspace(learning_workspace_id)?.with_source(source_id))
     }
 
     pub(crate) fn presentation_root(&self) -> Result<PathBuf, ToolError> {

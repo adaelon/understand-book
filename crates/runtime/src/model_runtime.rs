@@ -144,6 +144,40 @@ pub struct ModelRuntimeProfile {
 }
 
 impl ModelRuntimeProfile {
+    /// One allowance covers reasoning and visible output. The catalog sets the
+    /// default; explicit caller limits remain supported within the actual window.
+    pub fn output_token_limit(
+        &self,
+        requested: Option<u32>,
+        estimated_input_tokens: u32,
+    ) -> Result<u32, crate::AdapterError> {
+        let available = self.context_window_tokens
+            .saturating_sub(self.safety_margin_tokens)
+            .saturating_sub(estimated_input_tokens);
+        if available == 0 {
+            return Err(crate::AdapterError {
+                spend_stop: None,
+                message: "Model input leaves no output space in the context window".into(),
+            });
+        }
+        let requested = requested.unwrap_or(self.output_reserve_tokens).max(1);
+        Ok(requested.min(self.provider_output_max().unwrap_or(u32::MAX)).min(available))
+    }
+
+    /// Only confirmed catalog capabilities permit automatic output expansion.
+    /// Unknown models and caller-owned profiles retain their explicit policy.
+    pub fn retry_output_token_limit(&self, current: u32, input_tokens: u32) -> Option<u32> {
+        let maximum = self.provider_output_max()?;
+        let next = self.output_token_limit(Some(maximum), input_tokens).ok()?;
+        (next > current).then_some(next)
+    }
+
+    fn provider_output_max(&self) -> Option<u32> {
+        (self.resolution == ModelProfileResolution::CatalogMatch
+            && self.profile_id == "resident-agent-deepseek-flash-v1")
+            .then_some(393_216)
+    }
+
     pub fn fallback(model: impl Into<String>, protocol: ProviderToolProtocol) -> Self {
         let model = model.into();
         Self {
@@ -224,6 +258,10 @@ impl Default for ModelRuntimeCatalog {
             flash.profile_id = "resident-agent-deepseek-flash-v1".into();
             flash.model_match = ModelSelector::Exact(model.into());
             flash.context_window_tokens = 1_000_000;
+            // Shared by the main loop, review, assessment, coaching and recovery.
+            // Keep the existing long-authoring allowance, with one larger retry
+            // available under the provider's confirmed 384K output capability.
+            flash.output_reserve_tokens = 131_072;
             profiles.push(flash);
         }
         Self {
@@ -318,6 +356,7 @@ pub struct AgentRequestPlan {
     pub instruction_assets: Vec<InstructionAssetRef>,
     pub input: Vec<Message>,
     pub tools: Vec<ToolSpec>,
+    pub tool_history: Option<crate::deepseek_messages::ToolHistoryProjection>,
     pub tool_choice: ToolChoice,
     pub parallel_tool_calls: bool,
     pub active_context: ActiveContextStatus,
@@ -356,20 +395,12 @@ impl AgentRequestPlan {
         modules: &[InstructionModule],
         use_profile_instructions: bool,
     ) -> Self {
-        // Flash reasoning and the final answer share the completion budget.
-        // Page authoring keeps its larger, explicit allowance.
-        // Reserve the same output allowance that is sent to the provider;
-        // both input and output count toward the profile's pressure watermark.
-        let output_token_limit = if use_profile_instructions
-            && runtime_profile.resolution == ModelProfileResolution::CatalogMatch
-            && runtime_profile.profile_id == "resident-agent-deepseek-flash-v1"
-        {
-            let limit = if tools.iter().any(|tool| tool.name == "presentation.author") { 131_072 } else { 32_768 };
-            runtime_profile.output_reserve_tokens = limit;
-            Some(limit)
-        } else {
-            None
-        };
+        // Context pressure and the provider request use the same model policy,
+        // including ad-hoc judgments and calls without tools.
+        runtime_profile.output_reserve_tokens = runtime_profile
+            .output_token_limit(None, 0)
+            .unwrap_or(runtime_profile.output_reserve_tokens);
+        let output_token_limit = Some(runtime_profile.output_reserve_tokens);
         let (inherited_instructions, mut input) = match messages.first() {
             Some(message) if message.role == Role::System => (
                 message.content.clone().unwrap_or_default(),
@@ -444,6 +475,7 @@ impl AgentRequestPlan {
             instruction_assets,
             input,
             tools,
+            tool_history: None,
             tool_choice,
             parallel_tool_calls: false,
             output_token_limit,
@@ -452,6 +484,21 @@ impl AgentRequestPlan {
 
     pub fn ordered_messages(&self) -> Vec<Message> {
         ordered_messages(&self.instructions, &self.input)
+    }
+
+    /// Recompute every window decision from the final projected input. Explicit
+    /// smaller output budgets reserve that actual amount, not the model default.
+    pub(crate) fn update_input_estimate(&mut self, tokens: u32) {
+        let output = self.output_token_limit.unwrap_or(self.runtime_profile.output_reserve_tokens);
+        let safety = self.runtime_profile.safety_margin_tokens;
+        let available = i64::from(self.runtime_profile.context_window_tokens)
+            - i64::from(output) - i64::from(safety);
+        self.active_context.estimated_input_tokens = tokens;
+        self.active_context.output_reserve_tokens = output;
+        self.active_context.safety_margin_tokens = safety;
+        self.active_context.context_window_tokens = self.runtime_profile.context_window_tokens;
+        self.active_context.remaining_tokens = available - i64::from(tokens);
+        self.active_context.fits = i64::from(tokens) <= available;
     }
 }
 
@@ -513,6 +560,38 @@ fn estimate_request_tokens(messages: &[Message], tools: &[ToolSpec]) -> u32 {
     estimate_text_tokens(&message_payload).saturating_add(estimate_text_tokens(&tool_payload))
 }
 
+/// Estimate the final wire input, including tool schemas and retained reasoning.
+/// Image bytes are not text tokens; use the same conservative per-image reserve
+/// as the runtime's visual input planning, rather than counting base64 characters.
+pub(crate) fn estimate_provider_request_input_tokens(request: &serde_json::Value) -> u32 {
+    let mut messages = request["messages"].clone();
+    let image_tokens = replace_image_data_for_estimate(&mut messages);
+    let text = serde_json::json!({
+        "system": request.get("system"),
+        "messages": messages,
+        "tools": request.get("tools"),
+        "response_format": request.get("response_format"),
+    });
+    estimate_text_tokens(&text.to_string()).saturating_add(image_tokens)
+}
+
+fn replace_image_data_for_estimate(value: &mut serde_json::Value) -> u32 {
+    if value.get("type").and_then(serde_json::Value::as_str)
+        .is_some_and(|kind| matches!(kind, "image_url" | "image"))
+    {
+        let kind = value["type"].clone();
+        *value = serde_json::json!({"type":kind});
+        return 4096;
+    }
+    match value {
+        serde_json::Value::Array(values) => values.iter_mut()
+            .fold(0u32, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
+        serde_json::Value::Object(values) => values.values_mut()
+            .fold(0u32, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
+        _ => 0,
+    }
+}
+
 pub(crate) fn estimate_text_tokens(text: &str) -> u32 {
     let mut estimate = 0.0_f32;
     for character in text.chars() {
@@ -530,6 +609,65 @@ mod tests {
     use super::*;
 
     #[test]
+    fn shared_output_allowance_reserves_the_same_space_for_every_call() {
+        let profile = ModelRuntimeCatalog::default().resolve(
+            "deepseek-v4-flash", ProviderToolProtocol::Native, None);
+        for plan in [
+            AgentRequestPlan::for_agent_turn(profile.clone(), &[Message::user("question")], &[]),
+            AgentRequestPlan::for_ad_hoc(profile.clone(), &[Message::user("review")], &[]),
+        ] {
+            assert_eq!(plan.output_token_limit, Some(131_072));
+            assert_eq!(plan.active_context.output_reserve_tokens, 131_072);
+            assert_eq!(plan.runtime_profile.output_reserve_tokens, 131_072);
+        }
+        assert_eq!(profile.retry_output_token_limit(131_072, 20_000), Some(393_216));
+        assert_eq!(profile.retry_output_token_limit(131_072, 800_000), Some(196_000));
+        assert_eq!(profile.retry_output_token_limit(131_072, 900_000), None);
+        assert_eq!(profile.output_token_limit(Some(393_216), 900_000).unwrap(), 96_000);
+        assert!(profile.output_token_limit(None, 996_000).is_err());
+        let mut custom = profile;
+        custom.resolution = ModelProfileResolution::ExplicitOverride;
+        custom.output_reserve_tokens = 10_000;
+        assert_eq!(custom.output_token_limit(None, 0).unwrap(), 10_000);
+        assert_eq!(custom.retry_output_token_limit(10_000, 0), None);
+    }
+
+    #[test]
+    fn wire_input_estimate_counts_images_without_treating_base64_as_text() {
+        let mut body = serde_json::json!({"messages":[{"role":"user", "content":[
+            {"type":"text", "text":"Inspect this image"},
+            {"type":"image_url","image_url":{"url":"data:image/png;base64,small"}}
+        ]}],"tools":[],"response_format":{"type":"json_object"}});
+        let small = estimate_provider_request_input_tokens(&body);
+        body["messages"][0]["content"][1]["image_url"]["url"] =
+            serde_json::json!(format!("data:image/png;base64,{}", "a".repeat(2_000_000)));
+        assert_eq!(estimate_provider_request_input_tokens(&body), small);
+        assert!((4096..4352).contains(&small));
+        body["messages"].as_array_mut().unwrap().push(serde_json::json!({
+            "role":"assistant", "reasoning_content":"r".repeat(4000)}));
+        assert!(estimate_provider_request_input_tokens(&body) >= small + 1000);
+    }
+
+    #[test]
+    fn messages_wire_estimate_counts_system_thinking_and_nested_tool_images() {
+        let mut body = serde_json::json!({
+            "system":"fixed instructions", "tools":[{"name":"read", "input_schema":{"type":"object"}}],
+            "messages":[{"role":"user","content":[{"type":"tool_result","tool_use_id":"read-1",
+                "content":[{"type":"image","source":{"type":"base64","media_type":"image/png","data":"small"}}]}]}]
+        });
+        let small = estimate_provider_request_input_tokens(&body);
+        assert!((4096..4500).contains(&small));
+        body["messages"][0]["content"][0]["content"][0]["source"]["data"] = "a".repeat(2_000_000).into();
+        assert_eq!(estimate_provider_request_input_tokens(&body), small);
+        body["system"] = "x".repeat(4_000).into();
+        assert!(estimate_provider_request_input_tokens(&body) >= small + 990);
+        let before_thinking = estimate_provider_request_input_tokens(&body);
+        body["messages"].as_array_mut().unwrap().push(serde_json::json!({
+            "role":"assistant","content":[{"type":"thinking","thinking":"r".repeat(4_000)}]}));
+        assert!(estimate_provider_request_input_tokens(&body) >= before_thinking + 1_000);
+    }
+
+    #[test]
     fn deepseek_flash_aliases_compact_at_the_actual_window_watermark() {
         for model in [
             "deepseek-flash",
@@ -542,10 +680,10 @@ mod tests {
             assert_eq!(profile.context_window_tokens, 1_000_000);
             let plan = AgentRequestPlan::for_agent_turn(profile, &[Message::user("question")], &[]);
             let budget = crate::auto_compaction::ActiveContextBudget::from_plan(&plan);
-            assert_eq!(plan.output_token_limit, Some(32_768));
-            assert_eq!(plan.active_context.output_reserve_tokens, 32_768);
+            assert_eq!(plan.output_token_limit, Some(131_072));
+            assert_eq!(plan.active_context.output_reserve_tokens, 131_072);
             assert_eq!(budget.high_watermark_tokens, 750_000);
-            assert_eq!(budget.target_input_tokens, 750_000 - 32_768 - 4_000);
+            assert_eq!(budget.target_input_tokens, 750_000 - 131_072 - 4_000);
 
             // The observed slow turn used about 102K input tokens in a 1M window.
             let messages = [Message::user("x".repeat(102_477 * 4))];

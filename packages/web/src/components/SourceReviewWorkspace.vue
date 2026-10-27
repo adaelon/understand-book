@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, reactive, ref, watch } from "vue";
 import {
   ChevronLeft,
@@ -95,11 +97,11 @@ const llmBatchTargetCount = computed(() => props.blocks.filter((block) => {
 }).length);
 const llmBatchActionLabel = computed(() => {
   const batch = props.llmBatchState;
-  if (llmBatchOverloaded.value) return "批量 LLM 已暂停";
-  if (batch?.status === "running") return `处理中 ${batch.processed}/${batch.total}`;
-  if (!llmBatchTargetCount.value) return "LLM 已处理全部";
-  if (batch?.status === "completed" && batch.failed) return `LLM 重试剩余 (${llmBatchTargetCount.value})`;
-  return `LLM 处理全部 (${llmBatchTargetCount.value})`;
+  if (llmBatchOverloaded.value) return uiText('批量 LLM 已暂停');
+  if (batch?.status === "running") return uiText('处理中 {0}/{1}', [batch.processed, batch.total]);
+  if (!llmBatchTargetCount.value) return uiText('LLM 已处理全部');
+  if (batch?.status === "completed" && batch.failed) return uiText('LLM 重试剩余 ({0})', [llmBatchTargetCount.value]);
+  return uiText('LLM 处理全部 ({0})', [llmBatchTargetCount.value]);
 });
 const blockResolved = (block: SourceReviewBlock) => props.decisionSetCurrent && (
   sourceReviewDecisionResolvesBlock(block, decisionByBlock.value.get(block.id))
@@ -122,37 +124,37 @@ const reviewComplete = computed(() => (
   && props.blocks.length > 0
   && remainingCount.value === 0
 ));
-const markdownSource = computed(() => activeBlock.value?.md_context ?? activeBlock.value?.md_excerpt ?? "无 Markdown 文本");
-const extractedSource = computed(() => activeBlock.value?.pdf_context ?? "PDF 未提取到可比较文本");
+const markdownSource = computed(() => activeBlock.value?.md_context ?? activeBlock.value?.md_excerpt ?? uiText('无 Markdown 文本'));
+const extractedSource = computed(() => activeBlock.value?.pdf_context ?? uiText('PDF 未提取到可比较文本'));
 
 const decisionLabels: Record<SourceReviewDecisionKind, string> = {
-  accept_markdown: "保留 Markdown 原文",
-  accept_pdf: "采用 PDF 文本",
-  use_candidate: "采用系统候选",
-  manual_edit: "采用手工修正",
-  keep_blocked: "稍后处理",
+  accept_markdown: uiText('保留 Markdown 原文'),
+  accept_pdf: uiText('采用 PDF 文本'),
+  use_candidate: uiText('采用系统候选'),
+  manual_edit: uiText('采用手工修正'),
+  keep_blocked: uiText('稍后处理'),
 };
 const statusLabels: Record<string, string> = {
-  needs_review: "需要复核",
-  md_unmatched: "Markdown 未匹配",
-  pdf_unmatched: "PDF 未匹配",
+  needs_review: uiText('需要复核'),
+  md_unmatched: uiText('Markdown 未匹配'),
+  pdf_unmatched: uiText('PDF 未匹配'),
 };
 const llmRecommendationLabels: Record<SourceReviewLlmSuggestion["recommendation"], string> = {
-  keep_markdown: "建议保留 Markdown",
-  use_pdf: "建议采用 PDF 正文",
-  manual_edit: "建议合并修订",
-  uncertain: "无法确定",
+  keep_markdown: uiText('建议保留 Markdown'),
+  use_pdf: uiText('建议采用 PDF 正文'),
+  manual_edit: uiText('建议合并修订'),
+  uncertain: uiText('无法确定'),
 };
 const llmDifferenceLabels: Record<SourceReviewLlmDifferenceKind, string> = {
-  formatting: "格式",
-  wording: "措辞",
-  number: "数值",
-  symbol: "符号",
-  missing_in_markdown: "Markdown 缺失",
-  extra_in_markdown: "Markdown 多出",
-  order: "顺序",
-  extraction_noise: "提取噪声",
-  uncertain: "不确定",
+  formatting: uiText('格式'),
+  wording: uiText('措辞'),
+  number: uiText('数值'),
+  symbol: uiText('符号'),
+  missing_in_markdown: uiText('Markdown 缺失'),
+  extra_in_markdown: uiText('Markdown 多出'),
+  order: uiText('顺序'),
+  extraction_noise: uiText('提取噪声'),
+  uncertain: uiText('不确定'),
 };
 
 function optionalText(value: string): string | undefined {
@@ -180,14 +182,14 @@ function goTo(index: number) {
 }
 
 function pdfLocation(block: SourceReviewBlock): string {
-  if (block.pdf_page_label) return `PDF 页 ${block.pdf_page_label}`;
-  if (block.pdf_page_index !== undefined) return `PDF 第 ${block.pdf_page_index + 1} 页`;
-  return "PDF 提取文本";
+  if (block.pdf_page_label) return uiText('PDF 页 {0}', [block.pdf_page_label]);
+  if (block.pdf_page_index !== undefined) return uiText('PDF 第 {0} 页', [block.pdf_page_index + 1]);
+  return uiText('PDF 提取文本');
 }
 
 function confidenceText(block: SourceReviewBlock): string | null {
   if (block.comparison_score === undefined) return null;
-  return `候选相似度 ${Math.round(block.comparison_score * 100)}%`;
+  return uiText('候选相似度 {0}%', [Math.round(block.comparison_score * 100)]);
 }
 
 function recordedDecisionLabel(decision: SourceReviewDecision): string {
@@ -195,7 +197,7 @@ function recordedDecisionLabel(decision: SourceReviewDecision): string {
     decision.decision === "manual_edit"
     && decision.note?.startsWith(SOURCE_REVIEW_LLM_BATCH_NOTE_PREFIX)
   ) {
-    return "已采用 LLM 修订";
+    return uiText('已采用 LLM 修订');
   }
   return decisionLabels[decision.decision];
 }
@@ -307,27 +309,25 @@ watch(
   <section class="source-review-workspace" aria-labelledby="source-review-title">
     <header class="review-workspace-head">
       <div>
-        <p>来源对齐复核</p>
+        <p>{{ uiText('来源对齐复核') }}</p>
         <h2 id="source-review-title">
-          <template v-if="reviewComplete">复核完成</template>
-          <template v-else-if="activeBlock">问题 {{ activeIndex + 1 }} / {{ props.blocks.length }}</template>
-          <template v-else>来源证据</template>
+          <template v-if="reviewComplete">{{ uiText('复核完成') }}</template>
+          <template v-else-if="activeBlock">{{ uiText('问题') }} {{ activeIndex + 1 }} / {{ props.blocks.length }}</template>
+          <template v-else>{{ uiText('来源证据') }}</template>
         </h2>
-        <span v-if="reviewComplete">{{ props.blocks.length }} 项决定已保存</span>
-        <span v-else-if="!props.stale">已解决 {{ resolvedCount }} · 待人工 {{ remainingCount }}</span>
+        <span v-if="reviewComplete">{{ props.blocks.length }} {{ uiText('项决定已保存') }}</span>
+        <span v-else-if="!props.stale">{{ uiText('已解决') }} {{ resolvedCount }} {{ uiText('· 待人工') }} {{ remainingCount }}</span>
       </div>
       <div v-if="activeBlock && !reviewComplete" class="review-head-actions">
         <button
           v-if="llmBatchOverloaded && activeGroupPendingBlocks.length"
           type="button"
           class="review-page-action"
-          title="核对当前 PDF 页面后保留本页 Markdown"
+          :title="uiText('核对当前 PDF 页面后保留本页 Markdown')"
           :disabled="props.stale || props.actioning"
           @click="requestPageMarkdownGroup"
         >
-          <FileCheck2 :size="16" aria-hidden="true" />
-          本页 {{ activeGroupPendingBlocks.length }} 项均保留 Markdown
-        </button>
+          <FileCheck2 :size="16" aria-hidden="true" /> {{ uiText('本页') }} {{ activeGroupPendingBlocks.length }} {{ uiText('项均保留 Markdown') }} </button>
         <button
           type="button"
           class="review-batch-action"
@@ -339,19 +339,17 @@ watch(
           {{ llmBatchActionLabel }}
         </button>
         <div class="review-pager">
-          <button type="button" title="上一项" aria-label="上一项" :disabled="activeIndex === 0" @click="goTo(activeIndex - 1)">
+          <button type="button" :title="uiText('上一项')" :aria-label="uiText('上一项')" :disabled="activeIndex === 0" @click="goTo(activeIndex - 1)">
             <ChevronLeft :size="18" aria-hidden="true" />
           </button>
-          <button type="button" title="下一项" aria-label="下一项" :disabled="activeIndex === props.blocks.length - 1" @click="goTo(activeIndex + 1)">
+          <button type="button" :title="uiText('下一项')" :aria-label="uiText('下一项')" :disabled="activeIndex === props.blocks.length - 1" @click="goTo(activeIndex + 1)">
             <ChevronRight :size="18" aria-hidden="true" />
           </button>
         </div>
       </div>
     </header>
 
-    <p v-if="llmBatchOverloaded" class="review-overload-notice" role="status">
-      当前 {{ props.reviewLoad?.unresolved_count }} 项差异已超过逐项复核门限：{{ props.reviewLoad?.unresolved_count }} 项原子差异 · {{ props.reviewLoad?.review_group_count }} 个页面复核组。批量 LLM 已暂停。
-    </p>
+    <p v-if="llmBatchOverloaded" class="review-overload-notice" role="status"> {{ uiText('当前') }} {{ props.reviewLoad?.unresolved_count }} {{ uiText('项差异已超过逐项复核门限：') }}{{ props.reviewLoad?.unresolved_count }} {{ uiText('项原子差异 ·') }} {{ props.reviewLoad?.review_group_count }} {{ uiText('个页面复核组。批量 LLM 已暂停。') }} </p>
 
     <section
       v-if="props.llmBatchState"
@@ -361,15 +359,15 @@ watch(
     >
       <div class="review-batch-summary">
         <div>
-          <strong v-if="props.llmBatchState.status === 'running'">正在批量处理</strong>
-          <strong v-else-if="props.llmBatchState.status === 'cancelled'">批量处理已中止</strong>
-          <strong v-else>批量处理完成</strong>
+          <strong v-if="props.llmBatchState.status === 'running'">{{ uiText('正在批量处理') }}</strong>
+          <strong v-else-if="props.llmBatchState.status === 'cancelled'">{{ uiText('批量处理已中止') }}</strong>
+          <strong v-else>{{ uiText('批量处理完成') }}</strong>
           <span v-if="props.llmBatchState.current_block_id">{{ props.llmBatchState.current_block_id }}</span>
         </div>
         <div>
-          <span>已处理 {{ props.llmBatchState.processed }}/{{ props.llmBatchState.total }}</span>
-          <span>已采用 {{ props.llmBatchState.applied }}</span>
-          <span>待人工 {{ props.llmBatchState.failed }}</span>
+          <span>{{ uiText('已处理') }} {{ props.llmBatchState.processed }}/{{ props.llmBatchState.total }}</span>
+          <span>{{ uiText('已采用') }} {{ props.llmBatchState.applied }}</span>
+          <span>{{ uiText('待人工') }} {{ props.llmBatchState.failed }}</span>
         </div>
       </div>
       <progress :max="Math.max(1, props.llmBatchState.total)" :value="props.llmBatchState.processed"></progress>
@@ -381,26 +379,22 @@ watch(
       </ul>
     </section>
 
-    <p v-if="props.stale" class="review-workspace-empty">
-      当前证据来自旧输入或旧对齐规则；重新运行来源对齐后再复核。
-    </p>
+    <p v-if="props.stale" class="review-workspace-empty"> {{ uiText('当前证据来自旧输入或旧对齐规则；重新运行来源对齐后再复核。') }} </p>
 
     <section v-else-if="reviewComplete" class="review-complete" aria-live="polite">
       <CircleCheck :size="24" aria-hidden="true" />
       <div>
-        <strong v-if="props.rerunning || props.actioning">正在自动重新运行来源对齐</strong>
-        <strong v-else>来源复核决定已保存</strong>
-        <span v-if="props.rerunning || props.actioning">
-          系统正在应用 {{ props.blocks.length }} 项决定并重新生成可信正文。
-        </span>
-        <span v-else>系统会自动继续来源对齐；若启动失败，刷新后会重试。</span>
+        <strong v-if="props.rerunning || props.actioning">{{ uiText('正在自动重新运行来源对齐') }}</strong>
+        <strong v-else>{{ uiText('来源复核决定已保存') }}</strong>
+        <span v-if="props.rerunning || props.actioning"> {{ uiText('系统正在应用') }} {{ props.blocks.length }} {{ uiText('项决定并重新生成可信正文。') }} </span>
+        <span v-else>{{ uiText('系统会自动继续来源对齐；若启动失败，刷新后会重试。') }}</span>
       </div>
     </section>
 
     <template v-else-if="activeBlock">
       <div class="review-issue-summary">
         <div class="review-question-line">
-          <h3>{{ activeBlock.review_question ?? "Markdown 与 PDF 未能自动确认一致，请对照三种来源。" }}</h3>
+          <h3>{{ activeBlock.review_question ?? uiText('Markdown 与 PDF 未能自动确认一致，请对照三种来源。') }}</h3>
           <span v-if="recordedDecision">{{ recordedDecisionLabel(recordedDecision) }}</span>
         </div>
         <div class="review-technical-meta">
@@ -409,16 +403,16 @@ watch(
           <span>{{ activeBlock.id }} · {{ statusLabels[activeBlock.status] ?? activeBlock.status }}</span>
         </div>
         <div v-if="activeBlock.difference" class="review-difference">
-          <strong>首个差异</strong>
+          <strong>{{ uiText('首个差异') }}</strong>
           <del>Markdown: {{ activeBlock.difference.markdown }}</del>
           <ins>PDF: {{ activeBlock.difference.pdf }}</ins>
         </div>
       </div>
 
-      <div class="review-mobile-tabs" role="tablist" aria-label="来源证据">
-        <button type="button" role="tab" :aria-selected="activeTab === 'pdf'" @click="activeTab = 'pdf'">原版 PDF</button>
+      <div class="review-mobile-tabs" role="tablist" :aria-label="uiText('来源证据')">
+        <button type="button" role="tab" :aria-selected="activeTab === 'pdf'" @click="activeTab = 'pdf'">{{ uiText('原版 PDF') }}</button>
         <button type="button" role="tab" :aria-selected="activeTab === 'markdown'" @click="activeTab = 'markdown'">Markdown</button>
-        <button type="button" role="tab" :aria-selected="activeTab === 'extracted'" @click="activeTab = 'extracted'">提取正文</button>
+        <button type="button" role="tab" :aria-selected="activeTab === 'extracted'" @click="activeTab = 'extracted'">{{ uiText('提取正文') }}</button>
       </div>
 
       <div class="review-triptych">
@@ -434,13 +428,13 @@ watch(
           <header>
             <div>
               <strong>Markdown</strong>
-              <span>规范化正文</span>
+              <span>{{ uiText('规范化正文') }}</span>
             </div>
           </header>
           <div class="review-source-scroll">
             <div class="review-rendered-markdown md" v-html="renderMarkdown(markdownSource)"></div>
             <details class="review-raw-source">
-              <summary>查看 Markdown 源码</summary>
+              <summary>{{ uiText('查看 Markdown 源码') }}</summary>
               <pre>{{ markdownSource }}</pre>
             </details>
           </div>
@@ -449,14 +443,14 @@ watch(
         <article class="review-source-pane review-extracted-pane" :class="{ 'mobile-active': activeTab === 'extracted' }">
           <header>
             <div>
-              <strong>PDF 提取正文</strong>
+              <strong>{{ uiText('PDF 提取正文') }}</strong>
               <span>{{ pdfLocation(activeBlock) }}</span>
             </div>
           </header>
           <div class="review-source-scroll">
             <div class="review-extracted-text">{{ extractedSource }}</div>
             <div v-if="activeBlock.pdf_excerpt" class="review-candidate">
-              <span>采用 PDF 时将写入</span>
+              <span>{{ uiText('采用 PDF 时将写入') }}</span>
               <code>{{ activeBlock.pdf_excerpt }}</code>
             </div>
           </div>
@@ -473,33 +467,23 @@ watch(
             @click="requestLlmAnalysis"
           >
             <Sparkles :size="16" aria-hidden="true" />
-            {{ llmAnalyzing ? "分析中..." : activeLlmSuggestion ? "重新分析" : "LLM 分析" }}
+            {{ llmAnalyzing ? uiText('分析中...') : activeLlmSuggestion ? uiText('重新分析') : uiText('LLM 分析') }}
           </button>
           <button type="button" :disabled="props.actioning" @click="resolve('accept_markdown')">
-            <FileText :size="16" aria-hidden="true" />
-            保留 Markdown
-          </button>
+            <FileText :size="16" aria-hidden="true" /> {{ uiText('保留 Markdown') }} </button>
           <button v-if="activeBlock.pdf_excerpt" type="button" :disabled="props.actioning" @click="resolve('accept_pdf')">
-            <FileCheck2 :size="16" aria-hidden="true" />
-            采用 PDF
-          </button>
+            <FileCheck2 :size="16" aria-hidden="true" /> {{ uiText('采用 PDF') }} </button>
           <button
             v-if="activeBlock.candidate_text && activeBlock.candidate_text !== activeBlock.pdf_excerpt"
             type="button"
             :disabled="props.actioning"
             @click="resolve('use_candidate')"
           >
-            <FileCheck2 :size="16" aria-hidden="true" />
-            采用候选
-          </button>
+            <FileCheck2 :size="16" aria-hidden="true" /> {{ uiText('采用候选') }} </button>
           <button type="button" :disabled="props.actioning" @click="openManualEdit">
-            <Pencil :size="16" aria-hidden="true" />
-            手工修正
-          </button>
+            <Pencil :size="16" aria-hidden="true" /> {{ uiText('手工修正') }} </button>
           <button type="button" :disabled="props.actioning" @click="resolve('keep_blocked')">
-            <Clock3 :size="16" aria-hidden="true" />
-            稍后处理
-          </button>
+            <Clock3 :size="16" aria-hidden="true" /> {{ uiText('稍后处理') }} </button>
         </div>
 
         <p v-if="activeLlmError" class="review-llm-error" role="alert">{{ activeLlmError }}</p>
@@ -507,16 +491,16 @@ watch(
         <section v-if="activeLlmSuggestion" class="review-llm-result">
           <header class="review-llm-head">
             <div>
-              <span>LLM 对比结果</span>
+              <span>{{ uiText('LLM 对比结果') }}</span>
               <strong>{{ activeLlmSuggestion.summary }}</strong>
             </div>
             <div class="review-llm-meta">
               <span>{{ llmRecommendationLabels[activeLlmSuggestion.recommendation] }}</span>
-              <span>置信度 {{ Math.round(activeLlmSuggestion.confidence * 100) }}%</span>
+              <span>{{ uiText('置信度') }} {{ Math.round(activeLlmSuggestion.confidence * 100) }}%</span>
               <button
                 type="button"
-                title="重新分析"
-                aria-label="重新分析"
+                :title="uiText('重新分析')"
+                :aria-label="uiText('重新分析')"
                 :disabled="props.actioning || !!props.llmAnalyzingBlockId"
                 @click="requestLlmAnalysis"
               >
@@ -534,16 +518,16 @@ watch(
               <div class="review-llm-source-pair">
                 <div>
                   <span>Markdown</span>
-                  <code>{{ difference.markdown || "（无）" }}</code>
+                  <code>{{ difference.markdown || uiText('（无）') }}</code>
                 </div>
                 <div>
                   <span>PDF</span>
-                  <code>{{ difference.pdf || "（无）" }}</code>
+                  <code>{{ difference.pdf || uiText('（无）') }}</code>
                 </div>
               </div>
             </li>
           </ol>
-          <p v-else class="review-llm-no-difference">未识别出可确认的文本差异。</p>
+          <p v-else class="review-llm-no-difference">{{ uiText('未识别出可确认的文本差异。') }}</p>
 
           <ul v-if="activeLlmSuggestion.warnings.length" class="review-llm-warnings">
             <li v-for="warning in activeLlmSuggestion.warnings" :key="warning">{{ warning }}</li>
@@ -551,11 +535,11 @@ watch(
 
           <div class="review-llm-replacement">
             <section>
-              <span>修订预览</span>
+              <span>{{ uiText('修订预览') }}</span>
               <div class="review-llm-preview md" v-html="renderMarkdown(reviewEdits[activeBlock.id] ?? '')"></div>
             </section>
             <label>
-              <span>可编辑 Markdown</span>
+              <span>{{ uiText('可编辑 Markdown') }}</span>
               <textarea v-model="reviewEdits[activeBlock.id]" rows="7" spellcheck="false"></textarea>
             </label>
           </div>
@@ -566,14 +550,12 @@ watch(
             :disabled="props.actioning || !reviewEdits[activeBlock.id]?.trim()"
             @click="applyLlmSuggestion"
           >
-            <CircleCheck :size="16" aria-hidden="true" />
-            采用 LLM 修订
-          </button>
+            <CircleCheck :size="16" aria-hidden="true" /> {{ uiText('采用 LLM 修订') }} </button>
         </section>
 
         <div v-if="reviewEditOpen[activeBlock.id]" class="review-edit">
           <label>
-            <span>可信正文</span>
+            <span>{{ uiText('可信正文') }}</span>
             <textarea v-model="reviewEdits[activeBlock.id]" rows="5" spellcheck="false"></textarea>
           </label>
           <button
@@ -581,18 +563,16 @@ watch(
             class="primary-action"
             :disabled="props.actioning || !reviewEdits[activeBlock.id]?.trim()"
             @click="submitManualEdit"
-          >
-            确认手工修正
-          </button>
+          > {{ uiText('确认手工修正') }} </button>
         </div>
 
         <div class="review-secondary-controls">
           <details class="review-note">
-            <summary>复核备注</summary>
-            <textarea v-model="reviewNotes[activeBlock.id]" rows="2" placeholder="可留空" spellcheck="false"></textarea>
+            <summary>{{ uiText('复核备注') }}</summary>
+            <textarea v-model="reviewNotes[activeBlock.id]" rows="2" :placeholder="uiText('可留空')" spellcheck="false"></textarea>
           </details>
           <details v-if="props.reviewDraft" class="review-draft">
-            <summary>完整待复核草稿</summary>
+            <summary>{{ uiText('完整待复核草稿') }}</summary>
             <pre>{{ props.reviewDraft }}</pre>
           </details>
         </div>
@@ -600,7 +580,7 @@ watch(
     </template>
 
     <p v-else class="review-workspace-empty">
-      {{ props.readyForRerun ? "全部差异已确认，可以重新运行来源对齐。" : "没有未解决片段。" }}
+      {{ props.readyForRerun ? uiText('全部差异已确认，可以重新运行来源对齐。') : uiText('没有未解决片段。') }}
     </p>
   </section>
 </template>

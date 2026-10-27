@@ -44,6 +44,9 @@ pub struct RunActivity {
     pub request_diagnostics: Option<RequestDiagnostics>,
     pub model_name: Option<String>,
     pub model_name_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub model_provider: Option<String>,
     pub accepted_evidence_count: Option<u32>,
     #[serde(default)]
     pub evidence_refs: Vec<String>,
@@ -55,11 +58,31 @@ pub struct RuntimeEvent {
     pub activity: RunActivity,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EvidenceObservation {
-    pub step_id: u32,
-    pub accepted_count: u32,
-    pub evidence_refs: Vec<String>,
+impl RunActivity {
+    /// Collect ledger facts before publishing this activity's terminal event.
+    pub fn accept_evidence(&mut self, ranges: &[read_tools::EvidenceRange]) {
+        if ranges.is_empty() {
+            return;
+        }
+        self.accepted_evidence_count = Some(
+            self.accepted_evidence_count
+                .unwrap_or(0)
+                .saturating_add(ranges.len().min(u32::MAX as usize) as u32),
+        );
+        for range in ranges {
+            if self.evidence_refs.len() >= crate::observation::MAX_OBSERVATION_SOURCE_REFS {
+                break;
+            }
+            let reference = if range.start_lid == range.end_lid {
+                range.start_lid.clone()
+            } else {
+                format!("{}..{}", range.start_lid, range.end_lid)
+            };
+            if !self.evidence_refs.contains(&reference) {
+                self.evidence_refs.push(reference);
+            }
+        }
+    }
 }
 
 pub trait RunEventSink: Send + Sync {
@@ -69,9 +92,9 @@ pub trait RunEventSink: Send + Sync {
     fn activity_output(&self, _step_id: u32, _output: serde_json::Value) {}
     fn answer_patch(&self, _patch: crate::answer_stream::AnswerPatch) {}
     fn answer_first_patch(&self, _elapsed_ms: f64) {}
-    fn evidence_accepted(&self, _observation: EvidenceObservation) {}
     fn source_bindings(&self, _bindings: &[crate::orchestrator::SourceBinding]) {}
     fn effect_created(&self, _step_id: u32, _effect: &crate::orchestrator::AgentEffect) {}
+    fn board_committed(&self, _delivery: &memory::boards::BoardDelivery) {}
 }
 struct State {
     next: u32,
@@ -168,27 +191,9 @@ impl RunEvents {
             sink.effect_created(step_id, effect);
         }
     }
-    pub fn evidence_accepted(&self, step_id: u32, ranges: &[read_tools::EvidenceRange]) {
-        if ranges.is_empty() {
-            return;
-        }
-        let evidence_refs = ranges
-            .iter()
-            .take(crate::observation::MAX_OBSERVATION_SOURCE_REFS)
-            .map(|range| {
-                if range.start_lid == range.end_lid {
-                    range.start_lid.clone()
-                } else {
-                    format!("{}..{}", range.start_lid, range.end_lid)
-                }
-            })
-            .collect();
+    pub fn board_committed(&self, delivery: &memory::boards::BoardDelivery) {
         if let Some(sink) = &self.sink {
-            sink.evidence_accepted(EvidenceObservation {
-                step_id,
-                accepted_count: ranges.len().min(u32::MAX as usize) as u32,
-                evidence_refs,
-            });
+            sink.board_committed(delivery);
         }
     }
     pub fn activities(&self) -> Vec<RunActivity> {
@@ -232,6 +237,7 @@ impl RunEvents {
             request_diagnostics: None,
             model_name: None,
             model_name_source: None,
+            model_provider: None,
             accepted_evidence_count: None,
             evidence_refs: Vec::new(),
         };
@@ -294,6 +300,7 @@ impl RunEvents {
         &self,
         cancellation: &crate::run_context::CancellationToken,
         model_name: String,
+        model_provider: Option<String>,
         call: impl FnOnce(u32) -> Result<T, AdapterError>,
         observation: impl FnOnce(
             Option<&T>,
@@ -312,13 +319,19 @@ impl RunEvents {
             "compaction" => "整理对话上下文",
             "repair" => "整理回答来源",
             "tutor_assessment" => "核对学习证据",
+            "tutor_delivery_review" | "tutor_explanation_review" => "检查讲解内容",
             "tutor_coach" => "安排下一步学习",
             _ => "生成回答",
         };
-        let mut activity = self.begin("model", purpose, label, true);
+        // Publish the configured identity with the start event, so an interrupted
+        // provider call remains attributable even when no terminal event arrives.
+        let mut activity = self.begin("model", purpose, label, false);
+        activity.started_ms = Some(self.start.elapsed().as_secs_f64() * 1000.0);
         activity.model_name = Some(model_name);
         activity.model_name_source = Some("configured".into());
+        activity.model_provider = model_provider;
         self.state.lock().unwrap().activities[(activity.step_id - 1) as usize] = activity.clone();
+        self.publish(activity.clone());
         let result = call(activity.step_id);
         self.output(activity.step_id, || match &result {
             Ok(value) => serde_json::json!({"parsed":value}),
@@ -368,6 +381,11 @@ pub struct ObservedAdapter<'a> {
     pub runtime_profile: crate::ModelRuntimeProfile,
 }
 impl ModelAdapter for ObservedAdapter<'_> {
+    fn tool_update_mode(&self) -> Option<crate::deepseek_messages::ToolUpdateMode> { self.inner.tool_update_mode() }
+    fn context_request_projection(&self, request: &crate::AgentRequestPlan) -> Option<serde_json::Value> { self.inner.context_request_projection(request) }
+    fn projection_identity(&self) -> Option<String> { self.inner.projection_identity() }
+
+    fn model_provider(&self) -> Option<String> { self.inner.model_provider() }
     fn set_spend_context(&self, scope: crate::model_spend::ChargeScope, port: Option<std::sync::Arc<dyn crate::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
     fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
@@ -397,6 +415,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
+                crate::provider_stream::ModelDelta::RetryReset => first_text_elapsed_ms.set(None),
                 crate::provider_stream::ModelDelta::Text(text)
                     if !text.is_empty() && first_text_elapsed_ms.get().is_none() =>
                 {
@@ -410,6 +429,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
+            self.inner.model_provider(),
             |id| {
                 step_id.set(id);
                 self.events.input(id, || serde_json::to_value(&req).unwrap());
@@ -450,6 +470,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
+                crate::provider_stream::ModelDelta::RetryReset => first_text_elapsed_ms.set(None),
                 crate::provider_stream::ModelDelta::Text(text)
                     if !text.is_empty() && first_text_elapsed_ms.get().is_none() =>
                 {
@@ -463,6 +484,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
+            self.inner.model_provider(),
             |id| {
                 step_id.set(id);
                 self.events.input(id, || serde_json::to_value(&req).unwrap());
@@ -503,6 +525,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
                 crate::provider_stream::ModelDelta::Usage(snapshot) => {
                     usage.replace(Some(snapshot.clone()));
                 }
+                crate::provider_stream::ModelDelta::RetryReset => first_text_elapsed_ms.set(None),
                 crate::provider_stream::ModelDelta::Text(text)
                     if !text.is_empty() && first_text_elapsed_ms.get().is_none() =>
                 {
@@ -516,6 +539,7 @@ impl ModelAdapter for ObservedAdapter<'_> {
         self.events.model(
             &self.cancellation,
             self.runtime_profile.matched_model.clone(),
+            self.inner.model_provider(),
             |id| {
                 step_id.set(id);
                 self.events.input(id, || serde_json::json!({"instructions":req.instructions,"messages":req.input,"tools":req.tools}));
@@ -628,6 +652,7 @@ mod tests {
                 .model(
                     &Default::default(),
                     "test-model".into(),
+                    Some("test-provider".into()),
                     |_| {
                         wait.recv().unwrap();
                         Ok(7u32)
@@ -646,14 +671,11 @@ mod tests {
                 .unwrap();
             events.activities()
         });
-        assert_eq!(
-            receive
-                .recv_timeout(std::time::Duration::from_secs(5))
-                .unwrap()
-                .activity
-                .status,
-            ActivityStatus::Running
-        );
+        let started = receive.recv_timeout(std::time::Duration::from_secs(5)).unwrap().activity;
+        assert_eq!(started.status, ActivityStatus::Running);
+        assert_eq!(started.model_name.as_deref(), Some("test-model"));
+        assert_eq!(started.model_provider.as_deref(), Some("test-provider"));
+        assert_eq!(started.model_name_source.as_deref(), Some("configured"));
         assert!(receive.try_recv().is_err());
         release.send(()).unwrap();
         let finished = receive
@@ -681,6 +703,27 @@ mod tests {
         assert_eq!(finished.duration_ms, None);
         assert_eq!(tool_result(r#"{"results":[]}"#).0, ActivityStatus::NoResult);
     }
+
+    #[test]
+    fn evidence_is_published_once_with_the_tool_terminal_and_local_activity() {
+        let (send, receive) = std::sync::mpsc::channel();
+        let events = RunEvents::new(Some(Arc::new(Collector(send))));
+        let mut activity = events.begin("tool", "book.text", "read evidence", true);
+        let started = receive.try_recv().unwrap();
+        assert_eq!(started.activity.status, ActivityStatus::Running);
+        activity.accept_evidence(&[
+            read_tools::EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: Vec::new() },
+            read_tools::EvidenceRange { start_lid: "2.1".into(), end_lid: "2.3".into(), ranges: Vec::new() },
+        ]);
+        assert!(receive.try_recv().is_err());
+        events.finish(activity, ActivityStatus::Succeeded, None, None, Some(2));
+        let finished = receive.try_recv().unwrap();
+        assert_eq!(finished.activity.accepted_evidence_count, Some(2));
+        assert_eq!(finished.activity.evidence_refs, vec!["1.1", "2.1..2.3"]);
+        assert_eq!(finished.activity.status, ActivityStatus::Succeeded);
+        assert_eq!(events.activities(), vec![finished.activity]);
+        assert!(receive.try_recv().is_err());
+    }
     struct RecordingAdapter(std::sync::Mutex<Vec<(String, String)>>);
     impl ModelAdapter for RecordingAdapter {
         fn complete(&self, req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
@@ -704,6 +747,7 @@ mod tests {
         let observed_inner = RecordingAdapter(std::sync::Mutex::new(Vec::new()));
         let baseline = direct
             .complete(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -719,6 +763,7 @@ mod tests {
             runtime_profile: observed_inner.model_runtime_profile(),
         }
         .complete(CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,
@@ -778,6 +823,7 @@ mod tests {
         };
         assert!(observed
             .complete(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,

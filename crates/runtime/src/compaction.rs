@@ -1,6 +1,6 @@
 use crate::model_runtime::{estimate_text_tokens, ModelRuntimeProfile};
 use crate::tool_result::HistoricalToolReceipt;
-use crate::{CompletionRequest, Message, ModelAdapter, Role};
+use crate::{AgentRequestPlan, CompletionRequest, Message, ModelAdapter, Role};
 use read_tools::EvidenceRange;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -85,7 +85,7 @@ Rules:
 2. Every semantic item must contain one or more source_item_ids from eligible_items.
 3. Use only allowed_evidence_refs. Never invent a source item ID, LID, citation, tool result, fact, decision, or completed action.
 4. Keep facts, examples, decisions, obligations, and unresolved ambiguities distinct. Do not resolve an ambiguity during compaction.
-5. Summarize only eligible_items. Current user text, verified selection, and incomplete tool-call pairs are retained separately by the runtime.
+5. Summarize only eligible_items. Current user text, verified selection, recent steps and incomplete tool-call pairs are retained separately by the runtime. In mid_turn, completed tool steps do not mean the current user task is complete; preserve unfinished work and do not infer a final answer.
 6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.
 7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Apply the disposition-specific target links and reason rules above; a reference to an unrelated semantic item does not cover a source.
 8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.
@@ -103,7 +103,7 @@ For factual claims, rely only on each semantic item's evidence_refs or reacquire
 pub enum CompactionPhase {
     /// Contains only prior history; the next user message has not been appended.
     PreTurn,
-    /// Includes the current turn, which must remain verbatim in the raw suffix.
+    /// Includes the current turn. Its user input and recent/open steps stay raw.
     MidTurn,
     HierarchicalMerge,
 }
@@ -254,11 +254,64 @@ pub struct PreparedCompaction {
     tool_receipts: Vec<HistoricalToolReceipt>,
     pending_effects: Vec<PendingEffectRef>,
     context_revisions: BTreeMap<String, String>,
+    source_indices: Vec<usize>,
+    generation_prefix: Option<CompactionGenerationPrefix>,
+}
+
+#[derive(Debug, Clone)]
+struct CompactionGenerationPrefix {
+    request: AgentRequestPlan,
+    /// Positions in ordered_messages(), including its canonical system prefix.
+    source_positions: Vec<usize>,
 }
 
 impl PreparedCompaction {
     pub fn request(&self) -> &CompactionRequest {
         &self.request
+    }
+
+    /// Reuse only a proven literal provider prefix. Reprojected legacy history,
+    /// omitted checkpoint sources, or ephemeral image attachments use the typed
+    /// receipt fallback instead of claiming that a reconstructed prefix is warm.
+    pub(crate) fn bind_generation_prefix(
+        &mut self,
+        plan: &AgentRequestPlan,
+        raw_messages: &[Message],
+    ) -> bool {
+        self.generation_prefix = None;
+        if !plan.preview_images.is_empty() || !plan.video_images.is_empty()
+            || plan.question_image.is_some() || self.source_indices.is_empty()
+        {
+            return false;
+        }
+        let ordered = plan.ordered_messages();
+        let mut cursor = 0;
+        let mut positions = Vec::with_capacity(self.source_indices.len());
+        let selected = self.source_indices.iter().copied().collect::<BTreeSet<_>>();
+        let last_source = *self.source_indices.last().expect("nonempty source indices");
+        if last_source >= raw_messages.len() { return false; }
+        for (index, source) in raw_messages.iter().enumerate().take(last_source + 1) {
+            if source.role == Role::System { continue; }
+            let Some(offset) = ordered[cursor..].iter().position(|message| same_source_identity(message, source)) else {
+                return false;
+            };
+            cursor += offset;
+            if selected.contains(&index) { positions.push(cursor); }
+            cursor += 1;
+        }
+        let mut request = plan.clone();
+        let system_count = usize::from(!request.instructions.is_empty());
+        request.input.truncate(cursor.saturating_sub(system_count));
+        if let Some(history) = request.tool_history.as_ref() {
+            let retained = history.truncated_at(request.input.len());
+            request.tools = retained.declarations.iter().map(|declaration| declaration.spec.clone()).collect();
+            request.tool_history = Some(retained);
+        }
+        self.generation_prefix = Some(CompactionGenerationPrefix {
+            request,
+            source_positions: positions,
+        });
+        true
     }
 
     /// Lower bound: even an empty semantic payload carries this fixed envelope.
@@ -275,6 +328,21 @@ impl PreparedCompaction {
     fn require_open_for_test(&mut self, source_item_id: &str, state: RequiredSemanticState) {
         self.required_semantic_states
             .insert(source_item_id.into(), state);
+    }
+}
+
+/// Body retirement may replace tool text/arguments, but never its call identity.
+/// Walking all source messages (including retained users) prevents a reused call
+/// ID from accidentally mapping to another turn after checkpoint replacement.
+fn same_source_identity(projected: &Message, raw: &Message) -> bool {
+    if projected.role != raw.role { return false; }
+    match raw.role {
+        Role::Tool => projected.tool_call_id == raw.tool_call_id && raw.tool_call_id.is_some(),
+        Role::Assistant if !raw.tool_calls.is_empty() => projected.content == raw.content
+            && projected.tool_calls.len() == raw.tool_calls.len()
+            && projected.tool_calls.iter().zip(&raw.tool_calls)
+                .all(|(left, right)| left.id == right.id && left.name == right.name),
+        _ => projected == raw,
     }
 }
 
@@ -467,6 +535,63 @@ pub fn prepare_compaction(
     pending_effects: Vec<PendingEffectRef>,
     context_revisions: BTreeMap<String, String>,
 ) -> Result<PreparedCompaction, CompactionError> {
+    prepare_compaction_with_tail_budget(
+        phase, raw_messages, deterministic_messages, allowed_evidence_refs,
+        allowed_supersession_edges, pending_effects, context_revisions, u32::MAX,
+    )
+}
+
+/// Select completed tool steps only when they lie before the recent token tail.
+/// A parallel batch is one indivisible step, including any accompanying text.
+/// The current user message is never selected, even when its steps are selected.
+fn completed_step_prefix(
+    messages: &[Message],
+    current_start: usize,
+    retain_recent_tokens: u32,
+) -> Result<Vec<(usize, usize, bool)>, CompactionError> {
+    if retain_recent_tokens == u32::MAX { return Ok(Vec::new()); }
+    let mut groups = Vec::new();
+    let mut pending = HashSet::new();
+    let mut group_start = current_start + 1;
+    for (index, message) in messages.iter().enumerate().skip(group_start) {
+        match message.role {
+            Role::Assistant => {
+                for call in &message.tool_calls { pending.insert(call.id.as_str()); }
+            }
+            Role::Tool => {
+                if let Some(id) = message.tool_call_id.as_deref() { pending.remove(id); }
+                if pending.is_empty() {
+                    groups.push((group_start, index + 1, true));
+                    group_start = index + 1;
+                }
+            }
+            Role::User | Role::System => {}
+        }
+    }
+    // Always keep the latest closed step; an unclosed batch following it is
+    // retained in full too. This also prevents an empty current working tail.
+    let mut retained = message_tokens(&messages[group_start..])?;
+    let mut keep_from = groups.len();
+    for (ordinal, (start, end, _)) in groups.iter().enumerate().rev() {
+        if keep_from < groups.len() && retained >= retain_recent_tokens { break; }
+        retained = retained.saturating_add(message_tokens(&messages[*start..*end])?);
+        keep_from = ordinal;
+    }
+    groups.truncate(keep_from);
+    Ok(groups)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn prepare_compaction_with_tail_budget(
+    phase: CompactionPhase,
+    raw_messages: &[Message],
+    deterministic_messages: &[Message],
+    allowed_evidence_refs: Vec<EvidenceRef>,
+    allowed_supersession_edges: Vec<AllowedSupersession>,
+    pending_effects: Vec<PendingEffectRef>,
+    context_revisions: BTreeMap<String, String>,
+    retain_recent_tokens: u32,
+) -> Result<PreparedCompaction, CompactionError> {
     if phase == CompactionPhase::HierarchicalMerge {
         return Err(CompactionError::invalid(
             "hierarchical merge requests are runtime-generated only",
@@ -491,19 +616,28 @@ pub fn prepare_compaction(
             .unwrap_or(raw_messages.len()),
         CompactionPhase::HierarchicalMerge => unreachable!(),
     };
-    let compactable_turns = turns
+    let mut compactable_turns = turns
         .iter()
         .take_while(|(_, end, complete)| *complete && *end <= raw_start)
         .copied()
         .collect::<Vec<_>>();
-    if compactable_turns.is_empty() {
-        return Err(CompactionError::not_applicable(
-            "history contains no complete turn before the raw-retained suffix",
-        ));
-    }
-    if compactable_turns.last().map(|turn| turn.1) != Some(raw_start) {
+    if !compactable_turns.is_empty()
+        && compactable_turns.last().map(|turn| turn.1) != Some(raw_start)
+    {
         return Err(CompactionError::invalid(
             "compaction may not cross an incomplete turn boundary",
+        ));
+    }
+    if phase == CompactionPhase::MidTurn
+        && turns.iter().take(turns.len() - 1).all(|turn| turn.2)
+    {
+        compactable_turns.extend(completed_step_prefix(
+            raw_messages, raw_start, retain_recent_tokens,
+        )?);
+    }
+    if compactable_turns.is_empty() {
+        return Err(CompactionError::not_applicable(
+            "history contains no completed turn or tool step before the retained tail",
         ));
     }
 
@@ -520,10 +654,11 @@ pub fn prepare_compaction(
     let mut derived_evidence_refs = BTreeSet::new();
     let mut tool_receipts = Vec::new();
 
-    for index in compactable_turns
+    let source_indices = compactable_turns
         .iter()
         .flat_map(|(start, end, _)| *start..*end)
-    {
+        .collect::<Vec<_>>();
+    for &index in &source_indices {
         let raw = &raw_messages[index];
         let deterministic = &deterministic_messages[index];
         let id = id_by_index
@@ -584,9 +719,10 @@ pub fn prepare_compaction(
         .collect::<Vec<_>>();
     allowed_evidence_refs.sort();
     allowed_evidence_refs.dedup();
+    let selected_indices = source_indices.iter().copied().collect::<BTreeSet<_>>();
     let raw_retained_item_ids = all_ids
         .iter()
-        .filter_map(|(index, id)| (*index >= raw_start).then_some(id.clone()))
+        .filter_map(|(index, id)| (!selected_indices.contains(index)).then_some(id.clone()))
         .collect::<Vec<_>>();
     let full_turn_source_ids = compactable_turns
         .iter()
@@ -612,12 +748,14 @@ pub fn prepare_compaction(
     validate_request(&request)?;
     Ok(PreparedCompaction {
         request,
-        eligible_messages: deterministic_messages[compactable_turns[0].0..raw_start].to_vec(),
+        eligible_messages: source_indices.iter().map(|index| deterministic_messages[*index].clone()).collect(),
         full_turn_source_ids,
         required_semantic_states: BTreeMap::new(),
         tool_receipts,
         pending_effects,
         context_revisions,
+        source_indices,
+        generation_prefix: None,
     })
 }
 
@@ -1086,18 +1224,8 @@ fn request_input_tokens(user: &str, system: &str) -> u32 {
     estimate_text_tokens(system).saturating_add(estimate_text_tokens(user))
 }
 
-pub const COMPACTION_OUTPUT_TOKEN_LIMIT: u32 = 16_384;
-
 pub fn compaction_output_token_limit(profile: &ModelRuntimeProfile) -> u32 {
-    // Real successive Flash revisions exhausted 32k with 237 source items and
-    // 18k reasoning tokens. Reserve room for the source-linked JSON as well.
-    if profile.profile_id == "resident-agent-deepseek-flash-v1"
-        && profile.resolution == crate::model_runtime::ModelProfileResolution::CatalogMatch
-    {
-        65_536
-    } else {
-        COMPACTION_OUTPUT_TOKEN_LIMIT
-    }
+    profile.output_reserve_tokens
 }
 
 fn call_generator(
@@ -1113,6 +1241,7 @@ fn call_generator(
     loop {
         let value = adapter
             .complete_structured(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: Some(compaction_output_token_limit(profile)),
                 reasoning_effort: profile.matched_model.starts_with("deepseek-").then(|| "low".into()),
@@ -1142,6 +1271,90 @@ fn call_generator(
                     "rejected_draft": value,
                 }}).to_string());
                 if request_input_tokens(&user, system) > generation_input_limit_tokens {
+                    return Err(error);
+                }
+                repairing = true;
+            }
+        }
+    }
+}
+
+fn prefix_generation_instruction(
+    system: &str,
+    request: &CompactionRequest,
+    prefix: &CompactionGenerationPrefix,
+) -> String {
+    let sources = request.eligible_items.iter().zip(&prefix.source_positions).map(|(item, position)| {
+        serde_json::json!({
+            "source_item_id": item.source_item_id,
+            "ordered_message_index": position,
+            "role": item.role,
+            "evidence_refs": item.evidence_refs,
+        })
+    }).collect::<Vec<_>>();
+    let metadata = serde_json::json!({
+        "eligible_items": sources,
+        "required_source_ids": request.required_source_ids,
+        "optional_source_ids": request.optional_source_ids,
+        "allowed_evidence_refs": request.allowed_evidence_refs,
+        "allowed_supersession_edges": request.allowed_supersession_edges,
+        "phase": request.phase,
+    });
+    format!("{system}\n\nFor this checkpoint, eligible_items refer to the preceding messages by zero-based ordered_message_index (including the leading system message when present). Read their content in place; it is deliberately not duplicated here. Summarize only mapped sources. Unmapped instructions, runtime state and retained user material remain active context, not sources to cover. Do not call any tools. Return only the complete CompactionDraft JSON object.\n{metadata}")
+}
+
+fn prefix_generation_plan(
+    adapter: &dyn ModelAdapter,
+    prefix: &CompactionGenerationPrefix,
+    instruction: &str,
+) -> AgentRequestPlan {
+    let mut plan = prefix.request.clone();
+    plan.input.push(Message::user(instruction));
+    let tokens = adapter.context_request_projection(&plan)
+        .map(|value| crate::model_runtime::estimate_provider_request_input_tokens(&value))
+        .unwrap_or_else(|| {
+            estimate_text_tokens(&serde_json::to_string(&plan.ordered_messages()).unwrap_or_default())
+                .saturating_add(estimate_text_tokens(&serde_json::to_string(&plan.tools).unwrap_or_default()))
+        });
+    plan.update_input_estimate(tokens);
+    plan
+}
+
+fn call_prefix_generator(
+    adapter: &dyn ModelAdapter,
+    prepared: &PreparedCompaction,
+    prefix: &CompactionGenerationPrefix,
+    system: &str,
+    generation_input_limit_tokens: u32,
+) -> Result<CompactionDraft, CompactionError> {
+    let mut instruction = prefix_generation_instruction(system, &prepared.request, prefix);
+    let mut repairing = false;
+    loop {
+        let plan = prefix_generation_plan(adapter, prefix, &instruction);
+        if plan.active_context.estimated_input_tokens > generation_input_limit_tokens || !plan.active_context.fits {
+            return Err(CompactionError::generation("compaction prefix and instruction exceed the generator input budget"));
+        }
+        let value = crate::complete_structured_in_context(adapter, &plan).map_err(|error| match error.spend_stop {
+            Some(reason) => CompactionError { error_code: reason.code().into(), message: reason.message().into() },
+            None => CompactionError::generation(error.message),
+        })?;
+        let checked = CompactionDraft::deserialize(&value).map_err(|error| {
+            CompactionError::generation(format!("compaction draft schema mismatch: {error}"))
+        }).and_then(|draft| {
+            validate_draft(&prepared.request, &draft, &prepared.required_semantic_states)?;
+            Ok(draft)
+        });
+        match checked {
+            Ok(draft) => return Ok(draft),
+            Err(error) if repairing => return Err(error),
+            Err(error) => {
+                instruction.push_str("\n\n");
+                instruction.push_str(&serde_json::json!({"runtime_repair_diagnostic": {
+                    "error_code": error.error_code, "message": error.message,
+                    "rejected_draft": value,
+                }}).to_string());
+                let repair = prefix_generation_plan(adapter, prefix, &instruction);
+                if repair.active_context.estimated_input_tokens > generation_input_limit_tokens || !repair.active_context.fits {
                     return Err(error);
                 }
                 repairing = true;
@@ -1362,6 +1575,16 @@ fn generate_draft(
         .compaction
         .prompt_asset
         .resolve(COMPACTION_GENERATION_PROMPT);
+    if let Some(prefix) = prepared.generation_prefix.as_ref().filter(|prefix| {
+        prefix.request.runtime_profile.matched_model == profile.matched_model
+            && prefix.request.runtime_profile == *profile
+    }) {
+        let instruction = prefix_generation_instruction(&system, &prepared.request, prefix);
+        let plan = prefix_generation_plan(adapter, prefix, &instruction);
+        if plan.active_context.fits && plan.active_context.estimated_input_tokens <= generation_input_limit_tokens {
+            return call_prefix_generator(adapter, prepared, prefix, &system, generation_input_limit_tokens);
+        }
+    }
     if request_input_tokens(&generation_input(&prepared.request)?, &system) <= generation_input_limit_tokens {
         return call_generator(
             adapter,
@@ -1390,14 +1613,14 @@ fn generate_draft(
         if request_input_tokens(&generation_input(&single_turn)?, &system) > generation_input_limit_tokens {
             return Err(CompactionError {
                 error_code: "COMPACTION_SOURCE_TURN_TOO_LARGE".into(),
-                message: "one complete source turn cannot fit the compaction generator".into(),
+                message: "one complete source turn or closed tool step cannot fit the compaction generator".into(),
             });
         }
         chunks.push(turn.clone());
     }
     if chunks.len() < 2 {
         return Err(CompactionError::invalid(
-            "oversized compaction request did not produce multiple complete-turn chunks",
+            "oversized compaction request did not produce multiple closed-source chunks",
         ));
     }
 
@@ -1920,6 +2143,235 @@ mod tests {
         ModelRuntimeProfile::fallback("fixture", ProviderToolProtocol::Native)
     }
 
+    struct PrefixCompactor {
+        requests: RefCell<Vec<AgentRequestPlan>>,
+        outputs: RefCell<VecDeque<serde_json::Value>>,
+        return_tool: bool,
+    }
+
+    impl ModelAdapter for PrefixCompactor {
+        fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
+            panic!("a proven prefix must use its existing chat projection")
+        }
+
+        fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+            self.requests.borrow_mut().push(request.clone());
+            Ok(AssistantTurn {
+                provider_continuation: None,
+                text: self.outputs.borrow_mut().pop_front().map(|value| value.to_string()),
+                tool_calls: if self.return_tool { vec![ToolCall {
+                    id: "forbidden".into(), name: "book.text".into(), arguments: "{}".into(),
+                }] } else { vec![] },
+                usage_total_tokens: None,
+            })
+        }
+    }
+
+    #[test]
+    fn compaction_prefix_preserves_headers_messages_and_repair_without_duplicating_sources() {
+        let mut raw = vec![Message::system("original system policy")];
+        raw.extend(completed_turn("unique older question material", "unique older answer material"));
+        raw.push(Message::user("current user stays verbatim"));
+        let mut prepared = prepare_compaction(CompactionPhase::MidTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let tools = vec![crate::ToolSpec { name: "book.text".into(), description: "Read".into(),
+            parameters: serde_json::json!({"type":"object","properties":{"lid":{"type":"string"}}}) }];
+        let plan = AgentRequestPlan::for_ad_hoc(profile(), &raw, &tools);
+        assert!(prepared.bind_generation_prefix(&plan, &raw));
+        let valid = serde_json::to_value(covering_draft(prepared.request(), "continue requested work")).unwrap();
+        let mut invalid = valid.clone();
+        invalid["schema_version"] = serde_json::json!("forbidden");
+        let adapter = PrefixCompactor { requests: RefCell::new(vec![]),
+            outputs: RefCell::new(vec![invalid, valid].into()), return_tool: false };
+        let checkpoint = compact_with_adapter(&adapter, &profile(), &prepared,
+            CompactionLimits { generation_input_limit_tokens: 100_000, target_active_tokens: 20_000 }).unwrap();
+        validate_persisted_checkpoint(&raw, &checkpoint).unwrap();
+        let requests = adapter.requests.borrow();
+        assert_eq!(requests.len(), 2);
+        for request in requests.iter() {
+            assert_eq!(request.instructions, plan.instructions);
+            assert_eq!(request.tools, plan.tools);
+            assert_eq!(request.tool_choice, plan.tool_choice);
+            assert_eq!(request.output_token_limit, plan.output_token_limit);
+            assert_eq!(&request.ordered_messages()[..3], &raw[..3]);
+            let tail = request.input.last().unwrap().content.as_deref().unwrap();
+            assert!(!tail.contains("unique older question material"));
+            assert!(!tail.contains("unique older answer material"));
+            assert!(!tail.contains("current user stays verbatim"));
+            assert!(tail.contains("\"ordered_message_index\":1"));
+            assert!(tail.contains("\"ordered_message_index\":2"));
+        }
+        assert!(requests[1].input.last().unwrap().content.as_ref().unwrap()
+            .starts_with(requests[0].input.last().unwrap().content.as_ref().unwrap()));
+        assert_eq!(plan.ordered_messages(), raw, "binding must not mutate the caller's plan");
+    }
+
+    #[test]
+    fn compaction_uses_bounded_sources_when_wire_prefix_exceeds_the_window() {
+        struct WireCompactor {
+            native: crate::NativeAdapter,
+            scripted: ScriptedCompactor,
+        }
+        impl ModelAdapter for WireCompactor {
+            fn context_request_projection(&self, request: &AgentRequestPlan) -> Option<serde_json::Value> {
+                self.native.context_request_projection(request)
+            }
+            fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
+                self.scripted.complete(request)
+            }
+            fn complete_structured(&self, request: CompletionRequest) -> Result<serde_json::Value, AdapterError> {
+                self.scripted.complete_structured(request)
+            }
+            fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+                panic!("an oversized wire prefix must not be sent to the model");
+            }
+        }
+        let mut profile = profile();
+        profile.context_window_tokens = 20_000;
+        profile.output_reserve_tokens = 1_000;
+        profile.safety_margin_tokens = 1_000;
+        let mut raw = vec![Message::system("base instructions")];
+        for _ in 0..8 {
+            raw.extend(completed_turn("read source", "observed answer"));
+        }
+        let mut prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        // Dynamic snapshots are in the model projection, not the durable
+        // business transcript consumed by the compaction source contract.
+        let mut projected = Vec::new();
+        for message in &raw {
+            projected.push(message.clone());
+            if message.role == Role::User { projected.push(Message::system("runtime state ".repeat(350))); }
+        }
+        let plan = AgentRequestPlan::for_ad_hoc(profile.clone(), &projected, &[]);
+        assert!(plan.active_context.fits);
+        assert!(prepared.bind_generation_prefix(&plan, &raw));
+        let native = crate::NativeAdapter::from_config_with_runtime_profile(crate::ProviderConfig {
+            mode: crate::ProviderMode::Native, api_key: "unused".into(),
+            base_url: "http://127.0.0.1:1".into(), model: profile.matched_model.clone(),
+        }, Some(profile.clone()));
+        native.messages_capabilities.set(Some(crate::deepseek_messages::MessagesCapabilities {
+            tool_update: crate::deepseek_messages::ToolUpdateMode::InHistory, system_in_history: true,
+        })).unwrap();
+        let expected = covering_draft(prepared.request(), "preserved learning request");
+        let adapter = WireCompactor { native,
+            scripted: ScriptedCompactor::new(vec![serde_json::to_value(&expected).unwrap()]) };
+        let checkpoint = compact_with_adapter(&adapter, &profile, &prepared,
+            CompactionLimits { generation_input_limit_tokens: 18_000, target_active_tokens: 10_000 }).unwrap();
+        validate_persisted_checkpoint(&raw, &checkpoint).unwrap();
+        assert_eq!(adapter.scripted.requests.borrow().len(), 1);
+    }
+
+    #[test]
+    fn compaction_prefix_rejects_tool_generation_and_unmapped_sources() {
+        let raw = completed_turn("question", "answer");
+        let mut prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let plan = AgentRequestPlan::for_ad_hoc(profile(), &raw, &[]);
+        assert!(prepared.bind_generation_prefix(&plan, &raw));
+        let adapter = PrefixCompactor { requests: RefCell::new(vec![]),
+            outputs: RefCell::new(VecDeque::new()), return_tool: true };
+        let error = generate_draft(&adapter, &profile(), &prepared, 100_000).unwrap_err();
+        assert!(error.message.contains("returned tool calls"));
+        assert_eq!(adapter.requests.borrow().len(), 1);
+        let changed = AgentRequestPlan::for_ad_hoc(profile(), &[Message::user("receipt replacement")], &[]);
+        assert!(!prepared.bind_generation_prefix(&changed, &raw));
+        assert!(prepared.generation_prefix.is_none());
+        let fallback = ScriptedCompactor::new(vec![serde_json::to_value(covering_draft(prepared.request(), "state")).unwrap()]);
+        generate_draft(&fallback, &profile(), &prepared, 100_000).unwrap();
+        assert_eq!(fallback.requests.borrow().len(), 1);
+    }
+
+    #[test]
+    fn compaction_prefix_repairs_only_when_the_full_request_still_fits() {
+        let raw = completed_turn("long source ".repeat(80).as_str(), "answer");
+        let mut prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let plan = AgentRequestPlan::for_ad_hoc(profile(), &raw, &[]);
+        assert!(prepared.bind_generation_prefix(&plan, &raw));
+        let mut invalid = serde_json::to_value(covering_draft(prepared.request(), "state")).unwrap();
+        invalid["schema_version"] = serde_json::json!("forbidden");
+        let adapter = PrefixCompactor { requests: RefCell::new(vec![]),
+            outputs: RefCell::new(vec![invalid].into()), return_tool: false };
+        let prefix = prepared.generation_prefix.as_ref().unwrap();
+        let instruction = prefix_generation_instruction(COMPACTION_GENERATION_PROMPT, prepared.request(), prefix);
+        let initial = prefix_generation_plan(&adapter, prefix, &instruction).active_context.estimated_input_tokens;
+        assert!(generate_draft(&adapter, &profile(), &prepared, initial).is_err());
+        assert_eq!(adapter.requests.borrow().len(), 1, "a diagnostic must not push repair past the full input limit");
+    }
+
+    #[test]
+    fn compaction_prefix_uses_observed_cancellable_chat_dispatch() {
+        let raw = completed_turn("preserve source", "prior result");
+        let mut prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let plan = AgentRequestPlan::for_ad_hoc(profile(), &raw, &[]);
+        assert!(prepared.bind_generation_prefix(&plan, &raw));
+        let valid = serde_json::to_value(covering_draft(prepared.request(), "continue task")).unwrap();
+        let provider = PrefixCompactor { requests: RefCell::new(vec![]),
+            outputs: RefCell::new(vec![valid].into()), return_tool: false };
+        let cancellation = crate::run_context::CancellationToken::default();
+        let cancellable = crate::run_context::CancellableAdapter {
+            inner: &provider, cancellation: cancellation.clone(),
+        };
+        let events = crate::run_events::RunEvents::default();
+        let observed = crate::run_events::ObservedAdapter {
+            inner: &cancellable, cancellation: cancellation.clone(),
+            runtime_profile: profile(), events: events.clone(),
+        };
+        let _purpose = crate::run_events::purpose(&observed, "compaction");
+        compact_with_adapter(&observed, &profile(), &prepared, CompactionLimits::default()).unwrap();
+        assert_eq!(provider.requests.borrow().len(), 1);
+        let activities = events.activities();
+        assert_eq!(activities.len(), 1);
+        assert_eq!(activities[0].name, "compaction");
+        assert_eq!(activities[0].status, crate::run_events::ActivityStatus::Succeeded);
+        cancellation.cancel();
+        let error = generate_draft(&observed, &profile(), &prepared, 100_000).unwrap_err();
+        assert!(error.message.contains("cancelled"));
+        assert_eq!(provider.requests.borrow().len(), 1, "cancellation prevents another provider call");
+        assert_eq!(events.activities().len(), 1, "cancelled-before-start calls produce no model activity");
+    }
+
+    #[test]
+    fn mid_turn_compacts_closed_parallel_steps_and_preserves_user_recent_and_open_pairs() {
+        let mut raw = vec![Message::system("base"), Message::user("Current goal <selection>Eq.9</selection>")];
+        let mut deterministic = raw.clone();
+        for (batch, ids) in [(0, vec!["a", "b"]), (1, vec!["c"]), (2, vec!["d", "e"])] {
+            let call = Message { provider_continuation: None, role: Role::Assistant, content: None,
+                tool_calls: ids.iter().map(|id| ToolCall { id: (*id).into(), name: "book.text".into(),
+                    arguments: serde_json::json!({"lid":format!("1.{batch}")}).to_string() }).collect(), tool_call_id: None };
+            raw.push(call.clone()); deterministic.push(call);
+            for id in ids.into_iter().filter(|id| *id != "e") {
+                let result = Message { provider_continuation: None, role: Role::Tool,
+                    content: Some(format!("{id} full source body {}", "evidence ".repeat(50))),
+                    tool_calls: vec![], tool_call_id: Some(id.into()) };
+                raw.push(result.clone());
+                let receipt = HistoricalToolReceipt { version: "historical_tool_receipt.v1".into(),
+                    tool: "book.text".into(), locator_args: serde_json::json!({"lid":format!("1.{batch}")}),
+                    status: HistoricalToolStatus::Ok, error_code: None, accepted_evidence: vec![],
+                    source_refs: vec![], opaque_result_digest: format!("receipt-{id}") };
+                deterministic.push(Message { content: Some(serde_json::to_string(&receipt).unwrap()), ..result });
+            }
+        }
+        let prepared = prepare_compaction_with_tail_budget(CompactionPhase::MidTurn, &raw, &deterministic,
+            vec![], vec![], vec![PendingEffectRef { effect_id: "pending.write".into(), kind: "write".into() }],
+            BTreeMap::new(), 1).unwrap();
+        assert_eq!(prepared.source_indices, vec![2, 3, 4]);
+        assert_eq!(prepared.full_turn_source_ids.len(), 1, "parallel call and both results stay in one generator chunk");
+        assert_eq!(prepared.tool_receipts.len(), 2);
+        assert_eq!(prepared.request.raw_retained_item_ids.len(), raw.len() - 4);
+        assert!(!prepared.request.eligible_items.iter().any(|item| item.content.contains("Eq.9")));
+        let draft = covering_draft(prepared.request(), "Older reads completed; current goal remains in progress.");
+        let adapter = ScriptedCompactor::new(vec![serde_json::to_value(draft).unwrap()]);
+        let checkpoint = compact_with_adapter(&adapter, &profile(), &prepared, CompactionLimits::default()).unwrap();
+        let projected = project_compaction_checkpoint_messages(&raw, &checkpoint, &[], COMPACTION_CONSUMPTION_WRAPPER).unwrap();
+        assert_eq!(checkpoint.pending_effects, prepared.pending_effects);
+        assert_eq!(&projected[2..], [&raw[1..2], &raw[5..]].concat());
+        assert!(prepare_compaction_with_tail_budget(CompactionPhase::MidTurn, &raw, &deterministic,
+            vec![], vec![], vec![], BTreeMap::new(), 100_000).is_err(), "a task shorter than the recent budget stays raw");
+    }
+
     fn feedback5_recording(name: &str) -> serde_json::Value {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/performance/presentation-staged-authoring-ex12-4/mechanism-staged-feedback5")
@@ -1964,8 +2416,8 @@ mod tests {
         for field in ["schema_version", "prompt_version", "source_history_revision", "raw_retained_item_ids"] {
             assert!(input.get(field).is_none(), "runtime metadata must stay local: {field}");
         }
-        assert_eq!(requests[0].output_token_limit, Some(65_536));
-        assert_eq!(requests[1].output_token_limit, Some(65_536));
+        assert_eq!(requests[0].output_token_limit, Some(131_072));
+        assert_eq!(requests[1].output_token_limit, Some(131_072));
         assert_eq!(requests[1].reasoning_effort.as_deref(), Some("low"));
     }
 
@@ -2484,7 +2936,7 @@ mod tests {
         let long = "historical detail ".repeat(1_200);
         let mut raw = vec![Message::system("canonical base")];
         raw.extend(completed_turn(&long, &long));
-        raw.last_mut().unwrap().provider_continuation = Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "private-compaction-probe".into() });
+        raw.last_mut().unwrap().provider_continuation = Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "private-compaction-probe".into(), messages_content: Vec::new() });
         raw.push(Message::user("current user text must remain byte exact"));
         let before = serde_json::to_vec(&raw).unwrap();
         let prepared = prepare_compaction(
@@ -2540,7 +2992,7 @@ mod tests {
             Some("current user text must remain byte exact")
         );
         assert_eq!(adapter.requests.borrow().len(), 1);
-        assert_eq!(adapter.requests.borrow()[0].output_token_limit, Some(65_536));
+        assert_eq!(adapter.requests.borrow()[0].output_token_limit, Some(131_072));
         assert_eq!(adapter.requests.borrow()[0].reasoning_effort.as_deref(), Some("low"));
         assert_eq!(
             adapter.requests.borrow()[0].system,

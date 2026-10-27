@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref } from 'vue';
-import { learningPurposes, musicLearningPurposes, type LearningScopeKind, type LearningScopeOption } from '../learning-purpose';
+import { learningPurposes, musicLearningPurposes, videoLearningPurposes, type LearningScopeKind, type LearningScopeOption } from '../learning-purpose';
 import type { LearningPurpose } from '../generated/LearningPurpose';
 
 const props = withDefaults(defineProps<{
@@ -9,6 +11,8 @@ const props = withDefaults(defineProps<{
   enabled: boolean;
   busy: boolean;
   musicMode?: boolean;
+  videoMode?: boolean;
+  reason?: string;
   scopeOptions?: LearningScopeOption[];
   showCustom?: boolean;
 }>(), { scopeOptions: () => [], showCustom: true });
@@ -17,7 +21,13 @@ const emit = defineEmits<{
   (event: 'custom'): void;
 }>();
 const selectedScope = ref<LearningScopeKind>();
-const purposes = computed(() => props.musicMode ? musicLearningPurposes : learningPurposes);
+const purposes = computed(() => props.musicMode ? musicLearningPurposes : props.videoMode ? videoLearningPurposes : learningPurposes);
+const notice = computed(() => {
+  if (!props.available) return props.reason || uiText('学习入口暂不可用，请等待资料加载。');
+  if (!props.ready) return props.reason ? uiText('{0} 可以先了解重点，也可以先保存学习目标。', [props.reason]) : uiText('连续教学准备中，可以先了解重点。');
+  if (!props.enabled) return uiText('选择{0}、备考或探索，会开启连续教学并开始。', [props.musicMode ? uiText('听懂') : props.videoMode ? uiText('看懂') : uiText('读懂')]);
+  return uiText('按你的目的开始，学习中可以随时调整。');
+});
 const scope = computed({
   get: () => props.scopeOptions.some(option => option.value === selectedScope.value) ? selectedScope.value : props.scopeOptions[0]?.value,
   set: (value: LearningScopeKind | undefined) => { selectedScope.value = value; },
@@ -29,9 +39,8 @@ function choose(purpose: LearningPurpose) {
 </script>
 
 <template>
-  <section class="learning-purpose-entry" aria-label="选择学习目的">
-    <label v-if="scopeOptions.length" class="purpose-scope">学习范围
-      <select v-if="scopeOptions.length > 1" v-model="scope" :disabled="busy" aria-label="学习范围">
+  <section class="learning-purpose-entry" :aria-label="uiText('选择学习目的')">
+    <label v-if="scopeOptions.length" class="purpose-scope">{{ uiText('学习范围') }} <select v-if="scopeOptions.length > 1" v-model="scope" :disabled="busy" :aria-label="uiText('学习范围')">
         <option v-for="option in scopeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
       </select>
       <span v-else>{{ scopeOptions[0].label }}</span>
@@ -42,10 +51,10 @@ function choose(purpose: LearningPurpose) {
         <strong>{{ option.label }}</strong><span>{{ option.description }}</span>
       </button>
     </div>
-    <p class="purpose-notice">{{ !ready ? '连续教学准备中，可以先了解重点。' : !enabled ? musicMode ? '选择听懂、备考或探索，会开启连续教学并开始。' : '选择读懂、备考或探索，会开启连续教学并开始。' : '按你的目的开始，学习中可以随时调整。' }}</p>
+    <p class="purpose-notice" role="status">{{ notice }}</p>
     <div class="purpose-other">
-      <button type="button" :disabled="busy || !available" @click="choose('discover')">{{ musicMode ? '还没想好，先带我听听' : '还没想好，先带我看看' }}</button>
-      <button v-if="showCustom" type="button" :disabled="busy" @click="emit('custom')">自己描述目标…</button>
+      <button type="button" :disabled="busy || !available" @click="choose('discover')">{{ musicMode ? uiText('还没想好，先带我听听') : uiText('还没想好，先带我看看') }}</button>
+      <button v-if="showCustom" type="button" :disabled="busy" @click="emit('custom')">{{ uiText('自己描述目标…') }}</button>
     </div>
   </section>
 </template>

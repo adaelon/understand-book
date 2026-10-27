@@ -116,7 +116,7 @@ impl WorkspaceCacheFixture {
         let (_, plan) = build_sample_request(&self.messages, &mut self.fragments, &self.current,
             &mut self.results, None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &self.profile,
             ToolPermissions::default(), &self.exposure, ArtifactExposureContext::no_overlay(),
-            self.evidence.evidence_state(), &[], None, false, tutor, None).unwrap();
+            self.evidence.evidence_state(), &[], None, false, tutor, None, None, None).unwrap();
         for name in ["library.list", "library.search", "library.read", "library.learning", "source.present"] {
             assert!(plan.tools.iter().any(|tool| tool.name == name), "missing workspace tool {name}");
         }

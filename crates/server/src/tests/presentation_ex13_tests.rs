@@ -24,6 +24,15 @@ impl ModelAdapter for RecordingAdapter {
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         unreachable!()
     }
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance) = crate::tests::tutor_loop_tests::fixture_coach_guidance(&request) {
+            return Ok(guidance);
+        }
+        if let Some(review) = crate::tests::tutor_loop_tests::fixture_delivery_review(&request) {
+            return Ok(review);
+        }
+        unreachable!("presentation follow-up fixture received an unexpected structured request")
+    }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         self.0.lock().unwrap().push(json!({"instructions":request.instructions,
             "messages":request.ordered_messages(),"tools":request.tools.iter().map(|tool| json!({"name":tool.name,"description":tool.description,"parameters":tool.parameters})).collect::<Vec<_>>(),"usage":null}));

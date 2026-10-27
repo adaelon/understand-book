@@ -39,7 +39,7 @@ fn cc2_plan(messages: &[Message], ledger: &mut ActiveToolResultLedger, profile: 
     let (_, plan) = build_sample_request(messages, &mut ContextFragmentLedger::default(), &book(), ledger,
         None, COMPACTION_CONSUMPTION_WRAPPER, &resident_tool_registry(), profile,
         ToolPermissions::default(), &ToolExposureState::default(), ArtifactExposureContext::no_overlay(),
-        EvidenceState::KnownLids, &[], None, false, None, None).unwrap();
+        EvidenceState::KnownLids, &[], None, false, None, None, None, None).unwrap();
     plan
 }
 

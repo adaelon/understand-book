@@ -17,7 +17,7 @@ class LauncherTest(unittest.TestCase):
         shutil.copyfile(Path(__file__).with_name("start-reader.sh"), script)
         server = self.root / "target/release/server"
         server.parent.mkdir(parents=True)
-        server.write_text('#!/usr/bin/env bash\nprintf "%s\\0" "$@"\n', encoding="utf-8")
+        server.write_text('#!/usr/bin/env bash\nprintf "%s" "${UNDERSTAND_BOOK_WEB_DIST:-}" > web-dist.txt\nprintf "%s\\0" "$@"\n', encoding="utf-8")
         server.chmod(0o755)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("UNDERSTAND_BOOK_")}
         self.env["MSYS_NO_PATHCONV"] = "1"
@@ -37,6 +37,15 @@ class LauncherTest(unittest.TestCase):
                                    UNDERSTAND_BOOK_ORIGIN="https://reader.example")
         self.assertEqual(self.args(result), ["--multi-user", "/srv/readers with spaces", "--origin",
                                              "https://reader.example", "--addr", "127.0.0.1:8788"])
+        self.assertTrue((self.root / "web-dist.txt").read_text().replace("\\", "/").endswith("/packages/web/dist-multi"))
+
+    def test_explicit_preview_bundle_is_preserved(self):
+        result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user",
+                                   UNDERSTAND_BOOK_SERVICE_ROOT="/srv/readers",
+                                   UNDERSTAND_BOOK_ORIGIN="https://reader.example",
+                                   UNDERSTAND_BOOK_WEB_DIST="/srv/reader resources")
+        self.args(result)
+        self.assertEqual((self.root / "web-dist.txt").read_text(), "/srv/reader resources")
 
     def test_configured_backend_and_legacy_environment_do_not_change_mode(self):
         result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user", UNDERSTAND_BOOK_DIR="/old/book",
@@ -67,6 +76,7 @@ class LauncherTest(unittest.TestCase):
                                    UNDERSTAND_BOOK_MEMORY_DIR="/memory", UNDERSTAND_BOOK_PRIVATE_DIR="/private",
                                    UNDERSTAND_BOOK_NODE="/tools/node")
         self.assertEqual(self.args(result), ["--reader-only", "/books/my book"])
+        self.assertTrue((self.root / "web-dist.txt").read_text().replace("\\", "/").endswith("/packages/web/dist"))
 
 
 if __name__ == "__main__":

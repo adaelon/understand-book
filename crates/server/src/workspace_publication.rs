@@ -160,8 +160,14 @@ pub(crate) fn material_readiness(db: &Connection, material: &Material) -> Result
                     }
                 }
             }
-            let tutor_ready = !is_video && book.as_ref()
-                .is_some_and(|book|crate::tutor_api::tutor_source_readiness(book,directory)["status"]=="ready");
+            // The sealed publication's native structure was validated on import.
+            // Reuse the full source/structure coverage and file presence checks
+            // above instead of loading its hundreds of contributions again.
+            let tutor_ready = if is_video {
+                available.contains("video") && available.contains("discourse")
+            } else {
+                book.as_ref().is_some_and(|book|crate::tutor_api::tutor_source_readiness(book,directory)["status"]=="ready")
+            };
             if tutor_ready { available.insert("tutor".to_owned()); }
             let teaching_map = manifest.teaching_readiness["teaching_map_revision"].as_str().map(|revision|format!("teaching/versions/{revision}/map.json"));
             if manifest.teaching_readiness["status"] == "ready" && present("teaching_readiness.json") && teaching_map.is_some_and(|map|present(&map)) { available.insert("teaching_assets".to_owned()); }

@@ -69,7 +69,9 @@ it('keeps readiness, enabled control, pending state and material ownership gates
   expect(w.text()).toContain('请回到本次学习的书籍继续');
   expect(w.text()).toContain('缺少示例');
   await w.setProps({ sourceId: 'book', state: { ...state(), control: { ...state().control, enabled: false } } });
-  expect(button(w, '继续学习').attributes('disabled')).toBeDefined();
+  expect(button(w, '开启并继续学习').attributes('disabled')).toBeUndefined();
+  await button(w, '开启并继续学习').trigger('click');
+  expect(w.emitted('action')?.at(-1)?.[0]).toEqual({ kind: 'resume', session_id: 'learn' });
   await w.setProps({ state: state(), pending: true });
   expect(button(w, '继续学习').attributes('disabled')).toBeDefined();
   await w.setProps({ pending: false, readinessError: '学习就绪状态读取失败' });

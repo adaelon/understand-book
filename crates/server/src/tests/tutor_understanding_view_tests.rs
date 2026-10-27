@@ -63,12 +63,58 @@ fn tutor_tb5_captured_hypothesis_keeps_conditions_and_correction_without_perform
         assert_eq!(corrected[field], detail[field], "{field}");
     }
     assert_eq!(corrected["fact_refs"], json!([original["action_ref"]]), "new corrections keep original words as their basis, with delivered help separate");
-    assert_eq!(response(&mut state, "/tutor/evidence", json!({"evidence_ref":original["evidence_id"]})),detail,
-        "the historical record stays unchanged");
+    let historic=response(&mut state, "/tutor/evidence", json!({"evidence_ref":original["evidence_id"]}));
+    assert_eq!(historic["superseded"],true);
+    let mut expected=detail.clone();expected["superseded"]=json!(true);
+    assert_eq!(historic,expected,"the original record stays unchanged; its read-time correction status updates");
     let view = response(&mut state, "/tutor/understanding", json!({}));
     assert_eq!(view["interpretations"].as_array().unwrap().len(), 1);
     assert_eq!(view["interpretations"][0]["evidence_id"], saved["evidence_ref"]);
     assert!(view["rows"].as_array().unwrap().is_empty());
+    let timeline=response(&mut state,"/tutor/timeline",json!({"evidence_ref":saved["evidence_ref"]}));
+    assert_eq!(timeline["order"],"oldest_first");
+    assert_eq!(timeline["entries"][0]["evidence_id"],original["evidence_id"]);
+    assert_eq!(timeline["entries"][0]["superseded"],true);
+    assert_eq!(timeline["entries"][1]["supersedes"],original["evidence_id"]);
+    assert!(timeline["entries"][0]["occurred_at"].is_null(),"the fixture lacks an original timestamp; do not invent one");
+}
+
+#[test]
+fn tutor_understanding_timeline_exposes_original_times_and_typed_input_time_support() {
+    let (_root,mut state,original)=captured_fixture();
+    let mut store=state.user.learning_store().unwrap();
+    let template=store.teaching_event(original["action_ref"].as_str().unwrap()).unwrap();
+    let mut before=template.clone();before.event_id="timeline:first".into();before.binding.turn_id="first-turn".into();
+    before.occurred_at="2026-10-24T03:00:00Z".into();before.payload=json!({"usage":{"kind":"user_message"},"response":"我不明白 Copy 和共享引用的关系"});
+    let mut support=template.clone();support.event_id="timeline:delivered".into();support.kind=memory::teaching::TeachingFact::UsageObserved;
+    support.occurred_at="2026-10-24T03:01:00Z".into();support.payload=json!({"usage":{"kind":"assistant_delivery"},"answer":"Copy 描述值的复制，共享引用决定访问权限。"});
+    let mut after=template.clone();after.event_id="timeline:second".into();after.binding.turn_id="second-turn".into();
+    after.occurred_at="2026-10-24T03:02:00Z".into();after.payload=json!({"usage":{"kind":"user_message"},"response":"Copy 本身不让共享引用可写，对吗？"});
+    for fact in [&before,&support,&after] { store.append_teaching(fact).unwrap(); }
+    let mut first:LearningEvidence=serde_json::from_value(original.clone()).unwrap();
+    first.evidence_id="timeline:interpretation:first".into();first.action_ref=before.event_id.clone();first.fact_refs=vec![before.event_id.clone()];first.learner_quote=before.learner_expression().unwrap().into();
+    first.target.as_mut().unwrap().object_refs=vec![memory::teaching::TeachingObjectRevision {source_id:first.source_id.clone(),object_id:"copy-access".into(),object_revision:1}];
+    let mut second=first.clone();second.evidence_id="timeline:interpretation:second".into();second.action_ref=after.event_id.clone();second.fact_refs=vec![after.event_id.clone()];second.learner_quote=after.learner_expression().unwrap().into();
+    second.support_delivery_refs=vec![support.event_id.clone()];
+    // Delayed extraction of the first expression must not reorder the learner's history.
+    store.append_evidence(&second).unwrap();store.append_evidence(&first).unwrap();
+    drop(store);
+    let view=response(&mut state,"/tutor/understanding",json!({}));
+    assert_eq!(view["interpretations"][0]["evidence_id"],second.evidence_id);
+    assert_eq!(view["interpretations"][0]["occurred_at"],after.occurred_at);
+    assert_eq!(view["interpretations"][0]["source_session_id"],after.binding.chat_session_id);
+    assert_eq!(view["interpretations"][0]["source_turn_id"],"second-turn");
+    let timeline=response(&mut state,"/tutor/timeline",json!({"evidence_ref":second.evidence_id}));
+    assert_eq!(timeline["entries"].as_array().unwrap().len(),2);
+    assert_eq!(timeline["entries"][0]["learner_quote"],before.learner_expression().unwrap());
+    let latest=&timeline["entries"][1];
+    assert_eq!(latest["assistance_count"],1);
+    assert_eq!(latest["assistance"][0]["kind"],"usage_observed");
+    assert_eq!(latest["assistance"][0]["text"],support.payload["answer"]);
+    assert_eq!(latest["assistance_refs"],json!([]));
+    assert_eq!(latest["support_delivery_refs"],json!([support.event_id]));
+    assert_eq!(latest["expressions"][0]["text"],after.learner_expression().unwrap());
+    assert_eq!(latest["superseded"],false,"later observations are not corrections of accurate past observations");
 }
 
 #[test]

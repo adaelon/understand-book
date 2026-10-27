@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from './i18n';
+
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import App from './App.vue';
 import LoadingAnimation from './components/LoadingAnimation.vue';
@@ -33,7 +35,7 @@ async function openVideo() {
   if (!selected.value) return;
   try {
     const response = await fetch(videoUrl(selected.value.video, 'open'), { method: 'POST' });
-    if (!response.ok) throw new Error((await response.json()).message || '无法打开视频发布');
+    if (!response.ok) throw new Error((await response.json()).message || uiText('无法打开视频发布'));
     selected.value = null;
   } catch (failure) { error.value = (failure as Error).message; }
 }
@@ -55,8 +57,8 @@ onBeforeUnmount(() => { calibrationRequest++; window.removeEventListener('local-
   <template v-else>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="calibrationError" role="alert">{{ calibrationError }}</p>
-    <nav v-if="calibration" aria-label="本地音乐校准"><button v-if="calibration.manifest.occurrences.length" @click="refreshCalibration(true)">校准：{{ calibration.manifest.work.title }}</button><p v-else>这份音乐材料尚无小节候选。完成候选预构建后，可在此校准录音与谱面时间。</p></nav>
-    <nav v-if="videos.length" aria-label="已导入视频"><button v-for="video in videos" :key="video.video.media_id" @click="selected = video">观看：{{ video.title }}</button></nav>
+    <nav v-if="calibration" :aria-label="uiText('本地音乐校准')"><button v-if="calibration.manifest.occurrences.length" @click="refreshCalibration(true)">{{ uiText('校准：') }}{{ calibration.manifest.work.title }}</button><p v-else>{{ uiText('这份音乐材料尚无小节候选。完成候选预构建后，可在此校准录音与谱面时间。') }}</p></nav>
+    <nav v-if="videos.length" :aria-label="uiText('已导入视频')"><button v-for="video in videos" :key="video.video.media_id" @click="selected = video">{{ uiText('观看：') }}{{ video.title }}</button></nav>
     <App />
   </template>
 </template>

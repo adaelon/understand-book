@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import path from "node:path";
 import {
   createAutomaticBuildRetryBoundary,
+  automaticBuildRetryBoundaryRequiredRecovery,
   allowsAutomaticBuildSameScopeRetry,
   createAutomaticBuildRetryRecoveryReceipt,
   validateAutomaticBuildRetryBoundary,
@@ -19,6 +20,7 @@ import type {
 import {
   isAutomaticBuildFailureDiagnosticV3,
   automaticBuildCandidateCorrection,
+  isAutomaticBuildCorrectableCandidateFailure,
   legacyAutomaticBuildFailureDiagnostic,
   validateAutomaticBuildFailureDiagnostic,
   type AutomaticBuildFailureDiagnosticV2,
@@ -234,10 +236,65 @@ interface AttemptState {
   result?: AutomaticBuildAttemptEvent;
   reset?: AutomaticBuildAttemptEvent;
   recovery?: AutomaticBuildRetryRecoveryReceiptV1;
+  writer_diagnostic_correction?: AutomaticBuildFailureDiagnosticV2;
+  writer_forward_fix?: true;
   terminal_receipt_sha256?: string;
   submit_revision: number;
   observed_at?: string;
   attempt_scope_digest?: string;
+}
+
+interface WriterDiagnosticCorrection {
+  version: "automatic_build_writer_diagnostic_correction.v1";
+  attempt_scope_digest: string;
+  terminal_receipt_sha256: string;
+  original_diagnostic_digest: string;
+  failure_diagnostic: AutomaticBuildFailureDiagnosticV2;
+}
+
+interface WriterForwardFix {
+  version: "automatic_build_writer_forward_fix.v1";
+  attempt_scope_digest: string;
+  terminal_receipt_sha256: string;
+  original_diagnostic_digest: string;
+  repair_id: string;
+  validation: "passed";
+}
+
+function validateWriterForwardFix(
+  fix: WriterForwardFix,
+  scope: string | undefined,
+  terminal: { sha256: string; failure_diagnostic: AutomaticBuildFailureDiagnosticV2 } | undefined,
+): void {
+  const original = terminal?.failure_diagnostic;
+  if (fix.version !== "automatic_build_writer_forward_fix.v1" || fix.validation !== "passed"
+    || typeof fix.repair_id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,127}$/u.test(fix.repair_id)
+    || !scope || fix.attempt_scope_digest !== scope
+    || !terminal || fix.terminal_receipt_sha256 !== terminal.sha256
+    || fix.original_diagnostic_digest !== original?.diagnostic_digest
+    || original?.version !== "automatic_build_failure_diagnostic.v3"
+    || original.phase !== "artifact_writer" || original.category !== "internal" || original.code !== "writer_failed") {
+    throw new Error("writer forward fix does not match its terminal writer failure");
+  }
+}
+
+function validateWriterDiagnosticCorrection(
+  correction: WriterDiagnosticCorrection,
+  scope: string | undefined,
+  terminal: { sha256: string; failure_diagnostic: AutomaticBuildFailureDiagnosticV2 } | undefined,
+): AutomaticBuildFailureDiagnosticV2 {
+  const original = terminal?.failure_diagnostic;
+  const corrected = validateAutomaticBuildFailureDiagnostic(correction.failure_diagnostic, { writer_started: true });
+  if (correction.version !== "automatic_build_writer_diagnostic_correction.v1"
+    || !scope || correction.attempt_scope_digest !== scope
+    || !terminal || correction.terminal_receipt_sha256 !== terminal.sha256
+    || correction.original_diagnostic_digest !== original?.diagnostic_digest
+    || original?.version !== "automatic_build_failure_diagnostic.v3"
+    || original.phase !== "artifact_writer" || original.category !== "internal" || original.code !== "writer_failed"
+    || !isAutomaticBuildCorrectableCandidateFailure(corrected)) {
+    throw new Error("writer diagnostic correction does not match its terminal writer failure");
+  }
+  return corrected;
 }
 
 function readJson<T>(file: string): T {
@@ -539,6 +596,15 @@ function attemptStates(
         attempt,
         attempt_scope_digest: attemptScopeDigest,
       });
+      const correctionPath = path.join(dir, "writer-diagnostic-correction.json");
+      const writerDiagnosticCorrection = existsSync(correctionPath)
+        ? validateWriterDiagnosticCorrection(readJson<WriterDiagnosticCorrection>(correctionPath), attemptScopeDigest, terminalFailureReceipt)
+        : undefined;
+      const forwardFixPath = path.join(dir, "writer-forward-fix.json");
+      const writerForwardFix = existsSync(forwardFixPath);
+      if (writerForwardFix) {
+        validateWriterForwardFix(readJson<WriterForwardFix>(forwardFixPath), attemptScopeDigest, terminalFailureReceipt);
+      }
       const recovery = existsSync(recoveryPath)
         ? validateAutomaticBuildRetryRecoveryReceipt(readJson<unknown>(recoveryPath))
         : undefined;
@@ -590,6 +656,8 @@ function attemptStates(
         ...(result ? { result } : {}),
         ...(reset ? { reset } : {}),
         ...(recovery ? { recovery } : {}),
+        ...(writerDiagnosticCorrection ? { writer_diagnostic_correction: writerDiagnosticCorrection } : {}),
+        ...(writerForwardFix ? { writer_forward_fix: true as const } : {}),
         ...(terminalFailureReceipt && result
           ? { terminal_receipt_sha256: terminalFailureReceipt.sha256 }
           : {}),
@@ -682,12 +750,19 @@ function retryBoundaryForState(
     || !state.terminal_receipt_sha256) return undefined;
   const failureDiagnostic = failureDiagnosticFromEvent(state.result);
   if (!failureDiagnostic) return undefined;
-  return createAutomaticBuildRetryBoundary({
+  const boundary = createAutomaticBuildRetryBoundary({
     attempt_scope_digest: state.attempt_scope_digest,
     exhausted_semantic_attempt: identity.semantic_attempt,
     terminal_receipt_sha256: state.terminal_receipt_sha256,
     failure_diagnostic: failureDiagnostic,
   });
+  // Keep the immutable failure binding. Only recovery advice changes after a verified
+  // writer fix; the old decision remains bound to the same receipt and diagnostic.
+  return state.writer_forward_fix
+    ? { ...boundary, required_recovery: "authorize_writer_retry" }
+    : state.writer_diagnostic_correction
+    ? { ...boundary, required_recovery: automaticBuildRetryBoundaryRequiredRecovery(state.writer_diagnostic_correction) }
+    : boundary;
 }
 
 function assertRetryRecoveryMatchesState(
@@ -742,7 +817,7 @@ export function readAutomaticBuildCandidateRetryFeedback(
     if (previous.attempt_scope_digest !== current.attempt_scope_digest) return undefined;
     if (!previous.result) continue;
     if (previous.result.outcome !== "failure") return undefined;
-    const diagnostic = failureDiagnosticFromEvent(previous.result);
+    const diagnostic = previous.writer_diagnostic_correction ?? failureDiagnosticFromEvent(previous.result);
       const correction = diagnostic ? automaticBuildCandidateCorrection(diagnostic) : undefined;
       if (!correction || stage !== "formal_objects") return correction;
       return { ...correction,
@@ -808,6 +883,81 @@ export function readAutomaticBuildRetryBoundary(
     options.max_semantic_attempts ?? 3,
   );
   return current && !current.state.recovery ? current.boundary : undefined;
+}
+
+/** Repair tooling must replay validation with publication disabled before recording this correction. */
+export function recordAutomaticBuildWriterDiagnosticCorrection(
+  target: AutomaticBuildTarget,
+  input: {
+    stage: AutomaticBuildStage;
+    work_unit_id: string;
+    attempt_scope_digest: string;
+    terminal_receipt_sha256: string;
+    original_diagnostic_digest: string;
+    failure_diagnostic: AutomaticBuildFailureDiagnosticV2;
+  },
+): void {
+  const current = currentScopedRetryTerminal(target, input.stage, input.work_unit_id, input.attempt_scope_digest, 3);
+  if (!current || current.state.recovery) throw new Error("writer correction requires an unrecovered exhausted terminal failure");
+  const correction: WriterDiagnosticCorrection = {
+    version: "automatic_build_writer_diagnostic_correction.v1",
+    attempt_scope_digest: input.attempt_scope_digest,
+    terminal_receipt_sha256: input.terminal_receipt_sha256,
+    original_diagnostic_digest: input.original_diagnostic_digest,
+    failure_diagnostic: input.failure_diagnostic,
+  };
+  validateWriterDiagnosticCorrection(correction, current.state.attempt_scope_digest, {
+    sha256: current.state.terminal_receipt_sha256!,
+    failure_diagnostic: failureDiagnosticFromEvent(current.state.result!)!,
+  });
+  const file = path.join(automaticBuildTaskAttemptDirectory(target, input.stage, input.work_unit_id, current.state.attempt),
+    "writer-diagnostic-correction.json");
+  const bytes = `${JSON.stringify(correction, null, 2)}\n`;
+  try {
+    writeFileSync(file, bytes, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST")
+      || readFileSync(file, "utf8") !== bytes) throw error;
+  }
+}
+
+/** Maintenance replays the failed candidate with publication disabled through validate. */
+export function recordAutomaticBuildWriterForwardFix(
+  target: AutomaticBuildTarget,
+  input: {
+    stage: AutomaticBuildStage;
+    work_unit_id: string;
+    attempt_scope_digest: string;
+    terminal_receipt_sha256: string;
+    original_diagnostic_digest: string;
+    repair_id: string;
+  },
+  validate: () => void,
+): void {
+  const current = currentScopedRetryTerminal(target, input.stage, input.work_unit_id, input.attempt_scope_digest, 3);
+  if (!current || current.state.recovery) throw new Error("writer forward fix requires an unrecovered exhausted terminal failure");
+  const fix: WriterForwardFix = {
+    version: "automatic_build_writer_forward_fix.v1",
+    attempt_scope_digest: input.attempt_scope_digest,
+    terminal_receipt_sha256: input.terminal_receipt_sha256,
+    original_diagnostic_digest: input.original_diagnostic_digest,
+    repair_id: input.repair_id,
+    validation: "passed",
+  };
+  validateWriterForwardFix(fix, current.state.attempt_scope_digest, {
+    sha256: current.state.terminal_receipt_sha256!,
+    failure_diagnostic: failureDiagnosticFromEvent(current.state.result!)!,
+  });
+  validate();
+  const file = path.join(automaticBuildTaskAttemptDirectory(target, input.stage, input.work_unit_id, current.state.attempt),
+    "writer-forward-fix.json");
+  const bytes = `${JSON.stringify(fix, null, 2)}\n`;
+  try {
+    writeFileSync(file, bytes, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST")
+      || readFileSync(file, "utf8") !== bytes) throw error;
+  }
 }
 
 function retryRecoveryPreparation(
@@ -898,7 +1048,7 @@ export function nextAutomaticBuildExecutionIdentity(
     attempt_scope?: AutomaticBuildAttemptScopeV1;
   },
 ):
-  | { status: "ready"; execution_identity: AutomaticBuildExecutionIdentity }
+  | { status: "ready"; execution_identity: AutomaticBuildExecutionIdentity; retry_recovery?: AutomaticBuildRetryRecoveryReceiptV1 }
   | {
       status: "retry_exhausted";
       semantic_attempt: number;
@@ -984,6 +1134,7 @@ export function nextAutomaticBuildExecutionIdentity(
     return {
       status: "ready",
       execution_identity: newIdentity(lastIdentity.semantic_attempt + 1, 1),
+      ...(lastState.recovery ? { retry_recovery: lastState.recovery } : {}),
     };
   }
   let recoveryWindowStartEpoch = 0;

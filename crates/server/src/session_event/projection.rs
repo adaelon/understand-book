@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Debug, Default)]
 pub(crate) struct SessionProjection {
+    pub active_model_projection: Option<runtime::active_projection::ActiveModelProjection>,
     pub through_seq: u64,
     pub session: Option<AgentChatSession>,
     pub inputs: BTreeMap<String, run_admission::FrozenTurn<HistoryPosition>>,
@@ -9,6 +10,8 @@ pub(crate) struct SessionProjection {
     pub facts: Vec<SessionEvent>,
     pub accepted_seq: BTreeMap<String, u64>,
     pub turn_seq: BTreeMap<String, u64>,
+    pub turn_started_at: BTreeMap<String, String>,
+    pub turn_updated_at: BTreeMap<String, String>,
     pub goal_seq: BTreeMap<String, u64>,
 }
 
@@ -86,10 +89,67 @@ impl SessionProjection {
                     self.validate_revision(revision)?;
                 }
             }
+            EventBody::BoardAuthoringUpdated(candidate) => {
+                let turn = self.turn(event)?;
+                if turn.status != AgentAssistantStatus::PendingAssistant
+                    || turn.domain.board_context.as_ref().is_none_or(|context| context.follow_up.board_id != candidate.board_id)
+                    || turn.domain.board_authoring.as_ref().is_some_and(|old| old.candidate_revision > candidate.candidate_revision)
+                { return Err(invalid("board candidate requires its pending accepted turn")); }
+            }
+            EventBody::BoardDelivered(link) => {
+                let turn = self.turn(event)?;
+                let Some(context) = turn.domain.board_context.as_ref() else {
+                    return Err(invalid("board delivery requires its accepted target"));
+                };
+                // Validate the recorded receipt without applying today's
+                // eligibility rule to answers saved by an earlier release.
+                if !crate::board_delivery::has_completed_answer(turn)
+                    || turn.board_delivery.is_some()
+                    || link.delivery.is_some() == link.error.is_some()
+                {
+                    return Err(invalid("board delivery requires an unlinked successful answer"));
+                }
+                if let Some(delivery) = &link.delivery {
+                    if delivery.board_id != context.follow_up.board_id
+                        || delivery.parent_item_id != context.follow_up.item_id
+                        || delivery.origin_turn_id != turn.turn_id
+                        || delivery.origin_session_id != self.session.as_ref().unwrap().id
+                    {
+                        return Err(invalid("board receipt does not belong to the accepted target and turn"));
+                    }
+                }
+            }
+            EventBody::BoardCommitted(part) => {
+                crate::session_runtime::validate_board_commit(
+                    &self.session.as_ref().unwrap().id, self.turn(event)?, part,
+                )?;
+            }
             EventBody::HistoryRevised(revision) => self.validate_revision(revision)?,
             EventBody::CheckpointInstalled { checkpoint } => {
                 validate_persisted_checkpoint(&self.session.as_ref().unwrap().messages, checkpoint)
                     .map_err(|e| invalid(&e.message))?;
+            }
+            EventBody::ModelProjectionUpdated { projection, input_from } => {
+                if self.turn(event)?.status != AgentAssistantStatus::PendingAssistant {
+                    return Err(invalid("model projection requires a pending turn"));
+                }
+                if let Some(projection) = projection {
+                    if *input_from > 0 && self.active_model_projection.as_ref().is_none_or(|previous|
+                        previous.input.len() < *input_from
+                            || previous.provider_identity != projection.provider_identity
+                            || previous.runtime_profile != projection.runtime_profile
+                            || previous.instructions != projection.instructions)
+                    {
+                        return Err(invalid("model projection revision has no matching retained prefix"));
+                    }
+                    let session = self.session.as_ref().unwrap();
+                    if projection.history_message_count != session.messages.len()
+                        || projection.checkpoint_window_id.as_deref()
+                            != session.compaction_checkpoint.as_ref().map(|checkpoint| checkpoint.window_id.as_str())
+                    {
+                        return Err(invalid("model projection does not describe the committed history window"));
+                    }
+                }
             }
             EventBody::TurnPrepared { .. } => {
                 self.turn(event)?;
@@ -186,10 +246,13 @@ impl SessionProjection {
             EventBody::TurnAccepted(a) => {
                 self.accepted_seq.insert(a.turn.turn_id.clone(), event.seq);
                 self.turn_seq.insert(a.turn.turn_id.clone(), event.seq);
+                self.turn_started_at.insert(a.turn.turn_id.clone(), event.at.clone());
+                self.turn_updated_at.insert(a.turn.turn_id.clone(), event.at.clone());
                 for goal in &a.goals { self.goal_seq.insert(goal.id.clone(), event.seq); }
             }
             EventBody::TurnFinished(f) => {
                 self.turn_seq.insert(event.turn_id.as_ref().unwrap().clone(), event.seq);
+                self.turn_updated_at.insert(event.turn_id.as_ref().unwrap().clone(), event.at.clone());
                 for goal in &f.goals { self.goal_seq.insert(goal.id.clone(), event.seq); }
             }
             EventBody::GoalUpdated { goal } => { self.goal_seq.insert(goal.id.clone(), event.seq); }
@@ -226,9 +289,27 @@ impl SessionProjection {
                     EventBody::MessageAppended { messages } => {
                         session.messages.extend(messages.iter().cloned())
                     }
-                    EventBody::HistoryRevised(r) => revise(session, r),
+                    EventBody::HistoryRevised(r) => {
+                        if self.active_model_projection.as_ref().is_some_and(|projection|
+                            r.from < projection.history_message_count) {
+                            self.active_model_projection = None;
+                        }
+                        revise(session, r);
+                    }
                     EventBody::CheckpointInstalled { checkpoint } => {
-                        session.compaction_checkpoint = Some(checkpoint.clone())
+                        session.compaction_checkpoint = Some(checkpoint.clone());
+                        self.active_model_projection = None;
+                    }
+                    EventBody::ModelProjectionUpdated { projection, input_from } => {
+                        self.active_model_projection = projection.as_ref().map(|projection| {
+                            let mut restored = projection.clone();
+                            if *input_from > 0 {
+                                let mut input = self.active_model_projection.as_ref().unwrap().input[..*input_from].to_vec();
+                                input.extend(restored.input);
+                                restored.input = input;
+                            }
+                            restored
+                        });
                     }
                     EventBody::GoalUpdated { goal } => {
                         upsert_goals(session, std::slice::from_ref(goal))
@@ -249,7 +330,18 @@ impl SessionProjection {
                         );
                         upsert_goals(session, &f.goals);
                         if let Some(r) = &f.history_revision {
+                            if self.active_model_projection.as_ref().is_some_and(|projection|
+                                r.from < projection.history_message_count) {
+                                self.active_model_projection = None;
+                            }
                             revise(session, r);
+                        }
+                        // Interrupted/failed execution has no accepted sampled
+                        // continuation. Its receipts remain in business history.
+                        if f.status == AgentAssistantStatus::Failed
+                            && !f.error.as_ref().is_some_and(|error| error.category == "model_spend")
+                        {
+                            self.active_model_projection = None;
                         }
                     }
                     EventBody::TurnPrepared { teaching } => {
@@ -272,6 +364,23 @@ impl SessionProjection {
                     EventBody::TeachingLinked(link) => {
                         let turn = session.turns.iter_mut().find(|t| Some(&t.turn_id) == event.turn_id.as_ref()).unwrap();
                         turn.domain.teaching.push(link.clone());
+                        self.facts.push(event.clone());
+                    }
+                    EventBody::BoardAuthoringUpdated(candidate) => {
+                        session.turns.iter_mut().find(|t| Some(&t.turn_id) == event.turn_id.as_ref()).unwrap()
+                            .domain.board_authoring = Some(candidate.clone());
+                    }
+                    EventBody::BoardDelivered(link) => {
+                        let turn = session.turns.iter_mut().find(|t| Some(&t.turn_id) == event.turn_id.as_ref()).unwrap();
+                        turn.board_delivery = link.delivery.clone();
+                        turn.board_delivery_error = link.error.clone();
+                        self.facts.push(event.clone());
+                    }
+                    EventBody::BoardCommitted(part) => {
+                        let turn = session.turns.iter_mut().find(|t| Some(&t.turn_id) == event.turn_id.as_ref()).unwrap();
+                        if !turn.domain.board_commits.iter().any(|old| old.delivery.commit_id == part.delivery.commit_id) {
+                            turn.domain.board_commits.push(part.clone());
+                        }
                         self.facts.push(event.clone());
                     }
                     EventBody::EffectDelivered { effect_id, effect } => {

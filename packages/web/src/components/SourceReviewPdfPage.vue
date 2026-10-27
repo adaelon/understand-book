@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { ExternalLink, Minus, Plus, Scan } from "@lucide/vue";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -29,10 +31,10 @@ let renderRevision = 0;
 
 const physicalPageNumber = computed(() => props.pageIndex === undefined ? null : props.pageIndex + 1);
 const pageDescription = computed(() => {
-  if (props.pageLabel && physicalPageNumber.value) return `PDF 页 ${props.pageLabel} · 文件第 ${physicalPageNumber.value} 页`;
-  if (props.pageLabel) return `PDF 页 ${props.pageLabel}`;
-  if (physicalPageNumber.value) return `文件第 ${physicalPageNumber.value} 页`;
-  return "未定位 PDF 页";
+  if (props.pageLabel && physicalPageNumber.value) return uiText('PDF 页 {0} · 文件第 {1} 页', [props.pageLabel, physicalPageNumber.value]);
+  if (props.pageLabel) return uiText('PDF 页 {0}', [props.pageLabel]);
+  if (physicalPageNumber.value) return uiText('文件第 {0} 页', [physicalPageNumber.value]);
+  return uiText('未定位 PDF 页');
 });
 const openUrl = computed(() => physicalPageNumber.value
   ? `${props.pdfUrl}#page=${physicalPageNumber.value}`
@@ -54,7 +56,7 @@ async function renderCurrentPage() {
   if (!document || !canvas || !viewport || props.pageIndex === undefined) return;
   const requestedPage = props.pageIndex + 1;
   if (requestedPage < 1 || requestedPage > document.numPages) {
-    error.value = `PDF 中不存在文件第 ${requestedPage} 页。`;
+    error.value = uiText('PDF 中不存在文件第 {0} 页。', [requestedPage]);
     return;
   }
 
@@ -104,7 +106,7 @@ async function loadPdfDocument() {
   try {
     fetchController = new AbortController();
     const response = await fetch(props.pdfUrl, { signal: fetchController.signal });
-    if (!response.ok) throw new Error(`PDF 请求失败 (${response.status})`);
+    if (!response.ok) throw new Error(uiText('PDF 请求失败 ({0})', [response.status]));
     const bytes = new Uint8Array(await response.arrayBuffer());
     loadingTask = pdfjsLib.getDocument({ data: bytes });
     pdfDoc.value = await loadingTask.promise;
@@ -140,31 +142,31 @@ onBeforeUnmount(() => {
   <article class="pdf-review-pane">
     <header class="pdf-review-head">
       <div>
-        <strong>原版 PDF</strong>
+        <strong>{{ uiText('原版 PDF') }}</strong>
         <span>{{ pageDescription }}</span>
       </div>
       <div class="pdf-review-tools">
-        <button type="button" title="缩小" aria-label="缩小 PDF" :disabled="zoom <= 0.75" @click="setZoom(zoom - 0.25)">
+        <button type="button" :title="uiText('缩小')" :aria-label="uiText('缩小 PDF')" :disabled="zoom <= 0.75" @click="setZoom(zoom - 0.25)">
           <Minus :size="15" aria-hidden="true" />
         </button>
-        <button type="button" title="适合栏宽" aria-label="适合栏宽" @click="setZoom(1)">
+        <button type="button" :title="uiText('适合栏宽')" :aria-label="uiText('适合栏宽')" @click="setZoom(1)">
           <Scan :size="15" aria-hidden="true" />
           <span>{{ zoomText }}</span>
         </button>
-        <button type="button" title="放大" aria-label="放大 PDF" :disabled="zoom >= 2.5" @click="setZoom(zoom + 0.25)">
+        <button type="button" :title="uiText('放大')" :aria-label="uiText('放大 PDF')" :disabled="zoom >= 2.5" @click="setZoom(zoom + 0.25)">
           <Plus :size="15" aria-hidden="true" />
         </button>
-        <a :href="openUrl" target="_blank" rel="noreferrer" title="在新窗口打开原版 PDF" aria-label="在新窗口打开原版 PDF">
+        <a :href="openUrl" target="_blank" rel="noreferrer" :title="uiText('在新窗口打开原版 PDF')" :aria-label="uiText('在新窗口打开原版 PDF')">
           <ExternalLink :size="15" aria-hidden="true" />
         </a>
       </div>
     </header>
     <div ref="viewportEl" class="pdf-review-viewport">
-      <div v-if="props.pageIndex === undefined" class="pdf-review-state">当前问题没有可定位的 PDF 页。</div>
+      <div v-if="props.pageIndex === undefined" class="pdf-review-state">{{ uiText('当前问题没有可定位的 PDF 页。') }}</div>
       <div v-else-if="error" class="pdf-review-state error">{{ error }}</div>
       <div v-else class="pdf-review-sheet" :class="{ loading }">
         <canvas ref="canvasEl"></canvas>
-        <span v-if="loading">正在载入 PDF 页面</span>
+        <span v-if="loading">{{ uiText('正在载入 PDF 页面') }}</span>
       </div>
     </div>
   </article>

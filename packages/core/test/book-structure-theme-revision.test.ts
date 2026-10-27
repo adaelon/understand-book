@@ -1,3 +1,4 @@
+import { readStructureThemeSession } from "../src/book-structure-theme-session";
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { structureProductionFixture, structureProductionResponse } from "./helpers/book-structure-production";
@@ -16,7 +17,7 @@ it("replays the original directory before targeted source revisions and commits 
   for (let turn = 0; turn < 40; turn++) {
     const task = current();
     if (task.descriptor.kind === "structure_theme_reconcile") { reconcile = task; break; }
-    let action = structureProductionResponse(task);
+    let action = structureProductionResponse(task.output_role === "organization_theme" ? { ...task, input: readStructureThemeSession(f.target, task).packet } : task);
     if ("phase" in task.input && task.input.phase === "plan") {
       const plan = action as { themes: Array<Record<string, unknown>> };
       action = { themes: [plan.themes[0], { ...plan.themes[0], ref: "theme:other", question: "What constrains transfer?" }] };
@@ -39,7 +40,7 @@ it("replays the original directory before targeted source revisions and commits 
   if (!("phase" in task.input) || task.input.phase !== "theme") throw Error("missing revision");
   const revision = task.input;
   expect(task.descriptor.kind).toBe("structure_theme");
-  expect(task.descriptor.work_unit_id).toContain("structure:theme:revision:source-time:0-");
+  expect(task.descriptor.work_unit_id).toContain("structure:theme:revision:source-time:work-");
   expect(revision.revision_request).toEqual(readStructureThemeRevisionRequests(f.target.workspace_dir)[0]);
   expect(revision.directory.works.find(w => w.plan.ref === "theme:other"))
     .toEqual(initial.works.find(w => w.plan.ref === "theme:other"));
@@ -65,7 +66,7 @@ it("replays the original directory before targeted source revisions and commits 
   requestStructureThemeRevision(f.target.workspace_dir, { id: "source-condition", theme_ref: revision.ref, issue: "Clarify the timing conditions." });
   task = current();
   if (!("phase" in task.input) || task.input.phase !== "theme") throw Error("missing second revision");
-  expect(task.descriptor.work_unit_id).toContain("structure:theme:revision:source-condition:0-");
+  expect(task.descriptor.work_unit_id).toContain("structure:theme:revision:source-condition:work-");
   expect(task.input.directory.revision!.previous_result).toEqual(result);
   f.submit(task, { kind: "resolve", result });
   expect(f.get().pending_tasks).toEqual([]);

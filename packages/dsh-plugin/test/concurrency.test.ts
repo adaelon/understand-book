@@ -16,6 +16,7 @@ for (const workers of [2, 3] as const) test(`real host ${workers} workers refill
   const children = new Set<string>();
   const handoffs = new Set<string>();
   let first: string | undefined;
+  let firstHandoff: string | undefined;
   let release!: () => void;
   const refill = new Promise<void>(resolve => { release = resolve; });
   let timeout = false;
@@ -27,6 +28,7 @@ for (const workers of [2, 3] as const) test(`real host ${workers} workers refill
       const ref = JSON.stringify(request.messages).match(/abhandoff1_[a-f0-9]{64}/u)![0];
       assert.equal(handoffs.has(ref), false); handoffs.add(ref);
       first ??= request.sessionId;
+      firstHandoff ??= ref;
       if (children.size === 4) release();
     }
     peak = Math.max(peak, h.ctx.agents.list().length - 1);
@@ -71,6 +73,17 @@ for (const workers of [2, 3] as const) test(`real host ${workers} workers refill
     const observations = readdirSync(dir).map(f => JSON.parse(readFileSync(path.join(dir, f), "utf8")));
     assert.equal(observations.length, 4);
     assert.ok(observations.every(o => o.done === "committed"));
+    const timingDirectory = path.join(config.driverRoot, "dispatch-timing", "handoffs");
+    const timings = readdirSync(timingDirectory).map(file => JSON.parse(readFileSync(path.join(timingDirectory, file), "utf8")));
+    assert.equal(timings.length, 4, "replayed live handoffs must not consume another vacancy");
+    assert.deepEqual(new Set(timings.map(item => item.opaque_handoff_ref)), handoffs);
+    assert.equal(timings.filter(item => item.vacancy?.source === "initial_capacity").length, workers);
+    const replacements = timings.filter(item => item.vacancy?.source === "terminal_refill");
+    assert.equal(replacements.length, 4 - workers);
+    assert.equal(new Set(replacements.map(item => item.vacancy.previous_handoff_ref)).size, replacements.length);
+    assert.ok(replacements.every(item => item.vacancy.previous_handoff_ref !== firstHandoff),
+      "the still-live slow child cannot supply a refill vacancy");
+    assert.ok(timings.every(item => Date.parse(item.ready_at) >= Date.parse(item.vacancy.observed_at)));
     const pids = readFileSync(trace, "utf8").trim().split("\n").map(l => JSON.parse(l)).filter(v => v.pid).map(v => v.pid);
     assert.equal(pids.length, 4);
     for (const pid of pids) assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });

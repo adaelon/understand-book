@@ -172,6 +172,7 @@ fn run_one(
             inner: adapter.as_ref(),
             resources: access.resources.clone(),
             owner: owner.clone(),
+            background: true,
             cancellation: cancel.clone(),
             usage: Mutex::new(Default::default()),
             stream: None,

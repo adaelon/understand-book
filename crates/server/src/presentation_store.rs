@@ -229,6 +229,39 @@ impl PresentationStore {
         }
         Ok(saved)
     }
+
+    /// The caller has resolved an existing private retention relation to this
+    /// exact version. Saving its scene does not require the original chat.
+    pub(crate) fn save_retained_state(
+        &self,
+        version: &AgentPresentation,
+        turn_id: &str,
+        state: PresentationState,
+    ) -> Result<PresentationFollowUp, ToolError> {
+        self.read_version(&version.owner, &version.reference)?;
+        let reference = &version.reference;
+        let directory = self.root.join("states").join(&reference.presentation_id).join(reference.revision.to_string());
+        let mut revision = 0;
+        if directory.exists() {
+            for entry in fs::read_dir(&directory).map_err(storage)? {
+                let path = entry.map_err(storage)?.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    let number = path.file_stem().and_then(|s| s.to_str()).and_then(|s| s.parse::<u32>().ok())
+                        .ok_or_else(|| invalid("Invalid stored state revision filename"))?;
+                    revision = revision.max(number);
+                }
+            }
+        }
+        let receipt = PresentationFollowUp {
+            session_id: version.owner.session_id.clone(), turn_id: turn_id.into(), reference: reference.clone(),
+            state_revision: revision.checked_add(1).ok_or_else(|| invalid("State revision overflow"))?,
+            saved_state_ref: new_id("state"),
+        };
+        self.write_private(&directory.join(format!("{}.json", receipt.state_revision)), &SavedPresentationState {
+            receipt: receipt.clone(), owner: version.owner.clone(), state,
+        })?;
+        Ok(receipt)
+    }
     fn read_candidate(
         &self,
         owner: &PresentationOwner,
@@ -492,45 +525,7 @@ impl PrivateBookContext<'_> {
     ) -> Result<PresentationFollowUp, ToolError> {
         let version =
             crate::presentation_api::delivered_version(self, session_id, turn_id, reference)?;
-        let store = PresentationStore::for_user(&self.user)?;
-        let directory = store
-            .root
-            .join("states")
-            .join(&reference.presentation_id)
-            .join(reference.revision.to_string());
-        let mut revision = 0;
-        if directory.exists() {
-            for entry in fs::read_dir(&directory).map_err(storage)? {
-                let path = entry.map_err(storage)?.path();
-                if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    let number = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .and_then(|s| s.parse::<u32>().ok())
-                        .ok_or_else(|| invalid("Invalid stored state revision filename"))?;
-                    revision = revision.max(number);
-                }
-            }
-        }
-        let receipt = PresentationFollowUp {
-            session_id: session_id.into(),
-            turn_id: turn_id.into(),
-            reference: reference.clone(),
-            state_revision: revision
-                .checked_add(1)
-                .ok_or_else(|| invalid("State revision overflow"))?,
-            saved_state_ref: new_id("state"),
-        };
-        let saved = SavedPresentationState {
-            receipt: receipt.clone(),
-            owner: version.owner,
-            state,
-        };
-        store.write_private(
-            &directory.join(format!("{}.json", receipt.state_revision)),
-            &saved,
-        )?;
-        Ok(receipt)
+        PresentationStore::for_user(&self.user)?.save_retained_state(&version, turn_id, state)
     }
 
     pub(crate) fn read_presentation_state(

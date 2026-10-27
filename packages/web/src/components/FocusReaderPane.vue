@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { FocusReader } from '../reader-focus';
 import { FocusPageTurn } from '../reader-focus-turn';
@@ -139,20 +141,20 @@ defineExpose({ move: (direction: number) => turn?.turn(direction), snapshot: () 
 </script>
 
 <template>
-  <section class="focus-reader-body" aria-label="专注正文">
+  <section class="focus-reader-body" :aria-label="uiText('专注正文')">
     <div ref="host" class="focus-reader-surface" @pointerdown="pointerDown" @click="click" @keydown="key"></div>
-    <button class="focus-page-prev" aria-label="上一屏" :disabled="atStart" @click="turn?.turn(-1)">‹</button>
-    <button class="focus-page-next" aria-label="下一屏" :disabled="atEnd" @click="turn?.turn(1)">›</button>
-    <button class="focus-tools-toggle" aria-label="阅读工具" :aria-expanded="toolsOpen" @click="toolsOpen = !toolsOpen">···</button>
+    <button class="focus-page-prev" :aria-label="uiText('上一屏')" :disabled="atStart" @click="turn?.turn(-1)">‹</button>
+    <button class="focus-page-next" :aria-label="uiText('下一屏')" :disabled="atEnd" @click="turn?.turn(1)">›</button>
+    <button class="focus-tools-toggle" :aria-label="uiText('阅读工具')" :aria-expanded="toolsOpen" @click="toolsOpen = !toolsOpen">···</button>
     <button v-if="props.returnLabel" class="focus-reading-return" @click="tool('return')">{{ props.returnLabel }}</button>
-    <nav v-if="toolsOpen" class="focus-tools" aria-label="专注阅读工具">
-      <button @click="tool('outline')">目录</button><button @click="tool('settings')">阅读设置</button>
+    <nav v-if="toolsOpen" class="focus-tools" :aria-label="uiText('专注阅读工具')">
+      <button @click="tool('outline')">{{ uiText('目录') }}</button><button @click="tool('settings')">{{ uiText('阅读设置') }}</button>
       <button v-if="props.surfaceLabel" @click="tool('surface')">{{ props.surfaceLabel }}</button>
-      <button @click="tool('agent')">问答</button><button @click="tool('notes')">笔记</button><button @click="tool('exit')">退出专注</button>
+      <button @click="tool('agent')">{{ uiText('问答') }}</button><button @click="tool('notes')">{{ uiText('笔记') }}</button><button @click="tool('exit')">{{ uiText('退出专注') }}</button>
     </nav>
     <div v-if="state.phase === 'loading' || state.phase === 'waiting' || state.error" class="focus-ready-status" role="status">
-      <template v-if="state.error">书页暂未准备好。<button @click="reader?.retry()">重试</button></template>
-      <template v-else>正在准备书页…</template>
+      <template v-if="state.error">{{ uiText('书页暂未准备好。') }}<button @click="reader?.retry()">{{ uiText('重试') }}</button></template>
+      <template v-else>{{ uiText('正在准备书页…') }}</template>
     </div>
   </section>
 </template>

@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { renderMarkdown } from './md';
 import katexCss from 'katex/dist/katex.min.css?inline';
 import type { ShareDraft } from './reading-share';
@@ -64,17 +65,17 @@ function element(tag: string, text?: string, className?: string): HTMLElement {
 /** Use the reader's Markdown/KaTeX contract; unknown resources must not become empty output. */
 export function shareSections(draft: ShareDraft): HTMLElement[] {
   const parts = draft.source.parts.filter(p => draft.selected.includes(p.id));
-  if (!parts.length) throw new Error('请至少选择一部分内容。');
+  if (!parts.length) throw new Error(uiText('请至少选择一部分内容。'));
   const ordered = draft.layout === 'excerpt' ? [...parts].sort((a, b) => Number(b.id === 'excerpt') - Number(a.id === 'excerpt')) : parts;
   const sections: HTMLElement[] = [];
-  for (const part of [...ordered, ...(draft.reflection.trim() ? [{ label: '我的感想', text: draft.reflection, format: 'plain' }] : [])]) {
+  for (const part of [...ordered, ...(draft.reflection.trim() ? [{ label: uiText('我的感想'), text: draft.reflection, format: 'plain' }] : [])]) {
     const section = element('section');
     section.append(element('div', part.label, 'identity'));
     const body = element('div');
     if (part.format === 'plain') body.append(element('p', part.text));
     else body.innerHTML = renderMarkdown(part.text);
-    if (body.querySelector('img,video,audio,iframe')) throw new Error('所选内容含尚未支持导出的图片或内嵌资源，请返回选材选择文字部分。');
-    if (body.querySelector('.katex-error')) throw new Error('所选公式无法解析，请返回选材检查公式。');
+    if (body.querySelector('img,video,audio,iframe')) throw new Error(uiText('所选内容含尚未支持导出的图片或内嵌资源，请返回选材选择文字部分。'));
+    if (body.querySelector('.katex-error')) throw new Error(uiText('所选公式无法解析，请返回选材检查公式。'));
     section.append(...body.childNodes);
     sections.push(section);
   }
@@ -91,7 +92,7 @@ async function fontsReady(text: string) {
     ]);
     if (faces.some(list => !list.length)) throw new Error('missing font');
     await document.fonts.ready;
-  } catch { throw new Error('中文字体未能加载，请重试预览。分享编辑仍保留。'); }
+  } catch { throw new Error(uiText('中文字体未能加载，请重试预览。分享编辑仍保留。')); }
 }
 
 // Split only at rendered line boundaries. Formulas and table rows remain indivisible.
@@ -149,7 +150,7 @@ export async function paginateShare(draft: ShareDraft) {
   const pages: HTMLElement[] = [];
   let content: HTMLElement, paper: HTMLElement, hero: HTMLElement, sectionContent: HTMLElement, footer: HTMLElement;
   function startSection(label: string) {
-    const reflection = label === '我的感想';
+    const reflection = label === uiText('我的感想');
     sectionContent = element('section', undefined, `share-section${reflection ? ' reflection' : ''}`);
     sectionContent.append(element('div', label, 'identity'));
     (reflection ? content : paper).append(sectionContent);
@@ -164,7 +165,7 @@ export async function paginateShare(draft: ShareDraft) {
     hero = element('div', undefined, 'hero'); paper = element('div', undefined, 'paper');
     hero.append(element('div', undefined, 'light'), paper);
     const caption = element('div', undefined, 'caption');
-    caption.append(element('div', draft.layout === 'recap' ? '本次阅读的已记录事实' : '读到这里，留下一点想法', 'eyebrow'), element('h1', draft.title.trim() || (draft.layout === 'recap' ? '本次阅读回顾' : '阅读随记')));
+    caption.append(element('div', draft.layout === 'recap' ? uiText('本次阅读的已记录事实') : uiText('读到这里，留下一点想法'), 'eyebrow'), element('h1', draft.title.trim() || (draft.layout === 'recap' ? uiText('本次阅读回顾') : uiText('阅读随记'))));
     content.append(hero, caption);
     for (const source of [draft.source.association, ...draft.source.sources].filter(Boolean)) footer.append(element('p', source));
     footer.append(element('p', '01 / 01', 'page-number'));
@@ -205,7 +206,7 @@ export async function paginateShare(draft: ShareDraft) {
       if (fits()) return;
       // Measure in place at the final content width before splitting.
       const pieces = splitBlock(block); block.remove();
-      if (pieces.length === 1) throw new Error('所选表格、公式或内容块无法完整放入一页，请返回选材缩小范围或缩短标题与来源。');
+      if (pieces.length === 1) throw new Error(uiText('所选表格、公式或内容块无法完整放入一页，请返回选材缩小范围或缩短标题与来源。'));
       for (const piece of pieces) {
         const previous = sectionContent.lastElementChild;
         if (piece.matches('table') && previous?.matches('table')) {
@@ -216,7 +217,7 @@ export async function paginateShare(draft: ShareDraft) {
         }
         sectionContent.append(piece);
         if (!fits()) { piece.remove(); if (hasPreviousContent()) continuePage(label); sectionContent.append(piece); }
-        if (!fits()) throw new Error('所选内容行无法完整放入一页，请返回选材缩小范围。');
+        if (!fits()) throw new Error(uiText('所选内容行无法完整放入一页，请返回选材缩小范围。'));
       }
     };
     for (const section of sections) {
@@ -239,7 +240,7 @@ export async function paginateShare(draft: ShareDraft) {
       // Detect actual wide objects before rasterizing, rather than cropping them.
       for (const node of page.querySelectorAll<HTMLElement>('pre,table,.katex,td,th')) {
         if (node.scrollWidth > node.clientWidth + 2 && node.clientWidth > 0 || node.offsetWidth > node.closest('.share-section')!.clientWidth + 2)
-          throw new Error('所选表格、公式或代码过宽，无法完整放入版面，请返回选材缩小范围。');
+          throw new Error(uiText('所选表格、公式或代码过宽，无法完整放入版面，请返回选材缩小范围。'));
       }
     }
     return { pages, dispose: () => host.remove() };
@@ -273,7 +274,7 @@ async function embeddedFonts(text: string, includeMath: boolean): Promise<string
     let text = rule.cssText;
     for (const match of text.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
       const response = await fetch(new URL(match[1], base));
-      if (!response.ok) throw new Error('导出所需字体读取失败，请重试。');
+      if (!response.ok) throw new Error(uiText('导出所需字体读取失败，请重试。'));
       text = text.replace(match[0], `url("${await dataUrl(await response.blob())}")`);
     }
     return text;
@@ -300,9 +301,9 @@ export async function renderShare(draft: ShareDraft): Promise<Blob[]> {
       // Wait for that layout/paint before taking the Canvas snapshot (covered by page-header pixels).
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('当前浏览器无法生成图片。');
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error(uiText('当前浏览器无法生成图片。'));
       ctx.drawImage(image, 0, 0);
-      blobs.push(await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片生成失败，请重试预览。分享编辑仍保留。')), 'image/png')));
+      blobs.push(await new Promise<Blob>((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error(uiText('图片生成失败，请重试预览。分享编辑仍保留。'))), 'image/png')));
     }
     return blobs;
   } finally { result.dispose(); }

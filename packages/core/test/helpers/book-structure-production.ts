@@ -1,3 +1,4 @@
+import { readStructureThemeSession, checkpointStructureThemeAction } from "../../src/book-structure-theme-session";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -45,7 +46,12 @@ export function structureProductionFixture(count = 3, execution_profile?: BuildE
     expect(runAutomaticBuildCloseStage(source, root, prerequisite, { quality_profile: "full" })).toMatchObject({ status: "closed" });
   }
   const get = (retrieval?: BuildRetrievalSelection) => buildAutomaticBuildSnapshot(target, { retrieval, execution_profile }).stages.find(s => s.stage === "book_structure")!;
-  const submit = (task: BookStructureGenerationTaskV1, candidate = structureProductionResponse(task)) => {
+  const submit = (task: BookStructureGenerationTaskV1, candidate?: unknown) => {
+    if (task.output_role === "organization_theme") {
+      const session = readStructureThemeSession(target, task);
+      candidate ??= structureProductionResponse({ ...task, input: session.packet });
+      if (checkpointStructureThemeAction(target, task, `fixture-${session.ordinal}`, session.rendered, candidate) === "continue") return;
+    } else candidate ??= structureProductionResponse(task);
     freezeBookStructureGenerationTask(target, task);
     return writeBookStructureGenerationCandidate({ target, task, candidate,
       provenance: { executor: "bsr5-fixture", attempt: 1, generated_at: "2026-10-01T00:00:00.000Z" } });

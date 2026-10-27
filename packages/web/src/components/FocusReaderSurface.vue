@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { ReaderPagination, type PaginationOptions } from '../reader-pagination';
 import '../reader-pagination.css';
@@ -14,4 +16,4 @@ onMounted(() => {
 onBeforeUnmount(() => pagination?.dispose());
 </script>
 
-<template><section ref="host" class="focus-reader-surface" aria-label="分页正文"></section></template>
+<template><section ref="host" class="focus-reader-surface" :aria-label="uiText('分页正文')"></section></template>

@@ -215,3 +215,30 @@ it("classifies authentication and missing runs without creating or resubmitting"
   expect(complete).toHaveBeenCalledTimes(1);
   wrapper.unmount();
 });
+
+it('merges saved board parts from live events, pending HTTP recovery and cancellation without discarding the live draft', async () => {
+  network.value = { ...network.value, enabled: true };
+  vi.stubGlobal('EventSource', Source);
+  const descriptor = { turn_id: 'turn', book_id: 'book', session_id: 'session' };
+  const first = { board_id: 'board', commit_id: 'part-one', before_revision: 1, after_revision: 2, item_ids: ['answer-one'], block_ids: ['block-one'], origin_session_id: 'session', origin_turn_id: 'turn', parent_item_id: 'point' };
+  const second = { ...first, commit_id: 'part-two', before_revision: 2, after_revision: 3 };
+  const third = { ...first, commit_id: 'part-three', before_revision: 3, after_revision: 4 };
+  const recovery = vi.spyOn(api, 'agentRun').mockResolvedValue(initialRun(descriptor));
+  vi.spyOn(api, 'agentRunCancel').mockResolvedValue({ ...initialRun(descriptor), execution_state: 'cancelling', board_commits: [second, third] });
+  let run!: ReturnType<typeof useAgentRun>;
+  const wrapper = mount(defineComponent({ setup() { run = useAgentRun(vi.fn()); return () => null; } }));
+  run.observe(descriptor); await run.reconcile();
+  const draft = { message_id: 1, revision: 0, operation: 'replace', view: { parts: [{ kind: 'markdown' as const, text: '后续草稿' }], sources: [] } };
+  Source.instances[0].emit('run.snapshot', 8, { ...initialRun(descriptor), last_seq: 8, draft });
+  Source.instances[0].emit('board.committed', 9, { delivery: first });
+  recovery.mockResolvedValue({ ...initialRun(descriptor), board_commits: [first, second] });
+  await run.reconcile();
+  expect(run.snapshot.value?.board_commits).toEqual([first, second]);
+  expect(run.snapshot.value?.draft).toEqual(draft);
+  await run.cancel();
+  expect(run.snapshot.value?.board_commits).toEqual([first, second, third]);
+  expect(run.snapshot.value?.draft).toEqual(draft);
+  Source.instances[0].emit('run.cancelled', 10, { ...initialRun(descriptor), execution_state: 'cancelled', persistence_state: 'saved' });
+  expect(run.snapshot.value?.board_commits).toEqual([first, second, third]);
+  wrapper.unmount();
+});

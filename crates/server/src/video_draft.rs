@@ -82,6 +82,13 @@ pub(crate) fn validate_image(image: &base_schema::VideoQuestionImage) -> Result<
 
 pub(crate) fn for_input(w: &reader_workspace::ReaderWorkspace, user: &user_runtime::UserRuntime, input: &Value) -> Result<Option<VideoQuestionContext>, ToolError> {
     let Some(id) = input.get("video_draft_id").filter(|v| !v.is_null()) else {
+        // An explicit whole-material learning request has no input-time frame.
+        // Its source identity is checked by InteractionInput before admission.
+        if input["entry_action"] == "learn_with_purpose"
+            && input.get("chapter_lid").is_none_or(Value::is_null)
+            && input.get("question_quote").is_none_or(Value::is_null) {
+            return Ok(None);
+        }
         return if w.book_dir.join("video_source_manifest.json").is_file() {
             Err(invalid("A video question needs its input-time draft"))
         } else { Ok(None) };
@@ -93,6 +100,16 @@ pub(crate) fn for_input(w: &reader_workspace::ReaderWorkspace, user: &user_runti
     }
     if draft.context.publication != publication(w)? { return Err(invalid("Draft publication changed")); }
     Ok(Some(draft.context.clone()))
+}
+
+/// A continuation keeps the accepted answer's frame/range, independently of
+/// whatever the player happens to show when the follow-up button is clicked.
+pub(crate) fn for_follow_up(w: &reader_workspace::ReaderWorkspace, turn: &AgentChatTurn) -> Result<Option<VideoQuestionContext>, ToolError> {
+    let Some(question) = &turn.video_question else { return Ok(None); };
+    let (manifest, _) = w.book.load_video_source(&w.book_dir)?;
+    question.validate(&manifest).map_err(|e| invalid(&e))?;
+    if question.publication != publication(w)? { return Err(invalid("Original answer publication changed")); }
+    Ok(Some(question.clone()))
 }
 
 pub(crate) fn load(path: &Option<PathBuf>) -> Drafts {

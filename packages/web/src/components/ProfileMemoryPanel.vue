@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref, watch } from "vue";
 import {
   ArrowLeftRight,
@@ -139,38 +141,38 @@ function operationId(kind: string): string {
 
 function payloadLabel(kind: string): string {
   return {
-    background: "背景",
-    capability: "能力",
-    goal: "目标",
-    explanation_preference: "讲解偏好",
-    constraint: "约束",
-    extension: "扩展",
+    background: uiText('背景'),
+    capability: uiText('能力'),
+    goal: uiText('目标'),
+    explanation_preference: uiText('讲解偏好'),
+    constraint: uiText('约束'),
+    extension: uiText('扩展'),
   }[kind] ?? kind;
 }
 
 function sourceLabel(source: string): string {
   return {
-    user_stated: "用户确认",
-    agent_inferred: "系统推断",
-    deterministic_behavior: "阅读活动",
+    user_stated: uiText('用户确认'),
+    agent_inferred: uiText('系统推断'),
+    deterministic_behavior: uiText('阅读活动'),
   }[source] ?? source;
 }
 
 function statusLabel(status: string): string {
   return {
-    confirmed: "已确认",
-    provisional: "暂定",
-    pending: "待确认",
-    superseded: "已替代",
-    expired: "已失效",
+    confirmed: uiText('已确认'),
+    provisional: uiText('暂定'),
+    pending: uiText('待确认'),
+    superseded: uiText('已替代'),
+    expired: uiText('已失效'),
   }[status] ?? status;
 }
 
 function evidenceLabel(evidence: ProfileEvidence): string {
-  if (evidence.kind === "turn") return `对话 ${evidence.turn_id ?? ""}`.trim();
-  if (evidence.kind === "book_location") return `原文 ${evidence.lid ?? ""}`.trim();
-  if (evidence.kind === "memory_record") return "用户原话";
-  return "来源";
+  if (evidence.kind === "turn") return uiText('对话 {0}', [evidence.turn_id ?? ""]).trim();
+  if (evidence.kind === "book_location") return uiText('原文 {0}', [evidence.lid ?? ""]).trim();
+  if (evidence.kind === "memory_record") return uiText('用户原话');
+  return uiText('来源');
 }
 
 function factEvidence(fact: ProfileFact): ProfileEvidence[] {
@@ -253,7 +255,7 @@ function removeRule(ruleId: string) {
 }
 
 function forgetFact(fact: ProfileFact) {
-  if (!window.confirm("从画像中彻底忘记这条信息？相关纠正记录和证据也会删除。")) return;
+  if (!window.confirm(uiText('从画像中彻底忘记这条信息？相关纠正记录和证据也会删除。'))) return;
   emit("mutate", {
     kind: "forget",
     operation_id: operationId("forget"),
@@ -262,13 +264,13 @@ function forgetFact(fact: ProfileFact) {
 }
 
 function scopeLabel(scope: ProfileScopeTab): string {
-  return scope === "book" ? "这本书" : "所有书籍";
+  return scope === "book" ? uiText('这本书') : uiText('所有书籍');
 }
 
 function ruleScopeLabel(scopeKind: string | null, scopeValue: string | null): string {
-  if (!scopeKind) return "所有范围";
-  if (scopeKind === "global") return "全局";
-  return scopeValue === props.state?.current_book_id ? "本书" : (scopeValue ?? "书籍");
+  if (!scopeKind) return uiText('所有范围');
+  if (scopeKind === "global") return uiText('全局');
+  return scopeValue === props.state?.current_book_id ? uiText('本书') : (scopeValue ?? uiText('书籍'));
 }
 
 function chooseBackfillSession(sessionId: string) {
@@ -294,11 +296,11 @@ function startBackfill() {
 
 function backfillStatusLabel(status: string): string {
   return {
-    queued: "等待中",
-    running: "处理中",
-    retryable: "可重试",
-    cancelled: "已中止",
-    completed: "已完成",
+    queued: uiText('等待中'),
+    running: uiText('处理中'),
+    retryable: uiText('可重试'),
+    cancelled: uiText('已中止'),
+    completed: uiText('已完成'),
   }[status] ?? status;
 }
 
@@ -313,24 +315,24 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
 </script>
 
 <template>
-  <section class="profile-memory-panel" aria-label="读者画像">
+  <section class="profile-memory-panel" :aria-label="uiText('读者画像')">
     <header class="profile-panel-head">
       <div>
-        <p class="profile-kicker">阅读偏好与学习记录</p>
-        <h3>助手记住了什么</h3>
+        <p class="profile-kicker">{{ uiText('阅读偏好与学习记录') }}</p>
+        <h3>{{ uiText('助手记住了什么') }}</h3>
       </div>
       <button
         class="profile-icon-button"
         type="button"
-        title="刷新画像"
-        aria-label="刷新画像"
+        :title="uiText('刷新画像')"
+        :aria-label="uiText('刷新画像')"
         :disabled="props.loading || props.busy"
         @click="emit('refresh')"
       >
         <RefreshCw :size="16" :class="{ spinning: props.loading }" aria-hidden="true" />
       </button>
     </header>
-    <p class="profile-intro">这些记录帮助助手更了解你。记错了可以纠正，也可以让它忘记。</p>
+    <p class="profile-intro">{{ uiText('这些记录帮助助手更了解你。记错了可以纠正，也可以让它忘记。') }}</p>
 
 
 
@@ -346,34 +348,32 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
 
     <div v-if="props.state?.status.pending_sensitive_confirmation" class="sensitive-confirmation">
       <ShieldAlert :size="18" aria-hidden="true" />
-      <strong>敏感画像等待确认</strong>
+      <strong>{{ uiText('敏感画像等待确认') }}</strong>
       <button type="button" :disabled="props.busy" @click="emit('confirm-sensitive')">
-        <Check :size="15" aria-hidden="true" />
-        确认本地保存
-      </button>
+        <Check :size="15" aria-hidden="true" /> {{ uiText('确认本地保存') }} </button>
     </div>
 
 
 
     <section v-if="pendingCandidates.length" class="pending-section">
       <div class="profile-section-head">
-        <h4>待确认</h4>
+        <h4>{{ uiText('待确认') }}</h4>
         <span>{{ pendingCandidates.length }}</span>
       </div>
       <article v-for="fact in pendingCandidates" :key="fact.fact_id" class="pending-fact">
         <div class="fact-heading">
           <div>
             <small>
-              <span v-if="fact.capture === 'historical_backfill'">历史对话 · </span>
+              <span v-if="fact.capture === 'historical_backfill'">{{ uiText('历史对话 ·') }} </span>
               {{ payloadLabel(fact.payload_kind) }}
             </small>
             <strong>{{ fact.payload_value }}</strong>
           </div>
-          <span v-if="fact.scope_kind === 'global'" class="scope-chip">全局</span>
+          <span v-if="fact.scope_kind === 'global'" class="scope-chip">{{ uiText('全局') }}</span>
         </div>
-        <details class="fact-detail"><summary>记录详情</summary><p>记录项：{{ fact.payload_key }}</p></details>
+        <details class="fact-detail"><summary>{{ uiText('记录详情') }}</summary><p>{{ uiText('记录项：') }}{{ fact.payload_key }}</p></details>
         <details v-if="factEvidence(fact).length" class="fact-evidence">
-          <summary>来源 {{ factEvidence(fact).length }}</summary>
+          <summary>{{ uiText('来源') }} {{ factEvidence(fact).length }}</summary>
           <ul>
             <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
               <button
@@ -392,18 +392,14 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
         </details>
         <div class="pending-actions">
           <button type="button" :disabled="props.busy" @click="confirmCandidate(fact)">
-            <Check :size="15" aria-hidden="true" />
-            确认
-          </button>
+            <Check :size="15" aria-hidden="true" /> {{ uiText('确认') }} </button>
           <button type="button" class="secondary" :disabled="props.busy" @click="rejectCandidate(fact)">
-            <X :size="15" aria-hidden="true" />
-            忽略
-          </button>
+            <X :size="15" aria-hidden="true" /> {{ uiText('忽略') }} </button>
         </div>
       </article>
     </section>
 
-    <div class="scope-tabs" role="tablist" aria-label="画像范围">
+    <div class="scope-tabs" role="tablist" :aria-label="uiText('画像范围')">
       <button
         v-for="scope in (['book', 'global'] as ProfileScopeTab[])"
         :key="scope"
@@ -418,9 +414,9 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
       </button>
     </div>
 
-    <div v-if="props.loading && !props.state" class="profile-empty">正在读取画像...</div>
+    <div v-if="props.loading && !props.state" class="profile-empty">{{ uiText('正在读取画像...') }}</div>
     <div v-else-if="!activeFacts.length" class="profile-empty">
-      {{ activeScope === "book" ? "还没有记住这本书中的阅读偏好。继续阅读和对话后，可以在这里查看。" : "还没有跨书通用的偏好记录。" }}
+      {{ activeScope === "book" ? uiText('还没有记住这本书中的阅读偏好。继续阅读和对话后，可以在这里查看。') : uiText('还没有跨书通用的偏好记录。') }}
     </div>
     <div v-else class="fact-list">
       <article v-for="fact in activeFacts" :key="fact.fact_id" class="profile-fact-card">
@@ -433,30 +429,26 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
         </div>
 
         <div v-if="editingFactId === fact.fact_id" class="fact-editor">
-          <textarea v-model="editValue" rows="3" aria-label="画像内容" @keydown.ctrl.enter="saveEdit(fact)" />
+          <textarea v-model="editValue" rows="3" :aria-label="uiText('画像内容')" @keydown.ctrl.enter="saveEdit(fact)" />
           <div>
             <button type="button" :disabled="props.busy || !editValue.trim()" @click="saveEdit(fact)">
-              <Save :size="15" aria-hidden="true" />
-              保存
-            </button>
+              <Save :size="15" aria-hidden="true" /> {{ uiText('保存') }} </button>
             <button type="button" class="secondary" @click="cancelEdit">
-              <X :size="15" aria-hidden="true" />
-              取消
-            </button>
+              <X :size="15" aria-hidden="true" /> {{ uiText('取消') }} </button>
           </div>
         </div>
 
         <div class="fact-meta">
           <span>{{ sourceLabel(fact.source) }}</span>
-          <span v-if="fact.sensitivity === 'sensitive'" class="sensitive-chip">敏感</span>
+          <span v-if="fact.sensitivity === 'sensitive'" class="sensitive-chip">{{ uiText('敏感') }}</span>
           <span v-if="fact.applicability_kind !== 'any'">
             {{ fact.applicability_value ?? fact.applicability_kind }}
           </span>
         </div>
 
-        <details class="fact-detail"><summary>记录详情</summary><p>记录项：{{ fact.payload_key }}</p></details>
+        <details class="fact-detail"><summary>{{ uiText('记录详情') }}</summary><p>{{ uiText('记录项：') }}{{ fact.payload_key }}</p></details>
         <details v-if="factEvidence(fact).length" class="fact-evidence">
-          <summary>来源 {{ factEvidence(fact).length }}</summary>
+          <summary>{{ uiText('来源') }} {{ factEvidence(fact).length }}</summary>
           <ul>
             <li v-for="evidence in factEvidence(fact)" :key="evidence.evidence_id">
               <button
@@ -478,46 +470,46 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
           <button
             type="button"
             class="profile-icon-button"
-            title="纠正"
-            aria-label="纠正"
+            :title="uiText('纠正')"
+            :aria-label="uiText('纠正')"
             :disabled="props.busy"
             @click="startEdit(fact)"
-          ><Pencil :size="15" aria-hidden="true" /><span>纠正</span></button>
-          <details class="fact-more"><summary>更多</summary>
+          ><Pencil :size="15" aria-hidden="true" /><span>{{ uiText('纠正') }}</span></button>
+          <details class="fact-more"><summary>{{ uiText('更多') }}</summary>
           <button
             type="button"
             class="profile-icon-button"
-            :title="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
-            :aria-label="fact.scope_kind === 'global' ? '改为仅本书' : '改为全局'"
+            :title="fact.scope_kind === 'global' ? uiText('改为仅本书') : uiText('改为全局')"
+            :aria-label="fact.scope_kind === 'global' ? uiText('改为仅本书') : uiText('改为全局')"
             :disabled="props.busy"
             @click="changeScope(fact)"
-          ><ArrowLeftRight :size="15" aria-hidden="true" /><span>{{ fact.scope_kind === "global" ? "仅用于这本书" : "用于所有书" }}</span></button>
+          ><ArrowLeftRight :size="15" aria-hidden="true" /><span>{{ fact.scope_kind === "global" ? uiText('仅用于这本书') : uiText('用于所有书') }}</span></button>
           <button
             type="button"
             class="profile-icon-button"
-            title="不再自动收集同类信息"
-            aria-label="不再自动收集同类信息"
+            :title="uiText('不再自动收集同类信息')"
+            :aria-label="uiText('不再自动收集同类信息')"
             :disabled="props.busy"
             @click="stopCollecting(fact)"
-          ><CircleOff :size="15" aria-hidden="true" /><span>停止收集同类信息</span></button>
+          ><CircleOff :size="15" aria-hidden="true" /><span>{{ uiText('停止收集同类信息') }}</span></button>
           </details>
           <button
             type="button"
             class="profile-icon-button danger"
-            title="忘记"
-            aria-label="忘记"
+            :title="uiText('忘记')"
+            :aria-label="uiText('忘记')"
             :disabled="props.busy"
             @click="forgetFact(fact)"
-          ><Trash2 :size="15" aria-hidden="true" /><span>忘记</span></button>
+          ><Trash2 :size="15" aria-hidden="true" /><span>{{ uiText('忘记') }}</span></button>
         </div>
       </article>
     </div>
 
     <details class="profile-backfill">
       <summary>
-        <span><History :size="15" aria-hidden="true" />从以前的对话整理</span>
-        <small v-if="activeBackfillJobs">进行中 {{ activeBackfillJobs }}</small>
-        <small v-else-if="backfillJobs.length">任务 {{ backfillJobs.length }}</small>
+        <span><History :size="15" aria-hidden="true" />{{ uiText('从以前的对话整理') }}</span>
+        <small v-if="activeBackfillJobs">{{ uiText('进行中') }} {{ activeBackfillJobs }}</small>
+        <small v-else-if="backfillJobs.length">{{ uiText('任务') }} {{ backfillJobs.length }}</small>
       </summary>
 
       <p v-if="props.backfillError" class="profile-message error" role="alert">
@@ -527,11 +519,11 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
         {{ props.backfillNotice }}
       </p>
 
-      <div v-if="props.backfillLoading && !props.backfill" class="profile-empty">正在读取历史会话...</div>
-      <div v-else-if="!props.backfill?.sessions.length" class="profile-empty">暂无可整理的历史对话。</div>
+      <div v-if="props.backfillLoading && !props.backfill" class="profile-empty">{{ uiText('正在读取历史会话...') }}</div>
+      <div v-else-if="!props.backfill?.sessions.length" class="profile-empty">{{ uiText('暂无可整理的历史对话。') }}</div>
       <form v-else class="backfill-form" @submit.prevent="startBackfill">
         <label class="backfill-session-field">
-          <span>会话</span>
+          <span>{{ uiText('会话') }}</span>
           <select
             :value="selectedBackfillSessionId"
             :disabled="props.backfillBusy"
@@ -542,13 +534,12 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
               :key="session.session_id"
               :value="session.session_id"
             >
-              {{ session.title }} · {{ session.latest_user_turn_ordinal }} 回合
-            </option>
+              {{ session.title }} · {{ session.latest_user_turn_ordinal }} {{ uiText('回合') }} </option>
           </select>
         </label>
         <div class="backfill-range">
           <label>
-            <span>起始回合</span>
+            <span>{{ uiText('起始回合') }}</span>
             <input
               v-model.number="backfillStartTurn"
               type="number"
@@ -558,7 +549,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
             />
           </label>
           <label>
-            <span>结束回合</span>
+            <span>{{ uiText('结束回合') }}</span>
             <input
               v-model.number="backfillEndTurn"
               type="number"
@@ -574,9 +565,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
           :disabled="props.backfillBusy || !selectedBackfillSession"
         >
           <RefreshCw v-if="props.backfillBusy" :size="15" class="spinning" aria-hidden="true" />
-          <Play v-else :size="15" aria-hidden="true" />
-          整理这段对话
-        </button>
+          <Play v-else :size="15" aria-hidden="true" /> {{ uiText('整理这段对话') }} </button>
       </form>
 
       <ol v-if="backfillJobs.length" class="backfill-job-list">
@@ -584,7 +573,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
           <div class="backfill-job-head">
             <div>
               <strong>{{ backfillSessionTitle(job) }}</strong>
-              <span>回合 {{ job.from_turn_exclusive + 1 }}-{{ job.to_turn_inclusive }}</span>
+              <span>{{ uiText('回合') }} {{ job.from_turn_exclusive + 1 }}-{{ job.to_turn_inclusive }}</span>
             </div>
             <span class="backfill-status" :data-status="job.status">
               {{ backfillStatusLabel(job.status) }}
@@ -594,9 +583,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
             <progress :value="job.completed_turns" :max="Math.max(1, job.total_turns)"></progress>
             <span>{{ job.completed_turns }}/{{ job.total_turns }}</span>
           </div>
-          <p v-if="job.candidate_fact_ids.length" class="backfill-candidates">
-            待确认 {{ job.candidate_fact_ids.length }} 条
-          </p>
+          <p v-if="job.candidate_fact_ids.length" class="backfill-candidates"> {{ uiText('待确认') }} {{ job.candidate_fact_ids.length }} {{ uiText('条') }} </p>
           <p v-if="job.last_error" class="backfill-job-error" role="alert">
             {{ job.last_error.message }}
           </p>
@@ -605,8 +592,8 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
               v-if="job.status === 'queued' || job.status === 'running'"
               type="button"
               class="profile-icon-button"
-              title="中止历史回填"
-              aria-label="中止历史回填"
+              :title="uiText('中止历史回填')"
+              :aria-label="uiText('中止历史回填')"
               :disabled="props.backfillBusy"
               @click="mutateBackfill('cancel', job.job_id)"
             ><Square :size="14" aria-hidden="true" /></button>
@@ -614,8 +601,8 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
               v-if="job.status === 'retryable' || job.status === 'cancelled'"
               type="button"
               class="profile-icon-button"
-              title="继续历史回填"
-              aria-label="继续历史回填"
+              :title="uiText('继续历史回填')"
+              :aria-label="uiText('继续历史回填')"
               :disabled="props.backfillBusy"
               @click="mutateBackfill('retry', job.job_id)"
             ><RotateCcw :size="15" aria-hidden="true" /></button>
@@ -623,8 +610,8 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
               v-if="job.status !== 'queued' && job.status !== 'running'"
               type="button"
               class="profile-icon-button danger"
-              title="清除回填任务与未确认候选"
-              aria-label="清除回填任务与未确认候选"
+              :title="uiText('清除回填任务与未确认候选')"
+              :aria-label="uiText('清除回填任务与未确认候选')"
               :disabled="props.backfillBusy"
               @click="mutateBackfill('clear', job.job_id)"
             ><Trash2 :size="15" aria-hidden="true" /></button>
@@ -633,20 +620,19 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
       </ol>
     </details>
 
-    <details class="profile-sync"><summary>同步详情</summary>
+    <details class="profile-sync"><summary>{{ uiText('同步详情') }}</summary>
     <div v-if="props.state" class="profile-status-row">
       <span class="profile-status" :data-status="props.state.status.profile_status">
-        {{ props.state.status.profile_status === "current" ? "已同步" : "待刷新" }}
+        {{ props.state.status.profile_status === "current" ? uiText('已同步') : uiText('待刷新') }}
       </span>
-      <span>版本 {{ props.state.status.document_revision }}</span>
-      <span v-if="props.state.status.pending_review_jobs">
-        后台整理 {{ props.state.status.pending_review_jobs }}
+      <span>{{ uiText('版本') }} {{ props.state.status.document_revision }}</span>
+      <span v-if="props.state.status.pending_review_jobs"> {{ uiText('后台整理') }} {{ props.state.status.pending_review_jobs }}
       </span>
     </div>
     </details>
 
     <details v-if="historicalFacts.length" class="profile-history">
-      <summary>历史记录 {{ historicalFacts.length }}</summary>
+      <summary>{{ uiText('历史记录') }} {{ historicalFacts.length }}</summary>
       <ul>
         <li v-for="fact in historicalFacts" :key="fact.fact_id">
           <span>{{ statusLabel(fact.status) }}</span>
@@ -657,7 +643,7 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
     </details>
 
     <details v-if="collectionRules.length" class="collection-rules">
-      <summary>自动收集规则 {{ collectionRules.length }}</summary>
+      <summary>{{ uiText('自动收集规则') }} {{ collectionRules.length }}</summary>
       <ul>
         <li v-for="rule in collectionRules" :key="rule.rule_id">
           <div>
@@ -667,8 +653,8 @@ function mutateBackfill(action: "cancel" | "retry" | "clear", jobId: string) {
           <button
             type="button"
             class="profile-icon-button"
-            title="移除规则"
-            aria-label="移除规则"
+            :title="uiText('移除规则')"
+            :aria-label="uiText('移除规则')"
             :disabled="props.busy"
             @click="removeRule(rule.rule_id)"
           ><X :size="15" aria-hidden="true" /></button>

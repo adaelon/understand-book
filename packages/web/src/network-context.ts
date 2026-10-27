@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { shallowReactive, shallowRef } from 'vue';
 import { ApiError } from './api';
 
@@ -18,6 +19,7 @@ export interface ChatDraft {
 export const submittedRunDrafts = shallowReactive(new Map<string, ChatDraft>());
 export interface NetworkIdentity {
   user_id: string;
+  is_guest?: boolean;
   email?: string | null;
   csrf_token: string;
   capabilities?: { admin?: boolean; presentation: { authoring: boolean; reason: string } };
@@ -113,7 +115,7 @@ export function bindSceneApi<T extends object>(api: T, scopeKey = sceneKey): T {
     const value = Reflect.get(target, property);
     if (typeof value !== 'function') return value;
     return (...args: unknown[]) => {
-      if (network.value.enabled && scopeKey() !== key) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
+      if (network.value.enabled && scopeKey() !== key) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
       return Reflect.apply(value, target, args);
     };
   } });

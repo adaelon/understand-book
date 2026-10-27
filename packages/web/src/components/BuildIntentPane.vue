@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText, formatLocale } from '../i18n';
+
 import { Check, RefreshCw, X, XCircle } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import type {
@@ -37,16 +39,16 @@ watch(
 );
 
 const modeOptions: Array<{ id: BuildIntentMode; label: string; description: string }> = [
-  { id: "read_now", label: "直接阅读", description: "使用现有资料，马上开始阅读与提问。" },
-  { id: "standard_deep", label: "深入理解", description: "补充段落理解与章节关联，帮助系统地读懂材料。" },
-  { id: "goal_directed", label: "围绕目标整理", description: "说明你想解决的问题，准备相应的摘要、关系图或对照表。" },
+  { id: "read_now", label: uiText('直接阅读'), description: uiText('使用现有资料，马上开始阅读与提问。') },
+  { id: "standard_deep", label: uiText('深入理解'), description: uiText('补充段落理解与章节关联，帮助系统地读懂材料。') },
+  { id: "goal_directed", label: uiText('围绕目标整理'), description: uiText('说明你想解决的问题，准备相应的摘要、关系图或对照表。') },
 ];
 
 const planningSourceLabels: Record<BuildPlanningSource, string> = {
-  reader_provider: "Reader 本地模型",
+  reader_provider: uiText('Reader 本地模型'),
   codex: "Codex",
-  deterministic: "确定性系统方案",
-  stored_plan: "已有方案",
+  deterministic: uiText('确定性系统方案'),
+  stored_plan: uiText('已有方案'),
 };
 
 const planningSourceLabel = computed(() => (
@@ -54,25 +56,25 @@ const planningSourceLabel = computed(() => (
 ));
 
 const artifactLabels: Record<IntentArtifactType, string> = {
-  timeline: "时间线",
-  concept_map: "概念图",
-  comparison_table: "比较表",
-  argument_map: "论证图",
+  timeline: uiText('时间线'),
+  concept_map: uiText('概念图'),
+  comparison_table: uiText('比较表'),
+  argument_map: uiText('论证图'),
 };
 
 const buildItemLabels: Record<string, string> = {
-  "public.foundation": "当前阅读基础",
-  "public.pass1": "段落理解",
-  "public.profile_sidecar": "阅读视角",
-  "public.pass2": "跨章节关联",
-  "public.book_structure": "全书结构",
-  "public.paper_metadata": "论文信息",
-  "public.paper_lexicon": "术语索引",
-  "public.paper_reading_guide": "论文阅读路径",
-  "private.timeline": "时间线",
-  "private.concept_map": "概念图",
-  "private.comparison_table": "比较表",
-  "private.argument_map": "论证图",
+  "public.foundation": uiText('当前阅读基础'),
+  "public.pass1": uiText('段落理解'),
+  "public.profile_sidecar": uiText('阅读视角'),
+  "public.pass2": uiText('跨章节关联'),
+  "public.book_structure": uiText('全书结构'),
+  "public.paper_metadata": uiText('论文信息'),
+  "public.paper_lexicon": uiText('术语索引'),
+  "public.paper_reading_guide": uiText('论文阅读路径'),
+  "private.timeline": uiText('时间线'),
+  "private.concept_map": uiText('概念图'),
+  "private.comparison_table": uiText('比较表'),
+  "private.argument_map": uiText('论证图'),
 };
 
 const plan = computed(() => props.selection?.plan ?? null);
@@ -95,16 +97,16 @@ const canConfirm = computed(() => Boolean(
 const scopeText = computed(() => {
   const scope = props.selection?.intent?.source_scope
     ?? currentPlan.value?.private_artifacts[0]?.source_scope;
-  if (!scope || scope.whole_book) return "全书";
+  if (!scope || scope.whole_book) return uiText('全书');
   const parts: string[] = [];
-  if (scope.lids.length) parts.push(`${scope.lids.length} 个位置`);
-  if (scope.sections.length) parts.push(`${scope.sections.length} 个章节`);
-  return parts.join("，") || "当前范围";
+  if (scope.lids.length) parts.push(uiText('{0} 个位置', [scope.lids.length]));
+  if (scope.sections.length) parts.push(uiText('{0} 个章节', [scope.sections.length]));
+  return parts.join("，") || uiText('当前范围');
 });
 
 function friendlyBuildItem(value: string): string {
-  if (value.startsWith("private.artifact-")) return "目标产物";
-  return buildItemLabels[value] ?? "其他阅读产物";
+  if (value.startsWith("private.artifact-")) return uiText('目标产物');
+  return buildItemLabels[value] ?? uiText('其他阅读产物');
 }
 
 function artifactLabel(value: IntentArtifactType): string {
@@ -122,44 +124,44 @@ function artifactTitle(artifact: PlanArtifact): string {
 }
 
 function artifactPurpose(artifact: PlanArtifact): string {
-  return isBlueprintArtifact(artifact) ? artifact.blueprint.purpose : "按已确认目标生成的证据型阅读产物。";
+  return isBlueprintArtifact(artifact) ? artifact.blueprint.purpose : uiText('按已确认目标生成的证据型阅读产物。');
 }
 
 function artifactShape(artifact: PlanArtifact): string {
-  if (!isBlueprintArtifact(artifact)) return "内置结构";
+  if (!isBlueprintArtifact(artifact)) return uiText('内置结构');
   const labels: Record<BuildPlanV2["private_artifacts"][number]["blueprint"]["shape"], string> = {
-    collection: "集合",
-    table: "表格",
-    graph: "关系图",
-    sequence: "序列",
-    document: "文档",
+    collection: uiText('集合'),
+    table: uiText('表格'),
+    graph: uiText('关系图'),
+    sequence: uiText('序列'),
+    document: uiText('文档'),
   };
   return labels[artifact.blueprint.shape];
 }
 
 function artifactFields(artifact: PlanArtifact): string {
-  if (!isBlueprintArtifact(artifact)) return "由内置合同定义";
-  return Object.keys(artifact.blueprint.record_schema.properties).join("、") || "无正文栏位";
+  if (!isBlueprintArtifact(artifact)) return uiText('由内置合同定义');
+  return Object.keys(artifact.blueprint.record_schema.properties).join("、") || uiText('无正文栏位');
 }
 
 function artifactOrigin(artifact: PlanArtifact): string {
-  if (!isBlueprintArtifact(artifact)) return "系统预设（V1 适配）";
+  if (!isBlueprintArtifact(artifact)) return uiText('系统预设（V1 适配）');
   return {
-    system: "系统预设",
-    user_private: "私有复用",
-    one_off: "本次设计",
+    system: uiText('系统预设'),
+    user_private: uiText('私有复用'),
+    one_off: uiText('本次设计'),
   }[artifact.blueprint.origin];
 }
 
 function artifactCost(artifact: PlanArtifact): string {
-  if (!isBlueprintArtifact(artifact)) return "计入方案总预算";
+  if (!isBlueprintArtifact(artifact)) return uiText('计入方案总预算');
   const { max_records, max_relations, max_text_chars } = artifact.blueprint.limits;
-  const relationText = max_relations ? `，最多 ${numberText(max_relations)} 条关系` : "";
-  return `最多 ${numberText(max_records)} 条记录${relationText}，正文 ${numberText(max_text_chars)} 字符`;
+  const relationText = max_relations ? uiText('，最多 {0} 条关系', [numberText(max_relations)]) : "";
+  return uiText('最多 {0} 条记录{1}，正文 {2} 字符', [numberText(max_records), relationText, numberText(max_text_chars)]);
 }
 
 function numberText(value: number): string {
-  return new Intl.NumberFormat("zh-CN").format(value);
+  return new Intl.NumberFormat(formatLocale()).format(value);
 }
 
 function tokenText(estimate: BuildPlanV1["estimate"] | BuildPlanV2["estimate"]): string {
@@ -170,9 +172,9 @@ function tokenText(estimate: BuildPlanV1["estimate"] | BuildPlanV2["estimate"]):
 
 function wallText(estimate: BuildPlanV1["estimate"] | BuildPlanV2["estimate"]): string {
   const { p50, p95, confidence } = estimate.wall_clock_minutes;
-  if (confidence === "none" || p50 === undefined) return "暂无法估计";
-  if (p95 === undefined || p95 === p50) return `约 ${numberText(p50)} 分钟`;
-  return `约 ${numberText(p50)}–${numberText(p95)} 分钟`;
+  if (confidence === "none" || p50 === undefined) return uiText('暂无法估计');
+  if (p95 === undefined || p95 === p50) return uiText('约 {0} 分钟', [numberText(p50)]);
+  return uiText('约 {0}–{1} 分钟', [numberText(p50), numberText(p95)]);
 }
 
 function draft() {
@@ -204,19 +206,19 @@ function reject() {
 </script>
 
 <template>
-  <aside class="build-intent-pane" role="complementary" aria-label="准备阅读资料">
+  <aside class="build-intent-pane" role="complementary" :aria-label="uiText('准备阅读资料')">
     <header class="pane-head">
       <div>
-        <p>让资料适合这次阅读</p>
-        <h2>准备阅读资料</h2>
+        <p>{{ uiText('让资料适合这次阅读') }}</p>
+        <h2>{{ uiText('准备阅读资料') }}</h2>
       </div>
-      <button data-action="close" class="icon-button" title="关闭阅读准备" aria-label="关闭阅读准备" @click="emit('close')">
+      <button data-action="close" class="icon-button" :title="uiText('关闭阅读准备')" :aria-label="uiText('关闭阅读准备')" @click="emit('close')">
         <X :size="18" aria-hidden="true" />
       </button>
     </header>
 
     <div class="pane-scroll">
-      <div class="mode-control" role="group" aria-label="阅读方式">
+      <div class="mode-control" role="group" :aria-label="uiText('阅读方式')">
         <button
           v-for="option in modeOptions"
           :key="option.id"
@@ -229,12 +231,12 @@ function reject() {
       </div>
 
       <label v-if="mode === 'goal_directed'" class="goal-field">
-        <span>阅读目标</span>
-        <textarea v-model="goal" rows="4" :disabled="props.busy" placeholder="例如：比较两种方法，并整理可引用的差异" />
+        <span>{{ uiText('阅读目标') }}</span>
+        <textarea v-model="goal" rows="4" :disabled="props.busy" :placeholder="uiText('例如：比较两种方法，并整理可引用的差异')" />
       </label>
 
       <p v-if="props.error" class="pane-error">{{ props.error }}</p>
-      <p v-if="selectionDirty" class="pane-notice">设置已变更，确认前需更新方案。</p>
+      <p v-if="selectionDirty" class="pane-notice">{{ uiText('设置已变更，确认前需更新方案。') }}</p>
 
       <button
         data-action="draft"
@@ -243,47 +245,46 @@ function reject() {
         @click="draft"
       >
         <RefreshCw :size="16" aria-hidden="true" />
-        <span v-if="props.busy">处理中</span>
-        <span v-else-if="mode === 'read_now'">使用现有资料</span>
-        <span v-else-if="selectionDirty">更新方案</span>
-        <span v-else>预览方案</span>
+        <span v-if="props.busy">{{ uiText('处理中') }}</span>
+        <span v-else-if="mode === 'read_now'">{{ uiText('使用现有资料') }}</span>
+        <span v-else-if="selectionDirty">{{ uiText('更新方案') }}</span>
+        <span v-else>{{ uiText('预览方案') }}</span>
       </button>
 
       <section v-if="props.selection?.mode === 'read_now' && !selectionDirty" class="plan-section read-now-state">
-        <strong>可以直接开始阅读</strong>
-        <span>现有资料已可用，关闭此面板即可继续阅读。</span>
+        <strong>{{ uiText('可以直接开始阅读') }}</strong>
+        <span>{{ uiText('现有资料已可用，关闭此面板即可继续阅读。') }}</span>
       </section>
 
       <template v-if="currentPlan">
         <section class="plan-section estimate-section">
           <div class="section-heading">
-            <h3>预计投入</h3>
-            <span :data-status="currentPlan.status">{{ currentPlan.status === "confirmed" ? "已确认" : "待确认" }}</span>
+            <h3>{{ uiText('预计投入') }}</h3>
+            <span :data-status="currentPlan.status">{{ currentPlan.status === "confirmed" ? uiText('已确认') : uiText('待确认') }}</span>
           </div>
           <dl class="estimate-grid">
             <div>
-              <dt>时间</dt>
+              <dt>{{ uiText('时间') }}</dt>
               <dd>{{ wallText(currentPlan.estimate) }}</dd>
             </div>
             <div>
-              <dt>范围</dt>
+              <dt>{{ uiText('范围') }}</dt>
               <dd>{{ scopeText }}</dd>
             </div>
           </dl>
-          <details class="plan-details"><summary>估算详情</summary>
-            <p v-if="planningSourceLabel" class="planning-source" :data-planning-source="props.planningSource">规划来源：{{ planningSourceLabel }}</p>
+          <details class="plan-details"><summary>{{ uiText('估算详情') }}</summary>
+            <p v-if="planningSourceLabel" class="planning-source" :data-planning-source="props.planningSource">{{ uiText('规划来源：') }}{{ planningSourceLabel }}</p>
             <dl class="estimate-grid">
-              <div><dt>模型用量（Token）</dt><dd>{{ tokenText(currentPlan.estimate) }}</dd></div>
-              <div><dt>估计完整度</dt><dd>{{ Math.round(Math.min(currentPlan.estimate.input_tokens.coverage, currentPlan.estimate.output_tokens.coverage) * 100) }}%</dd></div>
+              <div><dt>{{ uiText('模型用量（Token）') }}</dt><dd>{{ tokenText(currentPlan.estimate) }}</dd></div>
+              <div><dt>{{ uiText('估计完整度') }}</dt><dd>{{ Math.round(Math.min(currentPlan.estimate.input_tokens.coverage, currentPlan.estimate.output_tokens.coverage) * 100) }}%</dd></div>
             </dl>
           <p v-if="currentPlan.estimate.unknown_stages.length" class="unknown-estimate">
-            {{ currentPlan.estimate.unknown_stages.length }} 项暂无历史样本
-          </p>
+            {{ currentPlan.estimate.unknown_stages.length }} {{ uiText('项暂无历史样本') }} </p>
           </details>
         </section>
 
         <section v-if="currentPlan.private_artifacts.length" class="plan-section">
-          <h3>准备好后，你会得到</h3>
+          <h3>{{ uiText('准备好后，你会得到') }}</h3>
           <ul class="plan-list artifact-list">
             <li
               v-for="artifact in currentPlan.private_artifacts"
@@ -293,14 +294,14 @@ function reject() {
             >
               <div class="artifact-heading">
                 <strong>{{ artifactTitle(artifact) }}</strong>
-                <span>{{ artifact.source_scope.whole_book ? "全书" : scopeText }}</span>
+                <span>{{ artifact.source_scope.whole_book ? uiText('全书') : scopeText }}</span>
               </div>
               <p>{{ artifactPurpose(artifact) }}</p>
-              <details class="plan-details"><summary>格式与用量上限</summary><dl class="artifact-contract">
-                <div><dt>形态</dt><dd>{{ artifactShape(artifact) }}</dd></div>
-                <div><dt>关键字段</dt><dd>{{ artifactFields(artifact) }}</dd></div>
-                <div><dt>来源</dt><dd>{{ artifactOrigin(artifact) }}</dd></div>
-                <div><dt>成本上限</dt><dd>{{ artifactCost(artifact) }}</dd></div>
+              <details class="plan-details"><summary>{{ uiText('格式与用量上限') }}</summary><dl class="artifact-contract">
+                <div><dt>{{ uiText('形态') }}</dt><dd>{{ artifactShape(artifact) }}</dd></div>
+                <div><dt>{{ uiText('关键字段') }}</dt><dd>{{ artifactFields(artifact) }}</dd></div>
+                <div><dt>{{ uiText('来源') }}</dt><dd>{{ artifactOrigin(artifact) }}</dd></div>
+                <div><dt>{{ uiText('成本上限') }}</dt><dd>{{ artifactCost(artifact) }}</dd></div>
               </dl></details>
             </li>
           </ul>
@@ -308,24 +309,24 @@ function reject() {
 
         <section class="plan-section change-section">
           <div>
-            <h3>沿用</h3>
+            <h3>{{ uiText('沿用') }}</h3>
             <ul class="plan-list compact">
               <li v-for="item in currentPlan.reuse" :key="item.artifact">{{ friendlyBuildItem(item.artifact) }}</li>
-              <li v-if="!currentPlan.reuse.length">无</li>
+              <li v-if="!currentPlan.reuse.length">{{ uiText('无') }}</li>
             </ul>
           </div>
           <div>
-            <h3>新建</h3>
+            <h3>{{ uiText('新建') }}</h3>
             <ul class="plan-list compact">
               <li v-for="item in currentPlan.create" :key="item">{{ friendlyBuildItem(item) }}</li>
-              <li v-if="!currentPlan.create.length">无</li>
+              <li v-if="!currentPlan.create.length">{{ uiText('无') }}</li>
             </ul>
           </div>
           <div>
-            <h3>不包含</h3>
+            <h3>{{ uiText('不包含') }}</h3>
             <ul class="plan-list compact">
               <li v-for="item in currentPlan.excluded" :key="item.artifact">{{ friendlyBuildItem(item.artifact) }}</li>
-              <li v-if="!currentPlan.excluded.length">无</li>
+              <li v-if="!currentPlan.excluded.length">{{ uiText('无') }}</li>
             </ul>
           </div>
         </section>
@@ -341,7 +342,7 @@ function reject() {
         @click="reject"
       >
         <XCircle :size="16" aria-hidden="true" />
-        <span>放弃方案</span>
+        <span>{{ uiText('放弃方案') }}</span>
       </button>
       <button
         v-if="plan.status === 'draft'"
@@ -351,9 +352,9 @@ function reject() {
         @click="confirm"
       >
         <Check :size="16" aria-hidden="true" />
-        <span>{{ props.busy ? "确认中" : "确认并准备" }}</span>
+        <span>{{ props.busy ? uiText('确认中') : uiText('确认并准备') }}</span>
       </button>
-      <p v-else class="confirmed-state"><Check :size="16" aria-hidden="true" />方案已确认</p>
+      <p v-else class="confirmed-state"><Check :size="16" aria-hidden="true" />{{ uiText('方案已确认') }}</p>
     </footer>
   </aside>
 </template>

@@ -30,6 +30,7 @@ export const AUTOMATIC_BUILD_RETRY_BOUNDARY_RECOVERIES = [
   "publish_new_policy",
   "authorize_transient_retry",
   "authorize_candidate_retry",
+  "authorize_writer_retry",
   "operator_fix",
 ] as const;
 
@@ -119,7 +120,8 @@ export function validateAutomaticBuildRetryBoundary(input: unknown): AutomaticBu
 
 export function allowsAutomaticBuildSameScopeRetry(boundary: AutomaticBuildRetryBoundaryV1): boolean {
   return boundary.required_recovery === "authorize_transient_retry"
-    || boundary.required_recovery === "authorize_candidate_retry";
+    || boundary.required_recovery === "authorize_candidate_retry"
+    || boundary.required_recovery === "authorize_writer_retry";
 }
 
 export function createAutomaticBuildRetryRecoveryReceipt(input: {

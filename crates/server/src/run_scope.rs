@@ -4,6 +4,7 @@ use runtime::run_context::ReaderInputSnapshot;
 
 #[derive(Clone)]
 pub(crate) struct RunScope {
+    pub board_context: Option<crate::board_api::FrozenBoardFollowUp>,
     pub learning_workspace_id: Option<String>,
     pub goal: Option<base_schema::WorkspaceGoal>,
     pub members: Option<Vec<crate::published_library::PublishedBookRef>>,
@@ -32,6 +33,7 @@ impl RunScope {
         presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     ) -> Self {
         Self {
+            board_context: None,
             learning_workspace_id: state.workspace.learning_workspace_id.clone(),
             goal: state.workspace.learning_goal.clone(),
             members: state.workspace.learning_members.clone(),

@@ -191,14 +191,17 @@ impl ModelRateSnapshot {
             if let Some(parts) = message["content"].as_array_mut() {
                 for part in parts {
                     match part["type"].as_str() {
-                        Some("image_url") => {
+                        Some("image_url" | "image") => {
                             if self.image_meter != ImageMeter::DeepSeek1024 {
                                 return Err(SpendStop::RateUnavailable);
                             }
                             images = images.checked_add(1).ok_or(SpendStop::RateUnavailable)?;
-                            *part = json!({"type":"image_url"});
+                            *part = json!({"type":part["type"]});
                         }
-                        Some("text") => (),
+                        Some(
+                            "text" | "thinking" | "redacted_thinking" | "tool_use"
+                            | "tool_result" | "tool_addition" | "tool_removal",
+                        ) => (),
                         _ => return Err(SpendStop::RateUnavailable),
                     }
                 }
@@ -206,7 +209,7 @@ impl ModelRateSnapshot {
         }
         // Same character heuristic as Runtime, expressed in quarter-token integer
         // units. Include the final tool schemas, protocol and reasoning context.
-        let payload=json!({"messages":messages,"tools":request.get("tools"),"response_format":request.get("response_format")}).to_string();
+        let payload=json!({"system":request.get("system"),"messages":messages,"tools":request.get("tools"),"response_format":request.get("response_format")}).to_string();
         let quarters = payload
             .chars()
             .try_fold(0u64, |n, c| {
@@ -386,5 +389,37 @@ mod tests {
         assert!(unsupported.estimate(&request).is_err());
         request.as_object_mut().unwrap().remove("max_tokens");
         assert!(r.estimate(&request).is_err());
+    }
+
+    #[test]
+    fn messages_continuation_reserves_reasoning_tools_system_and_native_images() {
+        let r = rate();
+        let mut request = json!({"model":"fixture","max_tokens":500,"messages":[
+            {"role":"user","content":[{"type":"text","text":"read"}]},
+            {"role":"assistant","content":[
+                {"type":"thinking","thinking":"plan","signature":"opaque"},
+                {"type":"redacted_thinking","data":"opaque"},
+                {"type":"tool_use","id":"call1","name":"read","input":{"path":"chapter.md"}}
+            ]},
+            {"role":"user","content":[{"type":"tool_result","tool_use_id":"call1","content":"chapter text"}]},
+            {"role":"system","content":[
+                {"type":"tool_addition","tool":{"type":"tool_reference","name":"search"}},
+                {"type":"tool_removal","tool":{"type":"tool_reference","name":"read"}}
+            ]}
+        ]});
+        let history = r.estimate(&request).unwrap();
+        request["system"] = json!("system instruction ".repeat(100));
+        let system = r.estimate(&request).unwrap();
+        assert!(system.text_tokens > history.text_tokens);
+        request["messages"][1]["content"][0]["thinking"] = json!("retained reasoning ".repeat(100));
+        assert!(r.estimate(&request).unwrap().text_tokens > system.text_tokens);
+        request["messages"][0]["content"].as_array_mut().unwrap().push(json!({"type":"image","source":{"type":"base64","media_type":"image/png","data":"a"}}));
+        let image = r.estimate(&request).unwrap();
+        assert_eq!(image.image_tokens, 1024);
+        request["messages"][0]["content"][1]["source"]["data"] = json!("a".repeat(10000));
+        assert_eq!(r.estimate(&request).unwrap().reserved_micro_cny, image.reserved_micro_cny);
+        let mut unsupported = r.clone();
+        unsupported.image_meter = ImageMeter::Unsupported;
+        assert!(unsupported.estimate(&request).is_err());
     }
 }

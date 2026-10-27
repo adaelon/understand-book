@@ -12,6 +12,11 @@ const openFacts = async (w: VueWrapper) => {
   await w.get('details.facts').trigger('toggle');
   await flushPromises();
 };
+const openTimeline = async (w: VueWrapper) => {
+  (w.get('details.understanding-timeline').element as HTMLDetailsElement).open = true;
+  await w.get('details.understanding-timeline').trigger('toggle');
+  await flushPromises();
+};
 const evidence = (id = 'hypothesis', patch: Partial<LearningEvidenceView> = {}): LearningEvidenceView => ({
   evidence_id: id, nature: 'hypothesis', label: '平均速度', capability: 'explanation', prompt: '理解总时间的含义',
   interpretation: '可能需要理解分母', teaching_implication: '从整个过程解释', learner_quote: '为什么用总时间？',
@@ -36,6 +41,7 @@ function setup(options: { rows?: UnderstandingRow[]; interpretations?: LearningE
       interpretations = [records.corrected]; return Response.json({ evidence_ref: 'corrected' });
     }
     if (path === 'feedback-displayed') return Response.json({});
+    if (path === 'related') return Response.json({ items: [] });
     throw new Error(`Unexpected request ${path}`);
   });
   vi.stubGlobal('fetch', fetch);
@@ -50,7 +56,228 @@ beforeEach(() => {
     disconnect() {}
   });
 });
-afterEach(() => { vi.unstubAllGlobals(); document.body.innerHTML = ''; });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = ''; });
+
+it('adds the selected real understanding evidence to the board with its reader scope', async () => {
+  const handler = vi.fn(); window.addEventListener('understanding-add-to-board', handler);
+  const { w } = setup();
+  try {
+    await flushPromises();
+    expect(button(w, '加入画板')).toBeUndefined();
+    await w.get('.concept').trigger('click'); await flushPromises();
+    await button(w, '加入画板').trigger('click');
+    expect((handler.mock.calls[0][0] as CustomEvent).detail).toEqual({
+      reader_key: expect.any(String), source: { kind: 'understanding', evidence_id: 'hypothesis' },
+    });
+    await w.get('textarea').setValue('我已理解总时间，请更新解释。');
+    await button(w, '保存纠正').trigger('click'); await flushPromises();
+    await button(w, '加入画板').trigger('click');
+    expect((handler.mock.calls[1][0] as CustomEvent).detail.source).toEqual({ kind: 'understanding', evidence_id: 'corrected' });
+  } finally { window.removeEventListener('understanding-add-to-board', handler); w.unmount(); }
+});
+
+const relatedBoard = (boardId: string, itemId: string, title: string, blockId: string | null = null) => ({
+  board_id: boardId, board_revision: 3, board_title: title, item_id: itemId, block_id: blockId,
+  kind: 'understanding', title: '平均速度的理解', snippet: '为什么要用总时间',
+});
+
+it('finds every related board for the selected evidence and opens the chosen exact item without importing it', async () => {
+  const opened = vi.fn(), added = vi.fn();
+  window.addEventListener('understanding-open-board', opened);
+  window.addEventListener('understanding-add-to-board', added);
+  const hits = [relatedBoard('board-1', 'item-1', '速度与时间'), relatedBoard('board-2', 'item-2', '运动知识整理', 'block-2')];
+  const { w, fetch } = setup({ handler: path => path === 'related' ? Response.json({ items: hits }) : undefined });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    const calls = fetch.mock.calls.filter(([url]) => url.endsWith('/boards/related'));
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({ source: { kind: 'understanding', evidence_id: 'hypothesis' } });
+    const choices = w.findAll('.related-boards li > button');
+    expect(choices).toHaveLength(2);
+    expect(choices[0].text()).toContain('速度与时间');
+    expect(choices[1].text()).toContain('运动知识整理');
+    expect(opened).not.toHaveBeenCalled(); expect(added).not.toHaveBeenCalled();
+    await choices[1].trigger('click');
+    expect((opened.mock.calls[0][0] as CustomEvent).detail).toEqual({ reader_key: expect.any(String), board_id: 'board-2', item_id: 'item-2', block_id: 'block-2' });
+    expect(added).not.toHaveBeenCalled();
+    expect(w.get('[aria-label="表现依据"]').text()).toContain('为什么用总时间？');
+  } finally {
+    window.removeEventListener('understanding-open-board', opened); window.removeEventListener('understanding-add-to-board', added); w.unmount();
+  }
+});
+
+it('shows an empty related-board result while keeping the explicit add action and understanding readable', async () => {
+  const { w } = setup();
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    expect(w.get('.related-boards').text()).toContain('还没有关联画板，可以把这条理解加入画板。');
+    expect(w.findAll('.related-boards li')).toHaveLength(0);
+    expect(button(w, '加入画板')).toBeDefined();
+    expect(w.get('.explanation').text()).toContain('可能需要理解分母');
+    expect(w.get('.quote').text()).toContain('为什么用总时间？');
+  } finally { w.unmount(); }
+});
+
+it('retries only the failed related-board lookup without losing the open understanding or correction draft', async () => {
+  let requests = 0;
+  const { w, fetch } = setup({ handler: path => {
+    if (path !== 'related') return;
+    return ++requests === 1 ? Response.json({ error: '暂时断线' }, { status: 503 }) : Response.json({ items: [relatedBoard('board-1', 'item-1', '速度与时间')] });
+  } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    await w.get('textarea').setValue('我的纠正还没有提交');
+    expect(w.get('.related-boards [role="alert"]').text()).toContain('相关画板暂时无法读取');
+    expect(w.get('.quote').text()).toContain('为什么用总时间？');
+    await button(w, '重试查找画板').trigger('click'); await flushPromises();
+    expect(w.find('.related-boards [role="alert"]').exists()).toBe(false);
+    expect(w.get('.related-boards').text()).toContain('速度与时间');
+    expect((w.get('textarea').element as HTMLTextAreaElement).value).toBe('我的纠正还没有提交');
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/evidence'))).toHaveLength(1);
+    expect(requests).toBe(2);
+  } finally { w.unmount(); }
+});
+
+it('ignores a late board lookup after the user opens another understanding record', async () => {
+  let finish!: (response: Response) => void;
+  const second = evidence('second', { label: '总时间', learner_quote: '两段时间需要相加' });
+  const { w } = setup({ interpretations: [evidence(), second], records: { second }, handler: (path, body) => {
+    if (path !== 'related') return;
+    return body.source.evidence_id === 'hypothesis'
+      ? new Promise(resolve => { finish = resolve; })
+      : Response.json({ items: [relatedBoard('board-2', 'item-2', '总时间的解释')] });
+  } });
+  try {
+    await flushPromises(); await w.findAll('.concept')[0].trigger('click'); await flushPromises();
+    expect(w.get('.related-boards').text()).toContain('正在查找相关画板');
+    await button(w, '← 返回概念列表').trigger('click');
+    await w.findAll('.concept')[1].trigger('click'); await flushPromises();
+    finish(Response.json({ items: [relatedBoard('board-old', 'item-old', '不再选中的旧画板')] })); await flushPromises();
+    expect(w.get('.related-boards').text()).toContain('总时间的解释');
+    expect(w.get('.related-boards').text()).not.toContain('不再选中的旧画板');
+    expect(w.get('.quote').text()).toContain('两段时间需要相加');
+  } finally { w.unmount(); }
+});
+
+it('refreshes a visible understanding list after background recording without replacing the open evidence, draft or timeline', async () => {
+  vi.useFakeTimers(); let version = 1;
+  const original = evidence(), newer = evidence('new', { learner_quote: '现在我能解释为什么要合计时间。', occurred_at: '2026-10-24T12:00:00+08:00' });
+  const { w, fetch } = setup({ handler(path) {
+    if (path === 'understanding') return Response.json({ rows: [], interpretations: version === 1 ? [original] : [newer, original], next: null, stale: false, evidence_watermark: version, projection_watermark: version });
+    if (path === 'timeline') return Response.json({ entries: version === 1 ? [original] : [original, newer], next: null, order: 'oldest_first' });
+  } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises(); await openTimeline(w);
+    await w.get('textarea').setValue('尚未提交的纠正'); const focus = document.activeElement;
+    version = 2; await vi.advanceTimersByTimeAsync(10_000); await flushPromises();
+    expect(w.findAll('.concept')).toHaveLength(2);
+    expect(w.get('.evidence .quote').text()).toContain(original.learner_quote);
+    expect(w.get('textarea').element.value).toBe('尚未提交的纠正');
+    expect(w.findAll('.timeline-list > li')).toHaveLength(1);
+    expect(document.activeElement).toBe(focus);
+    await button(w, '理解记录已更新，刷新时间线').trigger('click'); await flushPromises();
+    expect(w.findAll('.timeline-list > li')).toHaveLength(2);
+    const count = fetch.mock.calls.filter(([url]) => url.endsWith('/understanding')).length;
+    await w.setProps({ visible: false }); await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/understanding'))).toHaveLength(count);
+    await w.setProps({ visible: true }); await flushPromises();
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/understanding'))).toHaveLength(count + 1);
+  } finally { w.unmount(); }
+});
+
+it('cancels in-flight background refresh when the panel closes and does not keep polling', async () => {
+  vi.useFakeTimers(); let requests = 0, finish!: (response: Response) => void;
+  const { w, fetch } = setup({ handler(path) {
+    if (path === 'understanding' && ++requests === 2) return new Promise(resolve => { finish = resolve; });
+  } });
+  await flushPromises(); await vi.advanceTimersByTimeAsync(10_000);
+  const request = fetch.mock.calls.filter(([url]) => url.endsWith('/understanding')).at(-1)!;
+  expect(request[1].signal?.aborted).toBe(false);
+  w.unmount(); expect(request[1].signal?.aborted).toBe(true);
+  finish(Response.json({ rows: [], interpretations: [evidence('late')], next: null, evidence_watermark: 2 }));
+  await flushPromises(); await vi.advanceTimersByTimeAsync(30_000);
+  expect(requests).toBe(2);
+});
+
+it('pauses background refresh while the browser is hidden and checks once when it becomes visible', async () => {
+  vi.useFakeTimers(); let visibility: DocumentVisibilityState = 'visible';
+  vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+  const { w, fetch } = setup();
+  try {
+    await flushPromises(); visibility = 'hidden'; document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/understanding'))).toHaveLength(1);
+    visibility = 'visible'; document.dispatchEvent(new Event('visibilitychange')); await flushPromises();
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/understanding'))).toHaveLength(2);
+  } finally { w.unmount(); }
+});
+
+it('shows expression time and keeps an oldest-first timeline with help, new observations and separate corrections', async () => {
+  const first = evidence('first', { occurred_at: '2026-10-23T10:00:00+08:00', learner_quote: '我以为两个速度可以直接平均。', interpretation: '尚未区分不同路段的耗时。', superseded: false,
+    source_session_title: '比较两段路程', assistance: [{ fact_ref: 'help', kind: 'help_displayed', occurred_at: '2026-10-23T09:59:00+08:00', text: '先比较每一段用了多少时间。' }] });
+  const later = evidence('later', { occurred_at: '2026-10-24T10:00:00+08:00', learner_quote: '应该先加总距离和时间，再相除。', interpretation: '在提示后能解释整个过程的比值。', superseded: true });
+  const corrected = evidence('corrected', { ...later, evidence_id: 'corrected', supersedes: 'later', superseded: false, correction: '这次没有新的提示，我参考的是昨天的例子。', interpretation: '能参考此前例子说明总量关系；尚未验证新情境应用。' });
+  const pages: any[] = [];
+  const { w, fetch } = setup({ interpretations: [corrected, first], records: { corrected, first }, handler(path, body) {
+    if (path === 'timeline') { pages.push(body); return Response.json(body.after ? { entries: [corrected], next: null, order: 'oldest_first' } : { entries: [first, later], next: 2, order: 'oldest_first' }); }
+  } });
+  try {
+    await flushPromises();
+    expect(w.findAll('.record-meta')[0].text()).toContain('2026年10月24日');
+    expect(w.findAll('.record-meta')[1].text()).toContain('比较两段路程');
+    await w.findAll('.concept')[0].trigger('click'); await flushPromises();
+    expect(fetch.mock.calls.some(([url]) => url.endsWith('/timeline'))).toBe(false);
+    await openTimeline(w); await button(w, '继续查看后续记录').trigger('click'); await flushPromises();
+    expect(pages).toEqual([{ evidence_ref: 'corrected', after: 0 }, { evidence_ref: 'corrected', after: 2 }]);
+    const entries = w.findAll('.timeline-list > li');
+    expect(entries).toHaveLength(3);
+    expect(entries[0].text()).toContain(first.learner_quote);
+    expect(entries[0].get('.timeline-assistance').text()).toContain('先比较每一段用了多少时间。');
+    expect(entries[0].text()).not.toContain('解释已被更正');
+    expect(entries[1].text()).toContain('解释已被更正');
+    expect(entries[2].text()).toContain('对原解释的更正');
+    expect(entries[2].text()).toContain(corrected.correction!);
+    expect(entries[2].text()).not.toContain('先比较每一段用了多少时间。');
+    await entries[0].get('button').trigger('click'); await flushPromises();
+    expect(w.get('.quote').text()).toContain(first.learner_quote);
+    expect(w.get('.explanation h5').text()).toContain('历史解释');
+  } finally { w.unmount(); }
+});
+
+it('does not invent time or progress for a single legacy record and retries a failed timeline read', async () => {
+  let failed = false;
+  const { w, fetch } = setup({ handler(path) {
+    if (path === 'timeline') {
+      if (!failed) { failed = true; return Response.json({ error: '暂不可用' }, { status: 503 }); }
+      return Response.json({ entries: [evidence()], next: null, order: 'oldest_first' });
+    }
+  } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises(); await openTimeline(w);
+    expect(w.get('[role="alert"]').text()).toContain('理解变化读取失败');
+    await button(w, '重试').trigger('click'); await flushPromises();
+    const timeline = w.get('[aria-label="理解变化时间线"]');
+    expect(timeline.text()).toContain('原话时间未保留');
+    expect(timeline.text()).toContain('这是目前唯一一次记录');
+    expect(timeline.text()).toContain('不能据此判定为独立完成');
+    expect(timeline.text()).not.toContain('进步');
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/understanding'))).toHaveLength(1);
+  } finally { w.unmount(); }
+});
+
+it('opens the original conversation using its real session and turn without mutating understanding', async () => {
+  const record = evidence('linked', { occurred_at: '1792807200000', source_session_id: 'original-chat', source_turn_id: 'original-turn', source_session_title: '两段路程的追问' });
+  const handler = vi.fn(); window.addEventListener('understanding-open-chat', handler);
+  const { w, fetch } = setup({ interpretations: [record], records: { linked: record } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    expect(w.get('.record-origin').text()).not.toContain('原话时间未保留');
+    await button(w, '两段路程的追问').trigger('click');
+    expect(handler).toHaveBeenCalledOnce();
+    expect((handler.mock.calls[0][0] as CustomEvent).detail).toMatchObject({ session_id: 'original-chat', turn_id: 'original-turn', reader_key: expect.any(String) });
+    expect(fetch.mock.calls.every(([url]) => /\/(understanding|evidence|boards\/related)$/.test(url))).toBe(true);
+  } finally { window.removeEventListener('understanding-open-chat', handler); w.unmount(); }
+});
 
 it('shows imported records as read-only historical context and previews the saved prefix without adding a current interpretation', async () => {
   const selection = { source_learning_workspace_id: 'original', chat_session_id: 'original-chat', turn_ids: ['old-turn'], through_seq: 8 };
@@ -101,7 +328,7 @@ it.each([0, 2])('shows the hypothesis scope and actual help without grading ordi
     const conditions = w.get('[aria-label="适用目标与帮助条件"]');
     expect(conditions.isVisible()).toBe(true);
     expect(conditions.text()).toContain(record.prompt);
-    expect(conditions.text().includes(`已展示 ${count} 条活动帮助`)).toBe(count > 0);
+    expect(conditions.text().includes(`已展示 ${count} 条讲解或帮助`)).toBe(count > 0);
     expect(w.get('.evidence').text()).toContain('普通交流中的暂定理解，未评分');
     expect(w.get('.implication h5').text()).toBe('接下来怎样帮助你');
     expect(w.text()).not.toContain('第 0 次作答');
@@ -177,6 +404,26 @@ it('records feedback only after details are expanded and visible; hidden feedbac
     await w.findAll('.concept')[1].trigger('click'); await flushPromises(); await openFacts(w);
     expect(w.text()).toContain('详细判定依据会在本活动请求直接讲解后揭示');
     expect(observed).toHaveLength(1);
+  } finally { w.unmount(); }
+});
+
+it('renders visual assessment observations from the evidence response without inventing a text quotation', async () => {
+  const observation = '画面中的张量由两行三列变为三行两列，元素排列对应一次转置。';
+  const record = evidence('visual-assessment', { nature: 'performance', attempt: 1, status: 'correct', assessment_ref: 'visual-action',
+    source_quotes: [{ reason: '回答与视频画面中的维度变化一致', response_quote: '转置后行列互换',
+      sources: [{ source_ref_id: 'video-frame-35s', observation }] }] });
+  const { w, fetch } = setup({ interpretations: [record], records: { 'visual-assessment': record } });
+  try {
+    await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
+    expect(w.text()).not.toContain(observation);
+    await openFacts(w);
+    expect(w.get('details.facts').text()).toContain(observation);
+    expect(w.get('details.facts').text()).toContain('作答片段：转置后行列互换');
+    expect(w.get('details.facts').text()).not.toContain('undefined');
+    intersection([{ isIntersecting: true, target: observed[0] } as IntersectionObserverEntry], {} as IntersectionObserver);
+    await flushPromises();
+    const displayed = fetch.mock.calls.find(([url]) => url.endsWith('/feedback-displayed'));
+    expect(JSON.parse(displayed![1].body as string)).toEqual({ action_ref: 'visual-action' });
   } finally { w.unmount(); }
 });
 

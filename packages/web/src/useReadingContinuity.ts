@@ -21,7 +21,9 @@ export type ReadingAnchor = MarkdownReadingAnchor | PdfReadingAnchor;
 export interface ReadingReturnPoint {
   contextKey: string;
   turnId: string;
-  origin?: 'reader' | 'notes';
+  origin?: 'reader' | 'notes' | 'board';
+  boardId?: string;
+  boardItemId?: string;
   memId?: string;
   anchor: ReadingAnchor | null;
 }

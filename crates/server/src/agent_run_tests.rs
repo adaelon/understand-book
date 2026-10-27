@@ -44,10 +44,22 @@ impl Provider {
                 };
                 let mut body = String::new();
                 request.as_reader().read_to_string(&mut body).unwrap();
+                let body: Value = serde_json::from_str(&body).unwrap();
+                // These tests control Resident requests. The host also runs an
+                // observation coach after delivery; answer that independent job
+                // here so it cannot consume the next scripted Resident reply.
+                if let Some(response) = observation_coach_response(&body) {
+                    let _ = request.respond(
+                        tiny_http::Response::from_string(response.to_string()).with_header(
+                            tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap(),
+                        ),
+                    );
+                    continue;
+                }
                 let (response, receive) = mpsc::channel();
                 if send
                     .send(ProviderStep {
-                        request: serde_json::from_str(&body).unwrap(),
+                        request: body,
                         response,
                     })
                     .is_err()
@@ -83,6 +95,29 @@ impl Provider {
             .expect("expected model request")
     }
 }
+
+fn observation_coach_response(request: &Value) -> Option<Value> {
+    let messages = request["messages"].as_array()?;
+    if !messages.first()?["content"].as_str()?.starts_with("你是 Understand Book 的教学教练。") {
+        return None;
+    }
+    let input: Value = serde_json::from_str(messages.iter()
+        .find(|message| message["role"] == "user")?["content"].as_str()?).ok()?;
+    if input["trigger"] != "after_turn" || input["teaching_context"]["status"] != "observing" {
+        return None;
+    }
+    let observations: Vec<_> = input["observation_facts"].as_array()?.iter()
+        .filter(|fact| fact["already_interpreted"] != true)
+        .map(|fact| json!({"fact_ref":fact["fact_ref"], "decision":"no_new_information",
+            "reason":"This Resident lifecycle fixture does not infer learner understanding."}))
+        .collect();
+    let guidance = json!({"next_step":{"focus":"Keep the accepted Resident task",
+        "participation":{"choice":"conclude", "reason":"Observation only."}},
+        "observations":observations, "reason":"The delivered response is already recorded."});
+    Some(json!({"choices":[{"message":{"role":"assistant", "content":guidance.to_string()},
+        "finish_reason":"stop"}], "usage":{"total_tokens":1}}))
+}
+
 impl Drop for Provider {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
@@ -1106,10 +1141,14 @@ fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
             "max_results":1
         }),
     );
-    provider.next().answer("");
+    let sampled = provider.next();
+    let sampled_messages = sampled.request["messages"].as_array().unwrap().clone();
+    sampled.answer("");
     let fallback = provider.next();
     assert!(fallback.request.get("tools").is_none_or(|tools| tools.as_array().is_some_and(Vec::is_empty)),
         "fallback must not expose any tools: {:?}", fallback.request.get("tools"));
+    assert!(fallback.request["messages"][0]["content"].as_str().unwrap().starts_with("available_answer.v2\n"),
+        "service fallback is a separate completion, not the resumable Resident projection");
     let answer = "当前交互页面还未完成，先保留你的问题和本轮已有进展。";
     fallback.answer(answer);
     let reply = first.join().unwrap();
@@ -1128,7 +1167,11 @@ fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
             message.role == runtime::Role::Tool && message.tool_call_id.as_deref() == Some("call-test")
         }));
         assert_eq!(state.workspace.messages.last().unwrap().content.as_deref(), Some(answer));
+        assert!(!serde_json::to_string(&state.workspace.messages).unwrap().contains("tool_search_result.v2"),
+            "business history must expire run-local discovery receipts");
         let history = crate::session_store::load_chat_storage(&state.user.history_path).unwrap().0;
+        assert!(!serde_json::to_string(&history.sessions[0].messages).unwrap().contains("tool_search_result.v2"),
+            "durable business history must not retain active discovery receipts");
         assert_eq!(
             history.sessions[0].turns[0].status,
             AgentAssistantStatus::Completed
@@ -1151,7 +1194,8 @@ fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
     let projected = request.request.to_string();
     assert!(projected.contains("请制作一个交互页面"));
     assert!(projected.contains("重试"));
-    assert!(!projected.contains("tool_search_result.v2"));
+    assert_eq!(&request.request["messages"].as_array().unwrap()[..sampled_messages.len()],
+        sampled_messages.as_slice(), "the Resident sampled prefix survives the next user turn unchanged");
     let mut pending = std::collections::BTreeSet::new();
     for message in request.request["messages"].as_array().unwrap() {
         if message["role"] == "assistant" {
@@ -1171,6 +1215,40 @@ fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
     assert_eq!(reply.0, 200);
     assert_eq!(reply.1["warning"], "AGENT_NO_PROGRESS");
     assert_eq!(reply.1["incomplete"], true);
+    running.shutdown();
+}
+
+#[test]
+fn resident_restored_projection_does_not_restore_prior_tool_activation() {
+    let provider = Provider::new();
+    let (running, _) = fixture("projection-tool-authority");
+    running.set_provider_config(provider.config.clone());
+    let first = chat(&running, "解释这个术语");
+    provider.next().tool("tool.search", json!({
+        "task":"recall saved notes", "required_capabilities":["memory_read"],
+        "scope":"document", "operation":"explain", "effect_mode":"read_only", "max_results":1
+    }));
+    let sampled = provider.next();
+    assert!(sampled.request["tools"].as_array().unwrap().iter()
+        .any(|tool| tool["function"]["name"] == "memory_recall"));
+    let sampled_messages = sampled.request["messages"].as_array().unwrap().clone();
+    sampled.answer("这个术语的解释已完成。");
+    assert_eq!(first.join().unwrap().0, 200);
+
+    let second = chat(&running, "解释另一个术语");
+    let request = provider.next();
+    assert_eq!(&request.request["messages"].as_array().unwrap()[..sampled_messages.len()],
+        sampled_messages.as_slice());
+    assert!(request.request["tools"].as_array().unwrap().iter()
+        .all(|tool| tool["function"]["name"] != "memory_recall"),
+        "restored history must not restore a prior run's discovery activation");
+    request.tool("memory.recall", json!({"lid":"1.1"}));
+    let rejected = provider.next();
+    assert!(rejected.request["messages"].as_array().unwrap().iter()
+        .rev().find(|message| message["role"] == "tool").unwrap()["content"]
+        .as_str().unwrap().contains("TOOL_NOT_EXPOSED"));
+    rejected.answer("另一个术语的解释已完成。");
+    assert_eq!(second.join().unwrap().0, 200);
     running.shutdown();
 }
 

@@ -15,6 +15,7 @@ struct Pending {
     observations: HashMap<String, (String, runtime::presentation::PresentationFollowUp)>,
     state_contract: Value,
     saved_result: Option<Value>,
+    version: Option<runtime::presentation::AgentPresentation>,
 }
 #[derive(Default)]
 pub(crate) struct PresentationCommands {
@@ -25,8 +26,14 @@ impl PresentationCommands {
     fn prepare(
         &self, state: &PrivateBookContext<'_>, turn: &crate::AgentTurnRef, request: InteractRequest,
     ) -> Result<PresentationCommand, ToolError> {
-        let delivery = crate::presentation_api::delivered_turn(state, &turn.session_id, request.reference())?;
-        let version = crate::presentation_api::delivered_version(state, &turn.session_id, &delivery, request.reference())?;
+        let board_target = request.board_target().cloned();
+        let (version, delivery) = if let Some(target) = &board_target {
+            let (version, saved) = crate::board_api::interaction_target(state, target, request.reference())?;
+            (version, saved.receipt.turn_id)
+        } else {
+            let delivery = crate::presentation_api::delivered_turn(state, &turn.session_id, request.reference())?;
+            (crate::presentation_api::delivered_version(state, &turn.session_id, &delivery, request.reference())?, delivery)
+        };
         let mut pending = self.pending.lock().unwrap();
         let mut expected_values = BTreeMap::new();
         let mut expected_edits = BTreeMap::new();
@@ -35,10 +42,13 @@ impl PresentationCommands {
             validate_action(action, &version.content.action_contract)?;
             let (page, receipt) = pending.observations.get(based_on).cloned().ok_or_else(||
                 error("PRESENTATION_OBSERVATION_REQUIRED", "Observe this open page in the current run before acting."))?;
-            if &receipt.reference != request.reference() { return Err(error("PRESENTATION_OBSERVATION_REQUIRED", "Observe this exact presentation version before acting.")); }
+            if &receipt.reference != request.reference() || receipt.session_id != version.owner.session_id
+                || receipt.turn_id != delivery { return Err(error("PRESENTATION_OBSERVATION_REQUIRED", "Observe this exact presentation version before acting.")); }
             page_id = Some(page);
             // Read the exact immutable snapshot, never the latest saved state.
-            let saved = state.read_presentation_state(&receipt)?;
+            let saved = if board_target.is_some() {
+                crate::presentation_store::PresentationStore::for_user(state.user)?.read_retained_state(&version.owner, &receipt)?
+            } else { state.read_presentation_state(&receipt)? };
             let keys = match action {
                 PresentationAction::SetParameters { values } => values.keys().cloned().collect(),
                 PresentationAction::Invoke { .. } => parameter_names(&version.content.action_contract),
@@ -49,12 +59,14 @@ impl PresentationCommands {
                 expected_values.insert(key.clone(), saved.state.values["page"][&key].clone());
             }
         }
-        pending.state_contract = version.content.state_contract;
+        pending.state_contract = version.content.state_contract.clone();
         let command = PresentationCommand {
             command_id: uuid::Uuid::now_v7().to_string(), run_turn_id: turn.turn_id.clone(),
             session_id: turn.session_id.clone(), delivery_turn_id: delivery,
-            request, page_id, expected_values, expected_edits, available_actions: version.content.action_contract,
+            content_session_id: version.owner.session_id.clone(), board_target,
+            request, page_id, expected_values, expected_edits, available_actions: version.content.action_contract.clone(),
         };
+        pending.version = Some(version);
         pending.command = Some(command.clone());
         pending.claimed = false;
         pending.result = None;
@@ -69,6 +81,7 @@ impl PresentationCommands {
                 && input["run_turn_id"].as_str() == Some(&command.run_turn_id)
                 && state.selected_chat == Some(command.session_id.as_str())
         ).ok_or_else(|| error("PRESENTATION_COMMAND_ENDED", "This page command has ended; observe again."))?;
+        validate_retained_target(state, &command)?;
         if input["operation"] == "claim" {
             if pending.claimed || pending.result.is_some() { return Ok(json!({"claimed":false})); }
             let page = input["page_id"].as_str().filter(|p| !p.is_empty());
@@ -101,11 +114,11 @@ impl PresentationCommands {
             }
             let receipt: runtime::presentation::PresentationFollowUp = serde_json::from_value(input["receipt"].clone())
                 .map_err(|_| error("PRESENTATION_RESULT_INVALID", "A saved browser receipt is required."))?;
-            if receipt.session_id != command.session_id || receipt.turn_id != command.delivery_turn_id
+            if receipt.session_id != command.content_session_id || receipt.turn_id != command.delivery_turn_id
                 || &receipt.reference != command.request.reference() {
                 return Err(error("PRESENTATION_RESULT_INVALID", "The receipt belongs to another page."));
             }
-            let saved = state.read_presentation_state(&receipt)?;
+            let saved = read_command_state(state, &command, &receipt)?;
             pending.observations.insert(receipt.saved_state_ref.clone(), (command.page_id.clone().unwrap(), receipt.clone()));
             result["state"] = json!(saved.state);
             result["receipt"] = json!(receipt);
@@ -134,34 +147,79 @@ pub(crate) fn save_browser_state(
     let stream = workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()).ok_or_else(unavailable)?;
     let mut pending = stream.presentation_commands.pending.lock().unwrap();
     let meta = &input["teacher_interaction"];
-    let reference: runtime::presentation::PresentationRef = serde_json::from_value(input["reference"].clone())
-        .map_err(|_| error("PRESENTATION_RESULT_INVALID", "A presentation reference is required."))?;
     let command = pending.command.clone().filter(|command|
         pending.claimed && pending.result.is_none()
             && meta["command_id"] == command.command_id && meta["run_turn_id"] == command.run_turn_id
             && meta["page_id"].as_str() == command.page_id.as_deref()
-            && input["session_id"] == command.session_id && input["turn_id"] == command.delivery_turn_id
-            && &reference == command.request.reference()
+            && match &command.board_target {
+                Some(target) => input["board_id"] == target.board_id && input["item_id"] == target.item_id,
+                None => input["session_id"] == command.content_session_id && input["turn_id"] == command.delivery_turn_id
+                    && serde_json::from_value::<runtime::presentation::PresentationRef>(input["reference"].clone())
+                        .is_ok_and(|reference| &reference == command.request.reference()),
+            }
             && state.selected_chat == Some(command.session_id.as_str())
     ).ok_or_else(|| error("PRESENTATION_COMMAND_ENDED", "This page command has ended; observe again."))?;
+    validate_retained_target(state, &command)?;
     if let Some(saved) = &pending.saved_result { return Ok(saved["receipt"].clone()); }
-    let reply = crate::presentation_api::save_state(state, &input.to_string());
-    if reply.status != 200 {
-        return Err(error("PRESENTATION_RESULT_INVALID", "The browser state could not be saved."));
+    let status = meta["status"].as_str().unwrap_or_default();
+    if !matches!(status, "observed" | "applied" | "conflict" | "failed" | "cancelled")
+        || (status == "applied" && !matches!(command.request, InteractRequest::Act { .. }))
+        || (status == "observed" && !matches!(command.request, InteractRequest::Observe { .. })) {
+        return Err(error("PRESENTATION_RESULT_INVALID", "Result does not match the requested operation."));
     }
-    let receipt: runtime::presentation::PresentationFollowUp = serde_json::from_str(&reply.body)
-        .map_err(|_| error("PRESENTATION_RESULT_INVALID", "Missing saved state receipt."))?;
+    let receipt = if let Some(target) = &command.board_target {
+        let scene = serde_json::from_value(input["state"].clone())
+            .map_err(|_| error("PRESENTATION_RESULT_INVALID", "A browser state is required."))?;
+        crate::board_api::save_interaction_state(state, target, command.request.reference(), scene)?
+    } else {
+        let reply = crate::presentation_api::save_state(state, &input.to_string());
+        if reply.status != 200 { return Err(error("PRESENTATION_RESULT_INVALID", "The browser state could not be saved.")); }
+        serde_json::from_str(&reply.body).map_err(|_| error("PRESENTATION_RESULT_INVALID", "Missing saved state receipt."))?
+    };
     let mut teaching = Value::Null;
     if meta["status"] == "applied" {
         if let InteractRequest::Act { based_on, .. } = &command.request {
             let (_, before) = pending.observations.get(based_on).ok_or_else(unavailable)?;
-            teaching = crate::teaching::record_presentation_action(state, &command, before, &receipt, &meta["support"], now)?;
+            let version = pending.version.as_ref().ok_or_else(unavailable)?;
+            let previous = read_command_state(state, &command, before)?;
+            let scene = read_command_state(state, &command, &receipt)?;
+            teaching = crate::teaching::record_presentation_action(state, &command, version, &previous, &scene, &meta["support"], now)?;
         } else {
             return Err(error("PRESENTATION_RESULT_INVALID", "An observation cannot be an applied action."));
         }
     }
     pending.saved_result = Some(json!({"receipt":receipt,"status":meta["status"],"teaching":teaching}));
     Ok(json!(receipt))
+}
+
+fn validate_retained_target(state: &PrivateBookContext<'_>, command: &PresentationCommand) -> Result<(), ToolError> {
+    if let Some(target) = &command.board_target {
+        let (version, saved) = crate::board_api::interaction_target(state, target, command.request.reference())?;
+        if version.owner.session_id != command.content_session_id || saved.receipt.turn_id != command.delivery_turn_id {
+            return Err(error("PRESENTATION_RESULT_INVALID", "The retained page relation has changed."));
+        }
+    }
+    Ok(())
+}
+
+fn read_command_state(
+    state: &PrivateBookContext<'_>, command: &PresentationCommand,
+    receipt: &runtime::presentation::PresentationFollowUp,
+) -> Result<runtime::presentation::SavedPresentationState, ToolError> {
+    if command.board_target.is_some() {
+        let owner = runtime::presentation::PresentationOwner {
+            book_id: state.book.base.book_id.clone(), session_id: command.content_session_id.clone(),
+        };
+        crate::presentation_store::PresentationStore::for_user(state.user)?.read_retained_state(&owner, receipt)
+    } else { state.read_presentation_state(receipt) }
+}
+
+/// Routing uses the active command, never a client assertion about board ownership.
+pub(crate) fn is_board_command(workspace: &crate::reader_workspace::ReaderWorkspace, input: &Value) -> bool {
+    let Some(stream) = workspace.active_agent_stream.as_ref().and_then(|stream| stream.upgrade()) else { return false; };
+    let pending = stream.presentation_commands.pending.lock().unwrap();
+    pending.command.as_ref().is_some_and(|command| command.board_target.is_some()
+        && input["command_id"] == command.command_id && input["run_turn_id"] == command.run_turn_id)
 }
 
 pub(crate) fn execute(
@@ -208,3 +266,7 @@ pub(crate) fn respond(
     }
     stream.presentation_commands.respond(state, input)
 }
+
+#[cfg(test)]
+#[path = "tests/board_presentation_interact_tests.rs"]
+mod board_tests;

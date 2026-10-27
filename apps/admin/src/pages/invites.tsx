@@ -6,7 +6,7 @@ import { useData, DataState, Pagination } from "@/components/data";
 import { Field } from "@/components/operation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from '@/components/analytics';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 const labels = { unused: "未使用", used: "已使用", disabled: "已停用" };
@@ -60,7 +60,7 @@ export function InvitesPage() {
   }
   function cards(invites: Invite[]) {
     return <div className="grid min-w-0 gap-3 lg:grid-cols-2">{invites.map(invite => <article key={invite.invite_id} className="min-w-0 space-y-3 rounded-lg border p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><code className="select-all break-all text-sm font-semibold">{formatInvite(invite.code)}</code><Badge variant="outline">{labels[invite.state]}</Badge></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><code className="select-all break-all text-base font-semibold tracking-wider">{formatInvite(invite.code)}</code><StatusBadge tone={invite.state === 'unused' ? 'blue' : invite.state === 'used' ? 'green' : 'muted'}>{labels[invite.state]}</StatusBadge></div>
       <p className="break-all text-sm text-muted-foreground">生成：{date(invite.created_at)} · {invite.actor}</p>
       {invite.state === "used" && <p className="break-all text-sm">使用账号：{invite.used_by}<br />邮箱：{invite.used_email ?? "未绑定邮箱"}<br />使用时间：{date(invite.used_at)}</p>}
       {invite.state === "disabled" && <p className="text-sm text-muted-foreground">停用：{date(invite.disabled_at)}</p>}
@@ -69,7 +69,7 @@ export function InvitesPage() {
   }
   return <>
     <div><h1>内测码</h1><p className="mt-2 text-sm text-muted-foreground">生成后手动发送给受邀者。每码可注册一个账号，长期有效；材料与使用额度另行开通。</p></div>
-    <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
+    <form className="filter-bar" onSubmit={event => {
       event.preventDefault();
       void execute(async () => {
         journal.prepare(Number(count)); setPending(journal.pending()); setBatch(null);

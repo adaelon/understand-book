@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { inject } from 'vue';
 import { deliveredAnswerText, shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
@@ -15,6 +17,7 @@ const api = bindSceneApi(sharedApi, readerKey);
 import { findNotes, noteKindLabel, notePreview, noteTimeLabel, type NoteFilter } from '../reading-notes';
 import type {
   AgentAnswerPart,
+  BoardImportSource,
   AgentEffect,
   AgentQuestionQuoteView,
   AskQuote,
@@ -51,6 +54,9 @@ import PresentationSceneCard from './PresentationSceneCard.vue';
 import { presentationKey, type PresentationWorkspace } from '../presentation-workspace';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 import type { PresentationRef } from '../generated/PresentationRef';
+import type { BoardFollowUp } from '../generated/BoardFollowUp';
+import type { BoardDelivery } from '../generated/BoardDelivery';
+import { boardDeliveryKey, mergeBoardDeliveries, type BoardLocation } from '../board-workspace';
 import type { RunActivity } from "../agent-run-state";
 import ProfileMemoryPanel from "./ProfileMemoryPanel.vue";
 import IntentArtifactPanel from "./IntentArtifactPanel.vue";
@@ -70,6 +76,11 @@ interface ChatTurn {
   spendStop?: import('../account-allowance').SpendNotice;
   teachingRef?: string | null;
   presentationFollowUp?: PresentationFollowUp | null;
+  boardFollowUp?: BoardFollowUp | null;
+  boardDelivery?: BoardDelivery | null;
+  boardCommits?: BoardDelivery[];
+  boardIncomplete?: boolean;
+  boardDeliveryError?: string | null;
   turnId: string | null;
   user: string;
   outcome: OuterOutcome | null;
@@ -119,6 +130,7 @@ const props = withDefaults(defineProps<{
   learningAttention?: string;
   learningScopeOptions?: LearningScopeOption[];
   learningPurposeAvailable?: boolean;
+  learningPurposeReason?: string;
   learningPurposeReady?: boolean;
   learningPurposeBusy?: boolean;
   agentInput: string;
@@ -213,6 +225,8 @@ const emit = defineEmits<{
   (e: "keep-effect", turnIndex: number, effectIndex: number, effect: AgentEffect): void;
   (e: "save-answer-selection", turn: ChatTurn, text: string): void;
   (e: "share-answer", turn: ChatTurn, text?: string): void;
+  (e: "add-to-board", source: BoardImportSource): void;
+  (e: "open-board-location", location: BoardLocation): void;
   (e: "place-note", note: MemoryRecord): void;
   (e: "edit-note" | "delete-note" | "modify-highlight" | "delete-highlight", record: MemoryRecord): void;
   (e: "goto", lid: string): void;
@@ -276,9 +290,9 @@ function responseAvailable(turnId: string, available: boolean, host = 'plain') {
 }
 const learningResponseLabel = computed(() => {
   const turnId = latestAnswerTurn.value?.turnId;
-  if (turnId && responseTurns.value.has(turnId)) return '回答问题';
-  if (turnId && hasSuggestion(turnId)) return '查看下一步';
-  return '说说我的理解';
+  if (turnId && responseTurns.value.has(turnId)) return uiText('回答问题');
+  if (turnId && hasSuggestion(turnId)) return uiText('查看下一步');
+  return uiText('说说我的理解');
 });
 function focusLearningResponse() {
   const turnId = latestAnswerTurn.value?.turnId;
@@ -477,27 +491,27 @@ function closeRecap() {
 }
 watch(() => props.activeChatSessionId, () => { recapOpen.value = false; recapPresentation.value = null; });
 async function openRecapTarget(target: RecapTarget) {
-  if (target.session_id !== props.activeChatSessionId) throw new Error('对话已切换，请重新打开回顾');
+  if (target.session_id !== props.activeChatSessionId) throw new Error(uiText('对话已切换，请重新打开回顾'));
   if (target.kind === 'turn') {
     activeTab.value = 'agent'; followTranscript.value = false;
-    if (!await scrollToTurn(target.turn_id)) throw new Error('该回合当前不可用，请刷新对话');
+    if (!await scrollToTurn(target.turn_id)) throw new Error(uiText('该回合当前不可用，请刷新对话'));
     return;
   }
   // Recheck current availability while preserving the panel's factual cutoff.
   const scope = readerKey();
   const current = await api.sessionRecap(target.session_id, target.through_seq);
-  if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
+  if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error(uiText('阅读现场已切换'));
   const item = target.kind === 'source'
     ? current.sources.find(s => s.source_ref_id === target.source.source_ref_id && s.evidence[0].turn_id === target.turn_id)
     : current.effects.find(e => e.effect_id === target.effect.effect_id && e.evidence[0].turn_id === target.turn_id);
-  if (!item || item.unavailable_reason) throw new Error(item?.unavailable_reason ?? '原记录当前不可用');
+  if (!item || item.unavailable_reason) throw new Error(item?.unavailable_reason ?? uiText('原记录当前不可用'));
   const publication = targetPublication(target), active = network.value.workspace?.published_book_ref;
   if (network.value.enabled && publication && (publication.book_id !== active?.book_id || publication.publication_id !== active?.publication_id)) {
     emit('recap-publication', target); return;
   }
   if (target.kind === 'source') {
     const turn = props.chat.find(t => t.turnId === target.turn_id);
-    if (!turn) throw new Error('关联回合当前不可用，请刷新对话');
+    if (!turn) throw new Error(uiText('关联回合当前不可用，请刷新对话'));
     await openAgentSources(turn, [target.source.source_ref_id], { currentTarget: recapButton.value ?? null }, true);
   } else if (target.effect.effect.kind === 'presentation') {
     const reference = target.effect.effect.reference;
@@ -509,11 +523,11 @@ async function openRecapTarget(target: RecapTarget) {
   } else if (target.effect.object_id && ['Note', 'Highlight'].includes(target.effect.effect.effect.kind)) {
     const records = await api.recall();
     const record = records.find(r => r.mem_id === ('object_id' in item ? item.object_id : null));
-    if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error('阅读现场已切换');
-    if (!record || !await showMemory(record.mem_id)) throw new Error('原成果当前不可用，请刷新笔记');
+    if (scope !== readerKey() || target.session_id !== props.activeChatSessionId) throw new Error(uiText('阅读现场已切换'));
+    if (!record || !await showMemory(record.mem_id)) throw new Error(uiText('原成果当前不可用，请刷新笔记'));
   } else {
     activeTab.value = 'agent'; followTranscript.value = false;
-    if (!await scrollToTurn(target.turn_id)) throw new Error('操作记录当前不可用');
+    if (!await scrollToTurn(target.turn_id)) throw new Error(uiText('操作记录当前不可用'));
   }
 }
 const fullscreenButton = ref<HTMLButtonElement | null>(null);
@@ -526,9 +540,9 @@ function noteAssociationTitle(note: MemoryRecord): string {
   const association = note.note?.association;
   if (association?.kind === 'presentation') return association.title;
   if (association?.kind === 'answer') {
-    return props.chatSessions.find(s => s.id === association.session_id)?.title || '助手回答';
+    return props.chatSessions.find(s => s.id === association.session_id)?.title || uiText('助手回答');
   }
-  return props.noteSourceLabels?.[note.mem_id] || note.note?.source_bindings?.[0]?.label_snapshot || '来源未知';
+  return props.noteSourceLabels?.[note.mem_id] || note.note?.source_bindings?.[0]?.label_snapshot || uiText('来源未知');
 }
 watch(() => props.noteScopeKey, () => {
   noteQuery.value = ''; noteFilter.value = 'all'; noteOrder.value = 'recent';
@@ -576,8 +590,8 @@ function prepareCompletionFeedback() {
   return mascot?.prepareCompletionFeedback();
 }
 const taskSummary = computed(() => {
-  if (runActive.value) return "正在执行";
-  return openGoals.value.length === 1 ? goalStopLabel(openGoals.value[0].last_stop_reason) : `${openGoals.value.length} 项任务尚未完成`;
+  if (runActive.value) return uiText('正在执行');
+  return openGoals.value.length === 1 ? goalStopLabel(openGoals.value[0].last_stop_reason) : uiText('{0} 项任务尚未完成', [openGoals.value.length]);
 });
 function openTaskDetails(event?: Event) {
   taskDetailsTrigger = event?.currentTarget as HTMLElement | null;
@@ -597,11 +611,11 @@ watch(() => [props.activeChatSessionId, openGoals.value.length] as const, ([sess
   if (!count || session !== previous?.[0]) taskDetailsOpen.value = false;
 });
 function goalStopLabel(reason: string | null | undefined): string {
-  if (!reason) return "任务尚未完成";
-  if (reason === "TURN_LIMIT_EXCEEDED") return "本次达到运行上限";
-  if (reason === "AGENT_RUN_CANCELLED") return "本次生成已停止";
-  if (reason === "AGENT_NO_PROGRESS") return "本次未能继续推进";
-  return "本次运行未完成";
+  if (!reason) return uiText('任务尚未完成');
+  if (reason === "TURN_LIMIT_EXCEEDED") return uiText('本次达到运行上限');
+  if (reason === "AGENT_RUN_CANCELLED") return uiText('本次生成已停止');
+  if (reason === "AGENT_NO_PROGRESS") return uiText('本次未能继续推进');
+  return uiText('本次运行未完成');
 }
 const agentInputRef = ref<HTMLTextAreaElement | null>(null);
 const composeExpanded = ref(false);
@@ -653,11 +667,11 @@ watch(() => props.sending, sending => {
   if (sending && mobileConversation.value) { collapseAgentInput(); closeResponseEditor(); }
 });
 const tabs: { id: ContextTab; label: string }[] = [
-  { id: "agent", label: "问答" },
-  { id: "artifacts", label: "成果" },
-  { id: "profile", label: "画像" },
-  { id: "formula", label: "公式" },
-  { id: "notes", label: "笔记" },
+  { id: "agent", label: uiText('问答') },
+  { id: "artifacts", label: uiText('成果') },
+  { id: "profile", label: uiText('画像') },
+  { id: "formula", label: uiText('公式') },
+  { id: "notes", label: uiText('笔记') },
 ];
 watch(
   () => [props.requestedTab, props.requestedTabRevision] as const,
@@ -768,11 +782,11 @@ function incompleteNotice(outcome: OuterOutcome): string | null {
   switch (outcome.warning) {
     case "CONTEXT_BUDGET_EXCEEDED":
     case "ACTIVE_CONTEXT_EXHAUSTED":
-      return "这次内容较长，先提供当前可用的回答；其余部分可以继续补充。";
+      return uiText('这次内容较长，先提供当前可用的回答；其余部分可以继续补充。');
     case "COMPACTION_FAILED":
-      return "已提供当前可用的回答；剩余内容暂未完成，可以继续补充。";
+      return uiText('已提供当前可用的回答；剩余内容暂未完成，可以继续补充。');
     default:
-      return "已提供当前可用内容；未完成的讲解、演示或其他操作可以接着完善。";
+      return uiText('已提供当前可用内容；未完成的讲解、演示或其他操作可以接着完善。');
   }
 }
 
@@ -1067,7 +1081,7 @@ function onAnswerSelectionChange() {
   const text = root && part?.kind === 'html' && root.contains(range.endContainer)
     ? answerNoteExcerpt(range, part.markdown, root) : null;
   if (!text) {
-    answerSelectionError.value = '这段选区无法对应单个连续的回答片段，请在同一段回答文字内重新选择。';
+    answerSelectionError.value = uiText('这段选区无法对应单个连续的回答片段，请在同一段回答文字内重新选择。');
   }
   answerSelectionRange = range.cloneRange();
   answerSelectionPositioned.value = false;
@@ -1136,13 +1150,13 @@ function leadingQuote(content: string): string | null {
 }
 function askQuoteLabel(quote: DisplayQuestionQuote): string {
   if ("label" in quote) return quote.label;
-  return quote.status === "partial" ? "部分定位引用" : "引用来源";
+  return quote.status === "partial" ? uiText('部分定位引用') : uiText('引用来源');
 }
 function annotationLocationLabel(record: MemoryRecord): string | null {
   const status = props.annotationLocation?.[record.mem_id];
-  if (status === "exact") return "PDF 已定位";
-  if (status === "partial") return "PDF 部分定位";
-  if (status === "unmapped") return "PDF 未定位";
+  if (status === "exact") return uiText('PDF 已定位');
+  if (status === "partial") return uiText('PDF 部分定位');
+  if (status === "unmapped") return uiText('PDF 未定位');
   return null;
 }
 function noteSourceLid(note: MemoryRecord): string | null {
@@ -1160,21 +1174,21 @@ function canFocusNoteSource(note: MemoryRecord): boolean {
 }
 function noteSourceLabel(note: MemoryRecord): string {
   const placement = note.note_placement;
-  if (placement?.source_fingerprint && placement.source_fingerprint !== props.noteSourceFingerprint) return '来源已变更';
-  if (placement?.kind === 'pdf_region') return `第 ${placement.page_index + 1} 页`;
+  if (placement?.source_fingerprint && placement.source_fingerprint !== props.noteSourceFingerprint) return uiText('来源已变更');
+  if (placement?.kind === 'pdf_region') return uiText('第 {0} 页', [placement.page_index + 1]);
   return noteAssociationTitle(note);
 }
 function notePlacementActionLabel(note: MemoryRecord): string | null {
   if (!props.unquotedNotePlacementAvailable || note.selection_context) return null;
-  if (!note.note_placement) return "放置到正文";
+  if (!note.note_placement) return uiText('放置到正文');
   const surface = props.notePlacementSurface ?? "markdown";
   if ((surface === "markdown" && note.note_placement.kind !== "lid_block")
     || (surface === "pdf" && note.note_placement.kind !== "pdf_region")) return null;
-  if (note.note_placement.source_fingerprint !== props.noteSourceFingerprint) return "重新放置";
+  if (note.note_placement.source_fingerprint !== props.noteSourceFingerprint) return uiText('重新放置');
   if (note.note_placement.kind === "pdf_region") {
-    return props.annotationLocation?.[note.mem_id] === "exact" ? "移动" : "重新放置";
+    return props.annotationLocation?.[note.mem_id] === "exact" ? uiText('移动') : uiText('重新放置');
   }
-  return "移动";
+  return uiText('移动');
 }
 function isLongNote(note: MemoryRecord): boolean {
   return note.content.length > 360 || note.content.split("\n").length > 8;
@@ -1213,13 +1227,13 @@ function selectTab(tab: ContextTab) {
 
 function memoryUpdateLabel(update: ProfileMemoryUpdate): string {
   return {
-    remembered: "画像已记住",
-    corrected: "画像已纠正",
-    forgotten: "画像已忘记",
-    needs_clarification: "画像需要澄清",
-    needs_sensitive_confirmation: "敏感画像等待确认",
-    sensitive_confirmation_cancelled: "敏感画像保存已取消",
-    rejected: "画像更新未保存",
+    remembered: uiText('画像已记住'),
+    corrected: uiText('画像已纠正'),
+    forgotten: uiText('画像已忘记'),
+    needs_clarification: uiText('画像需要澄清'),
+    needs_sensitive_confirmation: uiText('敏感画像等待确认'),
+    sensitive_confirmation_cancelled: uiText('敏感画像保存已取消'),
+    rejected: uiText('画像更新未保存'),
   }[update.kind];
 }
 
@@ -1239,11 +1253,11 @@ function hasProfileUsage(usage: ProfileUsageTrace): boolean {
 
 function influenceLabel(influence: ProfileUsageTrace["influences"][number]): string {
   return {
-    retrieval_plan: "检索计划",
-    explanation_depth: "讲解深度",
-    terminology: "术语选择",
-    example_choice: "示例选择",
-    navigation: "阅读导航",
+    retrieval_plan: uiText('检索计划'),
+    explanation_depth: uiText('讲解深度'),
+    terminology: uiText('术语选择'),
+    example_choice: uiText('示例选择'),
+    navigation: uiText('阅读导航'),
   }[influence];
 }
 </script>
@@ -1252,18 +1266,18 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   <aside class="right-rail" :class="{ fullscreen: props.fullscreen && !workspaceVisible, 'conversation-wide': wideConversation, 'conversation-mobile': mobileConversation, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
     <div v-if="workspaceVisible" ref="workspaceTools" class="workspace-tools">
       <div v-if="$slots['learning-details']" class="workspace-learning-details"><slot name="learning-details" /></div>
-      <label class="workspace-split">演示宽度 <input v-model="split" type="range" min="40" max="72" aria-label="演示宽度" /></label>
-      <button class="discussion-toggle" type="button" :aria-expanded="discussionOpen" @click="discussionOpen = !discussionOpen"><span class="discussion-indicator" aria-hidden="true"></span>{{ discussionOpen ? '收起讨论' : '展开讨论' }}<ChevronDown :size="14" aria-hidden="true" /></button>
-      <button v-if="stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? '正在停止' : '停止' }}</button>
+      <label class="workspace-split">{{ uiText('演示宽度') }} <input v-model="split" type="range" min="40" max="72" :aria-label="uiText('演示宽度')" /></label>
+      <button class="discussion-toggle" type="button" :aria-expanded="discussionOpen" @click="discussionOpen = !discussionOpen"><span class="discussion-indicator" aria-hidden="true"></span>{{ discussionOpen ? uiText('收起讨论') : uiText('展开讨论') }}<ChevronDown :size="14" aria-hidden="true" /></button>
+      <button v-if="stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? uiText('正在停止') : uiText('停止') }}</button>
     </div>
     <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
       <div v-show="mobileConversation" class="mobile-conversation-header">
-        <button class="mobile-back" type="button" :aria-label="musicMode ? '返回聆听' : '返回阅读'" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
-        <button ref="mobileLearningButton" class="mobile-learning-title" type="button" aria-label="学习与会话" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.musicMode ? '音乐伴听' : props.videoImagesEnabled ? '视频伴读' : '问这本书' }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.musicMode ? '从声音或谱面问起' : props.videoImagesEnabled ? '一起弄懂正在看的内容' : '围绕这本书聊一聊') }}</small></button>
+        <button class="mobile-back" type="button" :aria-label="musicMode ? uiText('返回聆听') : uiText('返回阅读')" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
+        <button ref="mobileLearningButton" class="mobile-learning-title" type="button" :aria-label="uiText('学习与会话')" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.musicMode ? uiText('音乐伴听') : props.videoImagesEnabled ? uiText('视频伴读') : uiText('问这本书') }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.musicMode ? uiText('从声音或谱面问起') : props.videoImagesEnabled ? uiText('一起弄懂正在看的内容') : uiText('围绕这本书聊一聊')) }}</small></button>
         <div ref="mobileRecordsHost" class="mobile-records" />
       </div>
-      <h3 v-show="!mobileConversation" class="rail-title"><YeyeMascot ref="fullscreenCompanion" variant="avatar" :size="32" :active="companionActive && !mobileConversation && !!props.fullscreen && !historyOpen" />{{ props.musicMode ? '音乐伴听' : props.videoImagesEnabled ? '视频伴读' : '问这本书' }}</h3>
-      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" :aria-label="musicMode ? '辅助聆听功能' : '辅助阅读功能'">
+      <h3 v-show="!mobileConversation" class="rail-title"><YeyeMascot ref="fullscreenCompanion" variant="avatar" :size="32" :active="companionActive && !mobileConversation && !!props.fullscreen && !historyOpen" />{{ props.musicMode ? uiText('音乐伴听') : props.videoImagesEnabled ? uiText('视频伴读') : uiText('问这本书') }}</h3>
+      <div v-if="!props.fullscreen" class="context-tabs" role="tablist" :aria-label="musicMode ? uiText('辅助聆听功能') : uiText('辅助阅读功能')">
       <button
         v-for="tab in tabs.slice(0, 2)"
         :key="tab.id"
@@ -1277,7 +1291,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         @click="selectTab(tab.id)"
       >
         <YeyeMascot v-if="tab.id === 'agent'" ref="tabCompanion" variant="avatar" :size="24" :active="companionActive && !mobileConversation && !props.fullscreen && !historyOpen" />
-        {{ props.videoImagesEnabled && tab.id === 'agent' ? '伴读' : tab.label }}
+        {{ props.videoImagesEnabled && tab.id === 'agent' ? uiText('伴读') : tab.label }}
         <span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">
           {{ profileAttentionCount }}
         </span>
@@ -1286,28 +1300,26 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </span>
       </button>
       <div ref="contextTools" class="context-tools">
-        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" :aria-label="musicMode ? '伴听工具' : '阅读工具'" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
-          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? '工具' }}
+        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
+          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? uiText('工具') }}
           <span v-if="profileAttentionCount" class="tool-attention">{{ profileAttentionCount }}</span>
           <ChevronDown :size="14" aria-hidden="true" />
         </button>
-        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" :aria-label="musicMode ? '更多伴听工具' : '更多阅读工具'">
+        <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" :aria-label="musicMode ? uiText('更多伴听工具') : uiText('更多阅读工具')">
           <button v-for="tab in tabs.slice(2)" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" role="tab" :id="`reader-tab-${tab.id}`" :aria-selected="activeTab === tab.id" :aria-controls="`reader-panel-${tab.id}`" @click="selectTab(tab.id)">
             {{ tab.label }}<span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">{{ profileAttentionCount }}</span>
           </button>
         </div>
       </div>
       </div>
-      <button v-if="openGoals.length && activeTab === 'agent' && !mobileConversation" class="mobile-task-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">{{ openGoals.length }} 项待办</button>
+      <button v-if="openGoals.length && activeTab === 'agent' && !mobileConversation" class="mobile-task-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">{{ openGoals.length }} {{ uiText('项待办') }}</button>
       <div v-show="!mobileConversation" ref="chatActions" class="chat-actions" :class="{ 'menu-open': chatMenuOpen }">
-          <button v-show="!wideConversation" ref="chatMenuButton" class="chat-menu-toggle" type="button" aria-label="问答操作" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen; contextMenuOpen = false">会话<ChevronDown :size="14" aria-hidden="true" /></button>
+          <button v-show="!wideConversation" ref="chatMenuButton" class="chat-menu-toggle" type="button" :aria-label="uiText('问答操作')" :aria-expanded="chatMenuOpen" aria-controls="chat-secondary-actions" @click="chatMenuOpen = !chatMenuOpen; contextMenuOpen = false">{{ uiText('会话') }}<ChevronDown :size="14" aria-hidden="true" /></button>
           <Teleport :to="sessionToolsTarget || 'body'" :disabled="!sessionToolsTarget">
           <div v-show="chatMenuOpen || wideConversation || mobileConversation" id="chat-secondary-actions" class="chat-secondary-actions" @click.capture="closeChatMenuAfterAction">
-          <button class="new-chat" title="新对话" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">新对话</button>
-          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">{{ musicMode ? '本次聆听回顾' : '本次阅读回顾' }}</button>
-          <button ref="historyButton" class="history-button" title="打开对话历史" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true">
-            本书历史
-            <span>{{ historySessions.length }}</span>
+          <button class="new-chat" :title="uiText('新对话')" :disabled="props.historyLoading || !!props.historyError" @click="emit('new-chat')">{{ uiText('新对话') }}</button>
+          <button ref="recapButton" class="recap-button" :disabled="!props.activeChatSessionId || props.historyLoading || !!props.historyError" @click="recapOpen = true">{{ musicMode ? uiText('本次聆听回顾') : uiText('本次阅读回顾') }}</button>
+          <button ref="historyButton" class="history-button" :title="uiText('打开对话历史')" :disabled="props.historyLoading || !!props.historyError" @click="historyOpen = true"> {{ uiText('本书历史') }} <span>{{ historySessions.length }}</span>
           </button>
           <slot name="learning-details" />
           </div>
@@ -1316,29 +1328,29 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             ref="fullscreenButton"
             type="button"
             class="fullscreen-button"
-            :aria-label="props.fullscreen ? '退出问答全屏' : '问答全屏'"
+            :aria-label="props.fullscreen ? uiText('退出问答全屏') : uiText('问答全屏')"
             :aria-pressed="!!props.fullscreen"
             @click="emit('toggle-fullscreen')"
           ><Minimize2 v-if="props.fullscreen" :size="16" aria-hidden="true" /><Maximize2 v-else :size="16" aria-hidden="true" /></button>
         </div>
     </div>
 
-    <MobileLearningSheet :open="mobileConversation && mobileToolsOpen" title="学习与会话" @close="mobileToolsOpen = false">
+    <MobileLearningSheet :open="mobileConversation && mobileToolsOpen" :title="uiText('学习与会话')" @close="mobileToolsOpen = false">
       <div ref="mobileGoalHost" @click.capture="leaveMobileGoalTools" />
-      <div class="mobile-tool-section"><p>学习方式</p><div ref="mobileTeachingHost" /></div>
-      <nav class="mobile-tool-section" aria-label="本书会话"><p>会话</p><div ref="mobileSessionHost" /></nav>
-      <nav class="mobile-tool-section mobile-tool-links" :aria-label="musicMode ? '伴听工具' : '阅读工具'">
-        <button v-if="openGoals.length" type="button" @click="mobileToolsOpen = false; openTaskDetails($event)">{{ openGoals.length }} 项待办<ArrowRight :size="15" aria-hidden="true" /></button>
+      <div class="mobile-tool-section"><p>{{ uiText('学习方式') }}</p><div ref="mobileTeachingHost" /></div>
+      <nav class="mobile-tool-section" :aria-label="uiText('本书会话')"><p>{{ uiText('会话') }}</p><div ref="mobileSessionHost" /></nav>
+      <nav class="mobile-tool-section mobile-tool-links" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')">
+        <button v-if="openGoals.length" type="button" @click="mobileToolsOpen = false; openTaskDetails($event)">{{ openGoals.length }} {{ uiText('项待办') }}<ArrowRight :size="15" aria-hidden="true" /></button>
         <button v-for="tab in tabs.filter(tab => tab.id !== 'agent')" :key="tab.id" type="button" @click="mobileToolsOpen = false; selectTab(tab.id)">{{ tab.label }}<ArrowRight :size="15" aria-hidden="true" /></button>
-        <button type="button" @click="mobileToolsOpen = false; emit('workspace-menu')">阅读设置<ArrowRight :size="15" aria-hidden="true" /></button>
+        <button type="button" @click="mobileToolsOpen = false; emit('workspace-menu')">{{ uiText('阅读设置') }}<ArrowRight :size="15" aria-hidden="true" /></button>
       </nav>
     </MobileLearningSheet>
 
-    <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? '问这本书' : undefined">
-      <aside v-show="wideConversation" class="conversation-sidebar conversation-context" aria-label="学习与会话">
+    <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? uiText('问这本书') : undefined">
+      <aside v-show="wideConversation" class="conversation-sidebar conversation-context" :aria-label="uiText('学习与会话')">
         <div ref="goalSidebarHost" class="sidebar-goal" />
-        <nav class="sidebar-section" aria-label="本书会话"><p class="sidebar-label">会话</p><div ref="sessionSidebarHost" /></nav>
-        <div class="sidebar-section sidebar-teaching"><p class="sidebar-label">学习方式</p><div ref="teachingSidebarHost" /></div>
+        <nav class="sidebar-section" :aria-label="uiText('本书会话')"><p class="sidebar-label">{{ uiText('会话') }}</p><div ref="sessionSidebarHost" /></nav>
+        <div class="sidebar-section sidebar-teaching"><p class="sidebar-label">{{ uiText('学习方式') }}</p><div ref="teachingSidebarHost" /></div>
       </aside>
       <div class="conversation-main">
       <Teleport :to="goalToolsTarget || 'body'" :disabled="!goalToolsTarget">
@@ -1346,22 +1358,22 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </Teleport>
       <button v-if="openGoals.length" ref="taskSummaryButton" class="task-summary-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">
         <span class="task-summary-status">{{ taskSummary }}</span>
-        <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : '查看未完成任务' }}</span>
-        <span class="task-summary-action">查看任务</span>
+        <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : uiText('查看未完成任务') }}</span>
+        <span class="task-summary-action">{{ uiText('查看任务') }}</span>
       </button>
       <div v-if="taskDetailsOpen && openGoals.length" class="goal-overlay" @click.self="closeTaskDetails">
-        <section id="reader-task-details" class="goal-details" role="dialog" aria-label="当前任务详情">
-          <header class="goal-details-head"><strong>当前任务</strong><button ref="taskCloseButton" type="button" aria-label="关闭任务详情" @click="closeTaskDetails"><X :size="16" aria-hidden="true" /></button></header>
-          <div class="goal-list" aria-label="当前任务">
+        <section id="reader-task-details" class="goal-details" role="dialog" :aria-label="uiText('当前任务详情')">
+          <header class="goal-details-head"><strong>{{ uiText('当前任务') }}</strong><button ref="taskCloseButton" type="button" :aria-label="uiText('关闭任务详情')" @click="closeTaskDetails"><X :size="16" aria-hidden="true" /></button></header>
+          <div class="goal-list" :aria-label="uiText('当前任务')">
             <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
               <strong>{{ goal.interpretation }}</strong>
-              <p>{{ runActive ? '当前对话正在执行' : goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.result_refs.length"> · 已有部分结果</span></p>
-              <p v-if="goal.requirements.length" class="goal-requirements">交付要求：{{ goal.requirements.map(item => item.description).join('；') }}</p>
-              <ul v-if="goal.working.items.length" class="goal-work-items"><li v-for="item in goal.working.items" :key="item.id"><span>{{ { pending: '待做', in_progress: '进行中', completed: '已完成' }[item.status] }}</span>{{ item.description }}</li></ul>
+              <p>{{ runActive ? uiText('当前对话正在执行') : goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.result_refs.length"> {{ uiText('· 已有部分结果') }}</span></p>
+              <p v-if="goal.requirements.length" class="goal-requirements">{{ uiText('交付要求：') }}{{ goal.requirements.map(item => item.description).join('；') }}</p>
+              <ul v-if="goal.working.items.length" class="goal-work-items"><li v-for="item in goal.working.items" :key="item.id"><span>{{ { pending: uiText('待做'), in_progress: uiText('进行中'), completed: uiText('已完成') }[item.status] }}</span>{{ item.description }}</li></ul>
               <div class="goal-actions">
-                <button :disabled="runActive" @click="emit('continue-goal', goal.id); closeTaskDetails()">继续任务</button>
-                <button :disabled="runActive" @click="supplementGoal(goal.id)">补充要求</button>
-                <button :disabled="runActive" @click="emit('cancel-goal', goal.id); closeTaskDetails()">结束任务</button>
+                <button :disabled="runActive" @click="emit('continue-goal', goal.id); closeTaskDetails()">{{ uiText('继续任务') }}</button>
+                <button :disabled="runActive" @click="supplementGoal(goal.id)">{{ uiText('补充要求') }}</button>
+                <button :disabled="runActive" @click="emit('cancel-goal', goal.id); closeTaskDetails()">{{ uiText('结束任务') }}</button>
               </div>
             </div>
           </div>
@@ -1382,19 +1394,20 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         :ref="instance => { if (instance && recapPresentation) presentationInstances.set(presentationKey(recapPresentation.turnId, recapPresentation.reference), instance as InstanceType<typeof AgentPresentation>); }"
         :reference="recapPresentation.reference" :workspace="workspaceVisible && workspaceKey === presentationKey(recapPresentation.turnId, recapPresentation.reference)"
         :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
+        @add-to-board="receipt => emit('add-to-board', { kind: 'presentation', session_id: receipt.session_id, turn_id: receipt.turn_id, reference: receipt.reference, receipt })"
         @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
         @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
-        <p v-if="props.historyLoading" role="status">{{ musicMode ? '正在恢复对话，可以先听音乐或查看乐谱。' : '正在恢复对话，可以先阅读正文。' }}</p>
+        <p v-if="props.historyLoading" role="status">{{ musicMode ? uiText('正在恢复对话，可以先听音乐或查看乐谱。') : uiText('正在恢复对话，可以先阅读正文。') }}</p>
         <div v-else-if="props.historyError" role="alert">
-          <p>对话暂时无法加载：{{ props.historyError }}</p>
-          <button @click="emit('retry-history')">重试</button>
+          <p>{{ uiText('对话暂时无法加载：') }}{{ props.historyError }}</p>
+          <button @click="emit('retry-history')">{{ uiText('重试') }}</button>
         </div>
         <div v-for="(turn, ti) in props.chat" :key="turn.turnId ?? ti" class="turn" :data-turn-id="turn.turnId || undefined">
           <details v-if="turn.interaction?.answer_ref" class="turn-quote">
-            <summary>接续的原回答</summary>
+            <summary>{{ uiText('接续的原回答') }}</summary>
             <blockquote>{{ turn.interaction.answer_text }}</blockquote>
-            <button @click="scrollToTurn(turn.interaction.answer_ref.turn_id)">回到原回答</button>
+            <button @click="scrollToTurn(turn.interaction.answer_ref.turn_id)">{{ uiText('回到原回答') }}</button>
           </details>
           <div v-if="turn.questionQuote" class="turn-quote">
             <div class="turn-quote-head">
@@ -1402,23 +1415,27 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </div>
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
-          <p v-if="turn.musicQuestion" class="turn-video-context">音乐问题 · {{ videoTime(turn.musicQuestion.audio.start_ms) }}–{{ videoTime(turn.musicQuestion.audio.end_ms) }}<span v-if="turn.musicQuestion.occurrence_id"> · 当前演奏片段</span></p>
-          <p v-if="turn.videoQuestion" class="turn-video-context">视频问题 · {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? ' · 已选区域' : '' }}<span v-if="turn.videoQuestion.range"> · 时间范围 {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
-          <details v-if="turn.musicQuestion?.image || turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" alt="本次提问图片" />查看提问图片</summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" alt="本次提问图片放大预览" /></details>
+          <p v-if="turn.musicQuestion" class="turn-video-context">{{ uiText('音乐问题 ·') }} {{ videoTime(turn.musicQuestion.audio.start_ms) }}–{{ videoTime(turn.musicQuestion.audio.end_ms) }}<span v-if="turn.musicQuestion.occurrence_id"> {{ uiText('· 当前演奏片段') }}</span></p>
+          <p v-if="turn.videoQuestion" class="turn-video-context">{{ uiText('视频问题 ·') }} {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? uiText(' · 已选区域') : '' }}<span v-if="turn.videoQuestion.range"> {{ uiText('· 时间范围') }} {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
+          <details v-if="turn.musicQuestion?.image || turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片')" />{{ uiText('查看提问图片') }}</summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片放大预览')" /></details>
           <p class="u-msg">{{ turn.user }}</p>
+          <button v-if="turn.boardFollowUp" type="button" class="board-location board-question-link"
+            @click="emit('open-board-location', { board_id: turn.boardFollowUp.board_id, item_id: turn.boardFollowUp.item_id, block_id: turn.boardFollowUp.block_id })">
+            <span>{{ uiText('回到画板提问对象') }}</span><ArrowRight :size="14" aria-hidden="true" />
+          </button>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending" />
           <div v-if="turn.runStatus || (turn.pending && stopAvailable)" class="run-progress-footer">
-            <p v-if="turn.runStatus && (turn.runStatus !== '正在运行' || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
-            <button v-if="turn.pending && stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? '正在停止' : '停止' }}</button>
+            <p v-if="turn.runStatus && (turn.runStatus !== uiText('正在运行') || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
+            <button v-if="turn.pending && stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? uiText('正在停止') : uiText('停止') }}</button>
           </div>
-          <p v-if="turn.pending && !turn.runStatus && !turn.activities?.length" class="pending">正在接收运行...</p>
+          <p v-if="turn.pending && !turn.runStatus && !turn.activities?.length" class="pending">{{ uiText('正在接收运行...') }}</p>
           <YeyeMascot v-if="wideConversation && turn.pending && props.waitingTurnId === turn.turnId && !turn.draft?.view && !turn.error"
             class="waiting-mascot" variant="reading" :size="144" motion="waiting" :active="companionActive" />
           <div v-if="!turn.outcome && turn.liveEffects?.length" class="live-effects">
             <p v-for="item in turn.liveEffects" :key="item.effect_id">{{ props.effLabel(item.effect) }}</p>
           </div>
-          <div v-if="turn.pending && turn.draft?.view" class="answer-draft ans-text md" aria-label="回答草稿" @click="onAnswerSourceClick(turn, turn.draft.view.parts, $event)">
+          <div v-if="turn.pending && turn.draft?.view" class="answer-draft ans-text md" :aria-label="uiText('回答草稿')" @click="onAnswerSourceClick(turn, turn.draft.view.parts, $event)">
             <template v-for="(part, pi) in turnDisplayParts(turn, true)" :key="`${turn.draft.message_id}-${turn.draft.revision}-${pi}`">
               <template v-if="part.kind === 'html'">
                 <div v-for="(block, bi) in part.blocks" :key="bi" v-memo="[block]" class="answer-markdown" v-html="block"></div>
@@ -1427,9 +1444,15 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
           <div v-if="!turn.pending && turn.spendStop" class="incomplete" role="status">
             <p>{{ turn.spendStop.message }}</p>
-            <button v-if="network.enabled" type="button" @click="emit('show-allowance')">查看使用额度</button>
+            <button v-if="network.enabled" type="button" @click="emit('show-allowance')">{{ uiText('查看使用额度') }}</button>
           </div>
           <p v-else-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
+          <div v-if="turn.boardCommits?.length" class="board-committed-parts" :aria-label="uiText('已保存的讲解')">
+            <button v-for="(part, index) in mergeBoardDeliveries(turn.boardCommits)" :key="boardDeliveryKey(part)" type="button" class="board-location board-part-link"
+              @click="emit('open-board-location', { board_id: part.board_id, item_id: part.item_ids[0], block_id: part.block_ids[0] })"><span>{{ uiText('已保存第{0}部分', [index + 1]) }} · {{ uiText('在画板中查看') }}</span><ArrowRight :size="14" aria-hidden="true" /></button>
+            <p class="board-parts-progress" role="status">{{ turn.pending ? uiText('后续仍在讲解，可以先查看已保存的部分。') : turn.boardIncomplete ? uiText('讲解尚未全部完成，已保存的部分可以继续查看。') : '' }}</p>
+          </div>
+          <p v-if="!turn.pending && turn.boardDeliveryError" class="board-delivery-error incomplete" role="status">{{ uiText('内容没有加入画板：{0}', [turn.boardDeliveryError]) }}</p>
 
           <div v-if="turn.outcome && (!turn.error || turn.spendStop)" class="a-msg">
             <div v-if="answerParts(turn.outcome).length" :ref="el => { if (turn.turnId) { if (el) answerRoots.set(turn.turnId, el as HTMLElement); else answerRoots.delete(turn.turnId); } }" class="ans-text md" @pointerdown="startAnswerSelection" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
@@ -1441,7 +1464,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                   v-html="part.html"
                 ></div>
                 <template v-else-if="part.kind === 'presentation' && turn.turnId">
-                <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">打开演示 · 版本 {{ part.revision }}</button>
+                <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">{{ uiText('打开演示 · 版本') }} {{ part.revision }}</button>
                 <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
                   :toolbar-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTools : undefined"
                   :teaching-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTeachingTarget ?? undefined : undefined"
@@ -1459,11 +1482,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                   :shared-question="props.agentInput" @update:shared-question="emit('update:agentInput', $event)"
                   @expand="selectPresentation(turn.turnId!, part, $event)"
                   :busy="props.sending || props.historyLoading || !!props.historyError" @follow-up="presentationSent" @record-note="(receipt, title, summary) => emit('record-note', receipt, title, summary)"
+                  @add-to-board="receipt => emit('add-to-board', { kind: 'presentation', session_id: receipt.session_id, turn_id: receipt.turn_id, reference: receipt.reference, receipt })"
                   @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
                 </template>
               </template>
             </div>
-            <p v-else class="ans-text">暂无回答。</p>
+            <p v-else class="ans-text">{{ uiText('暂无回答。') }}</p>
             <div v-if="workspaceVisible && workspace?.turnId === turn.turnId" :ref="element => { workspaceTeachingTarget = element as HTMLElement | null; }" class="workspace-teaching" />
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
               :ref="instance => { if (instance) activityInstances.set(turn.turnId!, instance as InstanceType<typeof TutorActivities>); else activityInstances.delete(turn.turnId!); }"
@@ -1471,38 +1495,43 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               :hosted-presentations="hostedTeachingPresentations(turn)" :busy="sending || historyLoading || !!historyError" @locate-presentation="selectPresentation(turn.turnId!, $event)"
               :response-actions-target="mobileConversation ? responseEditingHost : null" @editing-response="responseEditing(turn.turnId!, $event)"
               @response-available="responseAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
-            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />这一步没跟上</button>
+            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />{{ uiText('这一步没跟上') }}</button>
             <TutorContinuation v-if="turn.turnId && deliveredAnswerText(turn) && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')) && !workspaceVisible"
               :session-id="activeChatSessionId" :turn-id="turn.turnId" :head="chatHead" :enabled="!!continuationEnabled" :busy="sending || historyLoading || !!historyError"
               @available="suggestionAvailable(`${turn.turnId}:plain`, $event)"
               @choose="(view, option, receipt) => emit('choose-continuation', view, option, receipt)" @locate="locateAccepted" @edit="editQuestion" @read="returnReading" />
             <div v-if="deliveredAnswerText(turn) && turn.turnId && !hasSuggestion(turn.turnId) && !workspaceVisible && (turn.interaction?.source_bindings.length || turn.questionQuote?.status === 'resolved' || turn.outcome.answer_view?.sources.length)" class="reading-continuation">
               <template v-if="!tutorEnabled">
-                <button :disabled="sending || tutorEnableBusy" @click="emit('enable-tutor')">开启连续教学</button>
-                <small>对所有书籍生效；开启后可选择继续理解。</small>
+                <button :disabled="sending || tutorEnableBusy" @click="emit('enable-tutor')">{{ uiText('开启连续教学') }}</button>
+                <small>{{ uiText('对所有书籍生效；开启后可选择继续理解。') }}</small>
               </template>
-              <button v-else-if="continuationEnabled" :disabled="sending" @click="emit('continue-answer', turn.turnId)">继续理解这段</button>
+              <button v-else-if="continuationEnabled" :disabled="sending" @click="emit('continue-answer', turn.turnId)">{{ uiText('继续理解这段') }}</button>
               <small v-else>{{ continuationLabel }}</small>
             </div>
+            <button v-if="!turn.pending && turn.boardDelivery && !turn.boardDeliveryError && !turn.boardCommits?.some(part => boardDeliveryKey(part) === boardDeliveryKey(turn.boardDelivery!))" type="button" class="board-location board-delivery-link"
+              @click="emit('open-board-location', { board_id: turn.boardDelivery.board_id, item_id: turn.boardDelivery.item_ids[0], block_id: turn.boardDelivery.block_ids[0] })">
+              <span>{{ uiText('在画板中查看') }}</span><ArrowRight :size="14" aria-hidden="true" />
+            </button>
             <details v-if="deliveredAnswerText(turn)" class="answer-actions">
-              <summary>回答操作</summary>
-              <button @click="emit('share-answer', turn)">生成理解卡</button>
+              <summary>{{ uiText('回答操作') }}</summary>
+              <button type="button" class="answer-add-board" @click="emit('add-to-board', { kind: 'answer', session_id: activeChatSessionId, turn_id: turn.turnId! })">{{ uiText('完整回答加入画板') }}</button>
+              <button @click="emit('share-answer', turn)">{{ uiText('生成理解卡') }}</button>
             </details>
             <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
               {{ incompleteNotice(turn.outcome) }}
             </p>
 
             <div v-if="turn.outcome.effects.length" class="proposals">
-              <p class="prop-h">建议变更</p>
+              <p class="prop-h">{{ uiText('建议变更') }}</p>
               <div v-for="(eff, ei) in turn.outcome.effects" :key="ei" class="proposal">
                 <span class="prop-label">{{ turn.effectLabels?.[ei] ?? props.effLabel(eff) }}</span>
                 <template v-if="props.effState(ti, ei)">
                   <span class="done">{{ props.effState(ti, ei) }}</span>
-                  <button v-if="props.effState(ti, ei) === '已保留' && (eff.kind === 'Note' || eff.kind === 'Highlight')"
-                    class="undo" @click="emit('undo-effect', ti, ei, eff)">撤销保留</button>
+                  <button v-if="props.effState(ti, ei) === uiText('已保留') && (eff.kind === 'Note' || eff.kind === 'Highlight')"
+                    class="undo" @click="emit('undo-effect', ti, ei, eff)">{{ uiText('撤销保留') }}</button>
                 </template>
                 <template v-else>
-                  <button v-if="props.isGoto(eff)" @click="emit('undo-effect', ti, ei, eff)">返回原位置</button>
+                  <button v-if="props.isGoto(eff)" @click="emit('undo-effect', ti, ei, eff)">{{ uiText('返回原位置') }}</button>
                   <template v-else>
                     <button v-if="props.showEffectPrimary(eff)" @click="emit('keep-effect', ti, ei, eff)">
                       {{ props.effectPrimaryLabel(eff) }}
@@ -1529,8 +1558,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                 <button
                   v-else-if="canUndoMemoryUpdate(update)"
                   type="button"
-                  title="撤销画像更新"
-                  aria-label="撤销画像更新"
+                  :title="uiText('撤销画像更新')"
+                  :aria-label="uiText('撤销画像更新')"
                   :disabled="props.profileMemoryBusy"
                   @click="emit('undo-profile-update', ti, ui, update)"
                 >
@@ -1540,7 +1569,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </div>
 
             <details v-if="hasProfileUsage(turn.outcome.profile_usage)" class="profile-usage">
-              <summary>学习偏好与背景 · {{ turn.outcome.profile_usage.injected_fact_ids.length }} 条</summary>
+              <summary>{{ uiText('学习偏好与背景 ·') }} {{ turn.outcome.profile_usage.injected_fact_ids.length }} {{ uiText('条') }}</summary>
               <p v-if="turn.outcome.profile_usage.influences.length">
                 {{ turn.outcome.profile_usage.influences.map(influenceLabel).join(" · ") }}
               </p>
@@ -1553,50 +1582,50 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         <div v-if="showConversationWelcome" class="empty conversation-welcome">
           <YeyeMascot class="welcome-mascot" :size="mobileConversation ? 128 : 144" motion="idle" :active="companionActive" />
-          <h3>{{ props.musicMode ? '听不懂、看不懂，都可以问。' : props.videoImagesEnabled ? '没听懂的，一起弄懂。' : '这一节，想先弄明白什么？' }}</h3>
-          <p>{{ props.videoImagesEnabled ? '从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。' : props.learningTitle ? '接着上次学习，也可以随时调整目标。' : props.musicMode ? '不认识谱线、音符或符号？在乐谱上框选，或上传、粘贴截图，直接问「这是什么」。' : '选一个目的开始，也可以直接写下你的问题。' }}</p>
-          <button v-if="props.learningTitle && !props.videoImagesEnabled" type="button" class="question-example"
-            :disabled="sending || learningPurposeBusy || !learningPurposeReady" @click="emit('resume-learning')">{{ tutorEnabled ? '继续上次学习' : '开启并继续上次学习' }} <span aria-hidden="true">→</span></button>
-          <LearningPurposeEntry v-else-if="!props.videoImagesEnabled" :music-mode="props.musicMode" :available="!!learningPurposeAvailable" :ready="!!learningPurposeReady"
+          <h3>{{ props.musicMode ? uiText('听不懂、看不懂，都可以问。') : props.videoImagesEnabled ? uiText('没听懂的，一起弄懂。') : uiText('这一节，想先弄明白什么？') }}</h3>
+          <p>{{ props.videoImagesEnabled ? uiText('从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。') : props.learningTitle ? uiText('接着上次学习，也可以随时调整目标。') : props.musicMode ? uiText('不认识谱线、音符或符号？在乐谱上框选，或上传、粘贴截图，直接问「这是什么」。') : uiText('选一个目的开始，也可以直接写下你的问题。') }}</p>
+          <button v-if="props.learningTitle" type="button" class="question-example"
+            :disabled="sending || learningPurposeBusy || !learningPurposeReady" @click="emit('resume-learning')">{{ tutorEnabled ? uiText('继续上次学习') : uiText('开启并继续上次学习') }} <span aria-hidden="true">→</span></button>
+          <LearningPurposeEntry v-else :music-mode="props.musicMode" :video-mode="props.videoImagesEnabled" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="!!learningPurposeReady"
             :enabled="!!tutorEnabled" :busy="sending || !!learningPurposeBusy" :scope-options="learningScopeOptions"
             @choose="(purpose, scope) => emit('learning-purpose', purpose, scope)" @custom="agentInputRef?.focus()" />
-          <button v-else-if="!props.agentInput.trim() && !props.askDraft" type="button" class="question-example" :disabled="props.questionInputBlocked" @click="emit('update:agentInput', '请结合当前画面，解释这里在讲什么。'); agentInputRef?.focus()">讲清当前画面 <span aria-hidden="true">↗</span></button>
-          <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">查看{{ musicMode ? '这首作品' : '本书' }}的 {{ historySessions.length }} 段历史对话</button>
+          <button v-if="props.videoImagesEnabled && !props.agentInput.trim() && !props.askDraft" type="button" class="question-example video-question-example" :disabled="props.questionInputBlocked" @click="emit('update:agentInput', uiText('请结合当前画面，解释这里在讲什么。')); agentInputRef?.focus()">{{ uiText('讲清当前画面') }} <span aria-hidden="true">↗</span></button>
+          <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">{{ uiText('查看') }}{{ musicMode ? uiText('这首作品') : uiText('本书') }}{{ uiText('的') }} {{ historySessions.length }} {{ uiText('段历史对话') }}</button>
         </div>
       </div>
 
       <div class="agent-input" :class="{ composing: composeExpanded, 'mobile-composing': mobileConversation && mobileComposerVisible, 'mobile-answering': mobileConversation && !!mobileResponseTurn }">
         <p v-if="props.videoError" role="alert">{{ props.videoError }}</p>
         <p v-if="props.questionSendBlocked" role="status">{{ props.questionSendBlocked }}</p>
-        <div v-show="mobileConversation && !!mobileResponseTurn" class="mobile-response-toolbar"><div ref="responseEditingHost" /><button type="button" class="mobile-editor-close" aria-label="收起作答" @click="closeResponseEditor"><X :size="18" aria-hidden="true" /></button></div>
+        <div v-show="mobileConversation && !!mobileResponseTurn" class="mobile-response-toolbar"><div ref="responseEditingHost" /><button type="button" class="mobile-editor-close" :aria-label="uiText('收起作答')" @click="closeResponseEditor"><X :size="18" aria-hidden="true" /></button></div>
         <Teleport :to="responseSidebarHost || 'body'" :disabled="!wideConversation || !responseSidebarHost">
-        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" role="group" aria-label="当前回答的学习操作">
-          <div class="learning-dock-copy"><span>{{ musicMode ? '听到这里' : '读到这里' }}</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? '试着把理解变成自己的话' : '有疑问，随时停下来聊一聊' }}</p></div>
-          <button type="button" class="learning-help" aria-label="这一步没跟上" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />{{ mobileConversation ? '没跟上' : '这一步没跟上' }}</button>
+        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" role="group" :aria-label="uiText('当前回答的学习操作')">
+          <div class="learning-dock-copy"><span>{{ musicMode ? uiText('听到这里') : uiText('读到这里') }}</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? uiText('试着把理解变成自己的话') : uiText('有疑问，随时停下来聊一聊') }}</p></div>
+          <button type="button" class="learning-help" :aria-label="uiText('这一步没跟上')" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />{{ mobileConversation ? uiText('没跟上') : uiText('这一步没跟上') }}</button>
           <button v-show="!mobileConversation || structuredResponseAvailable" type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </div>
         </Teleport>
         <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" v-show="!mobileConversation || mobileComposerVisible || props.runConnection === 'reconnecting'" class="agent-input-context">
         <div v-if="workspaceVisible" class="scene-binding">
-          <span>{{ sceneBound ? `${noteFollowUp ? '附上记录时的演示状态' : '附上当前演示状态'} · 版本 ${workspace?.reference.revision}` : '普通聊天' }}</span>
-          <button @click="sceneBound = !sceneBound">{{ sceneBound ? '不附演示状态' : '附上当前演示' }}</button>
+          <span>{{ sceneBound ? uiText('{0} · 版本 {1}', [noteFollowUp ? uiText('附上记录时的演示状态') : uiText('附上当前演示状态'), workspace?.reference.revision]) : uiText('普通聊天') }}</span>
+          <button @click="sceneBound = !sceneBound">{{ sceneBound ? uiText('不附演示状态') : uiText('附上当前演示') }}</button>
         </div>
-        <p v-if="props.runConnection === 'reconnecting'" role="status">连接中断，正在重新连接；运行仍可继续。</p>
+        <p v-if="props.runConnection === 'reconnecting'" role="status">{{ uiText('连接中断，正在重新连接；运行仍可继续。') }}</p>
         <div v-if="targetGoal" class="goal-target">
-          <span>补充任务：{{ targetGoal.interpretation }}</span>
-          <button aria-label="取消补充任务" @click="emit('clear-goal-target')">×</button>
+          <span>{{ uiText('补充任务：') }}{{ targetGoal.interpretation }}</span>
+          <button :aria-label="uiText('取消补充任务')" @click="emit('clear-goal-target')">×</button>
         </div>
         <div v-if="props.askDraft" class="ask-draft">
           <div class="ask-draft-head">
             <span>{{ askQuoteLabel(props.askDraft) }}</span>
-            <button title="清除引用来源" aria-label="清除引用来源" @click="emit('clear-ask')">
+            <button :title="uiText('清除引用来源')" :aria-label="uiText('清除引用来源')" @click="emit('clear-ask')">
               <X :size="14" aria-hidden="true" />
             </button>
           </div>
           <blockquote>{{ props.askDraft.quote }}</blockquote>
         </div>
         </div>
-        <div v-if="composeTall && (!mobileConversation || mobileComposerVisible)" class="compose-caption"><span>草稿会保留</span><button type="button" aria-label="收起输入" @click="collapseAgentInput">收起</button></div>
+        <div v-if="composeTall && (!mobileConversation || mobileComposerVisible)" class="compose-caption"><span>{{ uiText('草稿会保留') }}</span><button type="button" :aria-label="uiText('收起输入')" @click="collapseAgentInput">{{ uiText('收起') }}</button></div>
         <div v-show="!mobileConversation || mobileComposerVisible" class="agent-compose-row" :class="{ 'video-compose': imagesEnabled }">
         <QuestionImageInput v-if="imagesEnabled" ref="imageInput" :image="questionImage" :disabled="sending || questionInputBlocked" @change="emit('question-image', $event)" @loading="questionImageLoading" />
         <textarea
@@ -1605,34 +1634,34 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :disabled="props.questionInputBlocked || (network.enabled && (props.historyLoading || !!props.historyError))"
           :value="props.agentInput"
           rows="1"
-          :aria-label="musicMode ? '围绕当前音乐提问' : '围绕当前阅读内容提问'"
-          :placeholder="props.askDraft ? '围绕引用来源提问...' : props.videoImagesEnabled ? '这里为什么这样？问问伴读…' : props.musicMode ? '看不懂的谱线、音符，截图问问…' : !props.chat.length ? '输入问题或学习目标…' : '说说你的想法，或继续提问…'"
+          :aria-label="musicMode ? uiText('围绕当前音乐提问') : uiText('围绕当前阅读内容提问')"
+          :placeholder="props.askDraft ? uiText('围绕引用来源提问...') : props.videoImagesEnabled ? uiText('这里为什么这样？问问伴读…') : props.musicMode ? uiText('看不懂的谱线、音符，截图问问…') : !props.chat.length ? uiText('输入问题或学习目标…') : uiText('说说你的想法，或继续提问…')"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
           @paste="imageInput?.paste($event)"
         />
         <div class="composer-controls">
-          <button v-if="imagesEnabled" type="button" class="attach-image" :aria-label="questionImage ? '替换图片' : '添加图片'" title="添加图片，也可直接粘贴" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
-          <div v-if="videoQuestion" class="video-binding" aria-label="问题绑定位置" :title="`问题绑定 ${videoTime(videoQuestion.frame.actual_pts_ms)}${videoQuestion.region ? ' · 已选区域' : ''}`">
-            <span>{{ videoQuestion.range ? `${videoTime(videoQuestion.range.start_ms)}–${videoTime(videoQuestion.range.end_ms)}` : videoTime(videoQuestion.frame.actual_pts_ms) }}{{ videoQuestion.region ? ' · 选区' : '' }}</span>
-            <button type="button" aria-label="取消草稿" title="取消草稿" :disabled="imageLoading || sending" @click="emit('cancel-video-draft')"><X :size="12" aria-hidden="true" /></button>
+          <button v-if="imagesEnabled" type="button" class="attach-image" :aria-label="questionImage ? uiText('替换图片') : uiText('添加图片')" :title="uiText('添加图片，也可直接粘贴')" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
+          <div v-if="videoQuestion" class="video-binding" :aria-label="uiText('问题绑定位置')" :title="uiText('问题绑定 {0}{1}', [videoTime(videoQuestion.frame.actual_pts_ms), videoQuestion.region ? uiText(' · 已选区域') : ''])">
+            <span>{{ videoQuestion.range ? `${videoTime(videoQuestion.range.start_ms)}–${videoTime(videoQuestion.range.end_ms)}` : videoTime(videoQuestion.frame.actual_pts_ms) }}{{ videoQuestion.region ? uiText(' · 选区') : '' }}</span>
+            <button type="button" :aria-label="uiText('取消草稿')" :title="uiText('取消草稿')" :disabled="imageLoading || sending" @click="emit('cancel-video-draft')"><X :size="12" aria-hidden="true" /></button>
           </div>
           <div v-if="$slots['tutor-control'] || $slots['learning-actions']" class="agent-input-tools">
             <Teleport :to="teachingToolsTarget || 'body'" :disabled="!teachingToolsTarget"><slot name="tutor-control" /></Teleport>
-            <Teleport :to="recordsToolsTarget || 'body'" :disabled="!recordsToolsTarget"><div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" aria-label="学习记录"><slot name="learning-actions" /></div></Teleport>
+            <Teleport :to="recordsToolsTarget || 'body'" :disabled="!recordsToolsTarget"><div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" :aria-label="uiText('学习记录')"><slot name="learning-actions" /></div></Teleport>
           </div>
         </div>
-        <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? '正在停止' : '停止'" :title="stopping ? '正在停止' : '停止生成'" :disabled="stopping" @click="stopAgent"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
-        <button v-else type="button" class="send-agent" :aria-label="props.sending ? '发送中' : '发送'" title="发送（Ctrl+Enter）" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !questionImage)" @click="submitMessage">
+        <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? uiText('正在停止') : uiText('停止')" :title="stopping ? uiText('正在停止') : uiText('停止生成')" :disabled="stopping" @click="stopAgent"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
+        <button v-else type="button" class="send-agent" :aria-label="props.sending ? uiText('发送中') : uiText('发送')" :title="uiText('发送（Ctrl+Enter）')" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !questionImage)" @click="submitMessage">
           <ArrowUp :size="20" aria-hidden="true" />
         </button>
         </div>
       </div>
       </div>
-      <aside v-show="wideConversation" class="conversation-sidebar conversation-response" aria-label="学习助手">
+      <aside v-show="wideConversation" class="conversation-sidebar conversation-response" :aria-label="uiText('学习助手')">
         <div ref="responseSidebarHost" />
-        <div v-if="$slots['learning-actions']" class="sidebar-section"><p class="sidebar-label">学习记录</p><div ref="recordsSidebarHost" /></div>
+        <div v-if="$slots['learning-actions']" class="sidebar-section"><p class="sidebar-label">{{ uiText('学习记录') }}</p><div ref="recordsSidebarHost" /></div>
       </aside>
     </section>
 
@@ -1672,26 +1701,26 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 
     <section id="reader-panel-formula" v-show="activeTab === 'formula'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-formula">
       <div class="panel-head">
-        <p class="rail-kicker">公式剖面</p>
-        <h3>{{ props.selectedFormula?.formula_lid ?? props.selectedLid ?? "未选择" }}</h3>
+        <p class="rail-kicker">{{ uiText('公式剖面') }}</p>
+        <h3>{{ props.selectedFormula?.formula_lid ?? props.selectedLid ?? uiText('未选择') }}</h3>
       </div>
       <div v-if="props.selectedFormula" class="formula-card">
         <p class="formula-meaning">{{ props.selectedFormula.composition.meaning }}</p>
         <div v-if="props.selectedFormula.parameters.length" class="context-block">
-          <h4>参数</h4>
+          <h4>{{ uiText('参数') }}</h4>
           <dl>
             <template v-for="p in props.selectedFormula.parameters" :key="p.symbol">
               <dt>{{ p.symbol }}<span v-if="p.label"> · {{ p.label }}</span></dt>
               <dd>
                 {{ p.meaning }}
-                <span v-if="p.unit"> · 单位: {{ p.unit }}</span>
-                <span v-if="p.domain"> · 取值域: {{ p.domain }}</span>
+                <span v-if="p.unit"> {{ uiText('· 单位:') }} {{ p.unit }}</span>
+                <span v-if="p.domain"> {{ uiText('· 取值域:') }} {{ p.domain }}</span>
               </dd>
             </template>
           </dl>
         </div>
         <div v-if="props.selectedFormula.context_links.length" class="context-block">
-          <h4>上下文关系</h4>
+          <h4>{{ uiText('上下文关系') }}</h4>
           <ul>
             <li v-for="link in props.selectedFormula.context_links" :key="`${link.target_lid}:${link.relation}`">
               <strong>{{ link.relation }}</strong> {{ link.description }}
@@ -1699,28 +1728,28 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </ul>
         </div>
       </div>
-      <p v-else-if="props.formulaLoading" role="status">正在读取公式解释…</p>
-      <p v-else-if="props.formulaError && props.formulaSelected" role="alert">{{ props.formulaError }} <button @click="emit('request-formula')">重试</button></p>
-      <p v-else class="empty panel-empty">{{ props.formulaSelected ? '这条公式暂时没有解释资料。' : '在阅读区选择公式后查看预构建剖面。' }}</p>
+      <p v-else-if="props.formulaLoading" role="status">{{ uiText('正在读取公式解释…') }}</p>
+      <p v-else-if="props.formulaError && props.formulaSelected" role="alert">{{ props.formulaError }} <button @click="emit('request-formula')">{{ uiText('重试') }}</button></p>
+      <p v-else class="empty panel-empty">{{ props.formulaSelected ? uiText('这条公式暂时没有解释资料。') : uiText('在阅读区选择公式后查看预构建剖面。') }}</p>
     </section>
 
     <section ref="notesPanel" id="reader-panel-notes" v-show="activeTab === 'notes'" class="tab-panel context-panel" role="tabpanel" aria-labelledby="reader-tab-notes">
       <div class="panel-head">
-        <p class="rail-kicker">全部笔记</p>
-        <h3>{{ noteCount }} 条</h3>
+        <p class="rail-kicker">{{ uiText('全部笔记') }}</p>
+        <h3>{{ noteCount }} {{ uiText('条') }}</h3>
         <div v-if="noteCount" class="note-fold-controls">
-          <button @click="filteredNotes.forEach(note => openNoteDetails.add(note.mem_id))">展开</button>
-          <button @click="openNoteDetails.clear()">收起</button>
+          <button @click="filteredNotes.forEach(note => openNoteDetails.add(note.mem_id))">{{ uiText('展开') }}</button>
+          <button @click="openNoteDetails.clear()">{{ uiText('收起') }}</button>
         </div>
       </div>
       <div v-if="noteCount" class="note-search-controls">
-        <input v-model="noteQuery" type="search" aria-label="搜索笔记" placeholder="搜索文字、摘录或关联标题" />
-        <label>类型 <select v-model="noteFilter" aria-label="笔记类型">
-          <option value="all">全部</option><option value="original">原文</option><option value="answer">回答</option>
-          <option value="presentation">演示</option><option value="highlight">高亮</option><option value="unknown">旧笔记（类型未知）</option>
+        <input v-model="noteQuery" type="search" :aria-label="uiText('搜索笔记')" :placeholder="uiText('搜索文字、摘录或关联标题')" />
+        <label>{{ uiText('类型') }} <select v-model="noteFilter" :aria-label="uiText('笔记类型')">
+          <option value="all">{{ uiText('全部') }}</option><option value="original">{{ uiText('原文') }}</option><option value="answer">{{ uiText('回答') }}</option>
+          <option value="presentation">{{ uiText('演示') }}</option><option value="highlight">{{ uiText('高亮') }}</option><option value="unknown">{{ uiText('旧笔记（类型未知）') }}</option>
         </select></label>
-        <label>排序 <select v-model="noteOrder" aria-label="笔记排序"><option value="recent">最近记录</option><option value="original">原文顺序</option></select></label>
-        <p role="status">{{ filteredNotes.length }} 条记录</p>
+        <label>{{ uiText('排序') }} <select v-model="noteOrder" :aria-label="uiText('笔记排序')"><option value="recent">{{ uiText('最近记录') }}</option><option value="original">{{ uiText('原文顺序') }}</option></select></label>
+        <p role="status">{{ filteredNotes.length }} {{ uiText('条记录') }}</p>
       </div>
       <div v-if="noteCount" class="memory-list">
         <details v-for="note in filteredNotes" :key="note.mem_id"
@@ -1733,7 +1762,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </span>
             <button v-if="canFocusNoteSource(note)" class="note-source-button" @click.prevent.stop="emit('focus-source', { lid: noteSourceLid(note)!, quote: note.selection_context?.resolved_quote ?? (note.type === 'highlight' ? note.content : null), memId: note.mem_id })">{{ noteSourceLabel(note) }}</button>
             <span v-else class="note-association-title">{{ noteSourceLabel(note) }}</span>
-            <em>展开/收起</em>
+            <em>{{ uiText('展开/收起') }}</em>
             <time class="note-time">{{ noteTimeLabel(note) }}</time>
             <div class="note-preview">{{ notePreview(note) }}</div>
           </summary>
@@ -1742,14 +1771,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             @answer="emit('open-note-answer', note)" @edit="emit('edit-note', note)" @delete="emit('delete-note', note)" />
           <template v-if="note.type === 'highlight' && openNoteDetails.has(note.mem_id)">
             <blockquote class="highlight-content">{{ note.content }}</blockquote>
-            <button v-if="shareHighlight" @click="shareHighlight(note)">生成分享图</button>
-            <div class="note-actions"><button @click="emit('modify-highlight', note)">编辑</button><button @click="emit('delete-highlight', note)">删除</button></div>
+            <button v-if="shareHighlight" @click="shareHighlight(note)">{{ uiText('生成分享图') }}</button>
+            <div class="note-actions"><button @click="emit('modify-highlight', note)">{{ uiText('编辑') }}</button><button @click="emit('delete-highlight', note)">{{ uiText('删除') }}</button></div>
           </template>
           <button v-if="note.type !== 'highlight' && notePlacementActionLabel(note)" type="button" class="note-placement-action" data-note-placement-action :data-mem-id="note.mem_id" @click="emit('place-note', note)">{{ notePlacementActionLabel(note) }}</button>
         </details>
-        <p v-if="!filteredNotes.length" class="empty">没有匹配的记录。</p>
+        <p v-if="!filteredNotes.length" class="empty">{{ uiText('没有匹配的记录。') }}</p>
       </div>
-      <p v-else class="empty panel-empty">暂无笔记或高亮。</p>
+      <p v-else class="empty panel-empty">{{ uiText('暂无笔记或高亮。') }}</p>
     </section>
     <Teleport to="body">
       <div
@@ -1757,18 +1786,18 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         ref="answerPopover"
         class="answer-popover"
         role="group"
-        aria-label="选中文字的操作"
+        :aria-label="uiText('选中文字的操作')"
         :style="{ left: answerSelection.x + 'px', top: answerSelection.y + 'px', visibility: answerSelectionPositioned ? 'visible' : 'hidden' }"
         @mousedown.prevent
         @keydown.esc="clearAnswerSelection"
       >
         <p v-if="answerSelectionError" class="answer-selection-error" role="status">{{ answerSelectionError }}</p>
         <template v-else>
-          <button type="button" @click="saveAnswerSelection(answerSelection.turn)">记笔记</button>
-          <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" :disabled="sending" @click="clarifySelection">这一步没跟上</button>
-          <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" @click="shareAnswerSelection">生成理解卡</button>
+          <button type="button" @click="saveAnswerSelection(answerSelection.turn)">{{ uiText('记笔记') }}</button>
+          <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" :disabled="sending" @click="clarifySelection">{{ uiText('这一步没跟上') }}</button>
+          <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" @click="shareAnswerSelection">{{ uiText('生成理解卡') }}</button>
         </template>
-        <button type="button" aria-label="取消选区" @click="dismissAnswerSelection">×</button>
+        <button type="button" :aria-label="uiText('取消选区')" @click="dismissAnswerSelection">×</button>
       </div>
     </Teleport>
 
@@ -1777,10 +1806,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <section class="history-dialog" role="dialog" aria-modal="true" aria-labelledby="history-title">
           <header class="history-dialog-head">
             <div>
-              <p class="rail-kicker">助手历史</p>
-              <h3 id="history-title">对话历史</h3>
+              <p class="rail-kicker">{{ uiText('助手历史') }}</p>
+              <h3 id="history-title">{{ uiText('对话历史') }}</h3>
             </div>
-            <button class="history-close" title="关闭历史" aria-label="关闭历史" @click="historyOpen = false">×</button>
+            <button class="history-close" :title="uiText('关闭历史')" :aria-label="uiText('关闭历史')" @click="historyOpen = false">×</button>
           </header>
           <div class="history-list">
             <article
@@ -1797,34 +1826,32 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               <div class="history-card-head">
                 <div>
                   <h4>{{ compactText(session.title, 72) }}</h4>
-                  <p>{{ session.turn_count }} 个问题</p>
+                  <p>{{ session.turn_count }} {{ uiText('个问题') }}</p>
                 </div>
-                <span v-if="session.id === props.activeChatSessionId" class="active-badge">当前</span>
+                <span v-if="session.id === props.activeChatSessionId" class="active-badge">{{ uiText('当前') }}</span>
               </div>
 
               <ol v-if="session.turns.length" class="history-turns">
                 <li v-for="(turn, i) in session.turns" :key="`${session.id}:${i}`">
                   <p class="history-question">{{ compactText(turn.user, 180) }}</p>
                   <div class="history-anchor-row">
-                    <span>来源</span>
-                    <span class="history-source-label">{{ turnSourceLabel(turn) ?? "无" }}</span>
+                    <span>{{ uiText('来源') }}</span>
+                    <span class="history-source-label">{{ turnSourceLabel(turn) ?? uiText('无') }}</span>
                   </div>
                 </li>
               </ol>
-              <p v-else class="empty history-empty">暂无问题。</p>
+              <p v-else class="empty history-empty">{{ uiText('暂无问题。') }}</p>
 
               <div class="history-card-actions">
                 <button
                   class="history-open"
                   :disabled="session.id === props.activeChatSessionId"
                   @click.stop="openHistorySession(session.id)"
-                >
-                  打开对话
-                </button>
-                <button class="history-delete" @click.stop="deleteHistorySession(session.id)">删除</button>
+                > {{ uiText('打开对话') }} </button>
+                <button class="history-delete" @click.stop="deleteHistorySession(session.id)">{{ uiText('删除') }}</button>
               </div>
             </article>
-            <p v-if="historySessions.length === 0" class="empty history-empty">暂无保存的对话历史。</p>
+            <p v-if="historySessions.length === 0" class="empty history-empty">{{ uiText('暂无保存的对话历史。') }}</p>
           </div>
         </section>
       </div>
@@ -1841,19 +1868,19 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           class="agent-source-popup"
           :style="agentSourcePopupStyle"
           role="dialog"
-          aria-label="回答来源"
+          :aria-label="uiText('回答来源')"
         >
           <header class="source-popup-head">
             <div>
-              <span class="source-popup-kicker">回答来源</span>
-              <strong>{{ activeAgentSource?.heading_path?.join(' / ') || activeAgentSource?.label || "正在载入来源" }}</strong>
+              <span class="source-popup-kicker">{{ uiText('回答来源') }}</span>
+              <strong>{{ activeAgentSource?.heading_path?.join(' / ') || activeAgentSource?.label || uiText('正在载入来源') }}</strong>
             </div>
-            <button type="button" title="关闭来源" aria-label="关闭来源" @click="closeAgentSourcePopup">
+            <button type="button" :title="uiText('关闭来源')" :aria-label="uiText('关闭来源')" @click="closeAgentSourcePopup">
               <X :size="16" aria-hidden="true" />
             </button>
           </header>
 
-          <div v-if="agentSourcePopup.sources.length > 1" class="source-tabs" role="tablist" aria-label="来源列表">
+          <div v-if="agentSourcePopup.sources.length > 1" class="source-tabs" role="tablist" :aria-label="uiText('来源列表')">
             <button
               v-for="source in agentSourcePopup.sources"
               :key="source.source_ref_id"
@@ -1868,10 +1895,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
 
           <div class="source-popup-body">
-            <p v-if="agentSourcePopup.loading" class="source-loading">正在载入...</p>
+            <p v-if="agentSourcePopup.loading" class="source-loading">{{ uiText('正在载入...') }}</p>
             <p v-else-if="agentSourcePopup.error" class="source-error">{{ agentSourcePopup.error }}</p>
             <template v-else-if="activeAgentSource">
-              <p v-if="activeAgentSource.stale" class="source-stale">该来源已失效，以下为回答生成时保存的内容。</p>
+              <p v-if="activeAgentSource.stale" class="source-stale">{{ uiText('该来源已失效，以下为回答生成时保存的内容。') }}</p>
               <SourceExcerpt :source="activeAgentSource" />
             </template>
           </div>
@@ -1880,7 +1907,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <a v-if="activeAgentSource?.source_url && !activeAgentSource.stale"
               class="source-open-reader" :href="activeAgentSource.source_url" target="_blank" rel="noopener noreferrer">
               <ExternalLink :size="15" aria-hidden="true" />
-              <span>查看参考书原文</span>
+              <span>{{ uiText('查看参考书原文') }}</span>
             </a>
             <button
               v-else
@@ -1890,7 +1917,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               @click="openActiveAgentSourceInReader"
             >
               <ExternalLink :size="15" aria-hidden="true" />
-              <span>{{ agentSourcePopup.opening ? "正在打开..." : activeAgentSource?.music ? "回到这段音乐与乐谱" : activeAgentSource?.media ? "进入原视频位置" : "在正文中查看" }}</span>
+              <span>{{ agentSourcePopup.opening ? uiText('正在打开...') : activeAgentSource?.music ? uiText('回到这段音乐与乐谱') : activeAgentSource?.media ? uiText('进入原视频位置') : uiText('在正文中查看') }}</span>
             </button>
           </footer>
         </section>
@@ -2486,6 +2513,15 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .answer-actions { margin-top: 12px; font-size: .75rem; color: var(--steel); }
 .answer-actions summary { width: fit-content; padding: 6px 0; cursor: pointer; }
 .answer-actions button { margin-top:6px; min-height:36px; }
+.board-location { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 40px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--brand-green-deep); font-size: .8rem; line-height: 1.5; text-align: left; }
+.board-location svg { flex-shrink: 0; }
+.board-location:hover { border-color: var(--brand-green); }
+.board-question-link { display: flex; margin: -16px 0 20px auto; }
+.board-delivery-link { margin-top: 12px; }
+.board-committed-parts { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+.board-parts-progress { flex-basis: 100%; margin: 0; color: var(--steel); font-size: .8rem; line-height: 1.6; }
+.board-parts-progress:empty { display: none; }
+.board-delivery-error { overflow-wrap: anywhere; }
 .ask-draft {
   border: 1px solid var(--hairline-soft);
   border-radius: 8px;

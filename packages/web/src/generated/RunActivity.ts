@@ -15,4 +15,4 @@ usage: ModelUsage | null,
 /**
  * Milliseconds from this model activity's start to its first non-empty text delta.
  */
-model_first_text_ms: number | null, request_diagnostics?: RequestDiagnostics, model_name: string | null, model_name_source: string | null, accepted_evidence_count: number | null, evidence_refs: Array<string>, };
+model_first_text_ms: number | null, request_diagnostics?: RequestDiagnostics, model_name: string | null, model_name_source: string | null, model_provider?: string, accepted_evidence_count: number | null, evidence_refs: Array<string>, };

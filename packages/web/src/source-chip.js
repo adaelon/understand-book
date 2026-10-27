@@ -1,7 +1,7 @@
 // Shared by the Reader and the server's real-browser presentation preview.
-export function sourceChipLabel(sources, id) {
+export function sourceChipLabel(sources, id, unavailableLabel = '来源不可用') {
   const index = sources.findIndex(source => source.source_ref_id === id);
-  if (index < 0) return '来源不可用';
+  if (index < 0) return unavailableLabel;
   const label = sources[index].label;
   const title = (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label).split(' / ').at(-1).trim();
   const chars = Array.from(title);

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 import type {
   BuildDecisionRequest,
@@ -218,139 +220,139 @@ watch(
 );
 
 const stageLabels: Record<BuildStageId, string> = {
-  source_reconciliation: "来源对齐",
-  hybrid_foundation: "混合阅读基座",
-  pass1: "Pass1 局部抽取",
-  paper_metadata: "论文元数据",
-  paper_lexicon: "论文术语表",
-  profile_sidecar: "Profile 辅助产物",
-  pass2: "Pass2 长程关联",
-  book_structure: "书结构",
-  paper_reading_guide: "论文阅读指南",
-  formal_objects: "正式学习对象",
-  cognitive_materials: "重点认知素材",
-  teaching_publish: "教学材料验收发布",
+  source_reconciliation: uiText('来源对齐'),
+  hybrid_foundation: uiText('混合阅读基座'),
+  pass1: uiText('Pass1 局部抽取'),
+  paper_metadata: uiText('论文元数据'),
+  paper_lexicon: uiText('论文术语表'),
+  profile_sidecar: uiText('Profile 辅助产物'),
+  pass2: uiText('Pass2 长程关联'),
+  book_structure: uiText('书结构'),
+  paper_reading_guide: uiText('论文阅读指南'),
+  formal_objects: uiText('正式学习对象'),
+  cognitive_materials: uiText('重点认知素材'),
+  teaching_publish: uiText('教学材料验收发布'),
 };
 const executorLabels: Record<ExecutorId, string> = {
   codex: "Codex",
   opencode: "opencode",
   claude: "Claude",
-  manual: "手动",
+  manual: uiText('手动'),
 };
 const adapterModeLabels: Record<WorkbenchAdapterMode, string> = {
-  builtin: "运行内置阶段",
-  contract_only: "只写执行契约",
-  fake_success: "模拟完成",
-  fake_failure: "模拟失败",
-  fake_permission: "模拟权限请求",
+  builtin: uiText('运行内置阶段'),
+  contract_only: uiText('只写执行契约'),
+  fake_success: uiText('模拟完成'),
+  fake_failure: uiText('模拟失败'),
+  fake_permission: uiText('模拟权限请求'),
 };
 const readinessStatusLabels: Record<BuildReadinessStatus, string> = {
-  trusted_book: "可进入阅读",
-  missing: "缺少基座",
-  incomplete: "基座不完整",
-  needs_review: "需要复核",
-  stale_input: "输入已过期",
+  trusted_book: uiText('可进入阅读'),
+  missing: uiText('缺少基座'),
+  incomplete: uiText('基座不完整'),
+  needs_review: uiText('需要复核'),
+  stale_input: uiText('输入已过期'),
 };
 const stageStatusLabels: Record<BuildStageStatus, string> = {
-  blocked: "等待上游",
-  missing: "缺失",
-  done: "完成",
-  needs_review: "待复核",
-  stale: "已过期",
-  incomplete: "不完整",
+  blocked: uiText('等待上游'),
+  missing: uiText('缺失'),
+  done: uiText('完成'),
+  needs_review: uiText('待复核'),
+  stale: uiText('已过期'),
+  incomplete: uiText('不完整'),
 };
 const jobStatusLabels: Record<BuildJobStatus, string> = {
-  ready: "就绪",
-  running: "运行中",
-  needs_user: "等待用户",
-  failed: "失败",
-  done: "完成",
-  stale_input: "输入已过期",
-  interrupted: "运行已中断",
+  ready: uiText('就绪'),
+  running: uiText('运行中'),
+  needs_user: uiText('等待用户'),
+  failed: uiText('失败'),
+  done: uiText('完成'),
+  stale_input: uiText('输入已过期'),
+  interrupted: uiText('运行已中断'),
 };
 const eventTypeLabels: Record<BuildJobEvent["type"], string> = {
-  job_created: "创建构建任务",
-  job_reused: "复用构建任务",
-  job_marked_stale: "标记输入过期",
-  job_resumed: "恢复构建任务",
-  job_event_appended: "记录构建事件",
-  executor_started: "执行器已启动",
-  stage_runner_spawned: "阶段运行器已启动",
-  stage_started: "阶段开始",
-  stage_completed: "阶段完成",
-  stage_blocked: "阶段等待复核",
-  stage_failed: "阶段失败",
-  readiness_recomputed: "已重算阅读门禁",
-  run_interrupted: "检测到运行中断",
-  job_recovered: "已恢复构建任务",
-  executor_contract_written: "执行契约已写入",
-  executor_completed: "执行器已完成",
-  executor_failed: "执行器失败",
-  source_review_decision_recorded: "来源复核决策已记录",
-  decision_requested: "请求构建决策",
-  decision_resolved: "构建决策已处理",
-  permission_requested: "请求执行权限",
-  permission_resolved: "执行权限已处理",
+  job_created: uiText('创建构建任务'),
+  job_reused: uiText('复用构建任务'),
+  job_marked_stale: uiText('标记输入过期'),
+  job_resumed: uiText('恢复构建任务'),
+  job_event_appended: uiText('记录构建事件'),
+  executor_started: uiText('执行器已启动'),
+  stage_runner_spawned: uiText('阶段运行器已启动'),
+  stage_started: uiText('阶段开始'),
+  stage_completed: uiText('阶段完成'),
+  stage_blocked: uiText('阶段等待复核'),
+  stage_failed: uiText('阶段失败'),
+  readiness_recomputed: uiText('已重算阅读门禁'),
+  run_interrupted: uiText('检测到运行中断'),
+  job_recovered: uiText('已恢复构建任务'),
+  executor_contract_written: uiText('执行契约已写入'),
+  executor_completed: uiText('执行器已完成'),
+  executor_failed: uiText('执行器失败'),
+  source_review_decision_recorded: uiText('来源复核决策已记录'),
+  decision_requested: uiText('请求构建决策'),
+  decision_resolved: uiText('构建决策已处理'),
+  permission_requested: uiText('请求执行权限'),
+  permission_resolved: uiText('执行权限已处理'),
 };
 const decisionKindLabels: Record<BuildDecisionRequest["kind"], string> = {
-  source_reconciliation_mode: "来源对齐方式",
-  hybrid_source_strategy: "混合来源策略",
-  alignment_repair_strategy: "对齐修复策略",
-  executor_selection: "执行器选择",
-  review_acceptance: "复核采纳",
-  artifact_conflict_resolution: "产物冲突处理",
-  continue_or_restart: "继续或重启",
-  sidecar_plan: "辅助产物计划",
+  source_reconciliation_mode: uiText('来源对齐方式'),
+  hybrid_source_strategy: uiText('混合来源策略'),
+  alignment_repair_strategy: uiText('对齐修复策略'),
+  executor_selection: uiText('执行器选择'),
+  review_acceptance: uiText('复核采纳'),
+  artifact_conflict_resolution: uiText('产物冲突处理'),
+  continue_or_restart: uiText('继续或重启'),
+  sidecar_plan: uiText('辅助产物计划'),
 };
 const permissionCategoryLabels: Record<ExecutorPermissionRequest["category"], string> = {
-  sandbox_escalation: "沙箱提权",
-  network: "网络访问",
-  filesystem: "文件系统",
-  mcp_tool: "MCP 工具",
-  skill_script: "Skill 脚本",
-  shell_command: "Shell 命令",
-  destructive_action: "破坏性操作",
-  other: "其他",
+  sandbox_escalation: uiText('沙箱提权'),
+  network: uiText('网络访问'),
+  filesystem: uiText('文件系统'),
+  mcp_tool: uiText('MCP 工具'),
+  skill_script: uiText('Skill 脚本'),
+  shell_command: uiText('Shell 命令'),
+  destructive_action: uiText('破坏性操作'),
+  other: uiText('其他'),
 };
 const permissionScopeLabels: Record<ExecutorPermissionRequest["scope_hint"], string> = {
-  once: "单次",
-  stage: "当前阶段",
-  job: "当前任务",
-  profile: "当前 profile",
+  once: uiText('单次'),
+  stage: uiText('当前阶段'),
+  job: uiText('当前任务'),
+  profile: uiText('当前 profile'),
 };
 const sidecarStatusLabels: Record<string, string> = {
-  draft: "待确认",
-  confirmed: "已确认",
-  rejected: "已拒绝",
-  missing: "暂无计划",
+  draft: uiText('待确认'),
+  confirmed: uiText('已确认'),
+  rejected: uiText('已拒绝'),
+  missing: uiText('暂无计划'),
 };
 const sidecarFieldLabels: Record<string, string> = {
-  target_view: "目标视图",
-  source_scope: "来源范围",
-  sidecar_id: "辅助产物 ID",
-  schema: "输出 schema",
-  visualization: "可视化形式",
-  required_evidence: "证据要求",
+  target_view: uiText('目标视图'),
+  source_scope: uiText('来源范围'),
+  sidecar_id: uiText('辅助产物 ID'),
+  schema: uiText('输出 schema'),
+  visualization: uiText('可视化形式'),
+  required_evidence: uiText('证据要求'),
 };
 const knownReasonLabels: Record<string, string> = {
-  "source reconciliation report is missing": "缺少来源对齐报告。",
-  "source reconciliation has unresolved blocks": "来源对齐仍有未解决片段。",
-  "trusted source.txt is missing": "缺少可信正文 source.txt。",
-  "base.json is missing": "缺少阅读基座 base.json。",
-  "source_manifest.json is missing": "缺少 source_manifest.json。",
-  "upstream stage is not trusted yet": "上游阶段尚未可信，暂不能运行。",
-  "derived paper projection stage artifact is missing": "缺少派生的论文投影阶段产物。",
-  "alignment_report config hash does not match source_manifest capabilities": "alignment_report 的配置哈希与 source_manifest capabilities 不一致。",
-  "source reconciliation needs review": "来源对齐需要人工复核。",
-  "build input or artifacts are stale": "构建输入或产物已过期。",
-  "trusted source foundation is missing": "缺少可信正文基座。",
-  "trusted source foundation is incomplete": "可信正文基座不完整。",
-  "trusted source foundation is not ready": "可信正文基座尚未就绪。",
+  "source reconciliation report is missing": uiText('缺少来源对齐报告。'),
+  "source reconciliation has unresolved blocks": uiText('来源对齐仍有未解决片段。'),
+  "trusted source.txt is missing": uiText('缺少可信正文 source.txt。'),
+  "base.json is missing": uiText('缺少阅读基座 base.json。'),
+  "source_manifest.json is missing": uiText('缺少 source_manifest.json。'),
+  "upstream stage is not trusted yet": uiText('上游阶段尚未可信，暂不能运行。'),
+  "derived paper projection stage artifact is missing": uiText('缺少派生的论文投影阶段产物。'),
+  "alignment_report config hash does not match source_manifest capabilities": uiText('alignment_report 的配置哈希与 source_manifest capabilities 不一致。'),
+  "source reconciliation needs review": uiText('来源对齐需要人工复核。'),
+  "build input or artifacts are stale": uiText('构建输入或产物已过期。'),
+  "trusted source foundation is missing": uiText('缺少可信正文基座。'),
+  "trusted source foundation is incomplete": uiText('可信正文基座不完整。'),
+  "trusted source foundation is not ready": uiText('可信正文基座尚未就绪。'),
 };
 const capabilityLabels: Record<string, string> = {
-  project_lid_to_pdf: "LID 到 PDF 投影",
-  project_ranges_to_pdf: "范围到 PDF 投影",
-  resolve_pdf_selection: "PDF 选区解析",
+  project_lid_to_pdf: uiText('LID 到 PDF 投影'),
+  project_ranges_to_pdf: uiText('范围到 PDF 投影'),
+  resolve_pdf_selection: uiText('PDF 选区解析'),
 };
 
 watch(
@@ -406,16 +408,16 @@ function reasonText(reason: string): string {
     && (reason === "source reconciliation has unresolved blocks" || reason === "source reconciliation needs review")
   ) {
     return sourceReviewRerunning.value
-      ? "来源复核已完成，正在重新运行来源对齐。"
-      : "来源复核已完成，系统将自动重新运行来源对齐。";
+      ? uiText('来源复核已完成，正在重新运行来源对齐。')
+      : uiText('来源复核已完成，系统将自动重新运行来源对齐。');
   }
   if (knownReasonLabels[reason]) return knownReasonLabels[reason];
   const missingArtifact = /^(.+) declares an artifact that is missing$/.exec(reason);
-  if (missingArtifact) return `${capabilityLabel(missingArtifact[1])} 声明了产物，但文件缺失。`;
+  if (missingArtifact) return uiText('{0} 声明了产物，但文件缺失。', [capabilityLabel(missingArtifact[1])]);
   const staleArtifact = /^(.+) config hash does not match its artifact$/.exec(reason);
-  if (staleArtifact) return `${capabilityLabel(staleArtifact[1])} 的配置哈希与产物不一致。`;
+  if (staleArtifact) return uiText('{0} 的配置哈希与产物不一致。', [capabilityLabel(staleArtifact[1])]);
   const degraded = /^(.+) is degraded without an explicit reason$/.exec(reason);
-  if (degraded) return `${capabilityLabel(degraded[1])} 降级可用，但缺少明确原因。`;
+  if (degraded) return uiText('{0} 降级可用，但缺少明确原因。', [capabilityLabel(degraded[1])]);
   return reason;
 }
 
@@ -468,7 +470,7 @@ function readFileAsBase64(file: File): Promise<string> {
       const raw = String(reader.result ?? "");
       resolve(raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw);
     };
-    reader.onerror = () => reject(reader.error ?? new Error("读取 PDF 文件失败"));
+    reader.onerror = () => reject(reader.error ?? new Error(uiText('读取 PDF 文件失败')));
     reader.readAsDataURL(file);
   });
 }
@@ -491,13 +493,13 @@ async function importWorkbenchInput() {
     if (importMode.value === "path") {
       const pdfPath = optionalText(importFields.paper_pdf_path);
       if (!pdfPath) {
-        importError.value = "请填写 PDF 的服务器路径。";
+        importError.value = uiText('请填写 PDF 的服务器路径。');
         return;
       }
       payload.paper_pdf_path = pdfPath;
     } else {
       if (!paperPdfFile.value) {
-        importError.value = "请选择 PDF 文件。";
+        importError.value = uiText('请选择 PDF 文件。');
         return;
       }
       payload.paper_pdf_base64 = await readFileAsBase64(paperPdfFile.value);
@@ -543,7 +545,7 @@ function resolvePermission(item: { job: BuildJobState; request: ExecutorPermissi
   });
 }
 
-function telemetryText(value: string | number | undefined, fallback = "暂无"): string {
+function telemetryText(value: string | number | undefined, fallback = uiText('暂无')): string {
   if (value === undefined || value === "") return fallback;
   return String(value);
 }
@@ -591,8 +593,8 @@ function draftSidecarPlan() {
   <main class="workbench-pane">
     <header class="workbench-head">
       <div>
-        <p class="workbench-kicker">构建工作台</p>
-        <h1>{{ props.snapshot?.book_id ?? "当前书" }}</h1>
+        <p class="workbench-kicker">{{ uiText('构建工作台') }}</p>
+        <h1>{{ props.snapshot?.book_id ?? uiText('当前书') }}</h1>
       </div>
       <div class="workbench-actions">
         <button
@@ -600,22 +602,18 @@ function draftSidecarPlan() {
           class="primary-action"
           :disabled="!canEnterReader"
           @click="emit('enter-reader')"
-        >
-          进入阅读
-        </button>
+        > {{ uiText('进入阅读') }} </button>
         <span v-if="props.snapshot" class="workbench-status" :data-status="props.snapshot.readiness.status">
           {{ readinessStatusLabel(props.snapshot.readiness.status) }}
         </span>
         <label class="poll-toggle">
-          <input v-model="pollingEnabled" type="checkbox" />
-          自动轮询
-        </label>
-        <button :disabled="props.loading || props.actioning" @click="emit('refresh')">{{ props.loading ? "刷新中" : "刷新" }}</button>
+          <input v-model="pollingEnabled" type="checkbox" /> {{ uiText('自动轮询') }} </label>
+        <button :disabled="props.loading || props.actioning" @click="emit('refresh')">{{ props.loading ? uiText('刷新中') : uiText('刷新') }}</button>
       </div>
     </header>
 
     <p v-if="props.error" class="workbench-error">{{ props.error }}</p>
-    <p v-else-if="props.loading && !props.snapshot" class="workbench-empty">正在加载构建状态...</p>
+    <p v-else-if="props.loading && !props.snapshot" class="workbench-empty">{{ uiText('正在加载构建状态...') }}</p>
 
     <template v-if="props.snapshot">
       <SourceReviewWorkspace
@@ -643,52 +641,49 @@ function draftSidecarPlan() {
 
       <section v-if="sourceReviewManualOverride" class="workbench-section source-review-override">
         <div>
-          <h2>已采用人工终裁正文</h2>
-          <p>
-            一次来源验证仍有 {{ sourceReviewManualOverride.residual_unresolved_count }} 个残余差异；
-            系统已保留诊断报告，并按已记录的复核决定继续后续构建。
-          </p>
+          <h2>{{ uiText('已采用人工终裁正文') }}</h2>
+          <p> {{ uiText('一次来源验证仍有') }} {{ sourceReviewManualOverride.residual_unresolved_count }} {{ uiText('个残余差异； 系统已保留诊断报告，并按已记录的复核决定继续后续构建。') }} </p>
         </div>
-        <small v-if="sourceReviewManualOverride.accepted_at">终裁时间 {{ sourceReviewManualOverride.accepted_at }}</small>
+        <small v-if="sourceReviewManualOverride.accepted_at">{{ uiText('终裁时间') }} {{ sourceReviewManualOverride.accepted_at }}</small>
       </section>
 
       <section class="workbench-section input-section">
         <div class="section-headline">
-          <h2>导入 PDF</h2>
+          <h2>{{ uiText('导入 PDF') }}</h2>
           <p v-if="currentInputManifest" class="workbench-meta">
             {{ currentInputManifest.display_title }} ·
             {{ currentInputManifest.inputs.paper_pdf.size_bytes }}B PDF
           </p>
-          <p v-else class="workbench-meta">选择 PDF 即可开始。自动提取文字，扫描页和图片中的文字会自动识别。</p>
+          <p v-else class="workbench-meta">{{ uiText('选择 PDF 即可开始。自动提取文字，扫描页和图片中的文字会自动识别。') }}</p>
         </div>
         <div v-if="currentInputManifest?.inputs.paper_md && props.snapshot.input.fingerprint" class="fingerprint-grid">
           <code>MD {{ props.snapshot.input.fingerprint.paper_md_sha256.slice(0, 12) }}</code>
           <code>PDF {{ props.snapshot.input.fingerprint.paper_pdf_sha256.slice(0, 12) }}</code>
-          <code>配置 {{ props.snapshot.input.fingerprint.config_hash.slice(0, 12) }}</code>
+          <code>{{ uiText('配置') }} {{ props.snapshot.input.fingerprint.config_hash.slice(0, 12) }}</code>
         </div>
         <div v-if="currentInputManifest && !replacingInput" class="input-ready-state">
-          <p>PDF 已保存在当前工作区，无需重新选择。</p>
-          <button :disabled="props.importing" @click="beginInputReplacement">更换输入</button>
+          <p>{{ uiText('PDF 已保存在当前工作区，无需重新选择。') }}</p>
+          <button :disabled="props.importing" @click="beginInputReplacement">{{ uiText('更换输入') }}</button>
         </div>
         <template v-else>
           <div class="import-mode">
-            <label><input v-model="importMode" type="radio" value="upload" /> 上传文件</label>
-            <label><input v-model="importMode" type="radio" value="path" /> 服务器路径</label>
+            <label><input v-model="importMode" type="radio" value="upload" /> {{ uiText('上传文件') }}</label>
+            <label><input v-model="importMode" type="radio" value="path" /> {{ uiText('服务器路径') }}</label>
           </div>
           <div class="input-grid">
             <label>
-              <span>草稿工作区</span>
-              <input v-model="importFields.target_dir" placeholder="留空则使用当前工作区" />
+              <span>{{ uiText('草稿工作区') }}</span>
+              <input v-model="importFields.target_dir" :placeholder="uiText('留空则使用当前工作区')" />
             </label>
             <label>
-              <span>显示标题</span>
-              <input v-model="importFields.display_title" placeholder="留空自动生成" />
+              <span>{{ uiText('显示标题') }}</span>
+              <input v-model="importFields.display_title" :placeholder="uiText('留空自动生成')" />
             </label>
           </div>
           <div v-if="importMode === 'upload'" class="file-input-grid">
             <FileDropField
               v-model="paperPdfFile"
-              label="PDF 文件"
+              :label="uiText('PDF 文件')"
               accept="application/pdf,.pdf"
               accept-label=".pdf"
               kind="pdf"
@@ -697,17 +692,15 @@ function draftSidecarPlan() {
           </div>
           <div v-else class="input-grid">
             <label>
-              <span>PDF 路径</span>
+              <span>{{ uiText('PDF 路径') }}</span>
               <input v-model="importFields.paper_pdf_path" placeholder="E:\\papers\\paper.pdf" />
             </label>
           </div>
           <p v-if="importError" class="workbench-error">{{ importError }}</p>
           <div class="action-row">
-            <button v-if="currentInputManifest" :disabled="props.importing" @click="finishInputReplacement">
-              取消更换
-            </button>
+            <button v-if="currentInputManifest" :disabled="props.importing" @click="finishInputReplacement"> {{ uiText('取消更换') }} </button>
             <button class="primary-action" :disabled="props.importing" @click="importWorkbenchInput">
-              {{ props.importing ? "正在导入…" : (currentInputManifest ? "确认更换" : "导入并阅读") }}
+              {{ props.importing ? uiText('正在导入…') : (currentInputManifest ? uiText('确认更换') : uiText('导入并阅读')) }}
             </button>
           </div>
         </template>
@@ -715,19 +708,19 @@ function draftSidecarPlan() {
 
       <section class="workbench-section">
         <div class="section-headline">
-          <h2>运行控制</h2>
+          <h2>{{ uiText('运行控制') }}</h2>
           <p v-if="latestJob" class="workbench-meta">{{ latestJob.job_id }} · {{ jobStatusLabel(latestJob.status) }}</p>
-          <p v-else class="workbench-meta">尚未创建构建任务</p>
+          <p v-else class="workbench-meta">{{ uiText('尚未创建构建任务') }}</p>
         </div>
         <div class="run-control-grid">
           <label>
-            <span>阶段</span>
+            <span>{{ uiText('阶段') }}</span>
             <select v-model="selectedStage">
               <option v-for="stage in stageOrder" :key="stage" :value="stage">{{ stageLabel(stage) }}</option>
             </select>
           </label>
           <label>
-            <span>执行器</span>
+            <span>{{ uiText('执行器') }}</span>
             <select v-model="selectedExecutor">
               <option v-for="executor in executorOptions" :key="executor" :value="executor">
                 {{ executorLabel(executor) }}
@@ -735,7 +728,7 @@ function draftSidecarPlan() {
             </select>
           </label>
           <label>
-            <span>执行模式</span>
+            <span>{{ uiText('执行模式') }}</span>
             <select v-model="selectedAdapterMode">
               <option v-for="mode in adapterModeOptions" :key="mode" :value="mode">
                 {{ adapterModeLabel(mode) }}
@@ -743,33 +736,24 @@ function draftSidecarPlan() {
             </select>
           </label>
           <label>
-            <span>运行 ID</span>
-            <input v-model="runId" placeholder="留空自动生成" />
+            <span>{{ uiText('运行 ID') }}</span>
+            <input v-model="runId" :placeholder="uiText('留空自动生成')" />
           </label>
         </div>
-        <p v-if="selectedStageReadiness?.reason" class="workbench-meta">
-          当前阶段: {{ stageStatusLabel(selectedStageReadiness.status) }} · {{ reasonText(selectedStageReadiness.reason) }}
+        <p v-if="selectedStageReadiness?.reason" class="workbench-meta"> {{ uiText('当前阶段:') }} {{ stageStatusLabel(selectedStageReadiness.status) }} · {{ reasonText(selectedStageReadiness.reason) }}
         </p>
-        <p v-if="hasPendingUserGate" class="workbench-meta">
-          当前任务正在等待下方的构建决策或执行权限处理。
-        </p>
-        <p v-if="!selectedModeSupported" class="workbench-meta">
-          Pass1 需要 executor 先生成逐窗抽取产物，请选择“只写执行契约”交给执行器。
-        </p>
+        <p v-if="hasPendingUserGate" class="workbench-meta"> {{ uiText('当前任务正在等待下方的构建决策或执行权限处理。') }} </p>
+        <p v-if="!selectedModeSupported" class="workbench-meta"> {{ uiText('Pass1 需要 executor 先生成逐窗抽取产物，请选择“只写执行契约”交给执行器。') }} </p>
         <div class="action-row">
-          <button :disabled="props.actioning || !props.snapshot.input.ready" @click="createBuildJob">
-            创建/复用任务
-          </button>
+          <button :disabled="props.actioning || !props.snapshot.input.ready" @click="createBuildJob"> {{ uiText('创建/复用任务') }} </button>
           <button class="primary-action" :disabled="!canStartJob" @click="startSelectedJob">
-            {{ props.actioning ? "处理中" : "启动所选阶段" }}
+            {{ props.actioning ? uiText('处理中') : uiText('启动所选阶段') }}
           </button>
-          <button :disabled="!canResumeJob" @click="resumeLatestJob">
-            恢复活动任务
-          </button>
+          <button :disabled="!canResumeJob" @click="resumeLatestJob"> {{ uiText('恢复活动任务') }} </button>
         </div>
         <p v-if="latestJob?.failure_summary" class="workbench-error">
           {{ latestJob.failure_summary.message }}
-          <template v-if="latestJob.failure_summary.recoverable">可使用“恢复活动任务”重新执行当前阶段。</template>
+          <template v-if="latestJob.failure_summary.recoverable">{{ uiText('可使用“恢复活动任务”重新执行当前阶段。') }}</template>
         </p>
         <div v-if="latestJob?.failure_summary?.stdout_path || latestJob?.failure_summary?.stderr_path" class="failure-paths">
           <code v-if="latestJob.failure_summary.stdout_path">stdout {{ latestJob.failure_summary.stdout_path }}</code>
@@ -778,52 +762,52 @@ function draftSidecarPlan() {
       </section>
 
       <section v-if="activeRun" class="workbench-section">
-        <h2>活动执行器</h2>
+        <h2>{{ uiText('活动执行器') }}</h2>
         <dl class="telemetry-grid">
           <div>
-            <dt>运行 ID</dt>
+            <dt>{{ uiText('运行 ID') }}</dt>
             <dd>{{ activeRun.run_id }}</dd>
           </div>
           <div>
-            <dt>阶段</dt>
+            <dt>{{ uiText('阶段') }}</dt>
             <dd>{{ stageLabel(activeRun.stage) }}</dd>
           </div>
           <div>
-            <dt>执行器</dt>
+            <dt>{{ uiText('执行器') }}</dt>
             <dd>{{ executorLabel(activeRun.executor) }}</dd>
           </div>
           <div>
-            <dt>进程 ID</dt>
+            <dt>{{ uiText('进程 ID') }}</dt>
             <dd>{{ telemetryText(activeRun.telemetry?.pid) }}</dd>
           </div>
           <div>
-            <dt>启动时间</dt>
+            <dt>{{ uiText('启动时间') }}</dt>
             <dd>{{ telemetryText(activeRun.telemetry?.started_at) }}</dd>
           </div>
           <div>
-            <dt>心跳</dt>
+            <dt>{{ uiText('心跳') }}</dt>
             <dd>{{ telemetryText(activeRun.telemetry?.last_heartbeat_at) }}</dd>
           </div>
           <div>
-            <dt>令牌用量</dt>
+            <dt>{{ uiText('令牌用量') }}</dt>
             <dd>{{ telemetryText(activeRun.telemetry?.tokens_used) }}</dd>
           </div>
           <div>
-            <dt>成本</dt>
+            <dt>{{ uiText('成本') }}</dt>
             <dd>{{ telemetryText(activeRun.telemetry?.cost_usd) }}</dd>
           </div>
         </dl>
       </section>
 
       <section v-if="props.snapshot.readiness.reasons.length" class="workbench-section">
-        <h2>构建就绪状态</h2>
+        <h2>{{ uiText('构建就绪状态') }}</h2>
         <ul class="workbench-reasons">
           <li v-for="reason in props.snapshot.readiness.reasons" :key="reason">{{ reasonText(reason) }}</li>
         </ul>
       </section>
 
       <section v-if="operationalWarnings.length" class="workbench-section">
-        <h2>运行警告</h2>
+        <h2>{{ uiText('运行警告') }}</h2>
         <ul class="workbench-reasons">
           <li v-for="warning in operationalWarnings" :key="`${warning.code}:${warning.job_id ?? ''}`">
             {{ warning.message }}
@@ -832,7 +816,7 @@ function draftSidecarPlan() {
       </section>
 
       <section class="workbench-section">
-        <h2>阶段流程</h2>
+        <h2>{{ uiText('阶段流程') }}</h2>
         <ol class="stage-dag">
           <li
             v-for="stage in stageOrder"
@@ -850,7 +834,7 @@ function draftSidecarPlan() {
 
       <section class="workbench-flows">
         <div class="workbench-section">
-          <h2>待处理构建决策</h2>
+          <h2>{{ uiText('待处理构建决策') }}</h2>
           <ul v-if="pendingDecisionItems.length" class="request-list">
             <li v-for="item in pendingDecisionItems" :key="item.request.decision_id">
               <strong>{{ decisionKindLabels[item.request.kind] ?? item.request.kind }}</strong>
@@ -865,41 +849,39 @@ function draftSidecarPlan() {
                   {{ option.label }}
                 </button>
               </div>
-              <p v-else class="workbench-empty">这个决策暂未提供可选答案。</p>
+              <p v-else class="workbench-empty">{{ uiText('这个决策暂未提供可选答案。') }}</p>
             </li>
           </ul>
-          <p v-else class="workbench-empty">暂无待处理构建决策。</p>
+          <p v-else class="workbench-empty">{{ uiText('暂无待处理构建决策。') }}</p>
         </div>
 
         <div class="workbench-section">
-          <h2>待授权执行权限</h2>
+          <h2>{{ uiText('待授权执行权限') }}</h2>
           <ul v-if="pendingPermissionItems.length" class="request-list">
             <li v-for="item in pendingPermissionItems" :key="item.request.request_id">
               <strong>{{ executorLabel(item.request.executor) }} · {{ permissionCategoryLabels[item.request.category] ?? item.request.category }}</strong>
               <p>{{ item.request.action_summary }}</p>
-              <small>授权范围: {{ permissionScopeLabels[item.request.scope_hint] ?? item.request.scope_hint }}</small>
+              <small>{{ uiText('授权范围:') }} {{ permissionScopeLabels[item.request.scope_hint] ?? item.request.scope_hint }}</small>
               <div class="action-row compact">
-                <button :disabled="props.actioning" @click="resolvePermission(item, true)">批准</button>
-                <button :disabled="props.actioning" @click="resolvePermission(item, false)">拒绝</button>
+                <button :disabled="props.actioning" @click="resolvePermission(item, true)">{{ uiText('批准') }}</button>
+                <button :disabled="props.actioning" @click="resolvePermission(item, false)">{{ uiText('拒绝') }}</button>
               </div>
             </li>
           </ul>
-          <p v-else class="workbench-empty">暂无待授权执行权限。</p>
+          <p v-else class="workbench-empty">{{ uiText('暂无待授权执行权限。') }}</p>
         </div>
       </section>
 
       <section class="workbench-section">
-        <h2>辅助产物计划</h2>
-        <p class="workbench-meta">状态 {{ sidecarPlanStatusLabel(sidecarPlanStatus) }}</p>
+        <h2>{{ uiText('辅助产物计划') }}</h2>
+        <p class="workbench-meta">{{ uiText('状态') }} {{ sidecarPlanStatusLabel(sidecarPlanStatus) }}</p>
         <div class="sidecar-request">
           <textarea
             v-model="sidecarRequest"
             rows="2"
-            placeholder="描述需要的时间线、概念图、比较表或论证图"
+            :placeholder="uiText('描述需要的时间线、概念图、比较表或论证图')"
           ></textarea>
-          <button :disabled="props.actioning || !sidecarRequest.trim()" @click="draftSidecarPlan">
-            生成计划草稿
-          </button>
+          <button :disabled="props.actioning || !sidecarRequest.trim()" @click="draftSidecarPlan"> {{ uiText('生成计划草稿') }} </button>
         </div>
         <div v-if="sidecarForm" class="sidecar-form">
           <label v-for="field in sidecarForm.fields" :key="field.id">
@@ -913,14 +895,14 @@ function draftSidecarPlan() {
             <code v-else>{{ fieldValueText(field.value) }}</code>
           </label>
           <button :disabled="props.confirming || sidecarPlanStatus === 'confirmed'" @click="confirmSidecarPlan">
-            {{ props.confirming ? "确认中" : "确认计划" }}
+            {{ props.confirming ? uiText('确认中') : uiText('确认计划') }}
           </button>
         </div>
-        <p v-else class="workbench-empty">暂无辅助产物计划草稿。</p>
+        <p v-else class="workbench-empty">{{ uiText('暂无辅助产物计划草稿。') }}</p>
       </section>
 
       <section class="workbench-section">
-        <h2>构建事件</h2>
+        <h2>{{ uiText('构建事件') }}</h2>
         <p v-if="latestJob" class="workbench-meta">{{ latestJob.job_id }} · {{ jobStatusLabel(latestJob.status) }}</p>
         <ol v-if="recentEvents.length" class="event-list">
           <li v-for="event in recentEvents" :key="`${event.job_id}:${event.event_id}`">
@@ -930,20 +912,20 @@ function draftSidecarPlan() {
             <p v-if="event.message">{{ reasonText(event.message) }}</p>
           </li>
         </ol>
-        <p v-else class="workbench-empty">暂无构建事件。</p>
+        <p v-else class="workbench-empty">{{ uiText('暂无构建事件。') }}</p>
       </section>
 
       <section class="workbench-section">
-        <h2>权限审计</h2>
+        <h2>{{ uiText('权限审计') }}</h2>
         <ol v-if="recentPermissionAudit.length" class="event-list">
           <li v-for="entry in recentPermissionAudit" :key="entry.audit_id">
-            <span>{{ entry.granted ? "已批准" : "已拒绝" }}</span>
-            <strong>{{ entry.executor ? executorLabel(entry.executor) : "执行器" }}</strong>
+            <span>{{ entry.granted ? uiText('已批准') : uiText('已拒绝') }}</span>
+            <strong>{{ entry.executor ? executorLabel(entry.executor) : uiText('执行器') }}</strong>
             <small>{{ entry.resolved_at }}</small>
             <p>{{ entry.action_summary ?? entry.request_id }}</p>
           </li>
         </ol>
-        <p v-else class="workbench-empty">暂无权限审计记录。</p>
+        <p v-else class="workbench-empty">{{ uiText('暂无权限审计记录。') }}</p>
       </section>
     </template>
   </main>

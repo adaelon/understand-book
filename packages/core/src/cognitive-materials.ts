@@ -186,6 +186,28 @@ export function cognitiveTaskInput(source: TeachingSource, target: BookStructure
   return packet;
 }
 
+/** Prepare a new first packet with required source text; only delivered ranges enter its writer context. */
+export function prepareCognitiveTaskInput(source: TeachingSource, target: BookStructureKeyStop, objects: FormalObjects, work: CognitiveWork, budget: CognitiveBudget,
+  fits: (packet: unknown) => boolean = () => true) {
+  const original = { work, packet: cognitiveTaskInput(source, target, objects, work, budget, fits) };
+  if (work.status !== "incomplete" || work.stop_reason || work.inspected_object || work.readings.some(r => r.lid === target.lid)) return original;
+  const passage = source.passages.find(p => p.lid === target.lid);
+  let end = Math.min(passage?.text.length ?? 0, 2000, budget.context_chars, budget.read_chars - work.used.read_chars);
+  let low = 1, high = end;
+  let prepared = original;
+  while (low <= high) {
+    const next = advanceCognitiveWork({ source, target, objects, work, budget, discourse: [], action: { kind: "read", lid: target.lid, start: 0, end } });
+    const packet = cognitiveTaskInput(source, target, objects, next, budget, fits);
+    const delivered = packet.work.readings.some(r => r.lid === target.lid && r.start === 0 && r.end === end && r.text === passage!.text.slice(0, end));
+    if (delivered && fits(packet)) {
+      prepared = { work: next, packet };
+      low = end + 1;
+    } else high = end - 1;
+    end = Math.floor((low + high) / 2);
+  }
+  return prepared;
+}
+
 export interface CognitiveMaterials {
   version: "cognitive_materials.v1"; source_id: string; source_revision: string;
   formal_objects_revision: number; materials: CognitiveMaterial[];

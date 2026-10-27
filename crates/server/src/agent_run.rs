@@ -63,6 +63,17 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn workspace_records_available(&self) -> bool { true }
+    fn workspace_records(&mut self, request: Value) -> Result<Value, ToolError> {
+        self.port.with_app(|state| {
+            self.scope.check_owner(state)?;
+            crate::workspace_record_context::read_scoped(&state.user, self.scope.learning_workspace_id.as_deref(), &self.scope.book.base.book_id, request)
+        })
+    }
+    fn board_authoring_available(&self) -> bool { self.scope.board_context.is_some() }
+    fn author_board(&mut self, request: runtime::board_author::AuthorRequest, bindings: &[SourceBinding], messages: &[Message], cancellation: &CancellationToken) -> Result<runtime::board_author::AuthorResult, ToolError> {
+        self.author_board_candidate(request, bindings, messages, cancellation)
+    }
     fn music_source_context(&mut self) -> Result<Option<Value>, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
         crate::music_interact::source_context(self.scope)
@@ -273,6 +284,7 @@ impl<P: UserStatePort> CompactionCheckpointSink for RunCheckpointSink<'_, P> {
 }
 
 pub(crate) struct PreparedAgentChat {
+    pub response_language: Option<runtime::response_language::ResponseLanguage>,
     pub exam_calendar: Option<Value>,
     pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub tutor: Option<Value>,
@@ -328,9 +340,6 @@ pub(crate) fn execute_prepared(
 ) -> ExecutionReport {
     let turn=prepared.turn_ref.clone();
     let workspace=prepared.scope.learning_workspace_id.clone();
-    if let Err(error)=crate::teaching_coach::drive_inline(port,adapter,workspace.as_deref(),&turn,false,&cancellation) {
-        return ExecutionReport::saved(err_reply(&error));
-    }
     let report=execute_observed(port, adapter, prepared, cancellation.clone(), None, None);
     if let Err(error)=crate::teaching_coach::drive_inline(port,adapter,workspace.as_deref(),&turn,true,&cancellation) {
         eprintln!("Teaching coach persistence: {}",error.error_code);
@@ -349,11 +358,6 @@ pub(crate) fn execute_prepared_with_stream_for_test(
 ) -> ExecutionReport {
     let turn = prepared.turn_ref.clone();
     let workspace = prepared.scope.learning_workspace_id.clone();
-    if let Err(error) = crate::teaching_coach::drive_inline(
-        port, adapter, workspace.as_deref(), &turn, false, &cancellation,
-    ) {
-        return ExecutionReport::saved(err_reply(&error));
-    }
     let report = execute_observed(port, adapter, prepared, cancellation.clone(), Some(stream), None);
     if let Err(error) = crate::teaching_coach::drive_inline(
         port, adapter, workspace.as_deref(), &turn, true, &cancellation,
@@ -369,6 +373,7 @@ pub(crate) struct FinishedRun {
     pub cancelled: bool,
     pub summary: AgentRunSummary,
     pub messages: Vec<Message>,
+    pub active_model_projection: Option<runtime::active_projection::ActiveModelProjection>,
 }
 pub(crate) fn execute_model(
     adapter: &dyn ModelAdapter,
@@ -397,6 +402,7 @@ pub(crate) fn execute_model(
     context.accepted_workspace_goal = prepared.accepted_workspace_goal.clone();
     context.goal = prepared.goal.clone();
     context.current_user_message = Some(prepared.message.clone());
+    context.response_language = prepared.response_language;
     context.cancellation = cancellation.clone();
     context.events = runtime::run_events::RunEvents::with_start(
         event_anchor,
@@ -414,8 +420,6 @@ pub(crate) fn execute_model(
         cancellation: cancellation.clone(),
     };
     let result = run(&adapter, prepared, &mut context);
-    runtime::presentation_author::redact_history(&mut context.messages);
-    runtime::tool_exposure::redact_history(&mut context.messages);
     let spend_stop = result.as_ref().err()
         .filter(|error| error.category == "model_spend")
         .and_then(|error| runtime::model_spend::SpendStop::from_code(&error.error_code));
@@ -431,6 +435,11 @@ pub(crate) fn execute_model(
     if cancelled {
         context.close_cancelled_tool_calls();
     }
+    let active_model_projection = if result.is_ok() || cancelled || spend_stop.is_some() {
+        context.finished_model_projection()
+    } else { None };
+    runtime::presentation_author::redact_history(&mut context.messages);
+    runtime::tool_exposure::redact_history(&mut context.messages);
     if let Some(stream) = stream {
         stream.finalizing();
     }
@@ -483,7 +492,7 @@ pub(crate) fn execute_model(
         }
         messages
     };
-    FinishedRun { result, cancelled, summary, messages: persisted_messages }
+    FinishedRun { result, cancelled, summary, messages: persisted_messages, active_model_projection }
 }
 
 fn execute_observed(
@@ -508,15 +517,12 @@ fn execute_observed(
         (None, Some(observation)) => Some(observation),
         (None, None) => None,
     };
-    let FinishedRun { result, cancelled, summary, messages: persisted_messages } = execute_model(
+    let FinishedRun { result, cancelled, summary, messages: persisted_messages, active_model_projection } = execute_model(
         adapter, &prepared, cancellation, stream, event_sink,
         observation_run.as_ref().map(|r| r.event_anchor()).unwrap_or_else(std::time::Instant::now),
         |adapter, prepared, context| {
-            while !port.with_app(|state| crate::teaching_coach::prepare_execution(&state.user,
-                prepared.scope.learning_workspace_id.as_deref(), &prepared.turn_ref))? {
-                context.cancellation.check()?;
-                std::thread::sleep(std::time::Duration::from_millis(25));
-            }
+            port.with_app(|state| crate::teaching_coach::prepare_execution(&state.user,
+                prepared.scope.learning_workspace_id.as_deref(), &prepared.turn_ref))?;
             context.cancellation.check()?;
             run_precommitted_agent_chat(port, adapter, prepared, context)
         },
@@ -556,7 +562,9 @@ fn execute_observed(
                 }),
             ),
         };
-        if let Err(error) = finalize_agent_turn(
+        let saved_projection = session_runtime::model_projection(
+            &mut state.user, &prepared.turn_ref, &persisted_messages, active_model_projection.as_ref());
+        if let Err(error) = saved_projection.and_then(|()| finalize_agent_turn(
             state,
             &prepared.turn_ref,
             status,
@@ -565,7 +573,7 @@ fn execute_observed(
             Some(summary.clone()),
             &persisted_messages,
             &prepared.now,
-        ) {
+        )) {
             return ExecutionReport {
                 reply: err_reply(&error),
                 unsaved: Some(UnsavedRun {
@@ -579,6 +587,19 @@ fn execute_observed(
                         category: error.category,
                         message: error.message,
                     },
+                }),
+            };
+        }
+        if let Err(error) = board_delivery::ensure_saved(&mut state.user, &prepared.turn_ref, &prepared.now) {
+            return ExecutionReport {
+                reply: err_reply(&error),
+                unsaved: Some(UnsavedRun {
+                    book_id: prepared.scope.book.base.book_id.clone(),
+                    session_id: prepared.turn_ref.session_id.clone(),
+                    turn_id: prepared.turn_ref.turn_id.clone(),
+                    summary,
+                    outcome,
+                    error: AgentTurnError { error_code: error.error_code, category: error.category, message: error.message },
                 }),
             };
         }
@@ -596,7 +617,19 @@ fn execute_observed(
             return ExecutionReport::saved(err_reply(&error));
         }
         ExecutionReport::saved(match result {
-            Ok(outcome) => ok_json(&outcome),
+            Ok(outcome) => {
+                let mut value = serde_json::to_value(&outcome).expect("serializable outcome");
+                if let Some(turn) = state.user.agent_history.sessions.iter().find(|s| s.id == prepared.turn_ref.session_id)
+                    .and_then(|s| s.turns.iter().find(|t| t.turn_id == prepared.turn_ref.turn_id)) {
+                    if turn.board_follow_up.is_some() {
+                        value["board_follow_up"] = json!(turn.board_follow_up);
+                        value["board_delivery"] = json!(turn.board_delivery);
+                        value["board_delivery_error"] = json!(turn.board_delivery_error);
+                        value["board_commits"] = json!(session_runtime::board_commits(turn));
+                    }
+                }
+                ok_json(&value)
+            },
             Err(error) => err_reply(&error),
         })
     });
@@ -609,7 +642,7 @@ fn execute_observed(
             } else {
                 runtime::observation::PersistenceState::Saved
             },
-            observation_error_code.as_deref(),
+            observation_error_code.as_deref().or_else(|| report.unsaved.as_ref().map(|run| run.error.error_code.as_str())),
         );
     }
     report
@@ -637,13 +670,15 @@ impl RunEventSink for RunEventFanout {
         self.stream.answer_patch(patch);
     }
 
+    fn board_committed(&self, delivery: &memory::boards::BoardDelivery) {
+        self.stream.board_committed(delivery);
+        self.observation.board_committed(delivery);
+    }
+
     fn answer_first_patch(&self, elapsed_ms: f64) {
         self.observation.answer_first_patch(elapsed_ms);
     }
 
-    fn evidence_accepted(&self, observation: runtime::run_events::EvidenceObservation) {
-        self.observation.evidence_accepted(observation);
-    }
 
     fn source_bindings(&self, bindings: &[runtime::orchestrator::SourceBinding]) {
         self.stream.source_bindings(bindings);
@@ -744,6 +779,12 @@ impl RunCoordinator {
             Some(&stream),
             Some(&self.observability),
         );
+        self.state.with_app(|state| {
+            if let Some(turn) = state.user.agent_history.sessions.iter().find(|session| session.id == descriptor.session_id)
+                .and_then(|session| session.turns.iter().find(|turn| turn.turn_id == descriptor.turn_id)) {
+                stream.restore_board_commits(&session_runtime::board_commits(turn));
+            }
+        });
         if let Some(unsaved) = result.unsaved {
             *self.unsaved_book.lock().unwrap() = Some(original_book.clone());
             stream.finish(None, Some(json!(unsaved.error)));
@@ -803,24 +844,29 @@ impl RunCoordinator {
         }
     }
     pub fn stream(&self, turn_id: &str) -> Option<Arc<RunStream>> {
-        {
+        let retained = {
             let slot = self.slot.lock().unwrap();
-            if let Some(active) = slot
+            slot
                 .active
                 .as_ref()
                 .filter(|r| r.turn_ref.turn_id == turn_id)
-            {
-                return Some(active.stream.clone());
-            }
-        }
-        if let Some(stream) = self
+                .map(|active| active.stream.clone())
+        }.or_else(|| self
             .unsaved_stream
             .lock()
             .unwrap()
             .as_ref()
             .filter(|s| s.snapshot().descriptor.turn_id == turn_id)
-        {
-            return Some(stream.clone());
+            .cloned());
+        if let Some(stream) = retained {
+            let descriptor = stream.snapshot().descriptor;
+            self.state.with_app(|state| {
+                if let Some(turn) = state.user.agent_history.sessions.iter().find(|session| session.id == descriptor.session_id)
+                    .and_then(|session| session.turns.iter().find(|turn| turn.turn_id == turn_id)) {
+                    stream.restore_board_commits(&session_runtime::board_commits(turn));
+                }
+            });
+            return Some(stream);
         }
         self.state.with_app(|state| {
             state
@@ -834,13 +880,16 @@ impl RunCoordinator {
                         .iter()
                         .find(|t| t.turn_id == turn_id)
                         .map(|turn| {
+                            let board_error = board_delivery::pending_error(turn);
                             let execution = match turn.status {
+                                _ if board_error.is_some() => "ended",
                                 AgentAssistantStatus::Completed => "completed",
                                 AgentAssistantStatus::Cancelled => "cancelled",
                                 AgentAssistantStatus::Failed => "failed",
                                 AgentAssistantStatus::PendingAssistant => "interrupted",
                             };
                             RunStream::from_snapshot(RunSnapshot {
+                                board_commits: session_runtime::board_commits(turn),
                                 music_command: None,
                                 presentation_command: None,
                                 descriptor: RunDescriptor {
@@ -854,7 +903,7 @@ impl RunCoordinator {
                                     .and_then(|s| s.last_seq)
                                     .unwrap_or(0),
                                 execution_state: execution.into(),
-                                persistence_state: if turn.status
+                                persistence_state: if board_error.is_some() || turn.status
                                     == AgentAssistantStatus::PendingAssistant
                                 {
                                     "failed"
@@ -871,7 +920,7 @@ impl RunCoordinator {
                                 effects: Vec::new(),
                                 draft: None,
                                 final_view: Some(json!(turn_view(&state.workspace.book, turn))),
-                                error: None,
+                                error: board_error.map(|error| json!(error)),
                             })
                         })
                 })
@@ -890,6 +939,52 @@ impl RunCoordinator {
             }
         }
         self.stream(turn_id).map(|s| s.snapshot())
+    }
+    /// Retry only the persisted board delivery, never the model or the accepted question.
+    pub(crate) fn retry_save(&self, turn_id: &str, now: &str) -> Result<RunSnapshot, ToolError> {
+        if self.slot.lock().unwrap().active.as_ref().is_some_and(|run| run.turn_ref.turn_id == turn_id) {
+            return Err(user_storage_paths::error("AGENT_RUN_BUSY", "conflict", "请等待当前回答完成"));
+        }
+        let snapshot = self.state.with_app(|state| {
+            let (reference, book_id) = state.user.agent_history.sessions.iter().find_map(|session|
+                session.turns.iter().find(|turn| turn.turn_id == turn_id).map(|turn| (
+                    AgentTurnRef { session_id: session.id.clone(), turn_id: turn.turn_id.clone(), user_turn_ordinal: turn.user_turn_ordinal },
+                    session.book_id.clone(),
+                ))).ok_or_else(|| user_storage_paths::error("AGENT_RUN_NOT_FOUND", "not_found", "Run does not exist"))?;
+            if let Some(store) = state.user.session_store.as_mut() {
+                store.settle(&mut state.user.agent_history, &reference.session_id)?;
+            }
+            let turn = state.user.agent_history.sessions.iter().find(|s| s.id == reference.session_id).unwrap()
+                .turns.iter().find(|t| t.turn_id == turn_id).unwrap();
+            if turn.status == AgentAssistantStatus::PendingAssistant || turn.domain.board_context.is_none() {
+                return Err(user_storage_paths::error("TURN_NOT_UNSAVED", "conflict", "此回答没有可补存的画板交付"));
+            }
+            board_delivery::ensure_saved(&mut state.user, &reference, now)?;
+            let turn = state.user.agent_history.sessions.iter().find(|s| s.id == reference.session_id).unwrap()
+                .turns.iter().find(|t| t.turn_id == turn_id).unwrap();
+            Ok(RunSnapshot {
+                board_commits: session_runtime::board_commits(turn),
+                music_command: None, presentation_command: None,
+                descriptor: RunDescriptor { book_id, session_id: reference.session_id, turn_id: turn_id.into() },
+                last_seq: turn.run_summary.as_ref().and_then(|summary| summary.last_seq).unwrap_or(0),
+                execution_state: match turn.status {
+                    AgentAssistantStatus::Completed => "completed", AgentAssistantStatus::Cancelled => "cancelled",
+                    AgentAssistantStatus::Failed => "failed", AgentAssistantStatus::PendingAssistant => unreachable!(),
+                }.into(), persistence_state: "saved".into(),
+                activities: turn.run_summary.as_ref().and_then(|summary| summary.activities.clone()).unwrap_or_default(),
+                reader_state: None, effects: Vec::new(), draft: None,
+                final_view: Some(json!(turn_view(&state.workspace.book, turn))), error: None,
+            })
+        })?;
+        let mut unsaved = self.unsaved.lock().unwrap();
+        if unsaved.as_ref().is_some_and(|run| run.turn_id == turn_id) {
+            *unsaved = None;
+            *self.unsaved_book.lock().unwrap() = None;
+            if let Some(stream) = self.unsaved_stream.lock().unwrap().take() {
+                stream.finish(snapshot.final_view.clone(), None);
+            }
+        }
+        Ok(snapshot)
     }
     pub fn unsaved_run(&self) -> Option<UnsavedRun> {
         self.unsaved

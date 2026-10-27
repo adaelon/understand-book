@@ -41,6 +41,7 @@ describe("PDF selection translation controller", () => {
     await controller.start(draft("one"));
 
     expect(translate).toHaveBeenCalledWith({
+      target_locale: "zh-CN",
       status: "resolved",
       raw_quote: "raw-one",
       resolved_quote: "resolved-one",

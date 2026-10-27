@@ -1,4 +1,5 @@
 function (config, staticCapture, createActions) {
+  const uiText = (source, values = []) => (config.translations?.[source] ?? source).replace(/\{(\d+)\}/g, (match, index) => index < values.length ? String(values[index]) : match);
   const send = message => parent.postMessage({ channel: config.channel, ...message }, "*");
   let observer;
   let stateReader;
@@ -15,10 +16,19 @@ function (config, staticCapture, createActions) {
   const pendingCaptures = new Map();
   const pendingHelp = new Map();
   let helpRequest = 0;
-  function teachingRegion(regionId) {
-    if (!config.teachingBinding?.regions.some(region => region.region_id === regionId)) return null;
+  const declaredRegions = new Set([
+    ...(config.teachingBinding?.regions ?? []).map(region => region.region_id),
+    ...(config.actionContract ?? []).filter(action => ['highlight', 'reveal', 'annotate'].includes(action.kind)).map(action => action.region_id),
+  ]);
+  function regionNode(regionId) {
     return Array.from(document.querySelectorAll('[data-teaching-region], [id]'))
       .find(node => node.getAttribute('data-teaching-region') === regionId || node.id === regionId) ?? null;
+  }
+  function teachingRegion(regionId) {
+    return config.teachingBinding?.regions.some(region => region.region_id === regionId) ? regionNode(regionId) : null;
+  }
+  function requestExplanation(regionId) {
+    if (declaredRegions.has(regionId)) send({ kind: 'region-activated', region_id: regionId });
   }
   window.presentation = Object.freeze({
     initialState: config.initialState,
@@ -27,6 +37,7 @@ function (config, staticCapture, createActions) {
     registerStateReader: reader => { stateReader = reader; },
     registerStateRestorer: restorer => { stateRestorer = restorer; },
     commitState: () => scheduleCommit(),
+    requestExplanation,
     // Opens the host action form; only an explicit host submission records a learner action.
     requestTeachingAction: (moveId, response) => send({ kind: "teaching-action", move_id: moveId, response }),
     // Only teaching help explicitly revealed on the page is reported. Moving
@@ -37,10 +48,10 @@ function (config, staticCapture, createActions) {
       const text = region ? visibleText(region).trim() : '';
       if (!region || !bounds || !text || !['hint', 'explanation'].includes(kind)
         || bounds.bottom <= 0 || bounds.top >= innerHeight || bounds.right <= 0 || bounds.left >= innerWidth) {
-        reject(new Error('帮助区域尚未显示。')); return;
+        reject(new Error(uiText('帮助区域尚未显示。'))); return;
       }
       const requestId = ++helpRequest;
-      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error('帮助展示记录未确认。')); }, 15000);
+      const timer = setTimeout(() => { pendingHelp.delete(requestId); reject(new Error(uiText('帮助展示记录未确认。'))); }, 15000);
       pendingHelp.set(requestId, { resolve, reject, timer });
       send({ kind: 'teaching-help', request_id: requestId, move_id: moveId, help_kind: kind, region_id: regionId, text });
     }),
@@ -88,13 +99,14 @@ function (config, staticCapture, createActions) {
       return;
     }
     if (event.data.kind === 'locate-region') {
-      const region = teachingRegion(event.data.region_id);
-      if (region) {
+      const region = declaredRegions.has(event.data.region_id) ? regionNode(event.data.region_id) : null;
+      const located = !!region?.getClientRects().length && !['hidden', 'collapse'].includes(getComputedStyle(region).visibility);
+      if (located) {
         region.scrollIntoView({ block: 'center', behavior: 'smooth' });
         region.animate([{ outline: '3px solid var(--accent)', outlineOffset: '5px' },
           { outline: '3px solid transparent', outlineOffset: '5px' }], { duration: 1600 });
       }
-      send({ kind: 'region-located', region_id: event.data.region_id, located: !!region });
+      send({ kind: 'region-located', region_id: event.data.region_id, located });
       return;
     }
     if (event.data.kind === 'teaching-help-recorded') {
@@ -123,7 +135,7 @@ function (config, staticCapture, createActions) {
     if (event.data.kind === "export-static") {
       const id = event.data.request_id;
       Promise.all([document.fonts.ready, ...Array.from(document.images, image => image.decode())])
-        .then(() => capture(id, true), () => send({ kind: "static-error", request_id: id, message: "图解图片资源加载失败，请重新加载后重试。" }));
+        .then(() => capture(id, true), () => send({ kind: "static-error", request_id: id, message: uiText('图解图片资源加载失败，请重新加载后重试。') }));
     }
   });
   // The host owns source labels and actions; ordinary page rendering stays local.
@@ -134,9 +146,9 @@ function (config, staticCapture, createActions) {
       const id = node.getAttribute("data-source-ref");
       refs.push(id);
       const source = config.sources.find(source => source.source_ref_id === id);
-      node.textContent = sourceChipLabel(config.sources, id);
-      node.setAttribute("title", source ? source.label : "来源不可用");
-      node.setAttribute("aria-label", source ? `${node.textContent}：${source.label}` : "来源不可用");
+      node.textContent = sourceChipLabel(config.sources, id, uiText('来源不可用'));
+      node.setAttribute("title", source ? source.label : uiText('来源不可用'));
+      node.setAttribute("aria-label", source ? `${node.textContent}：${source.label}` : uiText('来源不可用'));
       if (node instanceof HTMLButtonElement) node.disabled = !source;
     });
     observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
@@ -157,9 +169,9 @@ function (config, staticCapture, createActions) {
     let custom = {};
     try { custom = stateReader ? stateReader() ?? {} : {}; } catch {}
     // One synchronous browser read freezes parameters and actual rendered semantics together.
-    send({ kind: result ? "interaction-result" : exporting ? "static-result" : "state", request_id, ...result, ...(exporting ? { image: staticCapture(), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden' && node.type !== 'hidden').map((node, index) => ({
-      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || `参数 ${index + 1}`,
-      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? '已选' : '未选') : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
+    send({ kind: result ? "interaction-result" : exporting ? "static-result" : "state", request_id, ...result, ...(exporting ? { image: staticCapture(config.translations), parameters: Array.from(document.querySelectorAll('input, textarea, select')).filter(node => !node.closest('[data-presentation-mask]') && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden' && node.type !== 'hidden').map((node, index) => ({
+      label: node.getAttribute('aria-label') || Array.from(node.labels ?? [], label => label.textContent.trim()).join(' ') || uiText('参数 {0}', [index + 1]),
+      value: node.type === 'checkbox' || node.type === 'radio' ? (node.checked ? uiText('已选') : uiText('未选')) : node instanceof HTMLSelectElement ? Array.from(node.selectedOptions, option => option.text).join('、') : node.value,
     })) } : {}), state: {
       values: { controls, page: custom.values ?? null, parameter_edits: { ...parameterEdits } },
       visible_step: custom.visible_step ?? document.querySelector("[data-presentation-step]")?.getAttribute("data-presentation-step") ?? null,
@@ -193,6 +205,12 @@ function (config, staticCapture, createActions) {
     send({ kind: "editing-focus", generation: hostGeneration, editing });
   }
   document.addEventListener("click", event => {
+    const explanation = event.target instanceof Element ? event.target.closest('[data-presentation-explanation]') : null;
+    if (explanation) {
+      event.preventDefault();
+      requestExplanation(explanation.getAttribute('data-presentation-explanation'));
+      return;
+    }
     const node = event.target instanceof Element ? event.target.closest("[data-source-ref], a") : null;
     if (!node) return;
     event.preventDefault();
@@ -247,7 +265,7 @@ function (config, staticCapture, createActions) {
     window.addEventListener("blur", () => publishEditing(false));
     document.addEventListener("visibilitychange", () => { if (document.hidden) publishEditing(false); });
     document.addEventListener("click", event => {
-      if (!(event.target instanceof Element) || event.target.closest("[data-source-ref], a")) return;
+      if (!(event.target instanceof Element) || event.target.closest("[data-source-ref], [data-presentation-explanation], a")) return;
       if (event.target.closest("button, summary, [role=button], [data-presentation-step]")) scheduleCommit();
     });
     normalizeSources();

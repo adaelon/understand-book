@@ -1,4 +1,5 @@
 import { network } from './network-context';
+import { getLocale, errorMessage } from './i18n';
 import { networkFetch, networkRequest, publishedUrl } from './network-client';
 import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
@@ -8,6 +9,22 @@ import type { Manifest } from "./generated/Manifest";
 import type { NoteData } from "./generated/NoteData";
 import type { NoteCreateRequest } from "./generated/NoteCreateRequest";
 export type { NoteData, NoteCreateRequest };
+import type { BoardDocument } from './generated/BoardDocument';
+import type { BoardView } from './generated/BoardView';
+import type { BoardSummary } from './generated/BoardSummary';
+import type { BoardImportSource } from './generated/BoardImportSource';
+import type { BoardFollowUp } from './generated/BoardFollowUp';
+import type { BoardDelivery } from './generated/BoardDelivery';
+import type { BoardSearchHit } from './generated/BoardSearchHit';
+export type { BoardDocument, BoardView, BoardSummary, BoardImportSource, BoardFollowUp, BoardDelivery, BoardSearchHit };
+export type BoardPrebuildCategory = 'all' | 'pass1' | 'discourse' | 'book_structure' | 'teaching';
+export interface BoardCatalogItem { kind: BoardImportSource['kind']; category?: Exclude<BoardPrebuildCategory, 'all'>; title: string; summary: string; source: BoardImportSource }
+export interface BoardSourceRequest { board_id: string; item_id: string; source_ref_id: string }
+export interface BoardUpdateRequest {
+  board_id: string; expected_revision: number; title?: string;
+  positions?: { item_id: string; position: { x: number; y: number }; size?: { width: number; height: number } }[];
+  remove_item_ids?: string[];
+}
 import type { BookQueryRequest } from "./generated/BookQueryRequest";
 import type { QueryOutcome } from "./generated/QueryOutcome";
 import type { ToolError } from "./generated/ToolError";
@@ -439,10 +456,10 @@ export interface PdfSelectionResolveResponse {
   }>;
   quote_markdown: string;
 }
-export type SelectionTranslationRequest = SelectionContext;
+export type SelectionTranslationRequest = SelectionContext & { target_locale?: 'zh-CN' | 'en' };
 export interface SelectionTranslationResponse {
   translation_markdown: string;
-  target_locale: "zh-CN";
+  target_locale: "zh-CN" | "en";
 }
 export interface PdfRangesProjectResponse {
   projections: Array<{
@@ -1136,6 +1153,10 @@ export interface AgentQuestionQuoteView {
   status?: SelectionResolution;
 }
 export interface AgentChatTurn {
+  board_commits?: BoardDelivery[];
+  board_follow_up?: BoardFollowUp | null;
+  board_delivery?: BoardDelivery | null;
+  board_delivery_error?: { error_code: string; category: string; message: string } | null;
   music_question?: import('./music-api').MusicQuestionContext | null;
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   published_book_ref?: import('./network-context').PublishedBookRef | null;
@@ -1154,6 +1175,12 @@ export interface AgentChatTurn {
   question_quote: AgentQuestionQuoteView | null;
   effect_labels: string[];
 }
+export interface BoardConversationSession {
+  session_id: string;
+  title: string;
+  turns: AgentChatTurn[];
+}
+export interface BoardConversationResponse { board_id: string; sessions: BoardConversationSession[] }
 export interface GoalWorkItem {
   id: string;
   description: string;
@@ -1226,10 +1253,22 @@ export interface LearningEvidenceView {
   nature?: 'hypothesis' | 'performance';
   teaching_implication?: string;
   fact_refs?: string[];
+  support_delivery_refs?: string[];
   object_id?: string | null;
-  source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { quote: string }[] }[] | null;
+  occurred_at?: string | null;
+  fact_sequence?: number | null;
+  source_session_id?: string | null;
+  source_turn_id?: string | null;
+  source_session_title?: string | null;
+  supersedes?: string | null;
+  superseded?: boolean;
+  expressions?: { fact_ref: string; text: string; occurred_at: string | null; fact_sequence: number | null; source_session_id: string | null; source_turn_id: string | null; assistance_refs: string[]; support_delivery_refs: string[] }[];
+  assistance?: { fact_ref: string; kind: string; occurred_at: string | null; text: string }[];
+  source_quotes: { reason?: string; quote?: string; response_quote?: string; sources?: { lid?: string; source_ref_id?: string; quote?: string; observation?: string }[] }[] | null;
 }
+export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  board_follow_up?: BoardFollowUp;
   music_question?: import('./music-api').MusicQuestionContext;
   video_window_id?: string;
   video_draft_id?: string;
@@ -1308,7 +1347,7 @@ export class ApiError extends Error {
     message: string,
     public details?: { request_id?: string; expires_at?: number; resend_after?: number },
   ) {
-    super(message);
+    super(errorMessage(message, errorCode));
     this.name = "ApiError";
   }
 }
@@ -1540,8 +1579,8 @@ export const api = {
   // ── agent.*(外层 E agent,POST)`[ADR-0030]` ──
   agentRunCreate: (message: string, meta: AgentChatMeta = {}) => {
     type Result = RunDescriptor | OuterOutcome | { kind: 'activity_help'; delivery_refs: string[]; activity?: { session_id: string; turn_id: string } };
-    const body = { message, ...meta };
-    return !network.value.enabled && (meta.entry_action || meta.teaching_choice)
+    const body = { message, ...meta, response_language: getLocale() };
+    return !network.value.enabled && (meta.entry_action || meta.teaching_choice || meta.board_follow_up)
       ? createReadingAction<Result>(http, body) : http<Result>('POST', '/agent/runs', body);
   },
   recoverReadingAction: (item: PendingReadingAction, retry = false) => recoverReadingAction(http, item, retry),
@@ -1549,7 +1588,7 @@ export const api = {
   agentRunRetrySave: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/retry-save`, {}),
   agentRunCancel: (turn_id: string) => http<RunSnapshot>("POST", `/agent/runs/${encodeURIComponent(turn_id)}/cancel`, {}),
   agentChat: (message: string, meta: AgentChatMeta = {}) =>
-    http<OuterOutcome>("POST", "/agent/chat", { message, ...meta }),
+    http<OuterOutcome>("POST", "/agent/chat", { message, ...meta, response_language: getLocale() }),
   agentNew: () => http<{ ok: boolean; history: AgentHistoryResponse }>("POST", "/agent/new", {}),
   disposeEffect: (body: { session_id: string; turn_id: string; effect_id: string; action: "keep" | "undo" | "dismiss" }) =>
     http<import("./effect-disposition").EffectDisposition>("POST", "/agent/effect/dispose", body),
@@ -1565,8 +1604,9 @@ export const api = {
   agentSourceResolve: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
     http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id, note_mem_id }),
   tutorState: () => http<import('./generated/TutorState').TutorState>('GET', '/tutor/state'),
-  tutorUnderstanding: (after = 0, rebuild = false) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }),
+  tutorUnderstanding: (after = 0, rebuild = false, signal?: AbortSignal) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }, signal),
   tutorEvidence: (evidence_ref: string) => http<LearningEvidenceView>('POST', '/tutor/evidence', { evidence_ref }),
+  tutorTimeline: (evidence_ref: string, after = 0) => http<UnderstandingTimeline>('POST', '/tutor/timeline', { evidence_ref, after }),
   tutorFeedbackDisplayed: (action_ref: string) => http('POST', '/tutor/feedback-displayed', { action_ref }),
   tutorEvidenceList: (row: Pick<UnderstandingRow,'object_id'|'object_revision'|'capability'>, before?: number) => http<{ refs: string[]; next: number | null }>('POST', '/tutor/evidence-list', { object_id:row.object_id, object_revision:row.object_revision, capability:row.capability, before }),
   tutorCorrect: (request: { evidence_ref: string; operation_id: string; text: string }) => http<{ evidence_ref: string }>('POST', '/tutor/correct', request),
@@ -1580,6 +1620,30 @@ export const api = {
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
     teaching_assets: { status: 'preparing' | 'ready' | 'stale'; teaching_map_revision: string | null; limitations: string[]; reason: string } }>('GET', '/tutor/readiness'),
   tutorMutate: (request: import('./generated/TutorMutation').TutorMutation) => http<import('./generated/TutorState').TutorState>('POST', '/tutor/mutate', request),
+  boardList: () => http<{ items: BoardSummary[] }>('POST', '/boards/list', {}),
+  boardSearch: (query: string) => http<{ items: BoardSearchHit[] }>('POST', '/boards/search', { query }),
+  boardRelated: (source: BoardImportSource) => http<{ items: BoardSearchHit[] }>('POST', '/boards/related', { source }),
+  boardCreate: (title: string) => http<BoardDocument>('POST', '/boards/create', { title }),
+  boardRead: (board_id: string) => http<{ document: BoardDocument; view: BoardView }>('POST', '/boards/read', { board_id }),
+  boardConversation: (board_id: string) => http<BoardConversationResponse>('POST', '/boards/conversation', { board_id }),
+  boardUpdate: ({ expected_revision, ...request }: BoardUpdateRequest) =>
+    http<BoardDocument>('POST', '/boards/update', { ...request, board_revision: expected_revision }),
+  boardImport: ({ expected_revision, ...request }: { board_id: string; expected_revision: number; source: BoardImportSource }) =>
+    http<BoardDocument>('POST', '/boards/import', { ...request, board_revision: expected_revision }),
+  boardDelete: (board_id: string, expected_revision: number) =>
+    http<{ deleted: boolean }>('POST', '/boards/delete', { board_id, board_revision: expected_revision }),
+  boardCatalog: (kind: BoardImportSource['kind'], after?: number, options?: { category: BoardPrebuildCategory; query: string }) => http<{ items: BoardCatalogItem[]; next?: number | null; total?: number }>('POST', '/boards/catalog', { kind, ...(after != null ? { after } : {}), ...options }),
+  boardViewSave: (board_id: string, view: BoardView) => http<{ saved: boolean }>('POST', '/boards/view.save', { board_id, view }),
+  boardPresentationRead: (board_id: string, item_id: string, restore = true) =>
+    http<import('./generated/PresentationView').PresentationView>('POST', '/boards/presentation.read', { board_id, item_id, restore }),
+  boardPresentationSaveState: (board_id: string, item_id: string, state: import('./generated/PresentationState').PresentationState, teacher_interaction?: Record<string, unknown>) =>
+    http<import('./generated/PresentationFollowUp').PresentationFollowUp>('POST', '/boards/presentation.state', { board_id, item_id, state, ...(teacher_interaction ? { teacher_interaction } : {}) }),
+  boardPresentationRestoreState: (board_id: string, item_id: string, receipt: import('./generated/PresentationFollowUp').PresentationFollowUp) =>
+    http<import('./generated/PresentationState').PresentationState>('POST', '/boards/presentation.restore', { board_id, item_id, receipt }),
+  boardPresentationObserve: (board_id: string, item_id: string, text: string, source_ref_ids: string[]) =>
+    http<{ accepted: boolean }>('POST', '/boards/presentation.observe', { board_id, item_id, text, source_ref_ids }),
+  boardSourceResolve: (request: BoardSourceRequest) => http<SourcePopupView>('POST', '/boards/source.resolve', request),
+  boardSourceOpen: (request: BoardSourceRequest) => http<SourceOpenView>('POST', '/boards/source.open', request),
   notePresentationRead: (mem_id: string, restore = false) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/memory/presentation.read", { mem_id, restore }),
   notePresentationObserve: (mem_id: string, text: string, source_ref_ids: string[]) =>

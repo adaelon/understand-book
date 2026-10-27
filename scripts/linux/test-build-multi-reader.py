@@ -23,7 +23,7 @@ class BuildTest(unittest.TestCase):
         scripts = {
             "pnpm": '''printf '%s\\n' "$*" >> commands.log
 if [ "${1:-}" = --version ]; then echo test-pnpm; fi
-if [ "${2:-}" = packages/web ] && [ "${3:-}" = build ]; then mkdir -p "packages/web/${5}"; echo "$VITE_MULTI_USER" > "packages/web/${5}/index.html"; fi
+if [ "${2:-}" = packages/web ] && [ "${3:-}" = build:multi ]; then mkdir -p packages/web/dist-multi; echo 1 > packages/web/dist-multi/index.html; fi
 if [ "${2:-}" = apps/admin ] && [ "${3:-}" = build ]; then
   if [ "${FAIL_ADMIN:-}" = 1 ]; then exit 1; fi
   mkdir -p apps/admin/dist/assets
@@ -42,7 +42,7 @@ echo test-cargo
         }
         for name, body in scripts.items():
             p = tools / name
-            p.write_text("#!/usr/bin/env bash\nset -eu\n" + body, encoding="utf-8", newline="\n")
+            p.write_bytes(("#!/usr/bin/env bash\nset -eu\n" + body).encode("utf-8"))
             p.chmod(0o755)
         self.env = {**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
         self.bash = os.environ.get("MU11_BASH", "bash")
@@ -65,7 +65,7 @@ echo test-cargo
         self.assertTrue((self.root / "packages/web/dist-multi/admin/assets/admin.js").exists())
         self.assertTrue((self.root / "packages/web/dist-multi/admin/LICENSE.shadcn-admin.txt").exists())
         commands = (self.root / "commands.log").read_text()
-        self.assertLess(commands.index("packages/web build"), commands.index("apps/admin build"))
+        self.assertLess(commands.index("packages/web build:multi"), commands.index("apps/admin build"))
         for name in ["server", "manage_reader", "publish_book", "reader_maintenance", "presentation_worker"]:
             self.assertIn("--bin " + name, commands)
 

@@ -1,4 +1,5 @@
 //! A byte-bounded observation buffer; socket writes never own the buffer or AppState lock.
+use memory::boards::BoardDelivery;
 use runtime::run_events::{RunActivity, RunEventSink, RuntimeEvent};
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -27,6 +28,8 @@ pub struct RunSnapshot {
     pub activities: Vec<RunActivity>,
     pub reader_state: Option<Value>,
     pub effects: Vec<Value>,
+    #[serde(default)]
+    pub board_commits: Vec<BoardDelivery>,
     pub draft: Option<runtime::answer_stream::AnswerPatch>,
     pub final_view: Option<Value>,
     pub error: Option<Value>,
@@ -67,6 +70,7 @@ impl RunStream {
             activities: Vec::new(),
             reader_state: None,
             effects: Vec::new(),
+            board_commits: Vec::new(),
             draft: None,
             final_view: None,
             error: None,
@@ -109,6 +113,7 @@ impl RunStream {
                 activities: vec![],
                 reader_state: None,
                 effects: vec![],
+                board_commits: vec![],
                 draft: None,
                 final_view: None,
                 error: None,
@@ -213,10 +218,25 @@ impl RunStream {
     pub fn snapshot(&self) -> RunSnapshot {
         self.buffer.lock().unwrap().snapshot.clone()
     }
+    /// Seed a reconstructed stream before exposing it, without replaying old live events.
+    pub(crate) fn restore_board_commits(&self, deliveries: &[BoardDelivery]) {
+        let mut buffer = self.buffer.lock().unwrap();
+        for delivery in deliveries {
+            retain_board_commit(&mut buffer.snapshot, delivery);
+        }
+    }
     fn update(
         &self,
         kind: &str,
         apply: impl FnOnce(&mut RunSnapshot),
+        payload: impl FnOnce(&RunSnapshot) -> Value,
+    ) {
+        self.update_if(kind, |snapshot| { apply(snapshot); true }, payload);
+    }
+    fn update_if(
+        &self,
+        kind: &str,
+        apply: impl FnOnce(&mut RunSnapshot) -> bool,
         payload: impl FnOnce(&RunSnapshot) -> Value,
     ) {
         let mut buffer = self.buffer.lock().unwrap();
@@ -228,7 +248,9 @@ impl RunStream {
         {
             return;
         }
-        apply(&mut buffer.snapshot);
+        if !apply(&mut buffer.snapshot) {
+            return;
+        }
         buffer.snapshot.last_seq += 1;
         let event = RunEvent {
             turn_id: buffer.snapshot.descriptor.turn_id.clone(),
@@ -277,6 +299,9 @@ impl RunStream {
         );
     }
     pub fn finish(&self, view: Option<Value>, error: Option<Value>) {
+        let error = error.or_else(|| view.as_ref()
+            .and_then(|view| view.get("board_delivery_error"))
+            .filter(|error| error.is_object()).cloned());
         let (kind, execution, persistence) = if error.is_some() {
             ("run.persistence_failed", "ended", "failed")
         } else {
@@ -306,9 +331,15 @@ impl RunStream {
             view: canonical,
         };
         self.answer_patch(patch);
+        let committed = view.as_ref().and_then(|v| v.get("board_commits"))
+            .and_then(|value| serde_json::from_value::<Vec<BoardDelivery>>(value.clone()).ok())
+            .unwrap_or_default();
         self.update(
             kind,
             |s| {
+                for delivery in &committed {
+                    retain_board_commit(s, delivery);
+                }
                 s.execution_state = execution.into();
                 s.persistence_state = persistence.into();
                 s.draft = None;
@@ -355,6 +386,13 @@ impl RunStream {
     }
 }
 impl RunEventSink for RunStream {
+    fn board_committed(&self, delivery: &BoardDelivery) {
+        self.update_if(
+            "board.committed",
+            |snapshot| retain_board_commit(snapshot, delivery),
+            |_| json!({"delivery": delivery}),
+        );
+    }
     fn effect_created(&self, _step_id: u32, effect: &runtime::orchestrator::AgentEffect) {
         self.update(
             "effect.created",
@@ -408,6 +446,17 @@ impl RunEventSink for RunStream {
             |_| json!(activity),
         );
     }
+}
+
+fn retain_board_commit(snapshot: &mut RunSnapshot, delivery: &BoardDelivery) -> bool {
+    if snapshot.board_commits.iter().any(|old| old.board_id == delivery.board_id
+        && old.origin_session_id == delivery.origin_session_id
+        && old.origin_turn_id == delivery.origin_turn_id
+        && old.commit_id == delivery.commit_id) {
+        return false;
+    }
+    snapshot.board_commits.push(delivery.clone());
+    true
 }
 
 pub fn serve(request: tiny_http::Request, stream: Arc<RunStream>, after: Option<u64>) {
@@ -511,6 +560,115 @@ fn write_observation(writer: &mut impl Write, bytes: &[u8], chunked: bool) -> st
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn board_delivery(commit_id: &str, before_revision: u32) -> BoardDelivery {
+        BoardDelivery {
+            board_id: "board".into(),
+            commit_id: Some(commit_id.into()),
+            before_revision,
+            after_revision: before_revision + 1,
+            item_ids: vec![format!("item-{commit_id}")],
+            block_ids: vec![format!("block-{commit_id}")],
+            origin_session_id: "session".into(),
+            origin_turn_id: "turn".into(),
+            parent_item_id: Some("parent".into()),
+        }
+    }
+    #[test]
+    fn wb4_board_commits_survive_answer_repair_and_cancellation_without_duplicates() {
+        let stream = RunStream::new(RunDescriptor {
+            book_id: "book".into(), session_id: "session".into(), turn_id: "turn".into(),
+        });
+        let events = runtime::run_events::RunEvents::new(Some(stream.clone()));
+        let first = board_delivery("part-one", 1);
+        let second = board_delivery("part-two", 2);
+        let cursor = stream.snapshot().last_seq;
+        events.board_committed(&first);
+        events.board_committed(&first);
+        let (committed, terminal) = stream.read_after(Some(cursor), Duration::ZERO);
+        assert!(!terminal);
+        assert_eq!(committed.len(), 1);
+        assert_eq!(committed[0].event_type, "board.committed");
+        assert_eq!(committed[0].payload, json!({"delivery":first}));
+        assert_eq!(stream.snapshot().last_seq, cursor + 1);
+
+        stream.answer_patch(runtime::answer_stream::AnswerPatch {
+            message_id: 1, revision: 0, operation: "replace".into(),
+            view: Some(runtime::orchestrator::AgentAnswerView {
+                parts: vec![runtime::orchestrator::AgentAnswerPart::Markdown { text: "下一段草稿".into() }],
+                sources: vec![],
+            }),
+        });
+        events.board_committed(&second);
+        stream.answer_patch(runtime::answer_stream::AnswerPatch {
+            message_id: 1, revision: 1, operation: "replace".into(), view: None,
+        });
+        stream.finish(Some(json!({"status":"cancelled"})), None);
+        let snapshot = stream.snapshot();
+        assert_eq!(snapshot.execution_state, "cancelled");
+        assert!(snapshot.draft.is_none());
+        assert_eq!(snapshot.board_commits, vec![first, second]);
+    }
+    #[test]
+    fn wb4_restored_board_commits_survive_observation_overflow() {
+        let first = board_delivery("part-one", 1);
+        let second = board_delivery("part-two", 2);
+        let initial = RunStream::new(RunDescriptor {
+            book_id: "book".into(), session_id: "session".into(), turn_id: "turn".into(),
+        });
+        initial.board_committed(&first);
+        let stream = RunStream::with_observation(initial.snapshot(), Some("restarted".into()), 512);
+        let cursor = stream.snapshot().last_seq;
+        stream.restore_board_commits(&[first.clone(), second.clone()]);
+        stream.restore_board_commits(std::slice::from_ref(&second));
+        assert_eq!(stream.snapshot().last_seq, cursor);
+        assert!(stream.read_after(Some(cursor), Duration::ZERO).0.is_empty());
+        stream.reader_changed(json!({"text":"x".repeat(1024)}));
+        let (frames, _) = stream.read_after(Some(cursor), Duration::ZERO);
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0].event_type, "run.snapshot");
+        assert_eq!(frames[0].payload["board_commits"], json!([first, second]));
+        assert!(stream.buffer.lock().unwrap().bytes <= 512);
+    }
+    #[test]
+    fn wb4_terminal_view_recovers_unobserved_board_commits_and_keeps_existing_parts() {
+        let stream = RunStream::new(RunDescriptor {
+            book_id: "book".into(), session_id: "session".into(), turn_id: "turn".into(),
+        });
+        let first = board_delivery("part-one", 1);
+        assert!(stream.snapshot().board_commits.is_empty());
+        stream.finish(Some(json!({"status":"failed", "board_commits":[first]})), None);
+        let (frames, terminal) = stream.read_after(None, Duration::ZERO);
+        assert!(terminal);
+        assert_eq!(frames[0].payload["board_commits"], json!([first]));
+        assert_eq!(stream.snapshot().board_commits, vec![first.clone()]);
+
+        let second = board_delivery("part-two", 2);
+        stream.board_committed(&second);
+        stream.finish(Some(json!({"status":"completed", "board_commits":[first]})), None);
+        assert_eq!(stream.snapshot().board_commits, vec![first.clone(), second.clone()]);
+        stream.finish(None, Some(json!({"error_code":"STORE_ERROR"})));
+        assert_eq!(stream.snapshot().board_commits, vec![first, second]);
+    }
+    #[test]
+    fn board_delivery_error_cannot_publish_a_completed_saved_run() {
+        let stream = RunStream::new(RunDescriptor {
+            book_id: "book".into(), session_id: "session".into(), turn_id: "turn".into(),
+        });
+        let cursor = stream.snapshot().last_seq;
+        let failure = json!({"error_code":"INTERNAL_ERROR", "category":"storage", "message":"Board write failed"});
+        stream.finish(Some(json!({"status":"completed", "board_delivery_error":failure})), None);
+        let (events, terminal) = stream.read_after(Some(cursor), Duration::ZERO);
+        assert!(terminal);
+        assert_eq!(stream.snapshot().execution_state, "ended");
+        assert_eq!(stream.snapshot().persistence_state, "failed");
+        assert_eq!(stream.snapshot().error, Some(failure));
+        assert_eq!(events.last().unwrap().event_type, "run.persistence_failed");
+        assert!(!events.iter().any(|event| event.event_type == "run.completed"));
+        stream.finish(Some(json!({"status":"completed", "board_delivery":{"board_id":"board"}})), None);
+        assert_eq!(stream.snapshot().persistence_state, "saved");
+        assert_eq!(stream.snapshot().execution_state, "completed");
+        assert!(stream.snapshot().error.is_none());
+    }
     #[test]
     fn draft_snapshot_repair_and_commit_boundary_are_atomic() {
         use runtime::answer_stream::AnswerPatch;

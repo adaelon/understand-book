@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { renderMarkdown } from '../md';
 const props = defineProps<{ content: string; title: string; revision?: number; summary?: string; saving: boolean; error?: string;
@@ -16,16 +18,16 @@ function keydown(e: KeyboardEvent) {
 }
 </script>
 <template>
-  <section class="note-editor-panel" role="region" aria-label="笔记编辑" :style="{ '--note-top': `${viewport.top}px`, '--note-height': `${viewport.height}px` }">
-    <header><strong>{{ legacy ? '阅读笔记' : '记下你的想法' }}</strong><button @click="emit('collapse')">收起</button></header>
-    <p class="note-context">{{ title }}<span v-if="revision"> · 版本 {{ revision }}</span></p>
+  <section class="note-editor-panel" role="region" :aria-label="uiText('笔记编辑')" :style="{ '--note-top': `${viewport.top}px`, '--note-height': `${viewport.height}px` }">
+    <header><strong>{{ legacy ? uiText('阅读笔记') : uiText('记下你的想法') }}</strong><button @click="emit('collapse')">{{ uiText('收起') }}</button></header>
+    <p class="note-context">{{ title }}<span v-if="revision"> {{ uiText('· 版本') }} {{ revision }}</span></p>
     <p v-if="summary" class="note-context">{{ summary }}</p>
-    <div v-if="excerpt" class="note-excerpt"><strong>{{ excerpt.kind === 'original' ? '原文摘录' : '助手摘录' }}</strong><div class="md" v-html="renderMarkdown(excerpt.text)"></div></div>
-    <textarea :value="content" :readonly="saving || disabled" :aria-label="legacy ? '阅读笔记' : '记下你的想法'" placeholder="支持 Markdown 和公式" @input="emit('update:content', ($event.target as HTMLTextAreaElement).value)" @compositionstart="composing = true" @compositionend="composing = false" @keydown="keydown" />
+    <div v-if="excerpt" class="note-excerpt"><strong>{{ excerpt.kind === 'original' ? uiText('原文摘录') : uiText('助手摘录') }}</strong><div class="md" v-html="renderMarkdown(excerpt.text)"></div></div>
+    <textarea :value="content" :readonly="saving || disabled" :aria-label="legacy ? uiText('阅读笔记') : uiText('记下你的想法')" :placeholder="uiText('支持 Markdown 和公式')" @input="emit('update:content', ($event.target as HTMLTextAreaElement).value)" @compositionstart="composing = true" @compositionend="composing = false" @keydown="keydown" />
     <p v-if="error" role="alert">{{ error }}</p>
-    <button @click="preview = !preview">{{ preview ? '收起预览' : '预览' }}</button>
+    <button @click="preview = !preview">{{ preview ? uiText('收起预览') : uiText('预览') }}</button>
     <div v-if="preview" class="md" v-html="renderMarkdown(content)"></div>
-    <footer><button :disabled="saving || disabled" @click="emit('discard')">放弃</button><button class="primary" :disabled="!canSave" @click="emit('save')">{{ saving ? '正在保存…' : '保存笔记' }}</button></footer>
+    <footer><button :disabled="saving || disabled" @click="emit('discard')">{{ uiText('放弃') }}</button><button class="primary" :disabled="!canSave" @click="emit('save')">{{ saving ? uiText('正在保存…') : uiText('保存笔记') }}</button></footer>
   </section>
 </template>
 <style scoped>

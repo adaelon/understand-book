@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { inject } from 'vue';
 import { shareNoteKey } from '../reading-share';
 import type { MemoryRecord } from '../api';
@@ -9,16 +11,16 @@ const emit = defineEmits<{ (e: 'locate' | 'restore' | 'answer' | 'edit' | 'delet
 const shareNote = inject(shareNoteKey, null);
 </script>
 <template>
-  <section class="note-detail" aria-label="笔记详情">
-    <template v-if="note.content"><p>{{ note.note ? '自己的文字' : '阅读笔记' }}</p><div class="md" v-html="renderMarkdown(note.content)"></div></template>
-    <template v-if="note.note?.retained_excerpt"><p>{{ note.note.retained_excerpt.kind === 'original' ? '原文摘录' : '助手摘录' }}</p><blockquote class="md" v-html="renderMarkdown(note.note.retained_excerpt.text)"></blockquote></template>
+  <section class="note-detail" :aria-label="uiText('笔记详情')">
+    <template v-if="note.content"><p>{{ note.note ? uiText('自己的文字') : uiText('阅读笔记') }}</p><div class="md" v-html="renderMarkdown(note.content)"></div></template>
+    <template v-if="note.note?.retained_excerpt"><p>{{ note.note.retained_excerpt.kind === 'original' ? uiText('原文摘录') : uiText('助手摘录') }}</p><blockquote class="md" v-html="renderMarkdown(note.note.retained_excerpt.text)"></blockquote></template>
     <template v-if="note.note?.association.kind === 'presentation'">
       <p>{{ note.note.association.title }}</p>
       <PresentationSceneCard :receipt="note.note.association.receipt" :mem-id="note.mem_id" @locate="emit('locate')" @restore="emit('restore')" />
     </template>
-    <p v-if="note.note?.association.kind === 'answer'">助手回答 <button @click="emit('answer')">返回原回答</button></p>
-    <button v-if="shareNote" data-share-note @click="shareNote(note)">生成分享图</button>
-    <footer v-if="!embedded"><button @click="emit('edit')">编辑</button><button @click="emit('delete')">删除</button></footer>
+    <p v-if="note.note?.association.kind === 'answer'">{{ uiText('助手回答') }} <button @click="emit('answer')">{{ uiText('返回原回答') }}</button></p>
+    <button v-if="shareNote" data-share-note @click="shareNote(note)">{{ uiText('生成分享图') }}</button>
+    <footer v-if="!embedded"><button @click="emit('edit')">{{ uiText('编辑') }}</button><button @click="emit('delete')">{{ uiText('删除') }}</button></footer>
   </section>
 </template>
 <style scoped>

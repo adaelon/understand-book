@@ -544,6 +544,7 @@ fn adm5_schema6_upgrade_is_atomic_and_keeps_charges() {
 
 fn completion() -> CompletionRequest {
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         system: "fixture".into(),
         user: "fixture".into(),
@@ -579,6 +580,8 @@ fn accept(listener: &std::net::TcpListener) -> std::net::TcpStream {
             Err(e) => panic!("accept: {e}"),
         }
     };
+    // Windows accepted sockets inherit the listener's nonblocking mode.
+    socket.set_nonblocking(false).unwrap();
     socket
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();
@@ -673,6 +676,92 @@ fn adm5_retry_rechecks_allowance_and_material_permission_before_http() {
             f.ok(&f.b, "GET", "/api/admin/charges", json!({}))["total"],
             1
         );
+    }
+}
+
+#[test]
+fn output_allowance_retry_reserves_final_limits_and_bills_actual_usage() {
+    use runtime::ModelAdapter;
+    for enough_for_retry in [true, false] {
+        let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", fake.server_addr().to_ip().unwrap());
+        let mut f = Fixture::new();
+        let allowance = if enough_for_retry { 1_000_000 } else { 300_000 };
+        seed_model(&mut f, &url, "deepseek-flash", allowance);
+        let inner = ProviderRegistry::adapter_from_config_with_timeout(
+            ProviderConfig::from_values("native", "fixture-key", url, "deepseek-flash").unwrap(),
+            Duration::from_secs(3),
+        );
+        inner.set_spend_context(scope(), Some(port(&f)));
+        let worker = std::thread::spawn(move || {
+            let adapter = crate::service_limits::LimitedAdapter {
+                inner: inner.as_ref(),
+                resources: crate::service_limits::Resources::new(Arc::new(Default::default())),
+                owner: "A".into(),
+                background: false,
+                cancellation: Default::default(),
+                usage: std::sync::Mutex::new(Default::default()),
+                stream: None,
+                authorization: None,
+            };
+            let mut request = completion();
+            request.output_token_limit = None;
+            let result = adapter.complete_structured(request);
+            let total_tokens = adapter.usage.lock().unwrap().known_total_tokens;
+            (result, total_tokens)
+        });
+        let mut first = fake.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+        let first_body: Value = serde_json::from_reader(first.as_reader()).unwrap();
+        assert_eq!(first_body["max_tokens"], 131_072);
+        let rows = f.ok(&f.b, "GET", "/api/admin/charges", json!({}));
+        assert_eq!(rows["items"].as_array().unwrap().len(), 1);
+        let first_charge = charge(&f, rows["items"][0]["call_id"].as_str().unwrap());
+        assert_eq!(first_charge["reservation_estimate"]["output_tokens"], first_body["max_tokens"]);
+        assert_eq!(balance(&f)["debited_micro_cny"], 0, "reservation is not a debit");
+        first.respond(tiny_http::Response::from_string(json!({
+            "choices":[{"message":{"role":"assistant","content":"","reasoning_content":"unfinished reasoning"},"finish_reason":"length"}],
+            "usage":{"prompt_tokens":20,"prompt_cache_hit_tokens":0,"completion_tokens":131072,
+                "completion_tokens_details":{"reasoning_tokens":131072},"total_tokens":131092}
+        }).to_string()).with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
+
+        if enough_for_retry {
+            let mut second = fake.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+            let second_body: Value = serde_json::from_reader(second.as_reader()).unwrap();
+            assert_eq!(second_body["max_tokens"], 393_216);
+            let rows = f.ok(&f.b, "GET", "/api/admin/charges", json!({}));
+            let rows = rows["items"].as_array().unwrap();
+            assert_eq!(rows.len(), 2);
+            let sent = rows.iter().find(|row| row["state"] == "sent").unwrap();
+            let retry = charge(&f, sent["call_id"].as_str().unwrap());
+            assert_eq!(retry["reservation_estimate"]["output_tokens"], second_body["max_tokens"]);
+            assert_eq!(balance(&f)["debited_micro_cny"], 131_092, "the truncated attempt is settled before retry reservation");
+            second.respond(tiny_http::Response::from_string(json!({
+                "choices":[{"message":{"role":"assistant","content":"{\"ok\":true}"},"finish_reason":"stop"}],
+                "usage":{"prompt_tokens":20,"prompt_cache_hit_tokens":0,"completion_tokens":10,"total_tokens":30}
+            }).to_string()).with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
+        }
+        let (result, total_tokens) = worker.join().unwrap();
+        let list = f.ok(&f.b, "GET", "/api/admin/charges", json!({}));
+        let rows = list["items"].as_array().unwrap();
+        if enough_for_retry {
+            assert_eq!(result.unwrap()["ok"], true);
+            assert_eq!(rows.len(), 2);
+            assert_eq!(rows[0]["logical_call_id"], rows[1]["logical_call_id"]);
+            assert_ne!(rows[0]["call_id"], rows[1]["call_id"]);
+            let mut attempts: Vec<_> = rows.iter().map(|row| row["attempt"].as_u64().unwrap()).collect();
+            attempts.sort_unstable();
+            assert_eq!(attempts, vec![1, 2]);
+            assert!(rows.iter().all(|row| row["state"] == "settled"));
+            assert_eq!(balance(&f)["debited_micro_cny"], 131_122);
+            assert_eq!(total_tokens, 131_122, "website run usage includes both attempts");
+        } else {
+            assert_eq!(result.unwrap_err().spend_stop, Some(SpendStop::InsufficientAllowance));
+            assert_eq!(rows.len(), 1, "denied retry never sends or creates a charge");
+            assert_eq!(balance(&f)["debited_micro_cny"], 131_092);
+            assert_eq!(total_tokens, 131_092);
+        }
+        assert_eq!(balance(&f)["active_reserved_micro_cny"], 0);
+        assert!(fake.try_recv().unwrap().is_none());
     }
 }
 

@@ -22,6 +22,11 @@ pub mod auto_compaction;
 pub mod build_intent;
 pub mod compaction;
 pub mod context_fragment;
+pub mod deepseek_messages;
+mod deepseek_messages_stream;
+pub mod tool_history;
+pub mod active_projection;
+pub mod response_language;
 pub mod experiment;
 pub mod goldset;
 pub mod guided_read_replay;
@@ -29,6 +34,7 @@ pub mod goal;
 pub mod workspace_goal;
 pub mod workspace_records;
 pub mod tutor;
+mod tutor_assessment;
 pub mod tutor_review_input;
 pub mod tutor_coach;
 pub mod tutor_continuation;
@@ -39,11 +45,14 @@ pub mod memory_policy;
 pub mod memory_review;
 pub mod model_runtime;
 pub mod model_spend;
+#[cfg(test)]
+mod output_retry_tests;
 pub mod web;
 pub mod observation;
 pub mod orchestrator;
 pub mod presentation;
 pub mod presentation_author;
+pub mod board_author;
 pub mod presentation_interact;
 pub mod presentation_methods;
 pub mod video;
@@ -110,6 +119,9 @@ pub struct CompletionRequest {
     pub system: String,
     pub user: String,
     pub images: Vec<crate::presentation_author::PreviewImage>,
+    /// A separate trailing user message, after the frozen text and image evidence.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub followup_user: Option<String>,
 }
 
 #[derive(Debug)]
@@ -283,6 +295,10 @@ pub enum Role {
 pub struct ProviderContinuation {
     pub model: String,
     pub reasoning_content: String,
+    /// Native Messages block order/signatures; text and tool arguments are held
+    /// only once, in the message and reasoning_content fields.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub messages_content: Vec<serde_json::Value>,
 }
 
 /// 外层 loop 的一条会话消息 `[ADR-0026]`。
@@ -328,7 +344,7 @@ pub struct ToolCall {
 }
 
 /// 暴露给模型的工具规格(name + 描述 + JSON-Schema 参数)`[ADR-0026]`。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolSpec {
     pub name: String,
     pub description: String,
@@ -347,6 +363,11 @@ pub struct AssistantTurn {
 /// loop 与后端之间的薄层 `[ADR-0016/0026]`;loop 控制 provider 无关,只经此触模型。
 /// `complete` = 内层 query 合一轮(JSON 契约);`chat` = 外层多轮 tool-calling。
 pub trait ModelAdapter {
+    fn tool_update_mode(&self) -> Option<deepseek_messages::ToolUpdateMode> { None }
+    fn projection_identity(&self) -> Option<String> { None }
+    /// The current wire input, excluding credentials. Used to anchor real usage
+    /// only while the provider header and historical prefix remain unchanged.
+    fn context_request_projection(&self, _request: &AgentRequestPlan) -> Option<serde_json::Value> { None }
     fn set_spend_context(&self, _scope: model_spend::ChargeScope, _port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) {}
     fn set_model_purpose(&self, _purpose: &str) {}
     fn stream_text_is_structured(&self) -> bool {
@@ -399,7 +420,34 @@ pub trait ModelAdapter {
     fn model_runtime_profile(&self) -> ModelRuntimeProfile {
         ModelRuntimeCatalog::default().resolve("unknown-model", ProviderToolProtocol::Native, None)
     }
+    /// The actual serving provider, when the adapter can identify it. A model
+    /// name alone cannot distinguish an official endpoint from a third party.
+    fn model_provider(&self) -> Option<String> {
+        None
+    }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError>;
+}
+
+/// Generate JSON after a frozen prefix through the ordinary adapter pipeline.
+/// Dispatching chat on the supplied outer adapter preserves observation, spend
+/// accounting and cancellation; there is no separate overridable transport for
+/// wrappers to bypass. Auxiliary generations never execute returned tool calls.
+pub(crate) fn complete_structured_in_context(
+    adapter: &dyn ModelAdapter,
+    request: &AgentRequestPlan,
+) -> Result<serde_json::Value, AdapterError> {
+    let response = adapter.chat(request)?;
+    if !response.tool_calls.is_empty() {
+        return Err(AdapterError {
+            spend_stop: None,
+            message: "Structured context completion returned tool calls".into(),
+        });
+    }
+    let content = response.text.ok_or_else(|| AdapterError {
+        spend_stop: None,
+        message: "Structured context completion returned no content".into(),
+    })?;
+    structured_json_from_content(&content)
 }
 
 /// Message → OpenAI 请求体 JSON(assistant tool_calls / tool 结果按 OpenAI 形拼)。
@@ -924,6 +972,7 @@ fn resolver_prompt(
         })
         .collect();
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -1508,6 +1557,7 @@ fn support_prompt(
         .map(|(lid, text)| serde_json::json!({"lid": lid, "text": text}))
         .collect();
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -2103,6 +2153,7 @@ fn build_synthesize_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -2520,6 +2571,7 @@ fn build_book_guide_prompt(
         user.push_str(&format!("[{lid}] {text}\n"));
     }
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -2638,6 +2690,7 @@ pub struct NativeAdapter {
     base_url: String,
     model: String,
     runtime_profile: ModelRuntimeProfile,
+    messages_capabilities: std::sync::OnceLock<Option<deepseek_messages::MessagesCapabilities>>,
     request_timeout: Option<std::time::Duration>,
     cancellation: std::cell::RefCell<Option<crate::run_context::CancellationToken>>,
     spend: std::cell::RefCell<Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>>,
@@ -2677,6 +2730,7 @@ impl NativeAdapter {
             base_url: cfg.base_url,
             model: cfg.model,
             runtime_profile: resolved_profile,
+            messages_capabilities: Default::default(),
             request_timeout,
             cancellation: Default::default(),
             spend: Default::default(),
@@ -2694,14 +2748,62 @@ impl NativeAdapter {
 
     fn post_chat_completions(
         &self,
-        mut body: serde_json::Value,
+        body: serde_json::Value,
         observer: &mut dyn provider_stream::ModelObserver,
         entry: &str,
     ) -> Result<serde_json::Value, AdapterError> {
+        self.post_provider_request(body, observer, entry, false)
+    }
+
+    fn discovered_messages_capabilities(&self) -> Option<deepseek_messages::MessagesCapabilities> {
+        *self.messages_capabilities.get_or_init(|| {
+            // A non-DeepSeek OpenAI-compatible route keeps its existing behavior.
+            if !self.model.starts_with("deepseek-")
+                && url::Url::parse(&self.base_url).ok().and_then(|u| u.host_str().map(str::to_owned)).as_deref() != Some("api.deepseek.com") {
+                return None;
+            }
+            if self.cancellation.borrow().as_ref().is_some_and(|token| token.check().is_err()) { return None; }
+            let (models_url, _) = deepseek_messages::endpoint_urls(&self.base_url);
+            let agent = ureq::AgentBuilder::new().redirects(0)
+                .timeout(self.request_timeout.unwrap_or(std::time::Duration::from_secs(10)).min(std::time::Duration::from_secs(10))).build();
+            let listing: serde_json::Value = agent.get(&models_url)
+                .set("Authorization", &format!("Bearer {}", self.api_key))
+                .call().ok()?.into_json().ok()?;
+            deepseek_messages::capabilities_for_route(&listing, &self.base_url, &self.model)
+        })
+    }
+
+    fn bound_messages_capabilities(&self) -> Option<deepseek_messages::MessagesCapabilities> {
+        self.messages_capabilities.get().copied().flatten()
+    }
+
+    fn normalize_provider_body(&self, body: &mut serde_json::Value, messages: bool) -> Result<(), AdapterError> {
         body["stream"] = serde_json::json!(true);
-        body["stream_options"] = serde_json::json!({"include_usage": true});
-        let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let body = std::sync::Arc::new(body);
+        if !messages { body["stream_options"] = serde_json::json!({"include_usage": true}); }
+        let estimate = model_runtime::estimate_provider_request_input_tokens(body);
+        let requested = body["max_tokens"].as_u64().and_then(|v| u32::try_from(v).ok());
+        body["max_tokens"] = serde_json::json!(self.runtime_profile.output_token_limit(requested, estimate)?);
+        Ok(())
+    }
+
+    fn post_provider_request(
+        &self,
+        mut body: serde_json::Value,
+        observer: &mut dyn provider_stream::ModelObserver,
+        entry: &str,
+        messages: bool,
+    ) -> Result<serde_json::Value, AdapterError> {
+        let estimated_input_tokens = model_runtime::estimate_provider_request_input_tokens(&body);
+        let requested_output_tokens = body["max_tokens"].as_u64()
+            .and_then(|value| u32::try_from(value).ok());
+        // Explicit smaller budgets (for example fixed-cost evaluation runs) are
+        // caller policy, rather than the default allowance that may be expanded.
+        let allow_output_retry = requested_output_tokens
+            .is_none_or(|requested| requested >= self.runtime_profile.output_reserve_tokens);
+        self.normalize_provider_body(&mut body, messages)?;
+        let url = if messages { deepseek_messages::endpoint_urls(&self.base_url).1 }
+            else { format!("{}/chat/completions", self.base_url.trim_end_matches('/')) };
+        let mut body = std::sync::Arc::new(body);
         observer.observe(provider_stream::ModelDelta::Request(body.clone()));
         let port = self.spend.borrow().clone();
         let scope = self.spend_scope.borrow().clone();
@@ -2709,7 +2811,10 @@ impl NativeAdapter {
             return Err(model_spend::SpendStop::MissingScope.into());
         }
         let logical_call_id = uuid::Uuid::now_v7().to_string();
-        let mut retried = false;
+        let mut transport_retried = false;
+        let mut output_retried = false;
+        let mut attempt = 0;
+        let mut prior_usage: Option<provider_stream::ModelUsage> = None;
         loop {
             if let Some(cancellation) = self.cancellation.borrow().as_ref() {
                 cancellation.check().map_err(|error| AdapterError {
@@ -2717,9 +2822,10 @@ impl NativeAdapter {
                     message: error.message,
                 })?;
             }
+            attempt += 1;
             let identity = model_spend::SendIdentity {
                 call_id: uuid::Uuid::now_v7().to_string(), logical_call_id: logical_call_id.clone(),
-                attempt: if retried { 2 } else { 1 }, scope: scope.clone(),
+                attempt, scope: scope.clone(),
                 purpose: if self.spend_purpose.borrow().is_empty() { entry.into() } else { self.spend_purpose.borrow().clone() }, model: self.model.clone(), provider: self.base_url.clone(),
             };
             let stop = AdapterError::from;
@@ -2728,31 +2834,82 @@ impl NativeAdapter {
                 if let Some(port) = &port { port.after_send(&identity, &outcome).map_err(stop)?; }
                 Ok(())
             };
-            match self.send_chat_completions_once(&url, &body) {
+            match self.send_provider_request_once(&url, &body, messages) {
                 Ok(resp) => {
                     let mut usage = None;
-                    let result = provider_stream::read_response(resp, &self.cancellation.borrow().clone().unwrap_or_default(), &mut |delta: provider_stream::ModelDelta| {
-                        if let provider_stream::ModelDelta::Usage(ref snapshot) = delta { usage = Some(snapshot.clone()); }
-                        observer.observe(delta);
-                    });
-                    report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::Response, usage, succeeded: result.is_ok() })?;
-                    return result;
+                    let mut response_observer = |delta: provider_stream::ModelDelta| {
+                        if let provider_stream::ModelDelta::Usage(snapshot) = delta {
+                            usage = Some(snapshot.clone());
+                            let cumulative = prior_usage.as_ref().map_or_else(|| snapshot.clone(), |prior| prior.plus(&snapshot));
+                            observer.observe(provider_stream::ModelDelta::Usage(cumulative));
+                        } else {
+                            observer.observe(delta);
+                        }
+                    };
+                    let cancellation = self.cancellation.borrow().clone().unwrap_or_default();
+                    let result = if messages { deepseek_messages_stream::read_response(resp, &cancellation, &mut response_observer) }
+                        else { provider_stream::read_response(resp, &cancellation, &mut response_observer) };
+                    let length_limited = result.as_ref().is_ok_and(|value| value["choices"][0]["finish_reason"] == "length");
+                    let current_usage = usage.clone().unwrap_or_default();
+                    let cumulative_usage = prior_usage.as_ref().map_or_else(|| current_usage.clone(), |prior| prior.plus(&current_usage));
+                    if usage.is_none() && prior_usage.is_some() {
+                        // A response without usage makes the logical total unknown; do not
+                        // leave the previous attempt's known amount displayed as the total.
+                        observer.observe(provider_stream::ModelDelta::Usage(cumulative_usage.clone()));
+                    }
+                    report(model_spend::SendOutcome {
+                        evidence: model_spend::SendEvidence::Response,
+                        usage: usage.clone(), succeeded: result.is_ok() && !length_limited,
+                    })?;
+                    let mut value = result?;
+                    let retry_input_tokens = usage.as_ref().and_then(|usage| usage.input_tokens)
+                        .unwrap_or(estimated_input_tokens);
+                    prior_usage = Some(cumulative_usage.clone());
+                    if length_limited {
+                        let current = body["max_tokens"].as_u64().unwrap() as u32;
+                        if allow_output_retry && !output_retried {
+                            if let Some(next) = self.runtime_profile.retry_output_token_limit(current, retry_input_tokens) {
+                                output_retried = true;
+                                observer.observe(provider_stream::ModelDelta::RetryReset);
+                                std::sync::Arc::make_mut(&mut body)["max_tokens"] = serde_json::json!(next);
+                                observer.observe(provider_stream::ModelDelta::Request(body.clone()));
+                                continue;
+                            }
+                        }
+                        return Err(output_length_error(&value));
+                    }
+                    if cumulative_usage.has_any_value() || output_retried {
+                        value["usage"] = cumulative_usage.as_provider_usage();
+                    }
+                    return Ok(value);
                 }
-                Err(e) if !retried && is_retriable_chat_completion_error(&e) => {
-                    report(model_spend::SendOutcome { evidence: send_error_evidence(&e), usage: None, succeeded: false })?;
-                    retried = true;
+                Err(e) if !transport_retried && is_retriable_chat_completion_error(&e) => {
+                    let evidence = send_error_evidence(&e);
+                    if evidence == model_spend::SendEvidence::OutcomeUnknown {
+                        prior_usage = Some(provider_stream::ModelUsage::default());
+                        observer.observe(provider_stream::ModelDelta::Usage(provider_stream::ModelUsage::default()));
+                    }
+                    report(model_spend::SendOutcome { evidence, usage: None, succeeded: false })?;
+                    transport_retried = true;
                     std::thread::sleep(chat_completion_retry_delay());
                 }
                 Err(e) => {
                     // Error responses can carry billable usage; preserve it before formatting.
                     if let ureq::Error::Status(status, response) = e {
                         let text = response.into_string().unwrap_or_else(|e|e.to_string());
-                        let usage = serde_json::from_str(&text).ok().and_then(|v|provider_stream::model_usage(&v));
+                        let usage = serde_json::from_str(&text).ok().and_then(|v| if messages { deepseek_messages_stream::model_usage(&v) } else { provider_stream::model_usage(&v) });
+                        let current_usage = usage.clone().unwrap_or_default();
+                        let cumulative = prior_usage.as_ref().map_or_else(|| current_usage.clone(), |prior| prior.plus(&current_usage));
+                        observer.observe(provider_stream::ModelDelta::Usage(cumulative));
                         report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::Response, usage, succeeded: false })?;
                         return Err(AdapterError { spend_stop: None, message: format!("HTTP 请求失败: status code {status}; {}", truncate_provider_error_body(&text)) });
                     }
-                    report(model_spend::SendOutcome { evidence: send_error_evidence(&e), usage: None, succeeded: false })?;
-                    let prefix = if retried {
+                    let evidence = send_error_evidence(&e);
+                    if evidence == model_spend::SendEvidence::OutcomeUnknown {
+                        observer.observe(provider_stream::ModelDelta::Usage(provider_stream::ModelUsage::default()));
+                    }
+                    report(model_spend::SendOutcome { evidence, usage: None, succeeded: false })?;
+                    let prefix = if transport_retried {
                         "HTTP 请求失败(重试一次后仍失败)"
                     } else {
                         "HTTP 请求失败"
@@ -2766,14 +2923,19 @@ impl NativeAdapter {
         }
     }
 
-    fn send_chat_completions_once(
+    fn send_provider_request_once(
         &self,
         url: &str,
         body: &serde_json::Value,
+        messages: bool,
     ) -> Result<ureq::Response, ureq::Error> {
-        let request = ureq::post(url)
+        let request = if messages { ureq::AgentBuilder::new().redirects(0).build().post(url) } else { ureq::post(url) }
             .set("Authorization", &format!("Bearer {}", self.api_key))
             .set("Content-Type", "application/json");
+        let request = if messages {
+            let request = request.set("anthropic-version", "2023-06-01").set("x-api-key", &self.api_key);
+            if deepseek_messages::uses_tool_updates(body) { request.set("anthropic-beta", deepseek_messages::TOOL_CHANGES_BETA) } else { request }
+        } else { request };
         let request = match self.request_timeout {
             Some(timeout) => request.timeout(timeout),
             None => request,
@@ -2990,13 +3152,17 @@ fn extract_json_object(s: &str) -> Option<&str> {
     None
 }
 
+fn output_length_error(v: &serde_json::Value) -> AdapterError {
+    AdapterError {
+        spend_stop: None,
+        message: format!("模型达到单次输出上限，未完成结果（finish_reason=length，completion_tokens={}，reasoning_tokens={}）",
+            v["usage"]["completion_tokens"], v["usage"]["completion_tokens_details"]["reasoning_tokens"]),
+    }
+}
+
 fn response_message_content(v: &serde_json::Value) -> Result<&str, AdapterError> {
     if v["choices"][0]["finish_reason"] == "length" {
-        return Err(AdapterError {
-            spend_stop: None,
-            message: format!("模型达到单次输出上限，未完成结果（finish_reason=length，completion_tokens={}，reasoning_tokens={}）",
-                v["usage"]["completion_tokens"], v["usage"]["completion_tokens_details"]["reasoning_tokens"]),
-        });
+        return Err(output_length_error(v));
     }
     v["choices"][0]["message"]["content"]
         .as_str()
@@ -3046,6 +3212,15 @@ fn structured_json_from_content(content: &str) -> Result<serde_json::Value, Adap
         spend_stop: None,
         message: format!("模型输出非合法 JSON: {e};原文={content}"),
     })
+}
+
+/// Only the local JSON parser's errors carry recoverable public output here.
+/// Provider, incomplete-response, spend and cancellation failures stay errors.
+fn structured_json_error_parts(error: &AdapterError) -> Option<(&str, &str)> {
+    if error.spend_stop.is_some() { return None; }
+    let (reason, public_output) = error.message.split_once(";原文=")?;
+    (reason == "模型输出抽不到合法 JSON 对象" || reason.starts_with("模型输出非合法 JSON: "))
+        .then_some((reason, public_output))
 }
 
 #[derive(Deserialize)]
@@ -3293,6 +3468,30 @@ impl ReActAdapter {
 }
 
 impl ModelAdapter for NativeAdapter {
+    fn tool_update_mode(&self) -> Option<deepseek_messages::ToolUpdateMode> {
+        self.discovered_messages_capabilities().map(|capabilities| capabilities.tool_update)
+    }
+    fn projection_identity(&self) -> Option<String> {
+        Some(serde_json::json!([if self.discovered_messages_capabilities().is_some() {"deepseek-messages"} else {"native-chat"}, self.base_url, self.model]).to_string())
+    }
+    fn context_request_projection(&self, request: &AgentRequestPlan) -> Option<serde_json::Value> {
+        let capabilities = self.bound_messages_capabilities();
+        let body = match capabilities {
+            Some(capabilities) => deepseek_messages::context_projection(&self.model, request, capabilities).ok()?,
+            None => native_chat_request_projection(&self.model, request).0,
+        };
+        // Context measurement must see an oversized wire request so it can
+        // compact it. Send-time output validation would hide precisely that
+        // request and leave the smaller common-plan estimate in effect.
+        Some(body)
+    }
+    fn model_provider(&self) -> Option<String> {
+        let endpoint = url::Url::parse(&self.base_url).ok()?;
+        match endpoint.host_str()? {
+            "api.deepseek.com" => Some("deepseek".into()),
+            _ => None,
+        }
+    }
     fn set_spend_context(&self, scope: model_spend::ChargeScope, port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) {
         *self.spend_scope.borrow_mut() = Some(scope);
         *self.spend.borrow_mut() = port;
@@ -3310,20 +3509,17 @@ impl ModelAdapter for NativeAdapter {
     }
     fn complete_observed(
         &self,
-        req: CompletionRequest,
+        mut req: CompletionRequest,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let system = format!("{}\n\n{}", req.system, OUTPUT_CONTRACT);
-        let mut body = serde_json::json!({
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": completion_user_content(&req)},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0,
-        });
-        apply_completion_limits(&mut body, &req);
+        if self.bound_messages_capabilities().is_some() {
+            req.system = system;
+            let body = deepseek_messages::completion_projection(&self.model, &req)?;
+            let value = self.post_provider_request(body, observer, "complete", true)?;
+            return parsed_response_from_content(response_message_content(&value)?);
+        }
+        let body = native_completion_request_projection(&self.model, &system, &req);
         let v = self.post_chat_completions(body, observer, "complete")?;
         parsed_response_from_content(response_message_content(&v)?)
     }
@@ -3336,19 +3532,16 @@ impl ModelAdapter for NativeAdapter {
     }
     fn complete_structured_observed(
         &self,
-        req: CompletionRequest,
+        mut req: CompletionRequest,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<serde_json::Value, AdapterError> {
-        let mut body = serde_json::json!({
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": req.system},
-                {"role": "user", "content": completion_user_content(&req)},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0,
-        });
-        apply_completion_limits(&mut body, &req);
+        if self.bound_messages_capabilities().is_some() {
+            req.system.push_str("\n\nReturn exactly one JSON object and no Markdown code fence.");
+            let body = deepseek_messages::completion_projection(&self.model, &req)?;
+            let value = self.post_provider_request(body, observer, "structured", true)?;
+            return structured_json_from_content(response_message_content(&value)?);
+        }
+        let body = native_completion_request_projection(&self.model, &req.system, &req);
         let response = self.post_chat_completions(body, observer, "structured")?;
         structured_json_from_content(response_message_content(&response)?)
     }
@@ -3362,8 +3555,12 @@ impl ModelAdapter for NativeAdapter {
         request: &AgentRequestPlan,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
-        let (body, provider_to_internal) = native_chat_request_projection(&self.model, request);
-        let v = self.post_chat_completions(body, observer, "chat")?;
+        let capabilities = self.bound_messages_capabilities();
+        let (body, provider_to_internal) = match capabilities {
+            Some(capabilities) => deepseek_messages::request_projection(&self.model, request, capabilities)?,
+            None => native_chat_request_projection(&self.model, request),
+        };
+        let v = self.post_provider_request(body, observer, "chat", capabilities.is_some())?;
         let msg = &v["choices"][0]["message"];
         let text = msg["content"]
             .as_str()
@@ -3387,9 +3584,10 @@ impl ModelAdapter for NativeAdapter {
                 });
             }
         }
-        let provider_continuation = msg["reasoning_content"].as_str().map(|reasoning| ProviderContinuation {
+        let provider_continuation = (msg["reasoning_content"].is_string() || msg["messages_content"].is_array()).then(|| ProviderContinuation {
             model: self.model.clone(),
-            reasoning_content: reasoning.to_string(),
+            reasoning_content: msg["reasoning_content"].as_str().unwrap_or("").to_string(),
+            messages_content: msg["messages_content"].as_array().map(|blocks| deepseek_messages::continuation_blocks(blocks)).unwrap_or_default(),
         });
         let usage_total_tokens = v["usage"]["total_tokens"].as_u64().map(|u| u as u32);
         Ok(AssistantTurn {
@@ -3399,6 +3597,29 @@ impl ModelAdapter for NativeAdapter {
             usage_total_tokens,
         })
     }
+}
+
+fn native_completion_request_projection(
+    model: &str,
+    system: &str,
+    request: &CompletionRequest,
+) -> serde_json::Value {
+    let mut messages = vec![serde_json::json!({"role":"system","content":system})];
+    messages.extend(completion_user_messages(request));
+    let mut body = serde_json::json!({
+        "model":model, "messages":messages,
+        "response_format":{"type":"json_object"}, "temperature":0,
+    });
+    apply_completion_limits(&mut body, request);
+    body
+}
+
+fn completion_user_messages(request: &CompletionRequest) -> Vec<serde_json::Value> {
+    let mut messages = vec![serde_json::json!({"role":"user","content":completion_user_content(request)})];
+    if let Some(followup) = &request.followup_user {
+        messages.push(serde_json::json!({"role":"user","content":followup}));
+    }
+    messages
 }
 
 fn completion_user_content(request: &CompletionRequest) -> serde_json::Value {
@@ -3513,6 +3734,15 @@ fn native_chat_request_projection(
 }
 
 impl ModelAdapter for ReActAdapter {
+    fn projection_identity(&self) -> Option<String> {
+        Some(serde_json::json!(["react-chat", self.native.base_url, self.native.model]).to_string())
+    }
+    fn context_request_projection(&self, request: &AgentRequestPlan) -> Option<serde_json::Value> {
+        Some(react_chat_request_projection(&self.native.model, request))
+    }
+    fn model_provider(&self) -> Option<String> {
+        self.native.model_provider()
+    }
     fn set_spend_context(&self, scope: model_spend::ChargeScope, port: Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>) { self.native.set_spend_context(scope, port); }
     fn set_model_purpose(&self, purpose: &str) { self.native.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
@@ -3534,12 +3764,11 @@ impl ModelAdapter for ReActAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let system = format!("{}\n\n{}", req.system, OUTPUT_CONTRACT);
+        let mut messages = vec![serde_json::json!({"role":"system","content":system})];
+        messages.extend(completion_user_messages(&req));
         let mut body = serde_json::json!({
             "model": self.native.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": completion_user_content(&req)},
-            ],
+            "messages": messages,
             "temperature": 0,
         });
         apply_completion_limits(&mut body, &req);
@@ -5209,6 +5438,49 @@ mod tests {
     }
 
     #[test]
+    fn context_projection_retains_over_window_input_for_compaction() {
+        let mut profile = ModelRuntimeProfile::fallback("context-projection-fixture", ProviderToolProtocol::Native);
+        profile.context_window_tokens = 20_000;
+        profile.output_reserve_tokens = 1_000;
+        profile.safety_margin_tokens = 1_000;
+        let config = |mode| ProviderConfig {
+            mode, api_key: "unused".into(), base_url: "http://127.0.0.1:1".into(),
+            model: profile.matched_model.clone(),
+        };
+        let native = NativeAdapter::from_config_with_runtime_profile(config(ProviderMode::Native), Some(profile.clone()));
+        native.messages_capabilities.set(None).unwrap();
+        let react = ReActAdapter::from_config_with_runtime_profile(config(ProviderMode::ReAct), Some(profile.clone()));
+        let messages = NativeAdapter::from_config_with_runtime_profile(config(ProviderMode::Native), Some(profile.clone()));
+        messages.messages_capabilities.set(Some(deepseek_messages::MessagesCapabilities {
+            tool_update: deepseek_messages::ToolUpdateMode::InHistory, system_in_history: true,
+        })).unwrap();
+        let over_window = AgentRequestPlan::for_ad_hoc(profile.clone(), &[Message::user("x".repeat(90_000))], &[]);
+        for adapter in [&native as &dyn ModelAdapter, &react, &messages] {
+            let projection = adapter.context_request_projection(&over_window)
+                .expect("context inspection must remain available when the send budget is exhausted");
+            assert!(model_runtime::estimate_provider_request_input_tokens(&projection) > profile.context_window_tokens);
+        }
+
+        // Messages replays full effective system snapshots. The serialized
+        // request can exceed the window even while the common input still fits.
+        let mut history = vec![Message::system("base instructions"), Message::user("old question")];
+        for _ in 0..8 {
+            history.push(Message::system("runtime state ".repeat(350)));
+            history.push(Message { role: Role::Assistant, content: Some("prior answer".into()),
+                tool_calls: vec![], tool_call_id: None, provider_continuation: None });
+            history.push(Message::user("continue"));
+        }
+        let mut plan = AgentRequestPlan::for_ad_hoc(profile, &history, &[]);
+        assert!(plan.active_context.fits, "common input alone underestimates full system snapshots");
+        let original = plan.ordered_messages();
+        auto_compaction::ContextTokenMeter::default().calibrate_plan(&messages, &mut plan);
+        let budget = ActiveContextBudget::from_plan(&plan);
+        assert!(!budget.fits);
+        assert!(budget.over_high_watermark, "the real wire pressure must trigger compaction before sending");
+        assert_eq!(plan.ordered_messages(), original, "measuring context must not discard user history");
+    }
+
+    #[test]
     fn provider_tool_name_sanitizes_dotted_names_and_collisions() {
         let mut used = std::collections::HashSet::new();
         assert_eq!(provider_tool_name("book.text", 0, &mut used), "book_text");
@@ -5335,7 +5607,7 @@ mod tests {
     }
 
     #[test]
-    fn flash_authoring_reserves_explicit_output_within_the_window_watermark() {
+    fn flash_calls_share_output_reserve_within_the_window_watermark() {
         use crate::auto_compaction::ActiveContextBudget;
         let catalog = ModelRuntimeCatalog::default();
         let tools = [crate::presentation_author::spec()];
@@ -5353,43 +5625,37 @@ mod tests {
             assert_eq!(budget.high_watermark_tokens, 750_000);
             assert_eq!(budget.high_watermark_tokens, old.high_watermark_tokens);
             assert_eq!(budget.target_input_tokens, 750_000 - 131_072 - 4_000);
-            assert_eq!(old.target_input_tokens - budget.target_input_tokens, 131_072 - 32_768);
+            assert_eq!(old.target_input_tokens, budget.target_input_tokens);
             assert!(!budget.over_high_watermark);
             assert!(budget.fits);
             assert_eq!(author.active_context.remaining_tokens, ordinary.active_context.remaining_tokens
-                - i64::from(131_072 - 32_768)
                 - i64::from(author.active_context.estimated_input_tokens - ordinary.active_context.estimated_input_tokens));
-            assert_eq!(ordinary.output_token_limit, Some(32_768));
-            assert_eq!(native_chat_request_projection(model, &ordinary).0["max_tokens"], 32_768);
-            assert_eq!(react_chat_request_projection(model, &ordinary)["max_tokens"], 32_768);
-            assert_eq!(AgentRequestPlan::for_ad_hoc(profile.clone(), &messages, &tools).output_token_limit, None);
+            assert_eq!(ordinary.output_token_limit, Some(131_072));
+            assert_eq!(native_chat_request_projection(model, &ordinary).0["max_tokens"], 131_072);
+            assert_eq!(react_chat_request_projection(model, &ordinary)["max_tokens"], 131_072);
+            assert_eq!(AgentRequestPlan::for_ad_hoc(profile.clone(), &messages, &tools).output_token_limit, Some(131_072));
             let explicit = catalog.resolve(model, ProviderToolProtocol::Native, Some(profile));
-            assert_eq!(AgentRequestPlan::for_agent_turn(explicit, &messages, &tools).output_token_limit, None);
+            assert_eq!(AgentRequestPlan::for_agent_turn(explicit, &messages, &tools).output_token_limit, Some(131_072));
         }
         let other = catalog.resolve("glm-5.1", ProviderToolProtocol::Native, None);
-        assert_eq!(AgentRequestPlan::for_agent_turn(other, &messages, &tools).output_token_limit, None);
+        assert_eq!(AgentRequestPlan::for_agent_turn(other, &messages, &tools).output_token_limit, Some(8_000));
     }
 
     #[test]
-    fn experiment_output_limit_is_explicit_for_both_adapters_and_absent_by_default() {
+    fn experiment_output_limit_overrides_the_shared_default_for_both_adapters() {
         let profile =
             ModelRuntimeCatalog::default().resolve("test", ProviderToolProtocol::Native, None);
         let mut plan = AgentRequestPlan::for_ad_hoc(profile, &[Message::user("answer")], &[]);
-        assert!(native_chat_request_projection("test", &plan)
-            .0
-            .get("max_tokens")
-            .is_none());
-        assert!(react_chat_request_projection("test", &plan)
-            .get("max_tokens")
-            .is_none());
-        plan.output_token_limit = Some(8_000);
+        assert_eq!(native_chat_request_projection("test", &plan).0["max_tokens"], 8_000);
+        assert_eq!(react_chat_request_projection("test", &plan)["max_tokens"], 8_000);
+        plan.output_token_limit = Some(16_000);
         assert_eq!(
             native_chat_request_projection("test", &plan).0["max_tokens"],
-            8_000
+            16_000
         );
         assert_eq!(
             react_chat_request_projection("test", &plan)["max_tokens"],
-            8_000
+            16_000
         );
     }
 
@@ -5423,6 +5689,7 @@ mod tests {
             native,
             serde_json::json!({
                 "model": "snapshot-model",
+                "max_tokens": 8_000,
                 "messages": [
                     {"role": "system", "content": "base instructions"},
                     {"role": "user", "content": "question"},
@@ -5793,6 +6060,7 @@ mod tests {
                         mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-v4-flash".into(),
                     });
                     let request = CompletionRequest {
+                        followup_user: with_images.then(|| "review_format_repair: keep the original evidence".into()),
                         output_token_limit: Some(32_768), reasoning_effort: None,
                         system: "Review the actual page. Return JSON.".into(), user: "same review packet".into(),
                         images: if with_images { images.clone() } else { Vec::new() },
@@ -5820,13 +6088,15 @@ mod tests {
                     assert_eq!(body["stream"], true);
                     assert_eq!(body["stream_options"]["include_usage"], true);
                     assert!(body.get("tools").is_none());
-                    assert_eq!(body["messages"].as_array().unwrap().len(), 2);
+                    assert_eq!(body["messages"].as_array().unwrap().len(), if with_images { 3 } else { 2 });
                     if structured || mode == ProviderMode::Native {
                         assert_eq!(body["response_format"]["type"], "json_object");
                     } else {
                         assert!(body.get("response_format").is_none());
                     }
                     if with_images {
+                        assert_eq!(recorded["followup_user"], "review_format_repair: keep the original evidence");
+                        assert_eq!(body["messages"][2], serde_json::json!({"role":"user", "content":"review_format_repair: keep the original evidence"}));
                         let parts = body["messages"][1]["content"].as_array().unwrap();
                         assert_eq!(parts.len(), 5);
                         assert_eq!(parts[0], serde_json::json!({"type":"text", "text":"same review packet"}));
@@ -5870,6 +6140,7 @@ mod tests {
         });
         let output = adapter
             .complete_structured(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -5932,7 +6203,7 @@ mod tests {
             assert!(repair[initial.len()..].contains("unknown field `schema_version`"));
             for request in &requests {
                 assert_eq!(request["messages"].as_array().unwrap().len(), 2);
-                assert_eq!(request["max_tokens"], 65_536);
+                assert_eq!(request["max_tokens"], 131_072);
                 assert_eq!(request["reasoning_effort"], "low");
                 assert!(request.get("tools").is_none());
             }
@@ -5975,6 +6246,7 @@ mod tests {
         });
         let output = adapter
             .complete_structured(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: Some(16_384),
                 reasoning_effort: Some("low".into()),
@@ -6012,6 +6284,7 @@ mod tests {
         let started = Instant::now();
         let error = adapter
             .complete_structured(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -6060,6 +6333,7 @@ mod tests {
         });
         let out = adapter
             .complete(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -6103,6 +6377,7 @@ mod tests {
         });
         let err = adapter
             .complete(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -6201,6 +6476,28 @@ mod tests {
         let final_turn = parse_react_assistant_turn(r#"{"final":"读完了"}"#).unwrap();
         assert_eq!(final_turn.text.as_deref(), Some("读完了"));
         assert!(final_turn.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn structured_json_error_parts_only_recovers_local_parser_public_output() {
+        for public_output in ["the requested object is missing", r#"{"next_step":,}"#] {
+            let error = structured_json_from_content(public_output).unwrap_err();
+            let (reason, recovered) = structured_json_error_parts(&error).unwrap();
+            assert_eq!(recovered, public_output);
+            assert!(!reason.contains(";原文="));
+        }
+        for message in [
+            "HTTP 请求失败: 模型输出抽不到合法 JSON 对象;原文=body",
+            "Provider returned an unfinished response: length",
+            "Agent run was cancelled",
+            "Teaching coach input exceeds model context budget",
+            "模型输出非合法 JSON;原文=body",
+        ] {
+            assert!(structured_json_error_parts(&AdapterError { message:message.into(), spend_stop:None }).is_none());
+        }
+        let mut error = structured_json_from_content("not JSON").unwrap_err();
+        error.spend_stop = Some(model_spend::SpendStop::InsufficientAllowance);
+        assert!(structured_json_error_parts(&error).is_none());
     }
 
     #[test]

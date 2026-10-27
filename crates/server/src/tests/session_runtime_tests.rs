@@ -18,12 +18,31 @@ pub(super) fn setup() -> (tempfile::TempDir, AppState) {
 
 struct Hello;
 impl ModelAdapter for Hello {
-    fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
-        unreachable!()
+    fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
+        // The local host drains observation work after delivering the Resident
+        // answer. Keep that structured call separate from sampled chat history.
+        assert!(request.system.starts_with("你是 Understand Book 的教学教练。"));
+        let input: Value = serde_json::from_str(&request.user).unwrap();
+        assert_eq!(input["trigger"], "after_turn");
+        assert_eq!(input["teaching_context"]["status"], "observing");
+        let observations: Vec<_> = input["observation_facts"].as_array().unwrap().iter()
+            .filter(|fact| fact["already_interpreted"] != true)
+            .map(|fact| json!({"fact_ref":fact["fact_ref"], "decision":"no_new_information",
+                "reason":"This fixture tests session persistence without assessing understanding."}))
+            .collect();
+        Ok(ParsedResponse {
+            sufficient: true,
+            answer: Some(json!({"next_step":{"focus":"Keep the accepted Resident task",
+                "participation":{"choice":"conclude", "reason":"Observation only."}},
+                "observations":observations, "reason":"The delivered response is already recorded."}).to_string()),
+            citations: vec![],
+            model_supplement: vec![],
+        })
     }
     fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         Ok(AssistantTurn {
             provider_continuation: Some(runtime::ProviderContinuation {
+                messages_content: Vec::new(),
                 model: "fixture".into(),
                 reasoning_content: "private continuation".into(),
             }),
@@ -32,6 +51,39 @@ impl ModelAdapter for Hello {
             usage_total_tokens: Some(3),
         })
     }
+}
+
+#[test]
+fn active_model_projection_new_turn_after_restart_keeps_previous_sampled_prefix() {
+    struct CapturingHello(std::sync::Arc<std::sync::Mutex<Vec<AgentRequestPlan>>>);
+    impl ModelAdapter for CapturingHello {
+        fn projection_identity(&self) -> Option<String> { Some("local-projection-fixture".into()) }
+        fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { Hello.complete(request) }
+        fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+            self.0.lock().unwrap().push(request.clone());
+            Hello.chat(request)
+        }
+    }
+    let (_dir, mut state) = setup();
+    let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    state.services.adapter = Box::new(CapturingHello(requests.clone()));
+    let first = route_agent_chat(&mut state, r#"{"message":"你好"}"#, "t1");
+    assert_eq!(first.status, 200, "{}", first.body);
+    let session_id = state.user.agent_history.sessions[0].id.clone();
+    let first_projection = state.user.session_store.as_ref().unwrap().logs[&session_id]
+        .projection.active_model_projection.clone().expect("accepted model input was persisted");
+    let (history, store) = crate::session_store::load_chat_storage(&state.user.history_path).unwrap();
+    state.user.agent_history = history;
+    state.user.session_store = store;
+    let second = route_agent_chat(&mut state, r#"{"message":"再问候一下"}"#, "t2");
+    assert_eq!(second.status, 200, "{}", second.body);
+    let requests = requests.lock().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert!(requests[1].input.starts_with(&first_projection.input));
+    assert_eq!(requests[1].instructions, first_projection.instructions);
+    let restored = &state.user.session_store.as_ref().unwrap().logs[&session_id]
+        .projection.active_model_projection.as_ref().unwrap();
+    assert!(restored.input.starts_with(&first_projection.input));
 }
 
 #[test]

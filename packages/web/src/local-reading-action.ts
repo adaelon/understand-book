@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 // Only typed local reading actions need a persisted unknown-submission record.
 // The server checks the original identity before current source/head validity.
 type Request = <T>(method: 'GET' | 'POST', path: string, body?: unknown) => Promise<T>;
@@ -33,7 +34,7 @@ export async function createReadingAction<T>(request: Request, body: Record<stri
   const previous = pendingReadingActions().find(item => item.body.session_id === body.session_id);
   if (previous) {
     await recoverReadingAction(request, previous);
-    if (pendingReadingActions().some(item => item.key === previous.key)) throw new Error('原操作结果待核对，请先核对原操作。');
+    if (pendingReadingActions().some(item => item.key === previous.key)) throw new Error(uiText('原操作结果待核对，请先核对原操作。'));
   }
   const key = String(body.client_request_id);
   const item = { key, body };

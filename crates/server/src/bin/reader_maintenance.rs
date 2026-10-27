@@ -22,10 +22,12 @@ fn main() {
                     _ => Err("migrate requires exactly <plan.json> --stopped".into()),
                 }
             },
+            Some("observe-understanding") if args.len()==4 || args.len()==5 && args[4]=="--retry-failed" =>
+                queue_understanding_observation(Path::new(&args[1]), &args[2], &args[3], args.len()==5),
             Some("backup") if args.len()==3 => backup_service(Path::new(&args[1]), Path::new(&args[2])),
             Some("restore") if args.len()==3 => restore_service(Path::new(&args[1]), Path::new(&args[2])),
             Some("export-user") if args.len()==4 => export_user(Path::new(&args[1]), &args[2], Path::new(&args[3])),
-            _ => Err("usage: reader_maintenance register-video <service-root> <workspace> <user-id>... | video-readers <service-root> <media-id> <revision> [user-id...] | preview <plan.json> | migrate <plan.json> --stopped | backup <service-root> <new-snapshot> | restore <snapshot> <new-root> | export-user <service-root> <user-id> <new-root>".into()),
+            _ => Err("usage: reader_maintenance observe-understanding <service-root> <user-id> <turn-id> [--retry-failed] | register-video <service-root> <workspace> <user-id>... | video-readers <service-root> <media-id> <revision> [user-id...] | preview <plan.json> | migrate <plan.json> --stopped | backup <service-root> <new-snapshot> | restore <snapshot> <new-root> | export-user <service-root> <user-id> <new-root>".into()),
         }
     })();
     match result {

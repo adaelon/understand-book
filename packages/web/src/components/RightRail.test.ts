@@ -8,6 +8,7 @@ import YeyeMascot from './YeyeMascot.vue';
 import { yeyeAssets } from '../yeye-assets';
 import { api } from '../api';
 import { renderMarkdown } from '../md';
+import mathAnswer from '../fixtures/agent-math-answer.md?raw';
 import { network, installIdentity, installWorkspace } from '../network-context';
 import type { RecapTarget, SessionRecap } from '../session-recap';
 
@@ -183,6 +184,19 @@ it('keeps learning actions in the chat and the teaching switch next to the compo
   expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(true);
   expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
   wrapper.unmount();
+});
+
+it('offers video learning purposes and a saved goal continuation in the conversation', async () => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, videoImagesEnabled: true, learningPurposeAvailable: true,
+    learningPurposeReady: true, learningPurposeReason: '', learningScopeOptions: [{ value: 'media', label: '当前播放位置' }] }, shallow: true });
+  const entry = wrapper.getComponent({ name: 'LearningPurposeEntry' });
+  expect(entry.props()).toMatchObject({ videoMode: true, available: true, ready: true });
+  entry.vm.$emit('choose', 'understand', 'media');
+  expect(wrapper.emitted('learning-purpose')).toEqual([['understand', 'media']]);
+  await wrapper.setProps({ learningTitle: '能解释视频中的资源核算', tutorEnabled: false });
+  expect(wrapper.get('.question-example').text()).toContain('开启并继续上次学习');
+  await wrapper.get('.question-example').trigger('click');
+  expect(wrapper.emitted('resume-learning')).toEqual([[]]);
 });
 
 it('keeps help bound to the latest delivered answer and focuses the existing draft without sending it', async () => {
@@ -612,6 +626,95 @@ function sourceOutcome(stale = false) {
     stale,
   };
 }
+
+describe('WB1 board entry from conversation', () => {
+  it('imports the complete delivered answer by its saved owner and excludes drafts or incomplete answers', async () => {
+    const complete = { turnId: 'answer-one', user: '解释这个概念', pending: false, outcome: sourceOutcome(),
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] };
+    const wrapper = mount(RightRail, { shallow: true, props: { ...baseProps, chat: [complete,
+      { ...complete, turnId: 'draft', pending: true },
+      { ...complete, turnId: 'partial', outcome: { ...sourceOutcome(), incomplete: true } },
+      { ...complete, turnId: 'stopped', runStatus: '已停止' },
+    ] } });
+    expect(wrapper.findAll('.answer-add-board')).toHaveLength(1);
+    await wrapper.get('.answer-add-board').trigger('click');
+    expect(wrapper.emitted('add-to-board')).toEqual([[{ kind: 'answer', session_id: 'chat-1', turn_id: 'answer-one' }]]);
+  });
+
+  it('forwards the exact saved scene receipt with its original presentation owner', () => {
+    const reference = { presentation_id: 'demo-one', revision: 2 };
+    const receipt = { session_id: 'chat-1', turn_id: 'answer-one', reference, state_revision: 4, saved_state_ref: 'saved-four' };
+    const outcome = sourceOutcome();
+    const wrapper = mount(RightRail, { shallow: true, props: { ...baseProps, chat: [{
+      turnId: receipt.turn_id, user: '解释这个概念', pending: false,
+      outcome: { ...outcome, answer_view: { ...outcome.answer_view, parts: [{ kind: 'presentation', ...reference }] } },
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    }] } });
+    wrapper.getComponent({ name: 'AgentPresentation' }).vm.$emit('add-to-board', receipt);
+    expect(wrapper.emitted('add-to-board')).toEqual([[{ kind: 'presentation', session_id: 'chat-1', turn_id: 'answer-one', reference, receipt }]]);
+  });
+});
+
+describe('WB2 saved board locations in conversation history', () => {
+  const followUp = { board_id: 'original-board', board_revision: 4, item_id: 'question-item', block_id: 'question-block' };
+  const delivery = { board_id: 'saved-board', before_revision: 4, after_revision: 5,
+    item_ids: ['saved-answer-item'], block_ids: ['saved-answer-block'],
+    origin_session_id: 'historical-session', origin_turn_id: 'historical-answer', parent_item_id: 'question-item' };
+  const turn = () => ({ turnId: 'historical-answer', user: '为什么这个条件必不可少？', pending: false,
+    outcome: sourceOutcome(), questionAnchorLid: null, questionQuote: null, questionSelection: null,
+    effectLabels: [], boardFollowUp: followUp, boardDelivery: delivery });
+
+  it('opens the delivered answer and original question at their exact saved board locations', async () => {
+    const wrapper = mount(RightRail, { shallow: true,
+      props: { ...baseProps, activeChatSessionId: 'current-session', chat: [turn()] } });
+
+    expect(wrapper.get('.board-delivery-link').text()).toBe('在画板中查看');
+    await wrapper.get('.board-delivery-link').trigger('click');
+    await wrapper.get('.board-question-link').trigger('click');
+    expect(wrapper.emitted('open-board-location')).toEqual([
+      [{ board_id: 'saved-board', item_id: 'saved-answer-item', block_id: 'saved-answer-block' }],
+      [{ board_id: 'original-board', item_id: 'question-item', block_id: 'question-block' }],
+    ]);
+    expect(wrapper.emitted('add-to-board')).toBeUndefined();
+  });
+
+  it('retains the answer and original target when delivery fails, without claiming it was saved', async () => {
+    const wrapper = mount(RightRail, { shallow: true,
+      props: { ...baseProps, chat: [{ ...turn(), boardDeliveryError: '画板暂时无法保存' }] } });
+
+    expect(wrapper.get('.a-msg').text()).toContain('First claim.');
+    expect(wrapper.get('.a-msg').text()).toContain('Next claim.');
+    expect(wrapper.get('.board-delivery-error').text()).toBe('内容没有加入画板：画板暂时无法保存');
+    expect(wrapper.find('.board-delivery-link').exists()).toBe(false);
+    await wrapper.get('.board-question-link').trigger('click');
+    expect(wrapper.emitted('open-board-location')).toEqual([
+      [{ board_id: 'original-board', item_id: 'question-item', block_id: 'question-block' }],
+    ]);
+  });
+});
+
+describe('answer math formatting', () => {
+  it.each(['completed', 'draft'])('renders screenshot variables and equations in a %s answer', (state) => {
+    const view = { parts: [{ kind: 'markdown' as const, text: mathAnswer }], sources: [] };
+    const turn = {
+      turnId: 'math-answer', user: '解释状态更新与读出', pending: state === 'draft',
+      outcome: state === 'completed' ? { ...sourceOutcome(), answer: mathAnswer, answer_view: view } : null,
+      draft: state === 'draft' ? { message_id: 1, revision: 1, operation: 'replace', view } : null,
+      questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
+    };
+    const wrapper = mount(RightRail, { props: { ...baseProps, renderMarkdown, chat: [turn] } });
+    const answer = wrapper.get(state === 'draft' ? '.answer-draft' : '.a-msg .ans-text');
+    expect(answer.findAll('.katex-display')).toHaveLength(2);
+    expect(answer.findAll('p > .katex')).toHaveLength(10);
+    expect(answer.findAll('.katex-error, pre, code')).toHaveLength(0);
+    expect(answer.findAll('.katex-display annotation').map(node => node.text())).toEqual([
+      'S_t = S_{t-1} + k_t v_t^{T}', 'o_t = q_t^{T} S_t',
+    ]);
+    expect(answer.findAll('p annotation').map(node => node.text())).toContain('d_k \\cdot d_v');
+    expect(answer.find('math msub').exists()).toBe(true);
+    expect(answer.find('math msubsup').exists()).toBe(true);
+  });
+});
 
 describe('answer rendering on local UI changes', () => {
   it('reuses unchanged answers across menus, history, input and hidden tabs', async () => {
@@ -1645,8 +1748,23 @@ it.each(['completed', 'pending', 'incomplete', 'failed', 'cancelled'])('RS6 expo
   try {
     expect(wrapper.find('.answer-actions').exists()).toBe(status === 'completed');
     if (status === 'completed') {
-      await wrapper.get('.answer-actions button').trigger('click');
+      await wrapper.findAll('.answer-actions button').find(button => button.text() === '生成理解卡')!.trigger('click');
       expect(wrapper.emitted('share-answer')?.[0]).toEqual([turn]);
     }
   } finally { wrapper.unmount(); }
+});
+
+it('keeps each saved board part navigable during generation and after cancellation without a final answer', async () => {
+  const first = { board_id: 'original-board', commit_id: 'part-one', before_revision: 1, after_revision: 2, item_ids: ['answer-one'], block_ids: ['block-one'], origin_session_id: 'session', origin_turn_id: 'turn', parent_item_id: 'point' };
+  const second = { ...first, commit_id: 'part-two', before_revision: 2, after_revision: 3, item_ids: ['answer-two'], block_ids: ['block-two'] };
+  const turn = { turnId: 'turn', user: '继续解释', pending: true, outcome: null, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], boardCommits: [first, second, first] };
+  const wrapper = mount(RightRail, { shallow: true, props: { ...baseProps, chat: [turn] } });
+  expect(wrapper.findAll('.board-part-link')).toHaveLength(2);
+  expect(wrapper.get('.board-parts-progress').text()).toContain('后续仍在讲解');
+  await wrapper.findAll('.board-part-link')[1].trigger('click');
+  expect(wrapper.emitted('open-board-location')).toEqual([[{ board_id: 'original-board', item_id: 'answer-two', block_id: 'block-two' }]]);
+  await wrapper.setProps({ chat: [{ ...turn, pending: false, boardIncomplete: true, runStatus: '已停止' }] });
+  expect(wrapper.findAll('.board-part-link')).toHaveLength(2);
+  expect(wrapper.get('.board-parts-progress').text()).toContain('讲解尚未全部完成');
+  expect(wrapper.find('.a-msg').exists()).toBe(false);
 });

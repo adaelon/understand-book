@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowUpRight, BookOpen, Smartphone } from '@lucide/vue';
 import MarkdownIt from 'markdown-it';
@@ -12,48 +14,26 @@ import type { OuterOutcome } from '../api';
 
 // This entry is served by Vite only; it is absent from production build inputs.
 const embedded = new URLSearchParams(location.search).has('embedded');
-const devices = [{ label: '标准手机', width: 390, height: 669 }, { label: '长屏手机', width: 390, height: 844 }, { label: '小屏手机', width: 320, height: 568 }];
+const devices = [{ label: uiText('标准手机'), width: 390, height: 669 }, { label: uiText('长屏手机'), width: 390, height: 844 }, { label: uiText('小屏手机'), width: 320, height: 568 }];
 const device = ref(devices[0]);
 const preview = ref<HTMLIFrameElement>();
 function showState(state: string) { preview.value?.contentWindow?.postMessage({ previewState: state }, location.origin); }
 const markdown = new MarkdownIt();
-const lesson = `## 1.4.2 SmartNIC：把网络工作放到更合适的地方
-
-上一节，我们先看设备的空闲能力什么时候用尽。这一节，换一个观察角度：**网络变快以后，谁在忙？**
-
-> 网络带宽提高，虚拟网络策略也日趋复杂。
-
-带宽增长，意味着每秒要处理的数据更多；策略变复杂，意味着每个数据包需要做的事情也更多。
-
-### 先找到被占用的资源
-
-如果这些工作都由 CPU 承担，网络处理就会占用原本可以运行应用的计算资源。
-
-所以问题不只是“再加几台服务器”，还包括：**哪些工作，可以从 CPU 身上移走？**
-
-### 网卡也可以分担工作
-
-SmartNIC 能在网卡上执行一部分数据处理。把适合的网络工作交给它，就能把一部分 CPU 资源留给应用。
-
-试着连起这条线：
-
-**带宽与策略增长 → 网络处理变多 → 占用 CPU → 把部分工作交给网卡。**
-
-带着这条线回看书里的例子，设备名称就有了来由。接下来，用自己的话说说这里的架构为什么发生变化。`;
+const lesson = uiText('## 1.4.2 SmartNIC：把网络工作放到更合适的地方\n\n上一节，我们先看设备的空闲能力什么时候用尽。这一节，换一个观察角度：**网络变快以后，谁在忙？**\n\n> 网络带宽提高，虚拟网络策略也日趋复杂。\n\n带宽增长，意味着每秒要处理的数据更多；策略变复杂，意味着每个数据包需要做的事情也更多。\n\n### 先找到被占用的资源\n\n如果这些工作都由 CPU 承担，网络处理就会占用原本可以运行应用的计算资源。\n\n所以问题不只是“再加几台服务器”，还包括：**哪些工作，可以从 CPU 身上移走？**\n\n### 网卡也可以分担工作\n\nSmartNIC 能在网卡上执行一部分数据处理。把适合的网络工作交给它，就能把一部分 CPU 资源留给应用。\n\n试着连起这条线：\n\n**带宽与策略增长 → 网络处理变多 → 占用 CPU → 把部分工作交给网卡。**\n\n带着这条线回看书里的例子，设备名称就有了来由。接下来，用自己的话说说这里的架构为什么发生变化。');
 function outcome(answer: string): OuterOutcome {
   return { answer, answer_view: { parts: [{ kind: 'markdown', text: answer }], sources: [] }, effects: [], trace: [], memory_updates: [], profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] }, incomplete: false, warning: null, turns: 1, tokens_spent: 0 };
 }
 function turn(id: string, user: string, answer: string, teaching = false) {
   return { turnId: id, user, hasTeaching: teaching, pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], outcome: outcome(answer) };
 }
-const chat = ref([turn('preview-lesson', '接着讲讲 SmartNIC，需求是怎么推动架构变化的？', lesson, true)]);
+const chat = ref([turn('preview-lesson', uiText('接着讲讲 SmartNIC，需求是怎么推动架构变化的？'), lesson, true)]);
 const agentInput = ref('');
 const teaching = ref(true);
-const learningSession = ref({ id: 'preview-learning', user_intent: '学懂 1.4 需求如何推动架构设计', status: 'active' } as TutorSession);
+const learningSession = ref({ id: 'preview-learning', user_intent: uiText('学懂 1.4 需求如何推动架构设计'), status: 'active' } as TutorSession);
 const recordedAnswer = ref('');
 const hintSeen = ref(false);
 const recordsOpen = ref(false);
-const recordsTitle = ref('我的理解');
+const recordsTitle = ref(uiText('我的理解'));
 const requestedTab = ref<WorkspaceAuxTab>('agent');
 const requestedTabRevision = ref(0);
 const fullscreen = ref(false);
@@ -68,13 +48,13 @@ if (embedded) {
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
     if (url.pathname === '/api/tutor/activities') return Response.json({ activities: body.turn_id === 'preview-lesson' ? [{
       delivery_ref: 'preview-response', status: teaching.value ? 'active' : 'paused', attempted: !!recordedAnswer.value, help_seen: hintSeen.value ? ['preview-hint'] : [],
-      move: { move_id: 'smartnic-response', prompt: '网络带宽和策略复杂度增加时，为什么要把一部分工作交给 SmartNIC？\n\n试着把「需求 → 资源 → 工作去向」连起来。', actions: ['submit', 'revise', 'request_hint', 'skip'] },
+      move: { move_id: 'smartnic-response', prompt: uiText('网络带宽和策略复杂度增加时，为什么要把一部分工作交给 SmartNIC？\n\n试着把「需求 → 资源 → 工作去向」连起来。'), actions: ['submit', 'revise', 'request_hint', 'skip'] },
       assessment: recordedAnswer.value ? { status: 'unassessed', action_ref: 'preview-record' } : null,
     }] : [] });
     if (url.pathname === '/api/tutor/action') {
       if (body.action === 'request_hint') {
         hintSeen.value = true;
-        return Response.json({ event_id: 'preview-hint', help: { event_id: 'preview-hint', text: '先想一想：如果所有网络数据包都交给 CPU，它还能把多少时间留给应用？再看看网卡能分担哪一部分工作。' } });
+        return Response.json({ event_id: 'preview-hint', help: { event_id: 'preview-hint', text: uiText('先想一想：如果所有网络数据包都交给 CPU，它还能把多少时间留给应用？再看看网卡能分担哪一部分工作。') } });
       }
       if (body.response) recordedAnswer.value = body.response;
       return Response.json({ event_id: 'preview-record', help: null });
@@ -85,13 +65,13 @@ if (embedded) {
 function requestTab(tab: WorkspaceAuxTab) { requestedTab.value = tab; requestedTabRevision.value++; }
 function sendQuestion() {
   if (!agentInput.value.trim()) return;
-  chat.value.push(turn(`preview-${chat.value.length}`, agentInput.value, '可以先抓住一个关系：网络处理也需要计算资源。\n\n当 CPU 需要处理更多数据包、执行更复杂的策略时，留给应用的资源就会受到影响。SmartNIC 分担其中适合卸载的工作，让 CPU 更专注于应用。'));
+  chat.value.push(turn(`preview-${chat.value.length}`, agentInput.value, uiText('可以先抓住一个关系：网络处理也需要计算资源。\n\n当 CPU 需要处理更多数据包、执行更复杂的策略时，留给应用的资源就会受到影响。SmartNIC 分担其中适合卸载的工作，让 CPU 更专注于应用。')));
   agentInput.value = '';
 }
 function clarify() {
-  chat.value.push(turn(`preview-${chat.value.length}`, '这一步没跟上', '我们换个角度看。\n\n把 CPU 想成同时做两件事的人：一边运行应用，一边处理网络数据。现在网络工作越来越多，他花在应用上的时间就会减少。\n\nSmartNIC 像一个能分担网络工作的帮手。重点是**把适合的工作交出去，释放 CPU 的时间**。'));
+  chat.value.push(turn(`preview-${chat.value.length}`, uiText('这一步没跟上'), uiText('我们换个角度看。\n\n把 CPU 想成同时做两件事的人：一边运行应用，一边处理网络数据。现在网络工作越来越多，他花在应用上的时间就会减少。\n\nSmartNIC 像一个能分担网络工作的帮手。重点是**把适合的工作交出去，释放 CPU 的时间**。')));
 }
-function openRecords(title = '我的理解') { recordsTitle.value = title; recordsOpen.value = true; }
+function openRecords(title = uiText('我的理解')) { recordsTitle.value = title; recordsOpen.value = true; }
 function toggleTeaching() {
   teaching.value = !teaching.value;
   learningSession.value.status = teaching.value ? 'active' : 'paused';
@@ -102,9 +82,9 @@ async function receivePreviewState(event: MessageEvent) {
   recordsOpen.value = false;
   workspace.value?.showAssistant('agent');
   await nextTick();
-  document.querySelector<HTMLButtonElement>('[aria-label="关闭学习与会话"]')?.click();
-  document.querySelector<HTMLButtonElement>('[aria-label="收起输入"]')?.click();
-  document.querySelector<HTMLButtonElement>('[aria-label="收起作答"]')?.click();
+  document.querySelector<HTMLButtonElement>(uiText('[aria-label=\u0022关闭学习与会话\u0022]'))?.click();
+  document.querySelector<HTMLButtonElement>(uiText('[aria-label=\u0022收起输入\u0022]'))?.click();
+  document.querySelector<HTMLButtonElement>(uiText('[aria-label=\u0022收起作答\u0022]'))?.click();
   await nextTick();
   const selector: Record<string, string> = { answer: '.learning-respond', settings: '.mobile-learning-title' };
   const state = event.data.previewState;
@@ -124,34 +104,34 @@ onBeforeUnmount(() => { if (embedded) window.fetch = realFetch; window.removeEve
 
 <template>
   <main v-if="!embedded" class="preview-stage">
-    <header class="preview-heading"><span class="preview-brand"><BookOpen :size="19" />问这本书 <i>设计预览 / 01</i></span><span class="local-label">仅本地 · 未发布</span></header>
+    <header class="preview-heading"><span class="preview-brand"><BookOpen :size="19" />{{ uiText('问这本书') }} <i>{{ uiText('设计预览 / 01') }}</i></span><span class="local-label">{{ uiText('仅本地 · 未发布') }}</span></header>
     <div class="preview-layout">
       <section class="preview-copy">
-        <span class="eyebrow">为阅读留出空间</span><h1>把注意力，<br />还给眼前这一段。</h1>
-        <p class="preview-intro">提问始终在手边，有想法就接着聊。需要帮助或准备作答时，再用输入框上方的快捷入口。</p>
-        <div class="preview-states"><button @click="showState('reading')"><b>01</b><span>阅读<small>正文为主，随时可以接着聊</small></span><ArrowUpRight :size="17" /></button><button @click="showState('ask')"><b>02</b><span>提问<small>常驻输入框，直接写下想法</small></span><ArrowUpRight :size="17" /></button><button @click="showState('answer')"><b>03</b><span>作答<small>进入题目，提问草稿继续保留</small></span><ArrowUpRight :size="17" /></button><button @click="showState('settings')"><b>04</b><span>学习面板<small>目标、教学开关和会话</small></span><ArrowUpRight :size="17" /></button></div>
-        <p class="preview-note">右侧可以直接操作。使用演示内容，输入和提交仅保留在此预览中。<a href="/mobile-learning-preview.html?embedded=1" target="_blank">单独打开预览 <ArrowUpRight :size="12" /></a></p>
+        <span class="eyebrow">{{ uiText('为阅读留出空间') }}</span><h1>{{ uiText('把注意力，') }}<br />{{ uiText('还给眼前这一段。') }}</h1>
+        <p class="preview-intro">{{ uiText('提问始终在手边，有想法就接着聊。需要帮助或准备作答时，再用输入框上方的快捷入口。') }}</p>
+        <div class="preview-states"><button @click="showState('reading')"><b>01</b><span>{{ uiText('阅读') }}<small>{{ uiText('正文为主，随时可以接着聊') }}</small></span><ArrowUpRight :size="17" /></button><button @click="showState('ask')"><b>02</b><span>{{ uiText('提问') }}<small>{{ uiText('常驻输入框，直接写下想法') }}</small></span><ArrowUpRight :size="17" /></button><button @click="showState('answer')"><b>03</b><span>{{ uiText('作答') }}<small>{{ uiText('进入题目，提问草稿继续保留') }}</small></span><ArrowUpRight :size="17" /></button><button @click="showState('settings')"><b>04</b><span>{{ uiText('学习面板') }}<small>{{ uiText('目标、教学开关和会话') }}</small></span><ArrowUpRight :size="17" /></button></div>
+        <p class="preview-note">{{ uiText('右侧可以直接操作。使用演示内容，输入和提交仅保留在此预览中。') }}<a href="/mobile-learning-preview.html?embedded=1" target="_blank">{{ uiText('单独打开预览') }} <ArrowUpRight :size="12" /></a></p>
       </section>
-      <section class="preview-device-area" aria-label="手机预览">
+      <section class="preview-device-area" :aria-label="uiText('手机预览')">
         <div class="device-picker"><Smartphone :size="16" /><button v-for="option in devices" :key="option.width + option.height" :aria-pressed="device.width === option.width && device.height === option.height" @click="device = option">{{ option.label }}</button></div>
-        <div class="device-frame" :style="{ width: `${device.width}px`, height: `${device.height}px` }"><iframe ref="preview" src="/mobile-learning-preview.html?embedded=1" title="可操作的手机布局预览" /></div>
-        <p class="device-size">{{ device.width }} × {{ device.height }} · 浏览器内容区域</p>
+        <div class="device-frame" :style="{ width: `${device.width}px`, height: `${device.height}px` }"><iframe ref="preview" src="/mobile-learning-preview.html?embedded=1" :title="uiText('可操作的手机布局预览')" /></div>
+        <p class="device-size">{{ device.width }} × {{ device.height }} {{ uiText('· 浏览器内容区域') }}</p>
       </section>
     </div>
   </main>
   <div v-else class="app mobile-preview-app">
     <ReaderWorkspace ref="workspace" :logical="logical" @tab-request="requestTab">
-      <aside class="left-rail"><p>1.4 需求如何推动架构设计</p></aside><div class="resize-handle resize-handle-left" />
-      <main class="reader-pane preview-original"><span>AI 基础设施 · 1.4.2</span><h1>SmartNIC</h1><p>网络带宽提高，虚拟网络策略也日趋复杂。SmartNIC 能够在网卡上执行部分数据处理，让网络工作有了新的分工方式。</p><p>读到这里，可以打开问答，继续梳理需求、资源与架构之间的联系。</p><button @click="workspace?.showAssistant('agent')">继续问这本书 →</button></main>
+      <aside class="left-rail"><p>{{ uiText('1.4 需求如何推动架构设计') }}</p></aside><div class="resize-handle resize-handle-left" />
+      <main class="reader-pane preview-original"><span>{{ uiText('AI 基础设施 · 1.4.2') }}</span><h1>SmartNIC</h1><p>{{ uiText('网络带宽提高，虚拟网络策略也日趋复杂。SmartNIC 能够在网卡上执行部分数据处理，让网络工作有了新的分工方式。') }}</p><p>{{ uiText('读到这里，可以打开问答，继续梳理需求、资源与架构之间的联系。') }}</p><button @click="workspace?.showAssistant('agent')">{{ uiText('继续问这本书 →') }}</button></main>
       <div class="resize-handle resize-handle-right" />
-      <RightRail v-model:agent-input="agentInput" :chat="chat" :chat-sessions="[]" active-chat-session-id="preview-chat" :fullscreen="fullscreen" :sending="false" :learning-title="learningSession.user_intent" :learning-attention="teaching ? '' : '连续教学已暂停'" :tutor-enabled="teaching" :requested-tab="requestedTab" :requested-tab-revision="requestedTabRevision" :selected-lid="null" :selected-formula="null" :context-notes="[]" :context-highlights="[]" :render-markdown="text => markdown.render(text)" :eff-label="() => ''" :eff-state="() => undefined" :is-goto="() => false" :show-effect-primary="() => false" :show-effect-secondary="() => false" :effect-primary-label="() => ''" :effect-secondary-label="() => ''" :goto-back="() => ''" :ask-draft="null" @toggle-fullscreen="fullscreen = !fullscreen" @return-reading="fullscreen = false; workspace?.showReader()" @workspace-menu="openRecords('阅读设置')" @send-agent="sendQuestion" @clarify-answer="clarify" @new-chat="chat = []; agentInput = ''">
-        <template #learning-actions><button type="button" @click="openRecords()">我的理解</button></template>
-        <template #learning-details><button type="button" @click="openRecords('学习详情')">学习详情</button></template>
-        <template #learning-goal><ConversationLearningGoal :session="learningSession" :enabled="teaching" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="openRecords('学习详情')" /></template>
-        <template #tutor-control><TutorControl :enabled="teaching" :label="teaching ? '围绕你的目标逐步学' : '连续教学已暂停'" :busy="false" :unavailable="false" error="" @toggle="toggleTeaching" /></template>
+      <RightRail v-model:agent-input="agentInput" :chat="chat" :chat-sessions="[]" active-chat-session-id="preview-chat" :fullscreen="fullscreen" :sending="false" :learning-title="learningSession.user_intent" :learning-attention="teaching ? '' : uiText('连续教学已暂停')" :tutor-enabled="teaching" :requested-tab="requestedTab" :requested-tab-revision="requestedTabRevision" :selected-lid="null" :selected-formula="null" :context-notes="[]" :context-highlights="[]" :render-markdown="text => markdown.render(text)" :eff-label="() => ''" :eff-state="() => undefined" :is-goto="() => false" :show-effect-primary="() => false" :show-effect-secondary="() => false" :effect-primary-label="() => ''" :effect-secondary-label="() => ''" :goto-back="() => ''" :ask-draft="null" @toggle-fullscreen="fullscreen = !fullscreen" @return-reading="fullscreen = false; workspace?.showReader()" @workspace-menu="openRecords(uiText('阅读设置'))" @send-agent="sendQuestion" @clarify-answer="clarify" @new-chat="chat = []; agentInput = ''">
+        <template #learning-actions><button type="button" @click="openRecords()">{{ uiText('我的理解') }}</button></template>
+        <template #learning-details><button type="button" @click="openRecords(uiText('学习详情'))">{{ uiText('学习详情') }}</button></template>
+        <template #learning-goal><ConversationLearningGoal :session="learningSession" :enabled="teaching" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="openRecords(uiText('学习详情'))" /></template>
+        <template #tutor-control><TutorControl :enabled="teaching" :label="teaching ? uiText('围绕你的目标逐步学') : uiText('连续教学已暂停')" :busy="false" :unavailable="false" error="" @toggle="toggleTeaching" /></template>
       </RightRail>
     </ReaderWorkspace>
-    <MobileLearningSheet :open="recordsOpen" :title="recordsTitle" @close="recordsOpen = false"><div class="preview-record"><small>{{ learningSession.user_intent }}</small><h3>{{ recordedAnswer ? '你刚才的回答' : '让理解慢慢积累' }}</h3><p>{{ recordedAnswer || '回答这节的问题之后，你写下的理解会出现在这里。' }}</p><span v-if="recordedAnswer">回答已记录，尚未评分。</span></div></MobileLearningSheet>
+    <MobileLearningSheet :open="recordsOpen" :title="recordsTitle" @close="recordsOpen = false"><div class="preview-record"><small>{{ learningSession.user_intent }}</small><h3>{{ recordedAnswer ? uiText('你刚才的回答') : uiText('让理解慢慢积累') }}</h3><p>{{ recordedAnswer || uiText('回答这节的问题之后，你写下的理解会出现在这里。') }}</p><span v-if="recordedAnswer">{{ uiText('回答已记录，尚未评分。') }}</span></div></MobileLearningSheet>
   </div>
 </template>
 

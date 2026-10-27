@@ -30,15 +30,45 @@ impl ModelUsage {
             || self.cache_creation_input_tokens.is_some()
             || self.total_tokens.is_some()
     }
+
+    /// Add usage from separate transport attempts. Within one attempt, usage frames
+    /// are cumulative snapshots and must still replace each other. An omitted
+    /// component stays unknown instead of treating an unreported charge as zero.
+    pub(crate) fn plus(&self, other: &Self) -> Self {
+        fn sum(a: Option<u32>, b: Option<u32>) -> Option<u32> {
+            a.zip(b).map(|(a, b)| a.saturating_add(b))
+        }
+        Self {
+            input_tokens: sum(self.input_tokens, other.input_tokens),
+            output_tokens: sum(self.output_tokens, other.output_tokens),
+            reasoning_output_tokens: sum(self.reasoning_output_tokens, other.reasoning_output_tokens),
+            cached_input_tokens: sum(self.cached_input_tokens, other.cached_input_tokens),
+            cache_creation_input_tokens: sum(self.cache_creation_input_tokens, other.cache_creation_input_tokens),
+            total_tokens: sum(self.total_tokens, other.total_tokens),
+        }
+    }
+
+    pub(crate) fn as_provider_usage(&self) -> Value {
+        json!({
+            "prompt_tokens": self.input_tokens,
+            "completion_tokens": self.output_tokens,
+            "completion_tokens_details": {"reasoning_tokens": self.reasoning_output_tokens},
+            "prompt_tokens_details": {"cached_tokens": self.cached_input_tokens},
+            "input_tokens_details": {"cache_creation_tokens": self.cache_creation_input_tokens},
+            "total_tokens": self.total_tokens,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ModelDelta {
-    /// Final wire request, emitted once per logical call (before any identical-body retry).
+    /// Final wire request, emitted again when an output retry changes its budget.
     /// ObservedAdapter consumes this for diagnostics and opt-in full tracing, never answer sinks.
     Request(std::sync::Arc<Value>),
     /// Complete provider response before adapter parsing, for opt-in tracing.
     Response(std::sync::Arc<Value>),
+    /// Withdraw fragments from a length-truncated attempt before retrying the request.
+    RetryReset,
     Text(String),
     ToolArguments {
         index: usize,
@@ -46,8 +76,8 @@ pub enum ModelDelta {
         name: String,
         arguments: String,
     },
-    /// A cumulative Provider snapshot. Repeated frames replace the previous snapshot; callers
-    /// must never add them together.
+    /// Cumulative usage for this logical call, including prior output retry attempts.
+    /// Repeated frames replace the previous snapshot; callers must never add them together.
     Usage(ModelUsage),
     Finish(String),
 }
@@ -237,7 +267,7 @@ pub fn read_sse(
                 }
             }
             if let Some(reason) = choice["finish_reason"].as_str() {
-                if !matches!(reason, "stop" | "tool_calls") {
+                if !matches!(reason, "stop" | "tool_calls" | "length") {
                     return Err(error(format!("Provider unfinished response: {reason}")));
                 }
                 finish = Some(reason.into());
@@ -246,14 +276,14 @@ pub fn read_sse(
     }
     let mut tool_calls = Vec::new();
     for (_, (id, name, arguments)) in calls {
-        if id.is_empty() || name.is_empty() {
+        if finish.as_deref() != Some("length") && (id.is_empty() || name.is_empty()) {
             return Err(error("Incomplete tool identity"));
         }
         tool_calls.push(
             json!({"id":id,"type":"function","function":{"name":name,"arguments":arguments}}),
         );
     }
-    if !tool_calls.is_empty() && finish.as_deref() != Some("tool_calls") {
+    if !tool_calls.is_empty() && !matches!(finish.as_deref(), Some("tool_calls" | "length")) {
         return Err(error("Tool calls without tool finish"));
     }
     observer.observe(ModelDelta::Finish(finish.clone().unwrap()));
@@ -335,6 +365,7 @@ mod tests {
                 let mut deltas = Vec::new();
                 let mut observe = |d| deltas.push(d);
                 let req = || CompletionRequest {
+                    followup_user: None,
                     images: Vec::new(),
                     output_token_limit: None,
                     reasoning_effort: None,
@@ -435,7 +466,6 @@ mod tests {
         for wire in [
             frame(json!({"content":"中文"}), Value::Null),
             "data: [DONE]\n\n".into(),
-            frame(json!({}), json!("length")),
             "data: {bad}\n\n".into(),
         ] {
             assert!(read_sse(wire.as_bytes(), &Default::default(), &mut ignore).is_err());
@@ -444,6 +474,20 @@ mod tests {
         let cancel = token.clone();
         let wire = frame(json!({"content":"中文"}), Value::Null) + &frame(json!({}), json!("stop"));
         assert!(read_sse(wire.as_bytes(), &token, &mut |_| cancel.cancel()).is_err());
+    }
+
+    #[test]
+    fn length_finish_preserves_usage_tail_and_partial_tool_for_retry() {
+        let wire = frame(json!({"tool_calls":[{"index":0,"function":{"arguments":"{\"partial\":"}}]}), json!("length"))
+            + "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":7,\"completion_tokens\":100,\"total_tokens\":107}}\n\n"
+            + "data: [DONE]\n\n";
+        let mut usage = None;
+        let result = read_sse(wire.as_bytes(), &Default::default(), &mut |delta| {
+            if let ModelDelta::Usage(value) = delta { usage = Some(value); }
+        }).unwrap();
+        assert_eq!(result["choices"][0]["finish_reason"], "length");
+        assert_eq!(result["usage"]["total_tokens"], 107);
+        assert_eq!(usage.unwrap().total_tokens, Some(107));
     }
 
     #[test]

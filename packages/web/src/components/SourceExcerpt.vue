@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref, watch } from 'vue';
 import { api as sharedApi, type AssetManifest, type SourcePopupView } from '../api';
 import { bindSceneApi } from '../network-context';
@@ -37,7 +39,7 @@ function unavailableImage(img: HTMLImageElement, message: string) {
   img.replaceWith(placeholder);
 }
 function imageFailed(event: Event) {
-  if (event.target instanceof HTMLImageElement) unavailableImage(event.target, '图片暂不可用');
+  if (event.target instanceof HTMLImageElement) unavailableImage(event.target, uiText('图片暂不可用'));
 }
 const rendered = computed(() => {
   const { source } = props;
@@ -53,7 +55,7 @@ const rendered = computed(() => {
     const asset = assets.value?.images.find(image => image.original_src === src || encodeURI(image.original_src) === src);
     const url = asset?.url_path ?? (asset?.status === 'external' ? asset.original_src : null);
     if (url) img.setAttribute('src', url);
-    else if (!/^(https?:|data:image\/)/i.test(src)) unavailableImage(img, loadingImages.value ? '正在加载图片…' : '图片暂不可用');
+    else if (!/^(https?:|data:image\/)/i.test(src)) unavailableImage(img, loadingImages.value ? uiText('正在加载图片…') : uiText('图片暂不可用'));
   }
   return root.innerHTML;
 });

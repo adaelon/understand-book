@@ -26,6 +26,61 @@ fn respond(request: tiny_http::Request, message: Value, tokens: u32) {
     }).to_string()).with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
 }
 
+// This fixture builds eight real turns before testing the review worker. Drain
+// context maintenance and observing-only coaching without consuming its script.
+fn next_review_fixture_request(fake: &tiny_http::Server) -> tiny_http::Request {
+    loop {
+        let mut request = fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap();
+        let mut body = String::new();
+        request.as_reader().read_to_string(&mut body).unwrap();
+        let body: Value = serde_json::from_str(&body).unwrap();
+        let messages = body["messages"].as_array().unwrap();
+        let system = messages.first().and_then(|message| message["content"].as_str()).unwrap_or("");
+        let tail = messages.last().filter(|message| message["role"] == "user")
+            .and_then(|message| message["content"].as_str()).unwrap_or("");
+        let output = if system.starts_with(runtime::compaction::COMPACTION_GENERATION_PROMPT)
+            || tail.starts_with(runtime::compaction::COMPACTION_GENERATION_PROMPT) {
+            // Both the old standalone request and the appended source map carry
+            // eligible_items as one JSON line; repair diagnostics are separate.
+            let input = tail.lines().filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .find(|value| value["eligible_items"].is_array()).expect("compaction source map");
+            let ids = input["eligible_items"].as_array().unwrap().iter()
+                .map(|item| item["source_item_id"].as_str().unwrap().to_owned()).collect::<Vec<_>>();
+            assert!(!ids.is_empty());
+            let item_id = "review.goal".to_owned();
+            Some(serde_json::to_value(runtime::CompactionDraft {
+                active_goal: vec![runtime::SourcedCheckpointItem {
+                    item_id: item_id.clone(),
+                    text: "Earlier turns requested brief source explanations and received an invitation to ask a question.".into(),
+                    source_item_ids: ids.clone(), evidence_refs: vec![],
+                }],
+                progress: vec![], decisions: vec![], user_constraints: vec![], open_obligations: vec![],
+                unresolved_ambiguities: vec![], critical_facts: vec![], critical_examples: vec![], next_steps: vec![],
+                source_coverage: ids.into_iter().map(|source_item_id| runtime::SourceCoverage {
+                    source_item_id, disposition: runtime::SourceDisposition::Compacted,
+                    target_item_ids: vec![item_id.clone()], reason: None,
+                }).collect(),
+            }).unwrap())
+        } else if system.starts_with("你是 Understand Book 的教学教练。") {
+            let input: Value = serde_json::from_str(tail).unwrap();
+            assert_eq!(input["trigger"], "after_turn");
+            assert_eq!(input["teaching_context"]["status"], "observing");
+            let observations: Vec<_> = input["observation_facts"].as_array().unwrap().iter()
+                .filter(|fact| fact["already_interpreted"] != true)
+                .map(|fact| json!({"fact_ref":fact["fact_ref"], "decision":"no_new_information",
+                    "reason":"This review transport fixture does not assess learner understanding."})).collect();
+            Some(json!({"next_step":{"focus":"Keep the accepted Resident task",
+                "participation":{"choice":"conclude", "reason":"Observation only."}},
+                "observations":observations, "reason":"The delivered response is already recorded."}))
+        } else { None };
+        if let Some(output) = output {
+            respond(request, json!({"role":"assistant", "content":output.to_string()}), 10);
+        } else {
+            return request;
+        }
+    }
+}
+
 #[test]
 fn multi_user_review_real_transport_is_billed_and_durable() {
     let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
@@ -44,7 +99,7 @@ fn multi_user_review_real_transport_is_billed_and_durable() {
         admit(&f,&w,&input);
         let access = f.access.clone();
         let worker = std::thread::spawn(move || access.runs.run_one(&access));
-        respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":"We can start with your question."}),10);
+        respond(next_review_fixture_request(&fake),json!({"role":"assistant","content":"We can start with your question."}),10);
         worker.join().unwrap().unwrap();
         w = f.get(&f.a,&w);
     }
@@ -77,8 +132,8 @@ fn multi_user_review_real_transport_is_billed_and_durable() {
         access.clone(),
     ).unwrap();
     // Invalid extractor output is charged, retained for retry, then recovered.
-    respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":"{\"candidate_facts\":\"invalid\"}"}),10);
-    respond(fake.recv_timeout(Duration::from_secs(15)).unwrap().unwrap(),json!({"role":"assistant","content":json!({"candidate_facts":[],"intent_observations":[]}).to_string()}),10);
+    respond(next_review_fixture_request(&fake),json!({"role":"assistant","content":"{\"candidate_facts\":\"invalid\"}"}),10);
+    respond(next_review_fixture_request(&fake),json!({"role":"assistant","content":json!({"candidate_facts":[],"intent_observations":[]}).to_string()}),10);
     // Wait for commit before shutdown, which intentionally cancels in-flight I/O.
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     while std::time::Instant::now() < deadline {

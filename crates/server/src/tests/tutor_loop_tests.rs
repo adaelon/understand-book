@@ -57,6 +57,59 @@ fn tutor_first_question_becomes_starting_intent_when_enabled() {
     assert_eq!(context["user_intent"],"Help me understand average speed.");
     assert_eq!(state.user.learning_store().unwrap().state().unwrap().sessions.len(),1);
 }
+
+#[test]
+fn tutor_source_restoration_drives_the_same_saved_stage_in_ui_and_teaching() {
+    let (_root, mut state) = fixture_with_assets(false);
+    let source = state.workspace.book.base.book_id.clone();
+    let original = state.user.learning_store_for_source(None, &source).unwrap().state().unwrap();
+    let original_id = original.control.current_tutor_session_id.clone().unwrap();
+    json_post(&mut state, "/tutor/mutate", json!({"operation_id":"other-source", "expected_revision":original.control.revision,
+        "action":{"kind":"start", "user_intent":"另一份资料的考试复习", "explicit_constraints":[],
+            "material_scope":[{"source_id":"other-book", "scope_refs":[], "role":"primary"}], "default_teaching_intent":null}}));
+    let read = route(&mut state, Req { method:"GET", url:"/tutor/state", body:"", now:"now" });
+    assert_eq!(read.status, 200);
+    let read: Value = serde_json::from_str(&read.body).unwrap();
+    assert_eq!(read["control"]["current_tutor_session_id"], original_id);
+    assert_eq!(read["sessions"][&original_id]["status"], "paused");
+    let continued = teaching::start_request(&state.private_context(), "later").unwrap();
+    assert_eq!(continued["started"], true);
+    assert_eq!(continued["state"]["control"]["current_tutor_session_id"], original_id);
+    let run = prepare(&mut state);
+    let teaching = run.tutor.unwrap();
+    assert_eq!(teaching["status"], "active");
+    assert_eq!(teaching["binding"]["tutor_session_id"], original_id);
+    assert_eq!(teaching["user_intent"], original.sessions[&original_id].user_intent);
+    let other = state.user.learning_store_for_source(None, "other-book").unwrap().state().unwrap();
+    assert_eq!(other.control.current_tutor_session_id.as_deref(), Some("tutor-other-source"));
+}
+
+#[test]
+fn tutor_source_first_questions_in_one_cross_material_chat_get_distinct_stages() {
+    let (_root, mut first) = fixture_with_assets(false);
+    let mut second_base = sample_base();
+    second_base.book_id = "other-source".into();
+    let source = "A second source about computing resources. ".repeat(12);
+    let (_second_root, second) = fixture_with_book(false, Book::new(second_base, &source), &source);
+    let private = tempfile::tempdir().unwrap();
+    first.user.store = MemoryStore::open(private.path().join("memory.json")).unwrap();
+    json_post(&mut first, "/tutor/mutate", json!({"operation_id":"on", "expected_revision":0,
+        "action":{"kind":"set_enabled", "enabled":true}}));
+    let mut stages = Vec::new();
+    for (index, workspace) in [&first.workspace, &second.workspace].into_iter().enumerate() {
+        let context = PrivateBookContext { user:&first.user, book:&workspace.book, book_dir:&workspace.book_dir,
+            learning_workspace_id:None, messages:&[], selected_chat:None };
+        let turn = AgentTurnRef { session_id:"one-cross-material-chat".into(),
+            turn_id:format!("turn-{index}"), user_turn_ordinal:index as u64 };
+        let prepared = teaching::freeze_prepare(&context, &turn,
+            &json!({"message":format!("Explain source {index}")}), None, "now").unwrap();
+        let teaching = prepared.context.unwrap();
+        assert_eq!(teaching["status"], "active");
+        assert_eq!(teaching["user_intent"], format!("Explain source {index}"));
+        stages.push(teaching["binding"]["tutor_session_id"].clone());
+    }
+    assert_ne!(stages[0], stages[1]);
+}
 fn fixture_with_assets(published: bool) -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
     fixture_with_book(published, Book::new(sample_base(), &source), &source)
@@ -140,12 +193,16 @@ pub(crate) fn fixture_coach_guidance(request:&CompletionRequest) -> Option<Value
 /// acceptance gate itself is exercised with rejecting/failing runtime adapters;
 /// live teaching adapters continue to send this request to the real model.
 pub(crate) fn fixture_delivery_review(request:&CompletionRequest) -> Option<Value> {
-    if !request.system.starts_with("Teaching delivery acceptance review.") { return None; }
+    let explanation = request.system.contains("Teaching explanation acceptance review.");
+    if !explanation && !request.system.contains("Teaching delivery acceptance review.") { return None; }
     let packet:Value=serde_json::from_str(&request.user).unwrap();
-    let question=[&packet["frozen_input"]["current_request"],&packet["frozen_input"]["learner_request"],
-        &packet["frozen_input"]["current_action"]["accepted_request"],&packet["original_request"]]
-        .into_iter().filter_map(Value::as_str).find(|text| !text.trim().is_empty()).unwrap();
-    let delivered=packet["proposed_delivery"]["text"].as_str().unwrap();
+    let question=if explanation { packet["current_request"].as_str().unwrap() } else {
+        [&packet["frozen_input"]["current_request"],&packet["frozen_input"]["learner_request"],
+            &packet["frozen_input"]["current_action"]["accepted_request"],&packet["original_request"]]
+            .into_iter().filter_map(Value::as_str).find(|text| !text.trim().is_empty()).unwrap()
+    };
+    let delivered=if explanation { packet["current_delivery"].as_str().unwrap() }
+        else { packet["proposed_delivery"]["text"].as_str().unwrap() };
     // These deterministic fixtures exercise dispatch and persistence; live
     // adapters still produce their own review through TutorRequestRecorder.
     Some(json!({"decision":"accept","revision":null,"learner_claims":[],"findings":[],
@@ -665,6 +722,21 @@ fn tutor_visible_rubric_feedback_is_help_for_the_next_attempt() {
         action.payload["assistance_refs"].as_array().unwrap().len(),
         1
     );
+    teaching::assessment_accept(&state.private_context(), &run.turn_ref, "action:feedback-revise", open_items())
+        .unwrap();
+    let timeline=json_post(&mut state,"/tutor/timeline",json!({"evidence_ref":"assessment:action:feedback-revise:speed"}));
+    let revised=timeline["entries"].as_array().unwrap().iter()
+        .find(|entry|entry["action_ref"]=="action:feedback-revise").unwrap();
+    assert_eq!(revised["assistance_count"],1);
+    assert_eq!(revised["assistance"][0]["fact_ref"],"feedback-seen:action:feedback-first");
+    assert_eq!(revised["assistance"][0]["kind"],"help_displayed");
+    assert_eq!(revised["assistance"][0]["text"],
+        "The response names the total distance.\nThe response names total elapsed time.",
+        "the timeline resolves the exact feedback shown before this revision, rather than claiming its text was not retained");
+    let first=timeline["entries"].as_array().unwrap().iter()
+        .find(|entry|entry["action_ref"]=="action:feedback-first").unwrap();
+    assert!(first["assistance"].as_array().unwrap().is_empty(),
+        "feedback shown later must not become help received before the original response");
 }
 
 #[test]
@@ -749,11 +821,12 @@ fn tutor_live_open_rubric_assessment() {
             adapter.as_ref(),
             adapter.model_runtime_profile(),
             json!({"contract":contract,"response":response,"sources":sources}),
+            vec![],
         )
         .unwrap();
         let parsed: Value = serde_json::from_str(result["text"].as_str().unwrap()).unwrap();
         let items: Vec<ItemAssessment> = serde_json::from_value(parsed["items"].clone()).unwrap();
-        let status = accept_open(&contract, response, &sources, &items).unwrap();
+        let status = accept_open(&contract, response, &sources, &BTreeMap::new(), &items).unwrap();
         println!(
             "TUTOR_ASSESSMENT_LIVE {}",
             json!({"response":response,"status":status,"items":items,"usage":usage})
@@ -2060,8 +2133,16 @@ fn w3_ordinary_understanding_and_frozen_preparation_stay_in_origin_workspace() {
     let fact = format!("usage:{}:user:{}",context["binding"]["tutor_session_id"].as_str().unwrap(),run.turn_ref.turn_id);
     let request = json!({"operation":"evidence","nature":"hypothesis","operation_id":"workspace-a-difficulty","target":original["move"]["target"],
         "fact_refs":[fact],"interpretation":"The denominator connection is unclear.","teaching_implication":"Explain total elapsed time."});
-    let frozen = teaching::freeze_prepare(&state.private_context(), &run.turn_ref,
-        &json!({"message":"I do not understand the denominator."}), None, "1").unwrap();
+    // Admission has already persisted this preparation. Recovery replays that
+    // exact snapshot, rather than recomputing a view after facts gained sequences.
+    let original_store=state.user.learning_store_for_workspace(Some("workspace-a")).unwrap();
+    let original_binding=original_store.teaching_event(&format!("binding:{}",run.turn_ref.turn_id)).unwrap();
+    let frozen=teaching::FrozenTeachingPreparation {
+        learning_workspace_id:Some("workspace-a".into()),
+        context:Some(original_binding.payload.clone()),
+        events:original_store.teaching_turn_events(&original_binding.binding.tutor_session_id,&run.turn_ref.turn_id).unwrap(),
+    };
+    drop(original_store);
     let frozen: teaching::FrozenTeachingPreparation = serde_json::from_value(serde_json::to_value(frozen).unwrap()).unwrap();
     let adapter = ChatStubAdapter::scripted(vec![call("book.text",json!({"lid":"1.1","end_lid":"1.1"})),call("tutor.step",request),answer("Use total time.")]);
     let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
@@ -2069,6 +2150,8 @@ fn w3_ordinary_understanding_and_frozen_preparation_stay_in_origin_workspace() {
     state.workspace.learning_workspace_id = Some("workspace-b".into());
     frozen.resume(&state.user).unwrap();
     let a = state.user.learning_store_for_workspace(Some("workspace-a")).unwrap();
+    assert_eq!(a.teaching_event(&original_binding.event_id).unwrap(),original_binding,
+        "resuming the original preparation must not rewrite its input-time context after understanding extraction");
     assert_eq!(a.evidence("interpretation:workspace-a-difficulty").unwrap().learner_quote, "I do not understand the denominator.");
     assert!(!a.state().unwrap().control.enabled);
     let b = state.user.learning_store_for_workspace(Some("workspace-b")).unwrap();

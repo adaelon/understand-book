@@ -167,6 +167,7 @@ impl ReviewExecutor for ProviderReviewExecutor {
 pub fn execute_review(adapter: &dyn ModelAdapter, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
         validate_input(input)?;
         let value = adapter.complete_structured(CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,

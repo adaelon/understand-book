@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Copy, LoaderCircle, RotateCcw, Settings, X } from "@lucide/vue";
 import type { PdfSelectionTranslationState } from "../pdf-selection-translation";
@@ -94,16 +96,16 @@ onBeforeUnmount(() => {
     :class="{ 'is-mobile': mobile }"
     :style="surfaceStyle"
     role="dialog"
-    aria-label="PDF 选区翻译"
+    :aria-label="uiText('PDF 选区翻译')"
     aria-live="polite"
   >
     <header class="pdf-translation-head">
-      <strong>选区翻译</strong>
+      <strong>{{ uiText('选区翻译') }}</strong>
       <button
         class="pdf-translation-primary-icon"
         type="button"
-        title="关闭翻译"
-        aria-label="关闭翻译"
+        :title="uiText('关闭翻译')"
+        :aria-label="uiText('关闭翻译')"
         @click="emit('close')"
       >
         <X :size="22" :stroke-width="2.2" aria-hidden="true" />
@@ -112,21 +114,21 @@ onBeforeUnmount(() => {
 
     <div v-if="state.phase === 'loading'" class="pdf-translation-state is-loading">
       <LoaderCircle class="pdf-translation-spinner" :size="20" aria-hidden="true" />
-      <span>翻译中...</span>
+      <span>{{ uiText('翻译中...') }}</span>
     </div>
 
     <div v-else-if="state.phase === 'error'" class="pdf-translation-state is-error">
-      <strong>翻译失败</strong>
+      <strong>{{ uiText('翻译失败') }}</strong>
       <p>{{ state.error?.message }}</p>
       <div class="pdf-translation-actions">
-        <button type="button" title="重试翻译" aria-label="重试翻译" @click="emit('retry')">
+        <button type="button" :title="uiText('重试翻译')" :aria-label="uiText('重试翻译')" @click="emit('retry')">
           <RotateCcw :size="17" aria-hidden="true" />
         </button>
         <button
           v-if="showSettings"
           type="button"
-          title="打开 Reader Provider 设置"
-          aria-label="打开 Reader Provider 设置"
+          :title="uiText('打开 Reader Provider 设置')"
+          :aria-label="uiText('打开 Reader Provider 设置')"
           @click="emit('settings')"
         >
           <Settings :size="17" aria-hidden="true" />
@@ -140,8 +142,8 @@ onBeforeUnmount(() => {
         <button
           class="pdf-translation-primary-icon"
           type="button"
-          title="复制译文 Markdown"
-          aria-label="复制译文 Markdown"
+          :title="uiText('复制译文 Markdown')"
+          :aria-label="uiText('复制译文 Markdown')"
           @click="copyTranslation"
         >
           <Copy :size="22" :stroke-width="2.2" aria-hidden="true" />

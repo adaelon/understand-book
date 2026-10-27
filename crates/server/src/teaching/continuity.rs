@@ -65,6 +65,8 @@ fn source_refs(value: &Value) -> Vec<Value> {
         "publication_id":source["publication_id"],"source_revision":source["source_revision"],
         "music_target":source.get("music").and_then(|music|music.get("target"))
             .or_else(||source.get("target").filter(|target|target.get("audio").is_some())),
+        "media_target":source.get("media").and_then(|media|media.get("target"))
+            .or_else(||source.get("target").filter(|target|target.get("kind").is_some())),
         "evidence_range":source.get("evidence_range").cloned().unwrap_or_else(||
             json!({"start_lid":source["start_lid"],"end_lid":source["end_lid"]}))
     })).collect()
@@ -72,6 +74,7 @@ fn source_refs(value: &Value) -> Vec<Value> {
 
 fn target_sources(target: &Value) -> Value {
     json!(target["source_bindings"].as_array().into_iter().flatten()
+        .chain(target["media_bindings"].as_array().into_iter().flatten())
         .chain(target["music_bindings"].as_array().into_iter().flatten()).collect::<Vec<_>>())
 }
 
@@ -93,6 +96,21 @@ mod music_tests {
         assert_eq!(teaching[0]["music_target"],target);
         assert_eq!(teaching[0]["source_revision"],"original-text");
         assert!(!json!(history).to_string().contains("large prepared material"));
+    }
+
+    #[test]
+    fn video_continuity_keeps_original_target_without_copying_observation_payload() {
+        let target = json!({"kind":"audio","publication":{"book_id":"lecture","publication_id":"first"},
+            "location":{"video":{"media_id":"video","media_revision":"1"},"start_ms":1200,"end_ms":1600},
+            "review_result_ref":"original-review"});
+        let history = source_refs(&json!([{"source_ref_id":"ref","book_id":"lecture","source_revision":"original-text",
+            "media":{"target":target,"observations":["large original observation"]}}]));
+        let teaching = source_refs(&target_sources(&json!({"source_bindings":[],
+            "media_bindings":[{"source_id":"lecture","source_revision":"original-text","target":target}]})));
+        assert_eq!(history[0]["media_target"],target);
+        assert_eq!(teaching[0]["media_target"],target);
+        assert_eq!(teaching[0]["source_revision"],"original-text");
+        assert!(!json!(history).to_string().contains("large original observation"));
     }
 }
 
@@ -120,7 +138,7 @@ fn work(
         });
     json!({
         "action_ref":(fact.kind==TeachingFact::LearnerAction).then_some(&fact.event_id),
-        "fact_refs":[fact.event_id],"binding":fact.binding,
+        "fact_refs":[fact.event_id],"binding":fact.binding,"occurred_at":fact.occurred_at,
         "delivery_ref":fact.payload.get("delivery_ref").or_else(||fact.payload.get("invitation_context_ref")),
         "saved_state_ref":receipt["saved_state_ref"],"presentation_receipt":receipt,
         "published_book_ref":fact.payload["published_book_ref"],"source_refs":source_refs(&sources),
@@ -140,7 +158,7 @@ fn implication(evidence: &LearningEvidence, historical: bool) -> Value {
         "teaching_implication":preview(&json!(evidence.teaching_implication),600),
         "interpretation":preview(&json!(evidence.interpretation),600),
         "correction":evidence.correction.as_ref().map(|text|preview(&json!(text),600)),
-        "supersedes":evidence.supersedes,"fact_refs":evidence.fact_refs,
+        "supersedes":evidence.supersedes,"fact_refs":evidence.fact_refs,"support_delivery_refs":evidence.support_delivery_refs,"assistance_refs":evidence.assistance_refs,
         "scope":{"source_id":evidence.source_id,"source_revision":evidence.source_revision,
             "tutor_session_id":evidence.session_id,"design_ref":evidence.design_ref,"block_refs":evidence.block_refs},
         "historical":historical})
@@ -222,9 +240,11 @@ pub(super) fn context(
         match store.understanding_basis(binding, &id) {
             Ok((evidence, _)) => {
                 local_read(&mut reads, &id, true);
+                let mut projected=implication(&evidence, false);
+                timeline::merge_metadata(state,&evidence,&mut projected)?;
                 omitted |= !keep(
                     &mut implications,
-                    implication(&evidence, false),
+                    projected,
                     &mut context_remaining,
                 );
             }
@@ -238,7 +258,7 @@ pub(super) fn context(
         omitted |= !keep(
             &mut questions,
             json!({"fact_ref":id,
-            "learner_quote_excerpt":preview(&json!(fact.learner_expression()),600),
+            "learner_quote_excerpt":preview(&json!(fact.learner_expression()),600),"occurred_at":fact.occurred_at,"fact_sequence":store.teaching_event_sequence(&fact.event_id)?,
             "support_delivery_refs":fact.payload["support_delivery_refs"],"assistance_refs":fact.payload["assistance_refs"]}),
             &mut context_remaining,
         );
@@ -256,9 +276,11 @@ pub(super) fn context(
                 Ok(_) => {
                     local_read(&mut reads, &item.evidence_id, true);
                     if seen_evidence.insert(item.evidence_id.clone()) {
+                        let mut projected=implication(&item, false);
+                        timeline::merge_metadata(state,&item,&mut projected)?;
                         omitted |= !keep(
                             &mut implications,
-                            implication(&item, false),
+                            projected,
                             &mut context_remaining,
                         );
                     }
@@ -270,6 +292,7 @@ pub(super) fn context(
         }
         let assessment = store.assessment(&fact.event_id)?;
         let mut row = work(fact, &evidence, assessment.as_ref());
+        row["fact_sequence"]=json!(store.teaching_event_sequence(&fact.event_id)?);
         row["historical"] = json!(false);
         // The trace is authoritative for the help that existed at input time.
         // Do not replace it with the activity's newer help list.
@@ -288,7 +311,7 @@ pub(super) fn context(
                         &saved.payload["move"]["target"]
                     )));
                 }
-                let mut item=json!({"fact_ref":id,"content_excerpt":preview(
+                let mut item=json!({"fact_ref":id,"occurred_at":saved.occurred_at,"content_excerpt":preview(
                     saved.payload.get("answer").unwrap_or(&saved.payload["text"]),600)});
                 if saved.payload["actor"]=="teacher" {
                     item["actor"]=json!("teacher");
@@ -417,7 +440,7 @@ pub(super) fn context(
                         || strings(&fact.payload["support_delivery_refs"]).contains(&help.event_id))
                     .take(2)
                     .map(
-                        |help| json!({"fact_ref":help.event_id,"content_excerpt":preview(
+                        |help| json!({"fact_ref":help.event_id,"occurred_at":help.occurred_at,"content_excerpt":preview(
                         help.payload.get("answer").unwrap_or(&help.payload["text"]),600)})
                     )
                     .collect::<Vec<_>>());

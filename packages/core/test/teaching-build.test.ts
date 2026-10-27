@@ -25,8 +25,11 @@ import { buildSemanticArtifactEnvelopeV3 } from "../src/semantic-artifact";
 import { claimAutomaticBuildTask } from "../src/automatic-build-lease";
 import { failAutomaticBuildTask } from "../src/automatic-build-mailbox";
 import { readAutomaticBuildCandidateRetryFeedback } from "../src/automatic-build-task-store";
-import { taskPolicyBindingForWorkUnit } from "../src/stage-work-unit";
+import { taskPolicyBindingForWorkUnit, buildWorkUnitCost } from "../src/stage-work-unit";
 import { createAutomaticBuildFailureDiagnosticV3 } from "../src/extractor-contract";
+import { cognitiveTaskInput, newCognitiveWork } from "../src/cognitive-materials";
+import { evaluateModelInputBudget } from "../src/model-input-budget";
+import { AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1 } from "../src/automatic-build-protocol";
 
 const provenance = { executor: "fixture-source-reader", attempt: 1, generated_at: "2026-09-29T00:00:00.000Z" };
 const serialReplayInputs = new WeakSet<TeachingBuildInput>();
@@ -150,6 +153,66 @@ function replayFixture(semantic = true, linked = semantic, serial = true) {
   return { input, provider, prepare, changeProvider, fragmentFiles };
 }
 describe("whole-material teaching build", () => {
+  it("freezes required original text in the first cognitive input and accepts an immediate grounded material", () => {
+    const input = fixture();
+    write(input, tasks(input).tasks[0], proposal);
+    closeTeachingStage(input, "formal_objects");
+    const initial = tasks(input).tasks.find(t => t.target?.id === "measurement")!;
+    const packet = JSON.parse(initial.rendered_input);
+    const original = source.passages.find(p => p.lid === "2.2")!.text;
+    expect(packet.work.readings).toEqual([{ lid: "2.2", start: 0, end: original.length, text: original }]);
+    expect(initial.work!.readings).toEqual(packet.work.readings);
+    expect(initial.work!.used.read_chars).toBe(original.length);
+    freezeTeachingTask(input.target, initial);
+    const frozen = readTeachingTask(input.target, initial.policy_generation_id, initial.descriptor.work_unit_id);
+    expect(frozen.rendered_input).toBe(initial.rendered_input);
+    const candidate = { kind: "finish", material: { target_id: "measurement", kind: "method",
+      object_refs: [initial.objects!.active_refs[0]], purpose: "保存测量方法",
+      steps: [{ id: "measure", content: original, source_bindings: [binding("2.2")] }],
+      connections: [], conditions: [], gaps: [], patterns: [] } };
+    const committed = write(input, frozen, candidate);
+    const result = JSON.parse(readFileSync(committed.artifact_path, "utf8"));
+    expect(result.payload).toMatchObject({ status: "complete", used: { read_chars: original.length } });
+    const replayed = tasks(input);
+    expect(replayed.state.pending_tasks).not.toContain(initial.descriptor.work_unit_id);
+    expect(replayed.tasks.find(t => t.descriptor.work_unit_id === initial.descriptor.work_unit_id)!.rendered_input).toBe(initial.rendered_input);
+  });
+  it("replays an already frozen unprefetched first packet and its accepted reading unchanged", () => {
+    const input = fixture();
+    write(input, tasks(input).tasks[0], proposal);
+    closeTeachingStage(input, "formal_objects");
+    const initial = tasks(input).tasks.find(t => t.target?.id === "harmonic")!;
+    const legacy = structuredClone(initial);
+    legacy.work = newCognitiveWork(input.source, legacy.target!);
+    legacy.rendered_input = canonicalBuildJson({ ...cognitiveTaskInput(input.source, legacy.target!, legacy.objects!, legacy.work, legacy.budget!), feedback: [] });
+    const policy = legacy.descriptor.policy_fingerprint;
+    const budget = evaluateModelInputBudget({ ...AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1, rendered_input: legacy.rendered_input,
+      router_version: policy.router_version, prompt_sha256: policy.prompt_sha256, output_reserve_tokens: 4096, executor_context_floor_tokens: 16384 });
+    if (budget.status !== "within_limit") throw new Error("legacy cognitive fixture exceeds the model input budget");
+    const hash = budget.proof.rendered_input_sha256;
+    legacy.descriptor.work_unit_id = legacy.descriptor.work_unit_id.replace(/-[a-f0-9]{16}$/u, `-${hash.slice(0, 16)}`);
+    legacy.descriptor.input_hash = hash;
+    legacy.descriptor.input_budget_proof = budget.proof;
+    if (legacy.descriptor.input_basis.kind !== "semantic_projection") throw new Error("expected semantic projection");
+    legacy.descriptor.input_basis.projection_sha256 = hash;
+    legacy.descriptor.cost = buildWorkUnitCost({ estimated_input_tokens: budget.proof.estimated_rendered_tokens,
+      visible_lids: legacy.descriptor.evidence_lids.length, expected_output_items: 1 });
+    freezeTeachingTask(input.target, legacy);
+    const frozenFile = teachingTaskPath(input.target, legacy.policy_generation_id, legacy.descriptor.work_unit_id);
+    const frozenBytes = readFileSync(frozenFile, "utf8");
+    const resumed = tasks(input).tasks.find(t => t.target?.id === "harmonic")!;
+    expect(resumed.descriptor).toEqual(legacy.descriptor);
+    expect(resumed.rendered_input).toBe(legacy.rendered_input);
+    expect(resumed.work!.readings).toEqual([]);
+    write(input, resumed, { kind: "read", lid: "2.1" });
+    const afterRead = tasks(input).tasks.filter(t => t.target?.id === "harmonic").at(-1)!;
+    expect(afterRead.work!.readings).toEqual([{ lid: "2.1", start: 0, end: source.passages[2].text.length, text: source.passages[2].text }]);
+    expect(afterRead.work!.used.read_chars).toBe(source.passages[2].text.length);
+    expect(readFileSync(frozenFile, "utf8")).toBe(frozenBytes);
+    finishMaterials(input);
+    expect(tasks(input).state.stage).toBe("teaching_publish");
+    expect(readFileSync(frozenFile, "utf8")).toBe(frozenBytes);
+  });
   it("shares whole-book inputs and stores only the accepted alignment action", () => {
     const f = replayFixture(false, false, false), routed = tasks(f.input);
     const task = routed.tasks.find(t => routed.state.pending_tasks.includes(t.descriptor.work_unit_id))!;

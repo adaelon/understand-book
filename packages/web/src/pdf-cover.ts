@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 // Keep large libraries from starting one PDF worker per visible card at once.
 let active = 0;
 const waiting: Array<() => void> = [];
@@ -37,7 +38,7 @@ export async function renderPdfCover(url: string, canvas: HTMLCanvasElement, con
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('封面画布不可用');
+    if (!context) throw new Error(uiText('封面画布不可用'));
     await page.render({ canvas, canvasContext: context, viewport }).promise;
   } finally {
     controller.signal.removeEventListener('abort', cancel);

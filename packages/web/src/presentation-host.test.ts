@@ -21,6 +21,7 @@ describe("MU7 frame channel", () => {
       { kind: 'teaching-help', request_id: 1, move_id: 'observe-candidate', help_kind: 'hint', region_id: 'candidate-help', text: '乙仍在候选里。' },
       { kind: 'teaching-help', request_id: 2, move_id: 'observe-candidate', help_kind: 'explanation', region_id: 'candidate-help', text: '主干只是一种选择结果。' },
       { kind: 'region-located', region_id: 'candidate-help', located: false },
+      { kind: 'region-activated', region_id: 'candidate-help' },
     ]) {
       const event = { source, origin: 'null', data: { channel: 'current', ...data } } as MessageEvent;
       expect(acceptsPresentationMessage(event, source, 'current')).toBe(true);
@@ -33,7 +34,8 @@ describe("MU7 frame channel", () => {
     const source = {} as Window;
     const help = { kind: 'teaching-help', request_id: 1, move_id: 'observe-candidate', help_kind: 'hint', region_id: 'candidate-help', text: '乙仍在候选里。' };
     for (const data of [{ ...help, request_id: undefined }, { ...help, help_kind: 'answer' }, { ...help, region_id: undefined },
-      { ...help, text: undefined }, { kind: 'region-located', region_id: 'candidate-help', located: 'false' }]) {
+      { ...help, text: undefined }, { kind: 'region-located', region_id: 'candidate-help', located: 'false' },
+      { kind: 'region-activated', region_id: undefined }]) {
       expect(acceptsPresentationMessage({ source, origin: 'null', data: { channel: 'current', ...data } } as MessageEvent, source, 'current')).toBe(false);
     }
   });

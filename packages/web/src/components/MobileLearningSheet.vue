@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { nextTick, ref, watch } from 'vue';
 import { X } from '@lucide/vue';
 
@@ -35,7 +37,7 @@ function onKeydown(event: KeyboardEvent) {
   <Teleport to="body">
     <div v-show="open" class="learning-sheet-backdrop" @click.self="emit('close')">
       <section ref="panel" class="learning-sheet" role="dialog" aria-modal="true" :aria-label="title" @keydown="onKeydown">
-        <header><div><span class="sheet-handle" aria-hidden="true" /><h2>{{ title }}</h2></div><button class="sheet-close" type="button" :aria-label="`关闭${title}`" @click="emit('close')"><X :size="20" aria-hidden="true" /></button></header>
+        <header><div><span class="sheet-handle" aria-hidden="true" /><h2>{{ title }}</h2></div><button class="sheet-close" type="button" :aria-label="uiText('关闭{0}', [title])" @click="emit('close')"><X :size="20" aria-hidden="true" /></button></header>
         <div class="learning-sheet-content"><slot /></div>
       </section>
     </div>

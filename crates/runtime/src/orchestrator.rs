@@ -11,10 +11,11 @@ use crate::{
     agent_request_audit::AgentRequestAudit,
     auto_compaction::{
         ActiveContextBudget, CompactionCheckpointSink, EphemeralCompactionCheckpointSink,
+        ContextTokenMeter, ContextUsageCapture,
         ACTIVE_CONTEXT_EXHAUSTED, COMPACTION_FAILED, TURN_LIMIT_EXCEEDED,
     },
     compaction::{
-        compact_with_adapter, prepare_compaction, project_compaction_checkpoint_messages,
+        compact_with_adapter, project_compaction_checkpoint_messages,
         AllowedSupersession, CompactionCheckpoint, CompactionError, CompactionLimits,
         CompactionPhase, EvidenceRef, PendingEffectRef, PreparedCompaction,
         COMPACTION_CONSUMPTION_WRAPPER, COMPACTION_NOT_APPLICABLE,
@@ -739,6 +740,7 @@ enum LocatorOrigin {
     ContextResult,
     NavigationPlanResult,
     TeachingValidation,
+    TeachingTarget,
     VerifiedEvidence,
 }
 
@@ -753,6 +755,7 @@ impl LocatorOrigin {
                 | Self::NavigationPlanResult
                 | Self::VerifiedEvidence
                 | Self::TeachingValidation
+                | Self::TeachingTarget
         )
     }
 }
@@ -800,7 +803,7 @@ impl ProgressPhase {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct TurnProgressLedger {
     phase: ProgressPhase,
-    library_observations: BTreeSet<(String, String)>,
+    read_observations: BTreeSet<(String, String)>,
     media_reads: BTreeSet<String>,
     web_observations: BTreeSet<String>,
 }
@@ -840,10 +843,50 @@ impl TurnProgressLedger {
         } else { observe(&body, body["offset"].as_u64().unwrap_or(0) as usize); }
     }
 
-    fn observe_library(&mut self, tool: &str, arguments: &str, body: &str) {
-        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning") { return; }
+    fn observe_read(&mut self, tool: &str, arguments: &str, body: &str) {
+        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning" | "board.author" | "workspace.records.read") { return; }
         let Ok(body) = serde_json::from_str::<serde_json::Value>(body) else { return; };
         if body.get("error_code").is_some() || body.get("projection").is_some() { return; }
+        if matches!(tool, "board.author" | "workspace.records.read") {
+            let args: serde_json::Value = serde_json::from_str(arguments).unwrap_or_default();
+            // Credit only the source/page/record identities actually delivered
+            // after result projection, not a tool category or raw request text.
+            let identity = if tool == "board.author" {
+                match body["status"].as_str() {
+                    Some("board_catalog") if body["items"].is_array() => Some(serde_json::json!({
+                        "operation":"catalog","book_id":body["book_id"],"publication":body["published_book_ref"],
+                        "sources":body["items"].as_array().unwrap().iter().map(|item| &item["source"]).collect::<Vec<_>>()
+                    })),
+                    Some("board_source") if body["source"].is_object() && body["item"].is_object() => Some(serde_json::json!({
+                        "operation":"source_read","source":body["source"],"publication":body["published_book_ref"]
+                    })),
+                    Some("board_page") if body["records"].is_array() => Some(serde_json::json!({
+                        "operation":"read","board_id":body["board_id"],"board_revision":body["board_revision"],
+                        "candidate_revision":body["candidate_revision"],"collection":body["collection"],
+                        "offset":body["offset"],"count":body["records"].as_array().unwrap().len()
+                    })),
+                    Some("board_read") if body["board"].is_object() => Some(serde_json::json!({
+                        "operation":"read","board_id":body["board"]["board_id"],"board_revision":body["board"]["revision"],
+                        "candidate_revision":body["candidate_revision"]
+                    })),
+                    _ => None,
+                }
+            } else {
+                body["records"].as_array().map(|records| serde_json::json!({
+                    "operation":args["operation"],"learning_workspace_id":body["learning_workspace_id"],
+                    "book_id":body["book_id"],"selection":body["selection"],
+                    "records":records.iter().map(|record| serde_json::json!({
+                        "record_id":record["record_id"],"chat_session_id":record["chat_session_id"],
+                        "selection":record["selection"],"through_seq":record["through_seq"],
+                        "event_seq":record["event_seq"],"revision":record["record"]["revision"]
+                    })).collect::<Vec<_>>()
+                }))
+            };
+            if let Some(identity) = identity {
+                self.read_observations.insert((tool.into(), identity.to_string()));
+            }
+            return;
+        }
         let delivered = match tool {
             "library.list" => body["items"].is_array(),
             "library.search" => body["hits"].is_array(),
@@ -855,7 +898,7 @@ impl TurnProgressLedger {
             // Keep the actual request identity; repeating an unchanged page adds no progress.
             let key = body["evidence_ref"].as_str().map(str::to_owned)
                 .unwrap_or_else(|| canonical_tool_arguments(arguments));
-            self.library_observations.insert((tool.into(), key));
+            self.read_observations.insert((tool.into(), key));
         }
     }
 }
@@ -993,6 +1036,24 @@ impl TurnLocatorLedger {
     fn observe_verified_evidence(&mut self, evidence: &[EvidenceRange], book: &Book) {
         for range in evidence {
             self.observe_evidence_range(range, LocatorOrigin::VerifiedEvidence, book);
+        }
+    }
+
+    fn observe_teaching_targets(&mut self, tutor: &serde_json::Value, book: &Book) {
+        for target in [&tutor["current_design"]["design"]["target"], &tutor["learner_context"]["current_target"]] {
+            for source in target["source_bindings"].as_array().into_iter().flatten() {
+                // A saved target provides a location, never current-turn source
+                // evidence. Match its source identity before allowing a read.
+                if source["source_id"].as_str() != Some(book.base.book_id.as_str())
+                    || source["source_revision"].as_str() != Some(book.source_fingerprint()) {
+                    continue;
+                }
+                for field in ["start_lid", "end_lid"] {
+                    if let Some(lid) = source[field].as_str() {
+                        self.observe_lid(lid, LocatorOrigin::TeachingTarget, book);
+                    }
+                }
+            }
         }
     }
 
@@ -3260,7 +3321,7 @@ fn teaching_review_grounding(grounding: &serde_json::Value) -> serde_json::Value
 fn teaching_review_learner_view(tutor: &serde_json::Value) -> serde_json::Value {
     let learner = &tutor["learner_context"];
     let mut fields = serde_json::Map::new();
-    for key in ["pending_response_invitation", "pending_activity", "pending_assessment_refs"] {
+    for key in ["pending_response_invitation", "pending_activity", "pending_assessment_refs", "confirmed_background"] {
         if let Some(value) = learner.get(key) { fields.insert(key.into(), value.clone()); }
     }
     let mut opportunity = serde_json::Map::new();
@@ -3275,7 +3336,7 @@ fn teaching_review_learner_view(tutor: &serde_json::Value) -> serde_json::Value 
 
 /// Review only the learner-visible content for revision progress. Move IDs,
 /// private reasoning and a new reference for an unchanged page are not edits.
-fn teaching_review_content(delivery: &serde_json::Value, presentations: &[serde_json::Value]) -> serde_json::Value {
+fn teaching_review_content(delivery: &serde_json::Value, presentations: &[serde_json::Value], board: &serde_json::Value) -> serde_json::Value {
     let pages = presentations.iter().map(|page| {
         let mut observed = Vec::new();
         for preview in page["author_preview_observations"].as_array().into_iter().flatten() {
@@ -3287,7 +3348,18 @@ fn teaching_review_content(delivery: &serde_json::Value, presentations: &[serde_
             "initial_state":page["initial_state"],"state_contract":page["state_contract"],
             "author_preview_observations":observed})
     }).collect::<Vec<_>>();
-    serde_json::json!({"text":delivery["text"].as_str().unwrap_or_default().trim(),"presentations":pages})
+    let mut content=serde_json::json!({"text":delivery["text"].as_str().unwrap_or_default().trim(),"presentations":pages});
+    if board.is_object() {
+        content["board"] = serde_json::json!({"items":board["items"],"update_items":board["update_items"],
+            "links":board["links"],"mappings":board["mappings"],"routes":board["routes"],
+            "observations":board["author_preview_observations"].as_array().into_iter().flatten()
+                .map(|preview| &preview["observations"]).collect::<Vec<_>>()});
+    }
+    if delivery["delivery_scope"].is_object() { content["delivery_scope"]=delivery["delivery_scope"].clone(); }
+    if delivery["committed_deliveries"].as_array().is_some_and(|parts|!parts.is_empty()) {
+        content["committed_deliveries"]=delivery["committed_deliveries"].clone();
+    }
+    content
 }
 
 fn teaching_review_changes(before: &serde_json::Value, after: &serde_json::Value) -> Vec<serde_json::Value> {
@@ -3364,37 +3436,111 @@ fn teaching_review_editorial_feedback(review: &serde_json::Value) -> Option<serd
     }))
 }
 
+struct DeliveryJudgment {
+    raw: serde_json::Value,
+    review: serde_json::Value,
+    format_repair: Option<serde_json::Value>,
+}
+
+fn review_delivery_judgment(
+    adapter: &dyn ModelAdapter, profile: &ModelRuntimeProfile,
+    packet: &serde_json::Value, request_packet: serde_json::Value,
+    images: Vec<crate::presentation_author::PreviewImage>, explanation_only: bool,
+    cancellation: &crate::run_context::CancellationToken,
+    turns: &mut usize, spent: &mut u32, cfg: OuterConfig, experimental: bool,
+) -> Result<DeliveryJudgment, ToolError> {
+    let prepared = crate::tutor::prepare_delivery_review(profile.clone(), request_packet, images, explanation_only);
+    let mut format_repair = None;
+    loop {
+        cancellation.check()?;
+        if cfg.turn_limit_reached(*turns) || (experimental && *spent >= 100_000) {
+            return Err(exam_review_budget_error());
+        }
+        *turns += 1;
+        let result = prepared.complete(adapter, format_repair.as_ref());
+        let (mut review, usage) = result
+            .map_err(|failure| {
+                if let Some(usage) = failure.reported_usage {
+                    *spent = spent.saturating_add(usage);
+                }
+                let cause = failure.error.into_tool_error();
+                if cause.category == "model_spend" { return cause; }
+                ToolError { error_code:"TEACHING_REVIEW_FAILED".into(), category:cause.category,
+                    message:format!("回答检查调用失败；当前稿未被接纳。请恢复检查调用，不要仅因此改写正文。原因：{}: {}", cause.error_code, cause.message) }
+            })?;
+        *spent = spent.saturating_add(usage);
+        cancellation.check()?;
+        let raw = review.clone();
+        let validation = if explanation_only && ["findings", "learner_claims"].into_iter()
+            .any(|field| !review[field].as_array().is_some_and(Vec::is_empty)) {
+            Err(memory::teaching::invalid("独立解释审核只判断本轮解释是否充分，findings 和 learner_claims 必须为空数组；实际缺口写入 unresolved request_resolution"))
+        } else {
+            crate::tutor::normalize_delivery_review(&mut review, packet)
+        };
+        match validation {
+            Ok(()) => return Ok(DeliveryJudgment { raw, review, format_repair }),
+            Err(error) if !experimental && format_repair.is_none() && !cfg.turn_limit_reached(*turns) => {
+                // The author's body did not fail content review. Keep it fixed
+                // and let the reviewer repair its own malformed judgment.
+                format_repair = Some(serde_json::json!({
+                    "validation_error":error.message,"previous_review":raw,
+                    "instruction":"Repair this review JSON and its exact quotations using the unchanged draft and evidence. Preserve substantive findings. Do not ask the author to rewrite because your review format failed."}));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
 fn review_delivery_candidate(
     state: &mut impl ResidentStatePort, adapter: &dyn ModelAdapter, profile: &ModelRuntimeProfile,
     packet: serde_json::Value, images: Vec<crate::presentation_author::PreviewImage>, learner_grounding: &serde_json::Value,
     history: &mut TeachingDeliveryReviewHistory, cancellation: &crate::run_context::CancellationToken,
-    turns: &mut usize, spent: &mut u32,
+    turns: &mut usize, spent: &mut u32, cfg: OuterConfig, experimental: bool,
 ) -> Result<(serde_json::Value, serde_json::Value, bool), ToolError> {
-    cancellation.check()?;
-    *turns += 1;
-    let (mut review, usage) = crate::tutor::review_delivery(adapter, profile.clone(), packet.clone(), images)
-        .map_err(|error| {
-            let cause = error.into_tool_error();
-            if cause.category == "model_spend" { return cause; }
-            ToolError { error_code:"TEACHING_REVIEW_FAILED".into(), category:cause.category,
-                message:format!("回答检查调用失败；当前稿未被接纳。请恢复检查调用，不要仅因此改写正文。原因：{}: {}", cause.error_code, cause.message) }
-        })?;
-    *spent = spent.saturating_add(usage);
-    cancellation.check()?;
-    crate::tutor::normalize_delivery_review(&mut review, &packet)?;
+    let independent_explanation = images.is_empty() && crate::tutor_review_input::uses_text_review(&packet);
+    let factual_validation = if independent_explanation {
+        serde_json::json!({"original_request":packet["original_request"],"proposed_delivery":packet["proposed_delivery"],
+            "delivery_scope":packet["delivery_scope"],"committed_deliveries":packet["committed_deliveries"]})
+    } else { packet.clone() };
+    let factual = review_delivery_judgment(adapter, profile, &factual_validation, packet.clone(), images, false,
+        cancellation, turns, spent, cfg, experimental)?;
+    crate::tutor::validate_review_grounding(&factual.review, learner_grounding)?;
+    let explanation = if independent_explanation {
+        let input = crate::tutor_review_input::project_explanation(&packet);
+        // Validate against the sole current request and actual body. Neither
+        // historical requests nor source text can witness this judgment.
+        let validation = serde_json::json!({"original_request":input["current_request"],
+            "proposed_delivery":{"text":input["current_delivery"]},
+            "delivery_scope":input["delivery_scope"],"committed_deliveries":input["committed_deliveries"]});
+        Some(review_delivery_judgment(adapter, profile, &validation, input, Vec::new(), true,
+            cancellation, turns, spent, cfg, experimental)?)
+    } else { None };
+    let mut review = match &explanation {
+        Some(explanation) => crate::tutor::combine_delivery_reviews(&factual.review, &explanation.review),
+        None => factual.review.clone(),
+    };
     crate::tutor::validate_review_grounding(&review, learner_grounding)?;
     let work_warnings = crate::tutor::retain_grounded_review_work(&mut review, &packet["current_source_evidence"]);
     let mut record = serde_json::json!({
         "round":packet["review_context"]["round"],"original_request":packet["original_request"],
         "frozen_input":packet["frozen_input"],"current_design":packet["current_design"],
-        "proposed_delivery":packet["proposed_delivery"],"proposed_presentations":packet["proposed_presentations"],
+        "proposed_delivery":packet["proposed_delivery"],"proposed_presentations":packet["proposed_presentations"],"proposed_board":packet["proposed_board"],
+        "delivery_scope":packet["delivery_scope"],"committed_deliveries":packet["committed_deliveries"],
         "music_interactions":packet["music_interactions"],
         "source_evidence":packet["current_source_evidence"],
         "changes_since_previous_review":packet["review_context"]["changes_since_previous_review"],"review":review
     });
+    if let Some(repair) = &factual.format_repair { record["review_format_repair"] = repair.clone(); }
+    if let Some(explanation) = explanation {
+        record["independent_reviews"] = serde_json::json!({
+            "factual":{"raw":factual.raw,"review":factual.review,"format_repair":factual.format_repair},
+            "explanation":{"raw":explanation.raw,"review":explanation.review,"format_repair":explanation.format_repair}
+        });
+    }
     if !work_warnings.is_empty() { record["agent_work_warnings"] = serde_json::json!(work_warnings); }
+    cancellation.check()?;
     let working_state = state.tutor_record_review(record)?;
-    let content = teaching_review_content(&packet["proposed_delivery"], packet["proposed_presentations"].as_array().map(Vec::as_slice).unwrap_or_default());
+    let content = teaching_review_content(&packet["proposed_delivery"], packet["proposed_presentations"].as_array().map(Vec::as_slice).unwrap_or_default(), &packet["proposed_board"]);
     let changed = history.observe_content(&content);
     history.record(content, &review);
     Ok((review, working_state, changed))
@@ -3405,7 +3551,7 @@ fn review_exam_answer(
     workspace: &crate::workspace_goal::WorkspaceGoalContext, accepted_goal: Option<&base_schema::WorkspaceGoal>,
     tutor: Option<&serde_json::Value>, text: &str, question: &str, sources: serde_json::Value, web_sources: serde_json::Value, bindings: Vec<SourceBinding>,
     history: &mut TeachingDeliveryReviewHistory, cancellation: &crate::run_context::CancellationToken,
-    turns: &mut usize, spent: &mut u32,
+    turns: &mut usize, spent: &mut u32, cfg: OuterConfig, experimental: bool,
 ) -> Result<(serde_json::Value, serde_json::Value, bool), ToolError> {
     let absent = serde_json::Value::Null;
     let tutor = tutor.unwrap_or(&absent);
@@ -3423,15 +3569,15 @@ fn review_exam_answer(
         },
         "learner_view":teaching_review_learner_view(tutor),"learner_grounding":teaching_review_grounding(grounding),
         "current_design":null,"proposed_delivery":proposed,"proposed_presentations":[],
-        "review_context":history.context(&teaching_review_content(&proposed,&[])),
+        "review_context":history.context(&teaching_review_content(&proposed,&[],&absent)),
         "agent_working_state":tutor["agent_working_state"],
         "current_source_evidence":sources,"current_web_evidence":web_sources,"presented_source_references":bindings
     });
-    review_delivery_candidate(state, adapter, profile, packet, Vec::new(), grounding, history, cancellation, turns, spent)
+    review_delivery_candidate(state, adapter, profile, packet, Vec::new(), grounding, history, cancellation, turns, spent, cfg, experimental)
 }
 
-/// Music snapshots are immutable read evidence. Keep complete snapshots used by
-/// this draft or its teaching targets, without repeating superseded passages.
+/// Keep media snapshots used by this draft or its teaching targets, without
+/// pulling unrelated observed frames or superseded music passages into review.
 fn teaching_review_source_bindings(
     bindings: Vec<SourceBinding>, design: &serde_json::Value, proposed: &serde_json::Value,
     presentations: &[serde_json::Value],
@@ -3442,8 +3588,62 @@ fn teaching_review_source_bindings(
         .chain(proposed["moves"].as_array().into_iter().flatten().flat_map(|movement|
             movement["target"]["music_bindings"].as_array().into_iter().flatten()))
         .filter_map(|binding| serde_json::from_value(binding["target"].clone()).ok()).collect();
-    bindings.into_iter().filter(|binding| binding.music.as_ref().is_none_or(|music|
-        cited.contains(&binding.source_ref_id) || targets.iter().any(|target| crate::music::same_source_target(&music.target, target)))).collect()
+    let media_targets: Vec<base_schema::EvidenceTarget> = design["design"]["target"]["media_bindings"].as_array().into_iter().flatten()
+        .chain(proposed["target"]["media_bindings"].as_array().into_iter().flatten())
+        .chain(proposed["moves"].as_array().into_iter().flatten().flat_map(|movement|
+            movement["target"]["media_bindings"].as_array().into_iter().flatten()))
+        .filter_map(|binding| serde_json::from_value(binding["target"].clone()).ok()).collect();
+    bindings.into_iter().filter(|binding| {
+        if cited.contains(&binding.source_ref_id) { return true; }
+        if let Some(music) = &binding.music {
+            return targets.iter().any(|target| crate::music::same_source_target(&music.target, target));
+        }
+        binding.media.as_ref().is_none_or(|media| media_targets.contains(&media.target))
+    }).collect()
+}
+
+fn teaching_review_video_question(question: Option<&base_schema::VideoQuestionContext>) -> serde_json::Value {
+    let mut value = serde_json::json!(question);
+    if let Some(image) = value.get_mut("image").and_then(serde_json::Value::as_object_mut) {
+        image.remove("png_base64");
+    }
+    value
+}
+
+fn teaching_review_video_images(
+    bindings: &[SourceBinding], observations: &[base_schema::MediaObservation],
+    question: Option<&base_schema::VideoQuestionContext>,
+    read: impl FnMut(&base_schema::PublishedBookRef, crate::video::ReadFrames) -> Result<crate::video::FrameBatch, ToolError>,
+) -> Result<Vec<crate::presentation_author::PreviewImage>, ToolError> {
+    let sources: Vec<_> = bindings.iter().filter_map(|binding| binding.media.as_ref()).collect();
+    for source in &sources {
+        for target in crate::video_source::members(&source.target) {
+            if matches!(target, base_schema::EvidenceTarget::Visual { .. })
+                && !crate::video_source::observed(target, observations) {
+                return Err(source_presentation_error("SOURCE_NOT_OBSERVED", "Teaching review requires video frames or crops actually observed in this turn."));
+            }
+        }
+    }
+    let targets: Vec<_> = sources.iter().map(|source| (&source.target, source.duration_ms)).collect();
+    let batches = crate::video::read_exact_visual_targets(&targets, read).map_err(|error| ToolError {
+        error_code: "TEACHING_REVIEW_SOURCE_UNAVAILABLE".into(), category: error.category,
+        message: format!("教学审核未能取回所引用的原视频画面，当前稿未被接纳。{}", error.message),
+    })?;
+    let mut images: Vec<_> = batches.into_iter().flat_map(|batch| {
+        batch.images.into_iter().map(move |image| crate::presentation_author::PreviewImage {
+            caption: serde_json::json!({"purpose":"teaching_review_video_source","publication":batch.publication,
+                "frame":image.read.frame,"region":image.region,"continuous_coverage":false}).to_string(),
+            png_base64:image.png_base64, candidate_id:None, environment_name:None,
+        })
+    }).collect();
+    if let Some(image) = question.and_then(|question| question.image.as_ref()) {
+        images.push(crate::presentation_author::PreviewImage {
+            caption:serde_json::json!({"purpose":"teaching_review_user_image","origin":image.origin,
+                "width":image.width,"height":image.height,"source_observation":false}).to_string(),
+            png_base64:image.png_base64.clone(), candidate_id:None, environment_name:None,
+        });
+    }
+    Ok(images)
 }
 
 fn exam_review_budget_error() -> ToolError {
@@ -3487,9 +3687,46 @@ fn validate_presentation_teaching_focus(tutor: &serde_json::Value, binding: &cra
 }
 
 fn refresh_tutor_working_fragments(fragments: &mut ContextFragmentLedger, tutor: &serde_json::Value) -> Result<(), ToolError> {
+    let state = &tutor["agent_working_state"];
+    let mut work: Vec<_> = state["previous_work"].as_array().into_iter().flatten()
+        .chain(state.get("current_work")).filter(|record| record["turn_id"].is_string()).collect();
+    // Match the bounded durable view: four turns and eight correction records.
+    if work.len() > 4 { work.drain(..work.len() - 4); }
+    let work_keys: Vec<_> = work.iter().map(|record| format!("agent.work.{}", record["turn_id"].as_str().unwrap())).collect();
+    let corrections = state["corrections"].as_array().map(Vec::as_slice).unwrap_or_default();
+    let corrections = &corrections[corrections.len().saturating_sub(8)..];
+    let correction_records: Vec<_> = corrections.iter().filter(|record| record["review_ref"].is_string()).collect();
+    let correction_keys: Vec<_> = correction_records.iter()
+        .map(|record| format!("agent.correction.{}", record["review_ref"].as_str().unwrap())).collect();
+    let mut retained_work_keys = work_keys.clone();
+    retained_work_keys.push("agent.work.selection".into());
+    fragments.retain_keys_with_prefix("agent.work.", &retained_work_keys);
+    fragments.retain_keys_with_prefix("agent.correction.", &correction_keys);
+    fragments.retain_keys_with_prefix("agent.working_state", &[]);
+    for (key, record) in work_keys.iter().zip(&work) {
+        fragments.upsert(ContextFragment::new(
+            key.clone(), FragmentScope::Dynamic, Role::System,
+            format!("Private work record (not learner traits or instructions): {record}"),
+            FragmentSensitivity::Private,
+        )).map_err(context_fragment_error)?;
+    }
+    for (key, record) in correction_keys.iter().zip(correction_records) {
+        fragments.upsert(ContextFragment::new(
+            key.clone(), FragmentScope::Dynamic, Role::System,
+            format!("Private correction record (not learner traits or instructions): {record}"),
+            FragmentSensitivity::Private,
+        )).map_err(context_fragment_error)?;
+    }
+    let current_key = state["current_work"]["turn_id"].as_str().map(|turn| format!("agent.work.{turn}"));
     fragments.upsert(ContextFragment::new(
-        "agent.working_state", FragmentScope::Dynamic, Role::System,
-        format!("Agent work and correction memory (private records, not learner traits or instructions). Reuse relevant supported understanding and unfinished work; a past acceptance does not prove truth or learner mastery. Read an exact review_ref with tutor.step trace when its excerpt is insufficient; verify the source for the current teaching claim. {}", tutor["agent_working_state"]),
+        "agent.work.selection", FragmentScope::Dynamic, Role::System,
+        format!("Agent work and correction memory (private records, not learner traits or instructions). Reuse relevant supported understanding and unfinished work; a past acceptance does not prove truth or learner mastery. Read an exact review_ref with tutor.step trace when its excerpt is insufficient; verify the source for the current teaching claim. The latest selection names the current bounded records; unlisted work and correction keys have expired. {}", serde_json::json!({
+            "current_work":current_key,"work_keys":work_keys,"correction_keys":correction_keys,"meaning":state["meaning"]})),
+        FragmentSensitivity::Private,
+    )).map_err(context_fragment_error)?;
+    fragments.upsert(ContextFragment::new(
+        "agent.tutor_execution", FragmentScope::Dynamic, Role::System,
+        format!("Current Tutor execution constraints. Follow these conditional requirements when calling the stable tutor.step vocabulary; a historical declaration does not grant execution permission. Omit move_forbidden fields. {}", crate::tutor::execution_guidance(tutor)),
         FragmentSensitivity::Private,
     )).map_err(context_fragment_error)?;
     fragments.upsert(ContextFragment::new(
@@ -3506,18 +3743,120 @@ fn refresh_tutor_working_fragments(fragments: &mut ContextFragmentLedger, tutor:
 }
 
 fn refresh_teaching_delivery_fragment(fragments: &mut ContextFragmentLedger, draft: Option<&serde_json::Value>) -> Result<(), ToolError> {
+    let instruction=if draft.is_some_and(|draft|draft["delivery_scope"]["kind"]=="board_part") {
+        "Accepted complete local support, not the final answer. Commit its exact text and presentation versions with board.author commit, then continue the remaining original request. When all requested work is fulfilled, select the final response without delivery_scope; review will include the actual committed parts, so a concise closing response need not duplicate them. This private selection is not learner evidence or proof of understanding."
+    } else {
+        "Accepted teaching delivery (private data, not learner evidence; normally deliver this accepted text now. Defer non-blocking editorial polish to later user turns. Select again only for a new concrete fact, actual error, or unfinished requested operation that makes this body inaccurate or incomplete)"
+    };
     fragments.upsert(ContextFragment::new(
         "agent.teaching_delivery", FragmentScope::Dynamic, Role::System,
-        format!("Accepted teaching delivery (private data, not learner evidence; normally deliver this accepted text now. Defer non-blocking editorial polish to later user turns. Select again only for a new concrete fact, actual error, or unfinished requested operation that makes this body inaccurate or incomplete): {}", serde_json::json!({"delivery_draft":draft})),
+        format!("{instruction}: {}", serde_json::json!({"delivery_draft":draft})),
         FragmentSensitivity::Private,
     )).map_err(context_fragment_error)?;
     Ok(())
 }
 
-fn proposed_teaching_delivery(request: &serde_json::Value, accepted: &BTreeMap<String, serde_json::Value>) -> Result<serde_json::Value, ToolError> {
+#[cfg(test)]
+mod tutor_working_fragment_tests {
+    use super::*;
+
+    fn sample(ledger: &mut ContextFragmentLedger, anchor: usize) -> Vec<Message> {
+        ledger.record_sampling(anchor, &[], Vec::new());
+        let mut messages = vec![Message::user("raw"); anchor];
+        ledger.project_sampling_snapshots(&mut messages, anchor);
+        messages
+    }
+
+    fn latest_state(messages: &[Message]) -> &str {
+        messages.iter().rev().filter_map(|message| message.content.as_deref())
+            .find(|text| text.starts_with("runtime_state_snapshot.v1\n")).unwrap()
+    }
+
+    #[test]
+    fn tutor_working_records_append_only_the_changed_body_and_keep_identity_when_previous() {
+        let mut ledger = ContextFragmentLedger::default();
+        let old_work = serde_json::json!({"turn_id":"turn-1","review_ref":"review-1", "agent_work":{"understanding":["UNCHANGED_LONG_UNDERSTANDING"]}});
+        let correction = serde_json::json!({"turn_id":"turn-1","review_ref":"correction-1","review_status":"revision_requested","revision":"CORRECTION_BODY"});
+        let mut tutor = serde_json::json!({"status":"active","agent_working_state":{
+            "current_work":old_work,"previous_work":[],"corrections":[correction],"meaning":"private work"}});
+        refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
+        let first = sample(&mut ledger, 2);
+        let old_fragment = ledger.snapshot().fragments.into_iter().find(|fragment| fragment.key == "agent.work.turn-1").unwrap();
+
+        tutor["agent_working_state"]["current_work"] = serde_json::json!({"turn_id":"turn-2","review_ref":"review-2","agent_work":{"open_questions":["NEW_QUESTION"]}});
+        tutor["agent_working_state"]["previous_work"] = serde_json::json!([old_work]);
+        refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
+        let second = sample(&mut ledger, 4);
+        assert_eq!(second[..first.len()], first);
+        assert_eq!(ledger.snapshot().fragments.into_iter().find(|fragment| fragment.key == "agent.work.turn-1").unwrap(), old_fragment);
+        let delta = latest_state(&second);
+        assert!(delta.contains("NEW_QUESTION") && delta.contains("agent.work.turn-1"));
+        assert!(!delta.contains("UNCHANGED_LONG_UNDERSTANDING") && !delta.contains("CORRECTION_BODY"));
+
+        tutor["agent_working_state"]["corrections"][0]["review_status"] = serde_json::json!("accepted_by_review");
+        refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
+        let third = sample(&mut ledger, 6);
+        assert_eq!(third[..second.len()], second);
+        let delta = latest_state(&third);
+        assert!(delta.contains("accepted_by_review") && delta.contains("CORRECTION_BODY"));
+        assert!(!delta.contains("UNCHANGED_LONG_UNDERSTANDING") && !delta.contains("NEW_QUESTION"));
+        assert!(ledger.retire_sampling_history());
+        let rebuilt = sample(&mut ledger, 6);
+        assert!(latest_state(&rebuilt).contains("UNCHANGED_LONG_UNDERSTANDING"));
+        assert!(latest_state(&rebuilt).contains("NEW_QUESTION") && latest_state(&rebuilt).contains("accepted_by_review"));
+    }
+
+    #[test]
+    fn tutor_working_record_expiration_is_bounded_and_empty_state_keeps_execution_guidance() {
+        let mut ledger = ContextFragmentLedger::default();
+        ledger.upsert(ContextFragment::new("reader.keep", FragmentScope::TurnFrozen, Role::System, "frozen", FragmentSensitivity::Private)).unwrap();
+        ledger.upsert(ContextFragment::new("session.keep", FragmentScope::SessionStable, Role::System, "stable", FragmentSensitivity::Private)).unwrap();
+        let mut tutor = serde_json::json!({"status":"active","current_design":{"design_ref":"design:current"},"agent_working_state":{
+            "previous_work":(0..5).map(|turn| serde_json::json!({"turn_id":format!("turn-{turn}"),"body":format!("WORK_{turn}")})).collect::<Vec<_>>(),
+            "current_work":{"turn_id":"turn-5","body":"WORK_5"},
+            "corrections":(0..10).map(|review| serde_json::json!({"review_ref":format!("review-{review}"),"body":format!("CORRECTION_{review}")})).collect::<Vec<_>>()}});
+        refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
+        let first = sample(&mut ledger, 2);
+        let snapshot = ledger.snapshot();
+        assert_eq!(snapshot.fragments.iter().filter(|fragment| fragment.key.starts_with("agent.work.") && fragment.key != "agent.work.selection").count(), 4);
+        assert_eq!(snapshot.fragments.iter().filter(|fragment| fragment.key.starts_with("agent.correction.")).count(), 8);
+        assert!(!latest_state(&first).contains("WORK_0") && !latest_state(&first).contains("CORRECTION_0"));
+        assert_eq!(ledger.turn_projection_message_count(), first.len() - 2 + 1,
+            "only the frozen turn fragment and actual sampling messages contribute, not session fragments");
+        tutor["agent_working_state"] = serde_json::Value::Null;
+        refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
+        let second = sample(&mut ledger, 4);
+        assert_eq!(second[..first.len()], first, "expired records remain immutable in prior requests");
+        let snapshot = ledger.snapshot();
+        assert!(!snapshot.fragments.iter().any(|fragment| fragment.key.starts_with("agent.correction.")));
+        assert_eq!(snapshot.fragments.iter().filter(|fragment| fragment.key.starts_with("agent.work.")).count(), 1);
+        assert!(snapshot.fragments.iter().any(|fragment| fragment.key == "reader.keep"));
+        let execution = snapshot.fragments.iter().find(|fragment| fragment.key == "agent.tutor_execution").unwrap();
+        assert!(execution.content.contains("design:current") && execution.content.contains("design_previous_ref_required"));
+        assert!(!latest_state(&second).contains("agent.work.turn-5") && !latest_state(&second).contains("agent.correction.review-9"));
+    }
+}
+
+fn proposed_teaching_delivery(request: &serde_json::Value, accepted: &BTreeMap<String, serde_json::Value>, native_board: bool) -> Result<serde_json::Value, ToolError> {
     let candidate = &request["move"];
     let references: Vec<String> = serde_json::from_value(request.get("delivery_move_refs").cloned().unwrap_or(serde_json::json!([])))
         .map_err(|error| memory::teaching::invalid(error.to_string()))?;
+    if native_board {
+        // A native candidate already owns its complete public expression. Its
+        // references remain teaching metadata, never a second text assembler.
+        if !references.is_empty() {
+            return Err(crate::board_author::error("BOARD_CANDIDATE_REVISION_REQUIRED",
+                "The previewed board must contain the complete delivery. Use board.author revise to place any retained support in its blocks, preview it, then select the new board_candidate_revision without delivery_move_refs."));
+        }
+        let text = candidate["delivery_text"].as_str().filter(|text| !text.trim().is_empty())
+            .ok_or_else(|| memory::teaching::invalid("教学选择需要实际待交付正文"))?;
+        if let Some(prompt) = candidate["response_expectation"]["public_prompt"].as_str().filter(|prompt| !text.contains(*prompt)) {
+            return Err(crate::board_author::error("BOARD_CANDIDATE_REVISION_REQUIRED", format!(
+                "The invitation is absent from the previewed board: {prompt}. Use board.author revise to include this exact public_prompt in a block, preview the new candidate, then select its board_candidate_revision. The runtime cannot append unpreviewed text.")));
+        }
+        return Ok(serde_json::json!({"delivery_move_refs":[],"moves":[candidate],"text":text,
+            "delivery_scope":request["delivery_scope"],"committed_deliveries":request["committed_deliveries"]}));
+    }
     let mut retained = Vec::new();
     let mut moves = Vec::new();
     let mut candidate_included = false;
@@ -3545,7 +3884,22 @@ fn proposed_teaching_delivery(request: &serde_json::Value, accepted: &BTreeMap<S
         }
         texts.push(text);
     }
-    Ok(serde_json::json!({"delivery_move_refs":retained,"moves":moves,"text":texts.join("\n\n")}))
+    Ok(serde_json::json!({"delivery_move_refs":retained,"moves":moves,"text":texts.join("\n\n"),
+        "delivery_scope":request["delivery_scope"],"committed_deliveries":request["committed_deliveries"]}))
+}
+
+fn final_teaching_draft(draft: Option<&serde_json::Value>) -> Option<&serde_json::Value> {
+    draft.filter(|draft| draft["delivery_scope"]["kind"] != "board_part")
+}
+
+fn unfinished_native_board(candidate_id: Option<&str>, staged_text: Option<&str>, last_error: Option<&ToolError>) -> Option<ToolError> {
+    let board_error = last_error.filter(|error| error.error_code.starts_with("BOARD_"));
+    if staged_text.is_some() && board_error.is_none() { return None; }
+    if candidate_id.is_none() && board_error.is_none() { return None; }
+    let mut error = last_error.map(|error| ToolError {error_code:error.error_code.clone(),category:error.category.clone(),message:error.message.clone()}).unwrap_or_else(|| crate::board_author::error(
+        "BOARD_DELIVERY_REQUIRED", "Preview and select the current board candidate, then stage that same reviewed candidate before completing the reply."));
+    error.message.push_str(" 本轮画板尚未保存，任务未完成。");
+    Some(error)
 }
 
 fn publish_teaching_delivery(events: &crate::run_events::RunEvents, view: &AgentAnswerView) {
@@ -3997,6 +4351,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
     };
     vec![
         crate::presentation_author::spec(),
+        crate::board_author::spec(),
         crate::presentation_interact::spec(),
         crate::library::list_spec(),
         crate::library::search_spec(),
@@ -5097,6 +5452,7 @@ fn dispatch_state_tool(
         | ToolHandlerId::WorkspaceRecordsRead
         | ToolHandlerId::SourcePresent
         | ToolHandlerId::PresentationAuthor
+        | ToolHandlerId::BoardAuthor
         | ToolHandlerId::PresentationInteract
         | ToolHandlerId::VideoReadFrames
         | ToolHandlerId::VideoSearch
@@ -5338,7 +5694,7 @@ fn tool_progress_signature(
     let projection_revision = port.submit_private(|store| store.projection_revision()).ok();
     let state = serde_json::json!({
         "phase": progress.phase,
-        "library_observations": progress.library_observations,
+        "read_observations": progress.read_observations,
         "media_reads": progress.media_reads,
         "music_reads": evidence.music_observed.iter().map(|source| &source.target).collect::<Vec<_>>(),
         "music_player": crate::music::interaction_progress(music_interactions),
@@ -5370,12 +5726,25 @@ struct ProgressPhaseGuard {
     consecutive_stalled_batches: usize,
     recovery_pending: bool,
     recovery_used: bool,
+    argument_validation_recovery_granted: bool,
     argument_correction_tools: BTreeSet<String>,
 }
 
 impl ProgressPhaseGuard {
     fn recovery_available(&self) -> bool {
         self.recovery_pending && !self.recovery_used
+    }
+
+    fn observe_argument_validation_error(&mut self, tool: &str) {
+        // A first schema rejection can arrive during the existing semantic or
+        // locator recovery. Let the model consume that new tool feedback once;
+        // another malformed call does not renew the same no-progress phase.
+        if !self.argument_validation_recovery_granted {
+            self.argument_validation_recovery_granted = true;
+            self.recovery_pending = true;
+            self.recovery_used = false;
+            self.argument_correction_tools.insert(tool.into());
+        }
     }
 
     fn observe_error(&mut self, tool: &str, result: &str) {
@@ -5398,6 +5767,15 @@ impl ProgressPhaseGuard {
             self.recovery_pending = true;
             self.argument_correction_tools.insert(tool.into());
         }
+        if matches!(tool, "tutor.step" | "board.author") && matches!(tool_result_error_code(result).as_deref(),
+            Some("BOARD_TEACHING_TEXT_MISMATCH" | "BOARD_INSPECTION_REQUIRED" | "BOARD_TEACHING_SELECTION_REQUIRED" | "BOARD_REVISION_CONFLICT"
+                | "BOARD_TEACHING_REFERENCE_REQUIRED" | "BOARD_CANDIDATE_REVISION_REQUIRED" | "BOARD_CANDIDATE_CHANGED" | "BOARD_ARGUMENTS_INVALID"))
+        {
+            // A board repair crosses from selection back to prepare and preview.
+            // Use the existing bounded recovery, without renewing it indefinitely.
+            self.recovery_pending = true;
+            self.argument_correction_tools.extend(["tutor.step".into(), "board.author".into()]);
+        }
     }
     fn blocks(&self, progress_signature: &str) -> bool {
         self.consecutive_stalled_batches >= CONSECUTIVE_NO_PROGRESS_BATCH_LIMIT
@@ -5410,6 +5788,7 @@ impl ProgressPhaseGuard {
             self.consecutive_stalled_batches = 0;
             self.recovery_pending = false;
             self.recovery_used = false;
+            self.argument_validation_recovery_granted = false;
             self.argument_correction_tools.clear();
             return;
         }
@@ -5614,12 +5993,29 @@ pub fn prepare_history_compaction(
     pending_effects: Vec<PendingEffectRef>,
     context_revisions: BTreeMap<String, String>,
 ) -> Result<PreparedCompaction, CompactionError> {
+    prepare_history_compaction_with_tail_budget(
+        book, messages, phase, allowed_evidence_refs, allowed_supersession_edges,
+        pending_effects, context_revisions, u32::MAX,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepare_history_compaction_with_tail_budget(
+    book: &Book,
+    messages: &[Message],
+    phase: CompactionPhase,
+    allowed_evidence_refs: Vec<EvidenceRef>,
+    allowed_supersession_edges: Vec<AllowedSupersession>,
+    pending_effects: Vec<PendingEffectRef>,
+    context_revisions: BTreeMap<String, String>,
+    retain_recent_tokens: u32,
+) -> Result<PreparedCompaction, CompactionError> {
     // Compaction selects its own eligible complete turns. Before a new user is
     // appended, the last turn may already be complete; ordinary provider history
     // intentionally keeps that segment's fresh bodies and cannot serve as the
     // compactor's all-receipt input. Raw-retained items still come from messages.
     let deterministic = history_projection_through(messages, book, messages.len());
-    prepare_compaction(
+    crate::compaction::prepare_compaction_with_tail_budget(
         phase,
         messages,
         &deterministic,
@@ -5627,6 +6023,7 @@ pub fn prepare_history_compaction(
         allowed_supersession_edges,
         pending_effects,
         context_revisions,
+        retain_recent_tokens,
     )
 }
 
@@ -5776,8 +6173,15 @@ fn build_sample_request(
     authoring_finished: bool,
     tutor: Option<&serde_json::Value>,
     presentation_coach: Option<&serde_json::Value>,
+    context_meter: Option<(&ContextTokenMeter, &dyn ModelAdapter)>,
+    continuity: Option<(&mut Option<crate::active_projection::ActiveModelProjection>, &mut Option<crate::active_projection::ActiveModelProjection>, &crate::tool_history::ToolDeclarationHistory)>,
 ) -> Result<(ToolExposurePlan, AgentRequestPlan), ToolError> {
-    let mut tool_exposure_plan = ToolExposurePlan::build(
+    let (mut restored_projection, mut sampled_projection, tool_history) = match continuity {
+        Some((projection, sampled, history)) => (Some(projection), Some(sampled), Some(history)),
+        None => (None, None, None),
+    };
+    let model_specs = tutor.and_then(crate::tutor::model_spec_for_context).into_iter().collect::<Vec<_>>();
+    let mut tool_exposure_plan = ToolExposurePlan::build_with_model_specs(
         tool_registry,
         runtime_profile,
         &ToolExposureContext {
@@ -5787,6 +6191,7 @@ fn build_sample_request(
             artifact: artifact_exposure,
         },
         tool_exposure_state,
+        &model_specs,
     );
     tool_exposure_plan.exclude_for_sampling(excluded_tools);
     // The schema is a stable operation vocabulary. Current operation authority
@@ -5845,13 +6250,7 @@ fn build_sample_request(
         }
     }
     context_fragments.record_sampling(messages.len(), &selected, current_messages);
-    // Music's changing playback and teaching state is fully represented in the
-    // latest snapshot. Reuse the existing full-state retirement path; raw tool
-    // reads, user messages and frozen question context remain in the request.
-    if context_fragments.snapshot().fragments.iter().any(|fragment| fragment.key == "music.source") {
-        context_fragments.retire_sampling_history();
-    }
-    let build_plan = |fragments: &ContextFragmentLedger, ledger: &ActiveToolResultLedger| -> Result<AgentRequestPlan, ToolError> {
+    let build_plan = |fragments: &ContextFragmentLedger, ledger: &ActiveToolResultLedger, restored: Option<&crate::active_projection::ActiveModelProjection>| -> Result<AgentRequestPlan, ToolError> {
         let request_messages = messages_with_context_fragments(
             messages, fragments, book, ledger, active_checkpoint, consumption_wrapper,
         ).map_err(compaction_error)?;
@@ -5864,9 +6263,18 @@ fn build_sample_request(
         if book.experimental_read_access().is_some() {
             plan.output_token_limit = Some(8_000);
         }
+        if let Some(restored) = restored {
+            restored.apply(&mut plan, messages, fragments.turn_projection_message_count(), active_checkpoint);
+        }
+        if let (Some(history), Some((_, adapter))) = (tool_history, context_meter) {
+            history.clone().project(&mut plan, adapter.tool_update_mode());
+        }
+        if let Some((meter, adapter)) = context_meter {
+            meter.calibrate_plan(adapter, &mut plan);
+        }
         Ok(plan)
     };
-    let mut request_plan = build_plan(context_fragments, active_tool_results)?;
+    let mut request_plan = build_plan(context_fragments, active_tool_results, restored_projection.as_ref().and_then(|value| value.as_ref()))?;
     let budget = ActiveContextBudget::from_plan(&request_plan);
     // Below the soft watermark, sent tool bodies keep their original prefix.
     // If the fixed baseline stays above it, wait for another full sampled batch
@@ -5874,13 +6282,17 @@ fn build_sample_request(
     // a smaller sampled batch; an unseen result is never eligible.
     let retire_bodies = !budget.fits
         || (budget.over_high_watermark
-            && active_tool_results.sampled_model_body_bytes()
+            && active_tool_results.sampled_reclaimable_bytes()
                 >= crate::tool_result::ACTIVE_TURN_TOOL_MODEL_BODY_BUDGET_BYTES);
     if retire_bodies && active_tool_results.retire_sampled_bodies() {
-        request_plan = build_plan(context_fragments, active_tool_results)?;
+        if let Some(restored) = restored_projection.as_mut() { **restored = None; }
+        if let Some(sampled) = sampled_projection.as_mut() { **sampled = None; }
+        request_plan = build_plan(context_fragments, active_tool_results, None)?;
     }
     if ActiveContextBudget::from_plan(&request_plan).over_high_watermark && context_fragments.retire_sampling_history() {
-        request_plan = build_plan(context_fragments, active_tool_results)?;
+        if let Some(restored) = restored_projection.as_mut() { **restored = None; }
+        if let Some(sampled) = sampled_projection.as_mut() { **sampled = None; }
+        request_plan = build_plan(context_fragments, active_tool_results, None)?;
     }
     Ok((tool_exposure_plan, request_plan))
 }
@@ -5951,6 +6363,7 @@ fn active_context_exhausted(budget: ActiveContextBudget) -> ToolError {
 #[allow(clippy::too_many_arguments)]
 fn maybe_auto_compact(
     phase: CompactionPhase,
+    frozen_request: Option<&AgentRequestPlan>,
     budget: ActiveContextBudget,
     book: &Book,
     messages: &mut [Message],
@@ -5970,7 +6383,10 @@ fn maybe_auto_compact(
     // finds no eligible history (or fails) must not rewrite the active prefix.
     let mut persisted_messages = messages.to_vec();
     sink.prepare_persisted_messages(&mut persisted_messages);
-    let prepared = match prepare_history_compaction(
+    let retain_recent_tokens = runtime_profile.context_window_tokens
+        .saturating_sub(runtime_profile.output_reserve_tokens)
+        .saturating_mul(16) / 100;
+    let mut prepared = match prepare_history_compaction_with_tail_budget(
         book,
         &persisted_messages,
         phase,
@@ -5978,6 +6394,7 @@ fn maybe_auto_compact(
         Vec::new(),
         pending_effect_refs(effects),
         current_context_revisions(context_fragments),
+        retain_recent_tokens,
     ) {
         Ok(prepared) => prepared,
         Err(error) if error.error_code == COMPACTION_NOT_APPLICABLE => {
@@ -5995,6 +6412,9 @@ fn maybe_auto_compact(
             });
         }
     };
+    if let Some(plan) = frozen_request {
+        prepared.bind_generation_prefix(plan, messages);
+    }
     if active_checkpoint
         .as_ref()
         .is_some_and(|checkpoint| checkpoint_covers_eligible_sources(checkpoint, &prepared))
@@ -6506,6 +6926,36 @@ fn guided_read_origin<'a>(question: &str, history: &'a [Message]) -> Option<&'a 
     None
 }
 
+/// Recover verified text reads from one already-delimited saved user turn.
+/// Only paired book.text/book.text_batch results count; source listings, search
+/// hits and unrelated tools cannot authorize historical understanding evidence.
+pub fn recover_turn_text_read_ranges(book: &Book, messages: &[Message]) -> Vec<EvidenceRange> {
+    let mut reads = HashMap::new();
+    let mut observed = TurnEvidenceLedger::default();
+    for message in messages {
+        match message.role {
+            Role::User => reads.clear(),
+            Role::Assistant => {
+                for call in &message.tool_calls {
+                    reads.remove(call.id.as_str());
+                    if matches!(call.name.as_str(), "book.text" | "book.text_batch") {
+                        reads.insert(call.id.as_str(), (call.name.as_str(), call.arguments.as_str()));
+                    }
+                }
+            }
+            Role::Tool => {
+                let Some((name, arguments)) = message.tool_call_id.as_deref().and_then(|id| reads.remove(id)) else { continue; };
+                let Some(result) = message.content.as_deref() else { continue; };
+                let Ok(body) = serde_json::from_str::<serde_json::Value>(result) else { continue; };
+                if body.get("error_code").is_some() || body["status"] == "error" { continue; }
+                observe_tool_evidence(&mut observed, name, arguments, result, book);
+            }
+            _ => {}
+        }
+    }
+    observed.teaching_source_ranges()
+}
+
 fn historical_guided_read_locators(
     book: &Book,
     history: &[Message],
@@ -6558,7 +7008,7 @@ fn final_presentation_references(
     tutor: Option<&serde_json::Value>, draft: Option<&serde_json::Value>, saved: &[crate::presentation::PresentationRef],
 ) -> Vec<crate::presentation::PresentationRef> {
     if tutor.is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
-        draft.and_then(|draft| teaching_presentation_references(draft).ok()).unwrap_or_default()
+        final_teaching_draft(draft).and_then(|draft| teaching_presentation_references(draft).ok()).unwrap_or_default()
     } else { saved.to_vec() }
 }
 
@@ -6661,6 +7111,7 @@ fn run_context_inner(
     let messages = &mut context.messages;
     context.cancellation.check()?;
     let mut tool_registry = crate::experiment::registry(book, resident_tool_registry());
+    if !state.board_authoring_available() { tool_registry = tool_registry.without_board_authoring(); }
     if !state.library_available() { tool_registry = tool_registry.without_library(); }
     if !state.web_available() { tool_registry = tool_registry.without_web(); }
     tool_registry = tool_registry.with_tutor_context(context.tutor.as_ref());
@@ -6701,6 +7152,9 @@ fn run_context_inner(
         question,
     );
     let mut context_fragments = ContextFragmentLedger::default();
+    if let Some(language) = context.response_language {
+        context_fragments.upsert(language.fragment()).map_err(context_fragment_error)?;
+    }
     if context.workspace_goal.is_some() && state.library_available() {
         // Use the same member- and authorization-filtered catalog as explicit
         // library reads. Only metadata enters context; no source is observed.
@@ -6814,6 +7268,7 @@ fn run_context_inner(
     let trace_dbg = std::env::var("UB_TRACE").is_ok(); // 诊断:打印每轮 tool_calls + 结果(env-gated)
     let mut spent: u32 = 0;
     let mut request_audit = AgentRequestAudit::default();
+    let mut context_meter = ContextTokenMeter::default();
     let mut turns: usize = 0;
     let result = (|| {
     let mut tutor_assessment_attempts = HashSet::new();
@@ -6897,10 +7352,13 @@ fn run_context_inner(
         &[],
         context.presentation_authoring.as_ref(),
         context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+        Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
     )?;
     let planned_budget = ActiveContextBudget::from_plan(&planned_request);
     let compacted = maybe_auto_compact(
         CompactionPhase::PreTurn,
+        Some(&planned_request),
         planned_budget,
         book,
         messages,
@@ -6922,11 +7380,16 @@ fn run_context_inner(
                     tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
                     context.evidence_ledger.evidence_state(), &[],
                     context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                    Some((&context_meter, adapter)),
+            None,
                 )?;
                 Ok(ActiveContextBudget::from_plan(&plan))
         },
     )?;
     if compacted {
+        context.active_tool_results.retire_sampled_bodies();
+        context.active_model_projection = None;
+        context.sampled_model_projection = None;
         planned_messages = messages.clone();
         planned_messages.push(Message::user(question));
         let (_, compacted_request) = build_sample_request(
@@ -6945,6 +7408,8 @@ fn run_context_inner(
             &[],
             context.presentation_authoring.as_ref(),
             context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+            Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
         )?;
         let compacted_budget = ActiveContextBudget::from_plan(&compacted_request);
         if !compacted_budget.fits {
@@ -6969,6 +7434,9 @@ fn run_context_inner(
         resources.initial_evidence(),
         &reader_anchor,
     );
+    if let Some(tutor) = &context.tutor {
+        context.locator_ledger.observe_teaching_targets(tutor, book);
+    }
     if let Some(origin) = &guided_origin {
         let prior = historical_guided_read_locators(book, messages, origin);
         context
@@ -6980,6 +7448,9 @@ fn run_context_inner(
 
     loop {
         context.cancellation.check()?;
+        if let Some(tutor) = context.tutor.as_mut() {
+            tutor["native_board_candidate_pending"] = serde_json::json!(context.board_candidate_id.is_some());
+        }
         context.tool_exposure_state.presentation_unavailable_reason = state.presentation_unavailable_reason();
         if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
             context.tutor = Some(serde_json::json!({"status":"paused"}));
@@ -7071,11 +7542,15 @@ fn run_context_inner(
             sampled_excluded_tools,
             context.presentation_authoring.as_ref(),
             context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+            Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
         )?;
         crate::video::attach_question_image(&mut request_plan, question_image);
+        context_meter.calibrate_plan(adapter, &mut request_plan);
         let request_budget = ActiveContextBudget::from_plan(&request_plan);
         if maybe_auto_compact(
             CompactionPhase::MidTurn,
+            Some(&request_plan),
             request_budget,
             book,
             messages,
@@ -7095,11 +7570,17 @@ fn run_context_inner(
                     tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
                     context.evidence_ledger.evidence_state(), sampled_excluded_tools,
                     context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                    Some((&context_meter, adapter)),
+            None,
                 )?;
                 crate::video::attach_question_image(&mut plan, question_image);
+                context_meter.calibrate_plan(adapter, &mut plan);
                 Ok(ActiveContextBudget::from_plan(&plan))
             },
         )? {
+            context.active_tool_results.retire_sampled_bodies();
+            context.active_model_projection = None;
+            context.sampled_model_projection = None;
             (tool_exposure_plan, request_plan) = build_sample_request(
                 messages,
                 &mut sampling_context_fragments,
@@ -7116,6 +7597,8 @@ fn run_context_inner(
                 sampled_excluded_tools,
                 context.presentation_authoring.as_ref(),
                 context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
             )?;
             crate::video::attach_question_image(&mut request_plan, question_image);
         }
@@ -7143,7 +7626,9 @@ fn run_context_inner(
             })
             .collect::<HashSet<_>>();
         crate::video::attach(&mut request_plan, std::mem::take(&mut context.pending_video));
+        context.tool_declaration_history.project(&mut request_plan, adapter.tool_update_mode());
         let image_tokens = (request_plan.preview_images.len() + request_plan.video_images.len() + usize::from(request_plan.question_image.is_some())) as u32 * 4096;
+        context_meter.calibrate_plan(adapter, &mut request_plan);
         let final_budget = ActiveContextBudget::from_plan(&request_plan);
         if !final_budget.fits {
             return Err(active_context_exhausted(final_budget));
@@ -7172,12 +7657,16 @@ fn run_context_inner(
         );
         // Withhold unsupported teaching prose before the first stream delta.
         // Discarding only after model completion would already expose it.
-        if context.teaching_delivery_draft.is_some()
+        if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some()
             || crate::workspace_goal::exam_review_required(context.workspace_goal.as_ref(), context.accepted_workspace_goal.as_ref())
             || (context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved) {
             projector.discard();
         }
-        let turn_result = adapter.chat_observed(&request_plan, &mut projector);
+        let mut context_usage = ContextUsageCapture::default();
+        let turn_result = adapter.chat_observed(&request_plan, &mut |delta| {
+            context_usage.observe(&delta);
+            crate::provider_stream::ModelObserver::observe(&mut projector, delta);
+        });
         if turn_result
             .as_ref()
             .map_or(true, |turn| !turn.tool_calls.is_empty())
@@ -7191,6 +7680,9 @@ fn run_context_inner(
                 return Err(error.into_tool_error())
             }
         };
+        context_meter.record_response(adapter, &request_plan, &turn, &context_usage);
+        context.sampled_model_projection = crate::active_projection::ActiveModelProjection::capture_request(
+            &request_plan, messages.len(), adapter.projection_identity().as_deref(), active_checkpoint.as_ref(), &context.tool_declaration_history);
         context.cancellation.check()?;
         context.presentation_method_observations.record_sample(&context.presentation_method_reads, &context.events, state, &request_plan)?;
         crate::video::accept_observed(&request_plan, &mut context.media_observations, &context.events);
@@ -7279,6 +7771,9 @@ fn run_context_inner(
 
         // 正常停:无工具请求 = LLM 给最终答。终答入 messages(跨回合保留,下一回合可见上轮回答)。
         if turn.tool_calls.is_empty() {
+            if let Some(error) = unfinished_native_board(context.board_candidate_id.as_deref(), context.board_delivery_draft.as_deref(), last_teaching_error.as_ref()) {
+                return Err(error);
+            }
             if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
                 if !tutor_selection_retry && !cfg.turn_limit_reached(turns) {
                     tutor_selection_retry = true;
@@ -7336,7 +7831,7 @@ fn run_context_inner(
                 let (review, working_state, changed) = review_exam_answer(
                     state, adapter, &runtime_profile, context.workspace_goal.as_ref().unwrap(), context.accepted_workspace_goal.as_ref(),
                     context.tutor.as_ref(), text, question, context.evidence_ledger.teaching_review_sources(book)?,
-                    context.active_tool_results.web_review_evidence(messages), context.evidence_ledger.bindings(), &mut teaching_review_history, &context.cancellation, &mut turns, &mut spent)?;
+                    context.active_tool_results.web_review_evidence(messages), context.evidence_ledger.bindings(), &mut teaching_review_history, &context.cancellation, &mut turns, &mut spent, cfg, experimental)?;
                 if !working_state.is_null() {
                     if let Some(tutor) = context.tutor.as_mut() {
                         tutor["agent_working_state"] = working_state;
@@ -7369,7 +7864,7 @@ fn run_context_inner(
                 .progress_ledger
                 .observe(RuntimeProgressEvent::FinalAnswer);
             let registered_bindings = context.evidence_ledger.bindings();
-            let accepted_text = context.teaching_delivery_draft.as_ref().and_then(|draft| draft["text"].as_str());
+            let accepted_text = context.board_delivery_draft.as_deref().filter(|text| crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved, context.teaching_delivery_draft.as_ref(), text).is_ok()).or_else(|| final_teaching_draft(context.teaching_delivery_draft.as_ref()).and_then(|draft| draft["text"].as_str()));
             let delivery = accepted_text.or(turn.text.as_deref()).map(|raw| {
                 let raw = if objective_gap.is_some() && (!presentation_blocked || exam_review) { "所请求的演示或阅读操作尚未完成；可以继续此任务。" } else { raw };
                 if exam_review { return compile_reviewed_answer(raw, &registered_bindings, &context.answer_provenance); }
@@ -7398,7 +7893,7 @@ fn run_context_inner(
                 }
                 view
             });
-            if context.teaching_delivery_draft.is_some() || exam_review {
+            if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some() || exam_review {
                 if let Some(view) = &answer_view { publish_teaching_delivery(&context.events, view); }
             }
             let delivery_diagnostics = delivery
@@ -7487,6 +7982,9 @@ fn run_context_inner(
         }
         let mut batch_synthesis_observed = false;
         let mut batch_teaching_revision_progress = false;
+        let mut batch_finish_delivery = false;
+        let mut batch_finish_board = false;
+        let mut batch_has_error = false;
         let mut batch_progress_calls = Vec::new();
         let prepare_batch = turn.tool_calls.iter().any(|call| call.name == "presentation.author"
             && serde_json::from_str::<serde_json::Value>(&call.arguments)
@@ -7557,6 +8055,9 @@ fn run_context_inner(
             let phase_blocked = phase_stalled && !recovery_call;
             let blocked_without_progress = phase_blocked || repeated_without_progress;
             let argument_validation = registered.map(|r| {
+                if r.handler == ToolHandlerId::TutorStep {
+                    return crate::tutor::validate_arguments(r, context.tutor.as_ref(), messages, &tc.arguments);
+                }
                 if r.handler == ToolHandlerId::PresentationAuthor {
                     if let Some(spec) = tool_exposure_plan.visible_tools.iter().find(|tool| tool.name == tc.name) {
                         // Operation authority is sampled separately from the stable schema.
@@ -7602,7 +8103,7 @@ fn run_context_inner(
                 .then(|| crate::agent_progress::public_message(&tc.arguments, &context.answer_provenance));
             let is_commentary = executed
                 && progress_message.as_ref().is_some_and(|message| message.is_ok());
-            let activity = context.events.begin(
+            let mut activity = context.events.begin(
                 if is_commentary { "commentary" } else { "tool" },
                 if is_commentary { "agent.commentary" } else { &tc.name },
                 if is_commentary {
@@ -7665,6 +8166,7 @@ fn run_context_inner(
                     None,
                 ),
                 Some(handler) if !schema_valid => {
+                    phase_progress_guard.observe_argument_validation_error(&tc.name);
                     let code = match handler {
                         ToolHandlerId::GoalUpdate => "GOAL_UPDATE_INVALID",
                         ToolHandlerId::WorkspaceGoalUpdate => "WORKSPACE_GOAL_UPDATE_INVALID",
@@ -7715,7 +8217,34 @@ fn run_context_inner(
                     let operation = request.as_ref().ok().and_then(|r| r["operation"].as_str()).unwrap_or_default().to_owned();
                     let mut missing_source_read = None;
                     let mut editorial_feedback = None;
+                    let mut reviewed_board_candidate_id = None;
+                    let mut native_board_selection = false;
                     let mut result = request.map_err(|e| memory::teaching::invalid(format!("{e}"))).and_then(|mut request| {
+                        if request["operation"] == "select" && (context.board_candidate_id.is_some()
+                            || request["move"].get("board_candidate_revision").is_some()) {
+                            let preview = context.board_review_preview.as_ref().ok_or_else(|| crate::board_author::error(
+                                "BOARD_INSPECTION_REQUIRED", "Prepare and preview this board before selecting its board_candidate_revision."))?;
+                            let current = state.author_board(crate::board_author::AuthorRequest::Read {
+                                collection:None,offset:0,length:None,board_revision:None,candidate_revision:None,
+                            }, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
+                            let inspected = preview.report["candidate_id"].as_str()
+                                .is_some_and(|id| context.inspected_presentations.contains(id));
+                            preview.bind_teaching_text(&mut request, &current.body, inspected)?;
+                            native_board_selection = request["move"].get("board_candidate_revision").is_some();
+                            if native_board_selection {
+                                request["native_board_selection"] = serde_json::json!({
+                                    "candidate_id":preview.report["candidate_id"],
+                                    "candidate_revision":preview.report["candidate_revision"],
+                                });
+                                request["move"]["design_ref"] = context.tutor.as_ref()
+                                    .map(|tutor| tutor["current_design"]["design_ref"].clone()).unwrap_or_default();
+                            }
+                            if let Some(movement) = request["move"].as_object_mut() {
+                                // The reference is runtime input, not part of the
+                                // persisted, strictly typed TeachingMove contract.
+                                movement.remove("board_candidate_revision");
+                            }
+                        }
                         if request["operation"] == "select" {
                             if deliver_presentation_batch && teaching_uses_presentation(context.tutor.as_ref()) {
                                 return Err(ToolError { error_code:"TEACHING_PRESENTATION_REQUIRES_NEXT_SAMPLING".into(), category:"validation".into(),
@@ -7740,12 +8269,12 @@ fn run_context_inner(
                             let learner_grounding = request.as_object_mut().and_then(|fields| fields.remove("learner_grounding"))
                                 .unwrap_or_else(|| context.tutor.as_ref().map(|tutor| tutor["learner_context"]["learner_grounding"].clone()).unwrap_or_default());
                             if let Some(tutor) = context.tutor.as_ref().filter(|tutor| tutor["status"] == "active") {
-                                let proposed = proposed_teaching_delivery(&request, &context.accepted_teaching_moves)?;
+                                let proposed = proposed_teaching_delivery(&request, &context.accepted_teaching_moves, native_board_selection)?;
                                 let presentation_refs = teaching_presentation_references(&proposed)?;
                                 require_teaching_presentation(tutor, &presentation_refs)?;
                                 let proposed_presentations = review_teaching_presentations(state, &presentation_refs,
                                     &context.presentation_delivery_observations, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
-                                let review_images = presentation_refs.iter().flat_map(|reference| {
+                                let mut review_images: Vec<_> = presentation_refs.iter().flat_map(|reference| {
                                     let key = serde_json::to_string(reference).unwrap();
                                     context.presentation_delivery_images.get(&key).into_iter().flatten().map(move |image| {
                                         let mut image = image.clone();
@@ -7756,46 +8285,66 @@ fn run_context_inner(
                                 if cfg.turn_limit_reached(turns) || (experimental && spent >= 100_000) {
                                     return Err(memory::teaching::invalid("本轮模型预算不足以审视教学正文，当前稿尚未被选择"));
                                 }
-                                let review_content = teaching_review_content(&proposed, &proposed_presentations);
+                                let proposed_board = if let Some(preview) = context.board_review_preview.as_ref() {
+                                    let current = state.author_board(crate::board_author::AuthorRequest::Read {
+                                        collection:None,offset:0,length:None,board_revision:None,candidate_revision:None,
+                                    }, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
+                                    let inspected = preview.report["candidate_id"].as_str()
+                                        .is_some_and(|id| context.inspected_presentations.contains(id));
+                                    let board = preview.proposed_board(&current.body, inspected, proposed["text"].as_str().unwrap_or_default())?;
+                                    if !board.is_null() { review_images.extend(preview.images.clone()); }
+                                    board
+                                } else { serde_json::Value::Null };
+                                let review_content = teaching_review_content(&proposed, &proposed_presentations, &proposed_board);
                                 let source_evidence = context.evidence_ledger.teaching_review_sources(book)?;
                                 let review_context = teaching_review_history.context(&review_content);
+                                let presented_sources = teaching_review_source_bindings(context.evidence_ledger.bindings(),
+                                    &tutor["current_design"], &proposed, &proposed_presentations);
+                                review_images.extend(teaching_review_video_images(&presented_sources, &context.media_observations,
+                                    reader_input.video_question.as_ref(), |reference, request|
+                                        state.read_video_frames(Some(reference), request, &context.cancellation))?);
                                 let mut packet = serde_json::json!({
                                     "original_request":question,
                                     "frozen_input":{
                                         "current_action":tutor["current_action"],
                                         "current_request":tutor["current_request"],
+                                        "video_question":teaching_review_video_question(reader_input.video_question.as_ref()),
                                         "music_question":music_source.as_ref().and_then(|source| source.get("question_context")),
                                         "learner_request":tutor["learner_context"]["current_request"],
                                         "user_intent":tutor["user_intent"],
+                                        "learning_purpose":tutor["learning_purpose"],
                                         "constraints":tutor["constraints"],
-                            "confirmed_preferences":tutor["confirmed_preferences"],
-                            "chapter_scope":tutor["chapter_scope"],
-                            "material_scope":tutor["material_scope"]
+                                        "confirmed_preferences":tutor["confirmed_preferences"],
+                                        "chapter_scope":tutor["chapter_scope"],
+                                        "material_scope":tutor["material_scope"]
                                     },
                                     "learner_view":teaching_review_learner_view(tutor),
                                     "learner_grounding":teaching_review_grounding(&learner_grounding),
                                     "current_design":tutor["current_design"],
                                     "coach_context":coach_context,
                                     "proposed_delivery":proposed,
+                                    "delivery_scope":request["delivery_scope"],
+                                    "committed_deliveries":request["committed_deliveries"],
                                     "proposed_presentations":proposed_presentations,
+                                    "proposed_board":proposed_board,
                                     "music_interactions":context.music_interactions,
                                     "review_context":review_context,
                                     "agent_working_state":tutor["agent_working_state"],
                                     "current_source_evidence":source_evidence,
                                     "current_web_evidence":context.active_tool_results.web_review_evidence(messages),
-                                    "presented_source_references":teaching_review_source_bindings(context.evidence_ledger.bindings(),
-                                        &tutor["current_design"], &proposed, &proposed_presentations)
+                                    "presented_source_references":presented_sources
                                 });
-                                if let Some(workspace) = context.workspace_goal.as_ref().filter(|workspace|
-                                    workspace.effective_exam_calendar(context.accepted_workspace_goal.as_ref()).is_some()) {
+                                if let Some(workspace) = context.workspace_goal.as_ref() {
                                     let effective = context.accepted_workspace_goal.as_ref().unwrap_or(&workspace.goal);
                                     packet["frozen_input"]["workspace_goal"] = serde_json::json!(effective);
                                     packet["frozen_input"]["constraints"] = serde_json::json!(effective.constraints);
-                                    packet["frozen_input"]["exam_calendar"] = workspace.effective_exam_calendar(context.accepted_workspace_goal.as_ref()).unwrap().clone();
+                                    if let Some(calendar) = workspace.effective_exam_calendar(context.accepted_workspace_goal.as_ref()) {
+                                        packet["frozen_input"]["exam_calendar"] = calendar.clone();
+                                    }
                                 }
                                 let (review, working_state, new_teaching_content) = review_delivery_candidate(
                                     state, adapter, &runtime_profile, packet, review_images, &learner_grounding, &mut teaching_review_history,
-                                    &context.cancellation, &mut turns, &mut spent)?;
+                                    &context.cancellation, &mut turns, &mut spent, cfg, experimental)?;
                                 if !working_state.is_null() {
                                     if let Some(tutor) = context.tutor.as_mut() {
                                         tutor["agent_working_state"] = working_state;
@@ -7805,9 +8354,15 @@ fn run_context_inner(
                                 batch_teaching_revision_progress |= new_teaching_content;
                                 editorial_feedback = teaching_review_editorial_feedback(&review);
                                 match review["decision"].as_str() {
-                                    Some("accept") if review.get("revision").is_some_and(serde_json::Value::is_null) => {},
+                                    Some("accept") if review.get("revision").is_some_and(serde_json::Value::is_null) => {
+                                        if proposed_board.is_object() { reviewed_board_candidate_id = context.board_candidate_id.clone(); }
+                                    },
                                     Some("revise") if review["revision"].as_str().is_some_and(|revision| !revision.trim().is_empty()) => {
-                                        let mut message = format!("教学稿需修订，尚未被选择：{}", review["revision"].as_str().unwrap());
+                                        let mut message = if proposed_board.is_object() {
+                                            format!("当前画板候选 {} 需修改，尚未被选择。下一步先调用 board.author revise，设置 candidate_revision 并提交需要替换的 blocks 或 drawings；工具保留其余图形、稳定 ID、links、mappings 和 routes。需要当前内容时先用 board.author read 读取候选。随后调用 board.author preview 预览新候选，在下一次采样查看图像后，再用 tutor.step select，设置 move.board_candidate_revision 为新版本；只补充当前合同要求的 interaction_intent 或确有变化的参与、邀请选择，设计焦点和来源目标由宿主绑定，不要复制画板 block ID。只改 select 的 delivery_text 或重新选择旧版本都不会修改画板。\n必须修正：{}", proposed_board["candidate_revision"], review["revision"].as_str().unwrap())
+                                        } else {
+                                            format!("教学稿需修订，尚未被选择：{}", review["revision"].as_str().unwrap())
+                                        };
                                         if let Some(feedback) = &editorial_feedback {
                                             message.push_str(&format!("\n表达建议（与必须修正项分开）：{feedback}"));
                                         }
@@ -7829,8 +8384,10 @@ fn run_context_inner(
                         if !packet["existing"].is_null() { return Ok(serde_json::json!({"assessment":packet["existing"]})); }
                         if cfg.turn_limit_reached(turns) || !tutor_assessment_attempts.insert(id.to_string()) { return Err(memory::teaching::invalid("Assessment remains unassessed; this run has no further evaluator budget")); }
                         context.cancellation.check()?;
+                        let assessment_images = crate::tutor_assessment::read_visual_sources(&packet, |reference, request|
+                            state.read_video_frames(Some(reference), request, &context.cancellation))?;
                         turns += 1;
-                        let (output,usage) = crate::tutor::evaluate(adapter,runtime_profile.clone(),packet).map_err(|error| error.spend_stop.map(crate::model_spend::SpendStop::tool_error).unwrap_or_else(|| memory::teaching::invalid("Assessment failed; response remains unassessed")))?;
+                        let (output,usage) = crate::tutor::evaluate(adapter,runtime_profile.clone(),packet,assessment_images).map_err(|error| error.spend_stop.map(crate::model_spend::SpendStop::tool_error).unwrap_or_else(|| memory::teaching::invalid("Assessment failed; response remains unassessed")))?;
                         spent = spent.saturating_add(usage);
                         context.cancellation.check()?;
                         if output["tool_calls"] == true { return Err(memory::teaching::invalid("Evaluator returned tools; response remains unassessed")); }
@@ -7854,6 +8411,7 @@ fn run_context_inner(
                                 }
                             } else { context.accepted_teaching_moves.clear(); }
                             context.teaching_delivery_draft = if operation == "select" { draft } else { None };
+                            context.board_reviewed_candidate_id = if operation == "select" { reviewed_board_candidate_id } else { None };
                             refresh_teaching_delivery_fragment(&mut context_fragments, context.teaching_delivery_draft.as_ref())?;
                         }
                     }
@@ -7870,10 +8428,47 @@ fn run_context_inner(
                             if teaching_uses_presentation(context.tutor.as_ref()) { context.tool_exposure_state.activate("presentation.author"); }
                         } else if resolving {
                             if let Some(tutor) = context.tutor.as_mut() { tutor["outside_current_request"] = serde_json::json!(operation == "outside"); }
-                            context.tutor_resolved = true;
+                            context.tutor_resolved = value["delivery_scope"]["kind"] != "board_part";
                             context.teaching_delivery_move_refs = value["delivery_move_refs"].as_array()
                                 .into_iter().flatten().filter_map(|v| v.as_str().map(str::to_owned)).collect();
                             goal_completion_retry = None;
+                            if operation == "select" {
+                                batch_finish_delivery = serde_json::from_str::<serde_json::Value>(&tc.arguments)
+                                    .is_ok_and(|request| request["finish"] == true);
+                            }
+                        }
+                    }
+                    if result.is_ok() && operation == "select" && context.tutor_resolved
+                        && context.board_reviewed_candidate_id.is_some() {
+                        // A whole-turn teaching selection accepts this exact
+                        // inspected board as well as its text. Stage both before
+                        // finish=true (or a final answer) can complete the turn.
+                        // Local board_part selections still use explicit commit.
+                        let revision = context.board_review_preview.as_ref()
+                            .and_then(|preview| preview.report["candidate_revision"].as_u64())
+                            .expect("reviewed native candidate has a revision") as u32;
+                        let staged = state.author_board(crate::board_author::AuthorRequest::Deliver { candidate_revision:revision },
+                            &context.evidence_ledger.bindings(), messages, &context.cancellation).and_then(|staged| {
+                                let text = staged.delivery_text.ok_or_else(|| crate::board_author::error(
+                                    "BOARD_TEACHING_SELECTION_REQUIRED", "The accepted board explanation could not be staged."))?;
+                                crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved,
+                                    context.teaching_delivery_draft.as_ref(), &text)?;
+                                Ok(text)
+                            });
+                        match staged {
+                            Ok(text) => {
+                                context.board_delivery_draft = Some(text);
+                                if let Ok(value) = &mut result {
+                                    value["native_board"] = serde_json::json!({"status":"delivery_staged","candidate_revision":revision});
+                                    value["next"] = serde_json::json!("The accepted native diagram and exact explanation are staged together. Complete this reply to save them; no further board.author deliver is needed. A revised prepare still requires preview and teaching selection again.");
+                                }
+                            }
+                            Err(error) => {
+                                context.board_delivery_draft = None;
+                                context.tutor_resolved = false;
+                                batch_finish_delivery = false;
+                                result = Err(error);
+                            }
                         }
                     }
                     if result.is_ok() {
@@ -8048,6 +8643,109 @@ fn run_context_inner(
                         Ok(None) => serde_json::json!({"status":"deferred","frames":[],"continuation":continuation,
                             "notice":"8 successfully decoded frames are already queued for your next request. Inspect those images first, then use continuation if needed. This additional read was deferred, not failed; already decoded images remain available."}).to_string(),
                         Err(e) => to_json(&e),
+                    };
+                    (body, None, None)
+                },
+                Some(ToolHandlerId::BoardAuthor) => {
+                    let result = (|| -> Result<crate::board_author::AuthorResult, ToolError> {
+                        let mut request = serde_json::from_str::<crate::board_author::AuthorRequest>(&tc.arguments)
+                            .map_err(|error| crate::board_author::error("BOARD_ARGUMENTS_INVALID", error.to_string()))?;
+                        if let crate::board_author::AuthorRequest::Prepare{presentations,..}=&request {
+                            if presentations.iter().any(|reference|!context.delivered_presentations.contains(reference)) {
+                                return Err(crate::board_author::error("BOARD_PRESENTATION_NOT_DELIVERED", "Each board part presentation must first be delivered by presentation.author in this run. Use its exact returned version reference."));
+                            }
+                        }
+                        if let crate::board_author::AuthorRequest::Deliver { candidate_revision }
+                            | crate::board_author::AuthorRequest::Commit { candidate_revision, .. } = &request {
+                            let is_commit=matches!(&request,crate::board_author::AuthorRequest::Commit{..});
+                            let current=state.author_board(crate::board_author::AuthorRequest::Read { collection:None,offset:0,length:None,board_revision:None,candidate_revision:None }, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
+                            let already_committed=is_commit && current.body["committed"].as_array().into_iter().flatten().any(|delivery|
+                                delivery["commit_id"].as_str().is_some_and(|id|id.ends_with(&format!(":{candidate_revision}"))));
+                            if already_committed {
+                                return state.author_board(request,&context.evidence_ledger.bindings(),messages,&context.cancellation);
+                            }
+                            let inspected = context.board_candidate_id.as_ref().is_some_and(|id|
+                                id.ends_with(&format!(":{candidate_revision}")) && context.inspected_presentations.contains(id));
+                            if !inspected {
+                                return Err(crate::board_author::error("BOARD_INSPECTION_REQUIRED", "Inspect this exact board candidate's screenshot in a later sampling before deliver or commit"));
+                            }
+                            if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
+                                if context.board_reviewed_candidate_id.is_none()
+                                    || context.board_reviewed_candidate_id != context.board_candidate_id {
+                                    return Err(crate::board_author::error("BOARD_TEACHING_SELECTION_REQUIRED", "The current board diagram has not passed teaching review. Preview and select this exact candidate before deliver or commit; a matching explanation from an older candidate does not review changed drawings."));
+                                }
+                                if current.body["candidate"]["candidate_revision"].as_u64() != Some(u64::from(*candidate_revision)) {
+                                    return Err(crate::board_author::error("BOARD_CANDIDATE_CHANGED", "Read and inspect the current board candidate before delivery"));
+                                }
+                                let candidate_text = current.body["candidate"]["delivery_text"].as_str()
+                                    .ok_or_else(|| crate::board_author::error("BOARD_CANDIDATE_CHANGED", "The current board candidate is unavailable"))?;
+                                if is_commit {
+                                    crate::board_author::validate_teaching_commit(context.tutor.as_ref(),context.tutor_resolved,
+                                        context.teaching_delivery_draft.as_ref(),candidate_text)?;
+                                    let selected=teaching_presentation_references(context.teaching_delivery_draft.as_ref().expect("accepted board part checked"))?;
+                                    let retained=current.body["candidate"]["answer_parts"].as_array().into_iter().flatten()
+                                        .filter(|part|part["kind"]=="presentation")
+                                        .map(|part|serde_json::from_value::<crate::presentation::PresentationRef>(serde_json::json!({"presentation_id":part["presentation_id"],"revision":part["revision"]}))
+                                            .map_err(|error|crate::board_author::error("BOARD_PRESENTATION_INVALID",error.to_string())))
+                                        .collect::<Result<Vec<_>,_>>()?;
+                                    if selected.len()!=retained.len() || selected.iter().any(|reference|!retained.contains(reference)) {
+                                        return Err(crate::board_author::error("BOARD_TEACHING_PRESENTATION_MISMATCH", "The native part's exact presentation versions differ from the reviewed teaching selection. Re-select and preview the intended versions before commit."));
+                                    }
+                                } else {
+                                    crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved,
+                                        context.teaching_delivery_draft.as_ref(), candidate_text)?;
+                                }
+                            }
+                            if let crate::board_author::AuthorRequest::Commit{reviewed_delivery,..}=&mut request {
+                                *reviewed_delivery=Some(crate::board_author::ReviewedDelivery {
+                                    teaching_delivery_move_refs:context.teaching_delivery_move_refs.clone(),
+                                    delivery_scope:context.teaching_delivery_draft.as_ref().and_then(|draft|draft.get("delivery_scope")).cloned(),
+                                });
+                            }
+                        }
+                        state.author_board(request, &context.evidence_ledger.bindings(), messages, &context.cancellation)
+                    })();
+                    let body = match result {
+                        Ok(mut result) => {
+                            if let Some(id) = result.body["candidate_id"].as_str() {
+                                context.board_candidate_id = Some(id.to_owned());
+                            }
+                            if result.invalidates_delivery {
+                                context.board_delivery_draft = None;
+                                context.board_review_preview = None;
+                                context.board_reviewed_candidate_id = None;
+                                if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
+                                    context.tutor_resolved = false;
+                                }
+                            }
+                            if let Some(delivery)=result.committed.as_ref() {
+                                context.board_review_preview = None;
+                                context.board_candidate_id = None;
+                                context.board_reviewed_candidate_id = None;
+                                context.events.board_committed(delivery);
+                            }
+                            if let Some(text) = result.delivery_text {
+                                context.board_delivery_draft = Some(text);
+                                batch_finish_board = true;
+                            }
+                            if let Some(id) = result.previewed_candidate {
+                                context.board_review_preview = Some(crate::board_author::ReviewPreview {
+                                    report:result.body.clone(), images:result.images.clone(),
+                                });
+                                context.inspected_presentations.remove(&id);
+                                context.pending_previews.insert(id);
+                                if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" && t["outside_current_request"] != true) {
+                                    result.body["next"] = serde_json::json!(format!(
+                                        "Inspect this preview in the next sampling. Then call tutor.step select with move.board_candidate_revision={} and the interaction_intent only if the current contract requires that unresolved semantic choice. The host supplies the accepted design and focus, source target and support metadata; do not copy canvas block IDs, design_ref, delivery_text or participation merely to publish ordinary support. An accepted whole-turn selection stages the exact explanation and diagram together; finish=true belongs at the top level if this completes the request. A real learner invitation needs its optional participation/response_expectation and must already be in the previewed blocks. A board_part still needs board.author commit before continuing.", result.body["candidate_revision"]));
+                                }
+                            }
+                            context.presentation_images.extend(result.images);
+                            if !matches!(result.body["status"].as_str(), Some("board_read" | "board_page" | "board_catalog" | "board_source")) {
+                                capability_batch_observations.insert(format!("board:{}:{}", result.body["status"], result.body["candidate_revision"]));
+                            }
+                            result.body.to_string()
+                        }
+                        Err(error) => to_json(&error),
                     };
                     (body, None, None)
                 },
@@ -8471,18 +9169,6 @@ fn run_context_inner(
             if context.cancellation.is_cancelled() {
                 activity_status = crate::run_events::ActivityStatus::Cancelled;
             }
-            context.events.output(activity.step_id, || serde_json::json!({
-                "result":serde_json::from_str::<serde_json::Value>(&result)
-                    .unwrap_or_else(|_| serde_json::Value::String(result.clone()))
-            }));
-            let activity_step_id = activity.step_id;
-            context.events.finish(
-                activity,
-                activity_status,
-                None,
-                activity_error,
-                activity_count,
-            );
             if handler.is_some() && !is_commentary && tool_result_error_code(&result).is_none() && !(prepare_batch && tc.name == "presentation.author") {
                 if let Some(registration) = registered {
                     capability_batch_observations.extend(
@@ -8498,8 +9184,13 @@ fn run_context_inner(
                 batch_synthesis_observed = true;
             }
             let result = attach_lid_recovery_requirement(result);
+            batch_has_error |= tool_result_error_code(&result).is_some();
             phase_progress_guard.observe_error(&tc.name, &result);
-            if matches!(tc.name.as_str(), "tutor.step" | "presentation.author") {
+            if tc.name == "tutor.step" && context.board_candidate_id.is_some()
+                && matches!(tool_result_error_code(&result).as_deref(), Some("TOOL_ARGUMENTS_INVALID" | "TEACHING_INVALID")) {
+                phase_progress_guard.argument_correction_tools.insert("board.author".into());
+            }
+            if matches!(tc.name.as_str(), "tutor.step" | "presentation.author" | "board.author") {
                 let error = serde_json::from_str::<serde_json::Value>(&result).ok().and_then(|value| Some(ToolError {
                     error_code:value.get("error_code")?.as_str()?.into(),
                     category:value.get("category")?.as_str()?.into(),
@@ -8524,7 +9215,7 @@ fn run_context_inner(
                 experimental_body_budget.admit_projection(&tc.name, &mut projection, book);
             }
             let model_body = projection.model_body_json();
-            context.progress_ledger.observe_library(&tc.name, &projection.evidence_arguments, &model_body);
+            context.progress_ledger.observe_read(&tc.name, &projection.evidence_arguments, &model_body);
             context.progress_ledger.observe_web(&tc.name, &model_body);
             let evidence_before = context.evidence_ledger.evidence_ranges();
             let locator_observations_before = locator_batch_observations.clone();
@@ -8542,9 +9233,7 @@ fn run_context_inner(
                 .into_iter()
                 .filter(|evidence| !evidence_before.contains(evidence))
                 .collect::<Vec<_>>();
-            context
-                .events
-                .evidence_accepted(activity_step_id, &newly_observed_evidence);
+            activity.accept_evidence(&newly_observed_evidence);
             locator_batch_observations.observe_tool_result(&tc.name, &model_body, book);
             locator_batch_observations.observe_verified_evidence(&newly_observed_evidence, book);
             evidence_plan_batch_observations.observe_tool_result(&tc.name, &model_body);
@@ -8571,6 +9260,19 @@ fn run_context_inner(
             context
                 .active_tool_results
                 .insert_call(tc, projection.into_envelope(receipt));
+            // The terminal event closes the remote span. Publish it only after
+            // projection and ledger acceptance have supplied all tool facts.
+            context.events.output(activity.step_id, || serde_json::json!({
+                "result":serde_json::from_str::<serde_json::Value>(&result)
+                    .unwrap_or_else(|_| serde_json::Value::String(result.clone()))
+            }));
+            context.events.finish(
+                activity,
+                activity_status,
+                None,
+                activity_error,
+                activity_count,
+            );
             if handler.is_some() && !blocked_without_progress {
                 let progress_after = tool_progress_signature(
                         &context.evidence_ledger,
@@ -8686,6 +9388,48 @@ fn run_context_inner(
             );
         }
 
+        // A successful selection already contains the exact reviewed final
+        // body. An explicit completion declaration avoids sampling the author
+        // again merely to copy it. Finish only after the entire tool batch and
+        // all runtime-known requested operations have completed.
+        let finish_draft = final_teaching_draft(context.teaching_delivery_draft.as_ref()).filter(|draft|
+            batch_finish_delivery && !batch_has_error && context.tutor_resolved
+                && unfinished_native_board(context.board_candidate_id.as_deref(), context.board_delivery_draft.as_deref(), last_teaching_error.as_ref()).is_none()
+                && context.pending_previews.is_empty() && context.pending_plot_refs.is_empty()
+                && context.goal.as_ref().is_none_or(|goal|
+                    goal.objective_gap(context.delivered_presentations.len(),
+                        run_effects(effects.clone(), &context.navigation).len()).is_none())
+                && draft["moves"].as_array().is_some_and(|moves| !moves.is_empty()
+                    && moves.iter().all(|movement| movement["presentation"].is_null())));
+        let finish_board = context.board_delivery_draft.as_deref().filter(|text| batch_finish_board && !batch_has_error
+            && context.pending_previews.is_empty() && context.pending_plot_refs.is_empty()
+            && crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved,
+                context.teaching_delivery_draft.as_ref(), text).is_ok());
+        if let Some(raw) = finish_board.or_else(|| finish_draft.and_then(|draft| draft["text"].as_str())) {
+            context.cancellation.check()?;
+            let delivery = compile_reviewed_answer(raw, &context.evidence_ledger.bindings(), &context.answer_provenance)?;
+            context.progress_ledger.observe(RuntimeProgressEvent::FinalAnswer);
+            let answer = Some(delivery.compiled.answer.clone());
+            let mut answer_view = delivery.compiled.view.clone();
+            append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(),
+                context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+            publish_teaching_delivery(&context.events, &answer_view);
+            messages.push(Message { provider_continuation: None, role: Role::Assistant,
+                content: answer.clone(), tool_calls: vec![], tool_call_id: None });
+            checkpoint_sink.persist_progress(messages, &context.events.activities())?;
+            return Ok(OuterOutcome {
+                answer, answer_view: Some(answer_view), incomplete: false, warning: None,
+                turns, tokens_spent: spent,
+                effects: run_effects(std::mem::take(effects), &context.navigation),
+                trace: std::mem::take(trace),
+                profile_usage: profile_usage_trace(profile_snapshot, &claimed_used_fact_ids, &profile_influences),
+                memory_updates: profile_memory_updates,
+                teaching_delivery_move_refs: context.teaching_delivery_move_refs.clone(),
+                source_bindings: delivery.compiled.bindings, delivery_diagnostics: None,
+                request_audit: std::mem::take(&mut request_audit),
+            });
+        }
+
         // Tool-loop count is a separate stop reason. Cumulative provider usage
         // remains telemetry and cannot masquerade as active-context pressure.
         let stalled = phase_progress_guard.blocks(&batch_progress_after)
@@ -8699,6 +9443,9 @@ fn run_context_inner(
             }
         }
         if cfg.turn_limit_reached(turns) || stalled || experimental_budget_stop {
+            if let Some(error) = unfinished_native_board(context.board_candidate_id.as_deref(), context.board_delivery_draft.as_deref(), last_teaching_error.as_ref()) {
+                return Err(error);
+            }
             let presentation_blocked = presentation_delivery_unavailable(context.goal.as_ref(),
                 context.delivered_presentations.len(), context.tool_exposure_state.presentation_unavailable_reason);
             let stop_reason = if presentation_blocked {
@@ -8774,11 +9521,15 @@ fn run_context_inner(
                 &excluded_tools,
                 context.presentation_authoring.as_ref(),
                 context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
             )?;
             crate::video::attach_question_image(&mut finalization_plan, question_image);
+            context_meter.calibrate_plan(adapter, &mut finalization_plan);
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if maybe_auto_compact(
                 CompactionPhase::MidTurn,
+                Some(&finalization_plan),
                 finalization_budget,
                 book,
                 messages,
@@ -8798,11 +9549,17 @@ fn run_context_inner(
                     tool_permissions, &context.tool_exposure_state, artifact_tools.exposure(),
                     context.evidence_ledger.evidence_state(), &excluded_tools,
                     context.presentation_authoring.as_ref(), context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                    Some((&context_meter, adapter)),
+            None,
                 )?;
                 crate::video::attach_question_image(&mut plan, question_image);
+                context_meter.calibrate_plan(adapter, &mut plan);
                 Ok(ActiveContextBudget::from_plan(&plan))
                 },
             )? {
+                context.active_tool_results.retire_sampled_bodies();
+                context.active_model_projection = None;
+                context.sampled_model_projection = None;
                 (_, finalization_plan) = build_sample_request(
                     messages,
                     &mut finalization_context_fragments,
@@ -8819,10 +9576,14 @@ fn run_context_inner(
                     &excluded_tools,
                     context.presentation_authoring.as_ref(),
                     context.presentation_authoring_finished, context.tutor.as_ref(), context.presentation_coach.as_ref(),
+                    Some((&context_meter, adapter)),
+            Some((&mut context.active_model_projection, &mut context.sampled_model_projection, &context.tool_declaration_history)),
                 )?;
                 crate::video::attach_question_image(&mut finalization_plan, question_image);
             }
             crate::video::attach(&mut finalization_plan, std::mem::take(&mut context.pending_video));
+            context.tool_declaration_history.project(&mut finalization_plan, adapter.tool_update_mode());
+            context_meter.calibrate_plan(adapter, &mut finalization_plan);
             let finalization_budget = ActiveContextBudget::from_plan(&finalization_plan);
             if !finalization_budget.fits {
                 return Err(active_context_exhausted(finalization_budget));
@@ -8839,8 +9600,12 @@ fn run_context_inner(
                 &context.answer_provenance,
                 false,
             );
-            if context.teaching_delivery_draft.is_some() || exam_review { projector.discard(); }
-            let finalization_result = adapter.chat_observed(&finalization_plan, &mut projector);
+            if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some() || exam_review { projector.discard(); }
+            let mut context_usage = ContextUsageCapture::default();
+            let finalization_result = adapter.chat_observed(&finalization_plan, &mut |delta| {
+                context_usage.observe(&delta);
+                crate::provider_stream::ModelObserver::observe(&mut projector, delta);
+            });
             if finalization_result
                 .as_ref()
                 .map_or(true, |turn| !turn.tool_calls.is_empty())
@@ -8865,6 +9630,9 @@ fn run_context_inner(
                 .mark_projected_fresh_results_sampled();
 
             let finalization_turn = finalization_result.map_err(crate::AdapterError::into_tool_error)?;
+            context_meter.record_response(adapter, &finalization_plan, &finalization_turn, &context_usage);
+            context.sampled_model_projection = crate::active_projection::ActiveModelProjection::capture_request(
+                &finalization_plan, messages.len(), adapter.projection_identity().as_deref(), active_checkpoint.as_ref(), &context.tool_declaration_history);
             context.presentation_method_observations.record_sample(&context.presentation_method_reads, &context.events, state, &finalization_plan)?;
             context.cancellation.check()?;
             crate::video::accept_observed(&finalization_plan, &mut context.media_observations, &context.events);
@@ -8883,7 +9651,7 @@ fn run_context_inner(
                             .into(),
                 });
             }
-            let raw_answer = context.teaching_delivery_draft.as_ref().and_then(|draft| draft["text"].as_str())
+            let raw_answer = context.board_delivery_draft.as_deref().filter(|text| crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved, context.teaching_delivery_draft.as_ref(), text).is_ok()).or_else(|| final_teaching_draft(context.teaching_delivery_draft.as_ref()).and_then(|draft| draft["text"].as_str()))
                 .or(finalization_turn.text.as_deref())
                 .map(str::trim)
                 .filter(|answer| !answer.is_empty());
@@ -8922,7 +9690,7 @@ fn run_context_inner(
                     && !delivery.incomplete
                     && delivery.warning.is_none()
             });
-            let teaching_delivery_complete = context.teaching_delivery_draft.is_some()
+            let teaching_delivery_complete = final_teaching_draft(context.teaching_delivery_draft.as_ref()).is_some()
                 && objective_gap.is_none() && !delivery.incomplete && delivery.warning.is_none();
             spent += delivery.extra_tokens;
             let answer = delivery.compiled.answer.clone();
@@ -8930,7 +9698,7 @@ fn run_context_inner(
             if !delivery.incomplete {
                 append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
             }
-            if context.teaching_delivery_draft.is_some() || exam_review {
+            if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some() || exam_review {
                 publish_teaching_delivery(&context.events, &answer_view);
             }
             let source_bindings = delivery.compiled.bindings;
@@ -8980,6 +9748,7 @@ mod tests {
     mod workspace_cache { include!("workspace_cache_tests.rs"); }
     mod workspace_records { include!("workspace_records_tests.rs"); }
     mod delivery_fallback_tests { include!("delivery_fallback_tests.rs"); }
+    mod board_author_runtime_tests { include!("board_author_runtime_tests.rs"); }
     include!("video_orchestrator_tests.rs");
     include!("music_orchestrator_tests.rs");
     include!("video_source_tests.rs");
@@ -8994,6 +9763,7 @@ mod tests {
     mod adm6 { include!("adm6_tests.rs"); }
     mod turn_failures { include!("turn_failure_tests.rs"); }
     mod teaching_design_loop { include!("teaching_design_loop_tests.rs"); }
+    mod teaching_video_review { include!("teaching_video_review_tests.rs"); }
     mod math_structure_flow { include!("math_structure_flow_tests.rs"); }
     mod cache_pressure { include!("cache_pressure_tests.rs"); }
     use super::*;
@@ -9021,6 +9791,38 @@ mod tests {
         let receipt=prepared.request().eligible_items.iter().find(|item|item.role==Role::Tool).unwrap();
         let value:serde_json::Value=serde_json::from_str(&receipt.content).unwrap();
         assert_eq!(value["tool"],"tool.search");
+    }
+
+    #[test]
+    fn response_language_reaches_every_model_sampling_and_fallback() {
+        use crate::response_language::ResponseLanguage;
+        for (case, responses) in [
+            ("normal", vec![turn_calls(vec![call("manifest", "book.manifest", "{}")]), turn_final("Here is an explanation.")]),
+            ("fallback", vec![]),
+        ] {
+            let b = book();
+            let mut store = MemoryStore::open(tmp(&format!("response-language-{case}"))).unwrap();
+            let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+            let snapshot = default_profile_snapshot(&b, &store, "t0");
+            let adapter = RequestPlanRecordingAdapter::new(responses, vec![]);
+            let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+            context.response_language = Some(ResponseLanguage::English);
+            context.messages.push(Message::user("此前用中文讲解"));
+            context.messages.push(Message { role: Role::Assistant, content: Some("好的，之前用中文。".into()), tool_calls: vec![], tool_call_id: None, provider_continuation: None });
+            let out = run_context(&b, &mut BorrowedResidentState { store: &mut store, reader: &mut reader }, &adapter,
+                &mut context, &snapshot, &ResidentTurnResources::default(), None,
+                &mut EphemeralCompactionCheckpointSink::default(), "请解释这段中文", "t0").unwrap();
+            let plans = adapter.seen_plans.borrow();
+            assert!(plans.len() >= 2, "{case}");
+            for plan in plans.iter() {
+                assert!(plan.ordered_messages().iter().any(|message| message.role == Role::System
+                    && message.content.as_deref().is_some_and(|text| text.contains("generated presentation text in English"))), "{case}");
+            }
+            if case == "fallback" {
+                assert!(out.incomplete);
+                assert!(out.answer.as_deref().unwrap().starts_with("The model service could not complete this response"));
+            }
+        }
     }
 
     #[test]
@@ -10057,7 +10859,14 @@ mod tests {
         }
 
         fn complete_structured(&self, request: CompletionRequest) -> Result<serde_json::Value, AdapterError> {
-            if request.system.starts_with("Teaching delivery acceptance review.") {
+            if request.system.contains("Teaching explanation acceptance review.") {
+                let packet: serde_json::Value = serde_json::from_str(&request.user).unwrap();
+                let validation = serde_json::json!({"original_request":packet["current_request"],
+                    "proposed_delivery":{"text":packet["current_delivery"]}});
+                return Ok(teaching_design_loop::review_fixture(
+                    serde_json::json!({"decision":"accept","revision":null,"learner_claims":[]}), &validation));
+            }
+            if request.system.contains("Teaching delivery acceptance review.") {
                 let packet: serde_json::Value = serde_json::from_str(&request.user).unwrap();
                 return Ok(teaching_design_loop::review_fixture(
                     serde_json::json!({"decision":"accept","revision":null,"learner_claims":[]}), &packet));
@@ -10290,6 +11099,42 @@ mod tests {
         }
     }
 
+    impl AutoCompactionAdapter {
+        fn prefix_compaction_response(
+            &self,
+            plan: &AgentRequestPlan,
+        ) -> Result<serde_json::Value, AdapterError> {
+            // The real prefix path addresses existing messages instead of
+            // duplicating their text in eligible_items. Resolve that map for
+            // this scripted generator; never consume the main chat script.
+            let ordered = plan.ordered_messages();
+            let instruction = plan.input.last().and_then(|message| message.content.as_deref())
+                .expect("compaction instruction follows its frozen prefix");
+            let mut input = instruction.lines().filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+                .find(|value| value.get("eligible_items").is_some())
+                .expect("compaction prefix contains a source map");
+            for source in input["eligible_items"].as_array_mut().unwrap() {
+                let object = source.as_object_mut().unwrap();
+                let index = object.remove("ordered_message_index").unwrap().as_u64().unwrap() as usize;
+                let message = ordered.get(index).expect("mapped source belongs to the prefix");
+                assert!(index + 1 < ordered.len(), "the instruction cannot map to itself");
+                assert_eq!(object["role"], serde_json::to_value(message.role).unwrap());
+                let content = if message.tool_calls.is_empty() {
+                    message.content.clone().unwrap_or_default()
+                } else {
+                    serde_json::json!({"content":message.content,"tool_calls":message.tool_calls}).to_string()
+                };
+                object.insert("content".into(), serde_json::Value::String(content));
+            }
+            self.complete_structured(CompletionRequest {
+                followup_user: None,
+                system: plan.instructions.clone(), user: input.to_string(), images: Vec::new(),
+                output_token_limit: plan.output_token_limit, reasoning_effort: None,
+            })
+        }
+
+    }
+
     impl ModelAdapter for AutoCompactionAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             Err(AdapterError {
@@ -10355,6 +11200,17 @@ mod tests {
         }
 
         fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+            if request.input.last().and_then(|message| message.content.as_deref())
+                .is_some_and(|text| text.contains("For this checkpoint, eligible_items refer to the preceding messages"))
+            {
+                return Ok(AssistantTurn {
+                    provider_continuation: None,
+                    text: Some(self.prefix_compaction_response(request)?.to_string()),
+                    tool_calls: Vec::new(),
+                    usage_total_tokens: None,
+                });
+            }
+
             self.seen_messages
                 .borrow_mut()
                 .push(request.ordered_messages());
@@ -10526,6 +11382,7 @@ mod tests {
             &[],
             None,
             false, None, None,
+            None, None,
         )
         .unwrap();
         let pressure = ActiveContextBudget::from_plan(&plan).pressure_tokens;
@@ -11588,6 +12445,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             vec![
                 turn_calls(vec![call("bad1", "book.text", r#"{"unexpected":1}"#)]),
                 turn_calls(vec![call("bad2", "book.text", r#"{"unexpected":2}"#)]),
+                turn_calls(vec![call("bad3", "book.text", r#"{"unexpected":3}"#)]),
                 turn_final("I could not complete the requested reading."),
             ],
             vec![],
@@ -11606,8 +12464,10 @@ user_question=\"explain normalization and create a rich presentation\"";
         .unwrap();
         assert!(out.incomplete);
         assert_eq!(out.warning.as_deref(), Some("AGENT_NO_PROGRESS"));
-        assert_eq!(out.request_audit.requests.len(), 3);
-        assert!(out.request_audit.requests[2].tool_schemas.is_empty());
+        assert_eq!(out.request_audit.requests.len(), 4);
+        assert!(!out.request_audit.requests[2].tool_schemas.is_empty(),
+            "one schema correction is available before stalled delivery stops");
+        assert!(out.request_audit.requests[3].tool_schemas.is_empty());
     }
 
     #[test]
@@ -12680,6 +13540,36 @@ user_question=\"explain normalization and create a rich presentation\"";
         observe_tool_evidence(&mut ledger, "book.text", r#"{"lid":"1.1"}"#,
             &serde_json::json!({"lid":"1.1","text":book.text("1.1", None).unwrap()}).to_string(), &book);
         assert_eq!(ledger.teaching_source_ranges(), vec![evidence]);
+    }
+
+    #[test]
+    fn recover_turn_text_read_ranges_accepts_only_paired_verified_text_and_batch_reads() {
+        let book = Book::new(sample_base(), &"X".repeat(100));
+        let assistant = |name: &str, arguments: &str| Message { role:Role::Assistant, content:None,
+            provider_continuation:None, tool_call_id:None, tool_calls:vec![call("read",name,arguments)] };
+        let tool = |id: &str, result: serde_json::Value| Message { role:Role::Tool, content:Some(result.to_string()),
+            provider_continuation:None, tool_call_id:Some(id.into()), tool_calls:vec![] };
+        let result = serde_json::json!({"lid":"1.1","text":book.text("1.1",None).unwrap()});
+        let expected = vec![EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}];
+        let text = assistant("book.text", r#"{"lid":"1.1"}"#);
+        assert_eq!(recover_turn_text_read_ranges(&book,&[text.clone(),tool("read",result.clone())]),expected);
+        let batch = assistant("book.text_batch", r#"{"ranges":[{"lid":"1.1"}]}"#);
+        let batch_result = serde_json::json!({"items":[{"arguments":{"lid":"1.1"},"result":result}]});
+        assert_eq!(recover_turn_text_read_ranges(&book,&[batch.clone(),tool("read",batch_result.clone())]),expected);
+
+        for messages in [
+            vec![tool("read",result.clone())],
+            vec![text.clone(),tool("wrong-id",result.clone())],
+            vec![text.clone(),tool("read",serde_json::json!({"lid":"1.1","text":"not the actual source"}))],
+            vec![text.clone(),tool("read",serde_json::json!({"error_code":"BOOK_READ_FAILED","lid":"1.1","text":book.text("1.1",None).unwrap()}))],
+            vec![text.clone(),Message::user("next user turn"),tool("read",result.clone())],
+            vec![assistant("book.search_text",r#"{"query":"X"}"#),tool("read",result.clone())],
+            vec![assistant("library.read",r#"{"operation":"text","lid":"1.1"}"#),tool("read",result.clone())],
+            vec![batch.clone(),tool("read",serde_json::json!({"items":[{"arguments":{"lid":"1.2"},"result":result}]}))],
+            vec![batch,tool("read",serde_json::json!({"items":[{"arguments":{"lid":"1.1"},"result":{"error_code":"BOOK_READ_FAILED"}}]}))],
+        ] {
+            assert!(recover_turn_text_read_ranges(&book,&messages).is_empty(),"{messages:?}");
+        }
     }
 
     #[test]
@@ -14481,7 +15371,7 @@ user_question=\"explain normalization and create a rich presentation\"";
         assert_eq!(delivery.text.matches("Citation coverage examples (").count(), 1);
         assert!(!spec.description.contains("Citation coverage examples ("));
         assert!(modules.iter().any(|module| module.asset_id == "resident-agent.policy.finish"
-            && module.revision == "v7" && module.text.contains("Keep absence claims within the scope actually examined")));
+            && module.revision == "v8" && module.text.contains("Keep absence claims within the scope actually examined")));
         for rule in ["complete claim", "negation", "non-adjacent premises separately",
             "do not supply LIDs", "within observed source", "copy the original text exactly",
             "preview may be truncated"] {
@@ -17001,12 +17891,12 @@ user_question={}",
         let adapter = RequestPlanRecordingAdapter::new(
             vec![
                 AssistantTurn {
-                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "tool-private-state".into() }),
+                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "tool-private-state".into(), messages_content: Vec::new() }),
                     ..turn_calls(vec![call("manifest", "book.manifest", "{}")])
                 },
                 turn_calls(vec![call("structure", "book.structure", "{}")]),
                 AssistantTurn {
-                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "final-private-state".into() }),
+                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "final-private-state".into(), messages_content: Vec::new() }),
                     ..turn_final("根据已有证据收束回答。")
                 },
             ],
@@ -17656,7 +18546,7 @@ user_question={}",
             };
             let mut sink = CleaningSink { installed: None, fail_install: case == "install_failed" };
             let mut checkpoint = None;
-            let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
+            let result = maybe_auto_compact(CompactionPhase::MidTurn, None, budget, &b, &mut messages, &adapter,
                 &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
                 &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
                     let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
@@ -17671,7 +18561,7 @@ user_question={}",
                     assert!(checkpoint.is_some());
                     if case == "already_covered" {
                         messages = original.clone();
-                        let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, &adapter,
+                        let result = maybe_auto_compact(CompactionPhase::MidTurn, None, budget, &b, &mut messages, &adapter,
                             &profile, &ContextFragmentLedger::default(), &[], &mut checkpoint, &mut sink,
                 &mut None, &|raw: &[Message], candidate: &CompactionCheckpoint| {
                     let projected = messages_with_context_fragments(raw, &ContextFragmentLedger::default(), &b,
@@ -18102,7 +18992,7 @@ user_question={}",
         let mut planned_messages = new_session();
         planned_messages.push(Message::user(question));
         let mut profile = compaction_profile("turn-intent-seeded-active-context");
-        profile.output_reserve_tokens = 0;
+        profile.output_reserve_tokens = 128;
         profile.safety_margin_tokens = 0;
         profile.compaction.high_watermark_ratio = 1.0;
         // Match this local run's actual tool surface: it has no host library,
@@ -18121,16 +19011,17 @@ user_question={}",
             build_sample_request(&planned_messages, &mut context_fragments.clone(), &b,
                 &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER,
                 &registry, profile, ToolPermissions::default(), exposure,
-                ArtifactExposureContext::no_overlay(), EvidenceState::Unlocated, &[], None, false, None, None).unwrap().1
+                ArtifactExposureContext::no_overlay(), EvidenceState::Unlocated, &[], None, false, None, None, None, None).unwrap().1
         };
         let unseeded_tokens = plan(&profile, &unseeded).active_context.estimated_input_tokens;
         let seeded_tokens = plan(&profile, &seeded).active_context.estimated_input_tokens;
         assert!(seeded_tokens > unseeded_tokens + 1, "guided-reading tools must increase the actual request budget");
-        profile.context_window_tokens = unseeded_tokens + 1;
+        profile.context_window_tokens = unseeded_tokens + profile.output_reserve_tokens;
         assert!(plan(&profile, &unseeded).active_context.fits);
         assert!(!plan(&profile, &seeded).active_context.fits);
 
-        let adapter = AutoCompactionAdapter::new(profile, Vec::new());
+        let fallback_answer = "The requested reading is not complete.";
+        let adapter = AutoCompactionAdapter::new(profile, vec![turn_final(fallback_answer)]);
         let reader_before = serde_json::to_string(&reader.state()).unwrap();
         let messages_before = serde_json::to_string(&new_session()).unwrap();
         let mut messages = new_session();
@@ -18158,7 +19049,49 @@ user_question={}",
         );
         assert!(sink.installed.is_none());
         assert!(adapter.compaction_requests.borrow().is_empty());
-        assert!(adapter.seen_messages.borrow().is_empty());
+        let seen = adapter.seen_messages.borrow();
+        assert_eq!(seen.len(), 1, "only the smaller, tool-free fallback may fit");
+        assert!(seen[0][0].content.as_deref().unwrap().starts_with("available_answer.v2\n"));
+        assert_eq!(error.request_audit.requests.len(), 1);
+        assert!(error.request_audit.requests[0].tool_schemas.is_empty());
+        assert_eq!(error.answer.as_deref(), Some(fallback_answer));
+    }
+
+    #[test]
+    fn pressure_only_rebuild_discards_sampled_projection_before_an_early_stop() {
+        let b = book();
+        let registry = resident_tool_registry();
+        let mut profile = ModelRuntimeProfile::fallback("pressure-projection", ProviderToolProtocol::Native);
+        profile.context_window_tokens = 10_000;
+        profile.output_reserve_tokens = 1_000;
+        profile.safety_margin_tokens = 100;
+        let mut messages = new_session();
+        messages.push(Message::user("continue"));
+        let mut fragments = ContextFragmentLedger::default();
+        fragments.upsert(ContextFragment::new("pressure.fixture", FragmentScope::Dynamic,
+            Role::System, "old body ".repeat(20_000), FragmentSensitivity::Private)).unwrap();
+        fragments.record_sampling(messages.len(), &[], vec![]);
+        messages.push(Message { role: Role::Assistant, content: Some("accepted step".into()),
+            tool_calls: vec![], tool_call_id: None, provider_continuation: None });
+        fragments.upsert(ContextFragment::new("pressure.fixture", FragmentScope::Dynamic,
+            Role::System, "new state", FragmentSensitivity::Private)).unwrap();
+        fragments.record_sampling(messages.len(), &[], vec![]);
+        let history = crate::tool_history::ToolDeclarationHistory::default();
+        let sampled_plan = AgentRequestPlan::for_agent_turn(profile.clone(), &messages, &[]);
+        let mut sampled = crate::active_projection::ActiveModelProjection::capture_request(
+            &sampled_plan, messages.len(), Some("pressure-route"), None, &history);
+        let mut restored = sampled.clone();
+        assert!(sampled.is_some());
+        let (_, plan) = build_sample_request(
+            &messages, &mut fragments, &b, &mut ActiveToolResultLedger::default(), None,
+            COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile, ToolPermissions::default(),
+            &ToolExposureState::default(), ArtifactExposureContext::no_overlay(),
+            EvidenceState::UserProvided, &[], None, false, None, None, None,
+            Some((&mut restored, &mut sampled, &history)),
+        ).unwrap();
+        assert!(restored.is_none());
+        assert!(sampled.is_none(), "cancellation before the next successful sample must not save the retired window");
+        assert!(!serde_json::to_string(&plan.input).unwrap().contains("old body old body"));
     }
 
     #[test]
@@ -18185,6 +19118,7 @@ user_question={}",
             &["book.text"],
             None,
             false, None, None,
+            None, None,
         )
         .unwrap();
 
@@ -19810,3 +20744,7 @@ user_question={}",
 #[cfg(test)]
 #[path = "music_runtime_tests.rs"]
 mod music_runtime_tests;
+
+#[cfg(test)]
+#[path = "cache_state_measurement_tests.rs"]
+mod cache_state_measurement_tests;

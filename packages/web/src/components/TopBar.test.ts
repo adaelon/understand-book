@@ -18,6 +18,15 @@ const props = {
 };
 
 describe("TopBar", () => {
+  it('offers the board only when available and closes the mobile menu after opening it', async () => {
+    const wrapper = mount(TopBar, { props: { ...props, mobileOpen: true } });
+    expect(wrapper.findAll('button').some(button => button.text() === '画板')).toBe(false);
+    await wrapper.setProps({ boardAvailable: true });
+    await wrapper.findAll('button').find(button => button.text() === '画板')!.trigger('click');
+    expect(wrapper.emitted('open-board')).toHaveLength(1);
+    expect(wrapper.emitted('close-mobile')).toHaveLength(1);
+    wrapper.unmount();
+  });
   it('names the chapter and explicitly offers enabling learning when it is off', async () => {
     const wrapper = mount(TopBar, { props: { ...props, guideChapterTitle: '全书结构与语义候选召回', guideChapterEnabled: false } });
     const button = wrapper.findAll('button').find(button => button.text().includes('带我读这一章'))!;

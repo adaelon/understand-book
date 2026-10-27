@@ -1,10 +1,13 @@
 //! Pending registration never reserves an invite. Account creation, email binding,
-//! invite consumption and the completion receipt commit in one transaction.
+//! invite consumption, the initial allowance and the completion receipt commit
+//! in one transaction.
 use crate::{
+    account_allowance::{AllowanceBasis, MicroCny},
     account_mail::{
         self, AccountMail, VerificationPurpose, MAX_VERIFICATION_ATTEMPTS, RESEND_SECONDS,
         VERIFICATION_SECONDS,
     },
+    allowance_admin::{Adjustment, Mutation, Period},
     auth,
     control_store::ControlStore,
     user_storage_paths::error,
@@ -18,6 +21,49 @@ use std::{
     sync::Mutex,
     time::{Duration, Instant},
 };
+
+const REGISTRATION_GRANT_MICRO_CNY: i64 = 10 * MicroCny::PER_YUAN;
+const REGISTRATION_ALLOWANCE_SECONDS: i64 = 30 * 24 * 60 * 60;
+
+fn grant_initial_allowance(
+    db: &Connection,
+    invite_id: &str,
+    owner: &str,
+    now: i64,
+) -> Result<(), ToolError> {
+    let actor: String = db
+        .query_row("SELECT actor FROM beta_invites WHERE invite_id=?", [invite_id], |r| r.get(0))
+        .map_err(|_| storage())?;
+    let operation = format!("registration-gift-{invite_id}");
+    let period = Mutation::Period(Period {
+        starts_at: now,
+        expires_at: now + REGISTRATION_ALLOWANCE_SECONDS,
+        basis: Some(AllowanceBasis {
+            version: "registration-gift-10-cny-v1".into(),
+            basis_micro_cny: MicroCny::new(REGISTRATION_GRANT_MICRO_CNY),
+        }),
+    }).apply(db, &actor, &operation, owner, now)?;
+    let adjustment = Mutation::Adjustment(Adjustment {
+        period_id: period["allowance_period"]["period_id"].as_str().unwrap().into(),
+        revision: 0,
+        delta_micro_cny: MicroCny::new(REGISTRATION_GRANT_MICRO_CNY),
+        reason: "邮箱注册赠送 10 元额度，有效期 30 天".into(),
+    });
+    let parameters = adjustment.parameters();
+    db.execute(
+        "INSERT INTO admin_operations(actor,operation_id,user_id,kind,parameters_json,result_json,created_at) VALUES(?,?,?,?,?,'{}',?)",
+        params![actor, operation, owner, adjustment.kind(), parameters.to_string(), now],
+    ).map_err(|_| storage())?;
+    let allowance = adjustment.apply(db, &actor, &operation, owner, now)?;
+    let result = json!({
+        "operation_id":operation,"actor":actor,"user_id":owner,"kind":adjustment.kind(),
+        "parameters":parameters,"created_at":now,"ok":true,
+        "allowance_period":allowance["allowance_period"],"receipt_id":null,
+    });
+    db.execute("UPDATE admin_operations SET result_json=? WHERE actor=? AND operation_id=?",
+        params![result.to_string(), actor, operation]).map_err(|_| storage())?;
+    Ok(())
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -156,6 +202,15 @@ impl Registration {
             completions: Mutex::new(VecDeque::new()),
             password_slot: Mutex::new(()),
         }
+    }
+    pub(crate) fn guest(
+        &self,
+        input: crate::guest_trial::Start,
+        previous: Option<&str>,
+        now: i64,
+    ) -> Result<String, ToolError> {
+        reserve(&self.starts)?;
+        crate::guest_trial::redeem(&mut self.control.lock().unwrap().connection, input, previous, now)
     }
     pub(crate) fn start(
         &self,
@@ -316,6 +371,7 @@ impl Registration {
             params![pending.email, now, owner],
         )
         .map_err(|_| storage())?;
+        grant_initial_allowance(&tx, &pending.invite_id, &owner, now)?;
         tx.execute(
             "UPDATE beta_invites SET state='used',used_by=?,used_at=? WHERE invite_id=?",
             params![owner, now, pending.invite_id],

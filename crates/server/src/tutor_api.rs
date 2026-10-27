@@ -4,7 +4,7 @@ use serde_json::json;
 
 pub(crate) fn route(state: &mut AppState, req: Req) -> Reply {
     let result = (|| {
-        let mut learning = state.user.learning_store_for_workspace(state.workspace.learning_workspace_id.as_deref())?;
+        let mut learning = state.user.learning_store_for_source(state.workspace.learning_workspace_id.as_deref(), &state.workspace.book.base.book_id)?;
         if req.url == "/tutor/state" && req.method == "GET" {
             return learning.state();
         }
@@ -215,6 +215,22 @@ fn tutor_prerequisites(book: &read_tools::Book, root: &std::path::Path) -> serde
             _ => unavailable("music_prebuild", "音乐资料的谱面、事件或整体结构尚未准备完成"),
         };
     }
+    if root.join("video_source_manifest.json").exists() {
+        let Ok((video, _)) = book.load_video_source(root) else {
+            return unavailable("video_transcript", "视频的完整字幕、时间定位或原片尚未准备完成");
+        };
+        if !video.coverage.iter().any(|coverage| coverage.capability == base_schema::VideoCapability::Discourse
+            && coverage.gaps(&video.source).is_ok_and(|gaps| gaps.is_empty()))
+            || !book.has_video_discourse()
+            || !video_structure_available(root, &video)
+        {
+            return unavailable("video_structure", "视频的全片原讲解结构尚未准备完成");
+        }
+        return json!({"status":"ready","source_id":book.base.book_id,"source_revision":book.source_fingerprint(),
+            "reason":"视频字幕、原片与全片原讲解结构已就绪，可以开始连续学习",
+            "required_stages":{"video_transcript":{"status":"done"},"video_structure":{"status":"done"}},
+            "coverage":video.coverage});
+    }
     // Book is already loaded by the Reader; Pass1's runtime product is base.json.
     if !root.join("source.txt").is_file()
         || crate::read_book_id_from_base(&root.join("base.json")).as_deref() != Some(book.base.book_id.as_str()) {
@@ -244,4 +260,27 @@ fn tutor_prerequisites(book: &read_tools::Book, root: &std::path::Path) -> serde
         "reason":"Pass1、discourse 与 BookStructure 已就绪，可以使用 Tutor",
         "required_stages":{"pass1":{"status":"done"},"profile_sidecar":{"status":"done"},
             "book_structure":{"status":"done"}}})
+}
+
+/// Native video structure replaces the book's discourse/BookStructure sidecars.
+/// Publication admission and Book::load validate its evidence; reads check that
+/// the accepted contributions and their dependencies are still available.
+fn video_structure_available(root: &std::path::Path, video: &base_schema::VideoSourceManifest) -> bool {
+    let Some(catalog) = read_json(&root.join("video_enrichments.json")) else { return false };
+    if catalog["version"] != "video_enrichments.v1" || catalog["material"] != json!(video.material) {
+        return false;
+    }
+    let Some(batches) = catalog["batches"].as_array() else { return false };
+    let mut found = false;
+    for batch in batches {
+        let Some(files) = batch["files"].as_array() else { return false };
+        if !files.iter().any(|file| file.as_str().is_some_and(|file| file.ends_with("/discourse.json"))) {
+            continue;
+        }
+        if !files.iter().all(|file| file.as_str().is_some_and(|file| root.join(file).is_file())) {
+            return false;
+        }
+        found = true;
+    }
+    found
 }

@@ -1,32 +1,34 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import YeyeMascot from './YeyeMascot.vue';
 </script>
 
 <template>
   <main>
     <header>
-      <span class="eyebrow">页页 · 阅读伙伴</span>
-      <h1>陪你把一本书读懂</h1>
-      <p>安静陪伴，也带着一点好奇。</p>
+      <span class="eyebrow">{{ uiText('页页 · 阅读伙伴') }}</span>
+      <h1>{{ uiText('陪你把一本书读懂') }}</h1>
+      <p>{{ uiText('安静陪伴，也带着一点好奇。') }}</p>
     </header>
 
-    <section class="portraits" aria-label="完整形象">
+    <section class="portraits" :aria-label="uiText('完整形象')">
       <figure v-for="variant in (['idle', 'reading'] as const)" :key="variant">
         <YeyeMascot :variant="variant" :size="300" :data-sample="variant" />
-        <figcaption>{{ variant === 'idle' ? '接着往下读' : '一起看清这一页' }}</figcaption>
+        <figcaption>{{ variant === 'idle' ? uiText('接着往下读') : uiText('一起看清这一页') }}</figcaption>
       </figure>
     </section>
 
-    <section aria-label="紧凑身份" class="identities">
+    <section :aria-label="uiText('紧凑身份')" class="identities">
       <div v-for="surface in ['paper', 'white', 'tint']" :key="surface" class="identity" :class="surface">
         <div v-for="size in [24, 32]" :key="size" class="identity-row">
           <YeyeMascot variant="avatar" :size="size" :data-sample="`avatar-${surface}-${size}`" />
-          <span>问这本书 <small>{{ size }}px</small></span>
+          <span>{{ uiText('问这本书') }} <small>{{ size }}px</small></span>
         </div>
       </div>
     </section>
 
-    <section class="sizes" aria-label="插画尺寸">
+    <section class="sizes" :aria-label="uiText('插画尺寸')">
       <figure v-for="size in [120, 128, 160, 220]" :key="size">
         <YeyeMascot :size="size" :data-sample="`body-${size}`" />
         <figcaption>{{ size }}px</figcaption>
@@ -35,7 +37,7 @@ import YeyeMascot from './YeyeMascot.vue';
 
     <footer>
       <YeyeMascot variant="avatar" :decorative="false" data-sample="named-avatar" />
-      <span>这一节，想先弄明白什么？</span>
+      <span>{{ uiText('这一节，想先弄明白什么？') }}</span>
     </footer>
   </main>
 </template>

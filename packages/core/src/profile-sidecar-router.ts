@@ -12,7 +12,8 @@ import type { ContentProfileDefinition } from "./content-profile";
 import type { LidNode } from "./generated/LidNode";
 import { inspectRenderedModelInput } from "./model-input-renderer";
 import { createProfileSidecarContext, type ProfileSidecarContext } from "./profile-sidecar-context";
-import { validateMathStructureCandidates, type MathStructureSource } from "./math-structure";
+import { MathStructureQuoteError, restoreMathStructureSourceQuotes, validateMathStructureCandidates, type MathStructureSource } from "./math-structure";
+import { ExtractorContractError } from "./extractor-contract";
 import {
   renderProfileSidecarDiscourseText,
   type ProfileSidecarArtifact,
@@ -503,7 +504,7 @@ export function buildProfileSidecarSemanticArtifact(
 ): ProfileSidecarArtifact {
   const discourseItems = output.discourse_items ?? [];
   const formulaSemantics = output.formula_semantics ?? [];
-  const mathItems = output.math_items ?? [];
+  let mathItems = output.math_items ?? [];
   if (packet.unit_kind === "profile_sidecar_discourse") {
     if (output.formula_semantics !== undefined) throw new Error("discourse unit must not emit formula_semantics");
     const allowed = new Set(packet.discourse_lids);
@@ -516,7 +517,16 @@ export function buildProfileSidecarSemanticArtifact(
   }
   if (mathItems.length) {
     if (!source) throw new Error("math structure validation requires the source");
-    validateMathStructureCandidates(mathItems, { ...source, anchor_lids: packet.math_anchor_lids, visible_lids: packet.visible_lids });
+    try {
+      mathItems = restoreMathStructureSourceQuotes(mathItems, source);
+      validateMathStructureCandidates(mathItems, { ...source, anchor_lids: packet.math_anchor_lids, visible_lids: packet.visible_lids });
+    } catch (error) {
+      if (!(error instanceof MathStructureQuoteError)) throw error;
+      throw new ExtractorContractError({
+        version: "automatic_build_extractor_diagnostic.v1", code: "quote_not_in_evidence",
+        json_pointer: error.json_pointer, expected: error.expected, actual: null,
+      });
+    }
   }
   return {
     content_hash: packet.input_hash,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { CloudUpload, File, FileCheck, FileText, RefreshCw, X } from "@lucide/vue";
 import { computed, ref, useId } from "vue";
 import { fileMatchesAccept, formatFileSize } from "../file-drop";
@@ -35,7 +37,7 @@ function openPicker() {
 function selectFile(file: File | null) {
   if (!file) return;
   if (!fileMatchesAccept(file, props.accept)) {
-    validationError.value = `${file.name} 不是支持的 ${props.acceptLabel} 文件`;
+    validationError.value = uiText('{0} 不是支持的 {1} 文件', [file.name, props.acceptLabel]);
     return;
   }
   validationError.value = null;
@@ -101,10 +103,10 @@ function clearFile() {
         <small>{{ formatFileSize(props.modelValue.size) }}</small>
       </span>
       <span class="file-drop-actions">
-        <button type="button" :disabled="props.disabled" :title="`替换${props.label}`" :aria-label="`替换${props.label}`" @click="openPicker">
+        <button type="button" :disabled="props.disabled" :title="uiText('替换{0}', [props.label])" :aria-label="uiText('替换{0}', [props.label])" @click="openPicker">
           <RefreshCw :size="17" />
         </button>
-        <button type="button" :disabled="props.disabled" :title="`移除${props.label}`" :aria-label="`移除${props.label}`" @click="clearFile">
+        <button type="button" :disabled="props.disabled" :title="uiText('移除{0}', [props.label])" :aria-label="uiText('移除{0}', [props.label])" @click="clearFile">
           <X :size="18" />
         </button>
       </span>
@@ -113,8 +115,8 @@ function clearFile() {
     <button v-else type="button" class="file-drop-empty" :disabled="props.disabled" @click="openPicker">
       <span class="file-drop-upload-icon" aria-hidden="true"><CloudUpload :size="25" :stroke-width="1.7" /></span>
       <span class="file-drop-empty-copy">
-        <strong>选择文件</strong>
-        <small>{{ dragging ? "松开以选用" : "本机文件" }}</small>
+        <strong>{{ uiText('选择文件') }}</strong>
+        <small>{{ dragging ? uiText('松开以选用') : uiText('本机文件') }}</small>
       </span>
       <component :is="FileKindIcon" class="file-drop-kind-icon" :size="18" aria-hidden="true" />
     </button>

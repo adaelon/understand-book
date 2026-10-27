@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "allow-desktop-set-language",
     "dialog:allow-open",
     "dialog:allow-save",
     "allow-desktop-sign-in",

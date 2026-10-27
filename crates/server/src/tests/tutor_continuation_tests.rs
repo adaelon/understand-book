@@ -709,11 +709,11 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     assert_eq!(answer["incomplete"],false,"{answer}");
     let accepted = state.user.agent_history.sessions[0].turns[1].turn_id.clone();
     assert_eq!(post_ok(&mut state,"/agent/chat",input.clone())["turn_id"],accepted);
-    assert_eq!(samples.lock().unwrap().len(),5,"four chat samplings plus the teaching delivery review");
+    assert_eq!(samples.lock().unwrap().len(),6,"four chat samplings plus independent fact and explanation reviews");
     let chosen = state.user.learning_store().unwrap().teaching_event(&format!("chosen:{accepted}")).unwrap();
     assert_eq!(state.user.learning_store().unwrap().teaching_deliveries(state.workspace.selected_chat.as_deref().unwrap(),&accepted).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"local","action":"choice","request":input,"accepted_turn":accepted,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":5,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":6,"terminal":"completed","incomplete":false}));
 
     let (f,w,input,_) = tc4_network_offer();
     let handle=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
@@ -728,7 +728,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     assert!(f.access.runs.run_one(&f.access).unwrap());
     assert!(!f.access.runs.run_one(&f.access).unwrap());
     assert_eq!(admit(&f,&w,input.clone()).1["turn_id"],accepted["turn_id"]);
-    assert_eq!(samples.lock().unwrap().len(),5,"four chat samplings plus the teaching delivery review");
+    assert_eq!(samples.lock().unwrap().len(),6,"four chat samplings plus independent fact and explanation reviews");
     let handle = f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap(); let user = handle.lock().unwrap();
     let turn = &user.agent_history.sessions[0].turns[1];
     assert_eq!(turn.status,AgentAssistantStatus::Completed,"{:?}",turn.error);
@@ -736,7 +736,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     let chosen = user.learning_store().unwrap().teaching_event(&format!("chosen:{}",turn.turn_id)).unwrap();
     assert_eq!(user.learning_store().unwrap().teaching_deliveries(w["selected_chat"].as_str().unwrap(),&turn.turn_id).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"network","action":"choice","request":input,"accepted_turn":turn.turn_id,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":5,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":6,"terminal":"completed","incomplete":false}));
 }
 
 impl ModelAdapter for Tc4CrashProbe {
@@ -1149,12 +1149,30 @@ fn continuation_tc2_unready_paused_ended_and_other_material_keep_session_boundar
         let before=state.user.learning_store().unwrap().state().unwrap();
         let request=selection_input(&state,"boundary-help");
         let run=prepare(&mut state,request);
-        assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing","{condition}");
-        assert_eq!(json!(state.user.learning_store().unwrap().state().unwrap()),json!(before));
+        if condition == "other" {
+            // Source-scoped restoration allows this material's first explicit
+            // question to create its own stage without inheriting another book.
+            assert_eq!(run.tutor.as_ref().unwrap()["status"],"active");
+            let after=state.user.learning_store().unwrap().state().unwrap();
+            let old=before.control.current_tutor_session_id.as_ref().unwrap();
+            let current=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap();
+            assert_ne!(current,old);
+            assert_eq!(after.sessions[old].user_intent,before.sessions[old].user_intent);
+            assert_eq!(after.sessions[old].material_scope,before.sessions[old].material_scope);
+            assert!(after.sessions[current].material_scope.iter().all(|material|material.source_id==state.workspace.book.base.book_id));
+        } else {
+            assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing","{condition}");
+            assert_eq!(json!(state.user.learning_store().unwrap().state().unwrap()),json!(before));
+        }
         super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
         let request=json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"boundary-continue","entry_action":"continue_answer",
             "answer_ref":{"turn_id":run.turn_ref.turn_id},"expected_chat_head":run.turn_ref.turn_id});
-        assert!(prepare_agent_chat(&mut state,&request.to_string(),"1002").err().unwrap().body.contains("INTERACTION_UNAVAILABLE"));
+        if condition == "other" {
+            let continued=prepare_agent_chat(&mut state,&request.to_string(),"1002").unwrap_or_else(|reply|panic!("{}",reply.body));
+            assert_eq!(continued.tutor.as_ref().unwrap()["binding"]["tutor_session_id"],run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"]);
+        } else {
+            assert!(prepare_agent_chat(&mut state,&request.to_string(),"1002").err().unwrap().body.contains("INTERACTION_UNAVAILABLE"));
+        }
     }
 }
 
@@ -1491,7 +1509,8 @@ impl ModelAdapter for TutorRequestRecorder {
     fn model_runtime_profile(&self) -> runtime::ModelRuntimeProfile { self.inner.model_runtime_profile() }
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> { self.inner.complete(request) }
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
-        if !request.system.starts_with("Teaching delivery acceptance review.") { return self.inner.complete_structured(request); }
+        if !request.system.contains("Teaching delivery acceptance review.")
+            && !request.system.contains("Teaching explanation acceptance review.") { return self.inner.complete_structured(request); }
         let value=json!({"kind":"structured_completion","instructions":request.system,"input":[{"role":runtime::Role::User,"content":request.user}],
             "tools":[],"images":request.images,"output_token_limit":request.output_token_limit,"reasoning_effort":request.reasoning_effort});
         let index={let mut samples=self.samples.lock().unwrap();let index=samples.len();samples.push(value.clone());index};
@@ -1929,7 +1948,7 @@ fn continuation_contract_no_action_cannot_claim_current_action() {
             "source_bindings":resolved_action(&state).source_bindings,"object_refs":[]}});
     let error=super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],
         &[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap_err();
-    assert!(error.message.contains("教学意图"));
+    assert!(error.message.contains("current_action 不支持"),"{}",error.message);
     let saved=&state.user.agent_history.sessions[0].turns[0];
     let mut old=serde_json::to_value(saved).unwrap(); old.as_object_mut().unwrap().remove("domain");
     let reread: AgentChatTurn=serde_json::from_value(old).unwrap();

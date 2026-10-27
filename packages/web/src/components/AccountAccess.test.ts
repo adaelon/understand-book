@@ -30,7 +30,7 @@ it('registration keeps a timed-out request, resends, reports wrong codes and ret
   vi.advanceTimersByTime(61_000); await flushPromises(); await button(w,'重发验证码').trigger('click'); await flushPromises();
   await w.get('input').setValue('000000'); await w.get('form').trigger('submit'); await flushPromises(); expect(w.text()).toContain('验证码不正确');
   await w.get('input').setValue('123456'); await w.get('form').trigger('submit'); await flushPromises();
-  expect(w.emitted('login')?.[0][0]).toBe('reader@example.com'); expect(calls).toHaveLength(4);
+  expect(w.emitted('login')?.[0]).toEqual(['reader@example.com', '注册成功，已赠送 10 元 AI 使用额度，有效期 30 天。请登录。']); expect(calls).toHaveLength(4);
   for(const storage of [localStorage,sessionStorage]) { expect(JSON.stringify(storage)).not.toContain('fixture-password'); expect(JSON.stringify(storage)).not.toContain('ABCDE'); }
 });
 it('registration failures clear passwords and expired verification can restart', async () => {
@@ -55,8 +55,34 @@ it('forgot has a uniform receipt and reset links are consumed from the address b
   expect(reset.findAll('input').every(i=>(i.element as HTMLInputElement).value==='')).toBe(true);
   expect(JSON.stringify(sessionStorage)+JSON.stringify(localStorage)).not.toContain('mail-secret');
 });
-it('invalid reset token offers recovery and password validation follows byte lengths', async () => {
-  expect(validPassword('中文密码')).toBe(true); expect(validPassword('a'.repeat(1025))).toBe(false);
+it.each([
+  ['a'.repeat(7), false], ['a'.repeat(8), true], ['a'.repeat(64), true], ['a'.repeat(65), false],
+  ['中文密码', false], ['中文密码无需算字节', true], ['📚'.repeat(8), true], ['📚'.repeat(64), true], ['📚'.repeat(65), false],
+])('new passwords count characters without requiring character combinations (%s)', (password, valid) => {
+  expect(validPassword(password)).toBe(valid);
+});
+it('registration explains invalid passwords inline, can reveal them and accepts eight characters', async () => {
+  const fetcher = vi.fn(async () => Response.json(pending)); vi.stubGlobal('fetch', fetcher);
+  const w = access('register'); await fillRegistration(w);
+  const password = w.get('#account-password'), confirmation = w.get('#account-confirm');
+  await password.setValue('short'); await confirmation.setValue('short');
+  await w.get('form').trigger('submit');
+  expect(password.attributes('aria-invalid')).toBe('true');
+  expect(w.get('#account-password-hint').text()).toContain('8–64 个字符');
+  expect(fetcher).not.toHaveBeenCalled();
+  await w.get('[aria-label="显示密码"]').trigger('click');
+  expect(password.attributes('type')).toBe('text');
+  expect(w.get('[aria-label="显示密码"]').attributes('aria-pressed')).toBe('true');
+  await password.setValue('readmore'); await w.get('form').trigger('submit');
+  expect(confirmation.attributes('aria-invalid')).toBe('true');
+  expect(w.get('#account-confirm-error').text()).toContain('两次输入的密码不一致');
+  expect(fetcher).not.toHaveBeenCalled();
+  await confirmation.setValue('readmore'); await w.get('form').trigger('submit'); await flushPromises();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(w.get('#account-title').text()).toBe('验证邮箱');
+  expect(w.get('[aria-current="step"]').text()).toContain('验证邮箱');
+});
+it('invalid reset token offers recovery', async () => {
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json({error_code:'PASSWORD_RESET_INVALID'},{status:409})));
   const w=access('reset-password','old-token');
   for(const input of w.findAll('input')) await input.setValue('new-password-123');

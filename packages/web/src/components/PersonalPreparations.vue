@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref, shallowRef, onMounted, onBeforeUnmount } from 'vue';
 import { accountStorage, preparations, preparationUpload, type AccountStorage, type Preparation, type PreparationUpload, type StorageItem } from '../personal-preparations';
 import { allowancePercent, allowanceTime } from '../account-allowance';
@@ -18,7 +20,7 @@ const knownReady=new Set<string>();
 const supportedFormats=ref(['epub','md','txt','mp4','pdf']);
 const fileAccept=computed(()=>supportedFormats.value.map(format=>`.${format}`).join(','));
 const formatLabels=computed(()=>supportedFormats.value.map(format=>format==='md'?'Markdown':format.toUpperCase()).join(' · '));
-const states:Record<string,string>={draft:'等待准备',queued_prepare:'等待生成方案',preparing:'正在生成方案',awaiting_confirmation:'请确认额度上限',queued:'等待开始',running:'正在准备',interrupted:'已暂停',ready:'已加入原工作区'};
+const states:Record<string,string>={draft:uiText('等待准备'),queued_prepare:uiText('等待生成方案'),preparing:uiText('正在生成方案'),awaiting_confirmation:uiText('请确认额度上限'),queued:uiText('等待开始'),running:uiText('正在准备'),interrupted:uiText('已暂停'),ready:uiText('已加入原工作区')};
 async function refresh(){
   if(loading)return;loading=true;
   try{
@@ -40,16 +42,16 @@ function fileSize(size:number){return size<1024?`${size} B`:size<1024*1024?`${(s
 async function upload(file:File){
   if(blocked.value||props.workspace.archived)return;
   error.value='';uploaded.value=false;
-  if(!supportedFormats.value.includes(file.name.split('.').pop()?.toLowerCase()??'')){error.value=`当前支持 ${formatLabels.value}。课件可先导出为带文字层的 PDF。`;return;}
-  if(file.size===0){error.value='这个文件是空的，请重新选择资料。';return;}
+  if(!supportedFormats.value.includes(file.name.split('.').pop()?.toLowerCase()??'')){error.value=uiText('当前支持 {0}。课件可先导出为带文字层的 PDF。', [formatLabels.value]);return;}
+  if(file.size===0){error.value=uiText('这个文件是空的，请重新选择资料。');return;}
   if(resumeItem.value){
-    if(file.name!==resumeItem.value.filename||file.size!==resumeItem.value.bytes){error.value='请选择这份上传原来的同名、同大小文件。';return;}
+    if(file.name!==resumeItem.value.filename||file.size!==resumeItem.value.bytes){error.value=uiText('请选择这份上传原来的同名、同大小文件。');return;}
     uploadSession.value=preparationUpload(resumeItem.value.storage_id);resumeItem.value=null;
   }else{
-    if(uploadSession.value){error.value='请先继续或取消当前上传。';return;}
-    if(!storage.value?.can_upload){error.value='当前无法新增上传，请查看套餐有效期和空间。';return;}
-    if(storage.value.max_file_bytes!==null&&file.size>storage.value.max_file_bytes){error.value=`单份资料不能超过 ${fileSize(storage.value.max_file_bytes)}。`;return;}
-    if(file.size>storage.value.available_bytes){error.value='剩余空间不足，请先整理资料或选择更高容量套餐。';return;}
+    if(uploadSession.value){error.value=uiText('请先继续或取消当前上传。');return;}
+    if(!storage.value?.can_upload){error.value=uiText('当前无法新增上传，请查看套餐有效期和空间。');return;}
+    if(storage.value.max_file_bytes!==null&&file.size>storage.value.max_file_bytes){error.value=uiText('单份资料不能超过 {0}。', [fileSize(storage.value.max_file_bytes)]);return;}
+    if(file.size>storage.value.available_bytes){error.value=uiText('剩余空间不足，请先整理资料或选择更高容量套餐。');return;}
     uploadSession.value=preparationUpload();
   }
   pendingFile.value=file;uploadFile.value={name:file.name,size:file.size};
@@ -74,7 +76,7 @@ async function cancelUpload(){
     if(activeUpload)await activeUpload;
     const current=await accountStorage.read();
     const item=current.items.find(item=>item.storage_id===session.upload_id);
-    if(item?.task_id)throw new Error('资料已加入准备列表，请在空间明细中整理。');
+    if(item?.task_id)throw new Error(uiText('资料已加入准备列表，请在空间明细中整理。'));
     storage.value=item?await accountStorage.act('cancel',item):current;
     uploadSession.value=null;pendingFile.value=null;uploadFile.value=null;
   }catch(failure){error.value=failure instanceof Error?failure.message:String(failure);}
@@ -82,13 +84,13 @@ async function cancelUpload(){
 }
 function chooseFile(event:Event){const field=event.target as HTMLInputElement,file=field.files?.[0];field.value='';if(file)void upload(file);}
 function chooseNewFile(){resumeItem.value=null;fileInput.value?.click();}
-function dropFile(event:DragEvent){dragging.value=false;if(!canChoose.value)return;const files=event.dataTransfer?.files;if(!files?.length)return;if(files.length>1){error.value='每次添加一份资料，完成后可以继续添加。';return;}resumeItem.value=null;void upload(files[0]);}
+function dropFile(event:DragEvent){dragging.value=false;if(!canChoose.value)return;const files=event.dataTransfer?.files;if(!files?.length)return;if(files.length>1){error.value=uiText('每次添加一份资料，完成后可以继续添加。');return;}resumeItem.value=null;void upload(files[0]);}
 function resumeUpload(item:StorageItem){if(blocked.value||uploadSession.value)return;resumeItem.value=item;fileInput.value?.click();}
 function storageTaskActive(item:StorageItem){return !!item.task_id&&items.value.some(task=>task.task_id===item.task_id&&['queued_prepare','preparing','queued','running'].includes(task.state));}
 async function removeStorage(item:StorageItem){
   if(blocked.value)return;
   const action=!item.task_id?'cancel':'delete';
-  if(!window.confirm(action==='cancel'?`取消“${item.filename}”的上传并释放空间？`:`删除“${item.filename}”的私人文件并释放空间？文件删除后无法恢复，请先下载需要保留的内容。`))return;
+  if(!window.confirm(action==='cancel'?uiText('取消“{0}”的上传并释放空间？', [item.filename]):uiText('删除“{0}”的私人文件并释放空间？文件删除后无法恢复，请先下载需要保留的内容。', [item.filename])))return;
   storageBusy.value=true;error.value='';
   try{
     storage.value=await accountStorage.act(action,item);
@@ -101,7 +103,7 @@ async function act(task:Preparation,action:string){
   busy.value=true;error.value='';
   try{
     const budget=budgets.value[task.task_id]??'';
-    if(['start','continue'].includes(action)&&(!/^\d+(\.\d{1,3})?$/.test(budget)||Number(budget)<=0))throw new Error('请输入大于 0、最多三位小数的额度百分比。');
+    if(['start','continue'].includes(action)&&(!/^\d+(\.\d{1,3})?$/.test(budget)||Number(budget)<=0))throw new Error(uiText('请输入大于 0、最多三位小数的额度百分比。'));
     await preparations.act(workspaceId,{task_id:task.task_id,action,expected_revision:task.revision,
       ...(['start','continue'].includes(action)?{period_id:task.allowance?.period_id,max_milli_percent:Math.round(Number(budget)*1000)}:{})});
     await refresh();
@@ -113,77 +115,77 @@ onMounted(()=>{void refresh();void refreshStorage();timer=setInterval(()=>{void 
 onBeforeUnmount(()=>{alive=false;if(uploadSession.value)uploadSession.value.cancelled=true;clearInterval(timer);});
 </script>
 <template>
-  <section class="personal-preparations" aria-label="个人资料准备">
-    <div class="preparation-heading"><div><h3>云端资料与准备</h3><p>上传到服务器，在网站和其他设备接着学习。</p></div><span class="private-label">云端副本</span></div>
-    <div class="storage-summary" aria-label="账号私人空间">
+  <section class="personal-preparations" :aria-label="uiText('个人资料准备')">
+    <div class="preparation-heading"><div><h3>{{ uiText('云端资料与准备') }}</h3><p>{{ uiText('上传到服务器，在网站和其他设备接着学习。') }}</p></div><span class="private-label">{{ uiText('云端副本') }}</span></div>
+    <div class="storage-summary" :aria-label="uiText('账号私人空间')">
       <template v-if="storage">
-        <div class="storage-heading"><strong>私人云端空间</strong><span>{{fileSize(storage.total_bytes)}} / {{storage.limit_bytes===null?'待开通套餐':fileSize(storage.limit_bytes)}}</span></div>
-        <p>仅计算上传的书籍、视频和课件原件；演示页、笔记等学习成果不占上传空间。</p>
-        <progress v-if="storage.limit_bytes!==null&&storage.limit_bytes>0" aria-label="私人空间占用" :value="Math.min(storage.total_bytes,storage.limit_bytes)" :max="storage.limit_bytes" />
-        <p>已保存 {{fileSize(storage.used_bytes)}} · 上传预留 {{fileSize(storage.reserved_bytes)}}<template v-if="storage.max_file_bytes!==null"> · 单份最多 {{fileSize(storage.max_file_bytes)}}</template></p>
-        <p v-if="storage.over_limit" class="storage-warning">已超过当前套餐空间，请整理资料或选择更高容量套餐后再上传。现有资料仍可在保留期内查看和导出。</p>
-        <p v-else-if="!storage.can_upload">当前不能新增上传，请查看套餐有效期与剩余空间。</p>
-        <p v-if="storage.retained_until!==null">现有私人资料保留至 {{allowanceTime(storage.retained_until)}}。</p>
-        <div class="actions"><button :aria-expanded="showStorage" @click="showStorage=!showStorage">{{showStorage?'收起空间明细':'整理空间'}}</button><button :disabled="blocked" @click="refreshStorage">刷新空间</button><button v-if="!storage.can_upload" @click="emit('allowance')">查看套餐</button></div>
+        <div class="storage-heading"><strong>{{ uiText('私人云端空间') }}</strong><span>{{fileSize(storage.total_bytes)}} / {{storage.limit_bytes===null?uiText('待开通套餐'):fileSize(storage.limit_bytes)}}</span></div>
+        <p>{{ uiText('仅计算上传的书籍、视频和课件原件；演示页、笔记等学习成果不占上传空间。') }}</p>
+        <progress v-if="storage.limit_bytes!==null&&storage.limit_bytes>0" :aria-label="uiText('私人空间占用')" :value="Math.min(storage.total_bytes,storage.limit_bytes)" :max="storage.limit_bytes" />
+        <p>{{ uiText('已保存') }} {{fileSize(storage.used_bytes)}} {{ uiText('· 上传预留') }} {{fileSize(storage.reserved_bytes)}}<template v-if="storage.max_file_bytes!==null"> {{ uiText('· 单份最多') }} {{fileSize(storage.max_file_bytes)}}</template></p>
+        <p v-if="storage.over_limit" class="storage-warning">{{ uiText('已超过当前套餐空间，请整理资料或选择更高容量套餐后再上传。现有资料仍可在保留期内查看和导出。') }}</p>
+        <p v-else-if="!storage.can_upload">{{ uiText('当前不能新增上传，请查看套餐有效期与剩余空间。') }}</p>
+        <p v-if="storage.retained_until!==null">{{ uiText('现有私人资料保留至') }} {{allowanceTime(storage.retained_until)}}。</p>
+        <div class="actions"><button :aria-expanded="showStorage" @click="showStorage=!showStorage">{{showStorage?uiText('收起空间明细'):uiText('整理空间')}}</button><button :disabled="blocked" @click="refreshStorage">{{ uiText('刷新空间') }}</button><button v-if="!storage.can_upload" @click="emit('allowance')">{{ uiText('查看套餐') }}</button></div>
       </template>
-      <p v-else-if="!storageError">正在读取账号空间…</p>
-      <p v-if="storageError" role="alert">{{storageError}} <button :disabled="blocked" @click="refreshStorage">重新读取空间</button></p>
+      <p v-else-if="!storageError">{{ uiText('正在读取账号空间…') }}</p>
+      <p v-if="storageError" role="alert">{{storageError}} <button :disabled="blocked" @click="refreshStorage">{{ uiText('重新读取空间') }}</button></p>
       <div v-if="showStorage&&storage" class="storage-items">
-        <p class="preparation-note">这里汇总账号所有工作区的私人文件。公共课程不占私人空间；移出或归档工作区不会删除文件。删除前请先暂停相关准备，并将资料移出所有工作区。</p>
-        <p v-if="!storage.items.length">还没有占用私人空间的资料。</p>
+        <p class="preparation-note">{{ uiText('这里汇总账号所有工作区的私人文件。公共课程不占私人空间；移出或归档工作区不会删除文件。删除前请先暂停相关准备，并将资料移出所有工作区。') }}</p>
+        <p v-if="!storage.items.length">{{ uiText('还没有占用私人空间的资料。') }}</p>
         <div v-for="item in storage.items" :key="item.storage_id" class="storage-item">
-          <div><strong>{{item.filename}}</strong><span>{{fileSize(item.bytes)}} · {{item.state==='reserved'?'上传预留':'已保存原件'}}<template v-if="item.workspace_id!==workspaceId"> · 其他工作区</template></span></div>
+          <div><strong>{{item.filename}}</strong><span>{{fileSize(item.bytes)}} · {{item.state==='reserved'?uiText('上传预留'):uiText('已保存原件')}}<template v-if="item.workspace_id!==workspaceId"> {{ uiText('· 其他工作区') }}</template></span></div>
           <div class="actions">
-            <a v-if="item.download_url" :href="item.download_url" download>下载</a>
-            <button v-if="!item.task_id&&item.workspace_id===workspaceId&&!workspace.archived" :disabled="blocked||!!uploadSession" @click="resumeUpload(item)">继续上传</button>
-            <button :disabled="blocked||storageTaskActive(item)" @click="removeStorage(item)">{{!item.task_id?'取消上传':'删除文件'}}</button>
-            <span v-if="storageTaskActive(item)" class="preparation-note">请先暂停准备</span>
+            <a v-if="item.download_url" :href="item.download_url" download>{{ uiText('下载') }}</a>
+            <button v-if="!item.task_id&&item.workspace_id===workspaceId&&!workspace.archived" :disabled="blocked||!!uploadSession" @click="resumeUpload(item)">{{ uiText('继续上传') }}</button>
+            <button :disabled="blocked||storageTaskActive(item)" @click="removeStorage(item)">{{!item.task_id?uiText('取消上传'):uiText('删除文件')}}</button>
+            <span v-if="storageTaskActive(item)" class="preparation-note">{{ uiText('请先暂停准备') }}</span>
           </div>
         </div>
       </div>
     </div>
-    <div v-if="!workspace.archived" class="upload-zone" :class="{'is-dragging':dragging,'is-uploading':uploadProgress!==null}" role="group" aria-label="资料上传区" @dragover.prevent="dragging=canChoose" @dragleave.self="dragging=false" @drop.prevent="dropFile">
-      <input ref="fileInput" class="file-input" aria-label="上传个人资料" type="file" :accept="fileAccept" tabindex="-1" :disabled="blocked" @change="chooseFile">
+    <div v-if="!workspace.archived" class="upload-zone" :class="{'is-dragging':dragging,'is-uploading':uploadProgress!==null}" role="group" :aria-label="uiText('资料上传区')" @dragover.prevent="dragging=canChoose" @dragleave.self="dragging=false" @drop.prevent="dropFile">
+      <input ref="fileInput" class="file-input" :aria-label="uiText('上传个人资料')" type="file" :accept="fileAccept" tabindex="-1" :disabled="blocked" @change="chooseFile">
       <div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M18 5H9a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V12L18 5Z"/><path d="M18 5v7h7M16 23V15m-4 4 4-4 4 4"/></svg></div>
-      <div class="upload-copy"><strong>{{dragging?'松开即可添加资料':uploadProgress!==null?'正在上传资料':'选择一份资料，或拖到这里'}}</strong><span>{{formatLabels}}</span></div>
-      <button class="upload-button" :disabled="!canChoose" @click="chooseNewFile">{{uploadProgress!==null?'正在上传…':'选择文件'}}</button>
-      <p class="preparation-note document-format-note">PDF 需有文字层；公式、表格和图示可回看来源页。扫描页和纯图片页暂需先补充文字层。课件的 PDF 页对应幻灯片。</p>
-      <div v-if="uploadFile" class="upload-file" aria-live="polite"><div><span class="upload-filename">{{uploadFile.name}}</span><span>{{fileSize(uploadFile.size)}}</span></div><span v-if="uploadProgress!==null">{{uploadProgress}}%<template v-if="uploadProgress===100"> · 正在保存</template></span><span v-else-if="uploaded" class="uploaded-label">已添加到准备列表</span></div>
-      <progress v-if="uploadProgress!==null" class="upload-progress" aria-label="资料上传进度" :value="uploadProgress" max="100" />
+      <div class="upload-copy"><strong>{{dragging?uiText('松开即可添加资料'):uploadProgress!==null?uiText('正在上传资料'):uiText('选择一份资料，或拖到这里')}}</strong><span>{{formatLabels}}</span></div>
+      <button class="upload-button" :disabled="!canChoose" @click="chooseNewFile">{{uploadProgress!==null?uiText('正在上传…'):uiText('选择文件')}}</button>
+      <p class="preparation-note document-format-note">{{ uiText('PDF 需有文字层；公式、表格和图示可回看来源页。扫描页和纯图片页暂需先补充文字层。课件的 PDF 页对应幻灯片。') }}</p>
+      <div v-if="uploadFile" class="upload-file" aria-live="polite"><div><span class="upload-filename">{{uploadFile.name}}</span><span>{{fileSize(uploadFile.size)}}</span></div><span v-if="uploadProgress!==null">{{uploadProgress}}%<template v-if="uploadProgress===100"> {{ uiText('· 正在保存') }}</template></span><span v-else-if="uploaded" class="uploaded-label">{{ uiText('已添加到准备列表') }}</span></div>
+      <progress v-if="uploadProgress!==null" class="upload-progress" :aria-label="uiText('资料上传进度')" :value="uploadProgress" max="100" />
       <div v-if="uploadSession" class="upload-actions actions">
-        <button v-if="uploadProgress===null" :disabled="blocked" @click="transmit">继续这次上传</button>
-        <button :disabled="cancelBusy||uploadSession.saving" @click="cancelUpload">{{cancelBusy?'正在取消…':'取消并释放空间'}}</button>
-        <span v-if="uploadProgress===null" class="preparation-note">已确认的上传进度会继续复用，也可以取消后重新选择资料。</span>
+        <button v-if="uploadProgress===null" :disabled="blocked" @click="transmit">{{ uiText('继续这次上传') }}</button>
+        <button :disabled="cancelBusy||uploadSession.saving" @click="cancelUpload">{{cancelBusy?uiText('正在取消…'):uiText('取消并释放空间')}}</button>
+        <span v-if="uploadProgress===null" class="preparation-note">{{ uiText('已确认的上传进度会继续复用，也可以取消后重新选择资料。') }}</span>
       </div>
     </div>
-    <p class="preparation-note">上传后先查看准备方案，再确认额度。视频先准备原文；完成后会回到这个工作区。</p>
+    <p class="preparation-note">{{ uiText('上传后先查看准备方案，再确认额度。视频先准备原文；完成后会回到这个工作区。') }}</p>
     <p v-if="error" role="alert">{{error}}</p>
     <article v-for="task in items" :key="task.task_id">
-      <div class="task-heading"><strong>{{task.name}}</strong><span class="task-status" :class="{'is-ready':task.state==='ready'}" role="status">{{states[task.state]??'等待更新'}}</span></div>
+      <div class="task-heading"><strong>{{task.name}}</strong><span class="task-status" :class="{'is-ready':task.state==='ready'}" role="status">{{states[task.state]??uiText('等待更新')}}</span></div>
       <p>{{task.estimate.message}}</p>
-      <p v-if="task.estimate.status==='no_model_cost'">预计使用额度：0%</p>
-      <p v-else-if="task.estimate.status==='estimated'">{{task.estimate.partial?'已能估算部分':'预计'}}：{{allowancePercent(task.estimate.lower)}} ～ {{allowancePercent(task.estimate.upper)}}<span v-if="task.estimate.partial">；其余步骤尚无法估算，确认上限仍约束总扣减。</span></p>
-      <p v-else>预计额度：方案生成后计算；没有可靠估算的步骤会保留说明。</p>
+      <p v-if="task.estimate.status==='no_model_cost'">{{ uiText('预计使用额度：0%') }}</p>
+      <p v-else-if="task.estimate.status==='estimated'">{{task.estimate.partial?uiText('已能估算部分'):uiText('预计')}}：{{allowancePercent(task.estimate.lower)}} ～ {{allowancePercent(task.estimate.upper)}}<span v-if="task.estimate.partial">{{ uiText('；其余步骤尚无法估算，确认上限仍约束总扣减。') }}</span></p>
+      <p v-else>{{ uiText('预计额度：方案生成后计算；没有可靠估算的步骤会保留说明。') }}</p>
       <template v-for="(material,index) in task.materials" :key="index">
         <p v-if="material.progress">{{material.progress.message}} · {{material.progress.completed}}<template v-if="material.progress.total>0"> / {{material.progress.total}}</template></p>
         <progress v-if="material.progress&&material.progress.total>0" :value="material.progress.completed" :max="material.progress.total" />
-        <button v-if="task.state==='ready'&&material.published_book_ref" @click="emit('open',material.published_book_ref)">继续学习</button>
+        <button v-if="task.state==='ready'&&material.published_book_ref" @click="emit('open',material.published_book_ref)">{{ uiText('继续学习') }}</button>
       </template>
       <template v-if="task.allowance">
-        <p>当前可用 {{allowancePercent(task.allowance.available)}} · 有效至 {{allowanceTime(task.allowance.expires_at)}}</p>
-        <p v-if="task.allowance.remaining">任务上限 {{allowancePercent(task.allowance.maximum)}} · 剩余上限 {{allowancePercent(task.allowance.remaining)}}</p>
+        <p>{{ uiText('当前可用') }} {{allowancePercent(task.allowance.available)}} {{ uiText('· 有效至') }} {{allowanceTime(task.allowance.expires_at)}}</p>
+        <p v-if="task.allowance.remaining">{{ uiText('任务上限') }} {{allowancePercent(task.allowance.maximum)}} {{ uiText('· 剩余上限') }} {{allowancePercent(task.allowance.remaining)}}</p>
       </template>
-      <p v-else>当前没有可用的额度期。</p>
-      <p v-for="period in task.usage_periods" :key="period.period_id">截至 {{allowanceTime(period.expires_at)}} 的额度期：已用 {{allowancePercent(period.used)}} · 预计占用 {{allowancePercent(period.reserved)}} · 待核算 {{allowancePercent(period.pending)}}</p>
-      <p v-if="task.error">准备已停在保存的位置。请检查可用额度、任务上限，或联系资料准备服务；继续会复用已完成成果。</p>
+      <p v-else>{{ uiText('当前没有可用的额度期。') }}</p>
+      <p v-for="period in task.usage_periods" :key="period.period_id">{{ uiText('截至') }} {{allowanceTime(period.expires_at)}} {{ uiText('的额度期：已用') }} {{allowancePercent(period.used)}} {{ uiText('· 预计占用') }} {{allowancePercent(period.reserved)}} {{ uiText('· 待核算') }} {{allowancePercent(period.pending)}}</p>
+      <p v-if="task.error">{{ uiText('准备已停在保存的位置。请检查可用额度、任务上限，或联系资料准备服务；继续会复用已完成成果。') }}</p>
       <div v-if="!workspace.archived" class="actions">
-        <button v-if="task.state==='draft'&&!canStart(task)||task.state==='interrupted'&&!task.materials.every(m=>m.plan_ready||m.kind==='video')" :disabled="busy" @click="act(task,'prepare')">生成准备方案</button>
+        <button v-if="task.state==='draft'&&!canStart(task)||task.state==='interrupted'&&!task.materials.every(m=>m.plan_ready||m.kind==='video')" :disabled="busy" @click="act(task,'prepare')">{{ uiText('生成准备方案') }}</button>
         <template v-if="canStart(task)||task.state==='interrupted'&&task.materials.every(m=>m.plan_ready||m.kind==='video')">
-          <label>本次总上限 <input v-model="budgets[task.task_id]" :aria-label="`${task.name}额度上限`" type="number" min="0.001" step="0.001"> %</label>
-          <button :disabled="busy||!task.allowance" @click="act(task,task.state==='interrupted'?'continue':'start')">{{task.state==='interrupted'?'确认当前额度并继续':'确认上限并开始'}}</button>
-          <button @click="emit('allowance')">补充额度</button>
+          <label>{{ uiText('本次总上限') }} <input v-model="budgets[task.task_id]" :aria-label="uiText('{0}额度上限', [task.name])" type="number" min="0.001" step="0.001"> %</label>
+          <button :disabled="busy||!task.allowance" @click="act(task,task.state==='interrupted'?'continue':'start')">{{task.state==='interrupted'?uiText('确认当前额度并继续'):uiText('确认上限并开始')}}</button>
+          <button @click="emit('allowance')">{{ uiText('补充额度') }}</button>
         </template>
-        <button v-if="['queued_prepare','preparing','queued','running'].includes(task.state)" :disabled="busy||task.pause_requested" @click="act(task,'pause')">{{task.pause_requested?'正在暂停':'暂停准备'}}</button>
+        <button v-if="['queued_prepare','preparing','queued','running'].includes(task.state)" :disabled="busy||task.pause_requested" @click="act(task,'pause')">{{task.pause_requested?uiText('正在暂停'):uiText('暂停准备')}}</button>
       </div>
     </article>
   </section>

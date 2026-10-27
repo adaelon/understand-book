@@ -9,7 +9,7 @@ import path from "node:path";
 import type { AutomaticBuildTarget, AutomaticBuildStageState } from "./build-orchestrator";
 import type { BookStructureSidecar, BookStructureUnitSource, BookStructureKeyStop } from "./book-structure";
 import { acceptFormalObjects, checkTeachingBindings, formalObjectInput, type FormalObjects, type TeachingSource } from "./teaching-map";
-import { advanceCognitiveWork, newCognitiveWork, collectCognitiveMaterials, cognitiveTaskInput, CognitiveBudgetZ, type CognitiveWork, type CognitiveMaterials, type CognitiveBudget } from "./cognitive-materials";
+import { advanceCognitiveWork, newCognitiveWork, collectCognitiveMaterials, cognitiveTaskInput, prepareCognitiveTaskInput, CognitiveBudgetZ, type CognitiveWork, type CognitiveMaterials, type CognitiveBudget } from "./cognitive-materials";
 import { canonicalBuildJson, retrievalScopeIncludes, type BuildRetrievalSelection } from "./build-intent";
 import { readBuildRetrievalState, retrievalRemainingWork } from "./automatic-build-retrieval";
 import { retrievalDependencies, retrievalPreparationMatches, type PreparedRetrieval } from "./semantic-retrieval-preparation";
@@ -438,13 +438,24 @@ function routeTeachingStages(input: TeachingBuildInput, states: AutomaticBuildSt
     // Replay accepted bounded steps; only the first missing step is dispatched.
     for (let step = 0; ; step++) {
       const feedback = round?.cognitive_feedback[target.id] ?? [];
-      const task = makeTask(input, "cognitive_materials", `target-${targetIndex}-repair-${repairRevision}-resume-${resume?.revision ?? 0}-${step}`,
-        { ...cognitiveTaskInput(input.source, target, formalResult, work, workBudget, body => {
-          const policy = automaticBuildExtractionPolicy("cognitive_materials", resolveContentProfile(input.target.profile_id), "full");
-          return evaluateModelInputBudget({ ...AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1, rendered_input: canonicalBuildJson({ ...body as object, feedback }),
-            router_version: policy.router_version, prompt_sha256: policy.prompt_sha256, output_reserve_tokens: 4096, executor_context_floor_tokens: 16384 }).status === "within_limit";
-        }), feedback },
+      const fits = (body: unknown) => {
+        const policy = automaticBuildExtractionPolicy("cognitive_materials", resolveContentProfile(input.target.profile_id), "full");
+        return evaluateModelInputBudget({ ...AUTOMATIC_BUILD_MODEL_INPUT_BUDGET_V1, rendered_input: canonicalBuildJson({ ...body as object, feedback }),
+          router_version: policy.router_version, prompt_sha256: policy.prompt_sha256, output_reserve_tokens: 4096, executor_context_floor_tokens: 16384 }).status === "within_limit";
+      };
+      const id = `target-${targetIndex}-repair-${repairRevision}-resume-${resume?.revision ?? 0}-${step}`;
+      let task = makeTask(input, "cognitive_materials", id,
+        { ...cognitiveTaskInput(input.source, target, formalResult, work, workBudget, fits), feedback },
         { objects: formalResult, target, work, budget: workBudget, discourse: input.units.flatMap(u => u.discourse_items) });
+      // An issued first packet is immutable. Replay its original reading ledger and
+      // accepted steps; prefetch applies only before a new first task is frozen.
+      if (step === 0 && !resume
+        && !existsSync(teachingTaskPath(input.target, task.policy_generation_id, task.descriptor.work_unit_id))
+        && !existsSync(automaticBuildGenerationArtifactPath(input.target, "cognitive_materials", task.policy_generation_id, task.descriptor.work_unit_id))) {
+        const prepared = prepareCognitiveTaskInput(input.source, target, formalResult, work, workBudget, fits);
+        if (prepared.work !== work) task = makeTask(input, "cognitive_materials", id, { ...prepared.packet, feedback },
+          { objects: formalResult, target, work: prepared.work, budget: workBudget, discourse: input.units.flatMap(u => u.discourse_items) });
+      }
       tasks.push(task);
       const result = accepted(input.target, task)?.payload as CognitiveWork | undefined;
       if (!result) break;

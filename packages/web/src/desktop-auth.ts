@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 export interface DesktopAuthorizationRequest { redirect_uri: string; code_challenge: string; state: string }
 export function desktopAuthorization(search: string): DesktopAuthorizationRequest | null {
   const params = new URLSearchParams(search);
@@ -8,7 +9,7 @@ export function desktopAuthorization(search: string): DesktopAuthorizationReques
   if (callback.protocol !== 'http:' || callback.hostname !== '127.0.0.1' || !callback.port
     || callback.pathname !== '/callback' || callback.search || callback.hash || callback.username || callback.password
     || !/^[A-Za-z0-9_-]{43}$/.test(code_challenge) || !/^[A-Za-z0-9_-]{43}$/.test(state)) {
-    throw new Error('桌面登录链接已失效，请返回应用重新登录。');
+    throw new Error(uiText('桌面登录链接已失效，请返回应用重新登录。'));
   }
   return { redirect_uri, code_challenge, state };
 }

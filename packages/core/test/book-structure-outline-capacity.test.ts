@@ -4,15 +4,33 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { resolveAutomaticBuildTarget, buildAutomaticBuildSnapshot, nextAutomaticBuildAction } from "../src/build-orchestrator";
 import { buildBookStructureUnitSources, createBookStructureExecutionContractsV2, BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, evaluateBookStructureExecution } from "../src/book-structure";
-import { structureOrganizationContracts, renderStructureOrganizationInput } from "../src/book-structure-organization";
+import { structureOrganizationContracts, renderStructureOrganizationInput, type StructureOrganizationInput } from "../src/book-structure-organization";
 import { structureSourceOutline, structureDiscoverySources } from "../src/book-structure-discovery";
 import { markdownToBlocks } from "../src/md-adapter";
 import { segment } from "../src/segment";
 import { resolveContentProfile } from "../src/content-profile";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1 } from "../src/build-execution-profile";
 import { createCandidateTransportContract } from "../src/executor-transport";
+import { estimateTokens } from "../src/window";
 
 describe("whole-book outline capacity", () => {
+  it.each(["chapter", "theme", "reconcile"] as const)("removes only formatting overhead from oversized %s inputs", phase => {
+    // Serialization does not consume the phase-specific acceptance context.
+    const packet = { version: "book_structure_organization_input.v1", phase, context: {}, body: { candidates: Array.from({ length: 700 }, (_, i) => ({
+      ref: `candidate:${i}`, meaning: "a grounded mechanism", evidence_lids: ["1.1", "1.2"],
+    })) }, reference_scope: { unit_lids: ["1"], dependency_target_lids: [], evidence_by_unit: {} } } as unknown as StructureOrganizationInput;
+    const delivery = { phase, input: packet.body, reference_scope: packet.reference_scope };
+    const pretty = JSON.stringify(delivery, null, 2) + "\n";
+    expect(estimateTokens(pretty)).toBeGreaterThan(20000);
+    const rendered = renderStructureOrganizationInput(packet);
+    expect(estimateTokens(rendered)).toBeLessThanOrEqual(20000);
+    expect(JSON.parse(rendered)).toEqual(delivery);
+    const small = { ...packet, body: { candidates: [] } } as StructureOrganizationInput;
+    expect(renderStructureOrganizationInput(small)).toBe(JSON.stringify({ phase, input: small.body,
+      reference_scope: small.reference_scope }, null, 2) + "\n");
+    const oversized = { ...packet, body: { text: "真实内容超出单次容量。".repeat(4000) } } as StructureOrganizationInput;
+    expect(estimateTokens(renderStructureOrganizationInput(oversized))).toBeGreaterThan(20000);
+  });
   it("reports actual outline budget failure before creating semantic tasks", () => {
     const root = mkdtempSync(path.join(tmpdir(), "outline-budget-"));
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));

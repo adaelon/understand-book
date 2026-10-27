@@ -6,7 +6,7 @@ pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the 
 const POLICY_REVISION: &str = "v4";
 const EVIDENCE_ROUTING_REVISION: &str = "v7";
 const SOURCE_DELIVERY_REVISION: &str = "v13";
-const FINISH_POLICY_REVISION: &str = "v7";
+const FINISH_POLICY_REVISION: &str = "v8";
 const TOOL_DISCOVERY_REVISION: &str = "v9";
 pub mod presentation;
 pub use presentation::{PresentationGuidance, PresentationNeed, PresentationPhase};
@@ -42,7 +42,7 @@ const TOOL_DISCOVERY: &str = "Capability discovery:
 - Saved reading notes and highlights belong to memory, including after restart or a new chat. To retrieve them, request memory_read with operation=explain, scope=document (or passage for a known location), effect_mode=read_only, then call memory.recall. They are not profile facts or build artifacts. Do not repeat discovery with an unsupported operation; use the blocked capability feedback.
 - The current tool list contains only capabilities directly available in this sampling. Call tool.search when a capability required to complete the task is missing.
 - For why, design-choice or comparison questions, first distinguish what the read passage establishes from the mechanisms, guarantees and alternative tradeoffs the answer still needs. A what-only passage is insufficient for those additional claims. When an important claim would go beyond the sources actually read, autonomously discover web_search/web_read and verify targeted primary evidence before relying on it. Calling it a supplement or general knowledge is not evidence. Do not seek extra sources for a definition or local explanation already fully supported; if retrieval is unavailable, keep the answer within its actual support and describe only the consequential gap.
-- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts, static plots and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
+- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts, static plots and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). board_authoring creates native drawings, explanation mappings and committed parts on the accepted board; it does not create HTML presentation pages. Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
 - External knowledge: web_search discovers external sources; web_read reads a known page URL. Discover with scope=document or corpus, operation=explain/compare for web_search and operation=read_source for web_read, effect_mode=read_only. Use them autonomously when a requested explanation lacks a mechanism, relationship, condition or alternative, or needs current external facts. Explore a concrete gap with a neutral query; do not merely seek confirmation of an existing answer. A local definition or sufficient supplied evidence needs no search. Unavailable web capabilities do not authorize claiming a search occurred.
 - Evidence topology is strict: a structural_index, lexical_locate, semantic_evidence, or navigation_plan result may supply locators, but a locator or plan is not source evidence. Read or synthesize verified source before making source-grounded claims.
 - Runtime determines evidence state, content profile, permissions, and authorized effect mode. Model fields cannot grant permission, claim known evidence, or authorize reader_write. Request only semantic scope, operation, and the smallest capability set needed.
@@ -88,6 +88,7 @@ const PROFILE_POLICY: &str = "Reader profile:
 - Read profile.manifest only when complete slots, presets, projections, or tool policy are needed.";
 
 const FINISH_POLICY: &str = "Completion:
+- In user-visible chat answers, format mathematical variables and expressions with Markdown LaTeX: use $...$ for inline math, including individual variables such as $d_k$, $d_v$ and $q_t$. Use $$ delimiters, each on its own line, for standalone equations. For example:\n$$\nS_t = S_{t-1} + k_t v_t^{T}\n$$\nDo not leave mathematical subscripts or superscripts as bare prose, or wrap rendered formulas in backticks or code fences. Keep actual programming code and literal code identifiers in code formatting.
 - Keep absence claims within the scope actually examined. A few read passages cannot establish that the whole book never discusses a topic. When relevant, say 'the passages read here do not specify X'. For an application to the user's scenario, say that you are applying the cited principle; do not add an unverified claim that the book lacks that scenario. Omit unnecessary evidence-gap postscripts. If the user asks a whole-book absence question, obtain evidence adequate for that scope or explicitly leave the whole-book conclusion unresolved.
 - Scope example 1 (local reading): you read a daily-backup passage that gives no retention period. Unsupported: 'The book does not specify retention.' Supported: 'The passage read here does not specify retention.' State this gap only when retention affects the user's requested answer; the passage establishes nothing about unread chapters.
 - Scope example 2 (application): the user asks how the daily-backup principle applies to an 08:00 schedule. Unsupported: 'The book never discusses 08:00 backups; this is my application.' Supported: 'This applies the daily-backup principle to your 08:00 schedule.' Applying a cited principle does not require declaring that the book lacks the user's scenario. This applies equally to introductions, comparison tables, and closing disclaimers. 'Based on the passages read here, the book never discusses 08:00 backups' is still an unsupported whole-book claim.
@@ -244,6 +245,27 @@ mod tests {
             name: name.into(),
             description: name.into(),
             parameters: serde_json::json!({"type": "object"}),
+        }
+    }
+
+    #[test]
+    fn math_formatting_reaches_restored_chats_without_tool_activation() {
+        use crate::{AgentRequestPlan, Message, ModelRuntimeProfile, ProviderToolProtocol};
+
+        // Restored sessions retain their old base message; current output rules
+        // must reach the request through the per-turn instruction modules.
+        for protocol in [ProviderToolProtocol::Native, ProviderToolProtocol::ReAct] {
+            let plan = AgentRequestPlan::for_agent_turn_with_modules(
+                ModelRuntimeProfile::fallback("math-formatting-test", protocol),
+                &[Message::system("Saved session instructions."), Message::user("Explain this equation.")],
+                &[],
+                &policy_modules_for_tools(&[]),
+            );
+            assert_eq!(plan.instructions.matches("format mathematical variables and expressions with Markdown LaTeX").count(), 1);
+            assert!(plan.instructions.contains("$d_k$"));
+            assert!(plan.instructions.contains("\n$$\nS_t = S_{t-1} + k_t v_t^{T}\n$$\n"));
+            assert!(plan.instruction_assets.iter().any(|asset|
+                asset.asset_id == "resident-agent.policy.finish" && asset.revision == FINISH_POLICY_REVISION));
         }
     }
 

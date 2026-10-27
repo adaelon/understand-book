@@ -3452,6 +3452,11 @@ impl Book {
         self.experimental_read_access
     }
 
+    /// Native lecture structure whose source bindings were validated by load.
+    pub fn has_video_discourse(&self) -> bool {
+        !self.video_discourse.is_empty()
+    }
+
     pub fn experimental_view(&self, access: ExperimentalReadAccess) -> Book {
         let mut base = self.base.clone();
         if access != ExperimentalReadAccess::Graph {
@@ -3525,6 +3530,10 @@ impl Book {
 
     pub fn discourse_item(&self, lid: &str) -> Option<&TechnicalLearningDiscourseItem> {
         self.discourse_index.iter().find(|item| item.lid == lid)
+    }
+
+    pub fn discourse_items(&self) -> &[TechnicalLearningDiscourseItem] {
+        &self.discourse_index
     }
 
     pub fn math_structure_items(&self, lid: &str) -> Vec<&math_structure::Item> {

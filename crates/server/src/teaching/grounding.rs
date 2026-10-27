@@ -37,12 +37,14 @@ pub(super) fn context(
     }
     references.sort(); references.dedup();
     let mut interpretations=Vec::new();
+    let mut interpretation_support_refs=std::collections::BTreeSet::new();
     let mut expressions=Vec::new();
     let mut unavailable_basis_refs=Vec::new();
     for reference in references {
         match basis(state,binding,&reference) {
             Ok((interpretation,originals)) => {
                 if let Some(interpretation)=interpretation {
+                    interpretation_support_refs.extend(interpretation.support_delivery_refs.iter().chain(&interpretation.assistance_refs).cloned());
                     if let Some(text)=interpretation.correction.as_deref().filter(|text|!text.trim().is_empty()) {
                         // This endpoint stores the user's correction verbatim in
                         // the evidence record; it is not an assistant inference
@@ -51,12 +53,14 @@ pub(super) fn context(
                             "evidence_ref":interpretation.evidence_id,"text":text,
                             "original_fact_refs":originals.iter().map(|fact|&fact.event_id).collect::<Vec<_>>() }));
                     }
-                    interpretations.push(json!({"evidence_ref":interpretation.evidence_id,
+                    let mut projected=json!({"evidence_ref":interpretation.evidence_id,
                         "interpretation":interpretation.interpretation,"teaching_implication":interpretation.teaching_implication,
                         "fact_refs":originals.iter().map(|fact|&fact.event_id).collect::<Vec<_>>(),
                         "learner_quote":interpretation.learner_quote,"nature":interpretation.nature,
                         "status":interpretation.status,"design_ref":interpretation.design_ref,"block_refs":interpretation.block_refs,
-                        "correction":interpretation.correction}));
+                        "correction":interpretation.correction,"support_delivery_refs":interpretation.support_delivery_refs,"assistance_refs":interpretation.assistance_refs});
+                    timeline::merge_metadata(state,&interpretation,&mut projected)?;
+                    interpretations.push(projected);
                 }
                 facts.extend(originals);
             }
@@ -83,13 +87,18 @@ pub(super) fn context(
             }
         }
     }
-    let mut support_refs=std::collections::BTreeSet::new();
-    for fact in facts {
+    let mut support_refs=interpretation_support_refs;
+    let mut ordered=facts.into_iter().map(|fact|store.teaching_event_sequence(&fact.event_id).map(|seq|(seq,fact))).collect::<Result<Vec<_>,_>>()?;
+    // The current input is projected before its admission transaction persists
+    // it, so it has a real occurrence time but no database sequence yet.
+    ordered.sort_by_key(|(seq,fact)|(timeline::time_key(&fact.occurred_at),seq.unwrap_or(u64::MAX)));
+    for (seq,fact) in ordered {
         for field in ["support_delivery_refs","assistance_refs"] {
             support_refs.extend(fact.payload[field].as_array().into_iter().flatten().filter_map(Value::as_str).map(str::to_owned));
         }
         let readable=readable_fact(state,&fact)?;
         expressions.push(json!({"fact_ref":fact.event_id,"text":fact.learner_expression(),
+            "occurred_at":fact.occurred_at,"fact_sequence":seq,"source_session_id":fact.binding.chat_session_id,"source_turn_id":fact.binding.turn_id,
             "response_origin":fact.payload["response_origin"],"support_delivery_refs":fact.payload["support_delivery_refs"],
             "assistance_refs":fact.payload["assistance_refs"],"invitation_context_ref":fact.payload["invitation_context_ref"],
             "scene":readable["scene"],"presentations":readable["presentations"]}));
@@ -101,12 +110,13 @@ pub(super) fn context(
         let feedback=if fact.kind==TeachingFact::HelpDisplayed && fact.payload["action"]=="feedback" {
             fact.payload["assessment_ref"].as_str().map(|id|store.assessment(id)).transpose()?.flatten()
         } else { None };
-        delivered_support.push(json!({"delivery_ref":fact.event_id,"kind":fact.kind,
+        delivered_support.push(json!({"delivery_ref":fact.event_id,"kind":fact.kind,"occurred_at":fact.occurred_at,
             "answer":fact.payload["answer"],"text":fact.payload["text"],"move":fact.payload["move"],
             "presentation":readable["content"]["presentation"],"presentations":readable["presentations"],
             "scene":readable["scene"],"feedback":feedback,"actor":fact.payload["actor"],
             "action_ref":fact.payload["action_ref"],"before_receipt":fact.payload["before_receipt"]}));
     }
     Ok(json!({"expressions":expressions,"interpretations":interpretations,"delivered_support":delivered_support,
-        "unavailable_basis_refs":unavailable_basis_refs,"unknown_when_absent":true}))
+        "unavailable_basis_refs":unavailable_basis_refs,"expression_order":"oldest_first","unknown_when_absent":true,
+        "change_rule":"Compare the same relationship across original expressions and input-time help. A later expression is a new observation, not proof of progress or permission to overwrite an accurate earlier observation. Supersedes corrects an interpretation."}))
 }

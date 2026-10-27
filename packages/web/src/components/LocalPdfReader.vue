@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { getDocument, GlobalWorkerOptions, TextLayer, type PDFDocumentProxy, type PDFPageProxy, type RenderTask } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
@@ -57,7 +59,7 @@ async function turn(target: number) {
   if (target < 1 || target > count.value) return;
   page.value = target;
   try { await localMaterials.pdfUpdate(props.materialId, { kind: 'position', page_index: target - 1 }); }
-  catch (reason) { error.value = `阅读位置未保存：${message(reason)}`; }
+  catch (reason) { error.value = uiText('阅读位置未保存：{0}', [message(reason)]); }
   await render(); host.value?.scrollTo(0, 0);
 }
 function pickText() {
@@ -83,13 +85,13 @@ async function save(color: string) {
   const annotation: PdfAnnotation = { ...selection.value, id: crypto.randomUUID(), color, note: note.value.trim() };
   try {
     await localMaterials.pdfUpdate(props.materialId, { kind: 'annotation', annotation });
-    annotations.value.push(annotation); selection.value = null; window.getSelection()?.removeAllRanges(); notice.value = '划线已保存在本机';
-  } catch (reason) { error.value = `划线未保存：${message(reason)}`; }
+    annotations.value.push(annotation); selection.value = null; window.getSelection()?.removeAllRanges(); notice.value = uiText('划线已保存在本机');
+  } catch (reason) { error.value = uiText('划线未保存：{0}', [message(reason)]); }
   finally { saving.value = false; }
 }
 async function remove(id: string) {
   try { await localMaterials.pdfUpdate(props.materialId, { kind: 'delete_annotation', id }); annotations.value = annotations.value.filter(entry => entry.id !== id); }
-  catch (reason) { error.value = `删除未完成：${message(reason)}`; }
+  catch (reason) { error.value = uiText('删除未完成：{0}', [message(reason)]); }
 }
 function rectangle(box: PdfAnnotation['rects'][number], color: string) {
   if (!width.value || !height.value || !viewport) return {};
@@ -104,7 +106,7 @@ async function prepareText() {
   try {
     for (let index = 0; index < pdf.numPages; index++) {
       controller.signal.throwIfAborted(); if (pages.has(index)) continue;
-      preparation.value = `正在准备文字 ${index + 1} / ${pdf.numPages} 页`;
+      preparation.value = uiText('正在准备文字 {0} / {1} 页', [index + 1, pdf.numPages]);
       let source: PDFPageProxy | undefined;
       try {
         source = await pdf.getPage(index + 1);
@@ -115,13 +117,13 @@ async function prepareText() {
         pages.set(index, pageText); if (renderedPage === index) overlay();
       } catch (reason) {
         if (controller.signal.aborted) throw reason;
-        preparationFailed.value = true; firstFailure ||= `第 ${index + 1} 页：${message(reason)}`;
+        preparationFailed.value = true; firstFailure ||= uiText('第 {0} 页：{1}', [index + 1, message(reason)]);
       } finally { if (index !== page.value - 1) source?.cleanup(); }
     }
     controller.signal.throwIfAborted();
     await localMaterials.pdfUpdate(props.materialId, { kind: 'source_complete' });
-    preparation.value = preparationFailed.value ? `文字准备未完成（${firstFailure}），可继续阅读或重试。` : '正文已准备好 · 选中文字即可划线';
-  } catch (reason) { if (!controller.signal.aborted) { preparationFailed.value = true; preparation.value = `文字准备未完成：${message(reason)}`; } }
+    preparation.value = preparationFailed.value ? uiText('文字准备未完成（{0}），可继续阅读或重试。', [firstFailure]) : uiText('正文已准备好 · 选中文字即可划线');
+  } catch (reason) { if (!controller.signal.aborted) { preparationFailed.value = true; preparation.value = uiText('文字准备未完成：{0}', [message(reason)]); } }
   finally { await ocr.close(); preparing.value = false; }
 }
 onMounted(async () => {
@@ -146,17 +148,17 @@ onBeforeUnmount(() => { controller.abort(); observer?.disconnect(); clearTimeout
 </script>
 <template>
   <div class="local-pdf-reader">
-    <nav aria-label="PDF 阅读工具">
-      <div class="page-controls"><button :disabled="busy || page <= 1" @click="turn(page - 1)" aria-label="上一页">←</button><span>{{ page }} / {{ count }} 页</span><button :disabled="busy || page >= count" @click="turn(page + 1)" aria-label="下一页">→</button></div>
-      <select v-model="zoom" aria-label="PDF 缩放" :disabled="busy" @change="render"><option :value="1">适合宽度</option><option :value="1.25">125%</option><option :value="1.5">150%</option></select>
-      <button :aria-expanded="notesOpen" @click="notesOpen = !notesOpen">划线笔记 <span class="count">{{ annotations.length }}</span></button>
+    <nav :aria-label="uiText('PDF 阅读工具')">
+      <div class="page-controls"><button :disabled="busy || page <= 1" @click="turn(page - 1)" :aria-label="uiText('上一页')">←</button><span>{{ page }} / {{ count }} {{ uiText('页') }}</span><button :disabled="busy || page >= count" @click="turn(page + 1)" :aria-label="uiText('下一页')">→</button></div>
+      <select v-model="zoom" :aria-label="uiText('PDF 缩放')" :disabled="busy" @change="render"><option :value="1">{{ uiText('适合宽度') }}</option><option :value="1.25">125%</option><option :value="1.5">150%</option></select>
+      <button :aria-expanded="notesOpen" @click="notesOpen = !notesOpen">{{ uiText('划线笔记') }} <span class="count">{{ annotations.length }}</span></button>
     </nav>
-    <div class="reading-status" role="status"><span>{{ busy ? '正在打开 PDF…' : notice || preparation || '选中文字即可划线' }}</span><button v-if="preparationFailed && !preparing" @click="prepareText">重试文字识别</button></div>
+    <div class="reading-status" role="status"><span>{{ busy ? uiText('正在打开 PDF…') : notice || preparation || uiText('选中文字即可划线') }}</span><button v-if="preparationFailed && !preparing" @click="prepareText">{{ uiText('重试文字识别') }}</button></div>
     <p v-if="error" role="alert">{{ error }}</p>
-    <div v-if="selection" class="selection-tools" aria-label="保存选中文字">
-      <div><strong>划线</strong><span>{{ selection.quote }}</span></div>
-      <input v-model="note" aria-label="划线笔记内容" placeholder="加一句笔记（选填）" @keydown.enter="save(colors[0])" />
-      <div class="selection-actions"><button v-for="(color, index) in colors" :key="color" :disabled="saving" :style="{ '--mark-color': color }" class="mark-button" @pointerdown.prevent @click="save(color)">{{ index === 0 ? (saving ? '保存中…' : '保存划线') : index === 1 ? '绿色' : '紫色' }}</button><button @click="selection = null">取消</button></div>
+    <div v-if="selection" class="selection-tools" :aria-label="uiText('保存选中文字')">
+      <div><strong>{{ uiText('划线') }}</strong><span>{{ selection.quote }}</span></div>
+      <input v-model="note" :aria-label="uiText('划线笔记内容')" :placeholder="uiText('加一句笔记（选填）')" @keydown.enter="save(colors[0])" />
+      <div class="selection-actions"><button v-for="(color, index) in colors" :key="color" :disabled="saving" :style="{ '--mark-color': color }" class="mark-button" @pointerdown.prevent @click="save(color)">{{ index === 0 ? (saving ? uiText('保存中…') : uiText('保存划线')) : index === 1 ? uiText('绿色') : uiText('紫色') }}</button><button @click="selection = null">{{ uiText('取消') }}</button></div>
     </div>
     <div class="reading-body">
       <div ref="host" class="pdf-scroll"><div class="pdf-page" :style="{ width: `${width}px`, height: `${height}px` }">
@@ -164,9 +166,9 @@ onBeforeUnmount(() => { controller.abort(); observer?.disconnect(); clearTimeout
         <div class="saved-highlights" aria-hidden="true"><template v-for="entry in highlights" :key="entry.id"><i v-for="(rect, index) in entry.rects" :key="index" :style="rectangle(rect, entry.color)" /></template></div>
         <div ref="layer" class="textLayer" @pointerup="pickText" @keyup="pickText" />
       </div></div>
-      <aside v-if="notesOpen" class="pdf-notes" aria-label="已保存的划线笔记"><header><strong>划线笔记</strong><span>保存在这台电脑</span></header>
-        <p v-if="!annotations.length">选中原文后点「保存划线」。再次打开时，划线和笔记仍在。</p>
-        <article v-for="entry in annotations" :key="entry.id" :style="{ borderLeftColor: entry.color }"><button class="quote" @click="turn(entry.page_index + 1)"><small>第 {{ entry.page_index + 1 }} 页</small>{{ entry.quote }}</button><p v-if="entry.note">{{ entry.note }}</p><button class="delete-note" @click="remove(entry.id)">删除划线</button></article>
+      <aside v-if="notesOpen" class="pdf-notes" :aria-label="uiText('已保存的划线笔记')"><header><strong>{{ uiText('划线笔记') }}</strong><span>{{ uiText('保存在这台电脑') }}</span></header>
+        <p v-if="!annotations.length">{{ uiText('选中原文后点「保存划线」。再次打开时，划线和笔记仍在。') }}</p>
+        <article v-for="entry in annotations" :key="entry.id" :style="{ borderLeftColor: entry.color }"><button class="quote" @click="turn(entry.page_index + 1)"><small>{{ uiText('第') }} {{ entry.page_index + 1 }} {{ uiText('页') }}</small>{{ entry.quote }}</button><p v-if="entry.note">{{ entry.note }}</p><button class="delete-note" @click="remove(entry.id)">{{ uiText('删除划线') }}</button></article>
       </aside>
     </div>
   </div>

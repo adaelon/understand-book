@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { PdfSelectionDiagnostic } from "./api";
 
 export type PdfSelectionCapabilityStatus = "resolved" | "partial" | "unresolved";
@@ -33,10 +34,10 @@ export function pdfSelectionCapabilities(
       canTranslate: true,
       nativeCopyOnly: false,
       statusLabel: diagnostic === "material_or_ambiguous"
-        ? "存在缺字或歧义"
+        ? uiText('存在缺字或歧义')
         : diagnostic === "insufficient_visible_evidence"
-          ? "选区证据不足"
-          : "部分定位，仅精确子区间可用于问 AI",
+          ? uiText('选区证据不足')
+          : uiText('部分定位，仅精确子区间可用于问 AI'),
     };
   }
   return {
@@ -45,6 +46,6 @@ export function pdfSelectionCapabilities(
     canAsk: false,
     canTranslate: false,
     nativeCopyOnly: true,
-    statusLabel: "未建立语义定位",
+    statusLabel: uiText('未建立语义定位'),
   };
 }

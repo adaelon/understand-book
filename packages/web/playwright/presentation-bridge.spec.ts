@@ -180,7 +180,7 @@ test("editing focus reports only a boolean bound to the host content generation"
   ]);
 });
 
-test('locating a registered teaching region reveals the same objects without changing their model state', async ({ page }) => {
+test('locating a registered teaching region keeps the same objects without changing their model state', async ({ page }) => {
   const bridge = readFileSync(new URL('../src/presentation-bridge.js', import.meta.url), 'utf8');
   await page.goto('about:blank');
   await page.evaluate(bridge => {
@@ -201,6 +201,89 @@ test('locating a registered teaching region reveals the same objects without cha
   expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'state'))).toEqual([]);
   await page.locator('iframe').evaluate((element: HTMLIFrameElement) => element.contentWindow!.postMessage({ channel: 'teaching', kind: 'locate-region', region_id: 'selection' }, '*'));
   await expect.poll(() => page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'region-located').at(-1))).toMatchObject({ region_id: 'selection', located: false });
+});
+
+test('declared action regions locate without invoking actions, restoring or saving; hidden regions stay hidden', async ({ page }) => {
+  const bridge = readFileSync(new URL('../src/presentation-bridge.js', import.meta.url), 'utf8');
+  await page.goto('about:blank');
+  await page.evaluate(bridge => {
+    (window as any).events = [];
+    window.addEventListener('message', event => (window as any).events.push(event.data));
+    const frame = document.createElement('iframe'); frame.setAttribute('sandbox', 'allow-scripts');
+    frame.srcdoc = `<script>(${bridge})({channel:'regions',sources:[],initialState:{},restoredState:{values:{page:{count:4}}},actionContract:[
+      {kind:'highlight',region_id:'chart'},{kind:'annotate',region_id:'note'},{kind:'reveal',region_id:'hidden'},
+      {kind:'highlight',region_id:'invisible'},{kind:'highlight',region_id:'missing'}]})</script>
+      <input id="count" type="range" min="0" max="10" value="1"><p style="height:900px">Scroll to the existing diagram.</p>
+      <section data-teaching-region="chart">Four selected objects.</section><section id="note">Existing explanation.</section>
+      <section id="hidden" hidden>Hidden explanation.</section><section id="invisible" style="visibility:hidden">Invisible explanation.</section>
+      <p id="undeclared">An ordinary paragraph.</p>
+      <script>
+        window.calls={action:0,restore:0};
+        presentation.registerActionHandler(()=>{window.calls.action++;});
+        presentation.registerStateReader(()=>({values:{count:Number(document.querySelector('#count').value)}}));
+        presentation.registerStateRestorer(saved=>{window.calls.restore++;document.querySelector('#count').value=String(saved.values.page.count);});
+      </script>`;
+    document.body.append(frame);
+  }, bridge);
+  await expect.poll(() => page.evaluate(() => (window as any).events.some((event: any) => event.kind === 'ready'))).toBe(true);
+  const frame = page.frameLocator('iframe');
+  for (const regionId of ['chart', 'note', 'hidden', 'invisible', 'missing', 'undeclared']) {
+    await page.locator('iframe').evaluate((element: HTMLIFrameElement, region_id) => element.contentWindow!.postMessage({ channel: 'regions', kind: 'locate-region', region_id }, '*'), regionId);
+    await expect.poll(() => page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'region-located').at(-1)))
+      .toMatchObject({ region_id: regionId, located: ['chart', 'note'].includes(regionId) });
+  }
+  await expect.poll(() => frame.locator('body').evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect(frame.locator('#hidden')).toBeHidden();
+  await expect(frame.locator('#invisible')).toBeHidden();
+  await expect(frame.locator('#count')).toHaveValue('4');
+  expect(await frame.locator('body').evaluate(() => (window as any).calls)).toEqual({ action: 0, restore: 1 });
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'state'))).toEqual([]);
+  await page.locator('iframe').evaluate((element: HTMLIFrameElement) => element.contentWindow!.postMessage({ channel: 'regions', kind: 'snapshot', request_id: 8 }, '*'));
+  await expect.poll(() => page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'state')))
+    .toMatchObject([{ request_id: 8, state: { values: { page: { count: 4 } } } }]);
+});
+
+test('explicit explanation navigation reports only declared regions and does not save or widen teaching help', async ({ page }) => {
+  const bridge = readFileSync(new URL('../src/presentation-bridge.js', import.meta.url), 'utf8');
+  await page.goto('about:blank');
+  await page.evaluate(bridge => {
+    (window as any).events = [];
+    window.addEventListener('message', event => (window as any).events.push(event.data));
+    const frame = document.createElement('iframe'); frame.setAttribute('sandbox', 'allow-scripts');
+    frame.srcdoc = `<script>(${bridge})({channel:'explanation',sources:[],initialState:{},restoredState:{values:{page:{count:4}}},
+      teachingBinding:{regions:[{region_id:'teaching'}]},actionContract:[{kind:'highlight',region_id:'chart'}]})</script>
+      <input id="count" type="range" min="0" max="10" value="1">
+      <section id="chart"><p id="ordinary">Four selected objects.</p><button data-presentation-explanation="chart"><span>Read its explanation</span></button></section>
+      <section id="teaching">Teaching explanation.</section><p id="undeclared">Ordinary paragraph.</p>
+      <button data-presentation-explanation="undeclared">Invalid target</button>
+      <script>
+        window.calls={action:0,restore:0};
+        presentation.registerActionHandler(()=>{window.calls.action++;});
+        presentation.registerStateReader(()=>({values:{count:Number(document.querySelector('#count').value)}}));
+        presentation.registerStateRestorer(saved=>{window.calls.restore++;document.querySelector('#count').value=String(saved.values.page.count);});
+      </script>`;
+    document.body.append(frame);
+  }, bridge);
+  await expect.poll(() => page.evaluate(() => (window as any).events.some((event: any) => event.kind === 'ready'))).toBe(true);
+  const frame = page.frameLocator('iframe');
+  await frame.locator('#ordinary').click();
+  await frame.locator('[data-presentation-explanation="undeclared"]').click();
+  await frame.locator('body').evaluate(() => (window as any).presentation.requestExplanation('undeclared'));
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'region-activated'))).toEqual([]);
+  await frame.locator('[data-presentation-explanation="chart"] span').click();
+  await frame.locator('body').evaluate(() => (window as any).presentation.requestExplanation('teaching'));
+  await expect.poll(() => page.evaluate(() => (window as any).events.filter((event: any) => event.kind === 'region-activated'))).toEqual([
+    { channel: 'explanation', kind: 'region-activated', region_id: 'chart' },
+    { channel: 'explanation', kind: 'region-activated', region_id: 'teaching' },
+  ]);
+  const helpError = await frame.locator('body').evaluate(async () => {
+    try { await (window as any).presentation.reportTeachingHelp('invite', 'explanation', 'chart'); return ''; }
+    catch (failure) { return (failure as Error).message; }
+  });
+  expect(helpError).toContain('尚未显示');
+  expect(await page.evaluate(() => (window as any).events.filter((event: any) => ['state', 'teaching-help'].includes(event.kind)))).toEqual([]);
+  await expect(frame.locator('#count')).toHaveValue('4');
+  expect(await frame.locator('body').evaluate(() => (window as any).calls)).toEqual({ action: 0, restore: 1 });
 });
 
 test('only explicitly revealed, registered help is acknowledged; local exploration and prefilled wording stay distinct', async ({ page }) => {

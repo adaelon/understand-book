@@ -124,6 +124,8 @@ impl TeachingTarget {
 #[serde(rename_all = "snake_case")]
 pub enum TeachingFact {
     TurnBound,
+    /// The system accepted an interpretation in this run; never a new learner expression.
+    EvidenceInterpreted,
     /// The teacher's reviewed work and corrections, never learner evidence.
     AgentWorkReviewed,
     /// A coach's future guidance, never a delivered activity or learner evidence.
@@ -426,6 +428,11 @@ impl LearningStore {
             .optional()
             .map_err(storage)?;
         serde_json::from_str(&json.ok_or_else(|| invalid("教学引用不存在"))?).map_err(storage)
+    }
+
+    pub fn teaching_event_sequence(&self, id: &str) -> Result<Option<u64>, ToolError> {
+        self.connection.query_row("SELECT seq FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
+            params![self.workspace_scope,id], |row|row.get(0)).optional().map_err(storage)
     }
 
     /// Oldest-first page with a stable cursor; callers never need to load all private history.

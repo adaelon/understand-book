@@ -5,14 +5,13 @@ use runtime::observation::{
     ExecutionState, ObservationCompleteness, ObservationEnvelope, ObservationKind,
     ObservationMetadata, ObservationSurface, TimingSource, TokenUsage, OBSERVATION_SCHEMA_VERSION,
 };
-use runtime::run_events::{ActivityStatus, EvidenceObservation, RuntimeEvent};
+use runtime::run_events::{ActivityStatus, RuntimeEvent};
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 
 pub struct ActivityMapper {
     ids: HashMap<u32, String>,
     revisions: HashMap<u32, u32>,
-    last_events: HashMap<u32, RuntimeEvent>,
     max_spans: usize,
 }
 
@@ -21,7 +20,6 @@ impl ActivityMapper {
         Self {
             ids: HashMap::new(),
             revisions: HashMap::new(),
-            last_events: HashMap::new(),
             max_spans,
         }
     }
@@ -79,8 +77,6 @@ impl ActivityMapper {
         let registered_tool_name =
             (kind == ObservationKind::Tool).then(|| safe_tool_name(&event.activity.name));
         let purpose = (kind == ObservationKind::Model).then(|| safe_purpose(&event.activity.name));
-        self.last_events
-            .insert(event.activity.step_id, event.clone());
         Some((
             ObservationEnvelope {
                 schema_version: OBSERVATION_SCHEMA_VERSION.into(),
@@ -115,6 +111,7 @@ impl ActivityMapper {
                     }),
                     model_name: event.activity.model_name,
                     model_name_source: event.activity.model_name_source,
+                    model_provider: event.activity.model_provider,
                     accepted_evidence_count: event.activity.accepted_evidence_count,
                     evidence_refs: event.activity.evidence_refs,
                     executed: event.activity.started_ms.is_some(),
@@ -124,32 +121,6 @@ impl ActivityMapper {
             },
             operation,
         ))
-    }
-
-    pub fn map_evidence(
-        &mut self,
-        identity: &RunIdentity,
-        evidence: EvidenceObservation,
-    ) -> Option<(ObservationEnvelope, ExportOperation)> {
-        let mut event = self.last_events.get(&evidence.step_id)?.clone();
-        event.activity.accepted_evidence_count = Some(
-            event
-                .activity
-                .accepted_evidence_count
-                .unwrap_or(0)
-                .saturating_add(evidence.accepted_count),
-        );
-        for reference in evidence.evidence_refs {
-            if event.activity.evidence_refs.len()
-                >= runtime::observation::MAX_OBSERVATION_SOURCE_REFS
-            {
-                break;
-            }
-            if !event.activity.evidence_refs.contains(&reference) {
-                event.activity.evidence_refs.push(reference);
-            }
-        }
-        self.map(identity, event)
     }
 }
 
@@ -253,6 +224,11 @@ pub fn export_item(
     if let Some(usage) = usage_metadata(&observation.usage) {
         payload["extra"]["metadata"]["usage_metadata"] = usage;
     }
+    // LangSmith matches prices using both provider and model. Keep the actual
+    // configured model (including provider aliases) instead of guessing a tariff.
+    if let Some(provider) = &observation.metadata.model_provider {
+        payload["extra"]["metadata"]["ls_provider"] = json!(provider);
+    }
     ExportItem::new(
         root_run_id,
         run_id,
@@ -347,6 +323,94 @@ mod tests {
     }
 
     #[test]
+    fn provider_and_teaching_purpose_survive_runtime_wrappers_and_export() {
+        use crate::host_lifecycle::ServiceAdapter;
+        use crate::service_limits::{LimitedAdapter, Resources, ServiceLimits};
+        use runtime::run_context::CancellableAdapter;
+        use runtime::run_events::{ObservedAdapter, RunEventSink, RunEvents};
+        use runtime::{CompletionRequest, ModelAdapter, ProviderConfig, ProviderMode};
+        use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
+
+        struct Collector(mpsc::Sender<RuntimeEvent>);
+        impl RunEventSink for Collector {
+            fn emit(&self, event: RuntimeEvent) {
+                self.0.send(event).unwrap();
+            }
+        }
+
+        for mode in [ProviderMode::Native, ProviderMode::ReAct] {
+            for (endpoint, provider) in [
+                ("https://api.deepseek.com", Some("deepseek")),
+                ("https://api.deepseek.com/v1", Some("deepseek")),
+                ("https://other-provider.example/v1", None),
+            ] {
+                // The real wrappers and adapters provide identity, while the
+                // stopped service prevents this regression from sending HTTP.
+                let service = ServiceAdapter::from_config(
+                    ProviderConfig {
+                        mode,
+                        api_key: "CANARY_PRIVATE_KEY".into(),
+                        base_url: endpoint.into(),
+                        model: "deepseek-v4-flash".into(),
+                    },
+                    Arc::new(AtomicBool::new(true)),
+                );
+                let limited = LimitedAdapter {
+                    inner: service.as_ref(),
+                    resources: Resources::new(Arc::new(ServiceLimits::default())),
+                    owner: "test-owner".into(),
+                    background: false,
+                    cancellation: Default::default(),
+                    usage: Mutex::new(Default::default()),
+                    stream: None,
+                    authorization: None,
+                };
+                let (send, receive) = mpsc::channel();
+                let events = RunEvents::new(Some(Arc::new(Collector(send))));
+                let observed = ObservedAdapter {
+                    inner: &limited,
+                    events: events.clone(),
+                    cancellation: Default::default(),
+                    runtime_profile: limited.model_runtime_profile(),
+                };
+                let cancellable = CancellableAdapter {
+                    inner: &observed,
+                    cancellation: Default::default(),
+                };
+                assert_eq!(cancellable.model_provider().as_deref(), provider);
+                let _scope = events.scope(None, "tutor_delivery_review");
+                assert!(cancellable.complete(CompletionRequest {
+                    followup_user: None,
+                    system: "CANARY_PRIVATE_SYSTEM".into(),
+                    user: "CANARY_PRIVATE_USER".into(),
+                    images: Vec::new(),
+                    output_token_limit: Some(100),
+                    reasoning_effort: None,
+                }).is_err());
+
+                let identity = RunIdentity::new("thread".into(), "book".into());
+                let mut mapper = ActivityMapper::new(4);
+                let events: Vec<_> = receive.try_iter().collect();
+                assert_eq!(events.len(), 2);
+                for (index, event) in events.into_iter().enumerate() {
+                    let (observation, operation) = mapper.map(&identity, event).unwrap();
+                    assert_eq!(operation, if index == 0 { ExportOperation::Create } else { ExportOperation::Update });
+                    let item = export_item(observation, operation, "dev");
+                    let metadata = &item.payload["extra"]["metadata"];
+                    assert_eq!(metadata["ls_provider"].as_str(), provider);
+                    assert_eq!(metadata["ls_model_name"], "deepseek-v4-flash");
+                    assert_eq!(metadata["ub_observation"]["metadata"]["purpose"], "tutor_delivery_review");
+                    if provider.is_none() {
+                        assert!(metadata.get("ls_provider").is_none());
+                    }
+                    assert!(!item.payload.to_string().contains("CANARY_PRIVATE"));
+                    assert!(!item.payload.to_string().contains(endpoint));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn mapping_drops_content_canaries_and_preserves_rejection_semantics() {
         let identity = RunIdentity::new("thread".into(), "book".into());
         let mut mapper = ActivityMapper::new(10);
@@ -372,6 +436,7 @@ mod tests {
                         request_diagnostics: None,
                         model_name: None,
                         model_name_source: None,
+                        model_provider: None,
                         accepted_evidence_count: None,
                         evidence_refs: Vec::new(),
                     },
@@ -416,6 +481,7 @@ mod tests {
                 request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
+                model_provider: None,
                 accepted_evidence_count: None,
                 evidence_refs: Vec::new(),
             },
@@ -428,19 +494,19 @@ mod tests {
     }
 
     #[test]
-    fn ledger_enrichment_reuses_the_finished_tool_span_without_content() {
+    fn first_tool_terminal_contains_accepted_evidence_without_content() {
         let identity = RunIdentity::new("thread".into(), "book".into());
         let mut mapper = ActivityMapper::new(10);
-        let activity = RunActivity {
+        let mut activity = RunActivity {
             step_id: 1,
             parent_step_id: None,
             kind: "tool".into(),
             name: "book.text".into(),
             label: "CANARY_PRIVATE_PREVIEW".into(),
-            status: ActivityStatus::Succeeded,
+            status: ActivityStatus::Running,
             started_ms: Some(1.0),
-            duration_ms: Some(2.0),
-            result_count: Some(3),
+            duration_ms: None,
+            result_count: None,
             error_code: None,
             usage_total_tokens: None,
             usage: None,
@@ -448,10 +514,28 @@ mod tests {
             request_diagnostics: None,
             model_name: None,
             model_name_source: None,
+            model_provider: None,
             accepted_evidence_count: None,
             evidence_refs: Vec::new(),
         };
-        let (finished, _) = mapper
+        let (started, operation) = mapper
+            .map(
+                &identity,
+                RuntimeEvent {
+                    elapsed_ms: 1.0,
+                    activity: activity.clone(),
+                },
+            )
+            .unwrap();
+        assert_eq!(operation, ExportOperation::Create);
+        assert!(export_item(started.clone(), operation, "dev").payload.get("end_time").is_none());
+        activity.accept_evidence(&[read_tools::EvidenceRange {
+            start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: Vec::new(),
+        }]);
+        activity.status = ActivityStatus::Succeeded;
+        activity.duration_ms = Some(2.0);
+        activity.result_count = Some(3);
+        let (finished, operation) = mapper
             .map(
                 &identity,
                 RuntimeEvent {
@@ -460,23 +544,14 @@ mod tests {
                 },
             )
             .unwrap();
-        let (enriched, operation) = mapper
-            .map_evidence(
-                &identity,
-                EvidenceObservation {
-                    step_id: 1,
-                    accepted_count: 1,
-                    evidence_refs: vec!["1.1".into()],
-                },
-            )
-            .unwrap();
         assert_eq!(operation, ExportOperation::Update);
-        assert_eq!(enriched.span_id, finished.span_id);
-        assert_eq!(enriched.revision, finished.revision + 1);
-        assert_eq!(enriched.metadata.result_count, Some(3));
-        assert_eq!(enriched.metadata.accepted_evidence_count, Some(1));
-        assert_eq!(enriched.metadata.evidence_refs, vec!["1.1"]);
-        let item = export_item(enriched, operation, "dev");
+        assert_eq!(finished.span_id, started.span_id);
+        assert_eq!(finished.revision, started.revision + 1);
+        assert_eq!(finished.metadata.result_count, Some(3));
+        assert_eq!(finished.metadata.accepted_evidence_count, Some(1));
+        assert_eq!(finished.metadata.evidence_refs, vec!["1.1"]);
+        let item = export_item(finished, operation, "dev");
+        assert!(item.payload["end_time"].is_string());
         assert!(!serde_json::to_string(&item.payload)
             .unwrap()
             .contains("CANARY_PRIVATE"));

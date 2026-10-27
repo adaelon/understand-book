@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { PresentationCommand } from './generated/PresentationCommand';
 import type { PresentationFollowUp } from './generated/PresentationFollowUp';
 import type { RunSnapshot } from './agent-run-state';
@@ -50,9 +51,9 @@ export function presentationDispatcher() {
       if (!claim.claimed || !canReport()) return;
       let result: PageOperationResult;
       try {
-        if (!live()) throw new Error('演示页面已切换，请重新观察。');
+        if (!live()) throw new Error(uiText('演示页面已切换，请重新观察。'));
         result = await host!.execute(command, current.controller.signal);
-        if (!live()) result = { status: 'failed', reason: '演示页面已切换，请重新观察。' };
+        if (!live()) result = { status: 'failed', reason: uiText('演示页面已切换，请重新观察。') };
       }
       catch (failure) {
         result = { status: current.controller.signal.aborted ? 'cancelled' : 'failed',

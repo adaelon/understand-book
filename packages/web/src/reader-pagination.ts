@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { alignMarkdownSource, bindMarkdownSourceMap, projectMarkdownDom, markMarkdownDomSemanticRanges, type MarkedSourceRange, type AlignmentSpan, type DomProjection } from './markdown-source-map';
 import { FOCUS_READING_BUDGET as B, focusPageGeometry } from './reader-pagination-budget';
 import { yieldReaderTask } from './reader-cooperative';
@@ -473,7 +474,7 @@ export class ReaderPagination {
       const button = document.createElement('button'); button.className = 'annotation-marker focus-annotation-marker';
       button.dataset.annotationLid = lid; button.dataset.annotationId = marker.id;
       button.setAttribute('data-reader-selection-ignore', ''); button.setAttribute('data-note-placement-ignore', '');
-      button.setAttribute('aria-label', `查看此处 ${markers.length} 条批注`); button.textContent = `✎${markers.length}`;
+      button.setAttribute('aria-label', uiText('查看此处 {0} 条批注', [markers.length])); button.textContent = `✎${markers.length}`;
       button.style.top = `${rect.top - screenBox.top}px`;
       button.style.left = `${Math.max(0, page.element.getBoundingClientRect().left - screenBox.left)}px`;
       screen.element.append(button);

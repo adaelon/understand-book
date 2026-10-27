@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
-import { ArrowDownToLine, BookOpen, Ellipsis, ExternalLink, Maximize2, Minimize2, Minus, Plus, StickyNote, ThumbsDown, ThumbsUp, X } from '@lucide/vue';
-import { api as sharedApi } from "../api";
-import { bindSceneApi, network, sceneKey } from "../network-context";
+import { ArrowDownToLine, BookOpen, Ellipsis, ExternalLink, LayoutDashboard, Maximize2, Minimize2, Minus, Plus, RotateCcw, Save, StickyNote, ThumbsDown, ThumbsUp, X } from '@lucide/vue';
+import { api as sharedApi, ApiError } from "../api";
+import { bindSceneApi, network, readerKey, sceneKey } from "../network-context";
 import { openLinkedPresentation } from "../network-presentation";
-const api = bindSceneApi(sharedApi);
+let api = bindSceneApi(sharedApi);
 import { sharePresentationKey, type ShareSource } from '../reading-share';
 import { capturePresentation, presentationShareSource } from '../presentation-share';
 import ShareImagePanel from './ShareImagePanel.vue';
@@ -26,8 +28,11 @@ import { acceptsPresentationMessage, resolvePresentationEditingMessage } from ".
 import { renderMarkdown } from "../md";
 import { sourceChipLabel } from "../source-chip.js";
 
-const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
+const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; boardId?: string; boardItemId?: string; boardReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
 const emit = defineEmits<{
+  (e: 'add-to-board', receipt: PresentationFollowUp): void;
+  (e: 'board-state-saved', receipt: PresentationFollowUp): void;
+  (e: 'region-activated', regionId: string): void;
   (e: "record-note", receipt: PresentationFollowUp, title: string, summary: string): void;
   (e: "source", id: string, anchor: HTMLElement): void;
   (e: "follow-up", message: string, receipt: PresentationFollowUp): void;
@@ -42,19 +47,34 @@ const emit = defineEmits<{
   (e: 'response-available', available: boolean): void;
   (e: 'teaching-host-available', available: boolean): void;
 }>();
+const boardContext = computed(() => props.boardId && props.boardItemId ? { board_id: props.boardId, item_id: props.boardItemId } : null);
+const presentationScope = () => boardContext.value ? readerKey() : sceneKey();
+const regionIds = computed(() => new Set([
+  ...(view.value?.teaching_binding?.regions.map(region => region.region_id) ?? []),
+  ...(view.value?.action_contract.flatMap(action => 'region_id' in action ? [action.region_id] : []) ?? []),
+]));
 const sharePresentation = inject(sharePresentationKey, null);
 const localShare = ref<ShareSource | null>(null);
 const exporting = ref(false);
 async function exportCurrent() {
   if (!ready.value || !view.value || !frame.value || exporting.value) return;
   const current = generation, selectedView = view.value, selectedFrame = frame.value, channel = frameChannel;
-  const turnId = props.turnId, memId = props.noteMemId;
+  const sourceApi = api;
+  const turnId = props.turnId, memId = props.noteMemId, board = boardContext.value;
   exporting.value = true; saveNotice.value = '';
-  const load = async () => presentationShareSource(selectedView, await capturePresentation(selectedFrame, channel), id => api.agentSourceResolve(turnId, id, memId));
+  const load = async () => {
+    const scene = await capturePresentation(selectedFrame, channel);
+    if (board) {
+      const observed = await sourceApi.boardPresentationObserve(board.board_id, board.item_id, scene.state.observed_result, scene.state.source_ref_ids);
+      if (!observed.accepted) throw new Error(uiText('图解的文字或来源暂不可用，请重新打开后重试。'));
+    }
+    return presentationShareSource(selectedView, scene, id => board
+      ? sourceApi.boardSourceResolve({ ...board, source_ref_id: id }) : sourceApi.agentSourceResolve(turnId, id, memId));
+  };
   try {
     if (sharePresentation) await sharePresentation(load);
     else { const source = await load(); if (current === generation) localShare.value = source; }
-  } catch (failure) { if (current === generation) saveNotice.value = `图解未导出：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { if (current === generation) saveNotice.value = uiText('图解未导出：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { if (current === generation) exporting.value = false; }
 }
 watch(() => [network.value.epoch, network.value.workspace?.generation], () => { localShare.value = null; });
@@ -67,7 +87,7 @@ const documentText = ref("");
 const error = ref("");
 const expanded = ref(false);
 const ready = ref(false);
-watch([ready, error, () => props.teaching], () => emit('teaching-host-available', ready.value && !error.value && !!props.teaching));
+watch([ready, error, () => props.teaching, boardContext], () => emit('teaching-host-available', ready.value && !error.value && !!props.teaching && !boardContext.value));
 const zoomPercent = ref(100);
 const readableOpen = ref(false);
 const toolsOpen = ref(false);
@@ -111,7 +131,7 @@ watch(() => props.workspace, value => { if (value !== undefined) expanded.value 
 const saving = ref(false);
 const saveNotice = ref("");
 const prominentNotice = computed(() => !!saveNotice.value && ![
-  '演示状态已保存', '已恢复上次保存的演示状态', '已恢复记录时的演示状态', '已恢复提问时的演示状态',
+  uiText('演示状态已保存'), uiText('已恢复上次保存的演示状态'), uiText('已恢复记录时的演示状态'), uiText('已恢复提问时的演示状态'), uiText('已恢复加入画板时的演示状态'),
 ].includes(saveNotice.value));
 const frameLoadCount = ref(0);
 const frameEditing = ref(false);
@@ -120,6 +140,7 @@ let teachingHelpInFlight: Promise<void> = Promise.resolve();
 let saveQueue: Promise<unknown> = Promise.resolve();
 let requestId = 0;
 let pendingSnapshot: { id: number; owner?: 'feedback'; resolve: (state: PresentationState) => void; reject: (error: Error) => void } | undefined;
+let snapshotInFlight: Promise<PresentationState> | undefined;
 let pendingInteraction: { id: number; resolve: (result: PageOperationResult & { state?: PresentationState }) => void; reject: (error: Error) => void } | undefined;
 let unregisterInteraction: (() => void) | undefined;
 let generation = 0;
@@ -138,8 +159,8 @@ const feedbackSceneRetry = ref<(() => Promise<void>)>();
 let feedbackOperation = 0;
 let feedbackQuestion: { text: string; receipt: PresentationFollowUp | null } | undefined;
 const reasonLabels: Record<PresentationFeedbackReason, string> = {
-  easier_to_understand: '更容易理解', apt_example: '例子贴切', useful_interaction: '交互有用',
-  unclear: '没讲清楚', incorrect_content: '内容有误', hard_to_read: '画面难读', hard_to_operate: '操作不便',
+  easier_to_understand: uiText('更容易理解'), apt_example: uiText('例子贴切'), useful_interaction: uiText('交互有用'),
+  unclear: uiText('没讲清楚'), incorrect_content: uiText('内容有误'), hard_to_read: uiText('画面难读'), hard_to_operate: uiText('操作不便'),
 };
 const availableReasons = computed<PresentationFeedbackReason[]>(() => feedback.value?.selection?.choice === 'like'
   ? ['easier_to_understand', 'apt_example', 'useful_interaction'] : ['unclear', 'incorrect_content', 'hard_to_read', 'hard_to_operate']);
@@ -148,9 +169,9 @@ const feedbackDetailsDirty = computed(() => feedbackComment.value !== (feedback.
 function cancelFeedbackScene() {
   feedbackOperation++;
   feedbackSceneRetry.value = undefined;
-  if (feedbackSceneNotice.value === '正在附上演示状态…') feedbackSceneNotice.value = '未附上演示状态';
+  if (feedbackSceneNotice.value === uiText('正在附上演示状态…')) feedbackSceneNotice.value = uiText('未附上演示状态');
   if (pendingSnapshot?.owner === 'feedback') {
-    pendingSnapshot.reject(new Error('反馈已更新。')); pendingSnapshot = undefined;
+    pendingSnapshot.reject(new Error(uiText('反馈已更新。'))); pendingSnapshot = undefined;
   }
 }
 async function loadFeedback() {
@@ -161,8 +182,8 @@ async function loadFeedback() {
     if (current !== generation) return;
     feedback.value = result;
     feedbackReasons.value = [...(result.selection?.reasons ?? [])]; feedbackComment.value = result.selection?.comment ?? '';
-    feedbackSceneNotice.value = result.selection ? result.saved_state ? '已附上反馈时的演示状态' : '未附上演示状态' : '';
-  } catch (failure) { if (current === generation) feedbackError.value = `反馈读取失败：${failure instanceof Error ? failure.message : String(failure)}`; }
+    feedbackSceneNotice.value = result.selection ? result.saved_state ? uiText('已附上反馈时的演示状态') : uiText('未附上演示状态') : '';
+  } catch (failure) { if (current === generation) feedbackError.value = uiText('反馈读取失败：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { if (current === generation) feedbackLoading.value = false; }
 }
 async function attachFeedbackScene(saved: PresentationFeedback, current: number, operation: number) {
@@ -170,7 +191,7 @@ async function attachFeedbackScene(saved: PresentationFeedback, current: number,
   let captured: PresentationState | undefined, receipt: PresentationFollowUp | undefined;
   const attach = async () => {
     if (!active()) return;
-    feedbackSceneRetry.value = undefined; feedbackSceneNotice.value = '正在附上演示状态…';
+    feedbackSceneRetry.value = undefined; feedbackSceneNotice.value = uiText('正在附上演示状态…');
     try {
       // Capture once. A retry saves/attaches this observation, never a newer scene.
       if (!captured) captured = await captureScene('feedback');
@@ -179,10 +200,10 @@ async function attachFeedbackScene(saved: PresentationFeedback, current: number,
       if (!active()) return;
       const result = await api.presentationFeedbackAttachState(saved.session_id, saved.turn_id, saved.reference, saved.feedback_revision, receipt);
       if (!active()) return;
-      feedback.value = result; feedbackSceneNotice.value = '已附上反馈时的演示状态';
+      feedback.value = result; feedbackSceneNotice.value = uiText('已附上反馈时的演示状态');
     } catch (failure) {
       if (!active()) return;
-      feedbackSceneNotice.value = `未附上演示状态：${failure instanceof Error ? failure.message : String(failure)}`;
+      feedbackSceneNotice.value = uiText('未附上演示状态：{0}', [failure instanceof Error ? failure.message : String(failure)]);
       if (captured) feedbackSceneRetry.value = attach;
     }
   };
@@ -202,12 +223,12 @@ async function saveFeedback(selection: PresentationFeedbackSelection | null) {
     feedback.value = result;
     feedbackReasons.value = [...(result.selection?.reasons ?? [])]; feedbackComment.value = result.selection?.comment ?? '';
     if (!result.selection) feedbackDetails.value = false;
-    else if (result.saved_state) feedbackSceneNotice.value = '已附上反馈时的演示状态';
+    else if (result.saved_state) feedbackSceneNotice.value = uiText('已附上反馈时的演示状态');
     else void attachFeedbackScene(result, current, operation);
   } catch (failure) {
     if (current !== generation) return;
     failedFeedback.value = { selection };
-    feedbackError.value = `反馈未保存：${failure instanceof Error ? failure.message : String(failure)}`;
+    feedbackError.value = uiText('反馈未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]);
   } finally { if (current === generation) feedbackSaving.value = false; }
 }
 function chooseFeedback(choice: PresentationFeedbackChoice) {
@@ -225,7 +246,7 @@ function prepareFeedbackQuestion() {
   if (!saved?.selection) return;
   const selection = saved.selection;
   // The inline follow-up uses a single-line input; keep its editable draft binding intact.
-  const text = [`我${selection.choice === 'like' ? '喜欢' : '不喜欢'}「${view.value?.title ?? '此演示'}」的版本 ${saved.reference.revision}。`,
+  const text = [uiText('我{0}「{1}」的版本 {2}。', [selection.choice === 'like' ? uiText('喜欢') : uiText('不喜欢'), view.value?.title ?? uiText('此演示'), saved.reference.revision]),
     selection.reasons.map(reason => reasonLabels[reason]).join('、'), selection.comment].filter(Boolean).join(' ').replace(/[\r\n]+/g, ' ');
   if (!question.value.includes(text)) question.value = [question.value.trim(), text].filter(Boolean).join('\n\n');
   feedbackQuestion = { text, receipt: saved.saved_state };
@@ -234,30 +255,42 @@ function prepareFeedbackQuestion() {
   else void nextTick(() => root.value?.querySelector<HTMLInputElement>('.presentation-follow-up input')?.focus());
 }
 
-watch([() => props.sessionId, () => props.turnId, () => props.reference.presentation_id, () => props.reference.revision, () => props.noteMemId, sceneKey], async () => {
+async function loadPresentation() {
   setFrameEditing(false);
-  pendingInteraction?.reject(new Error("演示页面已切换，请重新观察。")); pendingInteraction = undefined;
+  pendingInteraction?.reject(new Error(uiText('演示页面已切换，请重新观察。'))); pendingInteraction = undefined;
   const current = ++generation;
+  // A publication refresh can retain this component while advancing its scene.
+  // Capture the new binding once; old operations keep their original authority.
+  const currentApi = bindSceneApi(sharedApi, presentationScope);
+  api = currentApi;
   cancelFeedbackScene(); feedback.value = undefined; feedbackLoading.value = false; feedbackSaving.value = false;
   feedbackDetails.value = false; feedbackError.value = ''; feedbackSceneNotice.value = ''; failedFeedback.value = undefined;
   feedbackReasons.value = []; feedbackComment.value = ''; clearFeedbackQuestion();
   localShare.value = null; exporting.value = false;
   toolsOpen.value = false;
   frameChannel = crypto.randomUUID();
-  pendingSnapshot?.reject(new Error("内容已切换，请重新追问。")); pendingSnapshot = undefined;
+  pendingSnapshot?.reject(new Error(uiText('内容已切换，请重新追问。'))); pendingSnapshot = undefined;
   saveNotice.value = "";
   requestedRegion = undefined;
   teachingHelpInFlight = Promise.resolve();
   view.value = undefined; documentText.value = ""; error.value = ""; ready.value = false;
   try {
-    const result = props.noteMemId ? await api.notePresentationRead(props.noteMemId) : await api.presentationRead(props.sessionId, props.turnId, props.reference);
+    const board = boardContext.value;
+    const result = board ? await currentApi.boardPresentationRead(board.board_id, board.item_id)
+      : props.noteMemId ? await currentApi.notePresentationRead(props.noteMemId) : await currentApi.presentationRead(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
     const doc = presentationDocument(result, frameChannel);
     view.value = result; documentText.value = doc;
-    if (!props.noteMemId) void loadFeedback();
-    if (result.restored_state_revision) saveNotice.value = "已恢复上次保存的演示状态";
-  } catch { if (current === generation) error.value = "内容暂时无法读取，请重新打开此回答。"; }
-}, { immediate: true });
+    if (!props.noteMemId && !board) void loadFeedback();
+    if (result.restored_state_revision) saveNotice.value = uiText('已恢复上次保存的演示状态');
+  } catch (failure) {
+    if (current !== generation) return;
+    if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') error.value = uiText('阅读现场已更新，请重新读取演示。');
+    else if (failure instanceof ApiError && failure.errorCode === 'PUBLICATION_BINDING_MISMATCH') error.value = uiText('此演示关联的资料版本暂时无法读取。');
+    else error.value = uiText('内容读取失败：{0}', [failure instanceof Error ? failure.message : uiText('请稍后重新读取。')]);
+  }
+}
+watch([() => props.sessionId, () => props.turnId, () => props.reference.presentation_id, () => props.reference.revision, () => props.noteMemId, () => props.boardId, () => props.boardItemId, presentationScope], loadPresentation, { immediate: true });
 
 function theme() {
   if (!root.value) return;
@@ -275,7 +308,12 @@ function setFrameEditing(editing: boolean) {
 }
 function hostIsVisible(): boolean {
   if (!root.value || root.value.hidden || root.value.closest("[hidden], [aria-hidden='true']")) return false;
-  return getComputedStyle(root.value).display !== "none";
+  // Board panes stay mounted with v-show. A hidden ancestor must not claim an operation.
+  for (let node: HTMLElement | null = root.value; node; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+  }
+  return true;
 }
 function onFrameLoad() {
   frameLoadCount.value += 1;
@@ -285,16 +323,19 @@ function onFrameLoad() {
   frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "visibility", visible: hostVisible }, "*");
 }
 async function retry() {
-  if (!view.value) return;
+  if (!view.value) { await loadPresentation(); return; }
+  const selectedView = view.value;
   cancelFeedbackScene();
-  pendingSnapshot?.reject(new Error('内容正在重新加载。')); pendingSnapshot = undefined;
-  pendingInteraction?.reject(new Error('演示页面正在重新加载。')); pendingInteraction = undefined;
-  generation++; frameChannel = crypto.randomUUID(); ready.value = false; error.value = "";
+  pendingSnapshot?.reject(new Error(uiText('内容正在重新加载。'))); pendingSnapshot = undefined;
+  pendingInteraction?.reject(new Error(uiText('演示页面正在重新加载。'))); pendingInteraction = undefined;
+  const current = ++generation;
+  frameChannel = crypto.randomUUID(); ready.value = false; error.value = "";
   feedbackSaving.value = false;
   documentText.value = "";
   await nextTick();
-  documentText.value = presentationDocument(view.value, frameChannel);
-  if (!props.noteMemId) void loadFeedback();
+  if (current !== generation) return;
+  documentText.value = presentationDocument(selectedView, frameChannel);
+  if (!props.noteMemId && !boardContext.value) void loadFeedback();
 }
 async function receive(event: MessageEvent) {
   if (!acceptsPresentationMessage(event, frame.value?.contentWindow, frameChannel) || error.value) return;
@@ -315,7 +356,7 @@ async function receive(event: MessageEvent) {
     const host = teachingHost.value;
     // A learner response must not overtake a help receipt from the same page.
     teachingHelpInFlight = teachingHelpInFlight.catch(() => {}).then(async () => {
-      if (!host) throw new Error('当前演示没有可关联的教学邀请。');
+      if (!host) throw new Error(uiText('当前演示没有可关联的教学邀请。'));
       await host.reportPageHelp(message.move_id, message.help_kind, message.text);
     });
     try {
@@ -328,7 +369,11 @@ async function receive(event: MessageEvent) {
     return;
   }
   if (message.kind === 'region-located') {
-    if (!message.located) saveNotice.value = '这个位置暂时不可用，可结合当前画面继续提问。';
+    if (!message.located) saveNotice.value = uiText('这个位置暂时不可用，可结合当前画面继续提问。');
+    return;
+  }
+  if (message.kind === 'region-activated') {
+    if (ready.value && regionIds.value.has(message.region_id)) emit('region-activated', message.region_id);
     return;
   }
   if (message.kind === "editing-focus") {
@@ -341,7 +386,7 @@ async function receive(event: MessageEvent) {
     return;
   }
   if (message.kind === "restore-partial") {
-    saveNotice.value = "已恢复控件；此版本未提供自定义参数和步骤的恢复方法。";
+    saveNotice.value = uiText('已恢复控件；此版本未提供自定义参数和步骤的恢复方法。');
     return;
   }
   if (message.kind === "state") {
@@ -351,7 +396,7 @@ async function receive(event: MessageEvent) {
     return;
   }
   if (message.kind === "error") {
-    error.value = "此内容运行出错，请稍后重试。";
+    error.value = uiText('此内容运行出错，请稍后重试。');
     pendingSnapshot?.reject(new Error(error.value)); pendingSnapshot = undefined;
     return;
   }
@@ -366,13 +411,13 @@ async function receive(event: MessageEvent) {
   }
 }
 async function executeInteraction(command: PresentationCommand, signal: AbortSignal): Promise<PageOperationResult> {
-  if (!ready.value || pendingInteraction || error.value) throw new Error('演示尚未准备好。');
+  if (!ready.value || pendingInteraction || error.value) throw new Error(uiText('演示尚未准备好。'));
   const current = generation, channel = frameChannel, target = frame.value?.contentWindow;
   const id = ++requestId;
   const result = await new Promise<PageOperationResult & { state?: PresentationState }>((resolve, reject) => {
     const abort = () => {
       target?.postMessage({ channel, kind: 'interaction-cancel', request_id: id }, '*');
-      pendingInteraction?.reject(new Error('演示操作已停止；请重新观察当前现场。'));
+      pendingInteraction?.reject(new Error(uiText('演示操作已停止；请重新观察当前现场。')));
     };
     const timer = setTimeout(() => abort(), 25000);
     const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', abort); };
@@ -382,9 +427,9 @@ async function executeInteraction(command: PresentationCommand, signal: AbortSig
     target?.postMessage({ channel, kind: 'interaction', request_id: id, request: command.request, expected_values: command.expected_values, expected_edits: command.expected_edits }, '*');
   });
   signal.throwIfAborted();
-  if (current !== generation) throw new Error('演示页面已切换。');
+  if (current !== generation) throw new Error(uiText('演示页面已切换。'));
   if (result.state || ['observed', 'applied', 'conflict'].includes(result.status)) {
-    if (!result.state) throw new Error('演示没有返回当前现场。');
+    if (!result.state) throw new Error(uiText('演示没有返回当前现场。'));
     // Saving the displayed state also records its teaching help. The final tool
     // completion can be cancelled without erasing help already seen.
     const saved = saveState(result.state, {
@@ -394,15 +439,19 @@ async function executeInteraction(command: PresentationCommand, signal: AbortSig
     teachingHelpInFlight = saved.then(() => {}, () => {});
     const receipt = await saved;
     signal.throwIfAborted();
-    if (current !== generation) throw new Error('演示页面已切换。');
+    if (current !== generation) throw new Error(uiText('演示页面已切换。'));
     return { status: result.status, receipt, ...(result.reason ? { reason: result.reason } : {}) };
   }
   return { status: result.status, reason: result.reason };
 }
 function locateRegion(regionId: string) {
-  if (!view.value?.teaching_binding?.regions.some(region => region.region_id === regionId)) return;
-  if (!ready.value) { requestedRegion = regionId; return; }
+  // A board can select an anchor as this retained item is first opening.
+  // Defer the declaration check until its exact presentation version arrives.
+  if (!view.value && !error.value) { requestedRegion = regionId; return true; }
+  if (!regionIds.value.has(regionId)) return false;
+  if (!ready.value) { requestedRegion = regionId; return true; }
   frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: 'locate-region', region_id: regionId }, '*');
+  return true;
 }
 function focusResponse() { return teachingHost.value?.focusResponse() ?? false; }
 async function awaitTeachingHelp() {
@@ -411,37 +460,48 @@ async function awaitTeachingHelp() {
 }
 function saveState(state: PresentationState, teacherInteraction?: Record<string, unknown>) {
   const current = generation;
+  const currentApi = api;
+  const board = boardContext.value;
   const session = props.sessionId, turn = props.turnId, reference = { ...props.reference };
   const operation = saveQueue.catch(() => {}).then(async () => {
-    if (current !== generation) throw new Error("内容已切换，请重新追问。");
+    if (current !== generation) throw new Error(uiText('内容已切换，请重新追问。'));
+    if (board) return teacherInteraction
+      ? currentApi.boardPresentationSaveState(board.board_id, board.item_id, state, teacherInteraction)
+      : currentApi.boardPresentationSaveState(board.board_id, board.item_id, state);
     return teacherInteraction
-      ? api.presentationSaveState(session, turn, reference, state, teacherInteraction)
-      : api.presentationSaveState(session, turn, reference, state);
+      ? currentApi.presentationSaveState(session, turn, reference, state, teacherInteraction)
+      : currentApi.presentationSaveState(session, turn, reference, state);
   });
   saveQueue = operation;
   return operation.then(receipt => {
-    if (current === generation) saveNotice.value = "演示状态已保存";
+    if (current === generation) {
+      saveNotice.value = uiText('演示状态已保存');
+      if (board) emit('board-state-saved', receipt);
+    }
     return receipt;
   }, failure => {
-    if (current === generation) saveNotice.value = `演示状态保存失败：${failure instanceof Error ? failure.message : String(failure)}`;
+    if (current === generation) saveNotice.value = uiText('演示状态保存失败：{0}', [failure instanceof Error ? failure.message : String(failure)]);
     throw failure;
   });
 }
 async function captureScene(owner?: 'feedback'): Promise<PresentationState> {
   if (!owner) cancelFeedbackScene();
-  if (!ready.value || error.value || pendingSnapshot) throw new Error("页面尚未准备好，请稍后重试");
+  if (!ready.value || error.value || pendingSnapshot) throw new Error(uiText('页面尚未准备好，请稍后重试'));
   let timer: ReturnType<typeof setTimeout>;
-  return new Promise<PresentationState>((resolve, reject) => {
+  const operation = new Promise<PresentationState>((resolve, reject) => {
     const id = ++requestId;
     pendingSnapshot = { id, owner, resolve: value => { clearTimeout(timer); resolve(value); }, reject: error => { clearTimeout(timer); reject(error); } };
-    timer = setTimeout(() => { pendingSnapshot = undefined; reject(new Error("暂时无法读取当前演示状态，请稍后重试。")); }, 10000);
+    timer = setTimeout(() => { pendingSnapshot = undefined; reject(new Error(uiText('暂时无法读取当前演示状态，请稍后重试。'))); }, 10000);
     frame.value?.contentWindow?.postMessage({ channel: frameChannel, kind: "snapshot", request_id: id }, "*");
   });
+  snapshotInFlight = operation;
+  try { return await operation; }
+  finally { if (snapshotInFlight === operation) snapshotInFlight = undefined; }
 }
 async function snapshotScene(): Promise<{ receipt: PresentationFollowUp; state: PresentationState }> {
   const current = generation;
   const state = await captureScene();
-  if (current !== generation) throw new Error('内容已切换，请重新追问。');
+  if (current !== generation) throw new Error(uiText('内容已切换，请重新追问。'));
   return { receipt: await saveState(state), state };
 }
 async function teachingSnapshot(): Promise<PresentationFollowUp> { return (await snapshotScene()).receipt; }
@@ -452,30 +512,57 @@ async function clarifyAnswer() {
   try {
     const receipt = await teachingSnapshot();
     if (current === generation && !props.busy) emit('clarify-answer', receipt);
-  } catch (failure) { saveNotice.value = `演示状态未保存：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { saveNotice.value = uiText('演示状态未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { saving.value = false; }
 }
 async function recordNote() {
-  if (!ready.value || saving.value || props.noteMemId) return;
+  if (!ready.value || saving.value || props.noteMemId || boardContext.value) return;
   saving.value = true;
   const current = generation;
   try {
     const { receipt, state } = await snapshotScene();
-    if (current === generation) emit("record-note", receipt, view.value?.title ?? "演示", [state.visible_step, state.observed_result].filter(Boolean).join(" · ").slice(0, 240));
-  } catch (failure) { if (current === generation) saveNotice.value = `记录未开始：${failure instanceof Error ? failure.message : String(failure)}`; }
+    if (current === generation) emit("record-note", receipt, view.value?.title ?? uiText('演示'), [state.visible_step, state.observed_result].filter(Boolean).join(" · ").slice(0, 240));
+  } catch (failure) { if (current === generation) saveNotice.value = uiText('记录未开始：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { saving.value = false; }
 }
+async function addToBoard() {
+  if (!ready.value || saving.value || props.noteMemId || boardContext.value) return;
+  saving.value = true;
+  const current = generation;
+  try {
+    const { receipt } = await snapshotScene();
+    if (current === generation) emit('add-to-board', receipt);
+  } catch (failure) {
+    if (current === generation) saveNotice.value = uiText('加入画板未开始：{0}', [failure instanceof Error ? failure.message : String(failure)]);
+  } finally { if (current === generation) saving.value = false; }
+}
+async function saveBoardScene() {
+  if (!boardContext.value || !ready.value || saving.value) return;
+  saving.value = true;
+  const current = generation;
+  try { await snapshotScene(); }
+  catch (failure) {
+    if (current === generation) saveNotice.value = uiText('演示状态保存失败：{0}', [failure instanceof Error ? failure.message : String(failure)]);
+  } finally { if (current === generation) saving.value = false; }
+}
+async function flushBoardState(): Promise<PresentationFollowUp | undefined> {
+  if (!boardContext.value) return;
+  await snapshotInFlight?.catch(() => {});
+  await saveQueue.catch(() => {});
+  if (ready.value && !error.value) return (await snapshotScene()).receipt;
+  else await saveQueue;
+}
 async function followUp() {
-  if (!ready.value || error.value || saving.value || props.busy) return;
+  if (!ready.value || error.value || saving.value || props.busy || boardContext.value) return;
   if (props.noteMemId && props.noteReceipt) {
-    emit("follow-up", question.value.trim() || "解释记录时的结果", props.noteReceipt);
+    emit("follow-up", question.value.trim() || uiText('解释记录时的结果'), props.noteReceipt);
     question.value = "";
     return;
   }
   saving.value = true;
   const current = generation;
   const draft = question.value;
-  const message = draft.trim() || "解释现在的结果";
+  const message = draft.trim() || uiText('解释现在的结果');
   cancelFeedbackScene();
   try {
     await awaitTeachingHelp();
@@ -486,7 +573,7 @@ async function followUp() {
     feedbackQuestion = undefined;
     if (question.value === draft) question.value = "";
   } catch (failure) {
-    if (current === generation) saveNotice.value = `追问未发送：${failure instanceof Error ? failure.message : String(failure)}`;
+    if (current === generation) saveNotice.value = uiText('追问未发送：{0}', [failure instanceof Error ? failure.message : String(failure)]);
   } finally { saving.value = false; }
 }
 async function openAttached() {
@@ -513,6 +600,7 @@ async function restore(receipt: PresentationFollowUp) {
   if (saving.value) return;
   saving.value = true;
   const current = generation;
+  const currentApi = api;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     if (!ready.value) {
@@ -522,25 +610,34 @@ async function restore(receipt: PresentationFollowUp) {
           stop(); clearTimeout(timer);
           if (error.value) reject(new Error(error.value)); else resolve();
         });
-        timer = setTimeout(() => { stop(); reject(new Error('内容尚未准备好，请重试。')); }, 10000);
+        timer = setTimeout(() => { stop(); reject(new Error(uiText('内容尚未准备好，请重试。'))); }, 10000);
       });
     }
     if (current !== generation) return;
     if (!props.noteMemId) await teachingSnapshot();
-    const restored = props.noteMemId ? await api.notePresentationRead(props.noteMemId, true) : await api.presentationRead(props.sessionId, props.turnId, props.reference, receipt);
+    if (current !== generation) return;
+    const board = boardContext.value;
+    const restoredState = board ? await currentApi.boardPresentationRestoreState(board.board_id, board.item_id, receipt) : undefined;
+    if (current !== generation) return;
+    if (restoredState) await saveState(restoredState);
+    const restored = board && restoredState && view.value ? { ...view.value, restored_state: restoredState, restored_state_revision: receipt.state_revision }
+      : props.noteMemId ? await currentApi.notePresentationRead(props.noteMemId, true) : await currentApi.presentationRead(props.sessionId, props.turnId, props.reference, receipt);
     if (current !== generation) return;
     view.value = restored;
     await retry();
-    saveNotice.value = props.noteMemId ? "已恢复记录时的演示状态" : "已恢复提问时的演示状态";
-  } catch (failure) { if (current === generation) saveNotice.value = `恢复失败：${failure instanceof Error ? failure.message : String(failure)}`; }
+    saveNotice.value = board ? uiText('已恢复加入画板时的演示状态') : props.noteMemId ? uiText('已恢复记录时的演示状态') : uiText('已恢复提问时的演示状态');
+  } catch (failure) { if (current === generation) saveNotice.value = uiText('恢复失败：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { clearTimeout(timer); saving.value = false; }
 }
-defineExpose({ followUp, restore, locateRegion, focusResponse });
+defineExpose({ followUp, restore, locateRegion, focusResponse, flushBoardState });
 onMounted(() => {
   unregisterInteraction = registerPresentationHost({
     pageId: () => frameChannel,
     accepts: command => !props.noteMemId && ready.value && !error.value && hostIsVisible()
-      && command.session_id === props.sessionId && command.delivery_turn_id === props.turnId
+      && (boardContext.value
+        ? command.board_target?.board_id === boardContext.value.board_id && command.board_target.item_id === boardContext.value.item_id
+        : !command.board_target && command.session_id === props.sessionId)
+      && command.content_session_id === props.sessionId && command.delivery_turn_id === props.turnId
       && command.request.reference.presentation_id === props.reference.presentation_id
       && command.request.reference.revision === props.reference.revision,
     execute: executeInteraction,
@@ -557,10 +654,10 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   unregisterInteraction?.();
-  pendingInteraction?.reject(new Error('演示页面已关闭。')); pendingInteraction = undefined;
+  pendingInteraction?.reject(new Error(uiText('演示页面已关闭。'))); pendingInteraction = undefined;
   emit('teaching-host-available', false); emit('response-available', false);
   setFrameEditing(false);
-  pendingSnapshot?.reject(new Error("内容已关闭。")); pendingSnapshot = undefined;
+  pendingSnapshot?.reject(new Error(uiText('内容已关闭。'))); pendingSnapshot = undefined;
   generation++; themeObserver?.disconnect(); visibilityObserver?.disconnect();
   window.removeEventListener("message", receive); window.removeEventListener("keydown", keydown);
   window.removeEventListener('resize', resizeTools);
@@ -573,7 +670,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
     ref="root"
     class="agent-presentation"
     :class="{ expanded, linked: network.linked }"
-    :aria-label="view?.title || '富回答'"
+    :aria-label="view?.title || uiText('富回答')"
     :aria-modal="expanded && !workspace || undefined"
     :role="expanded ? workspace ? 'region' : 'dialog' : undefined"
     :data-frame-editing="frameEditing"
@@ -581,67 +678,70 @@ onMounted(() => window.addEventListener('resize', resizeTools));
   >
     <Teleport :to="toolbarTarget || 'body'" :disabled="!toolbarTarget">
       <header ref="toolbar" class="presentation-toolbar">
-        <strong class="presentation-title" :title="view?.title">{{ view?.title || '正在读取内容…' }}</strong>
-        <button v-if="view && !noteMemId && !network.linked" class="presentation-note" type="button" :disabled="!ready || saving" @click="recordNote"><StickyNote :size="16" aria-hidden="true" /><span>记一下</span></button>
-        <button v-if="view" ref="toolsButton" class="presentation-tools-toggle" type="button" aria-label="演示工具" :aria-expanded="toolsOpen" :aria-controls="toolsId" @click="toolsOpen = !toolsOpen"><Ellipsis :size="21" aria-hidden="true" /></button>
+        <strong class="presentation-title" :title="view?.title">{{ view?.title || (error ? uiText('内容未能加载') : uiText('正在读取内容…')) }}</strong>
+        <button v-if="view && !noteMemId && !boardContext && !network.linked" class="presentation-note" type="button" :disabled="!ready || saving" @click="recordNote"><StickyNote :size="16" aria-hidden="true" /><span>{{ uiText('记一下') }}</span></button>
+        <button v-if="view && boardContext" class="presentation-board-save" type="button" :disabled="!ready || saving" @click="saveBoardScene"><Save :size="16" aria-hidden="true" /><span>{{ uiText('保存画板状态') }}</span></button>
+        <button v-if="view" ref="toolsButton" class="presentation-tools-toggle" type="button" :aria-label="uiText('演示工具')" :aria-expanded="toolsOpen" :aria-controls="toolsId" @click="toolsOpen = !toolsOpen"><Ellipsis :size="21" aria-hidden="true" /></button>
         <Teleport to="body" :disabled="!toolsOpen">
         <div v-if="toolsOpen" class="presentation-tools-backdrop" aria-hidden="true" @pointerdown="toolsOpen = false"></div>
         <div v-if="view" :id="toolsId" ref="toolsPanel" class="presentation-tools" :class="{ 'is-open': toolsOpen }" :style="toolsOpen ? { top: `${toolsTop}px`, maxHeight: `calc(100dvh - ${toolsTop}px - 12px)` } : undefined">
-        <div class="presentation-tools-heading"><span>演示工具</span><button type="button" aria-label="关闭演示工具" @click="closeTools"><X :size="18" aria-hidden="true" /></button></div>
-        <span v-if="view" class="presentation-zoom" role="group" aria-label="演示缩放">
-          <span class="presentation-zoom-label">画面缩放</span>
-          <button type="button" aria-label="缩小演示" :disabled="zoomPercent <= 50" @click="setZoom(zoomPercent - 10)"><Minus :size="16" aria-hidden="true" /></button>
-          <button type="button" aria-label="恢复演示原始大小" @click="setZoom(100)">{{ zoomPercent }}%</button>
-          <button type="button" aria-label="放大演示" :disabled="zoomPercent >= 150" @click="setZoom(zoomPercent + 10)"><Plus :size="16" aria-hidden="true" /></button>
+        <div class="presentation-tools-heading"><span>{{ uiText('演示工具') }}</span><button type="button" :aria-label="uiText('关闭演示工具')" @click="closeTools"><X :size="18" aria-hidden="true" /></button></div>
+        <span v-if="view" class="presentation-zoom" role="group" :aria-label="uiText('演示缩放')">
+          <span class="presentation-zoom-label">{{ uiText('画面缩放') }}</span>
+          <button type="button" :aria-label="uiText('缩小演示')" :disabled="zoomPercent <= 50" @click="setZoom(zoomPercent - 10)"><Minus :size="16" aria-hidden="true" /></button>
+          <button type="button" :aria-label="uiText('恢复演示原始大小')" @click="setZoom(100)">{{ zoomPercent }}%</button>
+          <button type="button" :aria-label="uiText('放大演示')" :disabled="zoomPercent >= 150" @click="setZoom(zoomPercent + 10)"><Plus :size="16" aria-hidden="true" /></button>
         </span>
-        <button class="presentation-tool-action" type="button" :disabled="!ready || saving || exporting" @click="toolsOpen = false; exportCurrent()"><ArrowDownToLine :size="16" aria-hidden="true" /><span>{{ exporting ? "正在取图…" : "导出长图" }}</span></button>
-        <button class="presentation-tool-action" type="button" aria-label="文字说明与来源" :aria-expanded="readableOpen" @click="readableOpen = !readableOpen; toolsOpen = false"><BookOpen :size="16" aria-hidden="true" /><span>说明与来源</span></button>
-        <button v-if="view && network.linked" type="button" :aria-expanded="questionOpen" @click="questionOpen = !questionOpen">追问</button>
-        <button v-if="view && network.enabled && !network.linked && !noteMemId" class="presentation-tool-action" type="button" title="在附属窗口打开" @click="toolsOpen = false; openAttached()"><ExternalLink :size="16" aria-hidden="true" /><span>新窗口</span></button>
+        <button class="presentation-tool-action" type="button" :disabled="!ready || saving || exporting" @click="toolsOpen = false; exportCurrent()"><ArrowDownToLine :size="16" aria-hidden="true" /><span>{{ exporting ? uiText('正在取图…') : uiText('导出长图') }}</span></button>
+        <button class="presentation-tool-action" type="button" :aria-label="uiText('文字说明与来源')" :aria-expanded="readableOpen" @click="readableOpen = !readableOpen; toolsOpen = false"><BookOpen :size="16" aria-hidden="true" /><span>{{ uiText('说明与来源') }}</span></button>
+        <button v-if="!noteMemId && !boardContext && !network.linked" class="presentation-tool-action presentation-add-board" type="button" :disabled="!ready || saving" @click="toolsOpen = false; addToBoard()"><LayoutDashboard :size="16" aria-hidden="true" /><span>{{ uiText('加入画板') }}</span></button>
+        <button v-if="boardContext && boardReceipt" class="presentation-tool-action presentation-board-restore" type="button" :disabled="!ready || saving" @click="toolsOpen = false; restore(boardReceipt)"><RotateCcw :size="16" aria-hidden="true" /><span>{{ uiText('恢复加入时状态') }}</span></button>
+        <button v-if="view && network.linked && !boardContext" type="button" :aria-expanded="questionOpen" @click="questionOpen = !questionOpen">{{ uiText('追问') }}</button>
+        <button v-if="view && network.enabled && !network.linked && !noteMemId && !boardContext" class="presentation-tool-action" type="button" :title="uiText('在附属窗口打开')" @click="toolsOpen = false; openAttached()"><ExternalLink :size="16" aria-hidden="true" /><span>{{ uiText('新窗口') }}</span></button>
         <small v-if="saveNotice && !prominentNotice" class="presentation-save-notice" role="status" :title="saveNotice">{{ saveNotice }}</small>
-        <div v-if="view && !noteMemId" class="presentation-feedback" role="group" aria-label="评价这一版演示">
-          <span class="feedback-label">这一版</span>
-          <button type="button" aria-label="喜欢" :aria-pressed="feedback?.selection?.choice === 'like'" :disabled="feedbackLoading || feedbackSaving || !feedback" @click="chooseFeedback('like')"><ThumbsUp :size="15" aria-hidden="true" /><span>喜欢</span></button>
-          <button type="button" aria-label="不喜欢" :aria-pressed="feedback?.selection?.choice === 'dislike'" :disabled="feedbackLoading || feedbackSaving || !feedback" @click="chooseFeedback('dislike')"><ThumbsDown :size="15" aria-hidden="true" /><span>不喜欢</span></button>
-          <button v-if="feedback?.selection" type="button" :aria-expanded="feedbackDetails" :disabled="feedbackSaving" @click="feedbackDetails = !feedbackDetails">补充原因</button>
+        <div v-if="view && !noteMemId && !boardContext" class="presentation-feedback" role="group" :aria-label="uiText('评价这一版演示')">
+          <span class="feedback-label">{{ uiText('这一版') }}</span>
+          <button type="button" :aria-label="uiText('喜欢')" :aria-pressed="feedback?.selection?.choice === 'like'" :disabled="feedbackLoading || feedbackSaving || !feedback" @click="chooseFeedback('like')"><ThumbsUp :size="15" aria-hidden="true" /><span>{{ uiText('喜欢') }}</span></button>
+          <button type="button" :aria-label="uiText('不喜欢')" :aria-pressed="feedback?.selection?.choice === 'dislike'" :disabled="feedbackLoading || feedbackSaving || !feedback" @click="chooseFeedback('dislike')"><ThumbsDown :size="15" aria-hidden="true" /><span>{{ uiText('不喜欢') }}</span></button>
+          <button v-if="feedback?.selection" type="button" :aria-expanded="feedbackDetails" :disabled="feedbackSaving" @click="feedbackDetails = !feedbackDetails">{{ uiText('补充原因') }}</button>
           <span class="feedback-status" role="status">
-            <template v-if="feedbackLoading">正在读取反馈…</template>
-            <template v-else-if="feedbackSaving">正在保存反馈…</template>
+            <template v-if="feedbackLoading">{{ uiText('正在读取反馈…') }}</template>
+            <template v-else-if="feedbackSaving">{{ uiText('正在保存反馈…') }}</template>
             <template v-else-if="!feedbackError && feedback?.updated_at">
-              <time :datetime="feedback.updated_at" :title="feedback.updated_at">{{ feedback.selection ? '反馈已保存' : '反馈已撤回' }}</time>
+              <time :datetime="feedback.updated_at" :title="feedback.updated_at">{{ feedback.selection ? uiText('反馈已保存') : uiText('反馈已撤回') }}</time>
               <span v-if="feedback.selection && feedbackSceneNotice"> · {{ feedbackSceneNotice }}</span>
             </template>
           </span>
           <span v-if="feedbackError" class="feedback-error" role="alert">{{ feedbackError }}</span>
-          <button v-if="feedbackError" type="button" :disabled="feedbackSaving || feedbackLoading" @click="failedFeedback ? saveFeedback(failedFeedback.selection) : loadFeedback()">重试反馈</button>
-          <button v-if="feedbackSceneRetry" type="button" @click="feedbackSceneRetry()">重试附上演示状态</button>
+          <button v-if="feedbackError" type="button" :disabled="feedbackSaving || feedbackLoading" @click="failedFeedback ? saveFeedback(failedFeedback.selection) : loadFeedback()">{{ uiText('重试反馈') }}</button>
+          <button v-if="feedbackSceneRetry" type="button" @click="feedbackSceneRetry()">{{ uiText('重试附上演示状态') }}</button>
           <form v-if="feedbackDetails && feedback?.selection" class="feedback-details" @submit.prevent="saveFeedbackDetails">
             <fieldset :disabled="feedbackSaving">
-              <legend>原因（选填，可多选）</legend>
+              <legend>{{ uiText('原因（选填，可多选）') }}</legend>
               <label v-for="reason in availableReasons" :key="reason"><input v-model="feedbackReasons" type="checkbox" :value="reason" />{{ reasonLabels[reason] }}</label>
-              <label class="feedback-comment">补充（选填）<textarea v-model="feedbackComment" rows="2" placeholder="说说哪里有帮助，或哪里需要改进…"></textarea></label>
+              <label class="feedback-comment">{{ uiText('补充（选填）') }}<textarea v-model="feedbackComment" rows="2" :placeholder="uiText('说说哪里有帮助，或哪里需要改进…')"></textarea></label>
               <div class="feedback-actions">
-                <button type="submit">保存补充</button>
-                <button type="button" @click="saveFeedback(null)">撤回反馈</button>
-                <button type="button" :disabled="busy || !!feedbackError || feedbackDetailsDirty" :title="feedbackDetailsDirty ? '请先保存补充' : '将已保存的反馈放入追问草稿'" @click="prepareFeedbackQuestion">带入追问</button>
-                <button type="button" @click="feedbackDetails = false">关闭</button>
+                <button type="submit">{{ uiText('保存补充') }}</button>
+                <button type="button" @click="saveFeedback(null)">{{ uiText('撤回反馈') }}</button>
+                <button type="button" :disabled="busy || !!feedbackError || feedbackDetailsDirty" :title="feedbackDetailsDirty ? uiText('请先保存补充') : uiText('将已保存的反馈放入追问草稿')" @click="prepareFeedbackQuestion">{{ uiText('带入追问') }}</button>
+                <button type="button" @click="feedbackDetails = false">{{ uiText('关闭') }}</button>
               </div>
             </fieldset>
           </form>
         </div>
         </div>
         </Teleport>
-        <button v-if="view && !network.linked" ref="expandButton" type="button" class="presentation-expand" @click="toolsOpen = false; toggleExpanded()" :aria-label="expanded ? '收起' : '展开'" :title="expanded ? '收起演示' : '展开演示'" :aria-expanded="expanded"><component :is="expanded ? Minimize2 : Maximize2" :size="17" aria-hidden="true" /><span>{{ expanded ? '收起' : '展开' }}</span></button>
+        <button v-if="view && !network.linked" ref="expandButton" type="button" class="presentation-expand" @click="toolsOpen = false; toggleExpanded()" :aria-label="expanded ? uiText('收起') : uiText('展开')" :title="expanded ? uiText('收起演示') : uiText('展开演示')" :aria-expanded="expanded"><component :is="expanded ? Minimize2 : Maximize2" :size="17" aria-hidden="true" /><span>{{ expanded ? uiText('收起') : uiText('展开') }}</span></button>
       </header>
     </Teleport>
     <Teleport to="body">
       <div v-if="prominentNotice" class="presentation-notice" role="status">
-        <span>{{ saveNotice }}</span><button type="button" aria-label="关闭演示提示" @click="saveNotice = ''"><X :size="16" aria-hidden="true" /></button>
+        <span>{{ saveNotice }}</span><button type="button" :aria-label="uiText('关闭演示提示')" @click="saveNotice = ''"><X :size="16" aria-hidden="true" /></button>
       </div>
     </Teleport>
-    <p v-if="error" class="presentation-error" role="alert">{{ error }} <button v-if="view" type="button" @click="retry">重试</button></p>
+    <p v-if="error" class="presentation-error" role="alert"><span>{{ error }}</span><button type="button" @click="retry">{{ view ? uiText('重新加载') : uiText('重新读取') }}</button></p>
     <template v-else>
-      <p v-if="!ready" class="presentation-status" role="status">正在准备内容…</p>
+      <p v-if="!ready" class="presentation-status" role="status">{{ uiText('正在准备内容…') }}</p>
       <iframe
         v-if="documentText"
         ref="frame"
@@ -653,24 +753,24 @@ onMounted(() => window.addEventListener('resize', resizeTools));
         @load="onFrameLoad"
       />
       <Teleport :to="teachingTarget || 'body'" :disabled="!teachingTarget">
-        <nav v-if="view?.teaching_binding?.regions.length" class="teaching-regions" aria-label="回到相关画面">
+        <nav v-if="view?.teaching_binding?.regions.length" class="teaching-regions" :aria-label="uiText('回到相关画面')">
           <button v-for="region in view.teaching_binding.regions" :key="region.region_id" :disabled="!ready" @click="locateRegion(region.region_id)">{{ region.observation }}</button>
         </nav>
-        <TutorActivities ref="teachingHost" v-if="view && ready && teaching" :session-id="sessionId" :turn-id="turnId" :reference="reference" :presentation-target="() => frame" :snapshot="teachingSnapshot" :before-response="awaitTeachingHelp" :ready="ready" :busy="busy || saving" :sources="view.sources"
+        <TutorActivities ref="teachingHost" v-if="view && ready && teaching && !boardContext" :session-id="sessionId" :turn-id="turnId" :reference="reference" :presentation-target="() => frame" :snapshot="teachingSnapshot" :before-response="awaitTeachingHelp" :ready="ready" :busy="busy || saving" :sources="view.sources"
           @response-available="emit('response-available', $event)" @source="(id, anchor) => emit('source', id, anchor)" />
-        <TutorContinuation v-if="view && ready && teaching && !noteMemId && chatHead !== undefined"
+        <TutorContinuation v-if="view && ready && teaching && !noteMemId && !boardContext && chatHead !== undefined"
           :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
           @available="emit('continuation-available', $event)"
           @choose="(original, option, receipt) => emit('choose-continuation', original, option, receipt)" @locate="emit('locate-turn', $event)" @edit="emit('edit-question')" @read="emit('return-reading')" />
-        <button v-if="workspace && ready && answerAvailable" class="presentation-clarify" :disabled="busy || saving" @click="clarifyAnswer">这一步没跟上</button>
+        <button v-if="workspace && ready && answerAvailable && !boardContext" class="presentation-clarify" :disabled="busy || saving" @click="clarifyAnswer">{{ uiText('这一步没跟上') }}</button>
       </Teleport>
-      <form v-if="view && !workspace && (!network.linked || questionOpen)" class="presentation-follow-up" @submit.prevent="followUp">
-        <input v-model="question" aria-label="针对当前演示追问" placeholder="解释当前结果，或描述要修改的内容…" :disabled="saving || busy" />
-        <button type="submit" :disabled="!ready || saving || busy">{{ saving ? '正在准备追问…' : question.trim() ? '发送追问' : '解释现在的结果' }}</button>
+      <form v-if="view && !workspace && !boardContext && (!network.linked || questionOpen)" class="presentation-follow-up" @submit.prevent="followUp">
+        <input v-model="question" :aria-label="uiText('针对当前演示追问')" :placeholder="uiText('解释当前结果，或描述要修改的内容…')" :disabled="saving || busy" />
+        <button type="submit" :disabled="!ready || saving || busy">{{ saving ? uiText('正在准备追问…') : question.trim() ? uiText('发送追问') : uiText('解释现在的结果') }}</button>
       </form>
     </template>
-    <section v-if="view && readableOpen" class="presentation-readable" aria-label="文字说明与来源">
-      <div class="readable-heading"><strong>文字说明与来源 · 版本 {{ view.reference.revision }}</strong><button type="button" @click="readableOpen = false" aria-label="关闭文字说明与来源">×</button></div>
+    <section v-if="view && readableOpen" class="presentation-readable" :aria-label="uiText('文字说明与来源')">
+      <div class="readable-heading"><strong>{{ uiText('文字说明与来源 · 版本') }} {{ view.reference.revision }}</strong><button type="button" @click="readableOpen = false" :aria-label="uiText('关闭文字说明与来源')">×</button></div>
       <div class="readable-text" v-html="renderMarkdown(readableText)"></div>
       <p v-for="assumption in view.assumptions" :key="assumption">{{ assumption }}</p>
       <button v-for="source in view.sources" :key="source.source_ref_id" type="button" :title="source.label" @click="emit('source', source.source_ref_id, $event.currentTarget as HTMLElement)">{{ sourceChipLabel(view.sources, source.source_ref_id) }}</button>
@@ -725,7 +825,9 @@ button:disabled { opacity: .55; cursor: default; }
 .presentation-readable button { margin: 4px; }
 .readable-text { line-height: 1.65; overflow-wrap: anywhere; }
 .readable-text :deep(pre) { overflow: auto; }
-.presentation-error { padding: 0 16px; }
+.presentation-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 16px; line-height: 1.6; overflow-wrap: anywhere; }
+.presentation-error span { flex: 1 1 200px; }
+.presentation-error button { flex: none; min-height: 36px; }
 .presentation-status { position: absolute; z-index: 1; top: 52px; left: 16px; margin: 0; padding: 3px 8px; border-radius: 6px; background: var(--surface, #efe9de); }
 @container (max-width: 420px) {
   .presentation-follow-up input,

@@ -28,6 +28,16 @@ fn operations(schema: &mut Value, tag: &str, variants: &[(&str, &[&str], &[&str]
 pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
     let schema = &mut tool.parameters;
     match tool.name.as_str() {
+        "board.author" => operations(schema, "operation", &[
+            ("read", &[], &["collection", "offset", "length", "board_revision", "candidate_revision"]),
+            ("catalog", &["kind"], &["query", "after", "limit", "published_book_ref"]),
+            ("source_read", &["source"], &["published_book_ref"]),
+            ("prepare", &["base_board_revision", "blocks", "drawings"], &["links", "mappings", "routes", "presentations", "imports", "update_drawings", "layout"]),
+            ("revise", &["candidate_revision"], &["blocks", "drawings"]),
+            ("preview", &["candidate_revision"], &["viewport"]),
+            ("deliver", &["candidate_revision"], &[]),
+            ("commit", &["candidate_revision"], &[]),
+        ]),
         "goal.update" => {
             operations(
                 schema,
@@ -83,7 +93,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                     ("material", &[], &["object_id", "after"]),
                     ("trace", &[], &["event_id", "after"]),
                     ("design", &["operation_id", "design"], &[]),
-                    ("select", &["move"], &["delivery_move_refs"]),
+                    ("select", &["move"], &["delivery_move_refs", "finish", "delivery_scope"]),
                     ("outside", &[], &[]),
                     ("assess", &["action_ref"], &[]),
                     (
@@ -133,7 +143,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
             ]);
         }
         "presentation.interact" => {
-            operations(schema, "operation", &[("observe", &["reference"], &[]), ("act", &["reference", "based_on", "action"], &[])]);
+            operations(schema, "operation", &[("observe", &["reference"], &["board_target"]), ("act", &["reference", "based_on", "action"], &["board_target"])]);
         }
         "presentation.author" => {
             operations(

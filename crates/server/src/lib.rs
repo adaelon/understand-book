@@ -106,6 +106,7 @@ mod admin_api;
 mod beta_invites;
 mod account_mail;
 mod account_registration;
+mod guest_trial;
 mod account_email;
 mod account_password;
 mod admin_store;
@@ -162,6 +163,15 @@ mod presentation_interact;
 mod music_interact;
 mod music_source;
 mod note_api;
+mod board_api;
+mod board_conversation;
+mod board_prebuild;
+#[cfg(test)]
+mod board_prebuild_tests;
+mod board_author;
+mod board_preview;
+mod board_delivery;
+mod board_understanding;
 mod tutor_api;
 mod teaching;
 mod presentation_author;
@@ -691,6 +701,7 @@ fn paper_minimap_localization_request(base: &PaperMinimapBase) -> CompletionRequ
         })).collect::<Vec<_>>(),
     });
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -1054,6 +1065,12 @@ pub struct AgentTurnError {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AgentChatTurn {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub board_follow_up: Option<memory::boards::BoardFollowUp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub board_delivery: Option<memory::boards::BoardDelivery>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub board_delivery_error: Option<AgentTurnError>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub music_question: Option<base_schema::MusicQuestionContext>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video_question: Option<base_schema::VideoQuestionContext>,
@@ -1172,6 +1189,10 @@ pub struct AgentChatSessionSummary {
 
 #[derive(Debug, serde::Serialize)]
 pub struct AgentChatTurnView {
+    pub board_commits: Vec<memory::boards::BoardDelivery>,
+    pub board_follow_up: Option<memory::boards::BoardFollowUp>,
+    pub board_delivery: Option<memory::boards::BoardDelivery>,
+    pub board_delivery_error: Option<AgentTurnError>,
     pub music_question: Option<base_schema::MusicQuestionContext>,
     pub video_question: Option<base_schema::VideoQuestionContext>,
     pub domain: session_event::TurnDomain,
@@ -1675,7 +1696,10 @@ fn precommit_agent_turn_with_goal(
         session.turns.last_mut().unwrap().video_question = video_question.clone();
         session.turns.last_mut().unwrap().music_question = music_question.clone();
         session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
-        if let Some(domain) = domain { session.turns.last_mut().unwrap().domain = domain; }
+        if let Some(domain) = domain {
+            session.turns.last_mut().unwrap().board_follow_up = domain.board_context.as_ref().map(|context| context.follow_up.clone());
+            session.turns.last_mut().unwrap().domain = domain;
+        }
         session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(
             &state.user, session.turns.last().unwrap().domain.interaction.as_ref(), &turn_ref, now)?;
         let messages = session.messages.clone();
@@ -1693,7 +1717,10 @@ fn precommit_agent_turn_with_goal(
     session.turns.last_mut().unwrap().video_question = video_question.clone();
     session.turns.last_mut().unwrap().music_question = music_question.clone();
     session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
-    if let Some(domain) = domain { session.turns.last_mut().unwrap().domain = domain; }
+    if let Some(domain) = domain {
+        session.turns.last_mut().unwrap().board_follow_up = domain.board_context.as_ref().map(|context| context.follow_up.clone());
+        session.turns.last_mut().unwrap().domain = domain;
+    }
     session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(
         &state.user, session.turns.last().unwrap().domain.interaction.as_ref(), &turn_ref, now)?;
     let messages = session.messages.clone();
@@ -1766,6 +1793,9 @@ fn append_pending_agent_turn(
     }
     session.updated_at = now.into();
     session.turns.push(AgentChatTurn { music_question: None,
+        board_follow_up: None,
+        board_delivery: None,
+        board_delivery_error: None,
         video_question: None,
         domain: Default::default(),
         admission_input: None,
@@ -2483,6 +2513,10 @@ fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
         }
     }
     AgentChatTurnView {
+        board_commits: session_runtime::board_commits(turn),
+        board_follow_up: turn.board_follow_up.clone(),
+        board_delivery: turn.board_delivery.clone(),
+        board_delivery_error: turn.board_delivery_error.clone(),
         video_question: turn.video_question.clone(),
         music_question: turn.music_question.clone(),
         domain: turn.domain.clone(),
@@ -3028,6 +3062,23 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
             return agent_method_not_allowed();
         }
         return route_agent_source_resolve(state, req.body);
+    }
+    if let Some(operation) = path.strip_prefix("/boards/") {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let value = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        if operation == "source.open" {
+            let binding = match board_api::source_binding(&state.user, &state.workspace, &value) {
+                Ok(binding) => binding, Err(error) => return err_reply(&error),
+            };
+            let Some(range) = binding.evidence_range.as_ref() else { return validation("MEDIA_SOURCE_NAVIGATION", "Use the saved media position"); };
+            if let Err(error) = state.workspace.book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest)) { return err_reply(&error); }
+            if let Err(error) = state.workspace.reader.goto_lid(&state.workspace.book, &mut state.user.store, &range.start_lid, req.now) { return err_reply(&error); }
+            save_session(state, None);
+            return ok_json(&SourceOpenView { source_ref_id: binding.source_ref_id, opened: true });
+        }
+        return match board_api::route(&state.user, &state.workspace, operation, &value, req.now) {
+            Ok(v) => ok_json(&v), Err(e) => err_reply(&e),
+        };
     }
     if matches!(path.as_str(), "/memory/presentation.read" | "/memory/presentation.observe") {
         if req.method != "POST" { return agent_method_not_allowed(); }
@@ -6044,6 +6095,7 @@ fn route_workbench_source_review_analyze(state: &mut AppState, body: &str) -> Re
         "pdf_page_label": block.get("pdf_page_label").cloned().unwrap_or_else(|| json!(null)),
     });
     let request = CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -10291,6 +10343,8 @@ pub(crate) const SELECTION_TRANSLATION_TIMEOUT: Duration = Duration::from_secs(6
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SelectionTranslationRequest {
+    #[serde(default)]
+    target_locale: Option<runtime::response_language::ResponseLanguage>,
     status: SelectionResolution,
     raw_quote: String,
     resolved_quote: String,
@@ -10509,7 +10563,10 @@ pub(crate) fn prepare_selection_translation(
         status: request.status,
         context_blocks,
         terminology,
-        target_locale: TRANSLATION_TARGET_LOCALE,
+        target_locale: match request.target_locale {
+            Some(runtime::response_language::ResponseLanguage::English) => "en",
+            _ => TRANSLATION_TARGET_LOCALE,
+        },
     })
 }
 
@@ -10525,6 +10582,11 @@ Preserve $...$, $$...$$, formulas, variables, units, and symbols verbatim.
 Do not output raw HTML. Do not add explanations, conclusions, terminology cards, syntax analysis, or model commentary.
 Terminology may constrain wording only for content in source_markdown; it must never add content.
 Terminology policy: use chinese_gloss only when policy is use_chinese_gloss; retain the English term when policy is preserve_english; aliases are matching metadata only."#;
+    let system = if work.target_locale == "en" {
+        system.replace("into Simplified Chinese.", "into English.").replace(
+            "Terminology policy: use chinese_gloss only when policy is use_chinese_gloss; retain the English term when policy is preserve_english; aliases are matching metadata only.",
+            "Terminology policy: use the original English technical terms where appropriate. Chinese glosses are reference-only and must not change the English target language; aliases are matching metadata only.")
+    } else { system.to_owned() };
     let user = serde_json::to_string(&json!({
         "task": {
             "operation": "translate_exactly",
@@ -10542,6 +10604,7 @@ Terminology policy: use chinese_gloss only when policy is use_chinese_gloss; ret
     }))
     .expect("selection translation prompt data is serializable");
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         output_token_limit: None,
         reasoning_effort: None,
@@ -10600,7 +10663,9 @@ fn execute_selection_translation_with_adapter(
                 format!("translation provider request failed: {}", error.message),
             )
         })?;
-    parse_selection_translation_output(value)
+    let mut result = parse_selection_translation_output(value)?;
+    result.target_locale = work.target_locale.into();
+    Ok(result)
 }
 
 pub(crate) fn execute_selection_translation(
@@ -11874,17 +11939,20 @@ fn workspace_source_binding(
         .filter(|session| session.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)
             || (workspace.learning_workspace_id.is_none() && session.learning_workspace_id.is_none()
                 && session.turns.iter().any(|turn| turn.turn_id == request.turn_id
-                    && turn.source_bindings.iter().any(|binding| binding.source_ref_id == request.source_ref_id && (binding.media.is_some() || binding.music.is_some())))))
+                    && turn.source_bindings.iter().chain(turn.domain.board_commits.iter().flat_map(|part| &part.source_bindings))
+                        .any(|binding| binding.source_ref_id == request.source_ref_id && (binding.media.is_some() || binding.music.is_some())))))
         .flat_map(|session| session.turns.iter())
         .find(|turn| turn.turn_id == request.turn_id);
     if let Some(turn) = turn {
-        if workspace.learning_workspace_id.is_none() && !turn.source_bindings.iter().any(|b| b.source_ref_id == request.source_ref_id && (b.media.is_some() || b.music.is_some())) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
+        if workspace.learning_workspace_id.is_none() && !turn.source_bindings.iter().chain(turn.domain.board_commits.iter().flat_map(|part| &part.source_bindings))
+            .any(|b| b.source_ref_id == request.source_ref_id && (b.media.is_some() || b.music.is_some())) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
             return Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "Open the original publication to read this source; no replacement is selected"));
         }
     }
     let binding = turn.and_then(|turn| {
         turn.source_bindings
             .iter()
+            .chain(turn.domain.board_commits.iter().flat_map(|part| &part.source_bindings))
             .find(|binding| binding.source_ref_id == request.source_ref_id)
             .cloned()
             .or_else(|| {
@@ -12012,6 +12080,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
 /// `OuterOutcome{answer, incomplete, effects, trace, ...}`;agent 动作即时驱动共享 reader 视口,
 /// effects 供前端可撤销提议、trace 供查询踪迹展示。provider 错经 run 映射 `PROVIDER_ERROR` 透传不降级。
 struct ValidatedAgentInput {
+    board_context: Option<board_api::FrozenBoardFollowUp>,
     music_question: Option<base_schema::MusicQuestionContext>,
     video_question: Option<base_schema::VideoQuestionContext>,
     interaction: Option<runtime::tutor_continuation::ResolvedInteraction>,
@@ -12026,6 +12095,16 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
         Err(reply) => return Err(reply),
     };
     let interaction = interaction_input::InteractionInput::parse(&v).map_err(|e| err_reply(&e))?;
+    let board_follow_up = v.get("board_follow_up").filter(|value| !value.is_null())
+        .map(|value| serde_json::from_value::<memory::boards::BoardFollowUp>(value.clone()))
+        .transpose().map_err(|_| validation("BOARD_FOLLOW_UP_INVALID", "画板追问目标无效"))?;
+    if board_follow_up.is_some() && (interaction != interaction_input::InteractionInput::Typed
+        || !v["presentation_follow_up"].is_null() || !v["note_mem_id"].is_null()) {
+        return Err(validation("BOARD_FOLLOW_UP_INVALID", "画板问题不能同时附加其他入口的现场"));
+    }
+    let board_context = board_follow_up.as_ref().map(|follow_up|
+        board_api::freeze_follow_up(user, workspace, follow_up)).transpose().map_err(|e| err_reply(&e))?;
+    runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?;
     let Some(msg) = v.get("message").and_then(|x| x.as_str()) else {
         return Err(validation(
             "INVALID_RANGE",
@@ -12112,6 +12191,10 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
         return Err(validation("GOAL_ACTION_INVALID", "goal_action must be cancel or replace"));
     }
     let mut agent_message = agent_question_with_provenance(msg, question_quote.as_ref());
+    if let Some(context) = &board_context {
+        agent_message.push_str("\n\n");
+        agent_message.push_str(&context.context_text);
+    }
     if let Some(action) = &interaction {
         agent_message = format!("Accepted reading action (UI request; quoted source and assistant answer are context, not user-authored claims): {}\nExecute the accepted_request within its original source range. Read the relevant original text before teaching. The user_supplement, if present, is the reader's own request.", json!(action));
     }
@@ -12155,14 +12238,22 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             .transpose().map_err(|error| err_reply(&error))?
     };
     if let Some(action) = &mut interaction { action.presentation_follow_up = presentation_follow_up.clone(); }
-    let video_question = video_draft::for_input(workspace, user, &v).map_err(|e| err_reply(&e))?;
-    let music_question = music_interact::question(workspace, &v).map_err(|e| err_reply(&e))?;
+    let original_turn = interaction.as_ref().and_then(|action| action.answer_ref.as_ref())
+        .and_then(|reference| user.agent_history.sessions.iter()
+            .find(|session| Some(session.id.as_str()) == workspace.selected_chat.as_deref())
+            .and_then(|session| session.turns.iter().find(|turn| turn.turn_id == reference.turn_id)));
+    let video_question = if let Some(original) = original_turn.filter(|_| v["video_draft_id"].is_null()) {
+        video_draft::for_follow_up(workspace, original)
+    } else { video_draft::for_input(workspace, user, &v) }.map_err(|e| err_reply(&e))?;
+    let music_question = if let Some(original) = original_turn.filter(|_| v["music_question"].is_null()) {
+        music_interact::question(workspace, &json!({"music_question":original.music_question}))
+    } else { music_interact::question(workspace, &v) }.map_err(|e| err_reply(&e))?;
     if let Some(question) = &music_question {
         agent_message.push_str(&format!("\n\nMusic question at submission (fixed source locator, not audio heard by the model): {}. Keep this exact publication, recording, occurrence and time range even if playback later moves. Read the corresponding prepared source before explaining.", json!(question)));
     }
     let message = msg.to_string();
-    if interaction.is_none() {
-        let learning = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref()).map_err(|e| err_reply(&e))?;
+    if interaction.is_none() && board_context.is_none() {
+        let learning = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id).map_err(|e| err_reply(&e))?;
         let view = learning.state().map_err(|e| err_reply(&e))?;
         if view.control.enabled {
             let can_start_chapter = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
@@ -12175,21 +12266,23 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
                     v["guide_chapter_lid"] = json!(lid);
                 }
             }
-            // Completing one chapter question closes its ResidentGoal, while the
-            // chapter session remains active. Continue through the existing
+            // Completing one teaching question closes its ResidentGoal, while the
+            // chapter or media session remains active. Continue through the existing
             // completed-goal branch instead of requiring an unfinished request.
             if message.trim() == "继续" && v["goal_id"].is_null() && v["goal_action"].is_null() {
-                let chapter = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
+                let media = workspace.book_dir.join("video_source_manifest.json").is_file()
+                    || workspace.book_dir.join("music_source_manifest.json").is_file();
+                let active_scope = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
                     .filter(|s| s.status == memory::learning::TutorSessionStatus::Active && s.material_scope.iter().any(|m|
-                        m.source_id == workspace.book.base.book_id && m.scope_refs.iter().any(|lid|
-                            workspace.book.base.lid_nodes.iter().any(|n| n.lid == *lid && n.kind == base_schema::NodeKind::Chapter))));
+                        m.source_id == workspace.book.base.book_id && (media || m.scope_refs.iter().any(|lid|
+                            workspace.book.base.lid_nodes.iter().any(|n| n.lid == *lid && n.kind == base_schema::NodeKind::Chapter)))));
                 let chat = user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == workspace.selected_chat.as_deref());
-                if let (Some(chapter), Some(chat)) = (chapter, chat) {
+                if let (Some(active_scope), Some(chat)) = (active_scope, chat) {
                     if !chat.goals.iter().any(|g| g.status == runtime::goal::GoalStatus::Open) {
                         if let Some((turn, goal)) = chat.turns.last().and_then(|t| t.goal_ref.as_ref()
                             .and_then(|r| chat.goals.iter().find(|g| g.id == r.id && g.status == runtime::goal::GoalStatus::Completed))
                             .map(|g| (t,g))) {
-                            let events = learning.teaching_turn_events(&chapter.id, &turn.turn_id).map_err(|e| err_reply(&e))?;
+                            let events = learning.teaching_turn_events(&active_scope.id, &turn.turn_id).map_err(|e| err_reply(&e))?;
                             if events.iter().any(|event| event.event_id == format!("binding:{}", turn.turn_id)) {
                                 v["goal_id"] = json!(goal.id);
                             }
@@ -12199,7 +12292,7 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             }
         }
     }
-    Ok(ValidatedAgentInput { music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    Ok(ValidatedAgentInput { board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
 
@@ -12213,11 +12306,14 @@ fn prepare_agent_chat(
         state.user.learning_store_for_workspace(Some(id)).and_then(|mut store| store.sync_workspace_goal(goal.revision, now))
             .map_err(|error| err_reply(&error))?;
     }
-    let ValidatedAgentInput { music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    let ValidatedAgentInput { board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, mut agent_message, presentation_context } = validate_agent_input(&mut state.user, &state.workspace, body)?;
     let msg = message.as_str();
     let current_book_id = state.workspace.book.base.book_id.clone();
-    let domain = interaction.as_ref().map(|action| interaction_input::local_domain(state, &v, action)).transpose().map_err(|e|err_reply(&e))?;
+    let mut domain = if interaction.is_some() || board_context.is_some() {
+        Some(interaction_input::local_domain_for_request(state, &v, interaction.as_ref()).map_err(|e|err_reply(&e))?)
+    } else { None };
+    if let Some(domain) = &mut domain { domain.board_context = board_context.clone(); }
     let related_goal = interaction_input::related_goal(&state.user, state.workspace.selected_chat.as_deref(), interaction.as_ref());
     let turn_ref = match precommit_agent_turn_with_goal(
         state,
@@ -12263,10 +12359,12 @@ fn prepare_agent_chat(
     let mut scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
     scope.reader_input.video_question = video_question;
     scope.music_question = music_question;
+    scope.board_context = board_context;
     if scope.presentation_follow_up.is_some() {
         agent_message.push_str(presentation_context.as_deref().expect("validated presentation context"));
     }
     Ok(agent_run::PreparedAgentChat {
+        response_language: runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?,
         exam_calendar: None,
         accepted_workspace_goal: None,
         scope,
@@ -12541,7 +12639,7 @@ fn run_precommitted_with_ports(
         }
     }
     port.check_access()?;
-    let (profile_snapshot, context_fragments, active_checkpoint) = port.with_user(|user| {
+    let (profile_snapshot, context_fragments, active_checkpoint, active_model_projection) = port.with_user(|user| {
         let snapshot_request =
             user_profile_snapshot_request(user, prepared.scope.learning_workspace_id.as_deref(), book, current_book_id, content_profile, now);
         let profile_snapshot = user
@@ -12558,16 +12656,19 @@ fn run_precommitted_with_ports(
             .iter()
             .find(|session| session.id == turn_ref.session_id)
             .and_then(|session| session.compaction_checkpoint.clone());
-        let active_checkpoint = if let Some(store) = &user.session_store {
+        let (active_checkpoint, active_model_projection) = if let Some(store) = &user.session_store {
             let log = &store.logs[&turn_ref.session_id];
             match log.projection.inputs.get(&turn_ref.turn_id).map(|f| &f.messages) {
-                Some(session_event::HistoryPosition::Committed { history_through_seq }) =>
-                    log.at(*history_through_seq)?.session.and_then(|s| s.compaction_checkpoint),
-                _ => active_checkpoint,
+                Some(session_event::HistoryPosition::Committed { history_through_seq }) => {
+                    let frozen = log.at(*history_through_seq)?;
+                    (frozen.session.and_then(|s| s.compaction_checkpoint), frozen.active_model_projection)
+                },
+                _ => (active_checkpoint, log.projection.active_model_projection.clone()),
             }
-        } else { active_checkpoint };
-        Ok::<_, ToolError>((profile_snapshot, context_fragments, active_checkpoint))
+        } else { (active_checkpoint, None) };
+        Ok::<_, ToolError>((profile_snapshot, context_fragments, active_checkpoint, active_model_projection))
     })?;
+    context.restore_model_projection(active_model_projection, adapter.projection_identity().as_deref());
     let initial_evidence = verified_question_evidence(book, prepared.scope.question_quote.as_ref());
     let mut turn_resources =
         ResidentTurnResources::new(context_fragments, initial_evidence, memory_updates);
@@ -13225,6 +13326,7 @@ mod tests {
     mod adm10_tests;
     mod adm2_tests;
     mod inv2_tests;
+    mod guest_trial_tests;
     mod inv5_tests;
     mod inv6_tests;
     mod inv7_tests;
@@ -13264,6 +13366,12 @@ mod tests {
     mod mu8_tests;
     mod w3_profile_scope_tests;
     mod w5_reader_tests;
+    mod board_network_tests;
+    pub(crate) mod board_browser_host;
+    pub(crate) mod board_follow_up_browser_host;
+    pub(crate) mod board_wb3_browser_host;
+    pub(crate) mod board_wb4_browser_host;
+    mod board_follow_up_run_tests;
     mod mu9_tests;
     pub(crate) mod mu10_tests;
     pub(crate) mod presentation_author_tests;
@@ -13865,7 +13973,7 @@ mod tests {
         assert_eq!(turn.unwrap().session_id, first_chat);
     }
 
-    fn state_named(mem: &str) -> AppState {
+    pub(crate) fn state_named(mem: &str) -> AppState {
         // sample_base:容器 "1" + 叶 "1.1";entity:command occ=["1.1"]、claim source=1.1。
         let src = "X".repeat(100) + "尾巴";
         let book = Book::new(sample_base(), &src);
@@ -13947,6 +14055,16 @@ mod tests {
     impl ModelAdapter for ChatRecordingAdapter {
         fn complete(&self, _req: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
             unimplemented!("profile injection test does not use complete")
+        }
+
+        fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            if let Some(guidance) = tutor_loop_tests::fixture_coach_guidance(&request) {
+                return Ok(guidance);
+            }
+            if let Some(review) = tutor_loop_tests::fixture_delivery_review(&request) {
+                return Ok(review);
+            }
+            unimplemented!("profile injection fixture received an unexpected structured request")
         }
 
         fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
@@ -21345,6 +21463,9 @@ unchanged after training concludes";
         let book_id = state.workspace.book.base.book_id.clone();
         let turns = (1..=3)
             .map(|ordinal| AgentChatTurn { music_question: None,
+                board_follow_up: None,
+                board_delivery: None,
+                board_delivery_error: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -21389,6 +21510,9 @@ unchanged after training concludes";
             created_at: "created".into(),
             updated_at: "updated".into(),
             turns: vec![AgentChatTurn { music_question: None,
+                board_follow_up: None,
+                board_delivery: None,
+                board_delivery_error: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -22691,6 +22815,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         state.services.adapter = Box::new(ChatStubAdapter::scripted(vec![AssistantTurn {
             provider_continuation: Some(runtime::ProviderContinuation {
                 model: "deepseek-flash".into(), reasoning_content: "private-provider-probe".into(),
+                messages_content: Vec::new(),
             }),
             text: Some("公开答案".into()), tool_calls: vec![], usage_total_tokens: Some(3),
         }]));
@@ -23572,6 +23697,9 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut history = AgentHistory::default();
         let mut session = new_agent_session("book", "t0", 0);
         session.turns.push(AgentChatTurn { music_question: None,
+            board_follow_up: None,
+            board_delivery: None,
+            board_delivery_error: None,
                 video_question: None,
                 domain: Default::default(),
                 admission_input: None,
@@ -23759,7 +23887,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         let mut base = sample_base();
         base.book_id = "translation-book".into();
         for node in &mut base.lid_nodes {
-            node.span.end = source.len();
+            node.span.end = source.encode_utf16().count();
         }
         let book =
             Book::new(base, source).with_book_structure(Some(read_tools::BookStructureSidecar {
@@ -23801,6 +23929,7 @@ Version 1.2 and bare 1.1 stay unchanged.
         ranges: Vec<SelectedRange>,
     ) -> SelectionTranslationRequest {
         SelectionTranslationRequest {
+            target_locale: None,
             status,
             raw_quote: raw_quote.into(),
             resolved_quote: resolved_quote.into(),
@@ -24029,6 +24158,37 @@ Version 1.2 and bare 1.1 stay unchanged.
                 target_locale: "zh-CN".into(),
             }
         );
+    }
+
+    #[test]
+    fn selection_translation_english_target_reaches_provider_and_response() {
+        let source = "需要翻译的原文 $x^2$";
+        let book = translation_book(source, None);
+        let mut request = translation_request(SelectionResolution::Resolved, source, source,
+            vec![selected_range("1.1", 0, source.chars().count() as u32)]);
+        request.target_locale = Some(runtime::response_language::ResponseLanguage::English);
+        let work = prepare_selection_translation(&book, request).unwrap();
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let adapter = TranslationStructuredAdapter { output: json!({"translation_markdown":"Source text to translate $x^2$"}), requests: Arc::clone(&requests) };
+        let response = execute_selection_translation_with_adapter(&adapter, &work).unwrap();
+        assert_eq!(response.target_locale, "en");
+        assert_eq!(response.translation_markdown, "Source text to translate $x^2$");
+        let requests = requests.lock().unwrap();
+        assert!(requests[0].system.contains("into English."));
+        assert!(!requests[0].system.contains("into Simplified Chinese."));
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&requests[0].user).unwrap()["source_markdown"], source);
+    }
+
+    #[test]
+    fn response_language_is_part_of_the_frozen_request_identity() {
+        let english = json!({"message":"解释中文原文", "response_language":"en"});
+        let chinese = json!({"message":"解释中文原文", "response_language":"zh-CN"});
+        let frozen = crate::run_admission::normalize("workspace", &english).unwrap();
+        assert_eq!(frozen["response_language"], "en");
+        assert_eq!(frozen["message"], "解释中文原文");
+        assert_ne!(frozen, crate::run_admission::normalize("workspace", &chinese).unwrap());
+        assert!(crate::run_admission::normalize("workspace", &json!({"message":"question", "response_language":"fr"})).is_err());
+        assert!(crate::run_admission::normalize("workspace", &json!({"message":"question"})).unwrap().get("response_language").is_none());
     }
 
     #[test]

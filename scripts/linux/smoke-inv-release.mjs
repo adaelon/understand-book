@@ -114,18 +114,20 @@ try {
   const registrationCode = await inbox('registration-code');
   await page.getByLabel('邮箱验证码').fill(registrationCode);
   await page.getByRole('button', { name: '完成注册', exact: true }).click();
-  await page.getByText('注册成功，请登录。材料与使用额度由管理员开通。', { exact: true }).waitFor();
+  await page.getByText('注册成功，已赠送 10 元 AI 使用额度，有效期 30 天。请登录。', { exact: true }).waitFor();
   await login(page, email, password);
   await page.getByText('账号已创建，等待管理员开通材料。', { exact: true }).waitFor();
   identity = await api(readerContext, base, '/auth/me');
   assert.equal(identity.email, email); assert.equal(identity.capabilities.admin, false);
   assert.deepEqual((await api(readerContext, base, '/library')).books, []);
-  assert.equal((await api(readerContext, base, '/account/allowance')).current_allowance, null);
+  const initialAllowance = (await api(readerContext, base, '/account/allowance')).current_allowance;
+  assert.equal(initialAllowance.balance.available_micro_cny, 10000000);
+  assert.equal(initialAllowance.expires_at - initialAllowance.starts_at, 30 * 86400);
   // The unavailable code is rejected before the different address can receive mail.
   const rejected = await api(readerContext, base, '/auth/register/start', { email: 'inv9-second@example.com', password, invite_code: invite }, 409);
   assert.equal(rejected.error_code, 'INVITE_UNAVAILABLE');
   await page.screenshot({ path: path.join(output, 'registered-empty-library.png'), fullPage: true });
-  await passed('Real registration inbox verified; reused invite rejected; new account has no books, allowance or admin role');
+  await passed('Real registration inbox verified; reused invite rejected; new account receives CNY 10 for 30 days with no admin role');
   } else {
     await page.goto(base); await login(page, email, password);
     await page.getByRole('heading', { name: '选择阅读材料' }).waitFor();
@@ -140,9 +142,8 @@ try {
   const owner = identity.user_id;
   if (!config.resume_registered) {
   await api(adminContext, base, `/admin/users/${owner}/book-grants`, { operation_id: randomUUID(), published_book_ref: publication });
-  const now = Math.floor(Date.now() / 1000);
-  const period = (await api(adminContext, base, `/admin/users/${owner}/allowance-periods`, { operation_id: randomUUID(), starts_at: now - 60, expires_at: now + 86400 })).allowance_period;
-  await api(adminContext, base, `/admin/users/${owner}/allowance-adjustments`, { operation_id: randomUUID(), period_id: period.period_id, revision: 0, delta_micro_cny: 1000000, reason: 'INV9 isolated acceptance' });
+  const period = (await api(readerContext, base, '/account/allowance')).current_allowance;
+  await api(adminContext, base, `/admin/users/${owner}/allowance-adjustments`, { operation_id: randomUUID(), period_id: period.period_id, revision: period.revision, delta_micro_cny: 1000000, reason: 'INV9 isolated acceptance' });
   }
   const granted = await api(readerContext, base, '/account/allowance');
   assert(granted.current_allowance);

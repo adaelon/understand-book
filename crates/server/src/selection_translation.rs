@@ -89,6 +89,7 @@ impl PreparedTranslation {
             inner: self.provider.as_ref(),
             resources: access.resources.clone(),
             owner: self.context.user_id().into(),
+            background: false,
             cancellation,
             usage: Mutex::new(Default::default()),
             stream: None,

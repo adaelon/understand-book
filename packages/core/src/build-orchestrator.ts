@@ -2515,8 +2515,13 @@ function routeBookStructureProductionStage(input: {
 
     if (discovery) {
       unitArtifacts.set(source.job_id, accumulateStructureDiscovery(source, children.map(c => c.payload)));
-      for (const child of children) publicContributors.push({ contributor_id: `book-structure-discovery:${child.work_unit_id}`,
-        work_unit_id: child.work_unit_id, parent_lids: source.leaf_lids.slice(child.source_leaf_range.start_ordinal, child.source_leaf_range.end_ordinal_exclusive) });
+      // Auxiliary shards share a source position with their core owner, but
+      // contribute only the references they actually received. Exact leaf
+      // ownership is checked independently by the core coverage manifest.
+      for (const work of initial.work_units) publicContributors.push({
+        contributor_id: `book-structure-discovery:${work.descriptor.work_unit_id}`,
+        work_unit_id: work.descriptor.work_unit_id, parent_lids: [...work.descriptor.evidence_lids],
+      });
       continue;
     }
 

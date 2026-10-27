@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { network } from './network-context';
@@ -24,7 +25,7 @@ export const localMaterials = {
   list: (scope: MaterialScope | null = null) => invoke<LocalMaterial[]>('desktop_local_materials', { scope }),
   import: (path: string, scope: MaterialScope, workspaceName: string) => invoke<LocalMaterial>('desktop_import_local_material', { path, scope, workspaceName }),
   async choose(scope: MaterialScope, workspaceName: string) {
-    const path = await open({ multiple: false, directory: false, title: '导入到本机', filters: [{ name: '学习资料', extensions: ['epub', 'md', 'txt', 'pdf', 'mp4', 'ppt', 'pptx'] }] });
+    const path = await open({ multiple: false, directory: false, title: uiText('导入到本机'), filters: [{ name: uiText('学习资料'), extensions: ['epub', 'md', 'txt', 'pdf', 'mp4', 'ppt', 'pptx'] }] });
     return typeof path === 'string' ? this.import(path, scope, workspaceName) : null;
   },
   remove: (materialId: string) => invoke<void>('desktop_remove_local_material', { materialId }),
@@ -40,16 +41,16 @@ export class CloudSyncUnavailable extends Error {}
 export async function syncLocalMaterial(item: LocalMaterial, scope: MaterialScope, progress: (bytes: number) => void,
   onSession: (session: PreparationUpload) => void) {
   const active = () => {
-    if (network.value.identity?.user_id !== scope.account_id) throw new Error('账号已切换，请回到原账号继续同步。');
+    if (network.value.identity?.user_id !== scope.account_id) throw new Error(uiText('账号已切换，请回到原账号继续同步。'));
   };
   active();
   const storage = await accountStorage.read(); active();
   const copy = item.cloud_copy?.scope.account_id === scope.account_id && item.cloud_copy.scope.workspace_id === scope.workspace_id ? item.cloud_copy : null;
   const saved = copy && storage.items.find(entry => entry.storage_id === copy.upload_id && entry.workspace_id === scope.workspace_id);
   if (saved?.task_id) return; // A previous response may have been lost after the cloud copy was committed.
-  if (!saved && !storage.can_upload) throw new CloudSyncUnavailable('同步到云端需要有效套餐和足够的云端空间。本机资料仍可正常打开。');
+  if (!saved && !storage.can_upload) throw new CloudSyncUnavailable(uiText('同步到云端需要有效套餐和足够的云端空间。本机资料仍可正常打开。'));
   if (!saved && (item.bytes > storage.available_bytes || storage.max_file_bytes !== null && item.bytes > storage.max_file_bytes)) {
-    throw new CloudSyncUnavailable('这份资料超过了当前云端剩余空间或单文件上限。本机副本已保留。');
+    throw new CloudSyncUnavailable(uiText('这份资料超过了当前云端剩余空间或单文件上限。本机副本已保留。'));
   }
   const updated = await invoke<LocalMaterial>('desktop_local_material_cloud_copy', {
     materialId: item.material_id, scope, complete: false, restart: !!copy && !saved,

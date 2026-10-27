@@ -77,6 +77,7 @@ import {
 
 import * as buildOrchestrator from "../src/build-orchestrator";
 import * as buildProgress from "../src/automatic-build-progress";
+import { recordAutomaticBuildWriterDiagnosticCorrection, recordAutomaticBuildWriterForwardFix } from "../src/automatic-build-task-store";
 
 declare global {
   interface ImportMeta {
@@ -1995,6 +1996,85 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     }
   }, 30_000);
 
+  it("accepts retry_current after a bound writer diagnostic forward fix without rewriting failures", async () => {
+    const previousRegistryRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    const value = fixture("writer-diagnostic-forward-fix");
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const driver = expectedDriver();
+      const { invocation, retryDecision, target } = await exhaustedRetryBoundary(driver, value,
+        "2026-08-10T02:00:10.000Z", {
+          failure_diagnostic: createAutomaticBuildFailureDiagnosticV3({category:"internal",code:"writer_failed",phase:"artifact_writer"}),
+          expected_projection: {category:"internal",code:"writer_failed",phase:"artifact_writer",required_recovery:"forward_fix"},
+        });
+      const request = {version:"automatic_build_step_request.v1" as const,invocation_ref:invocation.invocation_ref,
+        available_agent_slots:1 as const,decision:retryDecision};
+      expect((await driver.automaticBuildStep(request)).action).toMatchObject({kind:"NEEDS_USER",reason:"recovery_not_satisfied"});
+      const storedRequest = JSON.parse(readFileSync(path.join(value.root,"driver-registry","requests",`${retryDecision.request_id}.json`),"utf8"));
+      const boundary = storedRequest.retry_boundaries[0];
+      const before = taskTreeBytes(target);
+      const correction = {stage:"pass1" as const,work_unit_id:boundary.work_unit_id,
+        attempt_scope_digest:boundary.attempt_scope_digest,terminal_receipt_sha256:boundary.terminal_receipt_sha256,
+        original_diagnostic_digest:boundary.diagnostic_digest,
+        failure_diagnostic:createAutomaticBuildFailureDiagnosticV3({category:"evidence",code:"quote_not_in_evidence",phase:"artifact_writer",
+          json_pointer:"/math_items/0/assumptions/0/quote",expected:"Copy an exact contiguous quotation from the cited source evidence."})};
+      expect(() => recordAutomaticBuildWriterDiagnosticCorrection(target,{...correction,terminal_receipt_sha256:"0".repeat(64)}))
+        .toThrow("does not match");
+      recordAutomaticBuildWriterDiagnosticCorrection(target,correction);
+      recordAutomaticBuildWriterDiagnosticCorrection(target,correction);
+      for (const [file,bytes] of Object.entries(before)) {
+        if (bytes && /(?:failure|result)\.json$/.test(file)) expect(readFileSync(path.join(automaticBuildTaskStoreRoot(target),file))).toEqual(bytes);
+      }
+      const recovered = await driver.automaticBuildStep(request);
+      expect(recovered.action.kind).toBe("SPAWN_EXECUTORS");
+      expect(await driver.automaticBuildStep(request)).toEqual(recovered);
+      expectRootSafeStep(recovered,[value.root,"math_items","assumptions"]);
+    } finally {
+      if (previousRegistryRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = previousRegistryRoot;
+    }
+  }, 30_000);
+
+  it("accepts retry_current only after a bound writer repair passes validation", async () => {
+    const previousRegistryRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    const value = fixture("writer-forward-fix-validation");
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const driver = expectedDriver();
+      const { invocation, retryDecision, target } = await exhaustedRetryBoundary(driver, value,
+        "2026-08-10T02:00:10.000Z", {
+          failure_diagnostic: createAutomaticBuildFailureDiagnosticV3({ category: "internal", code: "writer_failed", phase: "artifact_writer" }),
+          expected_projection: { category: "internal", code: "writer_failed", phase: "artifact_writer", required_recovery: "forward_fix" },
+        });
+      const request = { version: "automatic_build_step_request.v1" as const, invocation_ref: invocation.invocation_ref,
+        available_agent_slots: 1 as const, decision: retryDecision };
+      const stored = JSON.parse(readFileSync(path.join(value.root, "driver-registry", "requests", `${retryDecision.request_id}.json`), "utf8"));
+      const boundary = stored.retry_boundaries[0];
+      const fix = { stage: "pass1" as const, work_unit_id: boundary.work_unit_id,
+        attempt_scope_digest: boundary.attempt_scope_digest, terminal_receipt_sha256: boundary.terminal_receipt_sha256,
+        original_diagnostic_digest: boundary.diagnostic_digest, repair_id: "in-process-profile-writer-v1" };
+      const before = taskTreeBytes(target);
+      expect(() => recordAutomaticBuildWriterForwardFix(target, { ...fix, terminal_receipt_sha256: "0".repeat(64) }, () => {}))
+        .toThrow("does not match");
+      expect(() => recordAutomaticBuildWriterForwardFix(target, fix, () => { throw new Error("replay failed"); }))
+        .toThrow("replay failed");
+      expect(taskTreeBytes(target)).toEqual(before);
+      expect((await driver.automaticBuildStep(request)).action).toMatchObject({ kind: "NEEDS_USER", reason: "recovery_not_satisfied" });
+      recordAutomaticBuildWriterForwardFix(target, fix, () => {});
+      recordAutomaticBuildWriterForwardFix(target, fix, () => {});
+      for (const [file, bytes] of Object.entries(before)) {
+        if (bytes && /(?:failure|result)\.json$/.test(file)) expect(readFileSync(path.join(automaticBuildTaskStoreRoot(target), file))).toEqual(bytes);
+      }
+      const recovered = await driver.automaticBuildStep(request);
+      expect(recovered.action.kind).toBe("SPAWN_EXECUTORS");
+      expect(await driver.automaticBuildStep(request)).toEqual(recovered);
+      expectRootSafeStep(recovered, [value.root, "candidate"]);
+    } finally {
+      if (previousRegistryRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = previousRegistryRoot;
+    }
+  }, 30_000);
+
   it("keeps deterministic retry_current side-effect free while the policy scope is unchanged", async () => {
     const previousRegistryRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
     const value = fixture("deterministic-retry");
@@ -2263,6 +2343,133 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       }
     }
   }, 30_000);
+
+  it.each([false, true])("executes the approved task as attempt four before the old dispatch suffix and commits it (unapproved sibling: %s)", async (unapprovedSibling) => {
+    vi.useFakeTimers();
+    const priorRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    const value = fixture("approved-retry-before-dispatch-suffix", {
+      body: `# Guide\n\n${Array.from({ length: 160 }, (_, index) =>
+        `Paragraph ${index + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}`,
+    });
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const driver = expectedDriver();
+      vi.setSystemTime(new Date("2026-08-10T02:00:00.000Z"));
+      const invocation = await createInvocation(driver, value, { created_at: new Date().toISOString() });
+      const request = { version: "automatic_build_step_request.v1" as const,
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 as const };
+      const first = await driver.automaticBuildStep(request);
+      if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected initial dispatch");
+      const facts = publicV4HandoffFacts(first.action.executors[0].opaque_handoff_ref);
+      const target = resolveAutomaticBuildTarget(value.source, value.root);
+      const initial = inspectAutomaticBuildDispatch(target, "pass1", facts.owner_identity.dispatch_id,
+        new Date().toISOString(), facts.owner_identity.dispatch_run_id);
+      expect(initial.manifest.ordered_work_unit_ids.length).toBeGreaterThan(1);
+      const [approvedId, suffixId] = initial.manifest.ordered_work_unit_ids;
+      exhaustFirstPublicTask(value, createAutomaticBuildFailureDiagnosticV3({
+        category: "evidence", code: "quote_not_in_evidence", phase: "artifact_writer",
+        json_pointer: "/math_items/0/assumptions/0/quote", expected: "Copy the exact cited source quotation.",
+      }));
+      vi.setSystemTime(new Date("2026-08-10T02:00:04.000Z"));
+      const exhausted = await driver.automaticBuildStep(request);
+      const decision = firstDecision(exhausted);
+      if (unapprovedSibling) exhaustFirstPublicTask(value, createAutomaticBuildFailureDiagnosticV3({
+        category: "schema", code: "schema_invalid", phase: "artifact_writer",
+        json_pointer: "/nodes/0/type", expected: "definition | example | claim",
+      }), 1);
+      const before = taskTreeBytes(target);
+      vi.setSystemTime(new Date("2026-08-10T02:00:05.000Z"));
+      const recovered = await driver.automaticBuildStep({ ...request, decision });
+      if (recovered.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected authorized retry");
+      const retry = recovered.action.executors[0];
+      const retryFacts = publicV4HandoffFacts(retry.opaque_handoff_ref);
+      expect(retryFacts.recovery_identity.current_work_unit_id).toBe(approvedId);
+      expect(retryFacts.owner_identity.dispatch_run_id).not.toBe(facts.owner_identity.dispatch_run_id);
+      expect(await driver.automaticBuildStep({ ...request, decision })).toEqual(recovered);
+      // A restart without resending the decision must consume the same durable recovery.
+      expect(await driver.automaticBuildStep(request)).toEqual(recovered);
+      const generated = submitCommittedPublicV4Handoff(retry.opaque_handoff_ref, "2026-08-10T02:00:06.000Z");
+      expect(generated).toMatchObject({ semantic_attempt: 4,
+        retry_feedback: { code: "quote_not_in_evidence", json_pointer: "/math_items/0/assumptions/0/quote" } });
+      const receipt = JSON.parse(readFileSync(path.join(automaticBuildTaskStoreRoot(target), "pass1", approvedId,
+        "attempts", "0004", "receipt.json"), "utf8"));
+      expect(receipt).toMatchObject({ work_unit_id: approvedId, attempt: 4 });
+      expect(receipt.committed_at).toBeTruthy();
+      for (const [file, bytes] of Object.entries(before)) {
+        if (bytes && /(?:failure|result)\.json$/.test(file)) {
+          expect(readFileSync(path.join(automaticBuildTaskStoreRoot(target), file))).toEqual(bytes);
+        }
+      }
+      vi.setSystemTime(new Date("2026-08-10T02:00:07.000Z"));
+      const next = await driver.automaticBuildStep(request);
+      if (unapprovedSibling) {
+        expect(next.action).toMatchObject({ kind: "NEEDS_USER", reason: "retry_exhausted",
+          projection: { work_unit_count: 1 } });
+        expect(existsSync(path.join(automaticBuildTaskStoreRoot(target), "pass1", suffixId, "attempts", "0004"))).toBe(false);
+        return;
+      }
+      if (next.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected preserved dispatch suffix");
+      expect(publicV4HandoffFacts(next.action.executors[0].opaque_handoff_ref).recovery_identity.current_work_unit_id).toBe(suffixId);
+    } finally {
+      if (priorRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = priorRoot;
+      vi.useRealTimers();
+    }
+  }, 60_000);
+
+  it("continues an approved attempt-four sibling after another recovered task fails again", async () => {
+    vi.useFakeTimers();
+    const priorRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+    const value = fixture("approved-retry-after-recovered-sibling-failure", {
+      body: `# Guide\n\n${Array.from({ length: 160 }, (_, index) =>
+        `Paragraph ${index + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}`,
+    });
+    process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = path.join(value.root, "driver-registry");
+    try {
+      const driver = expectedDriver();
+      const diagnostic = createAutomaticBuildFailureDiagnosticV3({ category: "schema", code: "schema_invalid",
+        phase: "artifact_writer", json_pointer: "/nodes/0/type", expected: "definition | example | claim" });
+      exhaustFirstPublicTask(value, diagnostic, 0);
+      exhaustFirstPublicTask(value, diagnostic, 1);
+      vi.setSystemTime(new Date("2026-08-10T02:00:04.000Z"));
+      const invocation = await createInvocation(driver, value, { created_at: new Date().toISOString() });
+      const request = { version: "automatic_build_step_request.v1" as const,
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 as const };
+      const exhausted = await driver.automaticBuildStep(request);
+      expect(exhausted.action).toMatchObject({ kind: "NEEDS_USER", projection: { work_unit_count: 2 } });
+      vi.setSystemTime(new Date("2026-08-10T02:00:05.000Z"));
+      const recovered = await driver.automaticBuildStep({ ...request, decision: firstDecision(exhausted) });
+      if (recovered.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected recovered batch");
+      const first = recovered.action.executors[0];
+      const facts = publicV4HandoffFacts(first.opaque_handoff_ref);
+      const target = resolveAutomaticBuildTarget(value.source, value.root);
+      const initial = inspectAutomaticBuildDispatch(target, "pass1", facts.owner_identity.dispatch_id,
+        new Date().toISOString(), facts.owner_identity.dispatch_run_id);
+      const [failedId, approvedId] = initial.manifest.ordered_work_unit_ids;
+      expect(approvedId).toBeTruthy();
+      const generated = startV3GenerationForHandoff(first.opaque_handoff_ref, "2026-08-10T02:00:06.000Z");
+      if (generated.action.kind !== "GENERATE") throw new Error("expected attempt four");
+      expect(generated.action.semantic_attempt).toBe(4);
+      expect(submitAutomaticBuildExecutorCandidateV3({ version: "automatic_build_executor_candidate_submit.v3",
+        opaque_session_ref: generated.action.opaque_session_ref, candidate_sink_ref: generated.action.candidate_sink_ref,
+        candidate: { nodes: [{ type: "invalid_type" }], edges: [] },
+      }, { now: "2026-08-10T02:00:06.500Z" }).action).toMatchObject({ kind: "DONE", status: "retryable_failure" });
+      vi.setSystemTime(new Date("2026-08-10T02:00:07.000Z"));
+      const sibling = await driver.automaticBuildStep(request);
+      if (sibling.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected the still-authorized sibling");
+      expect(publicV4HandoffFacts(sibling.action.executors[0].opaque_handoff_ref).recovery_identity.current_work_unit_id).toBe(approvedId);
+      expect(submitCommittedPublicV4Handoff(sibling.action.executors[0].opaque_handoff_ref,
+        "2026-08-10T02:00:08.000Z").semantic_attempt).toBe(4);
+      vi.setSystemTime(new Date("2026-08-10T02:00:09.000Z"));
+      expect((await driver.automaticBuildStep(request)).action).toMatchObject({ kind: "NEEDS_USER", reason: "retry_exhausted",
+        projection: { work_unit_count: 1 } });
+      expect(existsSync(path.join(automaticBuildTaskStoreRoot(target), "pass1", failedId, "attempts", "0005"))).toBe(false);
+    } finally {
+      if (priorRoot === undefined) delete process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;
+      else process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT = priorRoot;
+      vi.useRealTimers();
+    }
+  }, 60_000);
 
   it("rejects terminal receipt drift without persisting a decision or recovery effect", async () => {
     const previousRegistryRoot = process.env.UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT;

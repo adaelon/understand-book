@@ -4,6 +4,7 @@ import type { Agent } from "@deepseek-ai/dsh-agent";
 import type { AutomaticBuildStepResponseV1 } from "../../../skills/build/automatic-build-driver.ts";
 import type { BuildPlanV1, BuildRetrievalPlan } from "../../core/src/build-intent.ts";
 import type { DshExecutorObservationV1 } from "../../core/src/dsh-executor-observation.ts";
+import { createAutomaticBuildRefillTimingObserver } from "../../core/src/automatic-build-dispatch-timing.ts";
 import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../core/src/build-executor-model-runtime.ts";
 import { checkHarnessCapabilities } from "./capability-check.ts";
 import { createExecutorHost } from "./executor-host.ts";
@@ -142,6 +143,9 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
       work: Promise<void>; report?: DshExecutorObservationV1; admissionBlocked?: boolean;
       costObservation?: { model_calls: number; usages: Record<string, unknown>[] } };
     const live = new Map<string, Live>();
+    const timing = createAutomaticBuildRefillTimingObserver({ registry_root: config.driverRoot });
+    const released: Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string; observed_at: string }> = [];
+    let timingStartedAt: string | undefined;
     const ready: Live[] = [];
     const reports: DshExecutorObservationV1[] = [];
     const allReservations = reservations.get(ctx.agents) ?? new Set<{ agent?: Agent }>();
@@ -168,8 +172,14 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         : Math.max(0, Math.min(saved.max_parallel - live.size, 3 - children - pending,
           config.handoffsPerCall - launched));
     };
-    const step = (slots: number) => command({ ...owner, action: "step", available_agent_slots: slots,
-      ...(decision ? { decision } : {}) }, signal) as Promise<AutomaticBuildStepResponseV1>;
+    const observeCapacity = (slots: number) => timing.begin({ invocation_ref: invocationRef,
+      available_agent_slots: slots, released: released.splice(0), started_at: timingStartedAt });
+    const step = (slots: number) => {
+      timingStartedAt = new Date().toISOString();
+      observeCapacity(slots);
+      return command({ ...owner, action: "step", available_agent_slots: slots,
+        ...(decision ? { decision } : {}) }, signal) as Promise<AutomaticBuildStepResponseV1>;
+    };
     const result = () => ({ invocation_ref: invocationRef, ...(last ? { step: last } : {}),
       cost_accounting: cost?.binding.metering === "provider_calls_v1" ? "provider_calls" : cost ? "platform_pending_receipts" : "operator_unaccounted",
       ...(costIssue ? { cost_issue: costIssue } : {}),
@@ -187,6 +197,8 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         ready.shift();
         reports.push(report);
         live.delete(item.slot); byId.delete(item.id); allReservations.delete(item);
+        released.push({ opaque_handoff_ref: item.ref, dispatch_slot_ref: item.slot,
+          observed_at: new Date().toISOString() });
         if (!report.done || report.outcome === "cleanup") stop = true;
       }
     }
@@ -194,6 +206,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
       const slot = executor.dispatch_slot_ref;
       if (!slot) throw new Error("build_dispatch_slot_missing");
       if (live.has(slot)) return;
+      timing.finish([executor]);
       const item: Live = { id: randomUUID(), ref: executor.opaque_handoff_ref, slot, observation: {}, work: Promise.resolve() };
       live.set(slot, item); byId.set(item.id, item); allReservations.add(item); launched++;
       item.work = (async () => {
@@ -260,6 +273,9 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         await consume();
         if (stop) continue;
         if (last.action.kind === "SPAWN_EXECUTORS") {
+          // consume() can release another child while the Engine step was running.
+          // Observe that capacity before recording the references actually launched.
+          observeCapacity(capacity());
           // Engine may replay owned dispatches along with newly available work.
           for (const executor of last.action.executors) {
             if (signal.aborted || capacity() < 1) break;
@@ -299,7 +315,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
         await host.dispose();
       } finally {
         await Promise.allSettled([...live.values()].map(i => i.work));
-        try { await consume(); } finally {
+        try { await consume(); observeCapacity(capacity()); } finally {
           for (const item of live.values()) allReservations.delete(item);
           await command({ ...owner, action: "release" });
         }

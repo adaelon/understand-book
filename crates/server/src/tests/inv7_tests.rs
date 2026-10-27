@@ -12,7 +12,7 @@ use std::{
 };
 
 const OLD: &str = "fixture-only-password";
-const NEW: &str = "replacement-password";
+const NEW: &str = "updated8";
 struct Password {
     f: Fixture,
     site: Site,

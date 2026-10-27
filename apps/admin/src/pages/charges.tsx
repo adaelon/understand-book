@@ -5,6 +5,7 @@ import { DataState, DataTable, Pagination, useData } from "@/components/data";
 import { Field, OperationDialog, useOperations } from "@/components/operation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Amount, Disclosure, Metric, StatusBadge } from '@/components/analytics';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,7 @@ export function ChargesPanel({ userId }: { userId: string }) {
     `/admin/charges?user_id=${encodeURIComponent(userId)}&pending=${pending}&limit=20&offset=${offset}`,
   );
   return (
-    <section className="space-y-3 rounded-lg border p-5">
+    <section className="analytics-panel">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2>服务费用与待核算</h2>
         <label className="flex items-center gap-2 text-sm">
@@ -70,14 +71,12 @@ export function ChargesPanel({ userId }: { userId: string }) {
               {
                 header: "状态",
                 cell: ({ row }) => (
-                  <>
-                    {states[row.original.state] ?? row.original.state}
-                    {row.original.needs_reconciliation ? " · 回执冲突" : ""}
-                    {row.original.provider_cost_status === "pending"
-                      ? " · 供应商成本未知"
-                      : ""}
-                    {row.original.provider_cost_status === "estimated" ? " · 处理成本为估计" : ""}
-                  </>
+                  <div className="max-w-48 space-y-1 whitespace-normal">
+                    <StatusBadge tone={row.original.state === 'pending' || row.original.needs_reconciliation ? 'amber' : row.original.state === 'settled' ? 'green' : 'blue'}>{states[row.original.state] ?? row.original.state}</StatusBadge>
+                    {row.original.needs_reconciliation && <p className="text-xs text-amber-600 dark:text-amber-300">回执冲突</p>}
+                    {row.original.provider_cost_status === 'pending' && <p className="text-xs text-muted-foreground">供应商成本未知</p>}
+                    {row.original.provider_cost_status === 'estimated' && <p className="text-xs text-muted-foreground">处理成本为估计</p>}
+                  </div>
                 ),
               },
               {
@@ -145,11 +144,8 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
                 {chargeService(charge)} · {charge.purpose} · {date(charge.created_at)}
                 {charge.entry_kind === "service" && <> · 实际处理 {charge.quantity_ms == null ? "待确认" : `${charge.quantity_ms / 1000} 秒`}</>}
               </p>
-              <p>
-                {states[charge.state]} · {charge.provider_cost_status === "estimated" ? "处理成本估计" : charge.provider_cost_status === "confirmed" ? "已确认成本" : "成本待核算"}{" "}
-                {money(charge.provider_cost_micro_cny)} 元 · 账号扣减{" "}
-                {money(charge.account_debit_micro_cny)} 元
-              </p>
+              <StatusBadge tone={charge.state === 'pending' ? 'amber' : charge.state === 'settled' ? 'green' : 'blue'}>{states[charge.state]}</StatusBadge>
+              <dl className="grid gap-3 sm:grid-cols-2"><Metric label={charge.provider_cost_status === 'estimated' ? '处理成本估计' : charge.provider_cost_status === 'confirmed' ? '已确认成本' : '成本待核算'} value={<Amount value={charge.provider_cost_micro_cny} />} detail={charge.provider_cost_micro_cny == null ? '等待成本凭据确认' : `精确金额 ${money(charge.provider_cost_micro_cny)} 元`} /><Metric label="账号扣减" value={<Amount value={charge.account_debit_micro_cny} />} detail={charge.account_debit_micro_cny == null ? '扣减金额尚未确定' : `精确金额 ${money(charge.account_debit_micro_cny)} 元`} tone="green" /></dl>
               <Button
                 disabled={
                   ops.blocked || ["reserved", "sent"].includes(charge.state) || charge.entry_kind === "service" && charge.state !== "pending"
@@ -182,7 +178,7 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
                   </pre>
                 </details>
               ))}
-              <h2>已有发送回执</h2>
+              <Disclosure title={`已有发送回执 · ${charge.reports.total} 条`}>
               {charge.reports.items.map((item, index) => (
                 <pre
                   className="overflow-auto rounded bg-muted p-3 text-xs"
@@ -192,7 +188,8 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
                 </pre>
               ))}
               {!charge.reports.items.length && <p>暂无回执</p>}
-              <h2>人工核算记录</h2>
+              </Disclosure>
+              <Disclosure title={`人工核算记录 · ${charge.reconciliations.total} 条`}>
               {charge.reconciliations.items.map((item, index) => (
                 <details key={index}>
                   <summary>
@@ -206,6 +203,7 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
                 </details>
               ))}
               {!charge.reconciliations.items.length && <p>暂无核算记录</p>}
+              </Disclosure>
               <Pagination
                 offset={offset}
                 total={Math.max(

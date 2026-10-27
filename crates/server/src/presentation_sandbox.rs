@@ -75,6 +75,8 @@ pub(crate) struct Sandbox {
     config: Option<Config>,
     ready: AtomicBool,
     reason: &'static str,
+    #[cfg(test)]
+    browser_for_test: std::sync::OnceLock<crate::presentation_preview::BrowserPreview>,
 }
 pub(crate) fn unavailable() -> ToolError {
     failure("PRESENTATION_SANDBOX_UNAVAILABLE")
@@ -125,6 +127,8 @@ impl Sandbox {
             config: None,
             ready: AtomicBool::new(false),
             reason: "not_configured",
+            #[cfg(test)]
+            browser_for_test: std::sync::OnceLock::new(),
         };
         let bytes = match std::fs::read(root.join("presentation-sandbox.json")) {
             Ok(bytes) => bytes,
@@ -180,7 +184,49 @@ impl Sandbox {
         }
         sandbox
     }
+    /// Real browser execution for a single acceptance fixture, without claiming
+    /// that the production Linux process sandbox is available on this host.
+    #[cfg(test)]
+    pub(crate) fn configure_browser_for_test(
+        &self,
+    ) -> Result<runtime::presentation_preview::PreviewReport, String> {
+        use runtime::presentation_preview::PresentationPreviewPort;
+        let browser = crate::presentation_preview::BrowserPreview::discover()?;
+        let request = PreviewRequest {
+            candidate_id: "acceptance-browser-probe".into(),
+            html: "<!doctype html><html><head><meta charset=\"utf-8\"></head><body><p>Browser preview execution probe</p></body></html>".into(),
+            actions: vec![],
+            width: Some(320),
+            viewport: None,
+            read_selector: Some("p".into()),
+        };
+        let report = browser
+            .preview(&request, &CancellationToken::default())
+            .map_err(|error| format!("{}: {}", error.phase, error.message))?;
+        if !report.errors.is_empty() || report.observations.is_empty() {
+            return Err(format!("Browser probe failed: {:?}", report.errors));
+        }
+        for observation in &report.observations {
+            let bytes = base64::Engine::decode(
+                &base64::engine::general_purpose::STANDARD,
+                &observation.screenshot_png_base64,
+            )
+            .map_err(|error| error.to_string())?;
+            png(&bytes, report.environment.width, report.environment.height)
+                .map_err(|_| "Browser probe did not return the expected PNG".to_string())?;
+        }
+        self.browser_for_test
+            .set(browser)
+            .map_err(|_| "Browser fixture was already configured".to_string())?;
+        self.ready.store(true, Ordering::Release);
+        Ok(report)
+    }
     pub fn capability(&self) -> serde_json::Value {
+        #[cfg(test)]
+        if self.browser_for_test.get().is_some() {
+            return serde_json::json!({"authoring":true,"plot":false,"animation":false,
+                "preview":true,"reason":"test_browser_preview"});
+        }
         let reason = self.unavailable_reason();
         let ready = reason.is_none();
         serde_json::json!({"authoring":ready,"plot":ready,"animation":ready,"preview":ready,
@@ -284,6 +330,20 @@ impl Sandbox {
         Ok(())
     }
     fn execute(&self, job: &Job, cancellation: &CancellationToken) -> Result<Vec<u8>, ToolError> {
+        #[cfg(test)]
+        if let Some(browser) = self.browser_for_test.get() {
+            use runtime::presentation_preview::PresentationPreviewPort;
+            cancellation.check()?;
+            return match job {
+                Job::Preview { request } => {
+                    let report = browser
+                        .preview(request, cancellation)
+                        .map_err(|_| failure("PRESENTATION_PREVIEW_FAILED"))?;
+                    serde_json::to_vec(&report).map_err(|_| failure("PRESENTATION_OUTPUT_INVALID"))
+                }
+                _ => Err(unavailable()),
+            };
+        }
         let config = self.config.as_ref().ok_or_else(unavailable)?;
         cancellation.check()?;
         let bytes = serde_json::to_vec(job).map_err(|_| failure("PRESENTATION_INPUT_INVALID"))?;

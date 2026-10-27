@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { network, sceneKey, type NetworkWorkspace } from './network-context';
 import { workspaceAction } from './network-client';
 import type { PresentationRef } from './generated/PresentationRef';
@@ -14,7 +15,7 @@ export function invalidateLinkedWindows() {
 export async function openLinkedPresentation(session_id: string, turn_id: string, reference: PresentationRef) {
   const key = sceneKey();
   const child = window.open(`${location.pathname}?linked=1`, '_blank');
-  if (!child) throw new Error('请允许弹出窗口以打开附属演示');
+  if (!child) throw new Error(uiText('请允许弹出窗口以打开附属演示'));
   for (const previous of children) if (previous.closed) children.delete(previous);
   children.add(child);
   let ready = false;

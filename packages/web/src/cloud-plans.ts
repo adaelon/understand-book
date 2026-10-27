@@ -1,10 +1,11 @@
+import { t as uiText } from './i18n';
 import type { AllowanceBasis } from './account-allowance';
 import { networkFetch } from './network-client';
 
 export type CloudPlanTier = 'basic' | 'plus' | 'pro';
 export type CloudPlanDuration = 'day1' | 'day3' | 'day7' | 'month';
-export const cloudPlanTiers: Record<CloudPlanTier, string> = { basic: '基础版', plus: '进阶版', pro: '专业版' };
-export const cloudPlanDurations: Record<CloudPlanDuration, string> = { day1: '1 天冲刺', day3: '3 天冲刺', day7: '7 天冲刺', month: '按月学习' };
+export const cloudPlanTiers: Record<CloudPlanTier, string> = { basic: uiText('基础版'), plus: uiText('进阶版'), pro: uiText('专业版') };
+export const cloudPlanDurations: Record<CloudPlanDuration, string> = { day1: uiText('1 天冲刺'), day3: uiText('3 天冲刺'), day7: uiText('7 天冲刺'), month: uiText('按月学习') };
 export interface CloudPlanProduct {
   product_id: string; title: string; tier: CloudPlanTier; duration: CloudPlanDuration; revision: number;
   enabled: boolean; test_only: boolean; amount_fen: number | null; basis: AllowanceBasis | null;
@@ -39,9 +40,9 @@ export function saleableCloudPlans(items: CloudPlanProduct[], duration: CloudPla
 }
 export function cloudStorageSize(bytes: number): string {
   const unit = bytes >= 1024 ** 3 ? 1024 ** 3 : bytes >= 1024 ** 2 ? 1024 ** 2 : bytes >= 1024 ? 1024 : 1;
-  const label = unit === 1024 ** 3 ? 'GB' : unit === 1024 ** 2 ? 'MB' : unit === 1024 ? 'KB' : '字节';
+  const label = unit === 1024 ** 3 ? 'GB' : unit === 1024 ** 2 ? 'MB' : unit === 1024 ? 'KB' : uiText('字节');
   return `${Number((bytes / unit).toFixed(2))} ${label}`;
 }
 export function cloudRetention(seconds: number): string {
-  return seconds % 86400 === 0 ? `${seconds / 86400} 天` : seconds % 3600 === 0 ? `${seconds / 3600} 小时` : `${seconds} 秒`;
+  return seconds % 86400 === 0 ? uiText('{0} 天', [seconds / 86400]) : seconds % 3600 === 0 ? uiText('{0} 小时', [seconds / 3600]) : uiText('{0} 秒', [seconds]);
 }

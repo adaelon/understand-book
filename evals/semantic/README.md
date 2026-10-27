@@ -72,6 +72,10 @@ node evals/semantic/report.mjs evals/semantic/results/my-run
 
 ## 产物与复核
 
+独立 Python 教学评测通过 `langsmith_usage.langsmith_extra(metadata, provider_usage)` 组装 LangSmith 的 `extra`：将供应商 `prompt_tokens` / `completion_tokens`、缓存及思考细分映射到 `extra.metadata.usage_metadata`。保留实际供应商和请求模型名，缺少 usage 的调用不填成 0；原始回执仍保存在本地结果。当前 routing/dedup 与 compact-baseline runner 已使用该函数，历史实验输入和结果保持原样。回归检查：`python -m unittest discover -s evals/semantic -p test_langsmith_usage.py`。
+
+全部用量、输出和元数据必须在首次最终 PATCH 一并提交。[LangSmith 已结束 run 不可再修改](https://support.langchain.com/articles/9964614152-can-i-reopen-a-run-after-calling-patch-to-write-additional-data)；2026-10-25 对历史评测的单条补写实际返回重复更新 409，未改动原记录。旧回执的修正统计保存在 [观测修复记录](../../docs/performance/langsmith-repair-20261025/README.md)，不可通过改时间或复制模型调用改写历史汇总。
+
 `run.json` 保存实际输入片段、返回引文、Provider usage、图谱工具轨迹、逐题判分及重启观察，仅保留本地并被 Git 忽略。`report.mjs` 输出可公开的 `summary.json` 和 `report.md`，保留事实值、证据坐标、用量、耗时、失败和判分细目，不分发原书全文或机器私有路径。
 
 README 截图可在 `pnpm demo:prepare`、`pnpm build`、`cargo build -p server --bin server` 后用 `node evals/semantic/capture.mjs` 重新生成；需要已安装 Playwright Chromium。脚本用独立临时记忆创建演示笔记与高亮，再截取真实前端，不伪造模型回答。

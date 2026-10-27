@@ -1,6 +1,19 @@
 use super::*;
 use memory::learning::{TutorAction, TutorMaterial, TutorMaterialRole, TutorMutation};
 
+#[test]
+fn coach_media_question_keeps_locator_without_sending_image_pixels_as_text() {
+    let original = json!({"publication":{"book_id":"video","publication_id":"v1"},
+        "frame":{"actual_pts_ms":1200}, "image":{"png_base64":"PRIVATE-IMAGE-PIXELS","width":1280,"height":720,"origin":"selection"}});
+    let context = media_question_context(Some(&original));
+    assert_eq!(context["publication"], original["publication"]);
+    assert_eq!(context["frame"], original["frame"]);
+    assert_eq!(context["image"]["width"], 1280);
+    assert!(context["image"].get("png_base64").is_none());
+    assert_eq!(original["image"]["png_base64"], "PRIVATE-IMAGE-PIXELS", "the stored source image stays intact");
+    assert_eq!(media_question_context::<Value>(None), Value::Null);
+}
+
 fn multi_material_stage() -> (tempfile::TempDir, AppState, String) {
     let source = "Average speed includes all travel time. ".repeat(12);
     let (root, state) = crate::tests::tutor_loop_tests::fixture_with_book(
@@ -34,7 +47,7 @@ fn dependency_job(user: &user_runtime::UserRuntime, turn: &AgentTurnRef) -> Coac
 }
 
 #[test]
-fn coach_bootstrap_switches_material_without_reusing_the_stage_original() {
+fn coach_bootstrap_switches_material_and_only_reuses_ready_guidance_from_the_same_source() {
     let (_root, state, stage) = multi_material_stage();
     let (a, context_a) = bound_turn(&stage, "book-a", "v1", "source-a-first");
     ensure_turn(&state.user, None, &a, Some(&context_a), "t1").unwrap();
@@ -42,6 +55,8 @@ fn coach_bootstrap_switches_material_without_reusing_the_stage_original() {
     let mut store = state.user.learning_store().unwrap();
     store.claim_coach_job(&first.input.job_ref, "t2").unwrap();
     store.finish_coach_job(&first.input.job_ref, 1, json!({"focus":"only book A"}), "t3").unwrap();
+    assert_eq!(turn_context(&state.user,None,&a).unwrap().unwrap()["status"],"unavailable",
+        "the initial turn does not wait for or absorb a late bootstrap");
 
     let (b, context_b) = bound_turn(&stage, "book-b", "v1", "source-b-first");
     ensure_turn(&state.user, None, &b, Some(&context_b), "t4").unwrap();
@@ -51,18 +66,25 @@ fn coach_bootstrap_switches_material_without_reusing_the_stage_original() {
     assert_eq!(second.input.binding.source_id, "book-b");
     assert_eq!(second.input.source_ref, b.turn_id);
     assert_eq!(second.status, CoachJobStatus::Pending);
+    assert_eq!(turn_context(&state.user,None,&b).unwrap().unwrap()["status"],"unavailable",
+        "ready A guidance cannot be supplied to B");
     assert_eq!(store.list_coach_jobs(None, 20).unwrap().len(), 2);
 
-    // Returning to A starts from the current request, not its older initial plan.
+    // Returning to A schedules a current bootstrap, while already ready same-source
+    // guidance can be frozen immediately without waiting for that new task.
     let (again, context_again) = bound_turn(&stage, "book-a", "v1", "source-a-return");
     ensure_turn(&state.user, None, &again, Some(&context_again), "t5").unwrap();
-    let returned = dependency_job(&state.user, &again);
+    let returned = store.latest_coach_job(&stage,CoachJobOrigin::StageStart).unwrap().unwrap();
     assert_ne!(returned.input.job_ref, first.input.job_ref);
     assert_eq!(returned.input.source_ref, again.turn_id);
     assert_eq!(returned.input.binding.source_id, "book-a");
+    assert_eq!(returned.status,CoachJobStatus::Pending);
+    assert_eq!(dependency_job(&state.user,&again).input.job_ref,first.input.job_ref);
+    assert_eq!(turn_context(&state.user,None,&again).unwrap().unwrap()["status"],"ready");
     let (same, context_same) = bound_turn(&stage, "book-a", "v1", "source-a-next");
     ensure_turn(&state.user, None, &same, Some(&context_same), "t6").unwrap();
-    assert_eq!(dependency_job(&state.user, &same).input.job_ref, returned.input.job_ref);
+    assert_eq!(dependency_job(&state.user, &same).input.job_ref, first.input.job_ref);
+    assert_eq!(store.latest_coach_job(&stage,CoachJobOrigin::StageStart).unwrap().unwrap().input.job_ref,returned.input.job_ref);
     assert_eq!(store.list_coach_jobs(None, 20).unwrap().len(), 3);
 }
 
@@ -73,6 +95,8 @@ fn coach_source_revision_change_starts_fresh_then_uses_latest_matching_after_tur
     ensure_turn(&state.user, None, &old, Some(&old_context), "t0").unwrap();
     let old_start = dependency_job(&state.user, &old);
     let mut store = state.user.learning_store().unwrap();
+    store.claim_coach_job(&old_start.input.job_ref,"t0-ready").unwrap();
+    store.finish_coach_job(&old_start.input.job_ref,1,json!({"focus":"old v1 guidance"}),"t0-ready-done").unwrap();
     let mut completed = old_start.input.clone();
     completed.job_ref = "coach-after-old-revision".into();
     completed.origin = CoachJobOrigin::AfterTurn;
@@ -86,6 +110,7 @@ fn coach_source_revision_change_starts_fresh_then_uses_latest_matching_after_tur
     assert_eq!(fresh.input.binding.source_revision, "v2");
     assert_eq!(fresh.input.source_ref, new.turn_id);
     assert_ne!(fresh.input.job_ref, old_start.input.job_ref);
+    assert_eq!(turn_context(&state.user,None,&new).unwrap().unwrap()["status"],"unavailable");
 
     let mut completed = fresh.input.clone();
     completed.job_ref = "coach-after-new-revision".into();
@@ -95,6 +120,16 @@ fn coach_source_revision_change_starts_fresh_then_uses_latest_matching_after_tur
     let (next, next_context) = bound_turn(&stage, "book-a", "v2", "revision-next");
     ensure_turn(&state.user, None, &next, Some(&next_context), "t4").unwrap();
     assert_eq!(dependency_job(&state.user, &next).input.job_ref, completed.job_ref);
+    let frozen = turn_context(&state.user,None,&next).unwrap().unwrap();
+    assert_eq!(frozen["status"],"unavailable");
+    store.claim_coach_job(&completed.job_ref,"t5").unwrap();
+    store.finish_coach_job(&completed.job_ref,1,json!({"focus":"current v2 guidance"}),"t6").unwrap();
+    assert!(prepare_execution(&state.user,None,&next).unwrap());
+    assert_eq!(turn_context(&state.user,None,&next).unwrap().unwrap(),frozen);
+    let (ready, ready_context) = bound_turn(&stage,"book-a","v2","revision-ready");
+    ensure_turn(&state.user,None,&ready,Some(&ready_context),"t7").unwrap();
+    assert_eq!(dependency_job(&state.user,&ready).input.job_ref,completed.job_ref);
+    assert_eq!(turn_context(&state.user,None,&ready).unwrap().unwrap()["status"],"ready");
 }
 
 #[test]
@@ -120,6 +155,8 @@ fn coach_return_after_another_material_delivery_does_not_reuse_earlier_bootstrap
     assert_ne!(fresh.input.job_ref, first.input.job_ref);
     assert_eq!(fresh.input.source_ref, returned.turn_id);
     assert_eq!(fresh.input.context["preceding_coach_job_ref"], after_b.job_ref);
+    assert_eq!(turn_context(&state.user,None,&returned).unwrap().unwrap()["status"],"unavailable",
+        "ready B guidance cannot be adopted when the user returns to A");
 
     let (same, context_same) = bound_turn(&stage, "book-a", "v1", "a-same-predecessor");
     ensure_turn(&state.user, None, &same, Some(&context_same), "t5").unwrap();

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { learningRecords } from '../network-client';
 import { recapStatus, recapTime } from '../session-recap';
@@ -32,46 +34,46 @@ function trapFocus(event: KeyboardEvent) {
   <Teleport to="body">
     <div class="record-backdrop" @click.self="emit('close')">
       <section class="record-preview" role="dialog" aria-modal="true" aria-labelledby="learning-record-title" @keydown.esc.stop.prevent="emit('close')" @keydown="trapFocus">
-        <header><div><p>原记录 · 只读查看</p><h2 id="learning-record-title">{{ record?.title || '聊天与学习记录' }}</h2></div><button ref="closeButton" @click="emit('close')">关闭原记录</button></header>
-        <p class="record-note">这里保留原聊天、学习解释与引用。关闭后可在当前工作区继续学习。</p>
-        <p v-if="loading" role="status">正在读取原记录…</p>
-        <p v-if="error" role="alert">{{ error }} <button :disabled="loading" @click="load">重试读取</button></p>
+        <header><div><p>{{ uiText('原记录 · 只读查看') }}</p><h2 id="learning-record-title">{{ record?.title || uiText('聊天与学习记录') }}</h2></div><button ref="closeButton" @click="emit('close')">{{ uiText('关闭原记录') }}</button></header>
+        <p class="record-note">{{ uiText('这里保留原聊天、学习解释与引用。关闭后可在当前工作区继续学习。') }}</p>
+        <p v-if="loading" role="status">{{ uiText('正在读取原记录…') }}</p>
+        <p v-if="error" role="alert">{{ error }} <button :disabled="loading" @click="load">{{ uiText('重试读取') }}</button></p>
         <template v-if="record">
-          <p class="record-time">截至 {{ recapTime(record.recap.through_at) }}</p>
-          <section aria-label="原聊天" class="record-section">
-            <h3>原聊天</h3>
+          <p class="record-time">{{ uiText('截至') }} {{ recapTime(record.recap.through_at) }}</p>
+          <section :aria-label="uiText('原聊天')" class="record-section">
+            <h3>{{ uiText('原聊天') }}</h3>
             <article v-for="turn in record.turns" :key="turn.turn_id" class="record-turn">
-              <section v-if="turn.workspace_goal" class="record-goal" aria-label="当时的大目标"><h4>当时的大目标 · 第 {{ turn.workspace_goal.revision }} 版</h4><p>{{ turn.workspace_goal.text }}</p><p v-if="turn.workspace_goal.constraints.length" class="record-note">{{ turn.workspace_goal.constraints.join('；') }}</p></section>
-              <h4>你的问题</h4><p>{{ turn.user }}</p>
+              <section v-if="turn.workspace_goal" class="record-goal" :aria-label="uiText('当时的大目标')"><h4>{{ uiText('当时的大目标 · 第') }} {{ turn.workspace_goal.revision }} {{ uiText('版') }}</h4><p>{{ turn.workspace_goal.text }}</p><p v-if="turn.workspace_goal.constraints.length" class="record-note">{{ turn.workspace_goal.constraints.join('；') }}</p></section>
+              <h4>{{ uiText('你的问题') }}</h4><p>{{ turn.user }}</p>
               <blockquote v-if="turn.question_quote?.quote">{{ turn.question_quote.quote }}</blockquote>
-              <section v-if="turn.accepted_workspace_goal" class="record-goal" aria-label="本回合确认的新目标"><h4>本回合确认的新目标 · 第 {{ turn.accepted_workspace_goal.revision }} 版</h4><p>{{ turn.accepted_workspace_goal.text }}</p><p v-if="turn.accepted_workspace_goal.constraints.length" class="record-note">{{ turn.accepted_workspace_goal.constraints.join('；') }}</p></section>
-              <template v-if="turn.outcome?.answer"><h4>当时的回答</h4><p>{{ turn.outcome.answer }}</p></template>
+              <section v-if="turn.accepted_workspace_goal" class="record-goal" :aria-label="uiText('本回合确认的新目标')"><h4>{{ uiText('本回合确认的新目标 · 第') }} {{ turn.accepted_workspace_goal.revision }} {{ uiText('版') }}</h4><p>{{ turn.accepted_workspace_goal.text }}</p><p v-if="turn.accepted_workspace_goal.constraints.length" class="record-note">{{ turn.accepted_workspace_goal.constraints.join('；') }}</p></section>
+              <template v-if="turn.outcome?.answer"><h4>{{ uiText('当时的回答') }}</h4><p>{{ turn.outcome.answer }}</p></template>
               <p v-else class="record-note">{{ recapStatus(turn.status) }}</p>
             </article>
-            <p v-if="!record.turns.length">这份记录尚无聊天回合。</p>
+            <p v-if="!record.turns.length">{{ uiText('这份记录尚无聊天回合。') }}</p>
           </section>
-          <section aria-label="原引用来源" class="record-section">
-            <h3>原引用来源</h3>
+          <section :aria-label="uiText('原引用来源')" class="record-section">
+            <h3>{{ uiText('原引用来源') }}</h3>
             <article v-for="source in record.sources" :key="`${source.turn_id}:${source.source_ref_id}`" class="record-source">
               <h4>{{ source.label }}</h4>
               <SourceExcerpt v-if="source.view" :source="source.view" />
               <blockquote v-else>{{ source.quote }}</blockquote>
               <p v-if="source.unavailable_reason" class="record-note">{{ source.unavailable_reason }}</p>
             </article>
-            <p v-if="!record.sources.length">这份记录未保留原文引用。</p>
+            <p v-if="!record.sources.length">{{ uiText('这份记录未保留原文引用。') }}</p>
           </section>
-          <section aria-label="原学习记录" class="record-section">
-            <h3>原学习记录</h3>
-            <p class="record-note">这些解释保留当时的目标与帮助条件；带入后作为历史参考。</p>
+          <section :aria-label="uiText('原学习记录')" class="record-section">
+            <h3>{{ uiText('原学习记录') }}</h3>
+            <p class="record-note">{{ uiText('这些解释保留当时的目标与帮助条件；带入后作为历史参考。') }}</p>
             <article v-for="evidence in record.learning.evidence" :key="evidence.evidence_id" class="record-evidence">
               <h4>{{ evidence.label }}</h4><p>{{ evidence.interpretation }}</p>
               <blockquote v-if="evidence.learner_quote">{{ evidence.learner_quote }}</blockquote>
-              <p v-if="evidence.correction">你的纠正：{{ evidence.correction }}</p>
-              <p v-if="evidence.teaching_implication">当时的后续建议：{{ evidence.teaching_implication }}</p>
-              <p v-if="evidence.supersedes" class="record-note">这是对较早解释的修订；原解释一并保留。</p>
+              <p v-if="evidence.correction">{{ uiText('你的纠正：') }}{{ evidence.correction }}</p>
+              <p v-if="evidence.teaching_implication">{{ uiText('当时的后续建议：') }}{{ evidence.teaching_implication }}</p>
+              <p v-if="evidence.supersedes" class="record-note">{{ uiText('这是对较早解释的修订；原解释一并保留。') }}</p>
             </article>
-            <p v-if="!record.learning.evidence.length">这份记录尚无已保存的学习解释。</p>
-            <p v-if="record.learning.facts.length" class="record-note">保留了 {{ record.learning.facts.length }} 条原始学习事实及其关联。</p>
+            <p v-if="!record.learning.evidence.length">{{ uiText('这份记录尚无已保存的学习解释。') }}</p>
+            <p v-if="record.learning.facts.length" class="record-note">{{ uiText('保留了') }} {{ record.learning.facts.length }} {{ uiText('条原始学习事实及其关联。') }}</p>
           </section>
         </template>
       </section>

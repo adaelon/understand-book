@@ -68,3 +68,15 @@ it('uses listening language without changing the chosen purpose, scope or readin
   expect(wrapper.emitted('choose')?.[1]).toEqual(['discover', 'chapter']);
   wrapper.unmount();
 });
+
+it('shows the actual preparation reason and never offers a disabled overview as available', async () => {
+  const wrapper = mount(LearningPurposeEntry, { props: { ...base, videoMode: true, ready: false, reason: '完整字幕仍在准备。' } });
+  expect(wrapper.get('[data-purpose=understand]').text()).toContain('带我看懂');
+  expect(wrapper.get('[data-purpose=discover]').attributes('disabled')).toBeUndefined();
+  expect(wrapper.get('.purpose-notice').text()).toContain('完整字幕仍在准备');
+  expect(wrapper.get('.purpose-notice').text()).toContain('可以先了解重点');
+  await wrapper.setProps({ available: false, reason: '视频字幕读取失败，请重试。' });
+  expect(wrapper.get('[data-purpose=discover]').attributes('disabled')).toBeDefined();
+  expect(wrapper.get('.purpose-notice').text()).toBe('视频字幕读取失败，请重试。');
+  wrapper.unmount();
+});

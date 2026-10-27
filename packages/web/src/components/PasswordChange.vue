@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { onBeforeUnmount, ref } from 'vue';
 import { networkFetch } from '../network-client';
 import { accountError, passwordHint, validPassword } from '../account-forms';
@@ -8,7 +10,7 @@ let active = true;
 async function submit() {
   error.value = '';
   if (!validPassword(password.value)) { error.value = passwordHint; return; }
-  if (password.value !== confirm.value) { error.value = '两次输入的密码不一致。'; return; }
+  if (password.value !== confirm.value) { error.value = uiText('两次输入的密码不一致。'); return; }
   const body = { current_password: current.value, new_password: password.value };
   current.value = ''; password.value = ''; confirm.value = ''; busy.value = true;
   try { await networkFetch('POST', '/account/password', body); if (active) emit('changed'); }
@@ -19,14 +21,14 @@ onBeforeUnmount(() => { active = false; current.value = ''; password.value = '';
 </script>
 <template>
   <section>
-    <button v-if="!open" @click="open = true">修改密码</button>
+    <button v-if="!open" @click="open = true">{{ uiText('修改密码') }}</button>
     <form v-else @submit.prevent="submit">
-      <h3>修改密码</h3><p>修改后所有旧登录会话将退出，请使用新密码重新登录。</p>
-      <label>当前密码<input v-model="current" type="password" autocomplete="current-password" required :disabled="busy"></label>
-      <label>新密码<input v-model="password" type="password" autocomplete="new-password" required :disabled="busy"></label>
+      <h3>{{ uiText('修改密码') }}</h3><p>{{ uiText('修改后所有旧登录会话将退出，请使用新密码重新登录。') }}</p>
+      <label>{{ uiText('当前密码') }}<input v-model="current" type="password" autocomplete="current-password" required :disabled="busy"></label>
+      <label>{{ uiText('新密码') }}<input v-model="password" type="password" autocomplete="new-password" required :disabled="busy"></label>
       <p>{{ passwordHint }}</p>
-      <label>确认新密码<input v-model="confirm" type="password" autocomplete="new-password" required :disabled="busy"></label>
-      <button :disabled="busy">保存新密码</button>
+      <label>{{ uiText('确认新密码') }}<input v-model="confirm" type="password" autocomplete="new-password" required :disabled="busy"></label>
+      <button :disabled="busy">{{ uiText('保存新密码') }}</button>
       <p v-if="error" role="alert">{{ error }}</p>
     </form>
   </section>

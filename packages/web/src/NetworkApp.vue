@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { t as uiText } from './i18n';
+
+import LanguageSwitcher from './components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
 import { isTauri } from '@tauri-apps/api/core';
@@ -24,17 +27,23 @@ import SharedWorkspaceInstance from './components/SharedWorkspaceInstance.vue';
 import ExamSprintPanel from './components/ExamSprintPanel.vue';
 import PersonalMaterials from './components/PersonalMaterials.vue';
 import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
+import { readBoardRoute } from './board-route';
 import AccountAccess from './components/AccountAccess.vue';
+import GuestAccess from './components/GuestAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
 import SourceExcerpt from './components/SourceExcerpt.vue';
 import { api, ApiError } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
-import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, workspaceStorageKey, savedWorkspace, saveWorkspace, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef, type LearningWorkspace } from './network-context';
-import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
+import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, savedWorkspace, saveWorkspace, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef, type LearningWorkspace } from './network-context';
+import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, openLibraryMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
 import { savedLearningSelection, saveLearningSelection, learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
+type BookOpening = { kind: 'book'; reference: PublishedBookRef; learningId: string | null; members?: PublishedBookRef[]; title: string }
+  | { kind: 'resume'; record: ReadingResumption; title: string };
+const openingRequest = ref<BookOpening | null>(null), opening = ref(false), openingError = ref('');
+let openingController: AbortController | null = null;
 function showFailure(failure: unknown) {
   // A superseded request has nothing to report in the newly selected book or chat.
   if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') return;
@@ -42,6 +51,7 @@ function showFailure(failure: unknown) {
 }
 const sourceTarget = ref<McpSource | null>(null), sourceError = ref('');
 let pendingSource: McpSource | null = null;
+let pendingBoard = readBoardRoute(location.search);
 try { pendingSource = readMcpSource(location.search); } catch (failure) { sourceError.value = (failure as Error).message; }
 let mcpRequested = new URLSearchParams(location.search).get('account') === 'mcp';
 const accountLink = takeAccountLink();
@@ -59,7 +69,7 @@ function accountLogin(email?: string, notice?: string) {
 }
 function passwordChanged() {
   forgetNetwork(); books.value = []; pending.value = 0; settingsOpen.value = false;
-  accountLogin(undefined, '密码已更新，请使用新密码重新登录。');
+  accountLogin(undefined, uiText('密码已更新，请使用新密码重新登录。'));
   channel?.postMessage('changed');
 }
 type CatalogBook = SharedBook & { is_default?: boolean };
@@ -165,22 +175,10 @@ async function changeMember(reference: PublishedBookRef, add: boolean) {
   finally { busy.value = false; }
 }
 async function enterLearning(space: LearningWorkspace) {
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换工作区')) return;
+  if (busy.value) return;
   selectLearning(space);
-  if (!space.members.some(item => item.readable)) return;
-  try {
-    if (!network.value.workspace) await restoreAvailableScene();
-    const previous = network.value.workspace?.learning_workspace_positions?.[space.learning_workspace_id];
-    const member = space.members.find(item => item.readable && previous && samePublication(item.published_book_ref, previous)) ?? space.members.find(item => item.readable);
-    if (member) await openBook(member.published_book_ref, space.learning_workspace_id);
-  } catch (failure) { showFailure(failure); }
-}
-async function restoreAvailableScene() {
-  try { await recoverWorkspaceBinding(); }
-  catch (failure) {
-    if (!(failure instanceof ApiError && failure.status === 404)) throw failure;
-    sessionStorage.removeItem(workspaceStorageKey());
-  }
+  const members = space.members.filter(item => item.readable).map(item => item.published_book_ref);
+  if (members.length) await openBook(members[0], space.learning_workspace_id, members);
 }
 function manageCurrentLearning() {
   selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null;
@@ -192,6 +190,7 @@ const resumptionBook = computed(() => materialBooks.value.find(book =>
   book.published_book_ref.book_id === resumption.value?.published_book_ref.book_id
   && book.published_book_ref.publication_id === resumption.value?.published_book_ref.publication_id));
 watch(() => network.value.epoch, () => {
+  cancelBookOpening();
   resumption.value = null; resumptionError.value = ''; resumptionLoading.value = false; libraryOpen.value = true;
 }, { flush: 'sync' });
 async function loadResumption() {
@@ -202,12 +201,12 @@ async function loadResumption() {
     if (scope === sceneKey()) {
       const unavailable = failure instanceof ApiError && failure.status === 404;
       if (unavailable) resumption.value = null;
-      resumptionError.value = unavailable ? '原书籍或阅读记录已不可用，请选择其他材料。' : '接续记录暂时无法读取，请重试。';
+      resumptionError.value = unavailable ? uiText('原书籍或阅读记录已不可用，请选择其他材料。') : uiText('接续记录暂时无法读取，请重试。');
     }
   } finally { if (scope === sceneKey()) resumptionLoading.value = false; }
 }
 async function showLibrary() {
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('返回书架')) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('返回书架'))) return;
   libraryOpen.value = true; error.value = '';
   const id = network.value.workspace?.workspace_id ?? savedWorkspace()?.workspace_id;
   if (id) saveWorkspace(id, 'library');
@@ -216,24 +215,19 @@ async function showLibrary() {
 }
 async function continueReading() {
   if (!resumption.value || busy.value) return;
-  busy.value = true; error.value = '';
-  try { await recoverWorkspaceBinding(resumption.value); await recover(); selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value); libraryOpen.value = false; suspended.value = false; saveWorkspace(network.value.workspace!.workspace_id, 'reader'); }
-  catch (failure) {
-    showFailure(failure);
-    await loadResumption();
-  } finally { busy.value = false; }
+  await runBookOpening({ kind: 'resume', record: resumption.value, title: materialTitle(resumption.value.published_book_ref) });
 }
 async function restoreLastVisit() {
   const saved = savedWorkspace();
   await loadResumption();
   if (saved && saved.view !== 'library' && saved.workspace_id === resumption.value?.workspace_id
-    && !pendingSource && !mcpRequested) await continueReading();
+    && !pendingSource && !pendingBoard && !mcpRequested) await continueReading();
 }
 function bookLabel(book: CatalogBook) {
   const title = bookTitle({ title: materialFor(book.published_book_ref)?.title ?? book.title, book_id: book.published_book_ref.book_id });
   const versions = books.value.filter(item => item.published_book_ref.book_id === book.published_book_ref.book_id);
   if (versions.length === 1) return title;
-  return `${title} · 版本 ${versions.findIndex(item => samePublication(item.published_book_ref, book.published_book_ref)) + 1}${book.is_default ? '（默认）' : ''}`;
+  return uiText('{0} · 版本 {1}{2}', [title, versions.findIndex(item => samePublication(item.published_book_ref, book.published_book_ref)) + 1, book.is_default ? uiText('（默认）') : '']);
 }
 const readerApp = ref<InstanceType<typeof App> | null>(null);
 const key = computed(sceneKey);
@@ -261,7 +255,7 @@ function sourceFailed(message: string) { sourceTarget.value = null; sourceError.
 async function openPendingSource() {
   if (!pendingSource || sourceTarget.value || linkedRequested) return;
   const source = pendingSource;
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('打开来源')) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('打开来源'))) return;
   busy.value = true; sourceError.value = '';
   try {
     if (network.value.workspace) await api.openBook(JSON.stringify(source.published_book_ref));
@@ -273,13 +267,18 @@ async function openPendingSource() {
   } catch (failure) {
     if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') return;
     sourceError.value = failure instanceof ApiError && [403, 404].includes(failure.status)
-      ? '该来源材料未获授权或该版本已不可用，请联系管理员开通，或选择其他材料。'
-      : '来源暂时无法打开，请重试。';
+      ? uiText('该来源材料未获授权或该版本已不可用，请联系管理员开通，或选择其他材料。')
+      : uiText('来源暂时无法打开，请重试。');
   } finally { busy.value = false; }
 }
 async function openAccountDestination() {
   if (mcpRequested) { showMcp(); mcpRequested = false; }
   if (pendingSource && !sourceError.value) await openPendingSource();
+  if (pendingBoard?.publication && !linkedRequested && !busy.value) {
+    const target = pendingBoard;
+    await runBookOpening({ kind: 'book', reference: target.publication!, learningId: target.learningWorkspaceId, title: uiText('画板') });
+    if (!openingError.value) pendingBoard = null;
+  }
 }
 watch([() => network.value.epoch, () => network.value.identity?.user_id, () => network.value.identity?.csrf_token], () => { allowanceOpen.value = false; settingsOpen.value = false; mcpOpen.value = false; sourceTarget.value = null; }, { flush: 'sync' });
 // A transport generation changes on reattachment; the user's unsent question does not.
@@ -294,7 +293,7 @@ const recapTarget = ref<RecapTarget | null>(null), openingRecap = ref(false);
 async function openRecapPublication(target: RecapTarget) {
   const publication = targetPublication(target);
   if (!publication) return;
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换发布')) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('切换发布'))) return;
   openingRecap.value = true; error.value = '';
   try {
     await api.openBook(JSON.stringify(publication));
@@ -317,7 +316,7 @@ async function openLinkedSource() {
   const turn = linkedPresentation.value?.turn_id, source = linkedSource.value, scope = sceneKey();
   if (!turn || !source) return;
   try { await api.agentSourceOpen(turn, source.source_ref_id); if (scope === sceneKey()) {
-    error.value = '来源已定位，请回原阅读窗口查看';
+    error.value = uiText('来源已定位，请回原阅读窗口查看');
     window.opener?.postMessage({ kind: 'reader-linked-reader-changed' }, location.origin); window.opener?.focus();
   } }
   catch (failure) { if (scope === sceneKey()) showFailure(failure); }
@@ -330,13 +329,13 @@ async function receiveLinked(event: MessageEvent) {
     pageHide(); suspended.value = false; return;
   }
   if (event.data?.kind !== 'reader-linked-context') return;
-  if (event.data.user !== network.value.identity?.user_id) { error.value = '附属窗口账号已改变，请从原窗口重新打开'; return; }
+  if (event.data.user !== network.value.identity?.user_id) { error.value = uiText('附属窗口账号已改变，请从原窗口重新打开'); return; }
   installWorkspace(event.data.workspace, event.data.attachment, true);
   linkedPresentation.value = event.data;
 }
 async function followUp(message: string, receipt: import('./generated/PresentationFollowUp').PresentationFollowUp) {
   const scope = sceneKey();
-  try { await api.agentRunCreate(message, { presentation_follow_up: receipt }); if (scope === sceneKey()) error.value = '问题已提交到原对话，可回原窗口查看回答'; }
+  try { await api.agentRunCreate(message, { presentation_follow_up: receipt }); if (scope === sceneKey()) error.value = uiText('问题已提交到原对话，可回原窗口查看回答'); }
   catch (failure) { if (scope === sceneKey()) showFailure(failure); }
 }
 function pageHide() {
@@ -424,11 +423,21 @@ async function login() {
     busy.value = false;
     restoreOnLoad = false; await restoreLastVisit();
     await openAccountDestination();
-  } catch { error.value = '登录失败，请核对账号、密码或稍后重试。'; }
+  } catch { error.value = uiText('登录失败，请核对账号、密码或稍后重试。'); }
   finally { password.value = ''; busy.value = false; checking.value = false; }
 }
+async function enterGuest(identity: NetworkIdentity) {
+  showAccount(null); error.value = ''; checking.value = true;
+  installIdentity(identity); channel?.postMessage('changed');
+  try {
+    await catalog(); restoreOnLoad = false; await restoreLastVisit();
+    await openAccountDestination();
+  } catch (failure) { showFailure(failure); }
+  finally { checking.value = false; }
+}
 async function logout() {
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('退出登录')) return;
+  if (network.value.identity?.is_guest && !window.confirm(uiText('退出后，这枚内测码无法再次使用，也无法自行恢复游客记录。确定退出体验吗？'))) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('退出登录'))) return;
   const n = network.value, w = n.workspace;
   const detach = w ? networkFetch('POST', `/workspaces/${w.workspace_id}/detach`, { attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision }).catch(() => {}) : Promise.resolve();
   forgetNetwork(); books.value = []; pending.value = 0; error.value = '';
@@ -440,26 +449,57 @@ async function logout() {
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': n.identity!.csrf_token }, body: '{}' });
     if (!response.ok) throw new Error('logout');
   } catch {
-    error.value = '退出请求未确认，请核对网络后重新登录。';
+    error.value = uiText('退出请求未确认，请核对网络后重新登录。');
   } finally { busy.value = false; }
   channel?.postMessage('changed');
 }
-async function openBook(reference: PublishedBookRef, learningId: string | null = selectedLearningId.value) {
+async function openBook(reference: PublishedBookRef, learningId: string | null = selectedLearningId.value, members?: PublishedBookRef[]) {
+  if (busy.value) return;
   if (materialFor(reference)?.media_kind === 'video') void preloadVideoPlayback().catch(() => {});
-  if (readerApp.value && !await readerApp.value.beforeNoteLeave('切换材料')) return;
-  busy.value = true; error.value = '';
+  await runBookOpening({ kind: 'book', reference, learningId, members,
+    title: members ? learningSpaces.value.find(space => space.learning_workspace_id === learningId)?.goal.text ?? materialTitle(reference) : materialTitle(reference) });
+}
+async function runBookOpening(request: BookOpening) {
+  if (busy.value) return;
+  busy.value = true; error.value = ''; openingError.value = '';
+  if (readerApp.value) {
+    try { if (!await readerApp.value.beforeNoteLeave(uiText('打开资料'))) { busy.value = false; return; } }
+    catch (failure) { busy.value = false; showFailure(failure); return; }
+  }
+  const controller = new AbortController();
+  openingController = controller; openingRequest.value = request; opening.value = true;
+  const timeout = setTimeout(() => controller.abort(new DOMException(uiText('打开资料超时，请检查连接后重试。'), 'TimeoutError')), 15_000);
   try {
-    if (!network.value.workspace) await restoreAvailableScene();
-    if (network.value.workspace) await openLearningMaterial(reference, learningId);
-    else installWorkspace(await networkFetch<NetworkWorkspace>('POST', '/workspaces', { attachment_id: network.value.attachment, published_book_ref: reference, learning_workspace_id: learningId }));
-    selectedLearningId.value = learningId; saveLearningSelection(learningId);
+    if (request.kind === 'resume') await recoverWorkspaceBinding(request.record, controller.signal);
+    else await openLibraryMaterial(request.reference, request.learningId, controller.signal, request.members);
+    controller.signal.throwIfAborted();
+    selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value);
     libraryOpen.value = false; suspended.value = false;
     saveWorkspace(network.value.workspace!.workspace_id, 'reader');
-  } catch (failure) { showFailure(failure); }
-  finally { busy.value = false; }
+    openingRequest.value = null;
+    void recover();
+  } catch (failure) {
+    if (controller.signal.aborted && controller.signal.reason?.name === 'AbortError') return;
+    if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') { openingRequest.value = null; return; }
+    openingError.value = controller.signal.aborted ? controller.signal.reason.message : failure instanceof Error ? failure.message : String(failure);
+    if (request.kind === 'resume') void loadResumption();
+  } finally {
+    clearTimeout(timeout);
+    if (openingController === controller) { openingController = null; opening.value = false; busy.value = false; }
+  }
+}
+function cancelBookOpening() {
+  openingController?.abort(new DOMException(uiText('已取消打开'), 'AbortError'));
+  openingRequest.value = null; openingError.value = '';
+}
+function retryBookOpening() {
+  const request = openingRequest.value;
+  if (!request || busy.value) return;
+  if (request.kind === 'resume' && resumption.value) void continueReading();
+  else void runBookOpening(request);
 }
 function pendingChanged() { pendingItems.value = pendingSubmissions(); pending.value = pendingItems.value.length; }
-function onVisible() { if (document.visibilityState !== 'hidden') void checkIdentity(); }
+function onVisible() { if (document.visibilityState !== 'hidden' && !opening.value) void checkIdentity(); }
 function onLearningGoalChanged(event: Event) {
   if ((event as CustomEvent<{ learning_workspace_id: string }>).detail?.learning_workspace_id === network.value.workspace?.learning_workspace_id) void loadLearningSpaces();
 }
@@ -481,6 +521,7 @@ onMounted(() => {
   window.addEventListener('pageshow', onVisible); window.addEventListener('online', onVisible); window.addEventListener('focus', onVisible);
 });
 onBeforeUnmount(() => {
+  cancelBookOpening();
   window.removeEventListener('pagehide', pageHide);
   window.removeEventListener('message', receiveLinked);
   window.removeEventListener('submission-pending-changed', pendingChanged);
@@ -491,164 +532,172 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <DesktopAuthorization />
-  <AccountAccess v-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
+  <GuestAccess v-if="accountView === 'guest'" @entered="enterGuest" @login="accountLogin" />
+  <AccountAccess v-else-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
   <main v-else-if="checking && !network.workspace" class="network-loading"><LoadingAnimation /></main>
   <main v-else-if="!network.identity" class="network-login">
-    <a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a>
-    <h1>回到你的阅读</h1>
+    <header class="login-heading"><a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a><LanguageSwitcher /></header>
+    <h1>{{ uiText('回到你的阅读') }}</h1>
     <DesktopSignIn v-if="isTauri()" />
     <form v-else @submit.prevent="login">
-      <label>邮箱或账号<input v-model="username" autocomplete="username" required></label>
-      <label>密码<input v-model="password" type="password" autocomplete="current-password" required></label>
-      <button :disabled="busy">登录</button>
+      <label>{{ uiText('邮箱或账号') }}<input v-model="username" autocomplete="username" required></label>
+      <label>{{ uiText('密码') }}<input v-model="password" type="password" autocomplete="current-password" required></label>
+      <button :disabled="busy">{{ uiText('登录') }}</button>
     </form>
-    <p v-if="!isTauri()"><button :disabled="busy" @click="showAccount('register')">注册账号</button> <button :disabled="busy" @click="showAccount('forgot-password')">忘记密码</button></p>
+    <p v-if="!isTauri()"><button :disabled="busy" @click="showAccount('guest')">{{ uiText('内测码免注册体验') }}</button> <button :disabled="busy" @click="showAccount('register')">{{ uiText('注册账号') }}</button> <button :disabled="busy" @click="showAccount('forgot-password')">{{ uiText('忘记密码') }}</button></p>
     <p role="status">{{ error }}</p>
   </main>
   <div v-else class="network-shell">
+    <aside v-if="network.identity.is_guest && !network.linked" class="guest-session-notice"><span>{{ uiText('游客体验 · 已赠送 5 元额度，示例材料已开通') }}</span><button @click="allowanceOpen = true">{{ uiText('查看剩余额度') }}</button></aside>
     <details v-if="network.linked" class="network-account network-linked-account">
-      <summary>账号</summary>
+      <summary>{{ uiText('账号') }}</summary>
       <div class="network-account-menu">
-        <span>{{ network.identity.email || network.identity.user_id }}</span>
-        <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
-        <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
-        <button @click="logout">退出登录</button>
+        <span>{{ network.identity.is_guest ? uiText('游客身份') : network.identity.email || network.identity.user_id }}</span>
+        <button @click="settingsOpen = true">{{ uiText('个人设置') }}</button> <button @click="showMcp">{{ uiText('MCP 接入') }}</button> <button @click="allowanceOpen = true">{{ uiText('使用额度') }}</button>
+        <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">{{ uiText('运营后台') }}</a>
+        <button @click="logout">{{ uiText('退出登录') }}</button>
       </div>
     </details>
     <div v-if="pending || error || sourceError" class="network-notices">
-      <span v-if="sourceError" role="alert">{{ sourceError }} <button v-if="pendingSource" :disabled="busy" @click="openPendingSource">重试打开来源</button></span>
-      <span v-if="pending" role="status">{{ pending }} 个问题提交待核对 <button @click="recover">核对原问题</button></span>
-      <span v-for="item in pendingItems" :key="item.key">{{ item.body.display_user || item.body.message }} <button @click="retryOriginal(item.key)">重试原提交</button></span>
+      <span v-if="sourceError" role="alert">{{ sourceError }} <button v-if="pendingSource" :disabled="busy" @click="openPendingSource">{{ uiText('重试打开来源') }}</button></span>
+      <span v-if="pending" role="status">{{ pending }} {{ uiText('个问题提交待核对') }} <button @click="recover">{{ uiText('核对原问题') }}</button></span>
+      <span v-for="item in pendingItems" :key="item.key">{{ item.body.display_user || item.body.message }} <button @click="retryOriginal(item.key)">{{ uiText('重试原提交') }}</button></span>
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
     <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
-    <section v-if="!selectedVideo && !libraryOpen && network.workspace?.learning_workspace_id && currentLearningGoal" class="workspace-goal-bar" aria-label="工作区大目标">
-      <div><span>工作区大目标</span><p>{{ currentLearningGoal.text }}</p></div>
-      <button v-if="!network.linked" :disabled="busy" @click="manageCurrentLearning">工作区与资料</button>
+    <section v-if="!selectedVideo && !libraryOpen && network.workspace?.learning_workspace_id && currentLearningGoal" class="workspace-goal-bar" :aria-label="uiText('工作区大目标')">
+      <div><span>{{ uiText('工作区大目标') }}</span><p>{{ currentLearningGoal.text }}</p></div>
+      <button v-if="!network.linked" :disabled="busy" @click="manageCurrentLearning">{{ uiText('工作区与资料') }}</button>
     </section>
     <App ref="readerApp" v-if="!suspended && !network.linked && !openingRecap && network.workspace" v-show="!selectedVideo && !libraryOpen" :reader-visible="!selectedVideo && !libraryOpen" :material-title="materialTitle(network.workspace.published_book_ref)" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
       <template #account>
         <details class="network-account">
-          <summary>账号</summary>
+          <summary>{{ uiText('账号') }}</summary>
           <div class="network-account-menu">
-            <span>{{ network.identity.email || network.identity.user_id }}</span>
-            <button @click="settingsOpen = true">个人设置</button> <button @click="showMcp">MCP 接入</button> <button @click="allowanceOpen = true">使用额度</button>
-            <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a>
-            <span v-if="network.identity.capabilities?.presentation.authoring === false">演示制作暂不可用</span>
-            <button @click="logout">退出登录</button>
+            <span>{{ network.identity.is_guest ? uiText('游客身份') : network.identity.email || network.identity.user_id }}</span>
+            <button @click="settingsOpen = true">{{ uiText('个人设置') }}</button> <button @click="showMcp">{{ uiText('MCP 接入') }}</button> <button @click="allowanceOpen = true">{{ uiText('使用额度') }}</button>
+            <a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">{{ uiText('运营后台') }}</a>
+            <span v-if="network.identity.capabilities?.presentation.authoring === false">{{ uiText('演示制作暂不可用') }}</span>
+            <button @click="logout">{{ uiText('退出登录') }}</button>
           </div>
         </details>
       </template>
     </App>
-    <p v-if="linkedRequested && !linkedPresentation" role="status">请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。</p>
-    <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace)" class="network-library">
+    <p v-if="linkedRequested && !linkedPresentation" role="status">{{ uiText('请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。') }}</p>
+    <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace)" class="network-library" :class="{ 'is-opening': opening }" :aria-busy="opening">
       <header class="network-library-head">
-        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="24" height="24" alt="" />UNDERSTAND BOOK</p><h1>学习工作区<span>把资料变成自己的理解。</span></h1></div>
+        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="24" height="24" alt="" />UNDERSTAND BOOK</p><h1>{{ uiText('学习工作区') }}<span>{{ uiText('把资料变成自己的理解。') }}</span></h1></div>
         <div class="library-head-actions">
-          <button class="create-workspace-toggle" :aria-expanded="createOpen" @click="createOpen = !createOpen"><Plus :size="16" />新建工作区</button>
-          <details class="network-account"><summary><span class="account-avatar">{{ (network.identity.email || network.identity.user_id).slice(0, 1).toUpperCase() }}</span><span class="account-email">{{ network.identity.email || network.identity.user_id }}</span><ChevronDown :size="14" /></summary>
-            <div class="network-account-menu"><button @click="settingsOpen = true">个人设置</button><button @click="showMcp">MCP 接入</button><button @click="allowanceOpen = true">使用额度</button><a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">运营后台</a><button @click="logout">退出登录</button></div>
+          <LanguageSwitcher />
+          <button class="create-workspace-toggle" :aria-expanded="createOpen" @click="createOpen = !createOpen"><Plus :size="16" />{{ uiText('新建工作区') }}</button>
+          <details class="network-account"><summary><span class="account-avatar">{{ (network.identity.is_guest ? uiText('游客身份') : network.identity.email || network.identity.user_id).slice(0, 1).toUpperCase() }}</span><span class="account-email">{{ network.identity.is_guest ? uiText('游客身份') : network.identity.email || network.identity.user_id }}</span><ChevronDown :size="14" /></summary>
+            <div class="network-account-menu"><button @click="settingsOpen = true">{{ uiText('个人设置') }}</button><button @click="showMcp">{{ uiText('MCP 接入') }}</button><button @click="allowanceOpen = true">{{ uiText('使用额度') }}</button><a v-if="network.identity.capabilities?.admin" href="/admin/" target="_blank" rel="noopener">{{ uiText('运营后台') }}</a><button @click="logout">{{ uiText('退出登录') }}</button></div>
           </details>
         </div>
       </header>
       <form v-show="createOpen || !learningSpaces.length" class="learning-create" @submit.prevent="createLearning">
-        <label>这次想学会什么？<input v-model="createGoal" placeholder="比如：学习深度学习，或期末考试冲刺" required :disabled="busy" /></label>
-        <button :disabled="busy || !createGoal.trim()">创建工作区<ArrowRight :size="16" /></button>
+        <label>{{ uiText('这次想学会什么？') }}<input v-model="createGoal" :placeholder="uiText('比如：学习深度学习，或期末考试冲刺')" required :disabled="busy" /></label>
+        <button :disabled="busy || !createGoal.trim()">{{ uiText('创建工作区') }}<ArrowRight :size="16" /></button>
       </form>
       <div class="learning-layout" :class="{ 'has-selection': selectedLearning }">
-      <section class="learning-spaces" aria-label="学习工作区" :aria-busy="learningLoading">
-        <div class="learning-nav-heading"><span>我的工作区</span><span>{{ learningSpaces.length.toString().padStart(2, '0') }}</span></div>
-        <p v-if="learningError" role="alert">工作区暂时无法读取：{{ learningError }} <button @click="loadLearningSpaces">重试工作区</button></p>
+      <section class="learning-spaces" :aria-label="uiText('学习工作区')" :aria-busy="learningLoading">
+        <div class="learning-nav-heading"><span>{{ uiText('我的工作区') }}</span><span>{{ learningSpaces.length.toString().padStart(2, '0') }}</span></div>
+        <p v-if="learningError" role="alert">{{ uiText('工作区暂时无法读取：') }}{{ learningError }} <button @click="loadLearningSpaces">{{ uiText('重试工作区') }}</button></p>
         <div class="learning-space-list">
           <article v-for="space in learningSpaces" :key="space.learning_workspace_id" class="learning-space-card" :class="{ selected: selectedLearningId === space.learning_workspace_id }">
             <button class="learning-space-select" :aria-pressed="selectedLearningId === space.learning_workspace_id" :disabled="busy" @click="selectLearning(space)">
-              <span class="workspace-cover-stack" aria-hidden="true"><span v-for="member in space.members.slice(0, 3)" :key="JSON.stringify(member.published_book_ref)" class="workspace-mini-cover"><MaterialCover :title="materialTitle(member.published_book_ref)" :cover="materialFor(member.published_book_ref)?.cover" :video="materialFor(member.published_book_ref)?.media_kind === 'video'" :music="materialFor(member.published_book_ref)?.media_kind === 'music'" compact /></span><BookOpen v-if="!space.members.length" :size="28" /></span>
-              <span class="workspace-nav-copy"><strong>{{ space.goal.text }}</strong><small>{{ space.members.length }} 份资料{{ space.archived ? ' · 已归档' : '' }}</small></span>
+              <span class="workspace-cover-stack" aria-hidden="true"><span v-for="member in space.members.slice(0, 3)" :key="JSON.stringify(member.published_book_ref)" class="workspace-mini-cover"><MaterialCover :paused="opening" :title="materialTitle(member.published_book_ref)" :cover="materialFor(member.published_book_ref)?.cover" :video="materialFor(member.published_book_ref)?.media_kind === 'video'" :music="materialFor(member.published_book_ref)?.media_kind === 'music'" compact /></span><BookOpen v-if="!space.members.length" :size="28" /></span>
+              <span class="workspace-nav-copy"><strong>{{ space.goal.text }}</strong><small>{{ space.members.length }} {{ uiText('份资料') }}{{ space.archived ? uiText(' · 已归档') : '' }}</small></span>
             </button>
-            <button class="workspace-enter" :disabled="busy || space.archived" @click="enterLearning(space)">打开工作区<ArrowUpRight :size="14" /></button>
+            <button class="workspace-enter" :disabled="busy || space.archived" @click="enterLearning(space)">{{ uiText('打开工作区') }}<ArrowUpRight :size="14" /></button>
           </article>
         </div>
-        <button v-if="selectedLearning" class="learning-legacy" :disabled="busy" @click="selectLearning(null)"><Layers :size="16" />全部资料</button>
-        <div class="shared-entry"><button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen"><BookOpen :size="16" />{{ sharedOpen ? '收起共享工作区' : '浏览共享预构建工作区' }}<ArrowUpRight :size="14" /></button><p>从准备好的课程与学习路线开始。</p></div>
+        <button v-if="selectedLearning" class="learning-legacy" :disabled="busy" @click="selectLearning(null)"><Layers :size="16" />{{ uiText('全部资料') }}</button>
+        <div class="shared-entry"><button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen"><BookOpen :size="16" />{{ sharedOpen ? uiText('收起共享工作区') : uiText('浏览共享预构建工作区') }}<ArrowUpRight :size="14" /></button><p>{{ uiText('从准备好的课程与学习路线开始。') }}</p></div>
       </section>
       <div class="learning-content">
       <SharedWorkspaceCatalog v-if="sharedOpen" :books="materialBooks" @started="startSharedLearning" />
-      <section v-if="selectedLearning" class="learning-details" aria-label="当前工作区">
-        <header class="learning-goal-heading"><div><span class="network-library-kicker">当前学习目标 <span class="goal-revision">· 第 {{ selectedLearning.goal.revision }} 版</span></span><h2>{{ selectedLearning.goal.text }}</h2><p v-if="selectedLearning.goal.constraints.length" class="goal-constraints">{{ selectedLearning.goal.constraints.join('；') }}</p></div>
-          <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">继续学习<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">修改大目标</button></div></header>
+      <section v-if="selectedLearning" class="learning-details" :aria-label="uiText('当前工作区')">
+        <header class="learning-goal-heading"><div><span class="network-library-kicker">{{ uiText('当前学习目标') }} <span class="goal-revision">{{ uiText('· 第') }} {{ selectedLearning.goal.revision }} {{ uiText('版') }}</span></span><h2>{{ selectedLearning.goal.text }}</h2><p v-if="selectedLearning.goal.constraints.length" class="goal-constraints">{{ selectedLearning.goal.constraints.join('；') }}</p></div>
+          <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">{{ uiText('继续学习') }}<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">{{ uiText('修改大目标') }}</button></div></header>
         <form v-if="editingGoal" class="learning-goal-edit" @submit.prevent="reviseGoal">
-          <label>工作区大目标<textarea v-model="goalDraft" required :disabled="busy" /></label>
-          <button :disabled="busy || !goalDraft.trim()">保存大目标</button><button type="button" :disabled="busy" @click="editingGoal = false">取消修改</button>
+          <label>{{ uiText('工作区大目标') }}<textarea v-model="goalDraft" required :disabled="busy" /></label>
+          <button :disabled="busy || !goalDraft.trim()">{{ uiText('保存大目标') }}</button><button type="button" :disabled="busy" @click="editingGoal = false">{{ uiText('取消修改') }}</button>
         </form>
-        <div class="materials-heading"><div><h3>工作区资料 <span>{{ memberBooks.length }}</span></h3><p>从一份资料开始，带着问题继续探索。</p></div><button :disabled="busy || selectedLearning.archived" :aria-expanded="materialsOpen" @click="materialsOpen = !materialsOpen"><Plus :size="16" />添加资料</button></div>
-        <p v-if="!memberBooks.length" class="learning-empty"><BookOpen :size="32" />工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。</p>
+        <div class="materials-heading"><div><h3>{{ uiText('工作区资料') }} <span>{{ memberBooks.length }}</span></h3><p>{{ uiText('从一份资料开始，带着问题继续探索。') }}</p></div><button :disabled="busy || selectedLearning.archived" :aria-expanded="materialsOpen" @click="materialsOpen = !materialsOpen"><Plus :size="16" />{{ uiText('添加资料') }}</button></div>
+        <p v-if="!memberBooks.length" class="learning-empty"><BookOpen :size="32" />{{ uiText('工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。') }}</p>
         <div class="learning-members" :class="{ 'few-materials': memberBooks.length <= 2 }">
           <article v-for="member in memberBooks" :key="JSON.stringify(member.published_book_ref)" class="learning-member" :class="{ 'is-video': member.book?.media_kind === 'video' }">
             <button class="member-open" :disabled="busy || !member.readable || selectedLearning.archived" @click="openBook(member.published_book_ref)">
-              <span class="member-cover"><MaterialCover :title="materialTitle(member.published_book_ref)" :cover="member.book?.cover" :video="member.book?.media_kind === 'video'" :music="member.book?.media_kind === 'music'" /></span>
-              <span class="member-copy"><span class="member-kind">{{ member.book?.media_kind === 'music' ? '音乐伴听' : member.book?.media_kind === 'video' ? '课程视频' : '阅读资料' }}</span><strong>{{ materialTitle(member.published_book_ref) }}</strong><span v-if="!member.readable" class="member-unavailable">资料暂不可读</span><span class="member-read-action">{{ network.workspace?.learning_workspace_id === selectedLearningId && samePublication(network.workspace.published_book_ref, member.published_book_ref) ? '继续阅读' : '开始阅读' }}<ArrowUpRight :size="16" /></span></span>
+              <span class="member-cover"><MaterialCover :paused="opening" :title="materialTitle(member.published_book_ref)" :cover="member.book?.cover" :video="member.book?.media_kind === 'video'" :music="member.book?.media_kind === 'music'" /></span>
+              <span class="member-copy"><span class="member-kind">{{ member.book?.media_kind === 'music' ? uiText('音乐伴听') : member.book?.media_kind === 'video' ? uiText('课程视频') : uiText('阅读资料') }}</span><strong>{{ materialTitle(member.published_book_ref) }}</strong><span v-if="!member.readable" class="member-unavailable">{{ uiText('资料暂不可读') }}</span><span class="member-read-action">{{ network.workspace?.learning_workspace_id === selectedLearningId && samePublication(network.workspace.published_book_ref, member.published_book_ref) ? uiText('继续阅读') : uiText('开始阅读') }}<ArrowUpRight :size="16" /></span></span>
             </button>
-            <details class="member-menu"><summary :aria-label="`管理${materialTitle(member.published_book_ref)}`"><Settings2 :size="15" /></summary><button :disabled="busy || selectedLearning.archived" @click="changeMember(member.published_book_ref, false)">移出资料</button></details>
+            <details class="member-menu"><summary :aria-label="uiText('管理{0}', [materialTitle(member.published_book_ref)])"><Settings2 :size="15" /></summary><button :disabled="busy || selectedLearning.archived" @click="changeMember(member.published_book_ref, false)">{{ uiText('移出资料') }}</button></details>
           </article>
         </div>
         <div v-show="materialsOpen || !memberBooks.length" class="materials-add-panel">
         <PersonalMaterials :key="`${network.identity.user_id}:${selectedLearning.learning_workspace_id}`" :workspace="selectedLearning" @ready="catalog" @open="reference => openBook(reference, selectedLearning!.learning_workspace_id)" @allowance="allowanceOpen = true" />
         <details v-if="!selectedLearning.archived" class="learning-add" open>
-          <summary>加入资料</summary>
-          <div v-for="book in availableBooks" :key="JSON.stringify(book.published_book_ref)" class="learning-add-book"><span class="add-book-cover"><MaterialCover :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" :music="book.media_kind === 'music'" compact /></span><span>{{ bookLabel(book) }}</span><button :disabled="busy" @click="changeMember(book.published_book_ref, true)">加入工作区</button></div>
-          <p v-if="!availableBooks.length">当前可用资料均已加入。</p>
+          <summary>{{ uiText('加入资料') }}</summary>
+          <div v-for="book in availableBooks" :key="JSON.stringify(book.published_book_ref)" class="learning-add-book"><span class="add-book-cover"><MaterialCover :paused="opening" :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" :music="book.media_kind === 'music'" compact /></span><span>{{ bookLabel(book) }}</span><button :disabled="busy" @click="changeMember(book.published_book_ref, true)">{{ uiText('加入工作区') }}</button></div>
+          <p v-if="!availableBooks.length">{{ uiText('当前可用资料均已加入。') }}</p>
         </details>
         </div>
         <SharedWorkspaceInstance :workspace="selectedLearning" :books="materialBooks" @updated="updateSharedLearning" />
         <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" />
-        <details class="workspace-settings"><summary><Settings2 :size="16" />工作区管理与学习记录<ChevronDown :size="14" /></summary><div class="workspace-settings-body">
-        <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? '收起已有学习记录' : '带入已有学习记录' }}</button>
+        <details class="workspace-settings"><summary><Settings2 :size="16" />{{ uiText('工作区管理与学习记录') }}<ChevronDown :size="14" /></summary><div class="workspace-settings-body">
+        <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? uiText('收起已有学习记录') : uiText('带入已有学习记录') }}</button>
         <LearningRecordsPanel v-if="recordsOpen" :target="selectedLearning" :key="selectedLearning.learning_workspace_id" @refresh-goal="loadLearningSpaces" />
-        <div class="learning-archive"><p>{{ selectedLearning.archived ? '工作区已归档，学习记录与来源保留。恢复后可继续学习。' : '归档后暂停主动教学和新增后台整理，学习记录与来源保留。' }}</p><button :disabled="busy" @click="archiveLearning">{{ selectedLearning.archived ? '恢复工作区' : '归档工作区' }}</button></div>
-        <button class="learning-legacy" :disabled="busy" @click="selectLearning(null)">返回书架</button>
+        <div class="learning-archive"><p>{{ selectedLearning.archived ? uiText('工作区已归档，学习记录与来源保留。恢复后可继续学习。') : uiText('归档后暂停主动教学和新增后台整理，学习记录与来源保留。') }}</p><button :disabled="busy" @click="archiveLearning">{{ selectedLearning.archived ? uiText('恢复工作区') : uiText('归档工作区') }}</button></div>
+        <button class="learning-legacy" :disabled="busy" @click="selectLearning(null)">{{ uiText('返回书架') }}</button>
         </div></details>
       </section>
       <section v-if="!selectedLearning" class="learning-records-entry">
-        <button :aria-expanded="legacyRecordsOpen" @click="legacyRecordsOpen = !legacyRecordsOpen">{{ legacyRecordsOpen ? '收起旧记录' : '旧聊天与学习记录' }}</button>
+        <button :aria-expanded="legacyRecordsOpen" @click="legacyRecordsOpen = !legacyRecordsOpen">{{ legacyRecordsOpen ? uiText('收起旧记录') : uiText('旧聊天与学习记录') }}</button>
         <LearningRecordsPanel v-if="legacyRecordsOpen" />
       </section>
-      <section v-if="!selectedLearning && resumption && resumptionBook" class="reading-resumption" aria-label="阅读接续" :aria-busy="resumptionLoading">
-        <div class="resumption-cover"><MaterialCover :title="bookLabel(resumptionBook)" :cover="resumptionBook.cover" :video="resumptionBook.media_kind === 'video'" :music="resumptionBook.media_kind === 'music'" /></div>
+      <section v-if="!selectedLearning && resumption && resumptionBook" class="reading-resumption" :aria-label="uiText('阅读接续')" :aria-busy="resumptionLoading">
+        <div class="resumption-cover"><MaterialCover :paused="opening" :title="bookLabel(resumptionBook)" :cover="resumptionBook.cover" :video="resumptionBook.media_kind === 'video'" :music="resumptionBook.media_kind === 'music'" /></div>
         <div class="resumption-content">
-          <p class="network-library-kicker">接着上次读</p>
+          <p class="network-library-kicker">{{ uiText('接着上次读') }}</p>
           <h2>{{ bookLabel(resumptionBook) }}</h2>
-          <p class="resumption-position">已保存位置 · {{ resumption.position_label || '原阅读位置' }}</p>
+          <p class="resumption-position">{{ uiText('已保存位置 ·') }} {{ resumption.position_label || uiText('原阅读位置') }}</p>
           <p v-if="resumption.position_excerpt" class="resumption-excerpt">{{ resumption.position_excerpt }}</p>
-          <div v-if="resumption.last_question" class="resumption-question"><span>上次的问题</span><p>{{ resumption.last_question }}</p></div>
-          <button class="resumption-continue" :disabled="busy || resumptionLoading" @click="continueReading">{{ resumptionLoading ? '正在更新…' : '继续阅读' }}</button>
+          <div v-if="resumption.last_question" class="resumption-question"><span>{{ uiText('上次的问题') }}</span><p>{{ resumption.last_question }}</p></div>
+          <button class="resumption-continue" :disabled="busy || resumptionLoading" @click="continueReading">{{ resumptionLoading ? uiText('正在更新…') : uiText('继续阅读') }}</button>
         </div>
         <YeyeMascot class="resumption-mascot" :size="144" :motion="busy || resumptionLoading || resumptionError ? 'static' : 'idle'" />
       </section>
-      <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">正在读取接续记录…</p>
-      <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">重试</button></p>
-      <h2 v-if="!selectedLearning" class="library-section-title">全部资料<span>你的书籍、课程与阅读收藏</span></h2>
+      <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">{{ uiText('正在读取接续记录…') }}</p>
+      <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">{{ uiText('重试') }}</button></p>
+      <h2 v-if="!selectedLearning" class="library-section-title">{{ uiText('全部资料') }}<span>{{ uiText('你的书籍、课程与阅读收藏') }}</span></h2>
       <div v-if="!selectedLearning" class="network-library-grid">
-        <button v-for="video in pendingVideos" :key="video.video.media_id" class="network-book-card" :disabled="busy" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><span class="shelf-cover"><MaterialCover :title="video.title" video /></span><strong>{{ video.title }}</strong><span>{{ video.english_ready ? "视频 · 英文已发布" : "视频 · 转写准备中" }}</span></button>
+        <button v-for="video in pendingVideos" :key="video.video.media_id" class="network-book-card" :disabled="busy" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><span class="shelf-cover"><MaterialCover :paused="opening" :title="video.title" video /></span><strong>{{ video.title }}</strong><span>{{ video.english_ready ? uiText('视频 · 英文已发布') : uiText('视频 · 转写准备中') }}</span></button>
         <button v-for="book in materialBooks" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
-          <span class="shelf-cover"><MaterialCover :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" :music="book.media_kind === 'music'" /></span>
+          <span class="shelf-cover"><MaterialCover :paused="opening" :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" :music="book.media_kind === 'music'" /></span>
           <strong>{{ bookLabel(book) }}</strong>
-          <span>{{ book.media_kind === 'music' ? '音乐伴听' : book.media_kind === 'video' ? '课程视频' : '阅读资料' }}</span>
+          <span>{{ book.media_kind === 'music' ? uiText('音乐伴听') : book.media_kind === 'video' ? uiText('课程视频') : uiText('阅读资料') }}</span>
         </button>
       </div>
-      <p v-if="!books.length && !videos.length">账号已创建，等待管理员开通材料。</p>
+      <p v-if="!books.length && !videos.length">{{ uiText('账号已创建，等待管理员开通材料。') }}</p>
       </div></div>
     </main>
+    <aside v-if="openingRequest && (opening || openingError)" class="book-opening" :class="{ 'book-opening-failed': !opening }" :role="opening ? 'status' : 'alert'" aria-live="polite" aria-atomic="true">
+      <span v-if="opening" class="book-opening-spinner" aria-hidden="true"></span><BookOpen v-else :size="22" aria-hidden="true" />
+      <div class="book-opening-copy"><strong>{{ opening ? uiText('正在打开') : uiText('暂时无法打开') }} · {{ openingRequest.title }}</strong><p>{{ opening ? uiText('正在准备阅读内容…') : openingError }}</p></div>
+      <div class="book-opening-actions"><button v-if="opening" @click="cancelBookOpening">{{ uiText('取消') }}</button><template v-else><button class="book-opening-retry" @click="retryBookOpening">{{ uiText('重试打开') }}</button><button @click="cancelBookOpening">{{ uiText('返回书架') }}</button></template></div>
+    </aside>
     <AccountMcp v-if="mcpOpen" @close="closeMcp" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
-    <aside v-if="linkedSource" class="network-source" aria-label="演示来源">
+    <aside v-if="linkedSource" class="network-source" :aria-label="uiText('演示来源')">
       <strong>{{ linkedSource.heading_path?.join(' / ') || linkedSource.label }}</strong>
       <SourceExcerpt :source="linkedSource" />
-      <p v-if="linkedSource.stale">来源已变化，显示原引用快照。</p>
-      <button v-if="linkedSource.can_open_in_reader" @click="openLinkedSource">在原阅读区打开</button>
-      <button @click="linkedSource = null">关闭来源</button>
+      <p v-if="linkedSource.stale">{{ uiText('来源已变化，显示原引用快照。') }}</p>
+      <button v-if="linkedSource.can_open_in_reader" @click="openLinkedSource">{{ uiText('在原阅读区打开') }}</button>
+      <button @click="linkedSource = null">{{ uiText('关闭来源') }}</button>
     </aside>
   </div>
 </template>
@@ -661,6 +710,9 @@ onBeforeUnmount(() => {
 @media (max-width: 540px) { .workspace-goal-bar { padding: 6px 12px; gap: 8px; }.workspace-goal-bar button { min-height: 44px; font-size: 12px; } }
 .network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
+.guest-session-notice { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 8px 16px; font-size: 12px; color: var(--steel, #6c6a64); background: var(--surface); border-bottom: 1px solid var(--line); }
+.guest-session-notice button { border: 0; background: transparent; color: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font: inherit; }
+.login-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .network-login h1, .network-library-head h1 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; line-height: 1.45; }
 .network-library-kicker { margin: 0; color: var(--muted); font-size: 13px; }
 .reading-resumption { max-width: 1100px; box-sizing: border-box; margin: 0 auto 40px; padding: clamp(20px, 4vw, 40px); display: flex; gap: clamp(20px, 4vw, 44px); align-items: center; border-radius: 28px; background: var(--surface, #f4f0e8); border: 1px solid var(--line); }

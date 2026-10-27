@@ -1,6 +1,8 @@
 pub fn safe_purpose(value: &str) -> String {
     match value {
-        "outer" | "query" | "synthesize" | "selection" | "profile" | "compaction" | "repair" => {
+        "outer" | "query" | "synthesize" | "selection" | "profile" | "compaction" | "repair"
+        | "available_answer" | "tutor_assessment" | "tutor_coach" | "tutor_presentation_plan"
+        | "tutor_delivery_review" | "tutor_explanation_review" => {
             value.to_owned()
         }
         _ => "unknown".into(),
@@ -42,5 +44,15 @@ mod tests {
             Some("UNKNOWN_ERROR".into())
         );
         assert_eq!(safe_purpose("CANARY_PRIVATE_PURPOSE"), "unknown");
+    }
+
+    #[test]
+    fn teaching_and_fallback_calls_keep_their_distinct_purposes() {
+        for purpose in [
+            "available_answer", "tutor_assessment", "tutor_coach", "tutor_presentation_plan",
+            "tutor_delivery_review", "tutor_explanation_review",
+        ] {
+            assert_eq!(safe_purpose(purpose), purpose);
+        }
     }
 }

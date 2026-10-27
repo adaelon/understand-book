@@ -6,22 +6,24 @@ use super::*;
 pub(crate) fn record_presentation_action(
     state: &PrivateBookContext<'_>,
     command: &runtime::presentation_interact::PresentationCommand,
-    before: &runtime::presentation::PresentationFollowUp,
-    after: &runtime::presentation::PresentationFollowUp,
+    version: &runtime::presentation::AgentPresentation,
+    previous: &runtime::presentation::SavedPresentationState,
+    scene: &runtime::presentation::SavedPresentationState,
     support: &Value,
     now: &str,
 ) -> Result<Value, ToolError> {
     use runtime::presentation_interact::{InteractRequest, PresentationAction};
     let InteractRequest::Act { action, .. } = &command.request else { return Ok(Value::Null); };
+    let before = &previous.receipt;
+    let after = &scene.receipt;
     let store = state.user.learning_store_for_workspace(state.learning_workspace_id)?;
-    let deliveries = store.teaching_deliveries(&command.session_id, &command.delivery_turn_id)?
+    let deliveries = store.teaching_deliveries(&command.content_session_id, &command.delivery_turn_id)?
         .into_iter().filter(|fact| fact.payload["move"]["presentation"] == json!(after.reference)).collect::<Vec<_>>();
-    let binding = deliveries.first().map(|fact| fact.binding.clone())
-        .or(bound(state, &command.run_turn_id)?.map(|fact| fact.binding));
-    let Some(binding) = binding else { return Ok(Value::Null); };
-    let version = state.read_presentation(&command.session_id, &after.reference)?;
-    let scene = state.read_presentation_state(after)?;
-    let previous = state.read_presentation_state(before)?;
+    let binding = bound(state, &command.run_turn_id)?.map(|fact| fact.binding)
+        .or_else(|| deliveries.first().map(|fact| fact.binding.clone()));
+    let Some(mut binding) = binding else { return Ok(Value::Null); };
+    binding.chat_session_id = command.session_id.clone();
+    binding.turn_id = command.run_turn_id.clone();
     let mut shown = Vec::new();
     for item in support.as_array().into_iter().flatten() {
         let region_id = item["region_id"].as_str().ok_or_else(|| invalid("演示帮助缺少区域"))?;
@@ -53,9 +55,9 @@ pub(crate) fn record_presentation_action(
             let payload = json!({"delivery_ref":delivery.event_id,"action":if matches!(action, PresentationAction::Reveal{..}|PresentationAction::Annotate{..}) {"reveal"} else {"demonstration"},
                 "actor":"teacher","origin":"presentation_interaction","text":text,"regions":shown,
                 "action_ref":action_ref,"before_receipt":before,"scene":scene});
-            let offered = append(state, &delivery.binding, format!("help:{action_ref}:{}", delivery.event_id),
+            let offered = append(state, &binding, format!("help:{action_ref}:{}", delivery.event_id),
                 TeachingFact::HelpDelivered, vec![operation.event_id.clone(), delivery.event_id.clone()], payload.clone(), now)?;
-            let seen = append(state, &delivery.binding, format!("seen:{}", offered.event_id),
+            let seen = append(state, &binding, format!("seen:{}", offered.event_id),
                 TeachingFact::HelpDisplayed, vec![offered.event_id], payload, now)?;
             help_refs.push(seen.event_id);
         }

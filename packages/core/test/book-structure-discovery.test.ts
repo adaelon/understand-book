@@ -71,6 +71,39 @@ it("starts with source outline, persists distinct same-LID candidates and reject
   expect(readFileSync(new URL("../../../agents/book-structure-discovery-extractor.md", import.meta.url), "utf8")).toBe(STRUCTURE_DISCOVERY_PROMPT);
 }, 120000);
 
+it("registers auxiliary discovery contributors with their delivered evidence rather than their source position", () => {
+  const f = structureProductionFixture(1);
+  // Shared concepts are positioned at the heading but deliver the supporting
+  // body excerpt. Enough concepts force the supported auxiliary-shard route.
+  f.write("base.json", { graph_edges: [], graph_nodes: Array.from({ length: 180 }, (_, i) => ({
+    id: `concept:shared-${i}`, type: "concept", name: "A local ownership concept ".repeat(40),
+    occurrences: ["1.1", "1.2"], source_lid: null,
+  })) });
+  const outline = Object.values(f.get().generation_tasks!).find(g => g.kind === "book_structure"
+    && g.task.descriptor.kind === "structure_outline");
+  if (!outline || outline.kind !== "book_structure") throw Error("outline expected");
+  f.submit(outline.task);
+  const discovery = f.get();
+  const tasks = discovery.pending_tasks.map(id => discovery.generation_tasks![id])
+    .filter(g => g.kind === "book_structure" && g.task.output_role === "unit_observation");
+  const auxiliary = tasks.filter(g => g.kind === "book_structure" && "shard_kind" in g.task.input
+    && g.task.input.shard_kind !== "leaf_core");
+  expect(auxiliary.length).toBeGreaterThan(0);
+  expect(auxiliary.some(g => g.kind === "book_structure" && !g.task.descriptor.evidence_lids.includes("1.1"))).toBe(true);
+  for (const generation of tasks) {
+    if (generation.kind === "book_structure") f.submit(generation.task);
+  }
+  const accepted = f.get();
+  const descriptors = new Map(accepted.work_units!.map(d => [d.work_unit_id, d]));
+  for (const contributor of accepted.quality_routing!.public_contributors) {
+    expect(contributor.parent_lids.length).toBeGreaterThan(0);
+    expect(contributor.parent_lids.every(lid => descriptors.get(contributor.work_unit_id)!.evidence_lids.includes(lid))).toBe(true);
+  }
+  expect(accepted.quality_routing!.book_structure_coverage![0]).toMatchObject({
+    expected_leaf_count: 3, covered_leaf_count: 3, gap_count: 0, core_overlap_count: 0,
+  });
+}, 120000);
+
 it("identifies missing and unexpected observation fields in the next-generation correction", () => {
   const f = structureProductionFixture(1);
   const outline = Object.values(f.get().generation_tasks!)[0];

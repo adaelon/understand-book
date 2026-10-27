@@ -1,3 +1,19 @@
+const storageKey = 'understand-book.locale';
+const requested = new URLSearchParams(location.search).get('lang');
+let language = requested === 'en' || requested === 'zh-CN' ? requested : 'zh-CN';
+try {
+  if (requested === 'en' || requested === 'zh-CN') localStorage.setItem(storageKey, language);
+  else language = localStorage.getItem(storageKey) === 'en' ? 'en' : 'zh-CN';
+} catch { /* Language links also work without browser storage. */ }
+const text = (zh, en) => language === 'en' ? en : zh;
+document.documentElement.lang = language;
+document.title = text('Understand Book · 登录', 'Understand Book · Sign in');
+if (language === 'en') for (const element of document.querySelectorAll('[data-en]')) element.textContent = element.dataset.en;
+const selector = document.querySelector('#language');
+selector.value = language;
+selector.addEventListener('change', () => {
+  const url = new URL(location.href); url.searchParams.set('lang', selector.value); location.assign(url.href);
+});
 const form = document.querySelector('#login');
 const library = document.querySelector('#library');
 const notice = document.querySelector('#notice');
@@ -20,7 +36,7 @@ async function request(path, body) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
-    const error = new Error(response.status === 429 ? '尝试过于频繁，请稍后再试。' : response.status === 401 ? '账号或密码不正确，或登录已失效。' : '请求未完成，请重试。');
+    const error = new Error(response.status === 429 ? text('尝试过于频繁，请稍后再试。', 'Too many attempts. Please try again later.') : response.status === 401 ? text('账号或密码不正确，或登录已失效。', 'The account or password is incorrect, or your session has expired.') : text('请求未完成，请重试。', 'The request could not be completed. Please try again.'));
     error.status = response.status;
     throw error;
   }
@@ -61,7 +77,7 @@ form.addEventListener('submit', async event => {
 });
 document.querySelector('#logout').addEventListener('click', async () => {
   const current = generation;
-  try { await request('/auth/logout', {}); if (generation === current) { clearAccount(); notice.textContent = '已退出登录。'; } }
+  try { await request('/auth/logout', {}); if (generation === current) { clearAccount(); notice.textContent = text('已退出登录。', 'Signed out.'); } }
   catch (error) { if (generation === current) { if (error.status === 401) clearAccount(); notice.textContent = error.message; } }
 });
 window.addEventListener('pageshow', async () => {

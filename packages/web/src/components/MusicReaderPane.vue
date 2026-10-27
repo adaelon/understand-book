@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Play, Pause, RotateCcw, Repeat2, Focus, Music2, MessageCircle, Minus, Plus, X, ChevronDown, Volume2, SlidersHorizontal, Maximize2, Minimize2, ArrowUpRight, Check, Scan } from '@lucide/vue';
 import type { MusicContext, MusicCommand, MusicPlaybackReceipt, MusicQuestionContext } from '../music-api';
@@ -57,7 +59,7 @@ async function finishScoreSelection(event: PointerEvent) {
   if (!scoreDrag || scoreDrag.id !== event.pointerId || !selectionContext) return;
   moveScoreSelection(event);
   const { svg, rect } = scoreDrag, question = selectionContext, source = props.context;
-  if (!rect) { scoreDrag = null; selectionBox.value = null; selectionError.value = '请拖出一个框，圈住想问的谱线、音符或符号'; return; }
+  if (!rect) { scoreDrag = null; selectionBox.value = null; selectionError.value = uiText('请拖出一个框，圈住想问的谱线、音符或符号'); return; }
   const image = captureScoreQuestionImage(svg, rect);
   cancelSelection(); capturing.value = true; emit('image-loading', true);
   try {
@@ -92,18 +94,18 @@ const detailedSections = computed(() => manifest.value.structure.filter(section 
 const demoUrl = computed(() => props.context.demonstrations.find(asset => asset.demonstration_id === demo.value?.demonstration_id)?.url);
 const positionKey = computed(() => `music-position:${props.owner}:${manifest.value.recording.source.recording_id}:${manifest.value.recording.source.revision}`);
 const focusLabel = computed(() => {
-  if (selectedRole.value) return roleGroups.value.find(group => group.key === selectedRole.value)?.label ?? '音乐作用';
+  if (selectedRole.value) return roleGroups.value.find(group => group.key === selectedRole.value)?.label ?? uiText('音乐作用');
   const count = focused.value.length + focusedVoices.value.length;
-  if (!count) return '全部声部';
+  if (!count) return uiText('全部声部');
   if (count === 1 && focusedVoices.value[0]) return voiceLabel(focusedVoices.value[0].part_id, focusedVoices.value[0].voice);
-  if (count === 1) return manifest.value.parts.find(part => part.part_id === focused.value[0])?.name ?? '关注声部';
-  return `关注 ${count} 个声部`;
+  if (count === 1) return manifest.value.parts.find(part => part.part_id === focused.value[0])?.name ?? uiText('关注声部');
+  return uiText('关注 {0} 个声部', [count]);
 });
-const materialHint = computed(() => manifest.value.recording.kind === 'score_synthesis' ? '谱面合成 · 音频由乐谱生成，并非原录音' : noteCoverageReady.value ? '原录音 · 已校准逐音符跟谱' : anyCoverageReady.value ? '原录音 · 已有片段定位，逐音符跟谱待校准' : '原录音 · 录音与谱面的对齐待校准，可以自由回听、查看谱面');
+const materialHint = computed(() => manifest.value.recording.kind === 'score_synthesis' ? uiText('谱面合成 · 音频由乐谱生成，并非原录音') : noteCoverageReady.value ? uiText('原录音 · 已校准逐音符跟谱') : anyCoverageReady.value ? uiText('原录音 · 已有片段定位，逐音符跟谱待校准') : uiText('原录音 · 录音与谱面的对齐待校准，可以自由回听、查看谱面'));
 function resetFocus() { userControl(); selectedRole.value = null; focused.value = []; focusedVoices.value = []; paint(); }
 function dismissMenus(event: PointerEvent) { const target = event.target as Element; if (!target.closest('.music-focus-control')) focusMenu.value = false; if (!target.closest('.music-guide, .music-details-toggle')) details.value = false; }
 function closeMenus(event: KeyboardEvent) { if (event.key !== 'Escape') return; cancelSelection(); if (focusMenu.value) { focusMenu.value = false; focusToggle.value?.focus(); } details.value = false; }
-async function toggleFullscreen() { try { if (document.fullscreenElement === pane.value) await document.exitFullscreen(); else await pane.value?.requestFullscreen(); } catch { error.value = '暂时无法进入全屏，请使用窗口内的乐谱视图。'; } }
+async function toggleFullscreen() { try { if (document.fullscreenElement === pane.value) await document.exitFullscreen(); else await pane.value?.requestFullscreen(); } catch { error.value = uiText('暂时无法进入全屏，请使用窗口内的乐谱视图。'); } }
 function syncFullscreen() { fullscreen.value = document.fullscreenElement === pane.value; }
 function partColor(id: string, voice?: string) { const index = manifest.value.parts.length === 1 && voice ? manifest.value.parts[0].voices.indexOf(voice) : manifest.value.parts.findIndex(part => part.part_id === id); return MUSIC_PART_COLORS[Math.max(0, index) % MUSIC_PART_COLORS.length]; }
 function roleFor(id: string) { return [...new Set(activeEvents.value.flatMap(event => event.roles.filter(role => role.part_id === id).map(role => role.role)))].join(' · '); }
@@ -116,7 +118,7 @@ function followRole() { const id = [...roleColors.value.keys()].find(id => { con
 function selectRole(group: MusicRoleGroup) { userControl(); selectedRole.value = selectedRole.value === group.key ? null : group.key; focusRole(selectedRole.value ? group : undefined); applyFocus(); paint(); followRole(); }
 function changeColorMode() { userControl(); selectedRole.value = null; focused.value = []; focusedVoices.value = []; applyRoleColors(); applyFocus(); paint(); }
 function applyRoleColors() { for (const marker of markers.values()) marker.colors(colorMode.value === 'role' ? roleColors.value : null); }
-function voiceLabel(partId: string, voice: string) { const part = manifest.value.parts.find(item => item.part_id === partId); const staff = voice.split(':')[0]; const siblings = part?.voices.filter(item => item.split(':')[0] === staff) ?? []; const name = staff === '1' ? '上谱表' : staff === '2' ? '下谱表' : `谱表 ${staff}`; return `${name}${siblings.length > 1 ? ` · 声部 ${siblings.indexOf(voice) + 1}` : ''}`; }
+function voiceLabel(partId: string, voice: string) { const part = manifest.value.parts.find(item => item.part_id === partId); const staff = voice.split(':')[0]; const siblings = part?.voices.filter(item => item.split(':')[0] === staff) ?? []; const name = staff === '1' ? uiText('上谱表') : staff === '2' ? uiText('下谱表') : uiText('谱表 {0}', [staff]); return `${name}${siblings.length > 1 ? uiText(' · 声部 {0}', [siblings.indexOf(voice) + 1]) : ''}`; }
 function voiceRole(partId: string, voice: string) { return [...new Set(activeEvents.value.flatMap(event => event.roles.filter(role => role.part_id === partId && role.voice_ids?.includes(voice)).map(role => role.role)))].join(' · '); }
 function setPageHost(id: string, element: unknown) { if (element instanceof HTMLElement) pageHosts.set(id, element); else pageHosts.delete(id); }
 let frame = 0, disposed = false, releasePlayer: (() => void) | undefined;
@@ -179,26 +181,26 @@ function resumeFollow() { following.value = true; lastFollow = ''; const id = ac
 function browseScore() { following.value = false; }
 function keyBrowse(event: KeyboardEvent) { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) browseScore(); }
 async function play() {
-  const audio = player.value; if (!audio) throw new Error('播放器尚未就绪');
-  if (audio.error) throw new Error('录音暂不可读取，请重新打开资料');
+  const audio = player.value; if (!audio) throw new Error(uiText('播放器尚未就绪'));
+  if (audio.error) throw new Error(uiText('录音暂不可读取，请重新打开资料'));
   exitDemo(); await audio.play(); error.value = '';
 }
 async function displayCue(eventId?: string | null) {
   const event = eventId == null ? null : manifest.value.events.find(item => item.event_id === eventId);
-  if (eventId != null && (!event || !event.listen_for.trim())) throw new Error('这份作品中没有可用的伴听提示');
+  if (eventId != null && (!event || !event.listen_for.trim())) throw new Error(uiText('这份作品中没有可用的伴听提示'));
   displayedCue.value = event ? { event_id: event.event_id, text: event.listen_for } : null;
   if (!event) return;
   const revision = controlRevision, context = props.context;
   await nextTick();
   // The first callback precedes paint; the second allows the cue to be drawn before sound starts.
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-  if (disposed || revision !== controlRevision || context !== props.context) throw new Error('播放方式已改变，请重新观察当前音乐后再操作');
+  if (disposed || revision !== controlRevision || context !== props.context) throw new Error(uiText('播放方式已改变，请重新观察当前音乐后再操作'));
 }
-async function togglePlay() { userControl(); try { if (player.value?.paused) await play(); else player.value?.pause(); } catch (failure) { error.value = `播放未开始：${(failure as Error).message}。请点播放重试。`; } }
+async function togglePlay() { userControl(); try { if (player.value?.paused) await play(); else player.value?.pause(); } catch (failure) { error.value = uiText('播放未开始：{0}。请点播放重试。', [(failure as Error).message]); } }
 function seek(ms: number) {
   const audio = player.value;
-  if (!audio || !audio.readyState) throw new Error('请等待录音加载');
-  if (!Number.isFinite(ms) || ms < 0 || ms > manifest.value.recording.duration_ms) throw new Error('播放位置超出录音范围');
+  if (!audio || !audio.readyState) throw new Error(uiText('请等待录音加载'));
+  if (!Number.isFinite(ms) || ms < 0 || ms > manifest.value.recording.duration_ms) throw new Error(uiText('播放位置超出录音范围'));
   exitDemo();
   audio.currentTime = ms / 1000; stopAt.value = null; position.value = ms; lastFollow = ''; paint(); remember();
 }
@@ -208,7 +210,7 @@ async function confirmedSeek(ms: number) {
   if (!audio.seeking) return;
   await new Promise<void>((resolve, reject) => {
     const done = () => { clearTimeout(timer); audio.removeEventListener('seeked', done); audio.removeEventListener('error', failed); resolve(); };
-    const failed = () => { clearTimeout(timer); audio.removeEventListener('seeked', done); audio.removeEventListener('error', failed); reject(new Error('未能确认录音跳转，请重试')); };
+    const failed = () => { clearTimeout(timer); audio.removeEventListener('seeked', done); audio.removeEventListener('error', failed); reject(new Error(uiText('未能确认录音跳转，请重试'))); };
     const timer = setTimeout(failed, 5000);
     audio.addEventListener('seeked', done, { once: true }); audio.addEventListener('error', failed, { once: true });
   });
@@ -217,7 +219,7 @@ async function confirmedSeek(ms: number) {
 function seekInput(event: Event) { userControl(); try { seek(Number((event.target as HTMLInputElement).value)); } catch (failure) { error.value = (failure as Error).message; } }
 function changeRate(user = false) { if (user) userControl(); if (player.value) player.value.playbackRate = rate.value; remember(); }
 function seekSection(start: number | null) { details.value = false; userControl(); if (start === null) return; player.value?.pause(); loop.value = null; try { seek(start); resumeFollow(); } catch (failure) { error.value = (failure as Error).message; } }
-function setLoop(start: number, end: number) { if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > manifest.value.recording.duration_ms) throw new Error('请选择录音内有效的循环片段'); exitDemo(); loop.value = { start_ms: start, end_ms: end }; stopAt.value = null; if (position.value < start || position.value >= end) seek(start); }
+function setLoop(start: number, end: number) { if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > manifest.value.recording.duration_ms) throw new Error(uiText('请选择录音内有效的循环片段')); exitDemo(); loop.value = { start_ms: start, end_ms: end }; stopAt.value = null; if (position.value < start || position.value >= end) seek(start); }
 function toggleLoop() { userControl(); if (loop.value) { loop.value = null; return; } const span = activeEvent.value ?? activeOccurrence.value; if (span) setLoop(span.start_ms, span.end_ms); }
 async function listenEvent(event: MusicEvent) { userControl(); try { loop.value = null; seek(event.start_ms); stopAt.value = event.end_ms; resumeFollow(); await displayCue(event.event_id); await play(); } catch (failure) { error.value = (failure as Error).message; } }
 function captureQuestion(draftId = crypto.randomUUID()) { userControl(); player.value?.pause(); demoPlayer.value?.pause(); sync(); return musicQuestion(manifest.value, props.context.publication, position.value, focused.value, draftId, focusedVoices.value); }
@@ -228,16 +230,16 @@ async function ask() {
     emit('question', question);
   } catch (failure) { error.value = (failure as Error).message; }
 }
-async function showDemo(item: MusicDemonstration, autoplay = false, cueEventId?: string | null) { details.value = false; if (!autoplay) userControl(); player.value?.pause(); demoPlayer.value?.pause(); demo.value = item; await nextTick(); if (autoplay) { if (!demoPlayer.value || !demoUrl.value) throw new Error('这份示范音频暂不可读取'); await displayCue(cueEventId); await demoPlayer.value.play(); } }
+async function showDemo(item: MusicDemonstration, autoplay = false, cueEventId?: string | null) { details.value = false; if (!autoplay) userControl(); player.value?.pause(); demoPlayer.value?.pause(); demo.value = item; await nextTick(); if (autoplay) { if (!demoPlayer.value || !demoUrl.value) throw new Error(uiText('这份示范音频暂不可读取')); await displayCue(cueEventId); await demoPlayer.value.play(); } }
 function exitDemo() { demoPlayer.value?.pause(); demo.value = null; }
 function closeDemo() { userControl(); exitDemo(); }
 async function execute(command: MusicCommand): Promise<MusicPlaybackReceipt> {
   let failure: string | null = null;
   commandRevisions.set(command.command_id, controlRevision);
   try {
-    if (command.request.operation === 'act' && (!lastReceipt || command.request.based_on !== lastReceipt.id || lastReceipt.revision !== controlRevision)) throw new Error('你已调整播放位置或播放方式，请重新观察当前音乐后再操作');
-    if (command.request.publication.book_id !== props.context.publication.book_id || command.request.publication.publication_id !== props.context.publication.publication_id || command.request.recording.recording_id !== manifest.value.recording.source.recording_id || command.request.recording.revision !== manifest.value.recording.source.revision) throw new Error('播放器中的录音版本已改变');
-    if (!player.value?.readyState) throw new Error('录音尚未加载完成');
+    if (command.request.operation === 'act' && (!lastReceipt || command.request.based_on !== lastReceipt.id || lastReceipt.revision !== controlRevision)) throw new Error(uiText('你已调整播放位置或播放方式，请重新观察当前音乐后再操作'));
+    if (command.request.publication.book_id !== props.context.publication.book_id || command.request.publication.publication_id !== props.context.publication.publication_id || command.request.recording.recording_id !== manifest.value.recording.source.recording_id || command.request.recording.revision !== manifest.value.recording.source.revision) throw new Error(uiText('播放器中的录音版本已改变'));
+    if (!player.value?.readyState) throw new Error(uiText('录音尚未加载完成'));
     const action = command.request.action;
     if (command.request.operation === 'act' && action) switch (action.kind) {
       case 'play': {
@@ -251,9 +253,9 @@ async function execute(command: MusicCommand): Promise<MusicPlaybackReceipt> {
       case 'seek': displayedCue.value = null; await confirmedSeek(action.time_ms); break;
       case 'loop': displayedCue.value = null; setLoop(action.start_ms, action.end_ms); if (player.value.seeking) await confirmedSeek(position.value); break;
       case 'clear_loop': loop.value = null; break;
-      case 'focus': if (action.part_ids.some(id => !manifest.value.parts.some(part => part.part_id === id)) || action.voices?.some(item => !manifest.value.parts.find(part => part.part_id === item.part_id)?.voices.includes(item.voice))) throw new Error('所选声部不在这份乐谱中'); selectedRole.value = null; focused.value = [...action.part_ids]; focusedVoices.value = (action.voices ?? []).map(item => ({ ...item })); paint(); break;
-      case 'rate': if (!Number.isFinite(action.rate) || action.rate < .5 || action.rate > 2) throw new Error('播放速度应在 0.5 到 2 倍之间'); rate.value = action.rate; changeRate(); break;
-      case 'demonstration': { const item = manifest.value.demonstrations.find(item => item.demonstration_id === action.demonstration_id); if (!item) throw new Error('示范素材不存在'); await showDemo(item, true, action.cue_event_id); break; }
+      case 'focus': if (action.part_ids.some(id => !manifest.value.parts.some(part => part.part_id === id)) || action.voices?.some(item => !manifest.value.parts.find(part => part.part_id === item.part_id)?.voices.includes(item.voice))) throw new Error(uiText('所选声部不在这份乐谱中')); selectedRole.value = null; focused.value = [...action.part_ids]; focusedVoices.value = (action.voices ?? []).map(item => ({ ...item })); paint(); break;
+      case 'rate': if (!Number.isFinite(action.rate) || action.rate < .5 || action.rate > 2) throw new Error(uiText('播放速度应在 0.5 到 2 倍之间')); rate.value = action.rate; changeRate(); break;
+      case 'demonstration': { const item = manifest.value.demonstrations.find(item => item.demonstration_id === action.demonstration_id); if (!item) throw new Error(uiText('示范素材不存在')); await showDemo(item, true, action.cue_event_id); break; }
     }
     sync();
   } catch (reason) { failure = (reason as Error).message; error.value = failure; }
@@ -266,7 +268,7 @@ async function loadScores() {
   const started = import.meta.env.DEV ? performance.now() : 0;
   const generation = ++loadGeneration; scoreLoading.value = true; scoreError.value = '';
   try {
-    const pages = await Promise.all(props.context.score_pages.map(async page => { const response = await fetch(page.url, { credentials: 'same-origin' }); if (!response.ok) throw new Error('乐谱暂不可读取，请重试'); const svg = await response.text(); const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml'); if (parsed.querySelector('parsererror') || parsed.documentElement.localName !== 'svg') throw new Error('乐谱内容无法显示'); return [page.page_id, svg] as const; }));
+    const pages = await Promise.all(props.context.score_pages.map(async page => { const response = await fetch(page.url, { credentials: 'same-origin' }); if (!response.ok) throw new Error(uiText('乐谱暂不可读取，请重试')); const svg = await response.text(); const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml'); if (parsed.querySelector('parsererror') || parsed.documentElement.localName !== 'svg') throw new Error(uiText('乐谱内容无法显示')); return [page.page_id, svg] as const; }));
     if (disposed || generation !== loadGeneration) return;
     pageMarkup.value = Object.fromEntries(pages); await nextTick(); rebuildMarkers(); initialOrchestraFocus(); if (import.meta.env.DEV) recordMusicTiming('scores_load_and_geometry', performance.now() - started);
   } catch (failure) { if (generation === loadGeneration) scoreError.value = (failure as Error).message; }
@@ -287,71 +289,71 @@ defineExpose({ captureQuestion, seek, execute, openSource, playerId });
 </script>
 
 <template>
-  <section ref="pane" class="music-reader reader-pane" aria-label="音乐伴听" @pointerdown="dismissMenus" @keydown="closeMenus">
-    <audio ref="player" :src="context.audio_url" preload="metadata" @loadedmetadata="loaded" @play="onPlay" @pause="onPause" @timeupdate="sync" @seeked="sync" @ended="onPause" @waiting="buffering = true" @playing="buffering = false" @error="error = '录音暂不可读取，请重新打开资料'" />
+  <section ref="pane" class="music-reader reader-pane" :aria-label="uiText('音乐伴听')" @pointerdown="dismissMenus" @keydown="closeMenus">
+    <audio ref="player" :src="context.audio_url" preload="metadata" @loadedmetadata="loaded" @play="onPlay" @pause="onPause" @timeupdate="sync" @seeked="sync" @ended="onPause" @waiting="buffering = true" @playing="buffering = false" @error="error = uiText('录音暂不可读取，请重新打开资料')" />
     <header class="music-heading">
       <div class="music-heading-mark" aria-hidden="true"><Music2 :size="22" :stroke-width="1.4" /></div>
       <div class="music-heading-copy">
         <h1 :title="manifest.work.title">{{ manifest.work.title }}</h1>
         <p class="music-subtitle" :title="`${manifest.work.composer} · ${manifest.work.movement ?? ''}`">{{ manifest.work.composer }}<span v-if="manifest.work.movement"> · {{ manifest.work.movement }}</span></p>
       </div>
-      <button class="music-details-toggle" :aria-expanded="details" aria-controls="music-work-guide" @click="details = !details; focusMenu = false"><span>作品导览</span><ChevronDown :size="15" :class="{ rotated: details }" /></button>
+      <button class="music-details-toggle" :aria-expanded="details" aria-controls="music-work-guide" @click="details = !details; focusMenu = false"><span>{{ uiText('作品导览') }}</span><ChevronDown :size="15" :class="{ rotated: details }" /></button>
     </header>
-    <aside v-if="details" id="music-work-guide" class="music-guide" aria-label="作品导览">
-      <div class="music-panel-heading"><span>走进这首作品</span><button aria-label="关闭作品导览" @click="details = false"><X :size="17" /></button></div>
+    <aside v-if="details" id="music-work-guide" class="music-guide" :aria-label="uiText('作品导览')">
+      <div class="music-panel-heading"><span>{{ uiText('走进这首作品') }}</span><button :aria-label="uiText('关闭作品导览')" @click="details = false"><X :size="17" /></button></div>
       <h2 class="music-guide-title">{{ manifest.work.title }}</h2><p class="music-guide-subtitle">{{ manifest.work.composer }}<span v-if="manifest.work.movement"> · {{ manifest.work.movement }}</span></p>
       <p class="music-recording"><Volume2 :size="15" /> {{ manifest.recording.title }} <span>{{ manifest.recording.performers }}</span></p>
-      <nav aria-label="作品段落" class="music-sections"><button v-for="section in detailedSections" :key="section.section_id" @click="seekSection(section.start_ms)"><span>{{ section.title }}</span><small>{{ musicTime(section.start_ms ?? 0) }}{{ section.coverage === 'navigation_only' ? ' · 整体导览' : '' }}</small></button></nav>
-      <nav v-if="manifest.events.length" aria-label="音乐事件" class="music-event-links"><button v-for="event in manifest.events" :key="event.event_id" @click="seekSection(event.start_ms)"><span>{{ event.title }}</span><small>{{ musicTime(event.start_ms) }}–{{ musicTime(event.end_ms) }} <ArrowUpRight :size="13" /></small></button></nav>
-      <div v-if="manifest.demonstrations.length" class="music-demonstrations"><span>拆开听一听 <small>谱面合成示范</small></span><button v-for="item in manifest.demonstrations" :key="item.demonstration_id" @click="showDemo(item)"><Play :size="12" />{{ item.title }}</button></div>
-      <details class="music-credits"><summary>录音与谱本来源</summary><p v-for="(right, index) in manifest.rights" :key="index"><a :href="right.url" target="_blank" rel="noopener noreferrer">{{ right.title }}</a> · {{ right.license }}<br>{{ right.attribution }}</p></details>
+      <nav :aria-label="uiText('作品段落')" class="music-sections"><button v-for="section in detailedSections" :key="section.section_id" @click="seekSection(section.start_ms)"><span>{{ section.title }}</span><small>{{ musicTime(section.start_ms ?? 0) }}{{ section.coverage === 'navigation_only' ? uiText(' · 整体导览') : '' }}</small></button></nav>
+      <nav v-if="manifest.events.length" :aria-label="uiText('音乐事件')" class="music-event-links"><button v-for="event in manifest.events" :key="event.event_id" @click="seekSection(event.start_ms)"><span>{{ event.title }}</span><small>{{ musicTime(event.start_ms) }}–{{ musicTime(event.end_ms) }} <ArrowUpRight :size="13" /></small></button></nav>
+      <div v-if="manifest.demonstrations.length" class="music-demonstrations"><span>{{ uiText('拆开听一听') }} <small>{{ uiText('谱面合成示范') }}</small></span><button v-for="item in manifest.demonstrations" :key="item.demonstration_id" @click="showDemo(item)"><Play :size="12" />{{ item.title }}</button></div>
+      <details class="music-credits"><summary>{{ uiText('录音与谱本来源') }}</summary><p v-for="(right, index) in manifest.rights" :key="index"><a :href="right.url" target="_blank" rel="noopener noreferrer">{{ right.title }}</a> · {{ right.license }}<br>{{ right.attribution }}</p></details>
     </aside>
 
     <div class="music-score-toolbar">
       <div class="music-focus-control">
         <button ref="focusToggle" class="music-focus-toggle" :class="{ selected: focused.length || focusedVoices.length || selectedRole }" :aria-expanded="focusMenu" aria-controls="music-focus-menu" @click="focusMenu = !focusMenu; details = false"><SlidersHorizontal :size="15" /><span>{{ focusLabel }}</span><ChevronDown :size="12" /></button>
-        <div v-if="focusMenu" id="music-focus-menu" class="music-focus-menu" role="region" aria-label="选择关注的声部">
-          <div class="music-panel-heading"><span>选择关注的声音</span><button aria-label="关闭声部选择" @click="focusMenu = false; focusToggle?.focus()"><X :size="16" /></button></div>
-          <p class="music-focus-hint">突出谱上的线条，原录音仍完整播放。</p>
-          <label class="music-color-mode">着色方式 <select v-model="colorMode" aria-label="谱面着色方式" @change="changeColorMode"><option value="part">乐器与声部</option><option value="role">音乐作用</option></select></label>
-          <div v-if="colorMode === 'part'" class="music-part-options" aria-label="谱面声部聚焦">
-            <button :aria-pressed="!focused.length && !focusedVoices.length" @click="resetFocus"><span>全部声部</span><Check v-if="!focused.length && !focusedVoices.length" :size="14" /></button>
+        <div v-if="focusMenu" id="music-focus-menu" class="music-focus-menu" role="region" :aria-label="uiText('选择关注的声部')">
+          <div class="music-panel-heading"><span>{{ uiText('选择关注的声音') }}</span><button :aria-label="uiText('关闭声部选择')" @click="focusMenu = false; focusToggle?.focus()"><X :size="16" /></button></div>
+          <p class="music-focus-hint">{{ uiText('突出谱上的线条，原录音仍完整播放。') }}</p>
+          <label class="music-color-mode">{{ uiText('着色方式') }} <select v-model="colorMode" :aria-label="uiText('谱面着色方式')" @change="changeColorMode"><option value="part">{{ uiText('乐器与声部') }}</option><option value="role">{{ uiText('音乐作用') }}</option></select></label>
+          <div v-if="colorMode === 'part'" class="music-part-options" :aria-label="uiText('谱面声部聚焦')">
+            <button :aria-pressed="!focused.length && !focusedVoices.length" @click="resetFocus"><span>{{ uiText('全部声部') }}</span><Check v-if="!focused.length && !focusedVoices.length" :size="14" /></button>
             <button v-for="part in manifest.parts" :key="part.part_id" :aria-pressed="focused.includes(part.part_id)" :style="{ '--part-color': partColor(part.part_id) }" @click="togglePart(part.part_id)"><i></i><span>{{ part.name }}<small v-if="roleFor(part.part_id)">{{ roleFor(part.part_id) }}</small></span><Check v-if="focused.includes(part.part_id)" :size="14" /></button>
           </div>
-          <div v-else class="music-part-options music-role-options" aria-label="音乐作用聚焦"><button v-for="group in roleGroups" :key="group.key" :aria-pressed="selectedRole === group.key" :style="{ '--part-color': group.color }" @click="selectRole(group)"><i></i><span>{{ group.label }}<small>{{ roleParticipants(group) }}</small></span><Check v-if="selectedRole === group.key" :size="14" /></button><p v-if="!roleGroups.length" class="music-role-empty">这段还没有音乐作用标注</p></div>
-          <div v-if="colorMode === 'part' && visibleVoiceParts.length" class="music-voice-options" aria-label="谱面内的声部"><p>跟着一条线听</p><template v-for="part in visibleVoiceParts" :key="part.part_id"><button v-for="voice in part.voices" :key="voice" :aria-pressed="voiceSelected(part.part_id, voice)" :style="{ '--part-color': partColor(part.part_id, voice) }" @click="toggleVoice(part.part_id, voice)"><i></i><span>{{ voiceLabel(part.part_id, voice) }}<small v-if="voiceRole(part.part_id, voice)">{{ voiceRole(part.part_id, voice) }}</small></span><Check v-if="voiceSelected(part.part_id, voice)" :size="14" /></button></template></div>
+          <div v-else class="music-part-options music-role-options" :aria-label="uiText('音乐作用聚焦')"><button v-for="group in roleGroups" :key="group.key" :aria-pressed="selectedRole === group.key" :style="{ '--part-color': group.color }" @click="selectRole(group)"><i></i><span>{{ group.label }}<small>{{ roleParticipants(group) }}</small></span><Check v-if="selectedRole === group.key" :size="14" /></button><p v-if="!roleGroups.length" class="music-role-empty">{{ uiText('这段还没有音乐作用标注') }}</p></div>
+          <div v-if="colorMode === 'part' && visibleVoiceParts.length" class="music-voice-options" :aria-label="uiText('谱面内的声部')"><p>{{ uiText('跟着一条线听') }}</p><template v-for="part in visibleVoiceParts" :key="part.part_id"><button v-for="voice in part.voices" :key="voice" :aria-pressed="voiceSelected(part.part_id, voice)" :style="{ '--part-color': partColor(part.part_id, voice) }" @click="toggleVoice(part.part_id, voice)"><i></i><span>{{ voiceLabel(part.part_id, voice) }}<small v-if="voiceRole(part.part_id, voice)">{{ voiceRole(part.part_id, voice) }}</small></span><Check v-if="voiceSelected(part.part_id, voice)" :size="14" /></button></template></div>
         </div>
       </div>
-      <span class="music-material-tag" :class="{ pending: !noteCoverageReady, synthesis: manifest.recording.kind === 'score_synthesis' }" :title="materialHint"><i></i>{{ manifest.recording.kind === 'score_synthesis' ? '谱面合成' : '原录音' }}<span v-if="!noteCoverageReady" class="music-precision-label"> · 跟谱待校准</span></span>
+      <span class="music-material-tag" :class="{ pending: !noteCoverageReady, synthesis: manifest.recording.kind === 'score_synthesis' }" :title="materialHint"><i></i>{{ manifest.recording.kind === 'score_synthesis' ? uiText('谱面合成') : uiText('原录音') }}<span v-if="!noteCoverageReady" class="music-precision-label"> {{ uiText('· 跟谱待校准') }}</span></span>
       <div class="music-toolbar-spacer"></div>
-      <button class="music-screenshot" :class="{ active: selecting }" :aria-pressed="selecting" :disabled="selectionDisabled || capturing || scoreLoading || !!scoreError" :aria-label="selecting ? '取消框选谱面' : '框选谱面提问'" title="框住看不懂的谱线、音符或符号" @click="beginSelection"><Scan :size="15" /><span>{{ capturing ? '截图中…' : selecting ? '取消框选' : '框选谱面' }}</span></button>
-      <button class="music-follow-toggle" :disabled="!activeOccurrence && !hasSelectedRole" :class="{ 'is-detached': !following }" :aria-label="!activeOccurrence && hasSelectedRole ? '回到主题谱面' : '回到播放位置'" :title="!activeOccurrence && hasSelectedRole ? '回到主题谱面' : '回到播放位置'" @click="resumeFollow"><Focus :size="14" /><span>{{ !following ? '回到播放位置' : activeOccurrence ? `第 ${activeOccurrence.measure} 小节` : hasSelectedRole ? '主题谱面' : '跟随' }}</span></button>
-      <div class="music-zoom"><button :disabled="zoom <= .75" aria-label="缩小乐谱" @click="zoom = Math.max(.75, zoom - .25)"><Minus :size="14" /></button><span>{{ Math.round(zoom * 100) }}%</span><button :disabled="zoom >= 2" aria-label="放大乐谱" @click="zoom = Math.min(2, zoom + .25)"><Plus :size="14" /></button></div>
-      <button v-if="canFullscreen" class="music-fullscreen" :aria-label="fullscreen ? '退出全屏乐谱' : '全屏乐谱'" :title="fullscreen ? '退出全屏乐谱' : '全屏乐谱'" @click="toggleFullscreen"><Minimize2 v-if="fullscreen" :size="15" /><Maximize2 v-else :size="15" /></button>
+      <button class="music-screenshot" :class="{ active: selecting }" :aria-pressed="selecting" :disabled="selectionDisabled || capturing || scoreLoading || !!scoreError" :aria-label="selecting ? uiText('取消框选谱面') : uiText('框选谱面提问')" :title="uiText('框住看不懂的谱线、音符或符号')" @click="beginSelection"><Scan :size="15" /><span>{{ capturing ? uiText('截图中…') : selecting ? uiText('取消框选') : uiText('框选谱面') }}</span></button>
+      <button class="music-follow-toggle" :disabled="!activeOccurrence && !hasSelectedRole" :class="{ 'is-detached': !following }" :aria-label="!activeOccurrence && hasSelectedRole ? uiText('回到主题谱面') : uiText('回到播放位置')" :title="!activeOccurrence && hasSelectedRole ? uiText('回到主题谱面') : uiText('回到播放位置')" @click="resumeFollow"><Focus :size="14" /><span>{{ !following ? uiText('回到播放位置') : activeOccurrence ? uiText('第 {0} 小节', [activeOccurrence.measure]) : hasSelectedRole ? uiText('主题谱面') : uiText('跟随') }}</span></button>
+      <div class="music-zoom"><button :disabled="zoom <= .75" :aria-label="uiText('缩小乐谱')" @click="zoom = Math.max(.75, zoom - .25)"><Minus :size="14" /></button><span>{{ Math.round(zoom * 100) }}%</span><button :disabled="zoom >= 2" :aria-label="uiText('放大乐谱')" @click="zoom = Math.min(2, zoom + .25)"><Plus :size="14" /></button></div>
+      <button v-if="canFullscreen" class="music-fullscreen" :aria-label="fullscreen ? uiText('退出全屏乐谱') : uiText('全屏乐谱')" :title="fullscreen ? uiText('退出全屏乐谱') : uiText('全屏乐谱')" @click="toggleFullscreen"><Minimize2 v-if="fullscreen" :size="15" /><Maximize2 v-else :size="15" /></button>
     </div>
 
     <div class="music-score-stage">
-      <div ref="scoreSurface" class="music-score-surface" :class="{ 'is-selecting': selecting }" tabindex="0" aria-label="乐谱，可滚动查看" @wheel.passive="browseScore" @touchmove.passive="browseScore" @pointerdown="browseScore(); startScoreSelection($event)" @pointermove="moveScoreSelection" @pointerup="finishScoreSelection" @pointercancel="cancelSelection" @lostpointercapture="scoreDrag = null" @keydown="keyBrowse" @scroll="selectionBox = null; scoreDrag = null">
-        <div v-if="scoreLoading" class="music-score-state" role="status">正在展开乐谱…</div>
-        <div v-if="scoreError" class="music-score-state" role="alert">{{ scoreError }} <button @click="loadScores">重试</button></div>
-        <div class="music-score-sheets" :style="{ width: `${zoom * 100}%` }"><div v-for="page in manifest.pages" :key="page.page_id" :ref="element => setPageHost(page.page_id, element)" class="music-score-page" :data-page="page.page_id" :aria-label="`乐谱 ${page.page_id}`" v-html="pageMarkup[page.page_id] || ''"></div></div>
+      <div ref="scoreSurface" class="music-score-surface" :class="{ 'is-selecting': selecting }" tabindex="0" :aria-label="uiText('乐谱，可滚动查看')" @wheel.passive="browseScore" @touchmove.passive="browseScore" @pointerdown="browseScore(); startScoreSelection($event)" @pointermove="moveScoreSelection" @pointerup="finishScoreSelection" @pointercancel="cancelSelection" @lostpointercapture="scoreDrag = null" @keydown="keyBrowse" @scroll="selectionBox = null; scoreDrag = null">
+        <div v-if="scoreLoading" class="music-score-state" role="status">{{ uiText('正在展开乐谱…') }}</div>
+        <div v-if="scoreError" class="music-score-state" role="alert">{{ scoreError }} <button @click="loadScores">{{ uiText('重试') }}</button></div>
+        <div class="music-score-sheets" :style="{ width: `${zoom * 100}%` }"><div v-for="page in manifest.pages" :key="page.page_id" :ref="element => setPageHost(page.page_id, element)" class="music-score-page" :data-page="page.page_id" :aria-label="uiText('乐谱 {0}', [page.page_id])" v-html="pageMarkup[page.page_id] || ''"></div></div>
       </div>
       <div v-if="selectionBox" class="music-score-selection" :style="{ left: `${selectionBox.left}px`, top: `${selectionBox.top}px`, width: `${selectionBox.width}px`, height: `${selectionBox.height}px` }"></div>
-      <div v-if="selecting || capturing || selectionError" class="music-selection-hint" :role="selectionError ? 'alert' : 'status'"><span>{{ selectionError || (capturing ? '正在生成谱面截图…' : '拖动框住想问的地方，不用知道它叫什么') }}</span><button v-if="!capturing" :aria-label="selecting ? '取消框选' : '关闭截图提示'" @click="cancelSelection(); selectionError = ''"><X :size="14" /></button></div>
-      <div v-if="demo" class="music-demo-player"><div class="music-demo-heading"><span class="music-demo-eyebrow">拆开听 · 谱面合成</span><strong>{{ demo.title }}</strong><span>用来辨认声部，并非原录音分轨</span></div><button aria-label="返回原录音" title="返回原录音" @click="closeDemo"><X :size="17" /></button><div v-if="displayedCue" class="music-play-cue" :data-event-id="displayedCue.event_id" role="status"><strong>这一遍留意</strong><p>{{ displayedCue.text }}</p><small>作品导览 · {{ displayedCueTitle }}</small></div><audio ref="demoPlayer" :src="demoUrl" controls preload="metadata" @pointerdown="userControl" @keydown="userControl" @play="player?.pause()" /></div>
+      <div v-if="selecting || capturing || selectionError" class="music-selection-hint" :role="selectionError ? 'alert' : 'status'"><span>{{ selectionError || (capturing ? uiText('正在生成谱面截图…') : uiText('拖动框住想问的地方，不用知道它叫什么')) }}</span><button v-if="!capturing" :aria-label="selecting ? uiText('取消框选') : uiText('关闭截图提示')" @click="cancelSelection(); selectionError = ''"><X :size="14" /></button></div>
+      <div v-if="demo" class="music-demo-player"><div class="music-demo-heading"><span class="music-demo-eyebrow">{{ uiText('拆开听 · 谱面合成') }}</span><strong>{{ demo.title }}</strong><span>{{ uiText('用来辨认声部，并非原录音分轨') }}</span></div><button :aria-label="uiText('返回原录音')" :title="uiText('返回原录音')" @click="closeDemo"><X :size="17" /></button><div v-if="displayedCue" class="music-play-cue" :data-event-id="displayedCue.event_id" role="status"><strong>{{ uiText('这一遍留意') }}</strong><p>{{ displayedCue.text }}</p><small>{{ uiText('作品导览 ·') }} {{ displayedCueTitle }}</small></div><audio ref="demoPlayer" :src="demoUrl" controls preload="metadata" @pointerdown="userControl" @keydown="userControl" @play="player?.pause()" /></div>
     </div>
 
-    <div v-if="!demo && displayedCue" class="music-play-cue music-cue-strip" :data-event-id="displayedCue.event_id" role="status"><span class="music-cue-kicker">这一遍留意</span><div><p>{{ displayedCue.text }}</p><small>作品导览 · {{ displayedCueTitle }}</small></div></div>
-    <div v-else-if="!demo && activeEvent" class="music-listening-cue music-cue-strip"><span class="music-cue-kicker">听见 · {{ activeEvent.title }}</span><p>{{ activeEvent.listen_for }}</p><button title="重听这一段" aria-label="重听这一段" @click="listenEvent(activeEvent)"><RotateCcw :size="16" /></button></div>
-    <div v-if="question" class="music-question-anchor"><MessageCircle :size="14" /><span>{{ question.image ? '已附谱面图片，可以直接问「这是什么」' : `正在问 ${musicTime(question.audio.start_ms)}–${musicTime(question.audio.end_ms)} 这一段` }}</span><button :disabled="selectionDisabled" @click="emit('clear-question')" aria-label="取消片段提问"><X :size="14" /></button></div>
+    <div v-if="!demo && displayedCue" class="music-play-cue music-cue-strip" :data-event-id="displayedCue.event_id" role="status"><span class="music-cue-kicker">{{ uiText('这一遍留意') }}</span><div><p>{{ displayedCue.text }}</p><small>{{ uiText('作品导览 ·') }} {{ displayedCueTitle }}</small></div></div>
+    <div v-else-if="!demo && activeEvent" class="music-listening-cue music-cue-strip"><span class="music-cue-kicker">{{ uiText('听见 ·') }} {{ activeEvent.title }}</span><p>{{ activeEvent.listen_for }}</p><button :title="uiText('重听这一段')" :aria-label="uiText('重听这一段')" @click="listenEvent(activeEvent)"><RotateCcw :size="16" /></button></div>
+    <div v-if="question" class="music-question-anchor"><MessageCircle :size="14" /><span>{{ question.image ? uiText('已附谱面图片，可以直接问「这是什么」') : uiText('正在问 {0}–{1} 这一段', [musicTime(question.audio.start_ms), musicTime(question.audio.end_ms)]) }}</span><button :disabled="selectionDisabled" @click="emit('clear-question')" :aria-label="uiText('取消片段提问')"><X :size="14" /></button></div>
     <footer class="music-player-bar" :class="{ 'is-playing': !paused }">
       <div class="music-player-controls">
-        <button class="music-play" :aria-label="paused ? '播放音乐' : '暂停音乐'" @click="togglePlay"><Play v-if="paused" :size="19" fill="currentColor" /><Pause v-else :size="19" fill="currentColor" /></button>
-        <div class="music-playing-label"><strong><i></i>{{ buffering && !paused ? '正在缓冲' : paused ? '准备聆听' : '正在聆听' }}</strong><small>{{ manifest.recording.kind === 'score_synthesis' ? '谱面合成示范' : focused.length || focusedVoices.length ? '聚焦谱面 · 原声完整播放' : '原录音' }}</small></div>
-        <div class="music-progress"><span>{{ musicTime(position) }}</span><input type="range" min="0" :max="manifest.recording.duration_ms" :value="position" :style="{ '--progress': `${position / manifest.recording.duration_ms * 100}%` }" step="10" aria-label="音乐播放位置" @input="seekInput"><span>{{ musicTime(manifest.recording.duration_ms) }}</span></div>
-        <label class="music-rate"><span class="sr-only">播放速度</span><select v-model.number="rate" aria-label="播放速度" @change="changeRate(true)"><option :value=".5">0.5×</option><option :value=".75">0.75×</option><option :value="1">1×</option><option :value="1.25">1.25×</option><option :value="1.5">1.5×</option><option :value="2">2×</option></select></label>
-        <button class="music-loop" :class="{ active: loop }" :disabled="!loop && !activeEvent && !activeOccurrence" :aria-pressed="!!loop" :title="loop ? `循环 ${musicTime(loop.start_ms)}–${musicTime(loop.end_ms)}` : '循环当前片段'" aria-label="循环当前片段" @click="toggleLoop"><Repeat2 :size="18" /><span>{{ loop ? '循环中' : '循环' }}</span></button>
-        <button class="music-ask" :disabled="selectionDisabled" :title="demo ? `暂停示范，询问原录音 ${musicTime(position)} 附近的片段` : undefined" @click="ask"><MessageCircle :size="16" /><span>{{ demo ? '问原声这段' : '聊聊这段' }}</span></button>
+        <button class="music-play" :aria-label="paused ? uiText('播放音乐') : uiText('暂停音乐')" @click="togglePlay"><Play v-if="paused" :size="19" fill="currentColor" /><Pause v-else :size="19" fill="currentColor" /></button>
+        <div class="music-playing-label"><strong><i></i>{{ buffering && !paused ? uiText('正在缓冲') : paused ? uiText('准备聆听') : uiText('正在聆听') }}</strong><small>{{ manifest.recording.kind === 'score_synthesis' ? uiText('谱面合成示范') : focused.length || focusedVoices.length ? uiText('聚焦谱面 · 原声完整播放') : uiText('原录音') }}</small></div>
+        <div class="music-progress"><span>{{ musicTime(position) }}</span><input type="range" min="0" :max="manifest.recording.duration_ms" :value="position" :style="{ '--progress': `${position / manifest.recording.duration_ms * 100}%` }" step="10" :aria-label="uiText('音乐播放位置')" @input="seekInput"><span>{{ musicTime(manifest.recording.duration_ms) }}</span></div>
+        <label class="music-rate"><span class="sr-only">{{ uiText('播放速度') }}</span><select v-model.number="rate" :aria-label="uiText('播放速度')" @change="changeRate(true)"><option :value=".5">0.5×</option><option :value=".75">0.75×</option><option :value="1">1×</option><option :value="1.25">1.25×</option><option :value="1.5">1.5×</option><option :value="2">2×</option></select></label>
+        <button class="music-loop" :class="{ active: loop }" :disabled="!loop && !activeEvent && !activeOccurrence" :aria-pressed="!!loop" :title="loop ? uiText('循环 {0}–{1}', [musicTime(loop.start_ms), musicTime(loop.end_ms)]) : uiText('循环当前片段')" :aria-label="uiText('循环当前片段')" @click="toggleLoop"><Repeat2 :size="18" /><span>{{ loop ? uiText('循环中') : uiText('循环') }}</span></button>
+        <button class="music-ask" :disabled="selectionDisabled" :title="demo ? uiText('暂停示范，询问原录音 {0} 附近的片段', [musicTime(position)]) : undefined" @click="ask"><MessageCircle :size="16" /><span>{{ demo ? uiText('问原声这段') : uiText('聊聊这段') }}</span></button>
       </div>
       <p v-if="error" class="music-error" role="alert">{{ error }}</p>
     </footer>

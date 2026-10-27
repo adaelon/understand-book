@@ -1223,6 +1223,7 @@ fn bind_host_http(addr: &str, desktop_host: bool) -> Result<Server, String> {
 }
 
 pub fn start_server(config: ServerHostConfig) -> Result<RunningServer, String> {
+    crate::board_preview::set_web_dist(config.web_dist.clone());
     let memory_path = MemoryStore::default_path();
     start_server_with_memory_path(config, memory_path)
 }
@@ -1367,6 +1368,8 @@ fn start_server_with_memory_path(
         let mut guard = state.lock().unwrap();
         let AppState { workspace, user, .. } = &mut *guard;
         user.session_store = session_store;
+        crate::board_delivery::repair(user, &startup_now)
+            .map_err(|error| format!("failed to restore board deliveries: {}", error.message))?;
         for turn in user.agent_history.sessions.iter().flat_map(|s| &s.turns).filter(|t| t.domain.local_action.is_some()) {
             crate::interaction_input::resume_local_facts(&user, turn).map_err(|e| e.message)?;
         }
@@ -1573,6 +1576,14 @@ fn start_server_with_memory_path(
                         }
                         if let Some(tail) = split_url(&api_url).0.strip_prefix("/agent/runs/") {
                             let (id, action) = tail.split_once('/').unwrap_or((tail, ""));
+                            if method == "POST" && action == "retry-save" {
+                                let reply = match run_coordinator.retry_save(id, &request_now) {
+                                    Ok(snapshot) => crate::ok_json(&snapshot),
+                                    Err(error) => crate::err_reply(&error),
+                                };
+                                let _ = request.respond(response_from_json(reply.status, reply.body));
+                                continue;
+                            }
                             let stream = run_coordinator.stream(id);
                             let allowed = (method == "GET" && matches!(action, "" | "events")) || (method == "POST" && action == "cancel");
                             if !allowed {
@@ -2338,6 +2349,9 @@ mod tests {
                 updated_at: "0".into(),
                 turns: (1..=turns_per_session)
                     .map(|ordinal| AgentChatTurn { music_question: None,
+                        board_follow_up: None,
+                        board_delivery: None,
+                        board_delivery_error: None,
                         video_question: None,
                         domain: Default::default(),
                         admission_input: None,

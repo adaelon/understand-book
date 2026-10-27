@@ -375,7 +375,10 @@ fn om3_open_plan_analysis_keeps_multiple_options_without_a_scoring_contract() {
     assert!(movement["assessment"].is_null());
     assert!(movement["response_expectation"].is_null());
     assert_eq!(report["review_input"]["learner_grounding"]["expressions"][0]["text"], request);
-    assert_eq!(report["review_input"]["current_design"]["design"]["basis_refs"], json!([fact]));
+    assert_eq!(report["review_audit"]["payload"]["current_design"]["design"]["basis_refs"], json!([fact]));
+    assert!(report["review_input"]["learner_grounding"]["expressions"].as_array().unwrap().iter()
+        .any(|expression| expression["fact_ref"] == fact && expression["text"] == request),
+        "the compact review must retain the real expression behind the design basis");
     assert!(report["delivery"]["payload"]["answer"].as_str().unwrap().contains("Both changes may be combined"));
 }
 

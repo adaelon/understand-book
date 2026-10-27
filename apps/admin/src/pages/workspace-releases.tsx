@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DataState, DataTable, Pagination, useData } from '@/components/data';
 import { Field, OperationDialog, useOperations } from '@/components/operation';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { session } from '@/lib/api';
 import { date } from '@/lib/format';
 import type { BookRef, Page } from '@/lib/types';
 import { bookKey, bookLabel, releaseBody, type ExternalResource, type ReleaseMaterial, type ReleasePart, type ReleaseReadiness, type WorkspaceRelease } from '@/lib/workspace-releases';
+import { Disclosure, Distribution, Notice, StatusBadge, ViewSwitch } from '@/components/analytics';
 
 const textareaClass = 'min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm';
 const capabilities = [['text','阅读原文'],['tutor','资料理解'],['teaching_assets','教学材料'],
@@ -15,6 +16,7 @@ export function WorkspaceReleasesPage() {
   const [offset,setOffset]=useState(0),[selected,setSelected]=useState<WorkspaceRelease|null>(null);
   const [edit,setEdit]=useState<{existing:WorkspaceRelease|null}|null>(null),[error,setError]=useState('');
   const [archive,setArchive]=useState<WorkspaceRelease|null>(null);
+  const [filter,setFilter]=useState<'all'|'attention'|'ready'|'archived'>('all');
   const query=useData<Page<WorkspaceRelease>>(`/admin/workspace-releases?limit=20&offset=${offset}`);
   const ops=useOperations();
   async function exportRelease(release:WorkspaceRelease) {
@@ -27,14 +29,18 @@ export function WorkspaceReleasesPage() {
   }
   return <section className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3"><h1>共享工作区发布</h1><div className="flex gap-2"><Button variant="outline" onClick={()=>{setSelected(null);void query.refetch();}}>刷新发布</Button><Button disabled={ops.blocked} onClick={()=>setEdit({existing:null})}>发布新工作区</Button></div></div>
-    <p className="text-sm text-muted-foreground">选择已有资料的确切版本，编写公开目标与路线，并指定套餐开放范围或可见账号。套餐学员在有效期内获得本课程的材料访问；指定账号仍使用已有的显式材料授权。发布会检查资料及所需能力。</p>
+    <p className="text-sm text-muted-foreground">发布学习目标与路线，查看资料就绪情况，管理可见账号和套餐范围。</p>
     {error&&<p role="alert">{error}</p>}<DataState query={query}/>
-    {query.data&&<><DataTable rows={query.data.items} columns={[
+    {query.data&&<><div className="analytics-panel"><Distribution label="本页发布状态" segments={[
+      {label:'完整可用',value:query.data.items.filter(r=>!r.archived&&r.availability.status==='ready').length,tone:'green'},
+      {label:'尚未就绪',value:query.data.items.filter(r=>!r.archived&&r.availability.status!=='ready').length,tone:'amber'},
+      {label:'已归档',value:query.data.items.filter(r=>r.archived).length,tone:'muted'},
+    ]} note={`共 ${query.data.total} 个发布版本，色条与筛选仅统计当前页。`} /><ViewSwitch label="筛选本页发布" value={filter} options={[["all","本页全部"],["attention","尚未就绪"],["ready","完整可用"],["archived","已归档"]]} onChange={setFilter}/></div><DataTable rows={query.data.items.filter(r=>filter==='all'||(filter==='archived'?r.archived:!r.archived&&(filter==='ready'?r.availability.status==='ready':r.availability.status!=='ready')))} columns={[
       {header:'名称 / 版本',cell:({row})=><><strong>{row.original.manifest.name}</strong><p className="break-all text-xs">{row.original.release_id} · v{row.original.version}</p></>},
-      {header:'当前可用情况',cell:({row})=>row.original.archived?'已归档':row.original.availability.status==='ready'?'完整可用':'尚未完整就绪'},
+      {header:'当前可用情况',cell:({row})=><StatusBadge tone={row.original.archived?'muted':row.original.availability.status==='ready'?'green':'amber'}>{row.original.archived?'已归档':row.original.availability.status==='ready'?'完整可用':'尚未完整就绪'}</StatusBadge>},
       {header:'可见账号',cell:({row})=><span className="block max-w-48 whitespace-normal">{[...row.original.visible_to_users,...(row.original.allowed_tiers??[]).map(tier=>({basic:'基础版',plus:'进阶版',pro:'专业版'}[tier]??tier))].join('、')}</span>},
       {header:'发布时间',cell:({row})=>date(row.original.created_at)},
-      {header:'操作',cell:({row})=><div className="flex flex-wrap gap-1"><Button variant="ghost" onClick={()=>setSelected(row.original)}>查看版本</Button><Button variant="ghost" disabled={ops.blocked} onClick={()=>setEdit({existing:row.original})}>修订为新版本</Button><Button variant="ghost" onClick={()=>void exportRelease(row.original)}>导出公开清单</Button><Button variant="ghost" disabled={ops.blocked} onClick={()=>setArchive(row.original)}>{row.original.archived?'恢复共享入口':'归档共享入口'}</Button></div>},
+      {header:'操作',cell:({row})=><div className="space-y-2"><Button variant="outline" onClick={()=>setSelected(row.original)}>查看版本</Button><details className="text-xs"><summary className="cursor-pointer text-muted-foreground">更多操作</summary><div className="mt-2 flex flex-col items-start gap-1"><Button variant="ghost" disabled={ops.blocked} onClick={()=>setEdit({existing:row.original})}>修订为新版本</Button><Button variant="ghost" onClick={()=>void exportRelease(row.original)}>导出公开清单</Button><Button variant="ghost" disabled={ops.blocked} onClick={()=>setArchive(row.original)}>{row.original.archived?'恢复共享入口':'归档共享入口'}</Button></div></details></div>},
     ]}/><Pagination offset={offset} total={query.data.total} change={value=>{setOffset(value);setSelected(null);}}/></>}
     {selected&&<ReleaseDetail key={`${selected.release_id}:${selected.version}`} initial={selected} close={()=>setSelected(null)}/>}
     {edit&&<ReleaseEditor existing={edit.existing} close={()=>setEdit(null)}/>}
@@ -42,12 +48,16 @@ export function WorkspaceReleasesPage() {
   </section>;
 }
 function Readiness({title,value}:{title:string;value:ReleaseReadiness}) {
-  return <section className="space-y-2 rounded-md border p-4"><h3>{title}：{value.status==='ready'?'完整可用':'尚未完整就绪'}</h3><ul className="space-y-1 text-sm">{value.materials.map(material=><li key={bookKey(material.published_book_ref)}>{bookLabel(material.published_book_ref)}：{!material.publication_available?'资料版本不可用':material.missing_capabilities.length?`缺少能力 ${material.missing_capabilities.join('、')}`:'所需能力已就绪'}</li>)}{value.audience.map(user=><li key={user.user_id}>账号 {user.user_id}：{user.ready?'已具备材料授权':`授权未齐全 ${user.missing_grants.map(bookLabel).join('、')}`}</li>)}</ul></section>;
+  const materialRow=(material:ReleaseReadiness['materials'][number])=><li className="break-words rounded-md bg-muted/30 p-3" key={bookKey(material.published_book_ref)}><strong className="font-medium">{bookLabel(material.published_book_ref)}</strong><p className="mt-1 text-muted-foreground">{!material.publication_available?'资料版本不可用':material.missing_capabilities.length?`缺少能力 ${material.missing_capabilities.join('、')}`:'所需能力已就绪'}</p></li>;
+  const audienceRow=(user:ReleaseReadiness['audience'][number])=><li className="break-words rounded-md bg-muted/30 p-3" key={user.user_id}>账号 {user.user_id}：{user.ready?'已具备材料授权':`授权未齐全 ${user.missing_grants.map(bookLabel).join('、')}`}</li>;
+  return <section className="space-y-3 rounded-lg border p-4"><h3 className="font-semibold">{title}</h3><Notice warning={value.status!=='ready'}>{value.status==='ready'?'完整可用':'尚未完整就绪，请处理以下缺项'}</Notice><ul className="space-y-2 text-sm">{value.materials.filter(m=>!m.publication_available||m.missing_capabilities.length>0).map(materialRow)}{value.audience.filter(u=>!u.ready).map(audienceRow)}</ul><Disclosure title={`全部检查结果 · ${value.materials.length} 份资料 · ${value.audience.length} 个账号`}><ul className="space-y-2 text-sm">{value.materials.map(materialRow)}{value.audience.map(audienceRow)}</ul></Disclosure></section>;
 }
 function ReleaseDetail({initial,close}:{initial:WorkspaceRelease;close:()=>void}) {
+  const anchor=useRef<HTMLElement>(null);
   const query=useData<WorkspaceRelease>(`/admin/workspace-releases/${encodeURIComponent(initial.release_id)}/versions/${initial.version}`);
   const release=query.data;
-  return <section className="space-y-4 rounded-lg border p-5" aria-label="共享工作区版本详情"><div className="flex items-center justify-between gap-3"><h2>{initial.manifest.name} · v{initial.version}</h2><Button variant="ghost" onClick={close}>关闭版本</Button></div><DataState query={query}/>{release&&<><dl className="grid gap-3"><div><dt>发布者</dt><dd>{release.manifest.publisher}</dd></div><div><dt>公开目标</dt><dd className="whitespace-pre-wrap">{release.manifest.public_goal}</dd></div><div><dt>适用范围</dt><dd className="whitespace-pre-wrap">{release.manifest.applicability}</dd></div><div><dt>先修要求</dt><dd className="whitespace-pre-wrap">{release.manifest.prerequisites || '无'}</dd></div></dl>{!!release.manifest.external_resources?.length&&<section><h3>外部链接导览</h3>{release.manifest.external_resources.map((resource,index)=><p key={index}><a href={resource.url} target="_blank" rel="noopener noreferrer">{resource.title} ↗</a><span className="block text-sm text-muted-foreground">{resource.description}</span></p>)}</section>}<Readiness title="发布时" value={release.readiness_at_publication}/><Readiness title="当前" value={release.availability}/>{([['主题联系',release.manifest.topic_links],['建议路线',release.manifest.suggested_route]] as const).map(([title,parts])=><section key={title}><h3>{title}</h3><ol className="list-inside list-decimal">{parts.map((part,index)=><li className="my-3" key={index}><strong>{part.title}</strong><p className="whitespace-pre-wrap text-sm">{part.description}</p><p className="text-xs text-muted-foreground">{part.materials.map(bookLabel).join('、')}</p></li>)}</ol>{!parts.length&&<p className="text-sm text-muted-foreground">尚未编排</p>}</section>)}</>}</section>;
+  useEffect(()=>{if(release){anchor.current?.focus({preventScroll:true});anchor.current?.scrollIntoView?.({block:'start'});}},[!!release]);
+  return <section ref={anchor} tabIndex={-1} className="analytics-panel outline-none" aria-label="共享工作区版本详情"><div className="flex items-center justify-between gap-3"><h2>{initial.manifest.name} · v{initial.version}</h2><Button variant="ghost" onClick={close}>关闭版本</Button></div><DataState query={query}/>{release&&<><Readiness title="当前" value={release.availability}/><dl className="grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">发布者</dt><dd>{release.manifest.publisher}</dd></div><div><dt className="text-muted-foreground">公开目标</dt><dd className="whitespace-pre-wrap">{release.manifest.public_goal}</dd></div><div><dt className="text-muted-foreground">适用范围</dt><dd className="whitespace-pre-wrap">{release.manifest.applicability}</dd></div><div><dt className="text-muted-foreground">先修要求</dt><dd className="whitespace-pre-wrap">{release.manifest.prerequisites || '无'}</dd></div></dl>{!!release.manifest.external_resources?.length&&<section><h3>外部链接导览</h3>{release.manifest.external_resources.map((resource,index)=><p key={index}><a href={resource.url} target="_blank" rel="noopener noreferrer">{resource.title} ↗</a><span className="block text-sm text-muted-foreground">{resource.description}</span></p>)}</section>}<Disclosure title="发布时的就绪情况"><Readiness title="发布时" value={release.readiness_at_publication}/></Disclosure>{([['主题联系',release.manifest.topic_links],['建议路线',release.manifest.suggested_route]] as const).map(([title,parts])=><section key={title}><h3>{title}</h3><ol className="list-inside list-decimal">{parts.map((part,index)=><li className="my-3" key={index}><strong>{part.title}</strong><p className="whitespace-pre-wrap text-sm">{part.description}</p><p className="text-xs text-muted-foreground">{part.materials.map(bookLabel).join('、')}</p></li>)}</ol>{!parts.length&&<p className="text-sm text-muted-foreground">尚未编排</p>}</section>)}</>}</section>;
 }
 export function ReleaseEditor({existing,close,preparedMaterials,publishPath,initialAudience}:{existing:WorkspaceRelease|null;close:()=>void;preparedMaterials?:ReleaseMaterial[];publishPath?:string;initialAudience?:string[]}) {
   const [bookOffset,setBookOffset]=useState(0);

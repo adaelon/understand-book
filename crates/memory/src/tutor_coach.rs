@@ -28,11 +28,11 @@ CREATE TABLE teaching_coach_turns (
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum CoachJobOrigin { StageStart, AfterTurn }
+pub enum CoachJobOrigin { StageStart, AfterTurn, ObservationBackfill }
 
 impl CoachJobOrigin {
     fn as_str(self) -> &'static str {
-        match self { Self::StageStart => "stage_start", Self::AfterTurn => "after_turn" }
+        match self { Self::StageStart => "stage_start", Self::AfterTurn => "after_turn", Self::ObservationBackfill => "observation_backfill" }
     }
 }
 
@@ -134,6 +134,36 @@ fn get_turn(connection: &Connection, scope: &str, chat: &str, turn: &str) -> Res
 }
 
 impl LearningStore {
+    pub fn ready_coach_for_binding(&self, binding: &TeachingBinding, goal: Option<u32>) -> Result<Option<CoachJob>, ToolError> {
+        // A recovered older turn can register and finish after a newer turn.
+        // Prefer the original fact order, with insertion order only as fallback.
+        let value:Option<String> = self.connection.query_row("SELECT jobs.job FROM teaching_coach_jobs AS jobs
+            LEFT JOIN teaching_trace AS original ON original.learning_workspace_id=jobs.learning_workspace_id
+                AND original.event_id='binding:' || jobs.source_ref
+            WHERE jobs.learning_workspace_id=? AND jobs.session_id=? AND jobs.status='ready' AND jobs.origin!='observation_backfill'
+            AND json_extract(jobs.job,'$.input.binding.source_id')=? AND json_extract(jobs.job,'$.input.binding.source_revision')=?
+            AND json_extract(jobs.job,'$.input.workspace_goal_revision') IS ? ORDER BY original.seq DESC,jobs.seq DESC LIMIT 1",
+            params![self.workspace_scope,binding.tutor_session_id,binding.source_id,binding.source_revision,goal], |row|row.get(0)).optional().map_err(storage)?;
+        value.map(|value|serde_json::from_str(&value).map_err(storage)).transpose()
+    }
+
+    /// Actual help already delivered before this expression. The event sequence
+    /// is the boundary, so later answers cannot become prior learner assistance.
+    pub fn prior_chat_help_for_expression(&self, fact: &TeachingEvent) -> Result<Vec<TeachingEvent>, ToolError> {
+        let sequence = self.teaching_event_sequence(&fact.event_id)?;
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace
+            WHERE learning_workspace_id=?1 AND seq<?2
+            AND json_extract(event,'$.binding.chat_session_id')=?3
+            AND json_extract(event,'$.binding.source_id')=?4
+            AND json_extract(event,'$.binding.source_revision')=?5
+            AND (json_extract(event,'$.kind')='message_delivered'
+                OR json_extract(event,'$.kind')='usage_observed' AND json_extract(event,'$.payload.usage.kind')='assistant_delivery')
+            ORDER BY seq DESC LIMIT 1").map_err(storage)?;
+        let rows=query.query_map(params![self.workspace_scope,sequence,fact.binding.chat_session_id,
+            fact.binding.source_id,fact.binding.source_revision],|row|row.get::<_,String>(0)).map_err(storage)?;
+        rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
+    }
+
     /// Repeated delivery notifications retain the original frozen input and identity.
     pub fn ensure_coach_job(&mut self, input: &CoachJobInput, now: &str) -> Result<CoachJob, ToolError> {
         if input.job_ref.trim().is_empty() || input.source_ref.trim().is_empty() || input.binding.tutor_session_id.trim().is_empty() {
@@ -185,7 +215,7 @@ impl LearningStore {
                     AND binding.event_id='binding:' || jobs.source_ref
                 WHERE jobs.learning_workspace_id=? AND jobs.session_id=? AND jobs.origin=?
                 ORDER BY binding.seq DESC,jobs.seq DESC LIMIT 1",
-            CoachJobOrigin::StageStart => "SELECT job FROM teaching_coach_jobs WHERE learning_workspace_id=? AND session_id=? AND origin=? ORDER BY seq DESC LIMIT 1",
+            CoachJobOrigin::StageStart | CoachJobOrigin::ObservationBackfill => "SELECT job FROM teaching_coach_jobs WHERE learning_workspace_id=? AND session_id=? AND origin=? ORDER BY seq DESC LIMIT 1",
         };
         let json: Option<String> = self.connection.query_row(
             query,
@@ -273,6 +303,20 @@ impl LearningStore {
         job.status = CoachJobStatus::Pending;
         job.updated_at = now.into();
         job.error = None;
+        save_job(&tx, &self.workspace_scope, &job)?;
+        tx.commit().map_err(storage)?;
+        Ok(job)
+    }
+
+    /// Only original, host-verified source reads may supplement the frozen
+    /// input. All learner facts, help conditions and paid attempts stay intact.
+    pub fn freeze_coach_read_ranges(&mut self, job_ref: &str, attempt: u32, ranges: &[read_tools::EvidenceRange]) -> Result<CoachJob, ToolError> {
+        let tx = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+        let mut job = required_job(&tx, &self.workspace_scope, job_ref)?;
+        if job.attempt != attempt || matches!(job.status, CoachJobStatus::Ready | CoachJobStatus::Cancelled) {
+            return Err(conflict("原文读取补充不属于可处理的教练尝试。"));
+        }
+        job.input.context["verified_read_ranges"] = serde_json::to_value(ranges).map_err(storage)?;
         save_job(&tx, &self.workspace_scope, &job)?;
         tx.commit().map_err(storage)?;
         Ok(job)
@@ -482,5 +526,28 @@ mod tests {
         // Another workspace's later binding rows cannot reorder A's history.
         let store = LearningStore::open(&path, false).unwrap().with_workspace(Some("workspace-a"));
         assert_eq!(store.latest_coach_job("stage", CoachJobOrigin::AfterTurn).unwrap().unwrap().input.job_ref, "new");
+    }
+
+    #[test]
+    fn coach_ready_guidance_uses_original_turn_order_after_older_job_is_recovered_late() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = LearningStore::open(&dir.path().join("learning.db"), false).unwrap()
+            .with_workspace(Some("workspace-a"));
+        for source in ["old", "new"] {
+            store.append_teaching(&TeachingEvent { event_id:format!("binding:{source}"),
+                binding:input(source,"stage",source).binding, kind:TeachingFact::TurnBound,
+                causal_refs:Vec::new(), payload:json!({"status":"active"}), occurred_at:"same-time".into() }).unwrap();
+        }
+        // Both tasks concern the same stage, source revision and goal. Recovery
+        // registers and completes old last, but it must not displace new guidance.
+        for source in ["new", "old"] {
+            store.ensure_coach_job(&input(source,"stage",source),"same-time").unwrap();
+            store.claim_coach_job(source,"same-time").unwrap().unwrap();
+            store.finish_coach_job(source,1,json!({"focus":source}),"same-time").unwrap();
+        }
+        let current = input("current","stage","current");
+        let ready = store.ready_coach_for_binding(&current.binding,current.workspace_goal_revision).unwrap().unwrap();
+        assert_eq!(ready.input.job_ref,"new");
+        assert_eq!(ready.guidance.unwrap()["focus"],"new");
     }
 }

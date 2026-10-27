@@ -6,6 +6,10 @@ import { collectStructureCandidates } from "../src/book-structure-candidates";
 import { renderStructurePlanningInput } from "../src/model-input-renderer";
 import { estimateTokens } from "../src/window";
 import { createCandidateTransportContract, CODEX_EXECUTOR_TRANSPORT_PROFILE_V2 } from "../src/executor-transport";
+import { acceptStructureOrganizationAction, fitStructureOrganizationExecution, structureOrganizationContracts } from "../src/book-structure-organization";
+import { createBookStructureExecutionContractsV2, BOOK_STRUCTURE_EXECUTION_PROMPTS_V2 } from "../src/book-structure";
+import { resolveContentProfile } from "../src/content-profile";
+import { ExtractorContractError, automaticBuildFailureDiagnosticFromWriterError, isAutomaticBuildCorrectableCandidateFailure } from "../src/extractor-contract";
 // Also typechecks the real experiment entry point without executing it or calling a provider.
 import { prepareChapterExperiment, chapterExperimentCli } from "../../../evals/book-structure/chapter";
 
@@ -22,6 +26,67 @@ function fixture(count = 9): { context: StructureChapterContext; outlineInput: S
     excerpts: chapter.evidence.map((e: any) => ({ unit_lid: "10", lids: e.lids, text: e.text })) } };
 }
 describe("BSR2 outline and chapter selection", () => {
+  it("classifies an overlong chapter note as a correctable candidate schema failure", () => {
+    const { context } = fixture();
+    const work = newStructureChapterWork("10");
+    const packet = { version: "book_structure_organization_input.v1" as const, phase: "chapter" as const,
+      work, context, body: structureChapterInput(work, context),
+      reference_scope: { unit_lids: ["10"], dependency_target_lids: [], evidence_by_unit: {} } };
+    expect(acceptStructureOrganizationAction(packet, { kind: "browse", offset: 0, notes: "n".repeat(4000) }).version)
+      .toBe("book_structure_action.v1");
+    let caught: unknown;
+    try { acceptStructureOrganizationAction(packet, { kind: "browse", offset: 0, notes: "n".repeat(4001) }); }
+    catch (error) { caught = error; }
+    expect(caught).toBeInstanceOf(ExtractorContractError);
+    const failure = automaticBuildFailureDiagnosticFromWriterError(caught, { writer_started: true });
+    expect(failure).toMatchObject({ category: "schema", code: "schema_invalid", phase: "artifact_writer", json_pointer: "/notes" });
+    expect(failure.expected).toContain("4000");
+    expect(isAutomaticBuildCorrectableCandidateFailure(failure)).toBe(true);
+    expect(work.notes).toBe("");
+  });
+  it("shrinks only an oversized chapter preview while retaining its complete browsing ledger", () => {
+    const { context } = fixture(1024);
+    context.candidate_index_page_size = 64; context.source_index_page_size = 64;
+    context.catalog.candidates.forEach((c, i) => { c.ref = `unit:10:fragment:${String(i).padStart(4, "0")}#grounded-candidate-reference`; c.meaning = "候选机制的完整含义及其适用条件。".repeat(20); });
+    let work = newStructureChapterWork("10");
+    const refs = context.catalog.candidates.map(c => c.ref);
+    work.offset = 960; work.seen_refs = refs.slice(0, 960); work.notes = "已浏览的候选机制及适用条件。".repeat(50);
+    expect(estimateTokens(JSON.stringify(work.seen_refs))).toBeGreaterThan(10000);
+    expect(estimateTokens(JSON.stringify(structureChapterInput(work, context)))).toBeGreaterThan(20000);
+    const originalWork = structuredClone(work), originalContext = structuredClone(context);
+    const contract = structureOrganizationContracts(createBookStructureExecutionContractsV2({
+      profile: resolveContentProfile("technical_learning"), quality_profile: "full", prompts: BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+    }).stitch_fragment).structure_chapter;
+    const fit = () => fitStructureOrganizationExecution({ contract, transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+      budget: { stage_body_limit_tokens: 20000, executor_context_floor_tokens: 32768, output_reserve_tokens: 3500,
+        max_candidate_tokens: Math.min(3500, createCandidateTransportContract(CODEX_EXECUTOR_TRANSPORT_PROFILE_V2).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 },
+      packet: { version: "book_structure_organization_input.v1", phase: "chapter", work, context,
+        body: structureChapterInput(work, context), reference_scope: { unit_lids: ["10"], dependency_target_lids: [], evidence_by_unit: {} } } });
+    const initial = fit();
+    const fieldTokens = Object.fromEntries(Object.entries(initial.packet.body as Record<string, unknown>)
+      .map(([key, value]) => [key, estimateTokens(JSON.stringify(value))]));
+    expect(initial.evaluation.status, JSON.stringify(fieldTokens)).toBe("within_limit");
+    const delivered = JSON.parse(initial.rendered).input;
+    expect(delivered.index.items.length).toBeLessThan(64);
+    expect(delivered.seen_refs).toEqual(originalWork.seen_refs);
+    expect(context).toEqual(originalContext); expect(work).toEqual(originalWork);
+    let pages = 0;
+    while (work.seen_refs.length < refs.length) {
+      if (++pages > 64) throw new Error("chapter browsing stopped advancing");
+      const fitted = fit();
+      expect(fitted.evaluation.status).toBe("within_limit");
+      if (fitted.packet.phase !== "chapter") throw new Error("expected chapter packet");
+      const page = JSON.parse(fitted.rendered).input.index;
+      const expected = [...new Set([...work.seen_refs, ...page.items.map((c: { ref: string }) => c.ref)])];
+      work = applyStructureChapterAction(work, { kind: "browse", offset: page.next_offset ?? work.offset }, fitted.packet.context);
+      expect(work.seen_refs).toEqual(expected); expect(work.evidence_lids).toEqual([]);
+    }
+    expect(work.seen_refs).toEqual(refs);
+    work.reading = [0]; context.excerpts[0].text = "超大原文内容".repeat(5000);
+    const oversized = fit();
+    expect(oversized.evaluation.status).toBe("blocked");
+    expect(JSON.parse(oversized.rendered).input.excerpts[0].text).toBe(context.excerpts[0].text);
+  });
   it("keeps a long 114-stop/44-macro choice through bounded parts without enlarging its transport contract", () => {
     const { context } = fixture(114);
     context.catalog.candidates.forEach(c => c.ref += "-" + "long-reference-".repeat(6));

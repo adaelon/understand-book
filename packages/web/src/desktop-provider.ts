@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 export type DesktopProviderMode = "native" | "react";
 
 export interface DesktopProviderStatus {
@@ -26,7 +27,7 @@ export function desktopProviderDraft(status: DesktopProviderStatus): DesktopProv
 }
 
 export function desktopProviderStatusLabel(status: DesktopProviderStatus | null): string {
-  if (!status) return "尚未检测";
-  if (!status.configured) return "尚未配置";
-  return status.source === "settings" ? "已保存并应用" : "使用环境配置";
+  if (!status) return uiText('尚未检测');
+  if (!status.configured) return uiText('尚未配置');
+  return status.source === "settings" ? uiText('已保存并应用') : uiText('使用环境配置');
 }

@@ -49,7 +49,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         let (_, plan) = build_sample_request(&messages, &mut ContextFragmentLedger::default(), &b,
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
-            &[], None, false, Some(&tutor), None).unwrap();
+            &[], None, false, Some(&tutor), None, None, None).unwrap();
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
         let ids: Vec<_> = plan.instruction_assets.iter().map(|a| a.asset_id.as_str()).collect();
         assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "active"), "{status}");
@@ -146,7 +146,7 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
         build_sample_request(&new_session(), &mut ContextFragmentLedger::default(), &b,
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), state, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
-            &[], authoring, finished, Some(context), None).unwrap()
+            &[], authoring, finished, Some(context), None, None, None).unwrap()
     };
     let (initial_exposure, initial) = sample(&exposure, None, false, &tutor);
     assert!(!initial.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
@@ -250,7 +250,7 @@ fn compaction_adoption_uses_actual_budget_and_remembers_no_benefit() {
         let mut checkpoint = None;
         let mut attempted = None;
         let mut sink = EphemeralCompactionCheckpointSink::default();
-        let result = maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, adapter, &profile,
+        let result = maybe_auto_compact(CompactionPhase::MidTurn, None, budget, &b, &mut messages, adapter, &profile,
             &ledger, &[], &mut checkpoint, &mut sink, &mut attempted, |raw, candidate| project(raw, Some(candidate)));
         if let Some(error) = expected_error {
             assert_eq!(result.unwrap_err().error_code, error);
@@ -259,7 +259,7 @@ fn compaction_adoption_uses_actual_budget_and_remembers_no_benefit() {
             assert!(!result.unwrap());
             assert_eq!(messages, original);
             assert!(sink.installed.is_none());
-            assert!(!maybe_auto_compact(CompactionPhase::MidTurn, budget, &b, &mut messages, adapter, &profile,
+            assert!(!maybe_auto_compact(CompactionPhase::MidTurn, None, budget, &b, &mut messages, adapter, &profile,
                 &ledger, &[], &mut checkpoint, &mut sink, &mut attempted, |raw, candidate| project(raw, Some(candidate))).unwrap());
             assert_eq!(expanding.inner.compaction_requests.borrow().len(), 1);
         } else {

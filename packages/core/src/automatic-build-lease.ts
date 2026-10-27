@@ -180,7 +180,7 @@ export type AutomaticBuildClaimResult =
     };
 
 export type AutomaticBuildClaimInspection =
-  | { status: "ready"; execution_identity: AutomaticBuildExecutionIdentity }
+  | Extract<ReturnType<typeof nextAutomaticBuildExecutionIdentity>, { status: "ready" }>
   | Exclude<AutomaticBuildClaimResult, { status: "leased" }>;
 
 function readJson<T>(file: string): T {

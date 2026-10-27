@@ -113,6 +113,7 @@ impl ServiceLimits {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Resource {
     Model,
+    BackgroundModel,
     Preview,
     Plot,
     Animation,
@@ -122,9 +123,9 @@ pub(crate) enum Resource {
 #[derive(Default)]
 struct Slots {
     active: BTreeMap<(Resource, String), usize>,
-    waiting: std::collections::VecDeque<(u64, String)>,
+    waiting: std::collections::VecDeque<(u64, Resource, String)>,
     next: u64,
-    last_owner: Option<String>,
+    last_owner: BTreeMap<Resource, String>,
 }
 pub(crate) struct Resources {
     pub limits: Arc<ServiceLimits>,
@@ -144,7 +145,7 @@ impl Resources {
             slots
                 .active
                 .iter()
-                .filter(|((r, _), _)| *r == Resource::Model)
+                .filter(|((r, _), _)| matches!(r, Resource::Model | Resource::BackgroundModel))
                 .map(|(_, n)| *n)
                 .sum(),
             slots.active.values().sum(),
@@ -162,6 +163,9 @@ impl Resources {
         let l = &self.limits;
         match resource {
             Resource::Model => (l.model_slots, l.user_model_slots),
+            // One separate background call can finish without occupying the
+            // foreground allowance. Never fan background work out unboundedly.
+            Resource::BackgroundModel => (1, 1),
             Resource::Preview => (l.preview_slots, 1),
             Resource::Plot => (l.plot_slots, 1),
             Resource::Animation => (l.animation_slots, 1),
@@ -181,6 +185,8 @@ impl Resources {
             .sum::<usize>()
             >= global
             || slots.active.get(&key).copied().unwrap_or(0) >= user
+            || (resource == Resource::BackgroundModel
+                && slots.waiting.iter().any(|(_, r, _)| *r == Resource::Model))
         {
             return None;
         }
@@ -195,14 +201,17 @@ impl Resources {
         self: &Arc<Self>,
         owner: &str,
         cancellation: &CancellationToken,
+        background: bool,
     ) -> Result<Permit, AdapterError> {
+        let resource = if background { Resource::BackgroundModel } else { Resource::Model };
+        let (global_limit, user_limit) = self.bounds(resource);
         let mut slots = self.slots.lock().unwrap();
         let ticket = slots.next;
         slots.next += 1;
-        slots.waiting.push_back((ticket, owner.into()));
+        slots.waiting.push_back((ticket, resource, owner.into()));
         loop {
             if let Err(e) = cancellation.check() {
-                slots.waiting.retain(|(id, _)| *id != ticket);
+                slots.waiting.retain(|(id, _, _)| *id != ticket);
                 self.changed.notify_all();
                 return Err(AdapterError {
                     spend_stop: None,
@@ -210,39 +219,43 @@ impl Resources {
                 });
             }
             let mut users = BTreeMap::new();
-            for (id, user) in &slots.waiting {
-                if slots
+            for (id, waiting_resource, user) in &slots.waiting {
+                if *waiting_resource == resource && slots
                     .active
-                    .get(&(Resource::Model, user.clone()))
+                    .get(&(resource, user.clone()))
                     .copied()
                     .unwrap_or(0)
-                    < self.limits.user_model_slots
+                    < user_limit
                 {
                     users.entry(user.clone()).or_insert(*id);
                 }
             }
             let next = users
                 .iter()
-                .find(|(u, _)| slots.last_owner.as_ref().is_none_or(|last| *u > last))
+                .find(|(u, _)| slots.last_owner.get(&resource).is_none_or(|last| *u > last))
                 .or_else(|| users.iter().next())
                 .map(|(_, id)| *id);
             let total: usize = slots
                 .active
                 .iter()
-                .filter(|((r, _), _)| *r == Resource::Model)
+                .filter(|((r, _), _)| *r == resource)
                 .map(|(_, n)| *n)
                 .sum();
-            if next == Some(ticket) && total < self.limits.model_slots {
-                slots.waiting.retain(|(id, _)| *id != ticket);
-                slots.last_owner = Some(owner.into());
+            // A paid background call may finish while a foreground call starts,
+            // but new background sends yield until foreground waiters are served.
+            let foreground_waiting = background
+                && slots.waiting.iter().any(|(_, r, _)| *r == Resource::Model);
+            if next == Some(ticket) && total < global_limit && !foreground_waiting {
+                slots.waiting.retain(|(id, _, _)| *id != ticket);
+                slots.last_owner.insert(resource, owner.into());
                 *slots
                     .active
-                    .entry((Resource::Model, owner.into()))
+                    .entry((resource, owner.into()))
                     .or_default() += 1;
                 self.changed.notify_all();
                 return Ok(Permit {
                     resources: self.clone(),
-                    resource: Resource::Model,
+                    resource,
                     owner: owner.into(),
                 });
             }
@@ -271,11 +284,13 @@ pub(crate) struct RunUsage {
     pub calls: Vec<Option<ModelUsage>>,
     pub known_total_tokens: u64,
 }
-/// All purposes share model capacity and usage tracking; permits end before tool dispatch.
+/// Foreground and background have separate bounded capacity and identical usage
+/// tracking; permits end before tool dispatch.
 pub(crate) struct LimitedAdapter<'a> {
     pub inner: &'a dyn ModelAdapter,
     pub resources: Arc<Resources>,
     pub owner: String,
+    pub background: bool,
     pub cancellation: CancellationToken,
     pub usage: Mutex<RunUsage>,
     pub stream: Option<Arc<crate::agent_stream::RunStream>>,
@@ -285,12 +300,14 @@ pub(crate) struct LimitedAdapter<'a> {
     )>,
 }
 impl LimitedAdapter<'_> {
-    fn output_limit(&self, requested: Option<u32>) -> Option<u32> {
-        Some(
-            requested
-                .unwrap_or(self.inner.model_runtime_profile().output_reserve_tokens)
-                .max(1),
-        )
+    fn output_limit(&self, requested: Option<u32>) -> Result<Option<u32>, AdapterError> {
+        // An agent plan can carry a more specific profile than this wrapper's
+        // adapter. Preserve its limit; the provider finalizes it against the
+        // complete request and the actual model window before reserving spend.
+        match requested {
+            Some(limit) => Ok(Some(limit)),
+            None => self.inner.model_runtime_profile().output_token_limit(None, 0).map(Some),
+        }
     }
     fn call<T>(
         &self,
@@ -303,7 +320,7 @@ impl LimitedAdapter<'_> {
         }
         let permit = self
             .resources
-            .acquire_model(&self.owner, &self.cancellation);
+            .acquire_model(&self.owner, &self.cancellation, self.background);
         if let Some(stream) = &self.stream {
             stream.resource_wait(false);
         }
@@ -345,6 +362,13 @@ impl LimitedAdapter<'_> {
     }
 }
 impl ModelAdapter for LimitedAdapter<'_> {
+    fn tool_update_mode(&self) -> Option<runtime::deepseek_messages::ToolUpdateMode> { self.inner.tool_update_mode() }
+    fn context_request_projection(&self, request: &runtime::AgentRequestPlan) -> Option<serde_json::Value> { self.inner.context_request_projection(request) }
+    fn projection_identity(&self) -> Option<String> { self.inner.projection_identity() }
+
+    fn model_provider(&self) -> Option<String> {
+        self.inner.model_provider()
+    }
     fn set_spend_context(&self, scope: runtime::model_spend::ChargeScope, port: Option<Arc<dyn runtime::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
     fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
@@ -370,7 +394,7 @@ impl ModelAdapter for LimitedAdapter<'_> {
         mut r: CompletionRequest,
         o: &mut dyn ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
-        r.output_token_limit = self.output_limit(r.output_token_limit);
+        r.output_token_limit = self.output_limit(r.output_token_limit)?;
         self.call(o, |o| self.inner.complete_observed(r, o), |_| None)
     }
     fn complete_structured_observed(
@@ -378,7 +402,7 @@ impl ModelAdapter for LimitedAdapter<'_> {
         mut r: CompletionRequest,
         o: &mut dyn ModelObserver,
     ) -> Result<serde_json::Value, AdapterError> {
-        r.output_token_limit = self.output_limit(r.output_token_limit);
+        r.output_token_limit = self.output_limit(r.output_token_limit)?;
         self.call(
             o,
             |o| self.inner.complete_structured_observed(r, o),
@@ -391,7 +415,7 @@ impl ModelAdapter for LimitedAdapter<'_> {
         o: &mut dyn ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
         let mut r = r.clone();
-        r.output_token_limit = self.output_limit(r.output_token_limit);
+        r.output_token_limit = self.output_limit(r.output_token_limit)?;
         self.call(
             o,
             |o| self.inner.chat_observed(&r, o),
@@ -462,6 +486,7 @@ mod tests {
             inner,
             resources: Resources::new(Arc::new(ServiceLimits::default())),
             owner: "A".into(),
+            background: false,
             cancellation: CancellationToken::default(),
             usage: Mutex::new(Default::default()),
             authorization: None,
@@ -559,6 +584,7 @@ mod tests {
     }
     fn request() -> CompletionRequest {
         CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             system: "fixture".into(),
             user: "fixture".into(),
@@ -573,9 +599,9 @@ mod tests {
         let profile = runtime::ModelRuntimeCatalog::default().resolve(
             "deepseek-flash", runtime::ProviderToolProtocol::Native, None);
         let plan = AgentRequestPlan::for_agent_turn(profile, &[runtime::Message::user("继续学习")], &[]);
-        assert_eq!(plan.active_context.output_reserve_tokens, 32_768);
+        assert_eq!(plan.active_context.output_reserve_tokens, 131_072);
         assert_eq!(adapter.chat(&plan).unwrap_err().message, "timeout");
-        assert_eq!(*inner.output_limits.lock().unwrap(), vec![Some(32_768)]);
+        assert_eq!(*inner.output_limits.lock().unwrap(), vec![Some(131_072)]);
     }
     #[test]
     fn mu6c_saved_usage_with_old_budget_flag_remains_readable() {
@@ -604,6 +630,76 @@ mod tests {
         assert!(resources.try_acquire(Resource::Model, "A").is_some());
         let cancellation = CancellationToken::default();
         cancellation.cancel();
-        assert!(resources.acquire_model("A", &cancellation).is_err());
+        assert!(resources.acquire_model("A", &cancellation, false).is_err());
+    }
+
+    fn wait_for_model_waiters(resources: &Resources, expected: usize) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let mut slots = resources.slots.lock().unwrap();
+        while slots.waiting.len() != expected && std::time::Instant::now() < deadline {
+            slots = resources.changed.wait_timeout(slots, Duration::from_millis(10)).unwrap().0;
+        }
+        assert_eq!(slots.waiting.len(), expected);
+    }
+
+    #[test]
+    fn foreground_model_does_not_wait_for_same_users_background_call() {
+        let resources = Resources::new(Arc::new(ServiceLimits { model_slots: 1, ..Default::default() }));
+        std::thread::scope(|scope| {
+            let background = resources.acquire_model("A", &CancellationToken::default(), true).unwrap();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let resources = &resources;
+            scope.spawn(move || tx.send(resources.acquire_model("A", &CancellationToken::default(), false)).unwrap());
+            let foreground = rx.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+            assert_eq!(resources.measured_usage(), (2, 2, 0), "both lanes count as model work");
+            assert!(resources.try_acquire(Resource::Model, "B").is_none(), "foreground remains bounded");
+            assert!(resources.try_acquire(Resource::BackgroundModel, "B").is_none(), "background remains bounded");
+            drop((foreground, background));
+        });
+        assert_eq!(resources.measured_usage(), (0, 0, 0));
+    }
+
+    #[test]
+    fn background_model_lane_is_bounded_and_waiting_cancellation_releases_ticket() {
+        let resources = Resources::new(Arc::new(ServiceLimits::default()));
+        let cancellation = CancellationToken::default();
+        std::thread::scope(|scope| {
+            let background = resources.acquire_model("A", &CancellationToken::default(), true).unwrap();
+            let (tx, rx) = std::sync::mpsc::channel();
+            let resources = &resources;
+            let cancellation = &cancellation;
+            scope.spawn(move || tx.send(resources.acquire_model("B", cancellation, true)).unwrap());
+            wait_for_model_waiters(resources, 1);
+            assert_eq!(resources.measured_usage(), (1, 1, 1));
+            cancellation.cancel();
+            assert!(rx.recv_timeout(Duration::from_secs(5)).unwrap().is_err());
+            assert_eq!(resources.measured_usage(), (1, 1, 0));
+            drop(background);
+        });
+        assert!(resources.acquire_model("B", &CancellationToken::default(), true).is_ok());
+    }
+
+    #[test]
+    fn background_model_send_yields_to_foreground_waiter() {
+        let resources = Resources::new(Arc::new(ServiceLimits { model_slots: 1, ..Default::default() }));
+        std::thread::scope(|scope| {
+            let foreground = resources.acquire_model("A", &CancellationToken::default(), false).unwrap();
+            let background = resources.acquire_model("A", &CancellationToken::default(), true).unwrap();
+            let (background_tx, background_rx) = std::sync::mpsc::channel();
+            let (foreground_tx, foreground_rx) = std::sync::mpsc::channel();
+            let resources = &resources;
+            scope.spawn(move || background_tx.send(resources.acquire_model("B", &CancellationToken::default(), true)).unwrap());
+            wait_for_model_waiters(resources, 1);
+            scope.spawn(move || foreground_tx.send(resources.acquire_model("B", &CancellationToken::default(), false)).unwrap());
+            wait_for_model_waiters(resources, 2);
+            drop(background);
+            assert!(resources.try_acquire(Resource::BackgroundModel, "C").is_none());
+            assert!(background_rx.recv_timeout(Duration::from_millis(100)).is_err(), "background cannot start while foreground is waiting");
+            drop(foreground);
+            let foreground = foreground_rx.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+            let background = background_rx.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
+            assert_eq!(resources.measured_usage(), (2, 2, 0));
+            drop((foreground, background));
+        });
     }
 }

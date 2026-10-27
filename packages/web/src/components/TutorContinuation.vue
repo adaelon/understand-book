@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ArrowRight } from '@lucide/vue';
 import { api as sharedApi } from '../api';
@@ -42,7 +44,7 @@ async function load() {
     emit('available', !!view.value);
     await nextTick();
     root.value?.querySelectorAll('[data-option-id]').forEach(node => observer?.observe(node));
-  } catch (failure) { if (current === generation) error.value = `建议读取未完成：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { if (current === generation) error.value = uiText('建议读取未完成：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { if (current === generation) loading.value = false; }
 }
 async function writeDisplayed() {
@@ -55,7 +57,7 @@ async function writeDisplayed() {
       if (current !== generation) return;
       recorded.add(key); pending.delete(key);
     }
-  } catch { error.value = '展示记录未保存，仍可选择建议。'; }
+  } catch { error.value = uiText('展示记录未保存，仍可选择建议。'); }
   finally { writing = false; }
 }
 function recordVisible() {
@@ -77,7 +79,7 @@ async function choose(optionId: string) {
     if (current !== generation || props.busy || !props.enabled || props.head !== original.expected_chat_head) return;
     emit('choose', original, optionId, receipt);
     await nextTick();
-  } catch (failure) { error.value = `演示状态未保存，选择未发送：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = uiText('演示状态未保存，选择未发送：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { choosing.value = false; }
 }
 async function retry() { error.value = ''; await writeDisplayed(); await load(); }
@@ -99,25 +101,25 @@ onMounted(() => {
 onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); });
 </script>
 <template>
-  <section ref="root" class="tutor-continuation" aria-label="接着理解">
+  <section ref="root" class="tutor-continuation" :aria-label="uiText('接着理解')">
     <template v-if="view">
-      <div class="continuation-heading"><span>接着理解</span><span class="continuation-hint">选一个方向，往前走一步</span></div>
+      <div class="continuation-heading"><span>{{ uiText('接着理解') }}</span><span class="continuation-hint">{{ uiText('选一个方向，往前走一步') }}</span></div>
       <p class="focus">{{ view.target_summary }}</p>
       <div class="continuation-options">
       <div v-for="option in options" :key="option.option_id" :data-option-id="option.option_id" class="option">
         <button v-if="view.availability.status === 'eligible' && enabled && head === view.expected_chat_head"
           :class="{ recommended: option.option_id === view.continuation.recommended_option_id }" :aria-label="option.label" :disabled="!actionable" @click="choose(option.option_id)">
-          <span class="option-top"><span v-if="option.option_id === view.continuation.recommended_option_id" class="recommendation">建议先试</span><ArrowRight :size="17" aria-hidden="true" /></span>
+          <span class="option-top"><span v-if="option.option_id === view.continuation.recommended_option_id" class="recommendation">{{ uiText('建议先试') }}</span><ArrowRight :size="17" aria-hidden="true" /></span>
           <span class="option-label">{{ option.label }}</span><small>{{ option.purpose }}</small>
         </button>
         <div v-else class="past-option"><span class="option-label">{{ option.label }}</span><small>{{ option.purpose }}</small></div>
       </div>
       </div>
-      <button v-if="view.availability.status === 'consumed'" @click="emit('locate', view.availability.accepted_turn_id)">查看已接纳的任务</button>
-      <small v-else-if="view.availability.status !== 'eligible' || !enabled || head !== view.expected_chat_head">这是之前的建议，可对原回答继续提问。</small>
-      <div class="exits"><button @click="emit('edit')">换个问题</button><button @click="emit('read')">返回原文</button></div>
+      <button v-if="view.availability.status === 'consumed'" @click="emit('locate', view.availability.accepted_turn_id)">{{ uiText('查看已接纳的任务') }}</button>
+      <small v-else-if="view.availability.status !== 'eligible' || !enabled || head !== view.expected_chat_head">{{ uiText('这是之前的建议，可对原回答继续提问。') }}</small>
+      <div class="exits"><button @click="emit('edit')">{{ uiText('换个问题') }}</button><button @click="emit('read')">{{ uiText('返回原文') }}</button></div>
     </template>
-    <p v-if="error" role="status">{{ error }} <button @click="retry">重试记录</button></p>
+    <p v-if="error" role="status">{{ error }} <button @click="retry">{{ uiText('重试记录') }}</button></p>
   </section>
 </template>
 <style scoped>

@@ -70,7 +70,7 @@ it('shows fixed percentages and sends signed exact percentage gifts without loca
 
 it('requires an explicit basis for new or legacy periods and never guesses commercial values', async () => {
   await mount(<AllowancePanel userId="A" current={{ ...period, balance: { ...period.balance, allowance_basis: null, percentages: null } }} />);
-  expect(text()).toContain('待配置比例'); expect([...document.querySelector('section > div')!.querySelectorAll('button')].find(b => b.textContent === '登记收款')).toBeUndefined();
+  expect(text()).toContain('此额度期尚未设置百分比基准，当前按金额展示'); expect(text()).toContain('当前可用¥ 13.00'); expect([...document.querySelector('section > div')!.querySelectorAll('button')].find(b => b.textContent === '登记收款')).toBeUndefined();
   await click('配置百分比基准'); expect(document.querySelector<HTMLInputElement>('[name="basis_amount"]')?.value).toBe('');
   await fill('basis_version', 'configured-v2'); await fill('basis_amount', '20'); await submit();
   expect(writes()[0][0]).toBe(`${base}/allowance-basis`); expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: 'period-a', revision: 2, basis: { version: 'configured-v2', basis_micro_cny: 20000000 } });

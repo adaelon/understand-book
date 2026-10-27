@@ -85,10 +85,18 @@ fn array<'a>(value: &'a Value, key: &str) -> &'a [Value] {
 }
 
 fn images(message: &Value) -> Vec<&Value> {
-    array(message, "content")
-        .iter()
-        .filter(|part| matches!(part["type"].as_str(), Some("image_url" | "input_image")))
-        .collect()
+    fn collect<'a>(message: &'a Value, found: &mut Vec<&'a Value>) {
+        for part in array(message, "content") {
+            if matches!(part["type"].as_str(), Some("image_url" | "input_image" | "image")) {
+                found.push(part);
+            }
+            // Messages tool_result blocks may contain their own image content.
+            collect(part, found);
+        }
+    }
+    let mut found = Vec::new();
+    collect(message, &mut found);
+    found
 }
 
 fn image_count(messages: &[Value]) -> u32 {
@@ -101,13 +109,32 @@ fn image_count(messages: &[Value]) -> u32 {
 fn reasoning_count(messages: &[Value]) -> u32 {
     messages
         .iter()
-        .filter(|message| {
-            message
-                .get("reasoning_content")
-                .and_then(Value::as_str)
-                .is_some_and(|text| !text.is_empty())
-        })
+        .filter(|message| !reasoning(message).is_empty())
         .count() as u32
+}
+
+fn reasoning(message: &Value) -> Vec<&Value> {
+    message.get("reasoning_content")
+        .filter(|value| value.as_str().is_some_and(|text| !text.is_empty()))
+        .into_iter()
+        .chain(array(message, "content").iter().filter(|part|
+            matches!(part["type"].as_str(), Some("thinking" | "redacted_thinking"))))
+        .collect()
+}
+
+fn tool_calls(message: &Value) -> Vec<&Value> {
+    array(message, "tool_calls").iter()
+        .chain(array(message, "content").iter().filter(|part| part["type"] == "tool_use"))
+        .collect()
+}
+
+fn tool_call_component<'a>(call: &'a Value, pointer: &str, block_key: &str) -> Option<&'a Value> {
+    if call["type"] == "tool_use" { call.get(block_key) } else { call.pointer(pointer) }
+}
+
+fn tool_result_ids(message: &Value) -> Vec<&Value> {
+    array(message, "content").iter().filter(|part| part["type"] == "tool_result")
+        .map(|part| &part["tool_use_id"]).collect()
 }
 
 fn other_fields_changed(before: &Value, after: &Value, excluded: &[&str]) -> bool {
@@ -139,8 +166,6 @@ fn changed_message(index: usize, before: Option<&Value>, after: Option<&Value>) 
             for (key, field) in [
                 ("role", Field::Role),
                 ("content", Field::Content),
-                ("reasoning_content", Field::ReasoningContent),
-                ("tool_call_id", Field::ToolCallId),
             ] {
                 if before.get(key) != after.get(key) {
                     fields.push(field);
@@ -149,19 +174,27 @@ fn changed_message(index: usize, before: Option<&Value>, after: Option<&Value>) 
             if images(before) != images(after) {
                 fields.push(Field::Images);
             }
-            if before.get("tool_calls") != after.get("tool_calls") {
-                let old_calls = array(before, "tool_calls");
-                let new_calls = array(after, "tool_calls");
+            if reasoning(before) != reasoning(after) {
+                fields.push(Field::ReasoningContent);
+            }
+            if before.get("tool_call_id") != after.get("tool_call_id")
+                || tool_result_ids(before) != tool_result_ids(after)
+            {
+                fields.push(Field::ToolCallId);
+            }
+            let old_calls = tool_calls(before);
+            let new_calls = tool_calls(after);
+            if old_calls != new_calls {
                 let start = fields.len();
-                for (pointer, field) in [
-                    ("/function/arguments", Field::ToolArguments),
-                    ("/id", Field::ToolCallIds),
-                    ("/function/name", Field::ToolNames),
+                for (pointer, block_key, field) in [
+                    ("/function/arguments", "input", Field::ToolArguments),
+                    ("/id", "id", Field::ToolCallIds),
+                    ("/function/name", "name", Field::ToolNames),
                 ] {
                     if old_calls
                         .iter()
-                        .map(|v| v.pointer(pointer))
-                        .ne(new_calls.iter().map(|v| v.pointer(pointer)))
+                        .map(|call| tool_call_component(call, pointer, block_key))
+                        .ne(new_calls.iter().map(|call| tool_call_component(call, pointer, block_key)))
                     {
                         fields.push(field);
                     }
@@ -412,5 +445,62 @@ mod tests {
                 .previous_step_id,
             None
         );
+    }
+
+    #[test]
+    fn counts_messages_images_including_nested_tool_result_content() {
+        let mut tracker = RequestTracker::default();
+        let mut next = json!({"messages":[{"role":"user","content":[
+            {"type":"image","source":{"type":"base64","data":"private direct image"}},
+            {"type":"tool_result","tool_use_id":"call1","content":[
+                {"type":"text","text":"private observation"},
+                {"type":"image","source":{"type":"base64","data":"private nested image"}}
+            ]}
+        ]}]});
+        assert_eq!(tracker.observe("review", 1, Arc::new(next.clone())).image_count, 2);
+        next["messages"][0]["content"][1]["content"] = json!([{"type":"text","text":"receipt"}]);
+        let diagnostics = tracker.observe("review", 2, Arc::new(next));
+        assert_eq!((diagnostics.previous_image_count, diagnostics.image_count), (Some(2), 1));
+        assert!(diagnostics.first_changed_message.as_ref().unwrap().fields.contains(&MessageChangeField::Images));
+        assert!(!serde_json::to_string(&diagnostics).unwrap().contains("private"));
+    }
+
+    #[test]
+    fn messages_blocks_preserve_existing_image_reasoning_and_tool_change_diagnostics() {
+        let original = json!({"model":"deepseek-flash","messages":[
+            {"role":"assistant","content":[
+                {"type":"thinking","thinking":"private reasoning","signature":"signature"},
+                {"type":"tool_use","id":"call1","name":"read","input":{"path":"private path"}}
+            ]},
+            {"role":"user","content":[
+                {"type":"image","source":{"type":"base64","data":"private direct image"}},
+                {"type":"tool_result","tool_use_id":"call1","content":[
+                    {"type":"image","source":{"type":"base64","data":"private nested image"}}
+                ]}
+            ]},
+            {"role":"assistant","content":[
+                {"type":"redacted_thinking","data":"private redacted reasoning"},
+                {"type":"text","text":"observed"}
+            ]}
+        ]});
+        for (pointer, replacement, expected) in [
+            ("/messages/0/content/1/input/path", json!("next"), MessageChangeField::ToolArguments),
+            ("/messages/0/content/1/id", json!("call2"), MessageChangeField::ToolCallIds),
+            ("/messages/0/content/1/name", json!("inspect"), MessageChangeField::ToolNames),
+            ("/messages/0/content/0/thinking", json!("next"), MessageChangeField::ReasoningContent),
+            ("/messages/2/content/0/data", json!("next"), MessageChangeField::ReasoningContent),
+            ("/messages/1/content/1/content/0/source/data", json!("next"), MessageChangeField::Images),
+            ("/messages/1/content/1/tool_use_id", json!("call2"), MessageChangeField::ToolCallId),
+        ] {
+            let mut tracker = RequestTracker::default();
+            let baseline = tracker.observe("review", 1, Arc::new(original.clone()));
+            assert_eq!((baseline.image_count, baseline.reasoning_message_count), (2, 2));
+            let mut changed = original.clone();
+            *changed.pointer_mut(pointer).unwrap() = replacement;
+            let diagnostics = tracker.observe("review", 2, Arc::new(changed));
+            assert!(diagnostics.first_changed_message.as_ref().unwrap().fields.contains(&expected), "{pointer}");
+            assert_eq!((diagnostics.image_count, diagnostics.reasoning_message_count), (2, 2));
+            assert!(!serde_json::to_string(&diagnostics).unwrap().contains("private"));
+        }
     }
 }

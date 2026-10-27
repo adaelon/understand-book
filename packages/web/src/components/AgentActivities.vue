@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref, useId } from "vue";
 import { BookOpen, Check, ChevronRight, CircleAlert, LoaderCircle, Minus, Search, Square, Wrench } from "@lucide/vue";
 import type { RunActivity } from "../agent-run-state";
 
-const props = defineProps<{ activities: RunActivity[]; active?: boolean; diagnostic?: boolean }>();
+const props = defineProps<{ activities: RunActivity[]; active?: boolean; diagnostic?: boolean; statusText?: string }>();
 const expanded = ref(false);
 const listId = useId();
-const labels = { running: "进行中", succeeded: "已完成", no_result: "无结果", rejected: "未执行", failed: "失败", cancelled: "已停止" };
+const labels = { running: uiText('进行中'), succeeded: uiText('已完成'), no_result: uiText('无结果'), rejected: uiText('未执行'), failed: uiText('失败'), cancelled: uiText('已停止') };
 // Public progress is deliberately separate from model attempts and their diagnostics.
 const publicActivities = computed(() => props.activities.filter(activity =>
   activity.kind === 'commentary' || (activity.kind === 'tool' && activity.parent_step_id === null && activity.name !== 'agent.progress')));
@@ -26,31 +28,31 @@ function activityIcon(activity: RunActivity) {
 }
 function durationLabel(duration: number | null): string {
   if (duration === null) return "";
-  if (duration < 100) return duration < 1 ? "<1 毫秒" : `${duration.toFixed(1)} 毫秒`;
-  return `${(duration / 1000).toFixed(1)} 秒`;
+  if (duration < 100) return duration < 1 ? uiText('<1 毫秒') : uiText('{0} 毫秒', [duration.toFixed(1)]);
+  return uiText('{0} 秒', [(duration / 1000).toFixed(1)]);
 }
 </script>
 <template>
   <div v-if="visibleActivities.length || active" class="activity-group" :class="{ diagnostic, active }">
-    <p v-if="active && !diagnostic" class="activity-heading" role="status"><LoaderCircle :size="14" class="activity-spinner" aria-hidden="true" />正在工作<span v-if="operationCount"> · {{ operationCount }} 项操作</span></p>
+    <p v-if="active && !diagnostic" class="activity-heading" role="status"><LoaderCircle :size="14" class="activity-spinner" aria-hidden="true" />{{ statusText || uiText('正在工作') }}<span v-if="operationCount"> · {{ operationCount }} {{ uiText('项操作') }}</span></p>
     <button v-else-if="!diagnostic" type="button" class="activity-summary" :aria-expanded="expanded" :aria-controls="listId" @click="expanded = !expanded">
       <ChevronRight class="activity-chevron" :class="{ expanded }" :size="14" aria-hidden="true" />
-      <span>{{ expanded ? '收起工作过程' : '查看工作过程' }}<template v-if="operationCount"> · {{ operationCount }} 项操作</template></span>
+      <span>{{ expanded ? uiText('收起工作过程') : uiText('查看工作过程') }}<template v-if="operationCount"> · {{ operationCount }} {{ uiText('项操作') }}</template></span>
     </button>
-    <ol v-if="listVisible && visibleActivities.length" :id="listId" class="agent-activities" aria-label="工作过程">
+    <ol v-if="listVisible && visibleActivities.length" :id="listId" class="agent-activities" :aria-label="uiText('工作过程')">
       <li v-for="activity in visibleActivities" :key="activity.step_id" class="agent-activity" :class="{ commentary: activity.kind === 'commentary' && !diagnostic, nested: diagnostic && activity.parent_step_id !== null }" :data-step-id="activity.step_id" :data-status="activity.status">
         <p v-if="activity.kind === 'commentary' && !diagnostic" class="activity-commentary">{{ activity.label }}</p>
         <template v-else>
           <component :is="activityIcon(activity)" class="activity-icon" :class="{ 'activity-spinner': activity.status === 'running' }" :size="14" aria-hidden="true" />
-          <span class="activity-label">{{ activity.label }}</span>
+          <span class="activity-label">{{ uiText(activity.label) }}</span>
           <span class="activity-status">{{ labels[activity.status] }}</span>
-          <small v-if="activity.result_count !== null">{{ activity.result_count }} 项结果</small>
+          <small v-if="activity.result_count !== null">{{ activity.result_count }} {{ uiText('项结果') }}</small>
           <small v-if="diagnostic && durationLabel(activity.duration_ms)">{{ durationLabel(activity.duration_ms) }}</small>
-          <details v-if="diagnostic"><summary>详情</summary><code>{{ activity.name }}</code><span v-if="activity.error_code"> · {{ activity.error_code }}</span><span v-if="activity.parent_step_id !== null"> · 所属步骤 {{ activity.parent_step_id }}</span></details>
+          <details v-if="diagnostic"><summary>{{ uiText('详情') }}</summary><code>{{ activity.name }}</code><span v-if="activity.error_code"> · {{ activity.error_code }}</span><span v-if="activity.parent_step_id !== null"> {{ uiText('· 所属步骤') }} {{ activity.parent_step_id }}</span></details>
         </template>
       </li>
     </ol>
-    <small v-if="diagnostic && activities.length" class="activity-usage">已记录模型用量 {{ usage }} tokens<span v-if="missing"> · {{ missing }} 次请求未提供用量</span></small>
+    <small v-if="diagnostic && activities.length" class="activity-usage">{{ uiText('已记录模型用量') }} {{ usage }} tokens<span v-if="missing"> · {{ missing }} {{ uiText('次请求未提供用量') }}</span></small>
   </div>
 </template>
 <style scoped>

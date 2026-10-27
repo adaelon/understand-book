@@ -1,6 +1,8 @@
+import { mergeBoardDeliveries } from './board-workspace';
+import { t as uiText } from './i18n';
 import { ApiError, type AgentHistoryResponse } from './api';
 import { initialRun, type RunDescriptor, type RunSnapshot } from './agent-run-state';
-import { network, sceneKey, installWorkspace, forgetNetwork, savedWorkspace, type NetworkWorkspace, type LearningWorkspace, type PublishedBookRef } from './network-context';
+import { network, sceneKey, installWorkspace, forgetNetwork, savedWorkspace, saveWorkspace, type NetworkWorkspace, type LearningWorkspace, type PublishedBookRef } from './network-context';
 
 export const learningWorkspaces = {
   list: () => networkFetch<{ workspaces: LearningWorkspace[] }>('GET', '/learning-workspaces'),
@@ -52,10 +54,10 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const value = await res.json();
-  if (path !== '/auth/logout' && key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
+  if (path !== '/auth/logout' && key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
   if (!res.ok) {
     if (res.status === 401 && identity && key === sceneKey()) forgetNetwork();
-    const message = value.error_code === 'WORKSPACE_STALE' ? '阅读连接已失效，请重试恢复连接' : value.message ?? '请求未完成';
+    const message = value.error_code === 'WORKSPACE_STALE' ? uiText('阅读连接已失效，请重试恢复连接') : value.message ?? uiText('请求未完成');
     throw new ApiError(res.status, value.error_code ?? `HTTP_${res.status}`, value.category ?? (res.status === 409 ? 'conflict' : 'unavailable'), message,
       typeof value.request_id === 'string' ? { request_id: value.request_id, expires_at: value.expires_at, resend_after: value.resend_after } : undefined);
   }
@@ -65,7 +67,116 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
 // Serialize CAS writes from this page. Each operation captures its scene before joining the queue.
 let writes: Promise<unknown> = Promise.resolve();
 let queuedNavigation: { key: string; superseded: boolean } | null = null;
-let bindingRecovery: { key: string; task: Promise<void> } | null = null;
+let bindingRecovery: { key: string; task: Promise<void>; signal?: AbortSignal } | null = null;
+
+// The caller may stop waiting while an earlier write still owns the queue. Keep
+// that underlying task in `writes`, so cancellation never overlaps CAS writes.
+function abortable<T>(task: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return task;
+  return new Promise<T>((resolve, reject) => {
+    const aborted = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+    signal.addEventListener('abort', aborted, { once: true });
+    task.then(resolve, reject).finally(() => signal.removeEventListener('abort', aborted));
+    if (signal.aborted) aborted();
+  });
+}
+function assertOpeningActive(key: string, signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+}
+// Acknowledged attach may fork into another workspace. Retain its pointer before
+// opening the target, without mounting that intermediate book in the Reader.
+let openingRecovery: { key: string; workspaceId: string | null } | null = null;
+
+/** Open from the library with one warm write or one cold read/attach/open chain. */
+export function openLibraryMaterial(reference: PublishedBookRef, learningWorkspaceId: string | null, signal?: AbortSignal,
+  learningMembers?: PublishedBookRef[]): Promise<NetworkWorkspace> {
+  const key = sceneKey();
+  queuedNavigation = null;
+  const result = writes.catch(() => {}).then(async () => {
+    assertOpeningActive(key, signal);
+    const n = network.value;
+    if (n.linked) throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', uiText('请从原阅读窗口重新打开附属窗口'));
+    const recovery = openingRecovery?.key === key ? openingRecovery : null;
+    let target = reference;
+    const chooseTarget = (workspace: NetworkWorkspace) => {
+      const previous = learningWorkspaceId && learningMembers && workspace.learning_workspace_positions?.[learningWorkspaceId];
+      if (previous && learningMembers!.some(member => member.book_id === previous.book_id && member.publication_id === previous.publication_id)) target = previous;
+    };
+    const matches = (workspace: NetworkWorkspace) => workspace.published_book_ref.book_id === target.book_id
+      && workspace.published_book_ref.publication_id === target.publication_id
+      && (workspace.learning_workspace_id ?? null) === learningWorkspaceId;
+    const receipt = (workspace: NetworkWorkspace) => {
+      // A late acknowledgement is useful for the next explicit retry, but may
+      // never restore an old account or install after this attempt timed out.
+      if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+      openingRecovery = { key, workspaceId: workspace.workspace_id };
+      saveWorkspace(workspace.workspace_id, 'library');
+      assertOpeningActive(key, signal);
+      return workspace;
+    };
+    const read = async (id: string) => {
+      const workspace = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${id}`, undefined, signal);
+      assertOpeningActive(key, signal);
+      return workspace;
+    };
+    const attach = async (workspace: NetworkWorkspace) => {
+      assertOpeningActive(key, signal);
+      openingRecovery = { key, workspaceId: workspace.workspace_id };
+      return receipt(await networkFetch<NetworkWorkspace>('POST', `/workspaces/${workspace.workspace_id}/attach`, {
+        attachment_id: n.attachment, generation: workspace.generation, expected_revision: workspace.revision,
+      }, signal));
+    };
+    const create = async () => {
+      assertOpeningActive(key, signal);
+      openingRecovery = { key, workspaceId: null };
+      return receipt(await networkFetch<NetworkWorkspace>('POST', '/workspaces', {
+        attachment_id: n.attachment, published_book_ref: target, learning_workspace_id: learningWorkspaceId,
+      }, signal));
+    };
+    const post = async (workspace: NetworkWorkspace) => {
+      assertOpeningActive(key, signal);
+      openingRecovery = { key, workspaceId: workspace.workspace_id };
+      return receipt(await networkFetch<NetworkWorkspace>('POST', `/workspaces/${workspace.workspace_id}/book/open`, {
+        attachment_id: n.attachment, generation: workspace.generation, expected_revision: workspace.revision,
+        published_book_ref: target, learning_workspace_id: learningWorkspaceId,
+      }, signal));
+    };
+    let workspace = n.workspace;
+    if (workspace) chooseTarget(workspace);
+    // A same-material click means resume, including its chat and position.
+    // Read/attach also recovers a binding evicted while the library was open.
+    if (!workspace || recovery || matches(workspace)) {
+      const id = recovery ? recovery.workspaceId : workspace?.workspace_id ?? savedWorkspace()?.workspace_id;
+      let latest: NetworkWorkspace | null = null;
+      if (id) {
+        try { latest = await read(id); }
+        catch (error) { if (!(error instanceof ApiError) || error.status !== 404) throw error; }
+      }
+      workspace = latest ? await attach(latest) : await create();
+      chooseTarget(workspace);
+    }
+    if (!matches(workspace)) {
+      try { workspace = await post(workspace); }
+      catch (error) {
+        assertOpeningActive(key, signal);
+        if (!(error instanceof ApiError) || !['WORKSPACE_REVISION_CONFLICT', 'WORKSPACE_STALE'].includes(error.errorCode)) throw error;
+        // These responses reject the attempted write before mutation. An
+        // uncertain/lost response waits for an explicit user retry instead.
+        const latest = await read(workspace.workspace_id);
+        workspace = error.errorCode === 'WORKSPACE_STALE' || latest.generation !== workspace.generation
+          ? await attach(latest) : latest;
+        if (!matches(workspace)) workspace = await post(workspace);
+      }
+    }
+    assertOpeningActive(key, signal);
+    installWorkspace(workspace, n.attachment, false);
+    openingRecovery = null;
+    return workspace;
+  });
+  writes = result;
+  return abortable(result, signal);
+}
 export interface ReadingResumption {
   workspace_id: string;
   learning_workspace_id?: string | null;
@@ -83,31 +194,38 @@ export async function readReadingResumption(): Promise<ReadingResumption | null>
   return networkFetch<ReadingResumption | null>('GET', id ? `/workspaces/${id}/resumption` : '/me/reading-resumption');
 }
 /** Reclaim a cold main scene before exposing its new generation to the Reader. */
-export function recoverWorkspaceBinding(expected?: ReadingResumption): Promise<void> {
+export function recoverWorkspaceBinding(expected?: ReadingResumption, signal?: AbortSignal): Promise<void> {
   const key = sceneKey();
-  if (bindingRecovery?.key === key) return bindingRecovery.task;
-  if (network.value.linked) return Promise.reject(new ApiError(409, 'WORKSPACE_STALE', 'conflict', '请从原阅读窗口重新打开附属窗口'));
+  if (bindingRecovery?.key === key && !bindingRecovery.signal?.aborted) return abortable(bindingRecovery.task, signal);
+  if (network.value.linked) return Promise.reject(new ApiError(409, 'WORKSPACE_STALE', 'conflict', uiText('请从原阅读窗口重新打开附属窗口')));
   const result = writes.catch(() => {}).then(async () => {
-    if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
+    assertOpeningActive(key, signal);
     const n = network.value;
     const id = expected?.workspace_id ?? savedWorkspaceId();
     if (!id) return;
-    const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${id}`);
+    const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${id}`, undefined, signal);
+    assertOpeningActive(key, signal);
     if (expected && (latest.workspace_id !== expected.workspace_id
       || latest.published_book_ref.book_id !== expected.published_book_ref.book_id
       || latest.published_book_ref.publication_id !== expected.published_book_ref.publication_id
+      || (latest.learning_workspace_id ?? null) !== (expected.learning_workspace_id ?? null)
       || latest.selected_chat !== expected.selected_chat)) {
-      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读记录已更新，请查看最新记录后继续。');
+      throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', uiText('阅读记录已更新，请查看最新记录后继续。'));
     }
     const attached = await networkFetch<NetworkWorkspace>('POST', `/workspaces/${id}/attach`, {
       attachment_id: n.attachment, generation: latest.generation, expected_revision: latest.revision,
-    });
+    }, signal);
+    if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+    openingRecovery = { key, workspaceId: attached.workspace_id };
+    saveWorkspace(attached.workspace_id, savedWorkspace()?.view ?? 'library');
+    assertOpeningActive(key, signal);
     installWorkspace(attached);
+    openingRecovery = null;
   });
-  const recovery = { key, task: result.finally(() => { if (bindingRecovery === recovery) bindingRecovery = null; }) };
+  const recovery = { key, signal, task: result.finally(() => { if (bindingRecovery === recovery) bindingRecovery = null; }) };
   bindingRecovery = recovery;
   writes = recovery.task;
-  return recovery.task;
+  return abortable(recovery.task, signal);
 }
 export function workspaceAction<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
   const key = sceneKey();
@@ -119,16 +237,16 @@ export function workspaceAction<T = unknown>(action: string, body: Record<string
   const result = writes.catch(() => {}).then(async () => {
     if (navigation?.superseded) throw new DOMException('Navigation superseded', 'AbortError');
     if (queuedNavigation === navigation) queuedNavigation = null;
-    if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换');
+    if (key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
     const n = network.value, w = n.workspace;
-    if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', '请先选择材料');
+    if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', uiText('请先选择材料'));
     const controller = action === 'reader/video_draft' ? new AbortController() : undefined;
-    const timeout = controller ? setTimeout(() => controller.abort(new Error('视频提问保存超时，请重试。')), 15_000) : undefined;
+    const timeout = controller ? setTimeout(() => controller.abort(new Error(uiText('视频提问保存超时，请重试。'))), 15_000) : undefined;
     const refresh = async () => {
       const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`, undefined, controller?.signal);
       if (latest.generation !== w.generation) {
         installWorkspace(latest);
-        throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读内容已更新，请重试当前操作。');
+        throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', uiText('阅读内容已更新，请重试当前操作。'));
       }
       installWorkspace(latest);
       return latest;
@@ -157,19 +275,19 @@ export function workspaceAction<T = unknown>(action: string, body: Record<string
 }
 export function publishedUrl(leaf: string) {
   const ref = network.value.workspace?.published_book_ref;
-  if (!ref) throw new Error('请先选择材料');
+  if (!ref) throw new Error(uiText('请先选择材料'));
   return `/books/${encodeURIComponent(ref.book_id)}/publications/${encodeURIComponent(ref.publication_id)}/${leaf}`;
 }
 
 // Reads retain scene authority but do not join the CAS write queue or install an older snapshot.
 export async function workspaceRead<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
   const n = network.value, w = n.workspace;
-  if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', '请先选择材料');
+  if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', uiText('请先选择材料'));
   return networkFetch<T>('POST', `/workspaces/${w.workspace_id}/${action}`, {
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
   });
 }
-const readActions = new Set(['memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
+const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
   'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'reader/selection.translate']);
 
 interface Admission extends RunDescriptor {
@@ -177,8 +295,8 @@ interface Admission extends RunDescriptor {
   turn?: import('./api').AgentChatTurn;
 }
 export function admissionSnapshot(value: Admission): RunSnapshot {
-  if (value.snapshot) return { ...value.snapshot, descriptor: { ...value.snapshot.descriptor, workspace_id: value.workspace_id, workspace_generation: value.workspace_generation, published_book_ref: value.published_book_ref } };
-  const snapshot = initialRun(value);
+  if (value.snapshot) return { ...value.snapshot, board_commits: mergeBoardDeliveries(value.snapshot.board_commits, value.snapshot.final_view?.board_commits, value.turn?.board_commits), descriptor: { ...value.snapshot.descriptor, workspace_id: value.workspace_id, workspace_generation: value.workspace_generation, published_book_ref: value.published_book_ref } };
+  const snapshot = { ...initialRun(value), board_commits: mergeBoardDeliveries(value.turn?.board_commits) };
   if (value.persistence_state === 'failed') return { ...snapshot, persistence_state: 'failed', execution_state: 'ended', error: value.turn?.error as RunSnapshot['error'] ?? null };
   if (value.dispatch_state === 'queued' || value.dispatch_state === 'preparing' || value.dispatch_state === 'claimed') return { ...snapshot, execution_state: value.dispatch_state === 'claimed' ? 'running' : 'queued' };
   return { ...snapshot, persistence_state: 'saved', execution_state: value.turn?.status === 'completed' ? 'completed' : value.turn?.status === 'cancelled' ? 'cancelled' : 'failed', final_view: value.turn ?? null, error: value.turn?.error as RunSnapshot['error'] ?? null };
@@ -220,16 +338,25 @@ export async function retrySubmission(key: string) {
   window.dispatchEvent(new Event('agent-admission-changed'));
 }
 async function createRun(body: Record<string, unknown>) {
-  if (!network.value.workspace?.selected_chat) await workspaceAction('chat/new');
+  const initial = network.value.workspace;
+  // The first question owns the chat it creates. An explicitly captured existing
+  // chat still has to match, including after the workspace refresh below.
+  const created = !initial?.selected_chat ? await workspaceAction<NetworkWorkspace>('chat/new') : null;
   const w = network.value.workspace!;
+  const requestedSession = !body.session_id && created ? created.selected_chat : body.session_id;
   if (pendingSubmissions().some(p => p.body.session_id === w.selected_chat)) {
     await recoverSubmissions();
-    if (pendingSubmissions().some(p => p.body.session_id === w.selected_chat)) throw new ApiError(409, 'SUBMISSION_UNCONFIRMED', 'conflict', '原问题仍待核对，请先核对或重试原提交；不会自动重提');
+    if (pendingSubmissions().some(p => p.body.session_id === w.selected_chat)) throw new ApiError(409, 'SUBMISSION_UNCONFIRMED', 'conflict', uiText('原问题仍待核对，请先核对或重试原提交；不会自动重提'));
   }
   const latest = await networkFetch<NetworkWorkspace>('GET', `/workspaces/${w.workspace_id}`);
-  if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', '阅读内容已更新，请返回原对话重新发送问题。'); }
-  if ((body.entry_action || body.teaching_choice) && (body.session_id !== w.selected_chat || latest.selected_chat !== w.selected_chat)) {
-    throw new ApiError(409, 'CHAT_SELECTION_CHANGED', 'conflict', '聊天已切换，请返回原聊天重新发起操作');
+  if (latest.generation !== w.generation) { installWorkspace(latest); throw new ApiError(409, 'WORKSPACE_STALE', 'conflict', body.board_follow_up
+    ? uiText('讨论已更新，问题仍保留在画板。请重试以继续当前讨论。')
+    : uiText('阅读内容已更新，请返回原对话重新发送问题。')); }
+  if ((body.entry_action || body.teaching_choice || body.board_follow_up) && (requestedSession !== w.selected_chat || latest.selected_chat !== w.selected_chat)) {
+    installWorkspace(latest);
+    throw new ApiError(409, 'CHAT_SELECTION_CHANGED', 'conflict', body.board_follow_up
+      ? uiText('讨论已更新，问题仍保留在画板。请重试以继续当前讨论。')
+      : uiText('聊天已切换，请返回原聊天重新发起操作'));
   }
   installWorkspace(latest);
   const key = typeof body.client_request_id === 'string' ? body.client_request_id : crypto.randomUUID();
@@ -282,8 +409,11 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     value = { root: '', books: result.books.map(b => ({ name: b.published_book_ref.book_id, title: b.title, book_id: b.published_book_ref.book_id, dir: JSON.stringify(b.published_book_ref), route: 'reader', cover: b.cover })) };
   } else if (path.startsWith('/book/')) value = await networkFetch(method, publishedUrl(path.slice(6)), body, signal);
   else if (path === '/tutor/state' || path === '/tutor/mutate') {
-    const scope = network.value.workspace?.learning_workspace_id;
-    value = await networkFetch(method, scope ? `${path}?learning_workspace_id=${encodeURIComponent(scope)}` : path, body);
+    const workspace = network.value.workspace;
+    const scope = new URLSearchParams();
+    if (workspace?.learning_workspace_id) scope.set('learning_workspace_id', workspace.learning_workspace_id);
+    if (workspace?.published_book_ref.book_id) scope.set('source_id', workspace.published_book_ref.book_id);
+    value = await networkFetch(method, scope.size ? `${path}?${scope}` : path, body);
   }
   else if (path === '/tutor/readiness') value = await networkFetch('GET', publishedUrl('tutor_readiness'));
   else if (path === '/agent/music/respond') {

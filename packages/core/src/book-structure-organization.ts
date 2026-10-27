@@ -1,3 +1,4 @@
+import { readStructureThemeSession, StructureThemeRetrievalRequired } from "./book-structure-theme-session";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -25,6 +26,7 @@ import { createCandidateTransportContract } from "./executor-transport";
 import { STRUCTURE_ORGANIZATION_PROMPTS } from "./book-structure-organization-prompts";
 import type { ModelExecutionBudgetBlockedV3 } from "./model-input-budget";
 import { estimateTokens } from "./window";
+import { throwExtractorSchemaError } from "./extractor-contract";
 
 const STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS = 20000;
 
@@ -48,9 +50,29 @@ export function renderStructureOrganizationInput(input: StructureOrganizationInp
   const indent = input.phase === "plan" && input.context.planning_candidate_refs ? undefined : 2;
   const delivery = { phase: input.phase, input: input.body, reference_scope: input.reference_scope };
   const rendered = JSON.stringify(delivery, null, indent) + "\n";
-  // Retain accepted outline identities when their original rendering already fits.
-  return input.phase === "outline" && estimateTokens(rendered) > STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS
+  // Keep fitting inputs byte-stable; compact oversized organization bodies without dropping content.
+  // Theme planning retains its existing compact/legacy rendering contract above.
+  return input.phase !== "plan" && estimateTokens(rendered) > STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS
     ? JSON.stringify(delivery) + "\n" : rendered;
+}
+export function fitStructureOrganizationExecution(input: Omit<Parameters<typeof evaluateBookStructureExecution>[0], "rendered_input"> & {
+  packet: StructureOrganizationInput;
+}) {
+  let packet = input.packet;
+  let rendered = renderStructureOrganizationInput(packet);
+  let evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  // Browsing ledgers grow across actions. Reduce only a blocked navigation page,
+  // and bind acceptance to that exact delivery so unseen candidates stay unseen.
+  while (evaluation.status !== "within_limit" && packet.phase === "chapter"
+    && (packet.context.candidate_index_page_size ?? 0) > 1) {
+    if ((packet.body as ReturnType<typeof structureChapterInput>).index.items.length <= 1) break;
+    const context: StructureChapterContext = { ...packet.context,
+      candidate_index_page_size: Math.max(1, Math.floor(packet.context.candidate_index_page_size! / 2)) };
+    packet = { ...packet, context, body: structureChapterInput(packet.work, context) };
+    rendered = renderStructureOrganizationInput(packet);
+    evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  }
+  return { packet, rendered, evaluation };
 }
 export function applyStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationState {
   switch (input.phase) {
@@ -62,7 +84,11 @@ export function applyStructureOrganizationAction(input: StructureOrganizationInp
   }
 }
 export function acceptStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationAcceptance {
-  applyStructureOrganizationAction(input, action);
+  try { applyStructureOrganizationAction(input, action); }
+  catch (error) {
+    if (error instanceof z.ZodError) throwExtractorSchemaError(error, action);
+    throw error;
+  }
   return { version: "book_structure_action.v1", accepted_action: structuredClone(action) };
 }
 export function structureOrganizationContracts(base: BookStructureExecutionContractV2) {
@@ -147,13 +173,16 @@ export function routeStructureOrganization(input: {
   const scope: BookStructureReferenceScope = { unit_lids: input.outline.chapters.map(c => c.unit_lid), dependency_target_lids: [], evidence_by_unit: {} };
   // Descriptors bind the actual rendered input. Core dependencies live in the current
   // context and are rechecked by applying the saved action, including unshown candidates.
-  const step = (kind: StructureOrganizationKind, id: string, packet: StructureOrganizationInput) => {
-    const rendered = renderStructureOrganizationInput(packet), contract = input.contracts[kind];
+  const step = (kind: StructureOrganizationKind, id: string, packet: StructureOrganizationInput,
+    options: { probe?: boolean; whole_theme?: boolean } = {}) => {
+    const contract = input.contracts[kind];
     const reserve = kind === "structure_outline" ? 5000 : kind === "structure_chapter" || kind === "structure_chapter_selection" ? 3500 : 6500;
-    const evaluated = evaluateBookStructureExecution({ contract, rendered_input: rendered,
+    const fitted = fitStructureOrganizationExecution({ packet, contract,
       transport_profile: input.execution_profile.transport_profile,
       budget: { stage_body_limit_tokens: STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS, executor_context_floor_tokens: 32768,
         output_reserve_tokens: reserve, max_candidate_tokens: Math.min(reserve, createCandidateTransportContract(input.execution_profile.transport_profile).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 } });
+    packet = fitted.packet;
+    const { rendered, evaluation: evaluated } = fitted;
     if (evaluated.status !== "within_limit") throw new StructureOrganizationBlocked(`BookStructure ${id} input exceeds its execution budget; reduce the requested material before resuming`, evaluated);
     const descriptor = proofBoundBookStructureDescriptor({ target: input.target.target_ref,
       work_unit_id: `${id}-${evaluated.proof.rendered_input_sha256.slice(0, 16)}`, kind, rendered_input: rendered, proof: evaluated.proof,
@@ -163,7 +192,7 @@ export function routeStructureOrganization(input: {
     const task = createBookStructureGenerationTask({ execution_profile: input.execution_profile, target_ref: input.target.target_ref,
       descriptor, generation_input: packet, parent_unit_lid: "stitch", parent_content_hash: descriptor.input_hash,
       source_range: { start_ordinal: 0, end_ordinal_exclusive: input.outline.chapters.length }, allowed_evidence_lids: descriptor.evidence_lids,
-      policy_generation_id: structureOrganizationGeneration(kind, contract.policy_fingerprint.quality_profile), output_role: "organization_action" });
+      policy_generation_id: structureOrganizationGeneration(kind, contract.policy_fingerprint.quality_profile), output_role: options.whole_theme ? "organization_theme" : "organization_action" });
     let result: StructureOrganizationState | undefined;
     for (;;) {
       try {
@@ -172,6 +201,7 @@ export function routeStructureOrganization(input: {
       if (result || !existsSync(automaticBuildGenerationArtifactPath(input.target, "book_structure", task.policy_generation_id, descriptor.work_unit_id))) break;
       descriptor.work_unit_id += "-replay";
     }
+    if (options.probe && !result) return undefined;
     tasks.push(task);
     if (!result) pending.push(descriptor.work_unit_id);
     return result;
@@ -234,7 +264,8 @@ export function routeStructureOrganization(input: {
       body: structureThemePlanningInput(themeContext) }) as StructureThemeDirectory | undefined;
     if (!directory) return { tasks, pending, progress };
     progress.themes.planned = true; progress.themes.total = directory.works.length;
-    for (const ref of directory.works.map(w => w.plan.ref)) {
+    // Replay the accepted legacy prefix without allocating another action-sized dispatch.
+    legacy: for (const ref of directory.works.map(w => w.plan.ref)) {
       for (let ordinal = 0; !directory.works.find(w => w.plan.ref === ref)!.result; ordinal++) {
         if (ordinal >= 128) throw new StructureOrganizationBlocked(`Theme ${ref} action budget exhausted; accepted work retained`);
         if (themeContext.mode === "semantic_required") {
@@ -254,12 +285,46 @@ export function routeStructureOrganization(input: {
           // Only the prepared retrieval changes between actions.
           ...packet, phase: "theme", context: { ...themeContext }, directory, ref,
           body: structureThemeInput(directory, ref, themeContext),
-        }) as StructureThemeDirectory | undefined;
-        if (!next) return { tasks, pending, progress };
+        }, { probe: true }) as StructureThemeDirectory | undefined;
+        if (!next) break legacy;
         directory = next;
       }
-      progress.themes.done++;
+
     }
+    const themeBaseline = directory;
+    for (const ref of themeBaseline.works.map(w => w.plan.ref)) {
+      const index = themeBaseline.works.findIndex(w => w.plan.ref === ref);
+      if (themeBaseline.works[index].result) { progress.themes.done++; continue; }
+      const context = { ...themeContext };
+      if (context.mode === "semantic_required") {
+        const dependencies = retrievalDependencies(projectStructureRetrieval(context.catalog, context.chapters).records,
+          { kind: "search", query: themeBaseline.works[index].query }, context.mode,
+          selection!.provider!.identity, STRUCTURE_RETRIEVAL_POLICY, STRUCTURE_RETRIEVAL.projection_version);
+        context.prepared = Object.values(state.prepared).find(p => retrievalPreparationMatches(p, dependencies));
+        if (!context.prepared) {
+          preparation = { slot: `book-structure/${ref}/start`, dependencies };
+          remaining = retrievalRemainingWork(input.target.workspace_dir, preparation, state.prepared[preparation.slot]);
+          return { tasks, pending, progress, preparation, remaining };
+        }
+      }
+      const next = step("structure_theme", `structure:theme:${index}:work`, {
+        ...packet, phase: "theme", context, directory: themeBaseline, ref,
+        body: { ...structureThemeInput(themeBaseline, ref, context), action_ordinal: 0 },
+      }, { whole_theme: true }) as StructureThemeDirectory | undefined;
+      if (!next) {
+        try { readStructureThemeSession(input.target, tasks.at(-1)!); }
+        catch (error) {
+          if (!(error instanceof StructureThemeRetrievalRequired)) throw error;
+          preparation ??= error.request;
+          remaining = retrievalRemainingWork(input.target.workspace_dir, preparation, state.prepared[preparation.slot]);
+        }
+      }
+      if (next) {
+        directory = { ...directory, works: directory.works.map(w => w.plan.ref === ref ? next.works[index] : w) };
+        progress.themes.done++;
+      }
+    }
+    if (pending.length) return { tasks, pending, progress, preparation, remaining };
     directory = step("structure_theme_reconcile", "structure:themes:reconcile", { ...packet, phase: "reconcile", context: themeContext,
       directory, body: { themes: directory.works.map(w => ({ plan: w.plan, result: w.result,
         evidence_by_unit: w.evidence_by_unit, inspected_refs: w.inspected_refs })) } }) as StructureThemeDirectory | undefined;
@@ -286,9 +351,16 @@ export function routeStructureOrganization(input: {
         const next = step("structure_theme", `structure:theme:revision:${request.id}:${ordinal}`, {
           ...packet, phase: "theme", context: { ...themeContext }, directory, ref: request.theme_ref,
           revision_request: request, body: structureThemeInput(directory, request.theme_ref, themeContext),
-        }) as StructureThemeDirectory | undefined;
-        if (!next) return { tasks, pending, progress };
+        }, { probe: true }) as StructureThemeDirectory | undefined;
+        if (!next) break;
         directory = next;
+      }
+      if (!directory.works.find(w => w.plan.ref === request.theme_ref)!.result) {
+        directory = step("structure_theme", `structure:theme:revision:${request.id}:work`, {
+          ...packet, phase: "theme", context: { ...themeContext }, directory, ref: request.theme_ref,
+          revision_request: request, body: { ...structureThemeInput(directory, request.theme_ref, themeContext), action_ordinal: 0 },
+        }, { whole_theme: true }) as StructureThemeDirectory | undefined;
+        if (!directory) return { tasks, pending, progress };
       }
     }
     const base = materializeStructureChapterSelections(context.catalog, selected, input.outline.chapters.map(c => c.unit_lid), context.titles);

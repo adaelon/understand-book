@@ -1,4 +1,6 @@
 ﻿<script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { OutlineItem } from "../App.vue";
 import type {
@@ -59,13 +61,13 @@ const activeOutlineLid = computed(() => {
     .sort((a, b) => b.lid.length - a.lid.length)[0]?.lid ?? null;
 });
 const nodeKindLabels: Record<string, string> = {
-  chapter: "章",
-  section: "节",
-  paragraph: "段落",
-  formula: "公式",
-  image: "图片",
-  table: "表格",
-  code: "代码",
+  chapter: uiText('章'),
+  section: uiText('节'),
+  paragraph: uiText('段落'),
+  formula: uiText('公式'),
+  image: uiText('图片'),
+  table: uiText('表格'),
+  code: uiText('代码'),
 };
 
 function outlineKindLabel(kind: string): string {
@@ -115,7 +117,7 @@ watch(activeOutlineLid, () => {
 </script>
 
 <template>
-  <aside id="reader-outline" class="left-rail" aria-label="阅读目录">
+  <aside id="reader-outline" class="left-rail" :aria-label="uiText('阅读目录')">
     <PaperMinimap
       v-if="props.paperEnabled"
       :base="props.paperMinimapBase ?? null"
@@ -136,19 +138,19 @@ watch(activeOutlineLid, () => {
     />
 
     <div class="rail-section">
-      <label class="rail-label" for="outline-search">搜索</label>
+      <label class="rail-label" for="outline-search">{{ uiText('搜索') }}</label>
       <input
         id="outline-search"
         class="search-pill outline-search"
         :value="props.searchQuery"
-        placeholder="搜索目录"
+        :placeholder="uiText('搜索目录')"
         @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
       />
     </div>
 
     <div class="rail-section outline-section">
-      <div class="rail-heading">目录</div>
-      <nav ref="outlineList" class="outline-list" aria-label="书籍目录">
+      <div class="rail-heading">{{ uiText('目录') }}</div>
+      <nav ref="outlineList" class="outline-list" :aria-label="uiText('书籍目录')">
         <button
           v-for="item in filteredOutline"
           :key="item.lid"
@@ -161,31 +163,31 @@ watch(activeOutlineLid, () => {
           @click="gotoOutline(item.lid)"
         >
           <span class="outline-kind">{{ outlineKindLabel(item.kind) }}</span>
-          <span class="outline-title">{{ item.title }}<small v-if="item.lid === props.pendingLid" role="status" class="outline-pending">正在跳转…</small></span>
+          <span class="outline-title">{{ item.title }}<small v-if="item.lid === props.pendingLid" role="status" class="outline-pending">{{ uiText('正在跳转…') }}</small></span>
         </button>
       </nav>
-      <p v-if="filteredOutline.length === 0" class="rail-muted">没有匹配的目录项。</p>
+      <p v-if="filteredOutline.length === 0" class="rail-muted">{{ uiText('没有匹配的目录项。') }}</p>
     </div>
 
     <div class="rail-section rail-position">
-      <div class="rail-heading">位置</div>
-      <div class="position-row"><span>进度</span><strong>{{ props.progressPct }}%</strong></div>
-      <div v-if="props.debugOpen" class="position-row"><span>叶子数</span><strong>{{ props.leafCount }}</strong></div>
+      <div class="rail-heading">{{ uiText('位置') }}</div>
+      <div class="position-row"><span>{{ uiText('进度') }}</span><strong>{{ props.progressPct }}%</strong></div>
+      <div v-if="props.debugOpen" class="position-row"><span>{{ uiText('叶子数') }}</span><strong>{{ props.leafCount }}</strong></div>
       <div class="progress-track"><span :style="{ width: props.progressPct + '%' }"></span></div>
     </div>
 
     <details v-if="props.debugOpen" class="debug-panel" open>
-      <summary>调试坐标</summary>
-      <p>锚点: <code>{{ props.anchorLid || "-" }}</code></p>
-      <p>选中: <code>{{ props.selectedLid || "-" }}</code></p>
+      <summary>{{ uiText('调试坐标') }}</summary>
+      <p>{{ uiText('锚点:') }} <code>{{ props.anchorLid || "-" }}</code></p>
+      <p>{{ uiText('选中:') }} <code>{{ props.selectedLid || "-" }}</code></p>
       <div class="debug-goto">
         <input
           :value="props.gotoInput"
-          placeholder="输入 LID"
+          :placeholder="uiText('输入 LID')"
           @input="emit('update:gotoInput', ($event.target as HTMLInputElement).value)"
           @keyup.enter="emit('goto', props.gotoInput)"
         />
-        <button @click="emit('goto', props.gotoInput)">跳转</button>
+        <button @click="emit('goto', props.gotoInput)">{{ uiText('跳转') }}</button>
       </div>
     </details>
   </aside>

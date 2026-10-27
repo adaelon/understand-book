@@ -100,6 +100,7 @@ fn fixture(wires: Vec<Option<String>>) -> (String, std::thread::JoinHandle<Vec<V
 }
 fn request() -> CompletionRequest {
     CompletionRequest {
+        followup_user: None,
         images: Vec::new(),
         system: "test".into(),
         user: "test".into(),

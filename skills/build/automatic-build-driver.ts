@@ -1,6 +1,7 @@
 import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../packages/core/src/build-executor-model-runtime";
 import { readExternalBuildCostBinding, type ExternalBuildCostBinding } from "../../packages/core/src/external-build-cost";
 import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
+import { createAutomaticBuildRefillTimingObserver } from "../../packages/core/src/automatic-build-dispatch-timing";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
 import { routeIncrementalAutomaticBuildSnapshot } from "../../packages/core/src/automatic-build-incremental";
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
@@ -968,6 +969,8 @@ function loadDriverState(
   effect: DecisionEffect = {},
 ): DriverState {
   const input = invocation.input;
+  // Resolve at each state refresh, including after preparation, recovery, or a
+  // writer. Downstream readers in this decision share this validation only.
   const target = resolveInvocationTarget(invocation);
   if (target.book_id !== invocation.initial_target_ref.book_id
     || target.profile_id !== invocation.initial_target_ref.profile_id
@@ -990,7 +993,7 @@ function loadDriverState(
     wall_budget: effect.bypass_wall_budget ? undefined : input.wall_budget,
     executor_provenance: input.executor_provenance,
     build_plan: plan,
-  }, routed);
+  }, routed, target);
   return { invocation, plan, plan_result: planResult };
 }
 
@@ -1807,7 +1810,7 @@ function prepareRetryRecoveries(
   if (request.reason !== "retry_exhausted" || !request.stage || !request.retry_boundaries?.length) {
     return { status: "not_satisfied" };
   }
-  const target = resolveInvocationTarget(invocation);
+  const target = current.plan_result.snapshot.target;
   const recoveries: PreparedRetryRecovery[] = [];
   for (const previous of request.retry_boundaries) {
     const currentScopeDigest = currentAttemptScopeDigest(current, request.stage, previous.work_unit_id);
@@ -2007,6 +2010,7 @@ function replayDispatchHandoffRefs(
   activeDispatchIdsValue: unknown,
   dispatchRunIdValue: unknown,
   now: string,
+  target: AutomaticBuildTarget,
 ): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> | undefined {
   if (!Array.isArray(activeDispatchIdsValue) || !activeDispatchIdsValue.length) return undefined;
   const stage = safeStage(stageValue);
@@ -2033,7 +2037,6 @@ function replayDispatchHandoffRefs(
     throw new Error("automatic build dispatch projection directory is invalid");
   }
   const active = new Set(activeDispatchIds);
-  const target = resolveInvocationTarget(invocation);
   const currentByDispatch = new Map(activeDispatchIds.map((dispatchId) => [
     dispatchId,
     inspectAutomaticBuildDispatchRecoveryGeneration(target, stage, dispatchId, {
@@ -2119,6 +2122,7 @@ function reissueActiveDispatchHandoffRefs(
   activeDispatchIdsValue: unknown,
   dispatchRunIdValue: unknown,
   issuedAt: string,
+  target: AutomaticBuildTarget,
 ): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> {
   const stage = safeStage(stageValue);
   if (!stage || !Array.isArray(activeDispatchIdsValue) || !activeDispatchIdsValue.length) {
@@ -2130,7 +2134,6 @@ function reissueActiveDispatchHandoffRefs(
     "active_dispatch_id",
     512,
   ));
-  const target = resolveInvocationTarget(invocation);
   const dispatches = activeDispatchIds.map((dispatchId) => {
     const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, dispatchRunId);
     if (persisted.manifest.stage !== stage
@@ -2224,7 +2227,7 @@ function privateArtifactWave(
   if (plan.recipe_id !== "goal_directed" || !plan.intent_id || !plan.intent_digest) {
     throw new Error("private artifact BuildPlan identity is invalid");
   }
-  const target = resolveInvocationTarget(invocation);
+  const target = current.plan_result.snapshot.target;
   const privateRoot = privateArtifactRootFromPlan(invocation, plan);
   const storedPlan = validateBuildPlanV1(readBoundedJsonWithin(
     privateRoot,
@@ -2408,6 +2411,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       execution_profile: invocationExecutionProfile(invocation.input),
       build_plan: current.plan,
     },
+    current.plan_result.snapshot.target,
   );
   if (doctor.status !== "compatible") {
     return finish(issueBoundary(invocation, syntheticBoundary(
@@ -2491,6 +2495,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
         build_plan: current.plan,
       },
       current.plan_result.snapshot,
+      current.plan_result.snapshot.target,
     );
     const action = next.action as unknown as Record<string, unknown>;
     if (action.kind === "needs_user") {
@@ -2514,8 +2519,8 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
         // Lease expiry is a live observation, independent of the stable publication clock.
         const issuedAt = new Date().toISOString();
         executors.push(...(replayDispatchHandoffRefs(invocation, action.stage, replayIds,
-          action.dispatch_run_id, issuedAt) ?? reissueActiveDispatchHandoffRefs(invocation,
-          action.stage, replayIds, action.dispatch_run_id, issuedAt)));
+          action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target) ?? reissueActiveDispatchHandoffRefs(invocation,
+          action.stage, replayIds, action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target)));
       }
       if (recoverTerminalLaunches(executors)) continue;
       const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
@@ -2537,6 +2542,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
           action.active_dispatch_ids,
           action.dispatch_run_id,
           issuedAt,
+          current.plan_result.snapshot.target,
         );
         const executors = replayed ?? reissueActiveDispatchHandoffRefs(
           invocation,
@@ -2544,6 +2550,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
           action.active_dispatch_ids,
           action.dispatch_run_id,
           issuedAt,
+          current.plan_result.snapshot.target,
         );
         if (recoverTerminalLaunches(executors)) continue;
         const bootstrapBoundary = bootstrapBoundaryForLaunches(invocation, current, executors);
@@ -2757,6 +2764,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     return automaticBuildRefill(value, {
       validateStep: validateStepRequest,
       maxParallel: ref => readInvocation(ref).input.max_parallel,
+      timing: createAutomaticBuildRefillTimingObserver(),
       step: (request, liveHandoffRefs, completedHandoffRefs) => {
         try {
           const result = step(request, liveHandoffRefs, completedHandoffRefs);

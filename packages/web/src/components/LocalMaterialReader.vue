@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { localMaterials, localMaterialUrl, type LocalMaterial } from '../local-materials';
 import { openLocalEpub, readerDocument, type EpubChapter } from '../local-epub';
@@ -16,7 +18,7 @@ onMounted(async () => {
   loading.value = true;
   try {
     const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error('本机文件暂时无法读取。');
+    if (!response.ok) throw new Error(uiText('本机文件暂时无法读取。'));
     if (format === 'epub') { const epub = openLocalEpub(await response.arrayBuffer()); chapters.value = epub.chapters; dispose = epub.dispose; }
     else { const buffer = await response.arrayBuffer(); try { text.value = new TextDecoder('utf-8', { fatal: true }).decode(buffer); } catch { text.value = new TextDecoder('gb18030').decode(buffer); } }
   } catch (reason) { if (!controller.signal.aborted) error.value = reason instanceof Error ? reason.message : String(reason); }
@@ -25,17 +27,17 @@ onMounted(async () => {
 onBeforeUnmount(() => { controller.abort(); dispose?.(); });
 </script>
 <template>
-  <section class="local-reader" role="dialog" aria-modal="true" :aria-label="`本机阅读：${material.filename}`">
-    <header><div><strong>{{ material.filename }}</strong><span>本机原文 · 无需云端空间</span></div><div><button @click="original">用系统应用打开</button><button @click="$emit('close')">返回资料</button></div></header>
-    <p v-if="loading" role="status">正在打开本机资料…</p><p v-if="error" role="alert">{{ error }}</p>
+  <section class="local-reader" role="dialog" aria-modal="true" :aria-label="uiText('本机阅读：{0}', [material.filename])">
+    <header><div><strong>{{ material.filename }}</strong><span>{{ uiText('本机原文 · 无需云端空间') }}</span></div><div><button @click="original">{{ uiText('用系统应用打开') }}</button><button @click="$emit('close')">{{ uiText('返回资料') }}</button></div></header>
+    <p v-if="loading" role="status">{{ uiText('正在打开本机资料…') }}</p><p v-if="error" role="alert">{{ error }}</p>
     <LocalPdfReader v-if="format === 'pdf'" :url="url" :material-id="material.material_id" />
-    <video v-else-if="format === 'mp4'" :src="url" controls preload="metadata" @error="error = '这个视频暂时无法在应用内播放，可使用系统应用打开原文件。'" />
+    <video v-else-if="format === 'mp4'" :src="url" controls preload="metadata" @error="error = uiText('这个视频暂时无法在应用内播放，可使用系统应用打开原文件。')" />
     <template v-else-if="format === 'md' || format === 'epub'">
-      <nav v-if="format === 'epub' && chapters.length"><button :disabled="chapter === 0" @click="chapter--">上一节</button><select v-model="chapter" aria-label="EPUB 章节"><option v-for="(entry, index) in chapters" :key="index" :value="index">{{ entry.title }}</option></select><button :disabled="chapter === chapters.length - 1" @click="chapter++">下一节</button></nav>
+      <nav v-if="format === 'epub' && chapters.length"><button :disabled="chapter === 0" @click="chapter--">{{ uiText('上一节') }}</button><select v-model="chapter" :aria-label="uiText('EPUB 章节')"><option v-for="(entry, index) in chapters" :key="index" :value="index">{{ entry.title }}</option></select><button :disabled="chapter === chapters.length - 1" @click="chapter++">{{ uiText('下一节') }}</button></nav>
       <iframe v-if="!loading && !error" :srcdoc="html" sandbox="" :title="material.filename" />
     </template>
     <pre v-else-if="format === 'txt'">{{ text }}</pre>
-    <div v-else class="office-original"><h2>课件已保存在本机</h2><p>使用本机 PowerPoint 或其他演示应用打开原件。需要在这里阅读时，可将课件另存为 PDF 后导入。</p><button @click="original">打开课件原件</button></div>
+    <div v-else class="office-original"><h2>{{ uiText('课件已保存在本机') }}</h2><p>{{ uiText('使用本机 PowerPoint 或其他演示应用打开原件。需要在这里阅读时，可将课件另存为 PDF 后导入。') }}</p><button @click="original">{{ uiText('打开课件原件') }}</button></div>
   </section>
 </template>
 <style scoped>

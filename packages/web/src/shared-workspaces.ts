@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { LearningWorkspace, PublishedBookRef } from './network-context';
 import { bookTitle } from './book-title';
 
@@ -36,7 +37,7 @@ export const sharedBookKey = (reference: PublishedBookRef) => JSON.stringify([re
 export function sharedBookLabel(reference: PublishedBookRef, books: SharedBook[], materials: SharedMaterial[]) {
   const book = books.find(book => sharedBookKey(book.published_book_ref) === sharedBookKey(reference));
   const index = materials.findIndex(material => sharedBookKey(material.published_book_ref) === sharedBookKey(reference));
-  return book ? bookTitle({ title: book.title, book_id: reference.book_id }) : (index >= 0 ? `资料 ${index + 1}` : '原版本资料');
+  return book ? bookTitle({ title: book.title, book_id: reference.book_id }) : (index >= 0 ? uiText('资料 {0}', [index + 1]) : uiText('原版本资料'));
 }
-export const sharedCapability = (value: string) => ({ text: '阅读原文', tutor: '资料理解', teaching: '教学材料',
-  transcript: '原文转写', translation: '双语字幕', visual_index: '画面索引', graph: '知识图谱', discourse: '讲解脉络', audio_review: '原声回听', music: '音乐伴听', music_score: '乐谱', music_alignment: '录音跟谱', music_events: '音乐理解' }[value] ?? '资料内容');
+export const sharedCapability = (value: string) => ({ text: uiText('阅读原文'), tutor: uiText('资料理解'), teaching: uiText('教学材料'),
+  transcript: uiText('原文转写'), translation: uiText('双语字幕'), visual_index: uiText('画面索引'), graph: uiText('知识图谱'), discourse: uiText('讲解脉络'), audio_review: uiText('原声回听'), music: uiText('音乐伴听'), music_score: uiText('乐谱'), music_alignment: uiText('录音跟谱'), music_events: uiText('音乐理解') }[value] ?? uiText('资料内容'));

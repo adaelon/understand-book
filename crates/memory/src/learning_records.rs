@@ -378,6 +378,7 @@ mod tests {
             label: "梯度方向".into(),
             capability: "explanation".into(),
             assistance_refs: vec![],
+            support_delivery_refs: vec![],
             attempt: 0,
             assessment_ref: None,
             status: AssessmentStatus::Unassessed,

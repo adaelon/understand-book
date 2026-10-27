@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { ref } from 'vue';
 import { network } from '../network-context';
 import { desktopAuthorization, cancelDesktopAuthorization, type DesktopAuthorizationRequest } from '../desktop-auth';
@@ -18,22 +20,22 @@ async function approve() {
       body: JSON.stringify(request),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message ?? '暂时无法连接 Windows，请重试。');
-    if (network.value.identity?.csrf_token !== identity.csrf_token) throw new Error('账号已切换，请重新确认登录。');
+    if (!response.ok) throw new Error(result.message ?? uiText('暂时无法连接 Windows，请重试。'));
+    if (network.value.identity?.csrf_token !== identity.csrf_token) throw new Error(uiText('账号已切换，请重新确认登录。'));
     location.assign(result.redirect_url);
   } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); busy.value = false; }
 }
 function cancel() { if (request) location.assign(cancelDesktopAuthorization(request)); }
 </script>
 <template>
-  <aside v-if="request || error" class="desktop-authorization" aria-label="授权 Windows 登录">
-    <h2>连接 Windows 版 Understand Book</h2>
-    <p v-if="!network.identity">请先登录网站账号，然后确认连接。Windows 版将使用同一份课程、额度和学习记录。</p>
+  <aside v-if="request || error" class="desktop-authorization" :aria-label="uiText('授权 Windows 登录')">
+    <h2>{{ uiText('连接 Windows 版 Understand Book') }}</h2>
+    <p v-if="!network.identity">{{ uiText('请先登录网站账号，然后确认连接。Windows 版将使用同一份课程、额度和学习记录。') }}</p>
     <template v-else>
-      <p>使用 {{ network.identity.email || network.identity.user_id }} 登录 Windows 应用。</p>
-      <button :disabled="busy" @click="approve">{{ busy ? '正在连接…' : '确认登录 Windows' }}</button>
+      <p>{{ uiText('使用') }} {{ network.identity.email || network.identity.user_id }} {{ uiText('登录 Windows 应用。') }}</p>
+      <button :disabled="busy" @click="approve">{{ busy ? uiText('正在连接…') : uiText('确认登录 Windows') }}</button>
     </template>
-    <button v-if="request" :disabled="busy" @click="cancel">取消</button>
+    <button v-if="request" :disabled="busy" @click="cancel">{{ uiText('取消') }}</button>
     <p v-if="error" role="alert">{{ error }}</p>
   </aside>
 </template>

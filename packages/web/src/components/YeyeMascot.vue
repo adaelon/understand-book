@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { AnimationItem } from 'lottie-web';
 import { loadYeyeAnimation, yeyeAssets, type YeyeVariant } from '../yeye-assets';
@@ -15,7 +17,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'idle',
   decorative: true,
-  label: '页页，阅读伙伴',
+  label: uiText('页页，阅读伙伴'),
   motion: 'static',
   active: true,
 });

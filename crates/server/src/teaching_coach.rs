@@ -1,14 +1,27 @@
 //! Host-owned teaching cadence. A committed turn creates one durable task;
-//! the following turn consumes its result before the Resident starts sampling.
+//! foreground turns freeze only ready guidance and never wait for background work.
 use crate::*;
 use memory::teaching::{TeachingBinding, TeachingFact};
 use memory::tutor_coach::{CoachJob, CoachJobInput, CoachJobOrigin, CoachJobStatus};
 use runtime::run_context::{CancellationToken, CancellableAdapter};
 use std::sync::{Arc, Mutex};
 
+mod observations;
+
 fn now() -> String { crate::multi_user_host::now().to_string() }
 fn error(code: &str, message: &str) -> ToolError {
     crate::user_storage_paths::error(code, "unavailable", message)
+}
+
+fn media_question_context<T: Serialize>(question: Option<&T>) -> Value {
+    let mut context = json!(question);
+    // The coach receives source locators and delivery facts. Image pixels stay
+    // in the original turn for the Resident's multimodal request, never as a
+    // repeated base64 string in a text-only planning prompt.
+    if let Some(image) = context.get_mut("image").and_then(Value::as_object_mut) {
+        image.remove("png_base64");
+    }
+    context
 }
 
 fn binding_context(user: &user_runtime::UserRuntime, workspace: Option<&str>, turn: &str) -> Result<Option<Value>, ToolError> {
@@ -20,7 +33,7 @@ fn binding_context(user: &user_runtime::UserRuntime, workspace: Option<&str>, tu
 }
 
 /// Called after the original input and teaching binding have been saved. The
-/// dependency, not an opportunistic "latest result", is frozen at admission.
+/// available guidance snapshot is frozen at admission; later jobs cannot hold up a reply.
 pub(crate) fn ensure_turn(
     user: &user_runtime::UserRuntime, workspace: Option<&str>, turn: &AgentTurnRef,
     context: Option<&Value>, timestamp: &str,
@@ -56,7 +69,8 @@ pub(crate) fn ensure_turn(
                 "current_request":saved.map(|t| t.domain.interaction.as_ref().map(|a|a.user_supplement.as_str()).unwrap_or(&t.user)),
                 "accepted_action":saved.and_then(|t|t.domain.interaction.as_ref()),
                 "publication":saved.and_then(|t| t.published_book_ref.as_ref()),
-                "music_question":saved.and_then(|t| t.music_question.as_ref()),
+                "music_question":media_question_context(saved.and_then(|t| t.music_question.as_ref())),
+                "video_question":media_question_context(saved.and_then(|t| t.video_question.as_ref())),
                 "workspace_goal":saved.and_then(|t| t.domain.scene.as_ref()).and_then(|s| s.workspace_goal.as_ref()),
                 "provider_binding":saved.and_then(|t| t.admission_input.as_ref()).map(|f| f.coach_provider_binding()),
                 "instruction":"Stage start guidance only. Source locations are not source text; specify reading needs when the actual material has not been read."});
@@ -68,60 +82,99 @@ pub(crate) fn ensure_turn(
             store.ensure_coach_job(&CoachJobInput {
                 job_ref,
                 origin: CoachJobOrigin::StageStart, source_ref,
-                binding, workspace_goal_revision: revision, context: packet,
+                binding: binding.clone(), workspace_goal_revision: revision, context: packet,
             }, timestamp)?
         }
     };
-    store.ensure_coach_turn_dependency(&turn.session_id, &turn.turn_id, Some(&job.input.job_ref), timestamp)?;
+    // Prefer the newest applicable ready result; a pending newest job must not
+    // conceal an older ready plan for the same source and accepted goal.
+    let ready = store.ready_coach_for_binding(&binding, revision)?;
+    let selected = ready.as_ref().unwrap_or(&job);
+    store.ensure_coach_turn_dependency(&turn.session_id, &turn.turn_id, Some(&selected.input.job_ref), timestamp)?;
+    drop(store);
+    prepare_execution(user, workspace, turn)?;
     Ok(())
 }
 
 /// This is reached only after all real delivery facts were appended. It also
 /// repairs a saved answer whose original task registration was interrupted.
 pub(crate) fn after_delivery(user: &user_runtime::UserRuntime, turn: &AgentTurnRef, timestamp: &str) -> Result<(), ToolError> {
+    enqueue_delivery(user, turn, timestamp, false)
+}
+
+/// Explicit repair uses its own durable identity, leaving any old guidance intact.
+pub(crate) fn enqueue_observation_backfill(user: &user_runtime::UserRuntime, turn: &AgentTurnRef, timestamp: &str) -> Result<(), ToolError> {
+    enqueue_delivery(user, turn, timestamp, true)
+}
+
+pub(crate) fn freeze_observation_reads(user: &user_runtime::UserRuntime, job: &CoachJob, book: &Book, refresh: bool) -> Result<CoachJob, ToolError> {
+    observations::freeze_original_reads(user, job, book, refresh)
+}
+
+/// Only an explicit maintenance retry may replay a failed/unknown paid attempt.
+pub(crate) fn retry_observation_backfill(user: &user_runtime::UserRuntime, turn: &AgentTurnRef, timestamp: &str) -> Result<(), ToolError> {
+    enqueue_observation_backfill(user, turn, timestamp)?;
+    let session=user.agent_history.sessions.iter().find(|session|session.id==turn.session_id)
+        .ok_or_else(||memory::teaching::invalid("原始对话不存在"))?;
+    let mut store=user.learning_store_for_workspace(session.learning_workspace_id.as_deref())?;
+    let binding=store.teaching_event(&format!("binding:{}",turn.turn_id))?.binding;
+    if let Some(job)=store.coach_job_for_source(&binding.tutor_session_id,CoachJobOrigin::ObservationBackfill,&turn.turn_id)? {
+        if matches!(job.status,CoachJobStatus::Failed|CoachJobStatus::Interrupted) {
+            store.retry_coach_job(&job.input.job_ref,timestamp)?;
+        }
+    }
+    Ok(())
+}
+
+fn enqueue_delivery(user: &user_runtime::UserRuntime, turn: &AgentTurnRef, timestamp: &str, backfill: bool) -> Result<(), ToolError> {
     let Some(session) = user.agent_history.sessions.iter().find(|s| s.id == turn.session_id) else { return Ok(()); };
     let Some(saved) = session.turns.iter().find(|t| t.turn_id == turn.turn_id) else { return Ok(()); };
     let Some(outcome) = saved.outcome.as_ref().filter(|o| saved.status == AgentAssistantStatus::Completed
-        && !o.incomplete && !crate::observability::lifecycle::delivery_failed(o)) else { return Ok(()); };
+        && !crate::observability::lifecycle::delivery_failed(o)) else { return Ok(()); };
     let workspace = session.learning_workspace_id.as_deref();
-    let Some(context) = binding_context(user, workspace, &turn.turn_id)?.filter(|c| c["status"] == "active") else { return Ok(()); };
+    let Some(context) = binding_context(user, workspace, &turn.turn_id)?.filter(|c| matches!(c["status"].as_str(), Some("active" | "observing"))) else { return Ok(()); };
     let binding: TeachingBinding = serde_json::from_value(context["binding"].clone())
         .map_err(|_| error("TUTOR_COACH_INPUT_INVALID", "教学回合缺少阶段身份。"))?;
     let mut store = user.learning_store_for_workspace(workspace)?;
-    if store.coach_job_for_source(&binding.tutor_session_id, CoachJobOrigin::AfterTurn, &turn.turn_id)?.is_some() { return Ok(()); }
+    let origin = if backfill { CoachJobOrigin::ObservationBackfill } else { CoachJobOrigin::AfterTurn };
+    if store.coach_job_for_source(&binding.tutor_session_id, origin, &turn.turn_id)?.is_some() { return Ok(()); }
     let events = store.teaching_turn_events(&binding.tutor_session_id, &turn.turn_id)?;
     if events.iter().any(|event| event.payload["outside"] == true) { return Ok(()); }
     let actual_delivery = events.iter().any(|event| event.kind == TeachingFact::MessageDelivered
         || event.payload["usage"]["kind"] == "assistant_delivery");
     if !actual_delivery { return Ok(()); }
+    let observation_facts = observations::freeze_facts(&store, &events)?;
+    if context["status"] == "observing" && observation_facts.is_empty() { return Ok(()); }
     let actual_design = events.iter().rev().find(|e| e.kind == TeachingFact::DesignRevised);
     let dialogue: Vec<_> = session.turns.iter().filter(|t| t.user_turn_ordinal <= saved.user_turn_ordinal)
         .rev().take(6).collect::<Vec<_>>().into_iter().rev().map(|t| json!({
             "turn_ref":t.turn_id,"user":t.domain.interaction.as_ref().map(|a|a.user_supplement.as_str()).unwrap_or(&t.user),"interaction":t.domain.interaction,
             "answer":t.outcome.as_ref().map(|o| &o.answer),"status":t.status,
-            "music_question":t.music_question,
+            "music_question":media_question_context(t.music_question.as_ref()),
+            "video_question":media_question_context(t.video_question.as_ref()),
         })).collect();
-    let packet = json!({"trigger":"after_turn","source_turn_ref":turn.turn_id,
-        "teaching_context":context,"current_design":actual_design,
+    let packet = json!({"trigger":if backfill {"observation_backfill"} else {"after_turn"},"source_turn_ref":turn.turn_id,
+        "teaching_context":context,"observation_only":backfill,"current_design":actual_design,
         "dialogue":dialogue,"actual_delivery":{"answer":outcome.answer,"answer_view":outcome.answer_view},
-        "source_bindings":saved.source_bindings,"turn_facts":events,
+        "source_bindings":saved.source_bindings,"turn_facts":events,"observation_facts":observation_facts,
         "consumed_guidance":store.coach_turn_context(&turn.session_id,&turn.turn_id)?.and_then(|d|d.context),
         "publication":saved.published_book_ref,
-        "music_question":saved.music_question,
+        "music_question":media_question_context(saved.music_question.as_ref()),
+        "video_question":media_question_context(saved.video_question.as_ref()),
         "workspace_goal":saved.domain.scene.as_ref().and_then(|s|s.workspace_goal.as_ref()),
         "provider_binding":saved.admission_input.as_ref().map(|f| f.coach_provider_binding()),
         "instruction":"All observations stop at source_turn_ref. The next user response has not happened. Plan conditional next steps; distinguish actual learner expressions from teacher support."});
     store.ensure_coach_job(&CoachJobInput {
-        job_ref: format!("coach:after:{}:{}", binding.tutor_session_id, turn.turn_id),
-        origin: CoachJobOrigin::AfterTurn, source_ref: turn.turn_id.clone(),
+        job_ref: format!("coach:{}:{}:{}", if backfill { "observation" } else { "after" }, binding.tutor_session_id, turn.turn_id),
+        origin, source_ref: turn.turn_id.clone(),
         workspace_goal_revision:context["workspace_goal_revision"].as_u64().map(|v|v as u32),
         binding, context:packet,
     }, timestamp)?;
     Ok(())
 }
 
-fn applicable(user: &user_runtime::UserRuntime, job: &CoachJob) -> Result<bool, ToolError> {
-    let state = user.learning_store_for_workspace(job.learning_workspace_id.as_deref())?.state()?;
+fn guidance_applicable(user: &user_runtime::UserRuntime, job: &CoachJob) -> Result<bool, ToolError> {
+    let state = user.learning_store_for_source(job.learning_workspace_id.as_deref(), &job.input.binding.source_id)?.state()?;
     Ok(state.control.enabled && state.control.current_tutor_session_id.as_deref() == Some(&job.input.binding.tutor_session_id)
         && state.workspace_goal_revision == job.input.workspace_goal_revision
         && state.sessions.get(&job.input.binding.tutor_session_id).is_some_and(|stage|
@@ -129,29 +182,31 @@ fn applicable(user: &user_runtime::UserRuntime, job: &CoachJob) -> Result<bool, 
             && stage.material_scope.iter().any(|m|m.source_id == job.input.binding.source_id)))
 }
 
-/// Return false only while the exact dependency is still running/queued. Called
-/// before claiming a network Run, or before starting a local model request.
+fn applicable(user: &user_runtime::UserRuntime, job: &CoachJob) -> Result<bool, ToolError> {
+    if job.input.origin != CoachJobOrigin::StageStart && job.input.context.get("observation_facts").is_some() {
+        // A later pause or change of teaching stage invalidates advice, not the
+        // historical learner expression that still needs a durable observation.
+        return Ok(true);
+    }
+    guidance_applicable(user, job)
+}
+
+/// Freeze what is available now. Background waiting, failures and spending
+/// stops remain attached to their task and do not reject the next foreground turn.
 pub(crate) fn prepare_execution(user: &user_runtime::UserRuntime, workspace: Option<&str>, turn: &AgentTurnRef) -> Result<bool, ToolError> {
     let mut store = user.learning_store_for_workspace(workspace)?;
     let Some(dependency) = store.coach_turn_dependency(&turn.session_id, &turn.turn_id)? else { return Ok(true); };
     if dependency.context.is_some() { return Ok(true); }
     let Some(job_ref) = dependency.job_ref else { return Ok(true); };
     let job = store.coach_job(&job_ref)?.ok_or_else(||error("TUTOR_COACH_TASK_MISSING","教学指导任务记录缺失。"))?;
-    let context = if !applicable(user, &job)? {
-        store.cancel_coach_job(&job_ref, &now())?;
+    let context = if !guidance_applicable(user, &job)? {
         json!({"status":"unavailable","source_turn_ref":job.input.source_ref,"reason":"教学阶段已暂停或改变。"})
     } else { match job.status {
-        CoachJobStatus::Pending | CoachJobStatus::Running => return Ok(false),
+        CoachJobStatus::Pending | CoachJobStatus::Running => json!({"status":"unavailable","coach_job_ref":job.input.job_ref,
+            "source_turn_ref":job.input.source_ref,"job_status":job.status,"reason":"后台指导尚未就绪，直接处理当前请求。"}),
         CoachJobStatus::Ready => json!({"status":"ready","coach_ref":job.guidance_ref,
             "source_turn_ref":job.input.source_ref,"origin":job.input.origin,"guidance":job.guidance}),
         _ => {
-            if let Some(code) = job.error.as_ref().and_then(|e|e["error_code"].as_str()) {
-                if let Some(stop) = runtime::model_spend::SpendStop::from_code(code) { return Err(stop.tool_error()); }
-                if job.error.as_ref().is_some_and(|e|e["category"] == "permission") {
-                    return Err(ToolError {error_code:code.into(),category:"permission".into(),
-                        message:"教练调用权限不可用。".into()});
-                }
-            }
             json!({"status":"unavailable","coach_job_ref":job.input.job_ref,
                 "source_turn_ref":job.input.source_ref,"reason":job.error,"job_status":job.status})
         }
@@ -174,12 +229,24 @@ fn claim(user: &user_runtime::UserRuntime) -> Result<Option<CoachJob>, ToolError
 }
 
 fn commit(user: &user_runtime::UserRuntime, job: &CoachJob, result: Result<Value, ToolError>) -> Result<(), ToolError> {
+    commit_with_material(user, job, result, None)
+}
+
+fn commit_with_material(user: &user_runtime::UserRuntime, job: &CoachJob, result: Result<Value, ToolError>, material: Option<(&Book, &Path)>) -> Result<(), ToolError> {
     let mut store = user.learning_store_for_workspace(job.learning_workspace_id.as_deref())?;
     let current=store.coach_job(&job.input.job_ref)?;
     if !current.is_some_and(|current|current.status==CoachJobStatus::Running && current.attempt==job.attempt) {return Ok(());}
     if !applicable(user, job)? { store.cancel_coach_job(&job.input.job_ref, &now())?; return Ok(()); }
     match result {
-        Ok(guidance) => { store.finish_coach_job(&job.input.job_ref, job.attempt, guidance, &now())?; }
+        Ok(mut guidance) => {
+            match observations::commit(user, job, &mut guidance, material) {
+                Ok(()) => { store.finish_coach_job(&job.input.job_ref, job.attempt, guidance, &now())?; }
+                Err(failure) if failure.category == "validation" || failure.error_code == "TEACHING_INVALID" => {
+                    store.fail_coach_job(&job.input.job_ref, job.attempt, json!(failure), &now())?;
+                }
+                Err(failure) => return Err(failure),
+            }
+        }
         Err(error) => { store.fail_coach_job(&job.input.job_ref, job.attempt, json!(error), &now())?; }
     }
     Ok(())
@@ -264,9 +331,13 @@ pub(crate) fn drive_inline(
         store.claim_coach_job(&job.input.job_ref,&now())
     })?;
     if let Some(job)=job {
-        let result=execute(adapter,&job,cancel);
+        let material=port.with_app(|state|(state.workspace.book.clone(),state.workspace.book_dir.clone()));
+        let prepared=port.with_app(|state|observations::freeze_original_reads(&state.user,&job,&material.0,false));
+        let current=prepared.as_ref().unwrap_or(&job);
+        let result=prepared.as_ref().map_err(|e|ToolError {error_code:e.error_code.clone(),category:e.category.clone(),message:e.message.clone()})
+            .and_then(|job|observations::with_material(job,&material.0)).and_then(|job|execute(adapter,&job,cancel));
         adapter.set_model_purpose("resident");
-        save_result(cancel,result,|result|port.with_app(|state|commit(&state.user,&job,result)))?;
+        save_result(cancel,result,|result|port.with_app(|state|commit_with_material(&state.user,current,result,Some((&material.0,&material.1)))))?;
     }
     Ok(())
 }
@@ -277,10 +348,16 @@ pub(crate) fn tick_network(access: &Arc<authorization::Authorization>, handle: &
         let Some(job) = claim(&user)? else { return Ok(false); };
         (user.user_id().expect("network owner").to_owned(), job)
     };
+    let publication = serde_json::from_value::<published_library::PublishedBookRef>(job.input.context["publication"].clone())
+        .map_err(|_|error("TUTOR_COACH_SOURCE_UNAVAILABLE","教练材料来源已不可用。"))
+        .and_then(|reference|access.library.lock().unwrap().load(&owner,&reference));
+    let prepared=publication.as_ref().map_err(|e|ToolError {error_code:e.error_code.clone(),category:e.category.clone(),message:e.message.clone()}).and_then(|publication|
+        observations::freeze_original_reads(&handle.lock().unwrap(),&job,&publication.book,false));
+    let job=prepared.as_ref().unwrap_or(&job);
     let result = with_task_cancellation(cancel,
         || applicable(&handle.lock().unwrap(),&job).unwrap_or(false), |cancel| {
-        let publication: published_library::PublishedBookRef = serde_json::from_value(job.input.context["publication"].clone())
-            .map_err(|_|error("TUTOR_COACH_SOURCE_UNAVAILABLE","教练材料来源已不可用。"))?;
+        let publication = publication.as_ref().map_err(|e| error(&e.error_code,&e.message))?;
+        prepared.as_ref().map_err(|e|ToolError {error_code:e.error_code.clone(),category:e.category.clone(),message:e.message.clone()})?;
         if !job.input.context["provider_binding"].is_null()
             && job.input.context["provider_binding"] != access.runs.coach_provider_binding()? {
             return Err(error("PROVIDER_BINDING_UNAVAILABLE","教练任务的模型配置已改变，请重试。"));
@@ -288,31 +365,36 @@ pub(crate) fn tick_network(access: &Arc<authorization::Authorization>, handle: &
         let adapter = access.runs.task_adapter()?;
         let scope = runtime::model_spend::ChargeScope::ReaderTask { user_id:owner.clone(),
             task_ref:format!("{}:{}",job.input.job_ref,job.attempt) };
-        adapter.set_spend_context(scope.clone(),Some(access.spend.port_with_attribution(scope,publication.clone(),
+        adapter.set_spend_context(scope.clone(),Some(access.spend.port_with_attribution(scope,publication.reference.clone(),
             runtime::model_spend::ChargeAttribution {parent_task_ref:job.input.job_ref.clone(),
                 learning_workspace_id:job.learning_workspace_id.clone(),related_learning_workspace_ids:vec![]},cancel.clone())));
         let limited = service_limits::LimitedAdapter { inner:adapter.as_ref(),resources:access.resources.clone(),
-            owner,cancellation:cancel.clone(),usage:Mutex::new(Default::default()),stream:None,
-            authorization:Some((access,&publication)) };
-        execute(&limited,&job,cancel)
+            owner:owner.clone(),background:true,cancellation:cancel.clone(),usage:Mutex::new(Default::default()),stream:None,
+            authorization:Some((access,&publication.reference)) };
+        execute(&limited,&observations::with_material(job,&publication.book)?,cancel)
     });
-    save_result(cancel,result,|result|commit(&handle.lock().unwrap(),&job,result))?;
+    save_result(cancel,result,|result|commit_with_material(&handle.lock().unwrap(),job,result,
+        publication.as_ref().ok().map(|publication|(publication.book.as_ref(),publication.directory()))))?;
     Ok(true)
 }
 
 pub(crate) fn tick_local(state: &Arc<Mutex<AppState>>, provider: Option<ProviderConfig>, cancel: &CancellationToken) -> Result<bool, ToolError> {
-    let job = { let state=state.lock().unwrap();
+    let (job,book,directory) = { let state=state.lock().unwrap();
         if !state.user.store.private_storage_available() { return Ok(false); }
-        let Some(job)=claim(&state.user)? else {return Ok(false);}; job };
+        let Some(job)=claim(&state.user)? else {return Ok(false);};
+        (job,state.workspace.book.clone(),state.workspace.book_dir.clone()) };
+    let prepared=observations::freeze_original_reads(&state.lock().unwrap().user,&job,&book,false);
+    let job=prepared.as_ref().unwrap_or(&job);
     let result = with_task_cancellation(cancel,
         || applicable(&state.lock().unwrap().user,&job).unwrap_or(false), |cancel| {
         provider.ok_or_else(||error("TUTOR_COACH_PROVIDER_UNCONFIGURED","教练模型尚未配置。"))
             .and_then(|config| {
+            prepared.as_ref().map_err(|e|ToolError {error_code:e.error_code.clone(),category:e.category.clone(),message:e.message.clone()})?;
             let adapter=ProviderRegistry::adapter_from_config_with_timeout(config,crate::SELECTION_TRANSLATION_TIMEOUT);
-            execute(adapter.as_ref(),&job,cancel)
+            execute(adapter.as_ref(),&observations::with_material(job,&book)?,cancel)
         })
     });
-    save_result(cancel,result,|result|commit(&state.lock().unwrap().user,&job,result))?;
+    save_result(cancel,result,|result|commit_with_material(&state.lock().unwrap().user,job,result,Some((&book,&directory))))?;
     Ok(true)
 }
 
@@ -321,21 +403,32 @@ pub(crate) fn recover_user(user: &user_runtime::UserRuntime) -> Result<(), ToolE
     for workspace in user.learning_store()?.coach_job_workspaces()? {
         user.learning_store_for_workspace(workspace.as_deref())?.recover_interrupted_coach_jobs(&now())?;
     }
-    // Only the most recent successful teaching delivery in the active stage
-    // needs repair. An incomplete answer or a later ordinary question is not a
-    // replacement for that delivery.
+    // Repair only the currently enabled active stage. Existing historical jobs
+    // can finish recording their frozen observations, but startup must not turn
+    // paused or replaced teaching history into newly scheduled paid work.
     for session in &user.agent_history.sessions {
-        let store=user.learning_store_for_workspace(session.learning_workspace_id.as_deref())?;
-        let view=store.state()?;
-        let Some(stage)=view.control.current_tutor_session_id.as_ref().filter(|id|
-            view.control.enabled && view.sessions.get(*id).is_some_and(|s|s.status==memory::learning::TutorSessionStatus::Active)) else {continue;};
-        for turn in session.turns.iter().rev().filter(|t|t.status==AgentAssistantStatus::Completed
-            && t.outcome.as_ref().is_some_and(|o|!o.incomplete && !crate::observability::lifecycle::delivery_failed(o))) {
+        let candidates:Vec<_>=session.turns.iter().rev().filter(|t|t.status==AgentAssistantStatus::Completed
+            && t.outcome.as_ref().is_some_and(|o|!crate::observability::lifecycle::delivery_failed(o))).collect();
+        let mut observed=false;
+        for turn in candidates {
             let Some(context)=binding_context(user,session.learning_workspace_id.as_deref(),&turn.turn_id)? else {continue;};
-            if context["status"]!="active" || context["binding"]["tutor_session_id"].as_str()!=Some(stage.as_str()) {continue;}
-            crate::teaching::record_user_delivery(user,&AgentTurnRef {session_id:session.id.clone(),
-                turn_id:turn.turn_id.clone(),user_turn_ordinal:turn.user_turn_ordinal},&session.updated_at)?;
-            if store.coach_job_for_source(stage,CoachJobOrigin::AfterTurn,&turn.turn_id)?.is_some() {break;}
+            let (Some(stage),Some(source))=(context["binding"]["tutor_session_id"].as_str(),
+                context["binding"]["source_id"].as_str()) else {continue;};
+            let current=user.learning_store_for_source(session.learning_workspace_id.as_deref(),source)?.state()?;
+            if !current.control.enabled || current.control.current_tutor_session_id.as_deref()!=Some(stage)
+                || !current.sessions.get(stage).is_some_and(|stage|stage.status==memory::learning::TutorSessionStatus::Active) {
+                continue;
+            }
+            let complete_active=context["status"]=="active" && !turn.outcome.as_ref().unwrap().incomplete;
+            if !observed || complete_active {
+                // The answer can be durable before its delivery trace and job
+                // registration. This idempotent entry repairs both in order.
+                crate::teaching::record_user_delivery(user,&AgentTurnRef {session_id:session.id.clone(),
+                    turn_id:turn.turn_id.clone(),user_turn_ordinal:turn.user_turn_ordinal},&session.updated_at)?;
+                observed |= user.learning_store_for_workspace(session.learning_workspace_id.as_deref())?
+                    .coach_job_for_source(stage,CoachJobOrigin::AfterTurn,&turn.turn_id)?.is_some();
+            }
+            if complete_active {break;}
         }
     }
     Ok(())
@@ -349,3 +442,6 @@ pub(crate) fn recover_local(state: &Arc<Mutex<AppState>>) -> Result<(), ToolErro
 mod tests;
 #[cfg(test)]
 mod source_tests;
+
+#[cfg(test)]
+mod observation_tests;

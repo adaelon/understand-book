@@ -1,3 +1,4 @@
+import { acceptStructureThemeCandidate, replayStructureThemeAcceptance, type StructureThemeAcceptance } from "./book-structure-theme-session";
 import { isDeepStrictEqual } from "node:util";
 import { renderStructureOrganizationInput, acceptStructureOrganizationAction, applyStructureOrganizationAction, type StructureOrganizationInput, type StructureOrganizationAcceptance, type StructureOrganizationState } from "./book-structure-organization";
 import { readAutomaticBuildTaskStage } from "./build-orchestrator";
@@ -64,6 +65,7 @@ export type BookStructureGenerationInputV1 =
 
 export type BookStructureGenerationOutputRoleV1 =
   | "organization_action"
+  | "organization_theme"
   | "relation_selection"
   | "relation_delta"
   | "unit_artifact"
@@ -86,6 +88,7 @@ export interface BookStructureGenerationTaskV1 {
 
 export type BookStructureGenerationPayloadV1 =
   | StructureOrganizationAcceptance
+  | StructureThemeAcceptance
   | BookStructureRelationSelection
   | BookStructureRelationDelta
   | BookStructureUnitArtifact
@@ -287,7 +290,7 @@ export function freezeBookStructureGenerationTask(
     task.policy_generation_id,
     task.descriptor.work_unit_id,
   );
-  if (task.output_role === "organization_action" && existsSync(file)) {
+  if ((task.output_role === "organization_action" || task.output_role === "organization_theme") && existsSync(file)) {
     const old = readBookStructureGenerationTask(target, task.policy_generation_id, task.descriptor.work_unit_id)!;
     if (!isDeepStrictEqual(old.descriptor, task.descriptor) || renderBookStructureGenerationTaskInput(old) !== renderBookStructureGenerationTaskInput(task))
       throw new Error("BookStructure frozen organization input changed");
@@ -775,9 +778,11 @@ function validateCandidate(
 }
 
 function payloadForCandidate(
+  target: AutomaticBuildTarget,
   task: BookStructureGenerationTaskV1,
   candidate: unknown,
 ): BookStructureGenerationPayloadV1 {
+  if (task.output_role === "organization_theme") return acceptStructureThemeCandidate(target, task, candidate);
   if (task.output_role === "organization_action") return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, candidate);
   if (task.output_role === "relation_selection") return validateBookStructureRelationSelection(candidate, task.input as BookStructureRelationSelectionInput);
   if (task.output_role === "relation_delta") return validateBookStructureRelationDelta(candidate, task.input as BookStructureRelationInput);
@@ -799,9 +804,14 @@ function payloadForCandidate(
 }
 
 function validateStoredPayload(
+  target: AutomaticBuildTarget,
   task: BookStructureGenerationTaskV1,
   payload: unknown,
 ): BookStructureGenerationPayloadV1 {
+  if (task.output_role === "organization_theme") {
+    replayStructureThemeAcceptance(target, task, payload);
+    return payload as StructureThemeAcceptance;
+  }
   if (task.output_role === "organization_action") {
     return acceptStructureOrganizationAction(task.input as StructureOrganizationInput, storedOrganizationAction(payload));
   }
@@ -842,7 +852,7 @@ export function writeBookStructureGenerationCandidate(input: {
   provenance: SemanticArtifactProvenanceV2;
 }): SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> {
   let task = validateBookStructureGenerationTask(input.target, input.task);
-  if (task.output_role === "organization_action" || ("discovery" in task.input && task.input.discovery)) {
+  if (task.output_role === "organization_action" || task.output_role === "organization_theme" || ("discovery" in task.input && task.input.discovery)) {
     const stage = readAutomaticBuildTaskStage(input.target, { stage: "book_structure", work_unit_id: task.descriptor.work_unit_id,
       ...(task.output_role === "unit_observation" ? { parent_lid: task.parent_unit_lid } : {}) }, task.descriptor.policy_fingerprint.quality_profile, "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
     const current = stage?.generation_tasks?.[task.descriptor.work_unit_id];
@@ -850,7 +860,7 @@ export function writeBookStructureGenerationCandidate(input: {
       throw new Error("policy_generation_conflict: BookStructure current input changed");
     task = current.task;
   }
-  const payload = payloadForCandidate(task, input.candidate);
+  const payload = payloadForCandidate(input.target, task, input.candidate);
   const envelope = buildSemanticArtifactEnvelopeV3({
     target: task.target_ref,
     stage: "book_structure",
@@ -908,7 +918,7 @@ export function readBookStructureGenerationArtifact(
 ): SemanticArtifactEnvelopeV3<BookStructureGenerationPayloadV1> | undefined {
   const read = readBookStructureGenerationEnvelope(target, taskValue);
   if (!read) return undefined;
-  return { ...read.envelope, payload: validateStoredPayload(read.task, read.envelope.payload) };
+  return { ...read.envelope, payload: validateStoredPayload(target, read.task, read.envelope.payload) };
 }
 
 /** Applying an organization action validates it and produces the next state.
@@ -917,6 +927,10 @@ export function readBookStructureOrganizationState(
   target: AutomaticBuildTarget,
   taskValue: BookStructureGenerationTaskV1,
 ): StructureOrganizationState | undefined {
+  if (taskValue.output_role === "organization_theme") {
+    const read = readBookStructureGenerationEnvelope(target, taskValue);
+    return read && replayStructureThemeAcceptance(target, read.task, read.envelope.payload);
+  }
   if (taskValue.output_role !== "organization_action") throw new Error("BookStructure organization task required");
   const read = readBookStructureGenerationEnvelope(target, taskValue);
   return read && applyStructureOrganizationAction(read.task.input as StructureOrganizationInput,

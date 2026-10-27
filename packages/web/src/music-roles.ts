@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { MusicEvent, MusicEventRole, MusicScoreObject } from '../../core/src/music-contract';
 import { MUSIC_PART_COLORS } from './music-playback';
 
@@ -13,7 +14,7 @@ export function musicRoleGroups(events: readonly MusicEvent[], allEvents: readon
     let group = groups.get(key);
     if (!group) {
       const themeIndex = themes.indexOf(key);
-      group = { key, label: role.theme_id ? themes.length > 1 ? `主题 ${themeIndex + 1}` : '主题' : role.role,
+      group = { key, label: role.theme_id ? themes.length > 1 ? uiText('主题 {0}', [themeIndex + 1]) : uiText('主题') : role.role,
         color: role.theme_id ? ['#ae761a', '#9664a6', '#bc5367'][themeIndex % 3] : MUSIC_PART_COLORS[keys.indexOf(key) % MUSIC_PART_COLORS.length], roles: [] };
       groups.set(key, group);
     }

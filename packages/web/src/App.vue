@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText, getLocale } from './i18n';
+
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toRaw, watch } from "vue";
 import { createYeyeFeedback } from './yeye-feedback';
 import ShareImagePanel from './components/ShareImagePanel.vue';
@@ -18,6 +20,7 @@ import { mediaSourceStart, type MediaSourceSnapshot } from './api';
 import { createVideoQuestion, videoWindowId } from './video-question';
 import { createVideoAdoption } from './video-adoption';
 import type { PublishedVideo, VideoPlayback } from './video-api';
+import type { VideoQuestionContext } from '../../core/src/generated/VideoQuestionContext';
 import { publishedUrl } from './network-client';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
@@ -25,7 +28,7 @@ import type { PaginationSource } from './reader-pagination';
 import { ReaderWindowTextCache } from './reader-window-text';
 import { FocusSource } from './reader-focus-source';
 import { typographyHtml } from './reader-typography';
-import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions } from './network-client';
+import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions, retrySubmission } from './network-client';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
 const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; materialTitle?: string }>(), { readerVisible: true });
@@ -41,19 +44,19 @@ const musicMode = computed(() => !!musicContext.value);
 const mediaMode = computed(() => videoMode.value || musicMode.value);
 const musicPane = ref<InstanceType<typeof MusicReaderPane>>();
 const musicQuestionContext = ref<MusicQuestionContext | null>(null);
-function askMusic(context: MusicQuestionContext) { musicQuestionContext.value = context; if (!context.image) agentInput.value ||= '刚才这一段，应该注意听什么？'; workspaceRef.value?.showAssistant('agent'); }
+function askMusic(context: MusicQuestionContext) { musicQuestionContext.value = context; if (!context.image) agentInput.value ||= uiText('刚才这一段，应该注意听什么？'); workspaceRef.value?.showAssistant('agent'); }
 function clearMusicQuestion() { musicQuestionContext.value = null; }
 const videoDetailsLoading = ref(false), videoDetailsError = ref('');
 const videoFrameReady = ref(false);
 const videoPane = ref<InstanceType<typeof VideoReaderPane>>();
 const videoQuestion = createVideoQuestion(videoWindowId(), input => api.videoDraft(input), id => {
-  if (!videoPane.value) throw new Error('请等待视频加载');
+  if (!videoPane.value) throw new Error(uiText('请等待视频加载'));
   return videoPane.value.captureQuestion(id);
 });
 const videoInitial = computed(() => {
   const video = videoPlayback.value ?? publishedVideo.value;
   return video ? {
-    video: video.source.video, title: recapProps.materialTitle || videoPlayback.value?.title || video.source.original_path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '').replace(/_/g, ' ') || '视频学习', stage: 'awaiting_transcript' as const,
+    video: video.source.video, title: recapProps.materialTitle || videoPlayback.value?.title || video.source.original_path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '').replace(/_/g, ' ') || uiText('视频学习'), stage: 'awaiting_transcript' as const,
     copied_bytes: 1, total_bytes: 1, duration_ms: video.source.duration_ms,
     playable: true, qa_ready: false as const, english_ready: true, failure: null, publication: video.publication,
   } : null;
@@ -119,7 +122,7 @@ function setQuestionImage(image: import('../../core/src/generated/VideoQuestionI
     try {
       if (!image && !musicQuestionContext.value) return;
       const context = musicQuestionContext.value ?? musicImageContext ?? musicPane.value?.captureQuestion();
-      if (!context) throw new Error('请等待乐谱加载');
+      if (!context) throw new Error(uiText('请等待乐谱加载'));
       musicQuestionContext.value = { ...context, image };
       musicImageError.value = '';
     } catch (error) { musicImageError.value = (error as Error).message; }
@@ -263,6 +266,13 @@ import ReaderPane from "./components/ReaderPane.vue";
 import ReaderWorkspace, { type WorkspaceAuxTab } from "./components/ReaderWorkspace.vue";
 import NoteEditorPanel from "./components/NoteEditorPanel.vue";
 import RightRail from "./components/RightRail.vue";
+import BoardWorkspace from './components/BoardWorkspace.vue';
+import { mergeBoardDeliveries, type BoardQuestionRequest, type BoardRunView, type BoardLocation } from './board-workspace';
+import type { BoardFollowUp } from './generated/BoardFollowUp';
+import type { BoardDelivery } from './generated/BoardDelivery';
+import BoardSourcePreview from './components/BoardSourcePreview.vue';
+import type { BoardImportSource, BoardSourceRequest, SourcePopupView } from './api';
+import { boardRouteUrl, readBoardRoute } from './board-route';
 import { useAgentRun } from "./useAgentRun";
 import { submissionWasAccepted, type UnknownSubmissionAudit } from "./agent-submission-recovery";
 import {
@@ -548,8 +558,8 @@ function startResize(which: "left" | "right", event: MouseEvent) {
 
 function fail(e: unknown) {
   if (disposed || (e instanceof ApiError && e.errorCode === 'CLIENT_CONTEXT_STALE')) return;
-  if (e instanceof ApiError && e.errorCode === "CHAT_BUSY") { banner.value = "此对话仍有排队、执行中或未保存的回合，请先处理原运行再删除。"; return; }
-  if (e instanceof ApiError && e.errorCode === "REQUEST_KEY_CLOSED") { banner.value = "原对话已删除或原请求已关闭，不会转投其他对话。"; return; }
+  if (e instanceof ApiError && e.errorCode === "CHAT_BUSY") { banner.value = uiText('此对话仍有排队、执行中或未保存的回合，请先处理原运行再删除。'); return; }
+  if (e instanceof ApiError && e.errorCode === "REQUEST_KEY_CLOSED") { banner.value = uiText('原对话已删除或原请求已关闭，不会转投其他对话。'); return; }
   banner.value = errorMessage(e);
 }
 
@@ -680,7 +690,7 @@ const noteSourceLabels = computed(() => Object.fromEntries(annotations.value.map
     if (title) return [record.mem_id, stripMarkdownHeadingLine(title)];
     lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
   }
-  return [record.mem_id, '来源未知'];
+  return [record.mem_id, uiText('来源未知')];
 })));
 const visibleNotes = computed(() => {
   const visible = segments.value.map((seg) => seg.lid);
@@ -865,23 +875,23 @@ async function applyPaperMinimapCommands(commands: PaperMinimapCommand[], reason
 
 async function setPaperMinimapMode(mode: import("./api").ReaderPaperMinimapState["mode"]) {
   if (mode === paperMinimapSnapshot.value?.state.mode) return;
-  const modeLabel = { skim: "速览", abstract: "摘要", deep: "深读" }[mode];
+  const modeLabel = { skim: uiText('速览'), abstract: uiText('摘要'), deep: uiText('深读') }[mode];
   await applyPaperMinimapCommands(
     [{ scope: "session", action: { kind: "set_mode_lens", mode } }],
-    `切换为${modeLabel}模式`,
+    uiText('切换为{0}模式', [modeLabel]),
   );
 }
 
 async function setPaperMinimapLayer(layer: string, visible: boolean) {
   const layerLabel = {
-    regions: "章节区域",
-    landmarks: "重点位置",
-    arguments: "论证关系",
-    user: "我的标记",
+    regions: uiText('章节区域'),
+    landmarks: uiText('重点位置'),
+    arguments: uiText('论证关系'),
+    user: uiText('我的标记'),
   }[layer] ?? layer;
   await applyPaperMinimapCommands(
     [{ scope: "session", action: { kind: "set_layer_visibility", layer, visible } }],
-    `${visible ? "显示" : "隐藏"}${layerLabel}图层`,
+    uiText('{0}{1}图层', [visible ? uiText('显示') : uiText('隐藏'), layerLabel]),
   );
 }
 
@@ -893,7 +903,7 @@ async function togglePaperMinimapPin(landmarkId: string, pinned: boolean) {
         ? { kind: "unpin_landmark", landmark_id: landmarkId }
         : { kind: "pin_landmark", landmark_id: landmarkId },
     }],
-    pinned ? "取消固定地标" : "固定地标",
+    pinned ? uiText('取消固定地标') : uiText('固定地标'),
   );
 }
 
@@ -931,7 +941,8 @@ async function loadPaperProjectionData(force = false) {
     const minimap = await api.paperMinimapState();
     if (seq !== paperProjectionSeq) return;
     paperMinimapSnapshot.value = minimap;
-    if (paperMinimapLocalization.value?.base_map_rev !== minimap.base.fingerprint) {
+    // English mode keeps the original paper labels instead of requesting Chinese display labels.
+    if (getLocale() !== 'en' && paperMinimapLocalization.value?.base_map_rev !== minimap.base.fingerprint) {
       const localizationKey = `${minimap.base.book_id}:${minimap.base.fingerprint}`;
       if (paperLocalizationRequest?.key !== localizationKey) {
         const request = { key: localizationKey, promise: api.paperMinimapLocalize() };
@@ -1302,10 +1313,10 @@ function sourcePreviewSingleHtml(seg: Segment): string {
     const asset = seg.imageAsset;
     const src = imageRenderSrc(asset);
     const image = src
-      ? `<img class="source-preview-rendered-image" src="${escapeHtml(src)}" alt="${escapeHtml(asset?.alt || meta?.alt || "图片")}" loading="lazy" decoding="async">`
+      ? `<img class="source-preview-rendered-image" src="${escapeHtml(src)}" alt="${escapeHtml(asset?.alt || meta?.alt || uiText('图片'))}" loading="lazy" decoding="async">`
       : "";
     const warning = asset?.warning ? `<em>${escapeHtml(asset.warning)}</em>` : "";
-    return `<figure class="source-preview-asset source-preview-image">${image}<strong>${escapeHtml(meta?.alt || asset?.alt || "图片")}</strong><code>${escapeHtml(meta?.src || asset?.original_src || "来源不可用")}</code>${warning}<pre>${renderSourcePreviewSeg(seg)}</pre></figure>`;
+    return `<figure class="source-preview-asset source-preview-image">${image}<strong>${escapeHtml(meta?.alt || asset?.alt || uiText('图片'))}</strong><code>${escapeHtml(meta?.src || asset?.original_src || uiText('来源不可用'))}</code>${warning}<pre>${renderSourcePreviewSeg(seg)}</pre></figure>`;
   }
   return `<p class="source-preview-paragraph">${renderSourcePreviewSeg(seg)}</p>`;
 }
@@ -1335,7 +1346,7 @@ const sourcePreviewHtml = computed(() => {
 function hlExcerpt(rec: MemoryRecord): string {
   const members = highlightGroupMembers(rec);
   const c = members.map((m) => m.content).join(" ").replace(/\s+/g, " ").trim();
-  if (!rec.range && members.length === 1) return "(整段)";
+  if (!rec.range && members.length === 1) return uiText('(整段)');
   return c.length > 40 ? c.slice(0, 40) + "…" : c;
 }
 
@@ -1351,7 +1362,7 @@ async function deleteHighlight(rec: MemoryRecord) {
 }
 async function modifyHighlight(rec: MemoryRecord) {
   await deleteHighlight(rec);
-  if (!banner.value) banner.value = "已移除该高亮——重新框选文字再点「🖍 高亮选区」即可改范围。";
+  if (!banner.value) banner.value = uiText('已移除该高亮——重新框选文字再点「🖍 高亮选区」即可改范围。');
 }
 
 // One page-local draft, fixed to its material and selected association.
@@ -1378,7 +1389,8 @@ const noteDirty = computed(() => !!noteEditor.value && (noteEditor.value.memId
   ? noteEditor.value.content !== noteEditor.value.initialContent || !!noteEditor.value.selectionContext
   : !!noteEditor.value.content.trim() || !!noteEditor.value.excerpt));
 const noteTransition = ref<{ label: string; resolve: (proceed: boolean) => void } | null>(null);
-async function beforeNoteLeave(label = '离开当前材料'): Promise<boolean> {
+async function beforeNoteLeave(label = uiText('离开当前材料')): Promise<boolean> {
+  if (boardWorkspaceRef.value && !await boardWorkspaceRef.value.flush()) return false;
   if (noteTransition.value || noteSaving.value) return false;
   if (!noteDirty.value) { cancelNote(); return true; }
   if (document.activeElement instanceof HTMLTextAreaElement) document.activeElement.blur();
@@ -1404,14 +1416,14 @@ function prepareExamQuestion(message: string) {
 async function beginNote(draft: Omit<NoteDraft, 'materialKey' | 'initialContent'>) {
   if (draft.memId && noteEditor.value?.memId === draft.memId && !draft.selectionContext) { noteCollapsed.value = false; return; }
   const materialKey = noteMaterialKey.value;
-  if (!await beforeNoteLeave('打开另一条笔记') || disposed || materialKey !== noteMaterialKey.value) return;
+  if (!await beforeNoteLeave(uiText('打开另一条笔记')) || disposed || materialKey !== noteMaterialKey.value) return;
   noteEditor.value = { ...draft, materialKey, initialContent: draft.content };
   noteCollapsed.value = false; noteError.value = '';
 }
 function openNewNote(lid = selectedLid.value, content = "", selectionContext: SelectionContext | null = null) {
   if (!lid) return;
   void beginNote({ lid, memId: null, layer: 'long_term', content, selectionContext,
-    title: '原文', excerpt: selectionContext ? { kind: 'original', text: selectionContext.raw_quote } : null,
+    title: uiText('原文'), excerpt: selectionContext ? { kind: 'original', text: selectionContext.raw_quote } : null,
     request: selectionContext ? { association: { kind: 'selection' }, retained_excerpt: selectionContext.raw_quote } : undefined });
 }
 function recordPresentationNote(receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, title: string, summary = '') {
@@ -1428,7 +1440,7 @@ function openEditNote(rec: MemoryRecord) {
     content: rec.content,
     selectionContext: null,
     legacy: !rec.note, excerpt: rec.note?.retained_excerpt,
-    title: association?.kind === 'presentation' ? association.title : association?.kind === 'answer' ? '助手回答' : '阅读笔记',
+    title: association?.kind === 'presentation' ? association.title : association?.kind === 'answer' ? uiText('助手回答') : uiText('阅读笔记'),
     receipt: association?.kind === 'presentation' ? association.receipt : undefined,
   });
 }
@@ -1477,7 +1489,7 @@ async function saveNote() {
     }
     if (!current()) return false;
     noteEditor.value = null;
-    banner.value = '笔记已保存';
+    banner.value = uiText('笔记已保存');
     try { await refreshAnnotations(); }
     catch (e) { if (!disposed && ed.materialKey === noteMaterialKey.value) fail(e); }
     return true;
@@ -1487,7 +1499,7 @@ async function saveNote() {
   } finally { noteSaving.value = false; }
 }
 async function deleteNote(rec: MemoryRecord) {
-  if (!window.confirm("删除这条笔记?")) return;
+  if (!window.confirm(uiText('删除这条笔记?'))) return;
   const scope = noteMaterialKey.value;
   try {
     banner.value = '';
@@ -1495,7 +1507,7 @@ async function deleteNote(rec: MemoryRecord) {
     if (disposed || scope !== noteMaterialKey.value) return;
     if (noteEditor.value?.memId === rec.mem_id) noteEditor.value = null;
     annotations.value = annotations.value.filter(record => record.mem_id !== rec.mem_id);
-    banner.value = '笔记已删除';
+    banner.value = uiText('笔记已删除');
     await refreshAnnotations();
   } catch (e) { if (!disposed && scope === noteMaterialKey.value) fail(e); }
 }
@@ -1506,13 +1518,13 @@ async function openNoteAnswer(record: MemoryRecord) {
   if (association.session_id !== activeChatSessionId.value) await selectChat(association.session_id);
   if (disposed || scope !== noteMaterialKey.value) return;
   if (association.session_id !== activeChatSessionId.value || !chat.value.some(turn => turn.turnId === association.turn_id)) {
-    banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。'; return;
+    banner.value = uiText('原回答当前不可用，已保存的笔记与摘录仍可阅读。'); return;
   }
   presentationWorkspace.value = null;
   workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent');
   await nextTick();
   if (disposed || scope !== noteMaterialKey.value) return;
-  if (!await rightRailRef.value?.scrollToTurn(association.turn_id)) banner.value = '原回答当前不可用，已保存的笔记与摘录仍可阅读。';
+  if (!await rightRailRef.value?.scrollToTurn(association.turn_id)) banner.value = uiText('原回答当前不可用，已保存的笔记与摘录仍可阅读。');
 }
 async function openNoteAssociation(record: MemoryRecord, restore = false) {
   if (record.note?.association.kind === 'answer') { await openNoteAnswer(record); return; }
@@ -1776,7 +1788,7 @@ async function startProfileBackfill(request: HistoricalBackfillStartRequest) {
   profileBackfillNotice.value = null;
   try {
     profileBackfill.value = await api.profileBackfillStart(request);
-    profileBackfillNotice.value = "历史回填已开始";
+    profileBackfillNotice.value = uiText('历史回填已开始');
     await refreshProfileMemory(true);
   } catch (error) {
     profileBackfillError.value = errorMessage(error);
@@ -1800,9 +1812,9 @@ async function mutateProfileBackfill(
         ? await api.profileBackfillRetry(request)
         : await api.profileBackfillClear(request);
     profileBackfillNotice.value = {
-      cancel: "历史回填已中止",
-      retry: "历史回填已继续",
-      clear: "历史回填记录已清除",
+      cancel: uiText('历史回填已中止'),
+      retry: uiText('历史回填已继续'),
+      clear: uiText('历史回填记录已清除'),
     }[action];
     await refreshProfileMemory(true);
   } catch (error) {
@@ -1814,14 +1826,14 @@ async function mutateProfileBackfill(
 
 function profileMutationLabel(action: ProfileGovernanceActionRequest): string {
   return {
-    remember: "画像已记住",
-    correct: "画像已纠正",
-    forget: "画像已忘记",
-    confirm: "画像已确认",
-    reject: "候选已忽略",
-    change_scope: "画像范围已更新",
-    add_collection_rule: "自动收集规则已添加",
-    remove_collection_rule: "自动收集规则已移除",
+    remember: uiText('画像已记住'),
+    correct: uiText('画像已纠正'),
+    forget: uiText('画像已忘记'),
+    confirm: uiText('画像已确认'),
+    reject: uiText('候选已忽略'),
+    change_scope: uiText('画像范围已更新'),
+    add_collection_rule: uiText('自动收集规则已添加'),
+    remove_collection_rule: uiText('自动收集规则已移除'),
   }[action.kind];
 }
 
@@ -1840,14 +1852,14 @@ async function mutateProfile(action: ProfileGovernanceActionRequest) {
     });
     profileMemoryNotice.value = response.kind === "applied"
       ? profileMutationLabel(action)
-      : "敏感画像等待确认";
+      : uiText('敏感画像等待确认');
     await refreshProfileMemory(true);
     return response;
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       await refreshProfileMemory(true);
       profileMemoryError.value = error.errorCode === "MEMORY_DOCUMENT_REVISION_CONFLICT"
-        ? "画像已在后台更新，已载入最新版本，请重试刚才的操作。"
+        ? uiText('画像已在后台更新，已载入最新版本，请重试刚才的操作。')
         : error.message;
     } else {
       profileMemoryError.value = errorMessage(error);
@@ -1871,14 +1883,14 @@ async function undoProfileUpdate(
     profileOperationId("undo"),
   );
   if (!action) {
-    profileUpdateStates.value = { ...profileUpdateStates.value, [key]: "无法撤销" };
+    profileUpdateStates.value = { ...profileUpdateStates.value, [key]: uiText('无法撤销') };
     return;
   }
   const response = await mutateProfile(action);
   if (!response) return;
-  const status = response.kind === "applied" ? "已撤销" : "等待确认";
+  const status = response.kind === "applied" ? uiText('已撤销') : uiText('等待确认');
   profileUpdateStates.value = { ...profileUpdateStates.value, [key]: status };
-  profileMemoryNotice.value = response.kind === "applied" ? "画像更新已撤销" : "敏感画像等待确认";
+  profileMemoryNotice.value = response.kind === "applied" ? uiText('画像更新已撤销') : uiText('敏感画像等待确认');
 }
 
 async function syncViewport(forcePaperProjection = false, preferReaderSelection = false) {
@@ -1965,7 +1977,7 @@ async function maybeAutoRerunSourceReview(
   try {
     return await api.workbenchJobStart(request);
   } catch (e) {
-    buildWorkbenchError.value = `复核决定已保存，但自动重新运行来源对齐失败：${errorMessage(e)}`;
+    buildWorkbenchError.value = uiText('复核决定已保存，但自动重新运行来源对齐失败：{0}', [errorMessage(e)]);
     return snapshot;
   } finally {
     if (ownsAction) endWorkbenchAction(owner);
@@ -2298,7 +2310,7 @@ async function refreshIntentArtifacts(): Promise<boolean> {
     if (error instanceof ApiError && error.status === 404) {
       intentArtifacts.value = null;
     } else {
-      intentArtifactsError.value = "暂时无法读取目标成果";
+      intentArtifactsError.value = uiText('暂时无法读取目标成果');
     }
     return false;
   } finally {
@@ -2384,7 +2396,7 @@ async function loadVideoDetails(current: () => boolean) {
   try {
     const video = await api.videoContext();
     if (!current()) return;
-    if (!video) throw new Error('视频字幕暂不可用，请重新打开资料。');
+    if (!video) throw new Error(uiText('视频字幕暂不可用，请重新打开资料。'));
     publishedVideo.value = video;
     await videoQuestion.restore();
     if (!current()) return;
@@ -2442,7 +2454,7 @@ async function init() {
         if (update.music) music = update.music;
       } catch (failure) {
         if (!current()) return;
-        banner.value = failure instanceof Error ? failure.message : '新版跟谱暂时无法读取，请稍后刷新。';
+        banner.value = failure instanceof Error ? failure.message : uiText('新版跟谱暂时无法读取，请稍后刷新。');
       }
     }
     musicContext.value = music; musicQuestionContext.value = null;
@@ -2536,9 +2548,9 @@ async function recoverWorkspaceState() {
       else applyAgentHistory(await api.agentHistory());
     } catch (error) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        banner.value = "认证已失效，请通过现有受保护入口恢复登录。";
+        banner.value = uiText('认证已失效，请通过现有受保护入口恢复登录。');
       } else if (navigator.onLine === false) {
-        banner.value = "当前离线；恢复网络后将核对原运行，不会自动重提问题。";
+        banner.value = uiText('当前离线；恢复网络后将核对原运行，不会自动重提问题。');
       }
     } finally {
       workspaceRecoveryTask = null;
@@ -2567,7 +2579,7 @@ async function refreshLinkedReader() {
 
 async function invokeDesktop<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (!("__TAURI_INTERNALS__" in window)) {
-    throw new Error("桌面命令仅在 Understand Book 应用中可用");
+    throw new Error(uiText('桌面命令仅在 Understand Book 应用中可用'));
   }
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<T>(command, args);
@@ -2642,7 +2654,7 @@ async function chooseDesktopLibraryDirectory() {
     const selected = await open({
       directory: true,
       multiple: false,
-      title: "选择 Understand Book 书库位置",
+      title: uiText('选择 Understand Book 书库位置'),
     });
     if (!selected || Array.isArray(selected)) return;
     const result = await invokeDesktop<{ library_root: string }>("set_desktop_library_directory", {
@@ -2678,12 +2690,12 @@ async function installCodexPlugin() {
 
 function codexPluginStateLabel(state: CodexPluginState): string {
   return {
-    installed_by_setup: "已由安装程序安装",
-    installed_externally: "已在 Codex 中安装",
-    pending_configuration: "等待发布配置",
-    codex_not_found: "未找到 Codex",
-    not_installed: "尚未安装",
-    error: "需要处理",
+    installed_by_setup: uiText('已由安装程序安装'),
+    installed_externally: uiText('已在 Codex 中安装'),
+    pending_configuration: uiText('等待发布配置'),
+    codex_not_found: uiText('未找到 Codex'),
+    not_installed: uiText('尚未安装'),
+    error: uiText('需要处理'),
   }[state];
 }
 onMounted(() => {
@@ -2805,7 +2817,7 @@ async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: 
       navigationTargetLid,
       pdfMappedLids.value,
     )) {
-      banner.value = `PDF 暂无 ${navigationTargetLid} 的可靠定位，已保留当前 PDF 页面。`;
+      banner.value = uiText('PDF 暂无 {0} 的可靠定位，已保留当前 PDF 页面。', [navigationTargetLid]);
     }
     await loadPaperProjectionData();
     gotoInput.value = "";
@@ -2832,14 +2844,14 @@ watch(() => [recapProps.mcpSource, appSurface.value] as const, async ([source, s
   try {
     const publication = network.value.workspace?.published_book_ref;
     if (!publication || publication.book_id !== source.published_book_ref.book_id
-      || publication.publication_id !== source.published_book_ref.publication_id) throw new Error('来源材料版本不匹配。');
+      || publication.publication_id !== source.published_book_ref.publication_id) throw new Error(uiText('来源材料版本不匹配。'));
     const target = resolveMcpSource(source, sourceManifestTree.value);
     // Canonical UTF-16 citations open on the canonical text surface, including PDF materials.
     readerSurfacePreference.value = 'markdown';
     await nextTick();
     if (!current()) return;
     workspaceRef.value?.showReader();
-    if (!await doGoto(target.lid, undefined, current)) throw new Error('来源定位未完成，请重试。');
+    if (!await doGoto(target.lid, undefined, current)) throw new Error(uiText('来源定位未完成，请重试。'));
     if (!current()) return;
     sourceFocus.value = { lid: target.lid, quote: null, ranges: target.ranges };
     await nextTick();
@@ -2852,7 +2864,7 @@ watch(() => [recapProps.mcpSource, appSurface.value] as const, async ([source, s
 async function selectReaderSurface(surface: ReaderSurface) {
   if (surface === activeReaderSurface.value) return;
   if (surface === "pdf" && !pdfReaderAvailable.value) {
-    banner.value = "当前来源没有可用的 PDF 阅读表面。";
+    banner.value = uiText('当前来源没有可用的 PDF 阅读表面。');
     return;
   }
   const previous = activeReaderSurface.value;
@@ -2873,7 +2885,7 @@ async function selectReaderSurface(surface: ReaderSurface) {
   if (surface === "pdf") {
     const lid = markdownAnchor?.lid ?? readingAnchorLid.value;
     if (lid && !hasMappedPdfNavigationTarget(lid, lid, pdfMappedLids.value)) {
-      banner.value = `PDF 暂无 ${lid} 的可靠定位，已保留当前 PDF 页面。`;
+      banner.value = uiText('PDF 暂无 {0} 的可靠定位，已保留当前 PDF 页面。', [lid]);
     }
     return;
   }
@@ -2884,7 +2896,7 @@ async function selectReaderSurface(surface: ReaderSurface) {
     return;
   }
   if (!lid) {
-    banner.value = "当前 PDF 位置没有可靠的 Markdown 映射，已保留此前正文读位。";
+    banner.value = uiText('当前 PDF 位置没有可靠的 Markdown 映射，已保留此前正文读位。');
     return;
   }
   if (segments.value.some((segment) => segment.lid === lid)) {
@@ -2944,7 +2956,7 @@ async function openSourcePreview(source: SourceFocus, origin: 'reader' | 'notes'
     if (disposed || sequence !== sourcePreviewSequence || contextKey !== workspaceContextKey.value) return;
     sourcePreview.value = { focus, segments: previewSegments, loading: false, error: null };
     await centerSourcePreview();
-    document.querySelector<HTMLButtonElement>('.source-preview-actions [aria-label="关闭来源预览"]')?.focus({ preventScroll: true });
+    document.querySelector<HTMLButtonElement>(uiText('.source-preview-actions [aria-label=\u0022关闭来源预览\u0022]'))?.focus({ preventScroll: true });
   } catch (e) {
     if (!disposed && sequence === sourcePreviewSequence && contextKey === workspaceContextKey.value) sourcePreview.value = { focus, segments: [], loading: false, error: errorMessage(e) };
   }
@@ -3047,7 +3059,7 @@ function retryPdfSelectionTranslation() {
 async function copyPdfSelectionTranslation(markdown: string) {
   try {
     await navigator.clipboard.writeText(markdown);
-    banner.value = "译文已复制";
+    banner.value = uiText('译文已复制');
   } catch (error) {
     fail(error);
   }
@@ -3078,14 +3090,14 @@ function reselectPdfNote(note: MemoryRecord) {
   pdfSelectionTranslation.invalidate("existing-action");
   pdfSelectionSession.cancel();
   pdfReselectTarget.value = { kind: "note", record: note };
-  banner.value = "重新框选 PDF 文字后选择“笔记”；保存成功前原位置保持不变。";
+  banner.value = uiText('重新框选 PDF 文字后选择“笔记”；保存成功前原位置保持不变。');
 }
 
 function reselectPdfHighlight(highlight: MemoryRecord) {
   pdfSelectionTranslation.invalidate("existing-action");
   pdfSelectionSession.cancel();
   pdfReselectTarget.value = { kind: "highlight", record: highlight };
-  banner.value = "重新框选 PDF 文字后选择“高亮”；新范围保存成功前原高亮保持不变。";
+  banner.value = uiText('重新框选 PDF 文字后选择“高亮”；新范围保存成功前原高亮保持不变。');
 }
 
 // ── 自由选区:可跨多个 LID,高亮按 LID 拆 range;Note/Ask AI 锚到起点 LID `[ADR-0031]` ──
@@ -3169,7 +3181,7 @@ function onSelectSeg(lid: string) {
 
 function onMarkdownNotePlacementInvalid() {
   if (notePlacementState.value.phase === "placing") {
-    banner.value = "这里不是可放置的正文目标，请点选真实正文块。";
+    banner.value = uiText('这里不是可放置的正文目标，请点选真实正文块。');
   }
 }
 
@@ -3200,7 +3212,7 @@ async function handleExplicitNotePlacementFailure(
   notePlacementController.saveFailed(error);
   if (saving.record && records && !records.some((record) => record.mem_id === saving.record?.mem_id)) {
     notePlacementController.cancel();
-    banner.value = "这条笔记已更新，请重新选择放置位置。";
+    banner.value = uiText('这条笔记已更新，请重新选择放置位置。');
     return;
   }
   if (error.errorCode === "STALE_NOTE_SOURCE" || error.errorCode === "STALE_PDF_NOTE_PLACEMENT") {
@@ -3274,12 +3286,12 @@ async function reconcileUncertainNotePlacement(
   if (reconciliation.outcome === "committed") {
     selectedLid.value = saving.target.lid;
     banner.value = saving.subject.kind === "record"
-      ? "已确认笔记的新位置。"
-      : "已确认笔记保存成功。";
+      ? uiText('已确认笔记的新位置。')
+      : uiText('已确认笔记保存成功。');
   } else if (reconciliation.outcome === "retry") {
-    banner.value = "未确认写入成功，已保留放置内容；请重新选择正文目标。";
+    banner.value = uiText('未确认写入成功，已保留放置内容；请重新选择正文目标。');
   } else {
-    banner.value = "这条笔记已更新，请重新选择放置位置。";
+    banner.value = uiText('这条笔记已更新，请重新选择放置位置。');
   }
 }
 
@@ -3304,7 +3316,7 @@ async function submitNotePlacementTarget(placement: NoteBodyPlacement) {
     || (current.surface_kind === "markdown" && placement.kind !== "lid_block")
     || (current.surface_kind === "pdf" && placement.kind !== "pdf_region")) return;
   if (sameNotePlacement(current.record?.note_placement, placement)) {
-    banner.value = "这条笔记已在此处，请选择其他位置。";
+    banner.value = uiText('这条笔记已在此处，请选择其他位置。');
     return;
   }
   const saving = notePlacementController.beginSaving(placement);
@@ -3337,13 +3349,13 @@ async function submitNotePlacementTarget(placement: NoteBodyPlacement) {
     selectedLid.value = placement.lid;
     banner.value = saving.subject.kind === "record"
       ? saving.record?.note_placement
-        ? "笔记已移动到新的正文位置。"
-        : "笔记已放置到正文。"
+        ? uiText('笔记已移动到新的正文位置。')
+        : uiText('笔记已放置到正文。')
       : "promoted" in result && result.promoted
-        ? "助手建议已保存为笔记。"
+        ? uiText('助手建议已保存为笔记。')
         : "status" in result && result.status === "EXISTING"
-          ? "这条笔记已存在。"
-          : "笔记已放置到正文。";
+          ? uiText('这条笔记已存在。')
+          : uiText('笔记已放置到正文。');
   } catch (error) {
     if (error instanceof ApiError) {
       await handleExplicitNotePlacementFailure(saving, error);
@@ -3374,7 +3386,7 @@ async function onPdfNotePlacementTarget(target: { entry: PdfSourceMapEntry; regi
       && region.region_id === target.region.region_id
       && region.bbox.every((coordinate, index) => coordinate === target.region.bbox[index])));
   if (!targetIsCurrent || map.book_id !== current.book_id) {
-    banner.value = "PDF 映射已变化，请重新选择正文区域。";
+    banner.value = uiText('PDF 映射已变化，请重新选择正文区域。');
     return;
   }
   await submitNotePlacementTarget({
@@ -3533,6 +3545,13 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  boardFollowUp?: BoardFollowUp | null;
+  boardDelivery?: BoardDelivery | null;
+  boardCommits?: BoardDelivery[];
+  boardIncomplete?: boolean;
+  boardDeliveryError?: string | null;
+  boardDeliveryErrorCode?: string;
+  boardRequestId?: string;
   musicQuestion?: MusicQuestionContext | null;
   videoQuestion?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   hasTeaching?: boolean;
@@ -3592,15 +3611,38 @@ watch(() => [recapProps.recapTarget, agentHistoryLoading.value, rightRailRef.val
   } catch (failure) { fail(failure); }
 });
 const askDraft = ref<AskDraft | null>(recapProps.chatDraft?.quote ?? null);
-const learningScopeOptions = computed<LearningScopeOption[]>(() => [
-  ...(askDraft.value?.quote.trim() && askDraft.value.status !== 'partial' ? [{ value: 'selection' as const, label: '当前选中的原文' }] : []),
-  ...(guideChapter.value ? [{ value: 'chapter' as const, label: musicMode.value ? `《${guideChapter.value.title}》这首作品` : `《${guideChapter.value.title}》这一章` }] : []),
-  { value: 'material', label: recapProps.materialTitle || (musicMode.value ? '当前作品与资料' : '当前材料') },
+const learningScopeOptions = computed<LearningScopeOption[]>(() => mediaMode.value ? [
+  ...(musicMode.value || videoFrameReady.value || videoQuestion.draft.value ? [{ value: 'media' as const,
+    label: musicMode.value ? musicQuestionContext.value ? uiText('当前选中的音乐片段') : uiText('当前听到的片段')
+      : videoQuestion.draft.value?.context.range ? uiText('当前选中的视频片段') : videoQuestion.draft.value?.context.region ? uiText('当前框选的画面') : uiText('当前播放位置') }] : []),
+  { value: 'material', label: musicMode.value ? uiText('整首作品与资料') : uiText('整段视频') },
+] : [
+  ...(askDraft.value?.quote.trim() && askDraft.value.status !== 'partial' ? [{ value: 'selection' as const, label: uiText('当前选中的原文') }] : []),
+  ...(guideChapter.value ? [{ value: 'chapter' as const, label: uiText('《{0}》这一章', [guideChapter.value.title]) }] : []),
+  { value: 'material', label: recapProps.materialTitle || uiText('当前材料') },
 ]);
 const learningPurposeAvailable = computed(() => !!buildWorkbenchSnapshot.value?.book_id && !!noteSourceFingerprint.value
-  && !mediaMode.value && !agentHistoryLoading.value && !agentHistoryError.value);
+  && (!videoMode.value || !!publishedVideo.value) && !agentHistoryLoading.value && !agentHistoryError.value);
 const learningPurposeReady = computed(() => !!tutor.state.value && !tutor.busy.value && !tutor.pending.value
   && tutor.readiness.value?.status === 'ready' && !tutor.readinessError.value);
+const learningPurposeReason = computed(() => agentHistoryError.value || (agentHistoryLoading.value ? uiText('正在恢复学习对话。') : '')
+  || (videoMode.value && !publishedVideo.value ? videoDetailsError.value || uiText('正在准备视频字幕。') : '')
+  || (!learningPurposeAvailable.value ? uiText('正在读取学习资料。') : '')
+  || tutor.readinessError.value || (tutor.readiness.value?.status !== 'ready' ? tutor.readiness.value?.reason || uiText('正在读取连续教学状态。') : ''));
+type LearningMediaContext = { video?: VideoQuestionContext; music?: MusicQuestionContext };
+function captureLearningMedia(): LearningMediaContext {
+  if (musicMode.value) {
+    const context = musicQuestionContext.value ?? musicPane.value?.captureQuestion();
+    if (!context) throw new Error(uiText('请等待音乐加载后再开始学习。'));
+    return { music: { ...structuredClone(toRaw(context)), draft_id: crypto.randomUUID() } };
+  }
+  if (videoMode.value) {
+    const context = videoQuestion.draft.value?.context ?? videoPane.value?.captureQuestion(crypto.randomUUID());
+    if (!context) throw new Error(uiText('请等待视频画面加载后再开始学习。'));
+    return { video: { ...structuredClone(toRaw(context)), draft_id: crypto.randomUUID() } };
+  }
+  return {};
+}
 watch([agentInput, askDraft, targetGoalId], ([message, quote, goalId]) => {
   if (!disposed) recapEmit('update:chatDraft', { message, quote, goalId });
 }, { flush: 'sync' });
@@ -3629,7 +3671,7 @@ function closeShare() {
 }
 provide(shareNoteKey, async (requested) => {
   const record = annotations.value.find(record => record.mem_id === requested.mem_id && record.type === 'note');
-  if (!record) { banner.value = '这条笔记当前不可用，请重新打开笔记。'; return; }
+  if (!record) { banner.value = uiText('这条笔记当前不可用，请重新打开笔记。'); return; }
   const bookId = buildWorkbenchSnapshot.value?.book_id;
   if (record.book_id !== bookId) return;
   shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -3641,12 +3683,12 @@ provide(shareNoteKey, async (requested) => {
     const placement = record.note_placement;
     const entry = pdfEntryByLid.value.get(record.anchor.lid);
     const pageIndex = placement?.kind === 'pdf_region' ? placement.page_index : entry?.primary_region?.pageIndex ?? entry?.regions[0]?.pageIndex;
-    const label = pageIndex !== undefined ? `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === pageIndex)?.page_label ?? pageIndex + 1} 页`
+    const label = pageIndex !== undefined ? uiText('第 {0} 页', [pdfSourceMap.value?.pages.find(page => page.pageIndex === pageIndex)?.page_label ?? pageIndex + 1])
       : noteSourceLabels.value[record.mem_id];
-    if (label && label !== '来源未知' && !labels.includes(label)) labels.push(label);
+    if (label && label !== uiText('来源未知') && !labels.includes(label)) labels.push(label);
   }
   const hasSource = labels.length > 0 || (bodySource && !!record.anchor.lid);
-  void beginShare(noteShareSource(record, hasSource ? labels : ['无已记录出处']), hasSource);
+  void beginShare(noteShareSource(record, hasSource ? labels : [uiText('无已记录出处')]), hasSource);
 });
 async function beginShare(source: ShareSource, hasSource = true) {
   shareOperation++;
@@ -3673,14 +3715,14 @@ async function beginShare(source: ShareSource, hasSource = true) {
     } catch { if (!stillCurrent()) return; }
   }
   if (!stillCurrent()) return;
-  active.source.sources = [title ? `《${title}》` : '材料名称暂不可用', ...source.sources];
+  active.source.sources = [title ? `《${title}》` : uiText('材料名称暂不可用'), ...source.sources];
   active.loading = false;
 }
 function excerptLabels(lids: string[]): string[] {
   return [...new Set(lids.map(lid => {
     const entry = pdfEntryByLid.value.get(lid);
     const pages = entry?.regions.map(region => region.pageIndex) ?? [];
-    if (pages.length) return [...new Set(pages)].map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`).join('、');
+    if (pages.length) return [...new Set(pages)].map(index => uiText('第 {0} 页', [pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1])).join('、');
     return chapterLabelForNote(lid);
   }).filter(Boolean))];
 }
@@ -3690,7 +3732,7 @@ function chapterLabelForNote(lid: string): string {
     if (title) return stripMarkdownHeadingLine(title);
     lid = lid.includes('.') ? lid.slice(0, lid.lastIndexOf('.')) : '';
   }
-  return '来源位置暂不可用';
+  return uiText('来源位置暂不可用');
 }
 function shareSelection() {
   const selected = hlPopover.value;
@@ -3702,7 +3744,7 @@ function sharePdfSelection() {
   const draft = pdfSelectionState.value.draft;
   if (!draft || draft.status !== 'resolved') return;
   const pages = [...new Set(pdfSelectionState.value.capture?.rects.map(rect => rect.pageIndex) ?? [])];
-  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  const labels = pages.map(index => uiText('第 {0} 页', [pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1]));
   void beginShare(excerptShareSource(draft.raw_quote, labels.length ? labels : excerptLabels(draft.ranges.map(range => range.lid)), 'plain'));
   pdfSelectionSession.cancel();
 }
@@ -3711,7 +3753,7 @@ provide(shareHighlightKey, requested => {
   if (!record || record.book_id !== buildWorkbenchSnapshot.value?.book_id) return;
   const members = highlightGroupMembers(record);
   const pages = [...new Set(members.flatMap(member => pdfAnnotationProjection.value.highlights.find(highlight => highlight.mem_id === member.mem_id)?.rects.map(rect => rect.pageIndex) ?? []))];
-  const labels = pages.map(index => `第 ${pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1} 页`);
+  const labels = pages.map(index => uiText('第 {0} 页', [pdfSourceMap.value?.pages.find(page => page.pageIndex === index)?.page_label ?? index + 1]));
   void beginShare(excerptShareSource(members.map(member => member.content).join('\n'), labels.length ? labels : excerptLabels(members.map(member => member.anchor.lid).filter((lid): lid is string => !!lid))));
 });
 watch([noteMaterialKey, activeChatSessionId], () => { shareOperation++; shareDraft.value = null; shareReturnFocus = null; }, { flush: 'sync' });
@@ -3825,12 +3867,94 @@ const workspaceLogicalState = computed<WorkspaceLogicalState>(() => ({
   focusedSlot: readerLayout.value?.focused_slot ?? null,
 }));
 const readingContinuity = createReadingContinuity();
+const initialBoardRoute = readBoardRoute(location.search);
+const boardId = ref<string | null>(initialBoardRoute?.boardId ?? null);
+const boardMounted = ref(!!boardId.value);
+const boardVisible = ref(!!boardId.value);
+const boardPendingImport = ref<BoardImportSource | null>(null);
+const boardPendingLocate = ref<BoardLocation | null>(initialBoardRoute?.itemId ? {
+  board_id: initialBoardRoute.boardId, item_id: initialBoardRoute.itemId, block_id: initialBoardRoute.blockId,
+} : null);
+const boardWorkspaceRef = ref<InstanceType<typeof BoardWorkspace>>();
+const boardSourceError = ref('');
+const boardSourcePreview = ref<SourcePopupView | null>(null);
+function writeBoardRoute(id: string | null, target?: BoardLocation) {
+  const url = boardRouteUrl(location.href, id ? { boardId: id,
+    publication: network.value.workspace?.published_book_ref ?? null,
+    learningWorkspaceId: network.value.workspace?.learning_workspace_id ?? null,
+    itemId: target?.item_id ?? undefined, blockId: target?.block_id ?? undefined } : null);
+  history.replaceState(history.state, '', url);
+}
+function openBoard(source?: BoardImportSource) {
+  boardPendingImport.value = source ?? null;
+  boardMounted.value = true; boardVisible.value = true; boardSourceError.value = '';
+  tutorPanelOpen.value = false; mobileGlobalActionsOpen.value = false;
+  if (boardId.value) writeBoardRoute(boardId.value);
+}
+function boardOpened(id: string) { boardId.value = id; writeBoardRoute(id, boardPendingLocate.value ?? undefined); }
+async function openBoardLocation(target: BoardLocation) {
+  try {
+    if (boardMounted.value && boardId.value !== target.board_id && await boardWorkspaceRef.value?.flush() === false) return;
+    boardId.value = target.board_id; boardPendingLocate.value = { ...target };
+    openBoard(); writeBoardRoute(target.board_id, target);
+  } catch (failure) { boardSourceError.value = errorMessage(failure); }
+}
+function openUnderstandingBoard(event: Event) {
+  const detail = (event as CustomEvent<BoardLocation & { reader_key: string }>).detail;
+  if (detail?.reader_key === readerKey()) void openBoardLocation(detail);
+}
+function closeBoard() {
+  boardVisible.value = false; boardMounted.value = false; boardId.value = null;
+  boardPendingImport.value = null; boardPendingLocate.value = null; boardSourceError.value = ''; writeBoardRoute(null);
+  boardSourcePreview.value = null;
+}
+watch(() => buildWorkbenchSnapshot.value?.book_id, (book, previous) => {
+  if (previous && book && book !== previous) closeBoard();
+});
+function addUnderstandingToBoard(event: Event) {
+  const detail = (event as CustomEvent<{ reader_key: string; source: BoardImportSource }>).detail;
+  if (detail?.reader_key === readerKey()) openBoard(detail.source);
+}
+onMounted(() => window.addEventListener('understanding-add-to-board', addUnderstandingToBoard));
+onBeforeUnmount(() => window.removeEventListener('understanding-add-to-board', addUnderstandingToBoard));
+onMounted(() => window.addEventListener('understanding-open-board', openUnderstandingBoard));
+onBeforeUnmount(() => window.removeEventListener('understanding-open-board', openUnderstandingBoard));
+async function openBoardSource(request: BoardSourceRequest) {
+  boardSourceError.value = '';
+  try {
+    const source = await api.boardSourceResolve(request);
+    if (source.stale || !source.can_open_in_reader) { boardSourcePreview.value = source; return; }
+    const returnPoint: ReadingReturnPoint = { ...captureReadingReturnPoint(''), origin: 'board', boardId: request.board_id, boardItemId: request.item_id };
+    if (source.media) {
+      const current = (videoPlayback.value ?? publishedVideo.value)?.publication;
+      const target = source.media.publication, ms = mediaSourceStart(source.media);
+      if (!videoPane.value || current?.book_id !== target.book_id || current.publication_id !== target.publication_id || !Number.isFinite(ms)) {
+        boardSourcePreview.value = source; return;
+      }
+      videoPane.value.seek(ms);
+    }
+    else if (source.music) {
+      const current = musicContext.value?.publication, target = source.music.target;
+      if (!musicPane.value || current?.book_id !== target.publication.book_id || current.publication_id !== target.publication.publication_id) {
+        boardSourcePreview.value = source; return;
+      }
+      musicPane.value.openSource(target);
+    }
+    else {
+      const opened = await api.boardSourceOpen(request);
+      if (opened.source_url) { window.open(opened.source_url, '_blank', 'noopener,noreferrer'); return; }
+    }
+    readingContinuity.push(returnPoint); updateReadingReturn(); boardVisible.value = false;
+    workspaceRef.value?.showReader();
+    if (!source.media && !source.music) await syncViewport(true, true);
+  } catch (failure) { boardSourceError.value = failure instanceof Error ? failure.message : String(failure); }
+}
 const returnToAnswerAvailable = ref(false);
-const readingReturnLabel = ref('返回回答');
+const readingReturnLabel = ref(uiText('返回回答'));
 function updateReadingReturn() {
   const point = readingContinuity.peek(workspaceContextKey.value);
   returnToAnswerAvailable.value = !!point;
-  readingReturnLabel.value = point?.origin === 'reader' ? '返回阅读位置' : point?.origin === 'notes' ? '返回笔记' : '返回回答';
+  readingReturnLabel.value = point?.origin === 'board' ? uiText('返回画板') : point?.origin === 'reader' ? uiText('返回阅读位置') : point?.origin === 'notes' ? uiText('返回笔记') : uiText('返回回答');
 }
 let pendingReadingReturnPoint: ReadingReturnPoint | null = null;
 watch(workspaceContextKey, (contextKey, previous) => {
@@ -3908,12 +4032,14 @@ watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
   if (!turn) return;
   turn.activities = snapshot.activities;
   turn.liveEffects = snapshot.effects;
+  turn.boardCommits = mergeBoardDeliveries(turn.boardCommits, snapshot.board_commits, snapshot.final_view?.board_commits);
   void syncResidentChanges(snapshot).catch(fail);
   turn.draft = snapshot.draft;
   turn.pending = snapshot.persistence_state === "pending";
   turn.runStatus = runStatusText(snapshot, residentRun.connection.value);
   if (snapshot.final_view) Object.assign(turn, chatTurnFromHistory(snapshot.final_view, turn), { runStatus: turn.runStatus });
-  if (snapshot.persistence_state === "failed") turn.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+  turn.boardIncomplete = snapshot.persistence_state !== "pending" && snapshot.execution_state !== "completed";
+  if (snapshot.persistence_state === "failed") turn.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : uiText('运行已结束，但结果未保存。已发生的阅读操作保留。');
   turn.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
   restoreAllowanceDraft(turn);
 }, { flush: "sync" });
@@ -3975,6 +4101,87 @@ async function retryResidentSave() {
 }
 async function stopResidentRun() {
   try { await residentRun.cancel(); } catch (error) { fail(error); }
+}
+const boardQuestionSubmission = ref<{ request: BoardQuestionRequest; sessionId: string; turn?: ChatTurn; error?: string; retryable?: boolean } | null>(null);
+const boardRun = computed<BoardRunView | null>(() => {
+  const submission = boardQuestionSubmission.value;
+  const retained = submission?.turn;
+  const turn = submission
+    ? [...chat.value].reverse().find(item => item.boardRequestId === submission.request.client_request_id || (!!retained?.turnId && item.turnId === retained.turnId)) ?? retained
+    : [...chat.value].reverse().find(item => item.boardFollowUp?.board_id === boardId.value);
+  const context = submission?.request.context ?? turn?.boardFollowUp;
+  if (!context) return null;
+  const snapshot = residentRun.snapshot.value;
+  const ownRun = !!turn?.turnId && snapshot?.descriptor.turn_id === turn.turnId;
+  const saveFailed = ownRun && snapshot?.persistence_state === 'failed';
+  const deliveryRetryable = !!turn?.boardDeliveryError && !['BOARD_NOT_FOUND', 'OBJECT_NOT_FOUND', 'BOARD_REVISION_CONFLICT', 'PRESENTATION_NOT_FOUND', 'INVALID_BOARD', 'BOARD_REQUEST_INVALID'].includes(turn.boardDeliveryErrorCode ?? '');
+  const deliveryError = turn?.boardDeliveryErrorCode === 'BOARD_REVISION_CONFLICT'
+    ? uiText('制作期间画板的位置或内容发生了变化。问题已保留在输入框，重新发送后会按当前画板制作和检查。')
+    : turn?.boardDeliveryError;
+  const error = submission?.error ?? deliveryError ?? turn?.error;
+  const commits = mergeBoardDeliveries(turn?.boardCommits, ownRun ? snapshot?.board_commits : []);
+  const pending = turn?.pending ?? !error;
+  return {
+    request_id: submission?.request.client_request_id ?? turn?.boardRequestId ?? `turn:${turn?.turnId}`,
+    board_id: context.board_id, item_id: context.item_id,
+    question: submission?.request.message ?? turn?.user ?? '',
+    status_text: commits.length && pending ? uiText('已保存第{0}部分，后续仍在讲解', [commits.length]) : turn?.boardDelivery ? uiText('回答已保存到画板') : turn?.runStatus ?? (error ? '' : uiText('正在提交问题…')),
+    accepted: !!turn?.turnId, pending, commits, incomplete: turn?.boardIncomplete,
+    error, can_retry: !!error && (!!submission?.retryable || !!turn?.submissionUnknown || !!saveFailed || deliveryRetryable),
+    can_stop: ownRun && residentRun.active.value, turn_id: turn?.turnId ?? undefined, delivery: turn?.boardDelivery,
+    discussion: turn ? {
+      sessionId: submission?.sessionId || activeChatSessionId.value, turnId: turn.turnId,
+      requestId: submission?.request.client_request_id ?? turn.boardRequestId, user: turn.user,
+      outcome: turn.outcome, pending, draft: turn.draft, runStatus: turn.runStatus, activities: turn.activities, error, commits,
+    } : undefined,
+  };
+});
+async function sendBoardQuestion(request: BoardQuestionRequest) {
+  // Keep the submitted object and text independent of subsequent canvas selection.
+  const frozen = JSON.parse(JSON.stringify(request)) as BoardQuestionRequest;
+  const submission = reactive({ request: frozen, sessionId: activeChatSessionId.value, turn: undefined as ChatTurn | undefined,
+    error: undefined as string | undefined, retryable: false });
+  boardQuestionSubmission.value = submission;
+  if (sending.value || agentHistoryLoading.value || agentHistoryError.value || hasUnconfirmedReadingRequest()) {
+    submission.error = agentHistoryError.value ?? (hasUnconfirmedReadingRequest()
+      ? uiText('原操作结果待核对，请先核对或重试原操作。') : uiText('当前回复尚未完成，请稍后继续。'));
+    submission.retryable = !hasUnconfirmedReadingRequest();
+    return;
+  }
+  submission.turn = await submitAgentMessage(frozen.message, frozen.message, null, undefined, {
+    board_follow_up: frozen.context, client_request_id: frozen.client_request_id, session_id: submission.sessionId,
+    ...(!network.value.enabled ? { expected_chat_head: actionHead() } : {}),
+  });
+  if (submission.turn?.turnId) submission.sessionId = activeChatSessionId.value;
+  if (submission.turn?.error && !submission.turn.turnId && !submission.turn.submissionUnknown) submission.retryable = true;
+  if (!submission.turn) { submission.error = uiText('问题尚未提交，请重试。'); submission.retryable = true; }
+  else if (!submission.turn.turnId && !submission.turn.error) submission.error = uiText('问题未被接纳，请查看对话中的提示。');
+}
+async function retryBoardQuestion(requestId: string) {
+  const run = boardRun.value;
+  if (!run || run.request_id !== requestId || sending.value) return;
+  const submission = boardQuestionSubmission.value;
+  if (submission) submission.error = undefined;
+  try {
+    if (run.accepted && run.turn_id) {
+      const repaired = await api.agentRunRetrySave(run.turn_id);
+      if (residentRun.snapshot.value?.descriptor.turn_id === run.turn_id) residentRun.forget();
+      applyAgentHistory(await api.agentHistory());
+      if (repaired.persistence_state === 'pending') residentRun.observe(repaired.descriptor);
+    } else if (network.value.enabled && pendingSubmissions().some(item => item.key === requestId)) {
+      await retrySubmission(requestId); applyAgentHistory(await api.agentHistory());
+    } else if (!network.value.enabled && currentReadingActions.value.some(item => item.body.client_request_id === requestId)) {
+      await recoverReadingAction(currentReadingActions.value.find(item => item.body.client_request_id === requestId)!, true);
+    } else if (submission?.retryable) {
+      // Recover the selected discussion before deliberately retrying a rejected
+      // request. Its board focus and text remain the captured originals.
+      applyAgentHistory(await api.agentHistory());
+      await sendBoardQuestion(submission.request);
+    }
+  } catch (failure) { if (submission) submission.error = errorMessage(failure); else boardSourceError.value = errorMessage(failure); }
+}
+async function cancelBoardQuestion() {
+  if (boardRun.value?.can_stop) await stopResidentRun();
 }
 async function finishResidentRun(snapshot: RunSnapshot) {
   const workspaceChat = !!network.value.workspace?.learning_workspace_id;
@@ -4046,7 +4253,7 @@ function notePdfSelection() {
     void beginNote({ lid: first.lid, memId: reselect.mem_id, layer: reselect.layer,
       content: reselect.content, selectionContext, legacy: !reselect.note,
       excerpt: reselect.note?.retained_excerpt ? { kind: 'original', text: selectionContext.raw_quote } : null,
-      title: '重新选择原文' });
+      title: uiText('重新选择原文') });
   } else openNewNote(first.lid, '', selectionContext);
   // The editor owns the immutable selection; later PDF selections are independent.
   completePdfSelectionAction();
@@ -4110,12 +4317,12 @@ function effState(ti: number, ei: number): string | undefined {
   const effect = turn?.outcome?.effects[ei];
   if (!effect) return undefined;
   const id = effectId(effect);
-  if (effectPending.value[`${turn.turnId}:${id}`]) return "正在处理";
+  if (effectPending.value[`${turn.turnId}:${id}`]) return uiText('正在处理');
   return dispositionLabel(turn.dispositions?.[id], effect);
 }
 function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
   return {
-    label: draft.status === "partial" ? "部分定位引用" : "引用来源",
+    label: draft.status === "partial" ? uiText('部分定位引用') : uiText('引用来源'),
     quote: draft.quote,
     status: draft.status,
   };
@@ -4132,6 +4339,13 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
     teachingRef: turn.teaching_ref,
     hasTeaching: !!turn.domain?.teaching?.length,
     presentationFollowUp: turn.presentation_follow_up,
+    boardFollowUp: turn.board_follow_up,
+    boardDelivery: turn.board_delivery,
+    boardCommits: mergeBoardDeliveries(matchingPrevious?.turnId === turn.turn_id ? matchingPrevious.boardCommits : [], turn.board_commits),
+    boardIncomplete: turn.status !== "pending_assistant" && turn.status !== "completed",
+    boardDeliveryError: turn.board_delivery_error?.message,
+    boardDeliveryErrorCode: turn.board_delivery_error?.error_code,
+    boardRequestId: matchingPrevious?.boardRequestId,
     turnId: turn.turn_id,
     user: turn.user,
     outcome: turn.outcome ?? null,
@@ -4144,7 +4358,7 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
     effectLabels: [...turn.effect_labels],
     activities: turn.run_summary?.activities ?? undefined,
     runTrace: turn.run_summary?.trace,
-    runStatus: turn.status === "cancelled" ? "已停止" : undefined,
+    runStatus: turn.status === "cancelled" ? uiText('已停止') : undefined,
   };
 }
 
@@ -4162,7 +4376,7 @@ function applyAgentHistory(history: AgentHistoryResponse, completedRun?: RunSnap
   chatSessions.value = history.sessions;
   chatGoals.value = history.current.goals ?? [];
   if (!chatGoals.value.some(goal => goal.id === targetGoalId.value && goal.status === "open")) targetGoalId.value = null;
-  chat.value = history.current.turns.map((turn, index) => chatTurnFromHistory(turn, previousChat[index]));
+  chat.value = history.current.turns.map((turn, index) => chatTurnFromHistory(turn, previousChat.find(old => old.turnId === turn.turn_id) ?? previousChat[index]));
   for (const turn of chat.value) restoreAllowanceDraft(turn);
   const unknown = unknownSubmissionsBySession.get(history.current.id) ?? [];
   const unresolved = network.value.enabled ? [] : unknown.filter((record) => !submissionWasAccepted(record, {
@@ -4185,10 +4399,12 @@ function applyAgentHistory(history: AgentHistoryResponse, completedRun?: RunSnap
     const current = chat.value.find(turn => turn.turnId === snapshot.descriptor.turn_id);
     if (current) {
       current.activities = snapshot.activities;
+      current.boardCommits = mergeBoardDeliveries(current.boardCommits, snapshot.board_commits, snapshot.final_view?.board_commits);
+      current.boardIncomplete = snapshot.persistence_state !== "pending" && snapshot.execution_state !== "completed";
       current.draft = snapshot.draft;
       current.pending = snapshot.persistence_state === "pending";
       current.runStatus = runStatusText(snapshot, residentRun.connection.value);
-      if (snapshot.persistence_state === "failed") current.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : "运行已结束，但结果未保存。已发生的阅读操作保留。";
+      if (snapshot.persistence_state === "failed") current.error = snapshot.error ? runStatusText(snapshot, residentRun.connection.value) : uiText('运行已结束，但结果未保存。已发生的阅读操作保留。');
       current.spendStop = spendNotice(snapshot.error ?? snapshot.final_view?.error, snapshot.persistence_state);
       restoreAllowanceDraft(current);
     }
@@ -4206,7 +4422,7 @@ async function loadStartupHistory() {
     if (request !== startupHistoryRequestSeq) return;
     const learningId = network.value.workspace?.learning_workspace_id;
     if (learningId ? history.current.learning_workspace_id !== learningId : history.current.book_id !== bookId)
-      throw new Error(learningId ? "对话所属工作区已变化，请重试" : "对话所属书籍已变化，请重试");
+      throw new Error(learningId ? uiText('对话所属工作区已变化，请重试') : uiText('对话所属书籍已变化，请重试'));
     applyAgentHistory(history);
   } catch (error) {
     if (request === startupHistoryRequestSeq) agentHistoryError.value = errorMessage(error);
@@ -4236,26 +4452,26 @@ function isGoto(e: AgentEffect): boolean {
   return e.kind === "Goto";
 }
 function effLabel(e: AgentEffect): string {
-  if (e.kind === "PaperMinimap") return "论文地图已更新";
-  if (e.kind === "PaperMinimapProposal") return "论文地图建议";
-  if (e.kind === "Goto") return "跳转";
-  if (e.kind === "Highlight") return "高亮";
-  if (e.kind === "Note") return "笔记";
-  if (e.kind === "Layout") return "布局已更新";
-  return "布局调整建议";
+  if (e.kind === "PaperMinimap") return uiText('论文地图已更新');
+  if (e.kind === "PaperMinimapProposal") return uiText('论文地图建议');
+  if (e.kind === "Goto") return uiText('跳转');
+  if (e.kind === "Highlight") return uiText('高亮');
+  if (e.kind === "Note") return uiText('笔记');
+  if (e.kind === "Layout") return uiText('布局已更新');
+  return uiText('布局调整建议');
 }
 function gotoBack(e: AgentEffect): string {
   return e.kind === "Goto" ? e.before_anchor : "";
 }
 function effectPrimaryLabel(e: AgentEffect): string {
-  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return "应用";
-  if (e.kind === "Highlight" || e.kind === "Note") return "保留";
+  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return uiText('应用');
+  if (e.kind === "Highlight" || e.kind === "Note") return uiText('保留');
   return "";
 }
 function effectSecondaryLabel(e: AgentEffect): string {
-  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return "忽略";
-  if (e.kind === "PaperMinimap") return "撤销";
-  if (e.kind === "Highlight" || e.kind === "Note") return "撤销";
+  if (e.kind === "LayoutProposal" || e.kind === "PaperMinimapProposal") return uiText('忽略');
+  if (e.kind === "PaperMinimap") return uiText('撤销');
+  if (e.kind === "Highlight" || e.kind === "Note") return uiText('撤销');
   return "";
 }
 function showEffectPrimary(e: AgentEffect): boolean {
@@ -4277,33 +4493,45 @@ async function applyLayoutActions(actions: ReaderLayoutAction[]) {
   await applyReaderState(st);
 }
 async function tutorAction(action: import("./generated/TutorAction").TutorAction) {
+  const context = readerContextKey.value;
+  const current = () => !disposed && context === readerContextKey.value;
+  if (action.kind === 'resume' && !tutor.state.value?.control.enabled) {
+    await tutor.act({ kind: 'set_enabled', enabled: true });
+    if (!current() || tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
+  }
   await tutor.act(action);
+  if (!current()) return;
   window.dispatchEvent(new Event("tutor-state-changed"));
   if (tutor.error.value || tutor.pending.value) return;
   if (action.kind === "start" || action.kind === "resume") {
-    await startTutorRequest();
+    await startTutorRequest(tutor.current.value?.user_intent);
   }
 }
-async function startTutorRequest() {
+async function startTutorRequest(userIntent?: string) {
+    const context = readerContextKey.value;
+    const current = () => !disposed && context === readerContextKey.value;
     try {
       const result = await api.tutorStart();
+      if (!current()) return;
       await tutor.load();
-      if (tutor.error.value || tutor.pending.value) return;
+      if (!current() || tutor.error.value || tutor.pending.value) return;
       if (result.started && result.message && sending.value) {
-        banner.value = "教学设置已保存，当前回复完成后可点击继续教学。";
+        banner.value = uiText('教学设置已保存，当前回复完成后可点击继续教学。');
       } else if (result.started && result.message) {
         tutorPanelOpen.value = false;
-        await submitAgentMessage(result.message, "继续学习", null);
+        // Starting or resuming explicitly adopts this confirmed goal for the current request.
+        const message = userIntent?.trim() ? uiText('{0}\n\n本次学习目标：\n{1}', [result.message, userIntent]) : result.message;
+        await submitAgentMessage(message, uiText('继续学习'), null, undefined, {}, undefined, mediaMode.value ? captureLearningMedia() : undefined);
       } else if (result.reason) banner.value = result.reason;
     } catch (failure) {
-      if (!disposed && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) {
-        banner.value = `学习未开始：${errorMessage(failure)}`;
+      if (current() && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) {
+        banner.value = uiText('学习未开始：{0}', [errorMessage(failure)]);
       }
     }
 }
 async function guideCurrentChapter() {
   const chapter = guideChapter.value;
-  if (chapter) await startLearningPurpose('understand', 'chapter', `带我读《${chapter.title}》这一章`);
+  if (chapter) await startLearningPurpose('understand', 'chapter', uiText('带我读《{0}》这一章', [chapter.title]));
 }
 async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: LearningScopeKind, display?: string) {
   if (!learningPurposeAvailable.value || guidingChapter.value || sending.value || hasUnconfirmedReadingRequest()
@@ -4318,6 +4546,7 @@ async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: Learni
   };
   guidingChapter.value = true;
   try {
+    const media = scope.value === 'media' ? captureLearningMedia() : {};
     if (purpose !== 'discover' && !tutor.state.value?.control.enabled) {
       await tutorAction({ kind: 'set_enabled', enabled: true });
       if (tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
@@ -4326,36 +4555,39 @@ async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: Learni
       || request.sourceRevision !== noteSourceFingerprint.value) return;
     tutorPanelOpen.value = false;
     workspaceRef.value?.showAssistant('agent');
-    await submitAgentMessage('', display ?? `${learningPurposeLabel(purpose, musicMode.value)} · ${scope.label}`, request.quote, undefined, {
+    await submitAgentMessage('', display ?? `${learningPurposeLabel(purpose, musicMode.value, videoMode.value)} · ${scope.label}`, request.quote, undefined, {
       entry_action: 'learn_with_purpose', learning_purpose: purpose, chapter_lid: request.chapterLid,
       source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
       client_request_id: crypto.randomUUID(), expected_chat_head: request.head,
-    });
+    }, undefined, media);
     await tutor.load();
     window.dispatchEvent(new Event('tutor-state-changed'));
+  } catch (failure) {
+    if (!disposed) banner.value = uiText('学习未开始：{0}', [errorMessage(failure)]);
   } finally { guidingChapter.value = false; }
 }
 async function setConversationLearningGoal(intent: string) {
   const sourceId = tutor.readiness.value?.source_id;
   if (!sourceId || sending.value) return;
-  const session = tutor.currentForSource.value;
+  const session = tutor.current.value;
   await tutor.act({ kind: 'start', user_intent: intent, explicit_constraints: session?.explicit_constraints ?? [],
     material_scope: session?.material_scope ?? [{ source_id: sourceId, scope_refs: [], role: 'primary' }],
     learning_purpose: session?.learning_purpose, default_teaching_intent: session?.default_teaching_intent ?? null });
   window.dispatchEvent(new Event('tutor-state-changed'));
 }
 async function resumeConversationLearning() {
-  const session = tutor.currentForSource.value;
+  const context = readerContextKey.value;
+  const session = tutor.current.value;
   if (!session || sending.value || tutor.busy.value || tutor.pending.value || tutor.readiness.value?.status !== 'ready' || tutor.readinessError.value) return;
   if (!tutor.state.value?.control.enabled) {
     await tutorAction({ kind: 'set_enabled', enabled: true });
-    if (tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
+    if (disposed || context !== readerContextKey.value || tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
   }
   await tutorAction({ kind: 'resume', session_id: session.id });
 }
 function onTutorResponse(event: Event) {
   const detail = (event as CustomEvent<{ eventId: string; text: string; scene?: import('./generated/PresentationFollowUp').PresentationFollowUp; responseOrigin?: import('./api').TeachingResponseOrigin }>).detail;
-  if (sending.value) { banner.value = "当前回复尚未完成，请稍后继续。"; return; }
+  if (sending.value) { banner.value = uiText('当前回复尚未完成，请稍后继续。'); return; }
   void submitAgentMessage(detail.text, detail.text, null, undefined, { teaching_ref: detail.eventId,
     presentation_follow_up: detail.scene, teaching_response_origin: detail.responseOrigin });
 }
@@ -4376,8 +4608,8 @@ async function recoverReadingAction(item: PendingReadingAction, retry = false) {
     else if (result && typeof result === 'object' && 'kind' in result && result.kind === 'activity_help') {
       const help = result as unknown as { delivery_refs: string[]; activity?: { session_id: string; turn_id: string } };
       activityHelpLocation.value = help.activity ? { ...help.activity, delivery_refs: help.delivery_refs } : null;
-      banner.value = '这段内容属于当前待答题，请前往原题帮助。';
-    } else if (!result) banner.value = '未找到已接纳的原操作，可使用原身份重试。';
+      banner.value = uiText('这段内容属于当前待答题，请前往原题帮助。');
+    } else if (!result) banner.value = uiText('未找到已接纳的原操作，可使用原身份重试。');
     const history = await api.agentHistory();
     if (!disposed && chatSceneKey.value === originalScene) applyAgentHistory(history);
   } catch (error) { if (!disposed && chatSceneKey.value === originalScene) banner.value = errorMessage(error); }
@@ -4395,26 +4627,40 @@ async function openActivityHelp() {
   await rightRailRef.value?.scrollToTurn(location.turn_id);
   rightRailRef.value?.focusActivityHelp(location.delivery_refs);
 }
+async function openUnderstandingChat(event: Event) {
+  const location = (event as CustomEvent<{ session_id: string; turn_id: string; reader_key: string; onUnavailable?: (message: string) => void }>).detail;
+  if (!location || location.reader_key !== readerKey()) return;
+  if (sending.value || agentHistoryLoading.value) { location.onUnavailable?.(uiText('当前回答或对话正在加载，请稍后打开对应对话。')); return; }
+  const context = readerContextKey.value;
+  await selectChat(location.session_id, true);
+  if (disposed || context !== readerContextKey.value) return;
+  if (activeChatSessionId.value !== location.session_id) { location.onUnavailable?.(uiText('对应对话暂时无法打开，请稍后重试。')); return; }
+  tutorPanelOpen.value = false;
+  workspaceRef.value?.showAssistant('agent');
+  await rightRailRef.value?.scrollToTurn(location.turn_id);
+}
+onMounted(() => window.addEventListener('understanding-open-chat', openUnderstandingChat));
+onBeforeUnmount(() => window.removeEventListener('understanding-open-chat', openUnderstandingChat));
 function actionHead() { return chat.value.filter(turn => turn.turnId).at(-1)?.turnId ?? null; }
 async function explainSelection(draft: AskDraft) {
   workspaceRef.value?.showAssistant("agent");
-  await submitAgentMessage('', '操作：帮我弄懂这段', draft, undefined, {
+  await submitAgentMessage('', uiText('操作：帮我弄懂这段'), draft, undefined, {
     entry_action: 'explain_selection', session_id: activeChatSessionId.value, client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
     source_id: buildWorkbenchSnapshot.value?.book_id, source_revision: noteSourceFingerprint.value ?? undefined,
   });
 }
 const canContinueAnswer = computed(() => !!tutor.state.value?.control.enabled && !tutor.busy.value && !tutor.pending.value
-  && !tutor.error.value && tutor.readiness.value?.status === 'ready' && !tutor.hasOtherSourceSession.value
+  && !tutor.error.value && tutor.readiness.value?.status === 'ready'
   && (!tutor.current.value || tutor.current.value.status === 'active'));
 async function continueAnswer(turnId: string) {
   if (!canContinueAnswer.value) return;
-  await submitAgentMessage('', '操作：继续理解这段', null, undefined, {
+  await submitAgentMessage('', uiText('操作：继续理解这段'), null, undefined, {
     entry_action: 'continue_answer', session_id: activeChatSessionId.value, answer_ref: { turn_id: turnId },
     client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
   });
 }
 async function clarifyAnswer(turnId: string, excerpt?: string, receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp) {
-  await submitAgentMessage('', '操作：这一步没跟上', null, receipt, {
+  await submitAgentMessage('', uiText('操作：这一步没跟上'), null, receipt, {
     entry_action: 'clarify_answer', session_id: activeChatSessionId.value, answer_ref: { turn_id: turnId, ...(excerpt ? { excerpt } : {}) },
     client_request_id: crypto.randomUUID(), expected_chat_head: actionHead(),
   });
@@ -4422,33 +4668,37 @@ async function clarifyAnswer(turnId: string, excerpt?: string, receipt?: import(
 async function chooseContinuation(view: import('./generated/TutorContinuationView').TutorContinuationView, optionId: string, receipt?: import('./generated/PresentationFollowUp').PresentationFollowUp) {
   const option = view.continuation.options.find(o => o.option_id === optionId);
   if (!option || !canContinueAnswer.value || view.availability.status !== 'eligible' || view.expected_chat_head !== actionHead()) return;
-  await submitAgentMessage('', `选择：${option.label}`, null, receipt, {
+  await submitAgentMessage('', uiText('选择：{0}', [option.label]), null, receipt, {
     teaching_choice: { delivery_ref: view.delivery_ref, option_id: optionId }, session_id: activeChatSessionId.value,
     client_request_id: crypto.randomUUID(), expected_chat_head: view.expected_chat_head,
   });
 }
-async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft) {
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft, learningMedia?: LearningMediaContext) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
-  if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
-  if (!draft && focusPaginationActive.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice && focusVisible.value) {
+  if (hasUnconfirmedReadingRequest()) { banner.value = uiText('原操作结果待核对，请先核对或重试原操作。'); return; }
+  const boardQuestion = !!goalMeta.board_follow_up;
+  if (!boardQuestion && !draft && focusPaginationActive.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice && focusVisible.value) {
     const visible = focusVisible.value;
     const quote = visible.ranges.map(r => visible.sources.find(s => s.lid === r.lid)!.text.slice(r.start, r.end)).join('');
     draft = { lid: visible.position.lid, quote, raw_quote: quote, resolved_quote: quote, status: 'resolved', resolution_basis: 'exact',
       ranges: visible.ranges.map(r => ({ lid: r.lid, range: { start: r.start, end: r.end } })) };
   }
   let videoMeta: { video_window_id?: string; video_draft_id?: string } = {};
-  const saveVideoDraft = publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice;
-  const questionAnchorLid = goalMeta.chapter_lid ?? (goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? readingAnchorLid.value);
+  const saveVideoDraft = !boardQuestion && learningMedia === undefined && publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice;
+  const questionAnchorLid = boardQuestion || learningMedia?.video || learningMedia?.music ? null
+    : goalMeta.chapter_lid ?? (goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? selectedLid.value ?? readingAnchorLid.value);
   const turn = reactive<ChatTurn>({
+    boardFollowUp: goalMeta.board_follow_up,
+    boardRequestId: boardQuestion ? goalMeta.client_request_id : undefined,
     teachingRef: goalMeta.teaching_ref,
-    musicQuestion: musicQuestionContext.value ? structuredClone(JSON.parse(JSON.stringify(musicQuestionContext.value))) : undefined,
-    videoQuestion: videoQuestion.draft.value ? JSON.parse(JSON.stringify(videoQuestion.draft.value.context)) : undefined,
+    musicQuestion: boardQuestion ? undefined : learningMedia ? learningMedia.music : musicQuestionContext.value ? structuredClone(JSON.parse(JSON.stringify(musicQuestionContext.value))) : undefined,
+    videoQuestion: boardQuestion ? undefined : learningMedia ? learningMedia.video : videoQuestion.draft.value ? JSON.parse(JSON.stringify(videoQuestion.draft.value.context)) : undefined,
     presentationFollowUp,
     turnId: null,
     user: displayUser,
     outcome: null,
     pending: true,
-    runStatus: saveVideoDraft ? '正在保存视频提问…' : '正在提交问题…',
+    runStatus: saveVideoDraft ? uiText('正在保存视频提问…') : uiText('正在提交问题…'),
     questionAnchorLid,
     questionQuote: draft ? localQuestionQuoteView(draft) : null,
     questionSelection: draft ? { ...draft } : null,
@@ -4463,6 +4713,13 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   banner.value = "";
   let requestStarted = false;
   try {
+    if (learningMedia?.video) {
+      const context = learningMedia.video;
+      const windowId = `${videoWindowId()}:learning:${context.draft_id}`;
+      await api.videoDraft({ window_id: windowId, action: 'save', draft: { message: displayUser, context } });
+      if (disposed || submission !== submissionSequence) return;
+      videoMeta = { video_window_id: windowId, video_draft_id: context.draft_id };
+    }
     if (saveVideoDraft) {
       // A plain workspace draft can arrive from another material before the video loads.
       if (!videoQuestion.draft.value || videoQuestion.draft.value.message !== msg) videoQuestion.input(msg);
@@ -4470,8 +4727,8 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       if (disposed || submission !== submissionSequence) return;
       turn.videoQuestion = JSON.parse(JSON.stringify(videoQuestion.draft.value!.context));
     }
-    turn.runStatus = '正在提交问题…';
-    await flushFocusPosition();
+    turn.runStatus = uiText('正在提交问题…');
+    if (!boardQuestion) await flushFocusPosition();
     if (disposed || submission !== submissionSequence) return;
     requestStarted = true;
     const result = await api.agentRunCreate(msg, {
@@ -4488,15 +4745,15 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     }
     if (disposed || submission !== submissionSequence) return;
     if ("turn_id" in result) {
-      if (videoMeta.video_draft_id) { videoQuestion.accepted(videoMeta.video_draft_id); agentInput.value = ''; }
-      if (musicQuestionContext.value) { musicQuestionContext.value = null; agentInput.value = ''; }
+      if (learningMedia === undefined && videoMeta.video_draft_id) { videoQuestion.accepted(videoMeta.video_draft_id); agentInput.value = ''; }
+      if (!boardQuestion && learningMedia === undefined && musicQuestionContext.value) { musicQuestionContext.value = null; agentInput.value = ''; }
       turn.turnId = result.turn_id;
       activeChatSessionId.value = result.session_id;
       residentRun.observe(result);
     } else if ('kind' in result && result.kind === 'activity_help') {
       chat.value = chat.value.filter(candidate => toRaw(candidate) !== toRaw(turn));
       activityHelpLocation.value = result.activity ? { ...result.activity, delivery_refs: result.delivery_refs } : null;
-      banner.value = '这段内容属于当前待答题，请使用原题的提示或直接讲解；未提供帮助时可返回原文阅读。';
+      banner.value = uiText('这段内容属于当前待答题，请使用原题的提示或直接讲解；未提供帮助时可返回原文阅读。');
       await nextTick();
       rightRailRef.value?.focusActivityHelp(result.delivery_refs);
     } else {
@@ -4517,12 +4774,12 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       turn.error = stop.message;
       restoreAllowanceDraft(turn, submittedDraft);
     } else if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-      turn.error = "认证已失效，本次问题未提交。请通过现有受保护入口恢复登录。";
+      turn.error = uiText('认证已失效，本次问题未提交。请通过现有受保护入口恢复登录。');
     } else if (error instanceof ApiError && error.status < 500) {
       turn.error = agentFailureMessage({ error_code: error.errorCode, category: error.category, message: error.message });
     } else {
       turn.submissionUnknown = true;
-      turn.error = "提交结果待核对；服务端可能已收到，本页不会自动重提。";
+      turn.error = uiText('提交结果待核对；服务端可能已收到，本页不会自动重提。');
       const records = unknownSubmissionsBySession.get(submissionSessionId) ?? [];
       records.push({ sessionId: submissionSessionId, user: displayUser, knownTurnIds, turn });
       unknownSubmissionsBySession.set(submissionSessionId, records);
@@ -4533,12 +4790,13 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     if (!turn.turnId) turn.runStatus = undefined;
     if (submission === submissionSequence) acceptingRun.value = false;
   }
+  return turn;
 }
 
 async function sendAgent() {
   if (questionImagePreparing.value || agentHistoryLoading.value || agentHistoryError.value || sending.value) return;
-  if (hasUnconfirmedReadingRequest()) { banner.value = '原操作结果待核对，请先核对或重试原操作。'; return; }
-  const msg = agentInput.value.trim() || (musicQuestionContext.value?.image ? '我是初学者，请从零解释这张谱面截图里的线条、音符和符号。' : videoQuestion.draft.value?.context.image ? '请解释这张图片。' : '');
+  if (hasUnconfirmedReadingRequest()) { banner.value = uiText('原操作结果待核对，请先核对或重试原操作。'); return; }
+  const msg = agentInput.value.trim() || (musicQuestionContext.value?.image ? uiText('我是初学者，请从零解释这张谱面截图里的线条、音符和符号。') : videoQuestion.draft.value?.context.image ? uiText('请解释这张图片。') : '');
   if (!msg) return;
   const draft = askDraft.value;
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
@@ -4553,7 +4811,7 @@ function targetGoal(goalId: string) {
 
 async function continueGoal(goalId: string) {
   targetGoalId.value = null;
-  await submitAgentMessage("继续这个任务", "继续任务", null, undefined, { goal_id: goalId });
+  await submitAgentMessage(uiText('继续这个任务'), uiText('继续任务'), null, undefined, { goal_id: goalId });
 }
 
 async function cancelGoal(goalId: string) {
@@ -4561,7 +4819,7 @@ async function cancelGoal(goalId: string) {
   acceptingRun.value = true;
   try {
     applyAgentHistory(await api.agentGoalCancel(goalId));
-    banner.value = "任务已取消";
+    banner.value = uiText('任务已取消');
   } catch (error) {
     fail(error);
   } finally {
@@ -4580,10 +4838,10 @@ async function sendPresentationFollowUp(message: string, receipt: import("./gene
 
 async function confirmSensitiveProfile() {
   if (sending.value || profileMemoryBusy.value) return;
-  profileMemoryNotice.value = "正在确认敏感画像";
-  await submitAgentMessage("confirm save", "确认保存敏感画像", null);
+  profileMemoryNotice.value = uiText('正在确认敏感画像');
+  await submitAgentMessage("confirm save", uiText('确认保存敏感画像'), null);
   if (!profileMemory.value?.status.pending_sensitive_confirmation) {
-    profileMemoryNotice.value = "敏感画像已处理";
+    profileMemoryNotice.value = uiText('敏感画像已处理');
   }
 }
 
@@ -4625,7 +4883,7 @@ async function keepEffect(ti: number, _ei: number, effect: AgentEffect) {
 }
 
 function cancelNotePlacement() {
-  if (notePlacementController.cancel()) banner.value = "已取消正文放置。";
+  if (notePlacementController.cancel()) banner.value = uiText('已取消正文放置。');
 }
 
 async function startNotePlacement(note: MemoryRecord) {
@@ -4634,8 +4892,8 @@ async function startNotePlacement(note: MemoryRecord) {
   const placementSurface = note.note_placement?.kind === "pdf_region" ? "pdf" : "markdown";
   if (note.selection_context || (note.note_placement && placementSurface !== surface)) {
     banner.value = note.selection_context
-      ? "请重新选择这条摘录笔记对应的原文。"
-      : "请在创建笔记时的阅读格式中移动笔记。";
+      ? uiText('请重新选择这条摘录笔记对应的原文。')
+      : uiText('请在创建笔记时的阅读格式中移动笔记。');
     return;
   }
   try {
@@ -4643,7 +4901,7 @@ async function startNotePlacement(note: MemoryRecord) {
     const source = await api.sourceFingerprint();
     if (notePlacementSurface.value !== surface
       || buildWorkbenchSnapshot.value?.book_id !== source.book_id) {
-      banner.value = "阅读内容已更新，请重新选择笔记的放置位置。";
+      banner.value = uiText('阅读内容已更新，请重新选择笔记的放置位置。');
       return;
     }
     noteSourceFingerprint.value = source.source_fingerprint;
@@ -4654,12 +4912,12 @@ async function startNotePlacement(note: MemoryRecord) {
       source_fingerprint: source.source_fingerprint,
     });
     if (started) { window.getSelection()?.removeAllRanges(); workspaceRef.value?.showReader(); }
-    const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文块";
+    const targetLabel = surface === "pdf" ? uiText('PDF 正文区域') : uiText('正文块');
     banner.value = started
       ? note.note_placement
-        ? `请选择新的${targetLabel}移动这条 Note。`
-        : `请选择${targetLabel}放置这条笔记。`
-      : "这条笔记不能放在当前阅读页面。";
+        ? uiText('请选择新的{0}移动这条 Note。', [targetLabel])
+        : uiText('请选择{0}放置这条笔记。', [targetLabel])
+      : uiText('这条笔记不能放在当前阅读页面。');
   } catch (error) {
     fail(error);
   }
@@ -4669,9 +4927,9 @@ function saveAgentSelection(turn: ChatTurn, text: string) {
   if (turn.pending || turn.error || !turn.turnId || !activeChatSessionId.value || !text.trim()) return;
   const parts = turn.outcome?.answer_view?.parts;
   const texts = parts ? parts.filter(p => p.kind === 'markdown').map(p => p.text) : [turn.outcome?.answer ?? ''];
-  if (!texts.some(source => source.includes(text))) { banner.value = '请重新选择已交付回答中的连续文字。'; return; }
+  if (!texts.some(source => source.includes(text))) { banner.value = uiText('请重新选择已交付回答中的连续文字。'); return; }
   void beginNote({ lid: '', memId: null, layer: 'long_term', content: '', selectionContext: null,
-    title: '助手回答', excerpt: { kind: 'assistant', text },
+    title: uiText('助手回答'), excerpt: { kind: 'assistant', text },
     request: { association: { kind: 'answer', session_id: activeChatSessionId.value, turn_id: turn.turnId }, retained_excerpt: text } });
 }
 
@@ -4684,7 +4942,7 @@ async function shareAgentAnswer(requested: ChatTurn, excerpt?: string) {
   const turnId = turn.turnId!, sessionId = activeChatSessionId.value;
   const view = turn.outcome!.answer_view;
   const ids = [...new Set(view?.parts.flatMap(part => part.kind === 'sources' ? part.source_ref_ids : []) ?? [])];
-  const labels = ids.map(id => view?.sources.find(source => source.source_ref_id === id)?.label || '来源名称暂不可用');
+  const labels = ids.map(id => view?.sources.find(source => source.source_ref_id === id)?.label || uiText('来源名称暂不可用'));
   // Answer citations are turn-bound. Never supplement them with the current book metadata.
   shareReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   shareDraft.value = { source: answerShareSource(fullText, text, sessionId, turnId, labels), loading: ids.length > 0 };
@@ -4692,8 +4950,8 @@ async function shareAgentAnswer(requested: ChatTurn, excerpt?: string) {
   const resolved = await Promise.allSettled(ids.map(id => api.agentSourceResolve(turnId, id)));
   if (disposed || shareDraft.value !== active || scope !== noteMaterialKey.value || sessionId !== activeChatSessionId.value) return;
   active.source.sources = resolved.length ? resolved.map((result, index) => result.status === 'fulfilled'
-    ? `${result.value.material_title ? `《${result.value.material_title}》 · ` : ''}${result.value.label || labels[index]}${result.value.stale ? '（来源暂不可用）' : ''}`
-    : `${labels[index]}（来源暂不可用）`) : ['无已记录出处'];
+    ? `${result.value.material_title ? `《${result.value.material_title}》 · ` : ''}${result.value.label || labels[index]}${result.value.stale ? uiText('（来源暂不可用）') : ''}`
+    : uiText('{0}（来源暂不可用）', [labels[index]])) : [uiText('无已记录出处')];
   active.loading = false;
 }
 
@@ -4761,6 +5019,10 @@ async function returnToAgentAnswer() {
   }
   if (!readingContinuity.isCurrent(token) || workspaceContextKey.value !== contextKey) return;
   if (point.origin === 'reader') { workspaceRef.value?.showReader(); return; }
+  if (point.origin === 'board' && point.boardId) {
+    boardId.value = point.boardId; boardMounted.value = true; boardVisible.value = true;
+    writeBoardRoute(point.boardId); return;
+  }
   if (point.origin === 'notes') {
     workspaceRef.value?.showAssistant('notes');
     requestWorkspaceTab('notes');
@@ -4814,7 +5076,7 @@ async function selectChat(sessionId: string, preserveDraft = false) {
 }
 async function deleteChat(sessionId: string) {
   if (!sessionId) return;
-  if (!window.confirm("删除这个对话历史?")) return;
+  if (!window.confirm(uiText('删除这个对话历史?'))) return;
   try {
     unknownSubmissionsBySession.delete(sessionId);
     applyAgentHistory(await api.agentHistoryDelete(sessionId));
@@ -4867,22 +5129,22 @@ function readLocalFileAsBase64(file: File): Promise<string> {
       const raw = String(reader.result ?? "");
       resolve(raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw);
     };
-    reader.onerror = () => reject(reader.error ?? new Error("读取 PDF 文件失败"));
+    reader.onerror = () => reject(reader.error ?? new Error(uiText('读取 PDF 文件失败')));
     reader.readAsDataURL(file);
   });
 }
 
 async function submitCreateBook() {
-  if (!await beforeNoteLeave('创建另一份材料')) return;
+  if (!await beforeNoteLeave(uiText('创建另一份材料'))) return;
   const title = newBookTitle.value.trim();
   const bookId = generatedNewBookId.value;
   const pdf = newBookPdf.value;
   if (!title || !bookId) {
-    bookPickerError.value = "请输入论文标题，书 ID 将由系统自动生成。";
+    bookPickerError.value = uiText('请输入论文标题，书 ID 将由系统自动生成。');
     return;
   }
   if (!pdf) {
-    bookPickerError.value = "请选择 PDF 文件。";
+    bookPickerError.value = uiText('请选择 PDF 文件。');
     return;
   }
   try {
@@ -5009,15 +5271,18 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     bookPickerError.value = "Choose a book directory or enter one manually.";
     return;
   }
-  if (!await beforeNoteLeave('切换材料')) return;
+  if (!await beforeNoteLeave(uiText('切换材料'))) return;
   try {
     openingBook.value = true;
     banner.value = "";
     bookPickerError.value = null;
     await api.openBook(target);
+    tutor.reset();
+    tutorPanelOpen.value = false;
     desktopNeedsBook.value = false;
     resetBookSessionUi();
     await init();
+    await tutor.load();
     bookPickerOpen.value = false;
   } catch (e) {
     bookPickerError.value = e instanceof Error ? e.message : String(e);
@@ -5031,6 +5296,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 <template>
   <div class="app" :style="typography.style.value">
     <TopBar
+      :board-available="appSurface === 'reader'"
+      @open-board="openBoard()"
       :video-mode="mediaMode"
       :music-mode="musicMode"
       :focus-available="appSurface === 'reader'"
@@ -5038,7 +5305,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       @toggle-focus="workspaceRef?.toggleFocus()"
       :typography-available="appSurface === 'reader' && !mediaMode"
       @open-typography="typography.open.value = true"
-      :chapter-title="musicMode ? '音乐伴听' : videoMode ? '视频伴读' : appSurface === 'workbench' ? '构建工作台' : activeChapterTitle"
+      :chapter-title="musicMode ? uiText('音乐伴听') : videoMode ? uiText('视频伴读') : appSurface === 'workbench' ? uiText('构建工作台') : activeChapterTitle"
       :guide-chapter-title="appSurface === 'reader' && !mediaMode ? guideChapter?.title : undefined"
       :guide-chapter-enabled="!!tutor.state.value?.control.enabled"
       :guide-chapter-busy="guidingChapter || sending || tutor.busy.value || !!tutor.pending.value || !tutor.state.value || tutor.readiness.value?.status !== 'ready' || !!tutor.readinessError.value"
@@ -5066,8 +5333,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       <template #account><slot name="account" /></template>
     </TopBar>
     <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
-    <TutorPanel v-if="tutorPanelOpen" :music-mode="musicMode" :initial-view="tutorPanelView" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value"
-      :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable" :learning-purpose-busy="guidingChapter || sending"
+    <TutorPanel v-if="tutorPanelOpen" :key="readerContextKey" :music-mode="musicMode" :video-mode="videoMode" :initial-view="tutorPanelView" :readiness="tutor.readiness.value" :readiness-error="tutor.readinessError.value" @refresh-readiness="tutor.loadReadiness" :state="tutor.state.value" :busy="tutor.busy.value" :error="tutor.error.value" :pending="!!tutor.pending.value" :source-id="tutor.readiness.value?.source_id ?? buildWorkbenchSnapshot?.book_id" :label="tutor.label.value"
+      :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable" :learning-purpose-reason="learningPurposeReason" :learning-purpose-busy="guidingChapter || sending"
       @learning-purpose="startLearningPurpose" @action="tutorAction" @retry="tutor.retry" @close="tutorPanelOpen = false" />
 
     <AlignmentQualityBar
@@ -5077,36 +5344,35 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       @open-workbench="openBuildWorkbench"
     />
 
-    <p v-if="banner" class="banner">{{ banner }} <button v-if="activityHelpLocation" :disabled="sending" @click="openActivityHelp">前往原题帮助</button></p>
-    <p v-for="item in currentReadingActions" :key="item.key" class="banner" role="status">{{ item.body.display_user }}：提交结果待核对
-      <button :disabled="sending" @click="recoverReadingAction(item)">核对原操作</button>
-      <button :disabled="sending" @click="recoverReadingAction(item, true)">重试原操作</button>
+    <p v-if="banner" class="banner">{{ banner }} <button v-if="activityHelpLocation" :disabled="sending" @click="openActivityHelp">{{ uiText('前往原题帮助') }}</button></p>
+    <p v-for="item in currentReadingActions" :key="item.key" class="banner" role="status">{{ item.body.display_user }}{{ uiText('：提交结果待核对') }} <button :disabled="sending" @click="recoverReadingAction(item)">{{ uiText('核对原操作') }}</button>
+      <button :disabled="sending" @click="recoverReadingAction(item, true)">{{ uiText('重试原操作') }}</button>
     </p>
-    <p v-if="network.enabled && residentRun.snapshot.value?.persistence_state === 'failed' && residentRun.snapshot.value?.execution_state !== 'interrupted'" role="status">原回合结果尚未保存。<button @click="retryResidentSave">重试保存原结果</button></p>
+    <p v-if="network.enabled && residentRun.snapshot.value?.persistence_state === 'failed' && residentRun.snapshot.value?.execution_state !== 'interrupted'" role="status">{{ uiText('原回合结果尚未保存。') }}<button @click="retryResidentSave">{{ uiText('重试保存原结果') }}</button></p>
 
     <section v-if="appSurface === 'waiting-materials'" class="build-workbench" role="status">
-      <h2>等待完整阅读材料</h2>
-      <p>请在服务停止后同步这本书的完整已就绪目录，再启动服务并刷新。</p>
+      <h2>{{ uiText('等待完整阅读材料') }}</h2>
+      <p>{{ uiText('请在服务停止后同步这本书的完整已就绪目录，再启动服务并刷新。') }}</p>
       <p v-if="buildWorkbenchError">{{ buildWorkbenchError }}</p>
       <ul>
         <li v-for="reason in buildWorkbenchSnapshot?.readiness.reasons ?? []" :key="reason">{{ reason }}</li>
         <li v-for="stage in Object.values(buildWorkbenchSnapshot?.readiness.stages ?? {}).filter(s => s.reason && s.status !== 'done' && s.status !== 'blocked')" :key="stage.stage">{{ stage.reason }}</li>
       </ul>
-      <button @click="init">刷新材料状态</button>
-      <button @click="openBook">打开其他书籍</button>
+      <button @click="init">{{ uiText('刷新材料状态') }}</button>
+      <button @click="openBook">{{ uiText('打开其他书籍') }}</button>
     </section>
 
     <div v-if="desktopSettingsOpen" class="desktop-settings-modal" @click.self="closeDesktopSettings">
       <section class="desktop-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-settings-title">
         <header class="desktop-settings-head">
           <div>
-            <p class="formula-dialog-kicker">桌面应用</p>
-            <h3 id="desktop-settings-title">设置</h3>
+            <p class="formula-dialog-kicker">{{ uiText('桌面应用') }}</p>
+            <h3 id="desktop-settings-title">{{ uiText('设置') }}</h3>
           </div>
           <button
             class="formula-dialog-close"
-            title="关闭"
-            aria-label="关闭设置"
+            :title="uiText('关闭')"
+            :aria-label="uiText('关闭设置')"
             :disabled="desktopLibraryChanging || desktopProviderSaving || !desktopLibraryAvailable"
             @click="closeDesktopSettings"
           >×</button>
@@ -5115,8 +5381,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <div class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
-                <strong>书库位置</strong>
-                <p>{{ desktopLibraryAvailable ? "用于扫描和新建书" : "当前目录不可用，请重新选择" }}</p>
+                <strong>{{ uiText('书库位置') }}</strong>
+                <p>{{ desktopLibraryAvailable ? uiText('用于扫描和新建书') : uiText('当前目录不可用，请重新选择') }}</p>
               </div>
               <button
                 class="desktop-library-button"
@@ -5124,7 +5390,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
                 @click="chooseDesktopLibraryDirectory"
               >
                 <FolderOpen :size="17" aria-hidden="true" />
-                <span>{{ desktopLibraryChanging ? "处理中" : "选择目录" }}</span>
+                <span>{{ desktopLibraryChanging ? uiText('处理中') : uiText('选择目录') }}</span>
               </button>
             </div>
             <p v-if="desktopLibraryRoot" class="desktop-settings-path">{{ desktopLibraryRoot }}</p>
@@ -5133,18 +5399,18 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <div class="desktop-settings-section">
             <div class="desktop-settings-row desktop-provider-heading">
               <div>
-                <strong>AI 服务连接</strong>
-                <p>{{ desktopProviderLoading ? "正在读取..." : desktopProviderStatusLabel(desktopProviderStatus) }}</p>
+                <strong>{{ uiText('AI 服务连接') }}</strong>
+                <p>{{ desktopProviderLoading ? uiText('正在读取...') : desktopProviderStatusLabel(desktopProviderStatus) }}</p>
               </div>
 
             </div>
             <div class="desktop-provider-grid">
               <label>
-                <span>服务地址</span>
+                <span>{{ uiText('服务地址') }}</span>
                 <input v-model="desktopProviderBaseUrl" type="url" :disabled="desktopProviderSaving" placeholder="https://provider.example/v1" />
               </label>
               <label>
-                <span>模型名称</span>
+                <span>{{ uiText('模型名称') }}</span>
                 <input v-model="desktopProviderModel" :disabled="desktopProviderSaving" placeholder="model-name" />
               </label>
               <label class="desktop-provider-key">
@@ -5154,38 +5420,38 @@ async function submitOpenBook(dir = bookPickerDir.value) {
                   type="password"
                   autocomplete="new-password"
                   :disabled="desktopProviderSaving"
-                  :placeholder="desktopProviderStatus?.api_key_configured ? '留空保留已保存密钥' : '输入 API Key'"
+                  :placeholder="desktopProviderStatus?.api_key_configured ? uiText('留空保留已保存密钥') : uiText('输入 API Key')"
                 />
               </label>
             </div>
-            <details class="desktop-provider-advanced"><summary>高级连接选项</summary>
-              <p>通常选择原生工具调用；服务不支持 tools 参数时，可改用文本工具调用（ReAct）。</p>
-              <div class="desktop-provider-mode" role="group" aria-label="AI 工具调用方式">
+            <details class="desktop-provider-advanced"><summary>{{ uiText('高级连接选项') }}</summary>
+              <p>{{ uiText('通常选择原生工具调用；服务不支持 tools 参数时，可改用文本工具调用（ReAct）。') }}</p>
+              <div class="desktop-provider-mode" role="group" :aria-label="uiText('AI 工具调用方式')">
                 <button
                   type="button"
                   :class="{ active: desktopProviderMode === 'native' }"
                   :aria-pressed="desktopProviderMode === 'native'"
                   :disabled="desktopProviderSaving"
                   @click="desktopProviderMode = 'native'"
-                >原生工具调用</button>
+                >{{ uiText('原生工具调用') }}</button>
                 <button
                   type="button"
                   :class="{ active: desktopProviderMode === 'react' }"
                   :aria-pressed="desktopProviderMode === 'react'"
                   :disabled="desktopProviderSaving"
                   @click="desktopProviderMode = 'react'"
-                >文本工具调用（ReAct）</button>
+                >{{ uiText('文本工具调用（ReAct）') }}</button>
               </div>
             </details>
             <div class="desktop-provider-actions">
-              <p>API Key 明文保存在当前 Windows 用户设置中。</p>
+              <p>{{ uiText('API Key 明文保存在当前 Windows 用户设置中。') }}</p>
               <button
                 class="primary-action desktop-provider-save"
                 :disabled="desktopProviderSaving || !desktopProviderBaseUrl.trim() || !desktopProviderModel.trim()"
                 @click="saveDesktopProviderSettings"
               >
                 <Save :size="16" aria-hidden="true" />
-                <span>{{ desktopProviderSaving ? "应用中" : "保存并应用" }}</span>
+                <span>{{ desktopProviderSaving ? uiText('应用中') : uiText('保存并应用') }}</span>
               </button>
             </div>
             <p v-if="desktopProviderError" class="book-picker-error">{{ desktopProviderError }}</p>
@@ -5193,9 +5459,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           <div class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
-                <strong>Codex 预构建插件</strong>
+                <strong>{{ uiText('Codex 预构建插件') }}</strong>
                 <p v-if="codexPluginStatus">{{ codexPluginStateLabel(codexPluginStatus.state) }}</p>
-                <p v-else>{{ codexPluginLoading ? "正在检测..." : "尚未检测" }}</p>
+                <p v-else>{{ codexPluginLoading ? uiText('正在检测...') : uiText('尚未检测') }}</p>
               </div>
               <button
                 v-if="codexPluginStatus && !['installed_by_setup', 'installed_externally'].includes(codexPluginStatus.state)"
@@ -5203,9 +5469,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
                 :disabled="codexPluginLoading"
                 @click="installCodexPlugin"
               >
-                {{ codexPluginLoading ? "处理中..." : "安装或重试" }}
+                {{ codexPluginLoading ? uiText('处理中...') : uiText('安装或重试') }}
               </button>
-              <button v-else :disabled="codexPluginLoading" @click="refreshCodexPluginStatus">刷新</button>
+              <button v-else :disabled="codexPluginLoading" @click="refreshCodexPluginStatus">{{ uiText('刷新') }}</button>
             </div>
             <p v-if="codexPluginStatus" class="desktop-settings-message">{{ codexPluginStatus.message }}</p>
             <p v-if="codexPluginStatus?.codex_path" class="desktop-settings-path">{{ codexPluginStatus.codex_path }}</p>
@@ -5219,40 +5485,36 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       <section class="book-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="book-picker-title">
         <header class="book-picker-head">
           <div>
-            <p class="formula-dialog-kicker">继续一次阅读</p>
-            <h3 id="book-picker-title">选择阅读材料</h3>
+            <p class="formula-dialog-kicker">{{ uiText('继续一次阅读') }}</p>
+            <h3 id="book-picker-title">{{ uiText('选择阅读材料') }}</h3>
           </div>
-          <button class="formula-dialog-close" title="关闭" aria-label="关闭书库" @click="closeBookPicker">×</button>
+          <button class="formula-dialog-close" :title="uiText('关闭')" :aria-label="uiText('关闭书库')" @click="closeBookPicker">×</button>
         </header>
 
-        <div v-if="desktopHost && !readerOnly" class="book-picker-tabs" role="tablist" aria-label="书库操作">
+        <div v-if="desktopHost && !readerOnly" class="book-picker-tabs" role="tablist" :aria-label="uiText('书库操作')">
           <button
             role="tab"
             :aria-selected="bookPickerMode === 'open'"
             :class="{ active: bookPickerMode === 'open' }"
             @click="switchBookPickerMode('open')"
-          >
-            打开
-          </button>
+          > {{ uiText('打开') }} </button>
           <button
             v-if="desktopHost && !readerOnly"
             role="tab"
             :aria-selected="bookPickerMode === 'create'"
             :class="{ active: bookPickerMode === 'create' }"
             @click="switchBookPickerMode('create')"
-          >
-            新建论文书
-          </button>
+          > {{ uiText('新建论文书') }} </button>
         </div>
 
         <div v-if="bookPickerMode === 'open'" class="book-picker-body">
           <div class="book-picker-toolbar">
-            <span>{{ bookPickerBooks.length }} 份阅读材料</span>
-            <button :disabled="bookPickerLoading || openingBook" @click="loadBookLibrary">{{ bookPickerLoading ? '加载中' : '刷新' }}</button>
+            <span>{{ bookPickerBooks.length }} {{ uiText('份阅读材料') }}</span>
+            <button :disabled="bookPickerLoading || openingBook" @click="loadBookLibrary">{{ bookPickerLoading ? uiText('加载中') : uiText('刷新') }}</button>
           </div>
           <p v-if="bookPickerError" class="book-picker-error">{{ bookPickerError }}</p>
-          <p v-if="bookPickerLoading" class="book-picker-state">正在查找阅读材料…</p>
-          <p v-else-if="bookPickerBooks.length === 0" class="book-picker-state">这里还没有阅读材料。可以通过目录打开已有材料。</p>
+          <p v-if="bookPickerLoading" class="book-picker-state">{{ uiText('正在查找阅读材料…') }}</p>
+          <p v-else-if="bookPickerBooks.length === 0" class="book-picker-state">{{ uiText('这里还没有阅读材料。可以通过目录打开已有材料。') }}</p>
 
           <div v-else class="book-picker-list">
             <button v-for="book in bookPickerBooks" :key="book.dir" class="book-picker-card"
@@ -5260,7 +5522,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
               :disabled="openingBook" @click="bookPickerDir = book.dir" @dblclick="submitOpenBook(book.dir)">
               <BookCover :title="bookTitle(book)" :cover="book.cover" compact />
               <span class="book-picker-card-title"><strong>{{ bookTitle(book) }}</strong>
-                <small>{{ book.route === 'workbench' ? '正在准备' : '可开始阅读' }}</small>
+                <small>{{ book.route === 'workbench' ? uiText('正在准备') : uiText('可开始阅读') }}</small>
                 <small v-if="bookPickerBooks.filter(item => bookTitle(item) === bookTitle(book)).length > 1" class="book-picker-variant">{{ book.name }}</small>
               </span>
               <span class="book-picker-selected" aria-hidden="true">{{ bookPickerDir === book.dir ? '✓' : '›' }}</span>
@@ -5268,10 +5530,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
           </div>
 
           <details v-if="!network.enabled" class="book-picker-location">
-            <summary>通过目录打开 / 查看材料位置</summary>
+            <summary>{{ uiText('通过目录打开 / 查看材料位置') }}</summary>
             <div class="book-picker-input-row">
             <label>
-              <span>材料目录</span>
+              <span>{{ uiText('材料目录') }}</span>
               <input
                 v-model="bookPickerDir"
                 :disabled="openingBook"
@@ -5280,25 +5542,25 @@ async function submitOpenBook(dir = bookPickerDir.value) {
               />
             </label>
             </div>
-            <p v-if="bookPickerRoot" class="book-picker-root">书库位置：{{ bookPickerRoot }}</p>
+            <p v-if="bookPickerRoot" class="book-picker-root">{{ uiText('书库位置：') }}{{ bookPickerRoot }}</p>
           </details>
         </div>
 
         <div v-else class="book-picker-body">
           <div class="book-create-grid">
             <label>
-              <span>标题</span>
+              <span>{{ uiText('标题') }}</span>
               <input
                 v-model="newBookTitle"
                 :disabled="openingBook"
-                placeholder="论文标题"
+                :placeholder="uiText('论文标题')"
                 @keydown.enter.prevent="submitCreateBook"
               />
             </label>
             <label>
-              <span>书 ID（自动生成）</span>
+              <span>{{ uiText('书 ID（自动生成）') }}</span>
               <output class="book-create-generated-id" :title="generatedNewBookId">
-                {{ generatedNewBookId || "输入标题后自动生成" }}
+                {{ generatedNewBookId || uiText('输入标题后自动生成') }}
               </output>
             </label>
             <FileDropField
@@ -5311,20 +5573,20 @@ async function submitOpenBook(dir = bookPickerDir.value) {
               @update:model-value="selectNewBookPdf"
             />
           </div>
-          <p class="book-picker-root">直接导入 PDF。自动提取正文，扫描页补充文字识别，准备好后进入阅读。</p>
+          <p class="book-picker-root">{{ uiText('直接导入 PDF。自动提取正文，扫描页补充文字识别，准备好后进入阅读。') }}</p>
           <p v-if="bookPickerRoot" class="book-picker-root">{{ bookPickerRoot }}</p>
           <p v-if="bookPickerError" class="book-picker-error">{{ bookPickerError }}</p>
         </div>
 
         <footer class="book-picker-actions">
-          <button :disabled="openingBook" @click="closeBookPicker">取消</button>
+          <button :disabled="openingBook" @click="closeBookPicker">{{ uiText('取消') }}</button>
           <button
             v-if="bookPickerMode === 'open'"
             class="primary-action"
             :disabled="openingBook || !bookPickerDir.trim()"
             @click="submitOpenBook()"
           >
-            {{ openingBook ? "打开中" : "打开" }}
+            {{ openingBook ? uiText('打开中') : uiText('打开') }}
           </button>
           <button
             v-else
@@ -5332,7 +5594,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
             :disabled="openingBook || !newBookTitle.trim() || !generatedNewBookId || !newBookPdf"
             @click="submitCreateBook"
           >
-            {{ openingBook ? "正在导入…" : "导入并阅读" }}
+            {{ openingBook ? uiText('正在导入…') : uiText('导入并阅读') }}
           </button>
         </footer>
       </section>
@@ -5428,7 +5690,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         class="resize-handle resize-handle-left"
         role="separator"
         aria-orientation="vertical"
-        title="调整目录栏宽度"
+        :title="uiText('调整目录栏宽度')"
         @mousedown="startResize('left', $event)"
       ></div>
 
@@ -5478,7 +5740,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :segments="segments"
         :source-focus="sourceFocus" :annotation-revision="annotations"
         :focus-return-label="returnToAnswerAvailable ? readingReturnLabel : undefined"
-        :focus-surface-label="pdfReaderAvailable ? 'PDF 原版' : undefined"
+        :focus-surface-label="pdfReaderAvailable ? uiText('PDF 原版') : undefined"
         :viewport-anchor="readingAnchorLid"
         :selected-lid="selectedLid"
         :note-placement-active="notePlacementState.phase === 'placing' && notePlacementSurface === 'markdown'"
@@ -5519,11 +5781,13 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         class="resize-handle resize-handle-right"
         role="separator"
         aria-orientation="vertical"
-        title="调整上下文栏宽度"
+        :title="uiText('调整上下文栏宽度')"
         @mousedown="startResize('right', $event)"
       ></div>
 
       <RightRail
+        @add-to-board="openBoard"
+        @open-board-location="openBoardLocation"
         :music-mode="musicMode"
         :key="chatSceneKey"
         :companion-visible="recapProps.readerVisible !== false && appSurface === 'reader' && !focusReading && assistantVisible"
@@ -5539,7 +5803,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @question-image="setQuestionImage"
         @question-image-loading="prepareQuestionImage"
         :video-error="musicMode ? musicImageError : videoQuestion.error.value"
-        :question-send-blocked="questionImagePreparing ? '正在添加图片…' : undefined"
+        :question-send-blocked="questionImagePreparing ? uiText('正在添加图片…') : undefined"
         :question-input-blocked="(musicMode && acceptingRun) || (videoMode && (videoDetailsLoading || !publishedVideo || agentHistoryLoading)) || videoQuestion.restoring.value || videoAdoption.adopting.value || (!!publishedVideo && (acceptingRun || (!videoFrameReady && !videoQuestion.draft.value)))"
         @update:agent-input="onAgentInput"
         @cancel-video-draft="cancelVideoDraft"
@@ -5555,10 +5819,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :tutor-enabled="tutor.state.value?.control.enabled"
         :tutor-enable-busy="tutor.busy.value || !!tutor.pending.value || !tutor.state.value"
         :continuation-label="tutor.label.value"
-        :learning-title="tutor.currentForSource.value?.user_intent"
-        :learning-attention="tutor.error.value || (tutor.currentForSource.value && tutor.currentForSource.value.status !== 'active' ? tutor.label.value : '')"
+        :learning-title="tutor.current.value?.user_intent"
+        :learning-attention="tutor.error.value || (tutor.current.value && tutor.current.value.status !== 'active' ? tutor.label.value : '')"
         :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable"
-        :learning-purpose-ready="learningPurposeReady" :learning-purpose-busy="guidingChapter"
+        :learning-purpose-ready="learningPurposeReady" :learning-purpose-reason="learningPurposeReason" :learning-purpose-busy="guidingChapter"
         @learning-purpose="startLearningPurpose" @resume-learning="resumeConversationLearning"
         @enable-tutor="tutorAction({ kind: 'set_enabled', enabled: true })"
         @continue-answer="continueAnswer"
@@ -5653,15 +5917,17 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @artifact-cited="recordIntentUsage('artifact_cited', $event)"
       >
         <template #learning-actions>
-          <button type="button" @click="openTutorPanel('understanding')">我的理解</button>
+          <button type="button" @click="openTutorPanel('understanding')">{{ uiText('我的理解') }}</button>
         </template>
         <template #learning-details>
-          <button type="button" @click="openTutorPanel()">学习详情</button>
+          <button type="button" @click="openTutorPanel()">{{ uiText('学习详情') }}</button>
         </template>
         <template #learning-goal>
           <ConversationLearningGoal
+            :key="readerContextKey"
+            :music-mode="musicMode" :video-mode="videoMode" :learning-purpose-reason="learningPurposeReason"
             :workspace-scoped="!!network.workspace?.learning_workspace_id"
-            :session="network.workspace?.learning_workspace_id ? tutor.current.value : tutor.currentForSource.value" :other-session="tutor.hasOtherSourceSession.value"
+            :session="tutor.current.value"
             :enabled="!!tutor.state.value?.control.enabled" :busy="tutor.busy.value || sending || guidingChapter" :available="!!tutor.state.value && !tutor.pending.value && !!tutor.readiness.value?.source_id"
             :ready="tutor.readiness.value?.status === 'ready' && !tutor.readinessError.value"
             :learning-scope-options="learningScopeOptions" :learning-purpose-available="learningPurposeAvailable"
@@ -5674,18 +5940,24 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       </RightRail>
     </ReaderWorkspace>
 
+    <div v-if="boardMounted && appSurface === 'reader'" v-show="boardVisible" class="board-workspace-overlay">
+      <p v-if="boardSourceError" class="banner" role="alert">{{ boardSourceError }} <button @click="boardSourceError = ''">{{ uiText('关闭') }}</button></p>
+      <BoardWorkspace ref="boardWorkspaceRef" :board-id="boardId" :pending-import="boardPendingImport" :pending-locate="boardPendingLocate" :run="boardRun"
+        @follow-up="sendBoardQuestion" @retry-follow-up="retryBoardQuestion" @cancel-follow-up="cancelBoardQuestion" @located="boardPendingLocate = null"
+        @board-open="boardOpened" @board-deleted="boardId = null; writeBoardRoute(null)" @close="closeBoard" @source="openBoardSource" @imported="boardPendingImport = null" />
+      <BoardSourcePreview v-if="boardSourcePreview" :source="boardSourcePreview" @close="boardSourcePreview = null" />
+    </div>
+
     <aside
       v-if="notePlacementState.phase !== 'idle'"
       class="note-placement-status"
       role="status"
       aria-live="polite"
     >
-      <span v-if="notePlacementState.phase === 'placing'">
-        请选择{{ notePlacementSurface === "pdf" ? " PDF 正文区域" : "正文中的真实段落" }}放置笔记。
-      </span>
-      <span v-else-if="notePlacementState.phase === 'saving'">正在保存笔记…</span>
-      <span v-else>正在确认笔记是否已保存…</span>
-      <button v-if="notePlacementState.phase === 'placing'" @click="cancelNotePlacement">取消</button>
+      <span v-if="notePlacementState.phase === 'placing'"> {{ uiText('请选择') }}{{ notePlacementSurface === "pdf" ? uiText(' PDF 正文区域') : uiText('正文中的真实段落') }}{{ uiText('放置笔记。') }} </span>
+      <span v-else-if="notePlacementState.phase === 'saving'">{{ uiText('正在保存笔记…') }}</span>
+      <span v-else>{{ uiText('正在确认笔记是否已保存…') }}</span>
+      <button v-if="notePlacementState.phase === 'placing'" @click="cancelNotePlacement">{{ uiText('取消') }}</button>
     </aside>
 
     <BuildIntentPane
@@ -5705,11 +5977,11 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       class="hl-popover pdf-selection-toolbar"
       :style="pdfSelectionToolbarStyle"
       role="toolbar"
-      aria-label="PDF 选区操作"
+      :aria-label="uiText('PDF 选区操作')"
     >
       <template v-if="pdfSelectionState.phase === 'error'">
         <span class="pdf-selection-status error">{{ pdfSelectionState.error }}</span>
-        <button title="重试定位" aria-label="重试定位" @mousedown.prevent="pdfSelectionSession.retry">
+        <button :title="uiText('重试定位')" :aria-label="uiText('重试定位')" @mousedown.prevent="pdfSelectionSession.retry">
           <RotateCcw :size="16" />
         </button>
       </template>
@@ -5719,46 +5991,46 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         </span>
         <button
           v-if="pdfSelectionCapabilities.canHighlight"
-          title="高亮"
+          :title="uiText('高亮')"
           :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
           @mousedown.prevent="highlightPdfSelection"
         >
           <Highlighter :size="16" />
-          <span>高亮</span>
+          <span>{{ uiText('高亮') }}</span>
         </button>
         <button
           v-if="pdfSelectionCapabilities.canNote"
-          title="笔记"
+          :title="uiText('笔记')"
           :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
           @mousedown.prevent="notePdfSelection"
         >
           <MessageSquareText :size="16" />
-          <span>笔记</span>
+          <span>{{ uiText('笔记') }}</span>
         </button>
-        <button v-if="pdfSelectionCapabilities.canNote" title="生成分享图" :disabled="pdfSelectionState.phase === 'saving'" @mousedown.prevent="sharePdfSelection">生成分享图</button>
+        <button v-if="pdfSelectionCapabilities.canNote" :title="uiText('生成分享图')" :disabled="pdfSelectionState.phase === 'saving'" @mousedown.prevent="sharePdfSelection">{{ uiText('生成分享图') }}</button>
         <button v-if="pdfSelectionState.draft?.status === 'resolved' && pdfSelectionCapabilities.canAsk"
-          :disabled="sending || pdfSelectionState.phase === 'saving'" @mousedown.prevent="askPdfSelection(true)">帮我弄懂这段</button>
+          :disabled="sending || pdfSelectionState.phase === 'saving'" @mousedown.prevent="askPdfSelection(true)">{{ uiText('帮我弄懂这段') }}</button>
         <button
           v-if="pdfSelectionCapabilities.canAsk"
-          title="问 AI"
+          :title="uiText('问 AI')"
           :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
           @mousedown.prevent="askPdfSelection()"
         >
           <Sparkles :size="16" />
-          <span>问 AI</span>
+          <span>{{ uiText('问 AI') }}</span>
         </button>
         <button
           v-if="pdfSelectionCapabilities.canTranslate"
-          title="翻译"
+          :title="uiText('翻译')"
           :disabled="pdfSelectionState.phase === 'saving' || pdfSelectionTranslationState.phase === 'loading'"
           @mousedown.prevent="translatePdfSelection"
         >
           <Languages :size="16" />
-          <span>翻译</span>
+          <span>{{ uiText('翻译') }}</span>
         </button>
         <span v-if="pdfSelectionState.error" class="pdf-selection-status error">{{ pdfSelectionState.error }}</span>
       </template>
-      <button title="关闭" aria-label="关闭 PDF 选区操作" @mousedown.prevent="cancelPdfSelectionDraft">
+      <button :title="uiText('关闭')" :aria-label="uiText('关闭 PDF 选区操作')" @mousedown.prevent="cancelPdfSelectionDraft">
         <X :size="16" />
       </button>
     </div>
@@ -5781,11 +6053,11 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       class="hl-popover"
       :style="{ left: hlPopover.x + 'px', top: hlPopover.y - 40 + 'px' }"
     >
-      <button @mousedown.prevent="confirmHighlight">高亮</button>
-      <button @mousedown.prevent="noteSelection">笔记</button>
-      <button @mousedown.prevent="shareSelection">生成分享图</button>
-      <button :disabled="sending" @mousedown.prevent="askSelection(true)">帮我弄懂这段</button>
-      <button @mousedown.prevent="askSelection()">问 AI</button>
+      <button @mousedown.prevent="confirmHighlight">{{ uiText('高亮') }}</button>
+      <button @mousedown.prevent="noteSelection">{{ uiText('笔记') }}</button>
+      <button @mousedown.prevent="shareSelection">{{ uiText('生成分享图') }}</button>
+      <button :disabled="sending" @mousedown.prevent="askSelection(true)">{{ uiText('帮我弄懂这段') }}</button>
+      <button @mousedown.prevent="askSelection()">{{ uiText('问 AI') }}</button>
     </div>
 
     <div v-if="formulaDialog" class="formula-modal" @click.self="closeFormulaDialog">
@@ -5797,20 +6069,20 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       >
         <header class="formula-dialog-head">
           <div>
-            <p class="formula-dialog-kicker">公式剖面</p>
+            <p class="formula-dialog-kicker">{{ uiText('公式剖面') }}</p>
             <h3 :id="`formula-dialog-title-${formulaDialog.lid}`">{{ formulaDialog.lid }}</h3>
           </div>
-          <button class="formula-dialog-close" title="关闭" aria-label="关闭公式剖面" @click="closeFormulaDialog">×</button>
+          <button class="formula-dialog-close" :title="uiText('关闭')" :aria-label="uiText('关闭公式剖面')" @click="closeFormulaDialog">×</button>
         </header>
         <div class="formula-dialog-body">
           <pre class="formula-dialog-source" v-html="renderSeg(formulaDialog)"></pre>
-          <p v-if="formulaLoading" role="status">正在读取公式解释…</p>
-          <p v-else-if="formulaError" role="alert">{{ formulaError }} <button @click="openFormulaDialog(formulaDialog)">重试</button></p>
-          <p v-else-if="!formulaDialog.formula">这条公式暂时没有解释资料。</p>
+          <p v-if="formulaLoading" role="status">{{ uiText('正在读取公式解释…') }}</p>
+          <p v-else-if="formulaError" role="alert">{{ formulaError }} <button @click="openFormulaDialog(formulaDialog)">{{ uiText('重试') }}</button></p>
+          <p v-else-if="!formulaDialog.formula">{{ uiText('这条公式暂时没有解释资料。') }}</p>
           <div v-if="formulaDialog.formula" class="formula-dialog-profile">
             <p class="formula-dialog-meaning">{{ formulaDialog.formula.composition.meaning }}</p>
             <div v-if="formulaDialog.formula.parameters.length" class="formula-dialog-section">
-              <h4>参数</h4>
+              <h4>{{ uiText('参数') }}</h4>
               <dl>
                 <template v-for="p in formulaDialog.formula.parameters" :key="p.symbol">
                   <dt>
@@ -5819,14 +6091,14 @@ async function submitOpenBook(dir = bookPickerDir.value) {
                   </dt>
                   <dd>
                     {{ p.meaning }}
-                    <span v-if="p.unit"> · 单位: {{ p.unit }}</span>
-                    <span v-if="p.domain"> · 取值域: {{ p.domain }}</span>
+                    <span v-if="p.unit"> {{ uiText('· 单位:') }} {{ p.unit }}</span>
+                    <span v-if="p.domain"> {{ uiText('· 取值域:') }} {{ p.domain }}</span>
                   </dd>
                 </template>
               </dl>
             </div>
             <div v-if="formulaDialog.formula.context_links.length" class="formula-dialog-section">
-              <h4>上下文关系</h4>
+              <h4>{{ uiText('上下文关系') }}</h4>
               <ul>
                 <li v-for="link in formulaDialog.formula.context_links" :key="`${link.target_lid}:${link.relation}`">
                   <strong>{{ link.relation }}</strong> {{ link.description }}
@@ -5847,16 +6119,16 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       >
         <header class="source-preview-head">
           <div>
-            <p class="formula-dialog-kicker">来源预览</p>
-            <h3 id="source-preview-title">引用来源</h3>
+            <p class="formula-dialog-kicker">{{ uiText('来源预览') }}</p>
+            <h3 id="source-preview-title">{{ uiText('引用来源') }}</h3>
           </div>
           <div class="source-preview-actions">
-            <button title="在主阅读区打开" @click="openSourceInReader">在阅读区打开</button>
-            <button class="formula-dialog-close" title="关闭" aria-label="关闭来源预览" @click="closeSourcePreview">×</button>
+            <button :title="uiText('在主阅读区打开')" @click="openSourceInReader">{{ uiText('在阅读区打开') }}</button>
+            <button class="formula-dialog-close" :title="uiText('关闭')" :aria-label="uiText('关闭来源预览')" @click="closeSourcePreview">×</button>
           </div>
         </header>
         <div ref="sourcePreviewBodyRef" class="source-preview-body">
-          <p v-if="sourcePreview.loading" class="source-preview-state">正在加载来源...</p>
+          <p v-if="sourcePreview.loading" class="source-preview-state">{{ uiText('正在加载来源...') }}</p>
           <p v-else-if="sourcePreview.error" class="source-preview-state error">{{ sourcePreview.error }}</p>
           <div v-else class="source-preview-text md" v-html="typographyHtml(sourcePreviewHtml)"></div>
         </div>
@@ -5865,20 +6137,30 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 
     <ShareImagePanel v-if="shareDraft" :source="shareDraft.source" :loading="shareDraft.loading" @close="closeShare" />
     <NoteEditorPanel v-if="noteEditor && !noteCollapsed" v-model:content="noteEditor.content"
-      :title="noteEditor.title ?? '阅读笔记'" :summary="noteEditor.summary" :revision="noteEditor.receipt?.reference.revision"
+      :title="noteEditor.title ?? uiText('阅读笔记')" :summary="noteEditor.summary" :revision="noteEditor.receipt?.reference.revision"
       :excerpt="noteEditor.excerpt" :legacy="noteEditor.legacy" :saving="noteSaving" :disabled="!!noteTransition" :error="noteError"
       @save="saveNote" @collapse="noteCollapsed = true" @discard="cancelNote" />
-    <button v-if="noteEditor && noteCollapsed" class="note-resume" @click="noteCollapsed = false">继续编辑笔记</button>
-    <div v-if="noteTransition" class="note-transition" role="dialog" aria-modal="true" aria-label="处理未保存笔记">
-      <p>{{ noteTransition.label }}前，如何处理未保存的笔记？</p>
+    <button v-if="noteEditor && noteCollapsed" class="note-resume" @click="noteCollapsed = false">{{ uiText('继续编辑笔记') }}</button>
+    <div v-if="noteTransition" class="note-transition" role="dialog" aria-modal="true" :aria-label="uiText('处理未保存笔记')">
+      <p>{{ noteTransition.label }}{{ uiText('前，如何处理未保存的笔记？') }}</p>
       <p v-if="noteError" role="alert">{{ noteError }}</p>
-      <button :disabled="noteSaving" @click="resolveNoteTransition('save')">保存并继续</button>
-      <button :disabled="noteSaving" @click="resolveNoteTransition('discard')">放弃并继续</button>
-      <button :disabled="noteSaving" @click="resolveNoteTransition('continue')">继续编辑</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('save')">{{ uiText('保存并继续') }}</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('discard')">{{ uiText('放弃并继续') }}</button>
+      <button :disabled="noteSaving" @click="resolveNoteTransition('continue')">{{ uiText('继续编辑') }}</button>
     </div>
   </div>
 </template>
 <style scoped>
+.board-workspace-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg, #f5f4ef);
+}
+.board-workspace-overlay > .board-workspace { flex: 1; min-height: 0; }
 .note-transition { position: fixed; z-index: 150; bottom: 24px; right: 16px; box-sizing: border-box; width: min(380px, calc(100vw - 32px)); padding: 20px; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px #0003; }
 .note-transition button { min-height: 44px; margin: 4px; }
 .note-resume { position: fixed; z-index: 120; right: 20px; bottom: 24px; padding: 12px 18px; background: var(--canvas); color: var(--accent); border: 1px solid var(--line); border-radius: 12px; }

@@ -124,6 +124,7 @@ fn adm6_compaction_stop_keeps_original_history_and_checkpoint() {
     let mut sink = EphemeralCompactionCheckpointSink::default();
     let error = maybe_auto_compact(
         CompactionPhase::MidTurn,
+        None,
         ActiveContextBudget {
             estimated_input_tokens: 90_000,
             reserved_tokens: 12_000,
@@ -164,6 +165,7 @@ fn adm6_tutor_and_observation_keep_typed_reason_without_text_matching() {
         &adapter,
         inner.model_runtime_profile(),
         serde_json::json!({}),
+        vec![],
     )
     .unwrap_err();
     assert_eq!(error.spend_stop, Some(SpendStop::ReconciliationRequired));

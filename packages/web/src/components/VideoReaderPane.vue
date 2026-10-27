@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+import { getLocale } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { videoGet, videoUrl, type PreparingVideo } from '../video-api';
 import { attachVideoPlayback } from '../video-playback';
@@ -31,17 +34,17 @@ const translations = computed(() => new Map(props.published?.translations?.map(t
 const translationTasks = computed(() => new Map(props.published?.translation_progress?.tasks.flatMap(t => t.segment_ids.map(id => [id, t] as const)) ?? []));
 function translationStatus(id: string) {
   const task = translationTasks.value.get(id);
-  if (task?.status === 'failed') return '翻译失败，等待构建端重试';
-  if (task?.status === 'running') return task.attempts > 1 ? '正在重试翻译' : '正在翻译';
-  if (task?.status === 'accepted') return '译文已生成，等待发布';
-  return '待翻译';
+  if (task?.status === 'failed') return uiText('翻译失败，等待构建端重试');
+  if (task?.status === 'running') return task.attempts > 1 ? uiText('正在重试翻译') : uiText('正在翻译');
+  if (task?.status === 'accepted') return uiText('译文已生成，等待发布');
+  return uiText('待翻译');
 }
 const untranslated = computed(() => transcript.value?.segments.filter(s => !translations.value.has(s.segment_id)) ?? []);
 const failedTranslations = computed(() => untranslated.value.filter(s => translationTasks.value.get(s.segment_id)?.status === 'failed'));
 const position = ref(0);
 const currentSegment = computed(() => transcript.value?.segments.find(s => s.location.start_ms <= position.value && s.location.end_ms > position.value));
 const transcriptQuery = ref('');
-const transcriptLanguage = ref<'bilingual' | 'en' | 'zh'>('bilingual');
+const transcriptLanguage = ref<'bilingual' | 'en' | 'zh'>(getLocale() === 'en' ? 'en' : 'bilingual');
 const followingTranscript = ref(true);
 const filteredSegments = computed(() => {
   const query = transcriptQuery.value.trim().toLocaleLowerCase();
@@ -102,7 +105,7 @@ function applyRange() {
   const start = Number(rangeStart.value) * 1000, end = Number(rangeEnd.value) * 1000;
   if (rangeStart.value === '' || rangeEnd.value === '' || !Number.isFinite(start) || !Number.isFinite(end)
     || start < 0 || start >= end || end > props.published!.source.duration_ms) {
-    rangeError.value = '请填写视频内的起止秒数，终点须晚于起点'; return;
+    rangeError.value = uiText('请填写视频内的起止秒数，终点须晚于起点'); return;
   }
   const context = props.question ?? rangeContext;
   if (!context || props.selectionDisabled) return;
@@ -127,7 +130,7 @@ function beginSelection() {
   try {
     cancelRangeEdit();
     selectionError.value = '';
-    if (!sameFrame.value) throw new Error('请回到问题绑定画面再框选');
+    if (!sameFrame.value) throw new Error(uiText('请回到问题绑定画面再框选'));
     selectionContext = captureQuestion(props.question?.draft_id ?? crypto.randomUUID());
     if (props.question) selectionContext = JSON.parse(JSON.stringify(props.question));
     paused.value = true; measure(); selecting.value = true;
@@ -150,10 +153,10 @@ function finishSelection(event: PointerEvent) {
   moveSelection(event);
   if (dragRegion.value) {
     try {
-      if (!player.value || frameTime.value !== selectionContext.frame.actual_pts_ms) throw new Error('画面已改变，请暂停后重新框选');
+      if (!player.value || frameTime.value !== selectionContext.frame.actual_pts_ms) throw new Error(uiText('画面已改变，请暂停后重新框选'));
       const image = captureQuestionImage(player.value, dragRegion.value);
       emit('select-region', { ...selectionContext, region: dragRegion.value, image });
-    } catch (failure) { selectionError.value = `截图失败：${(failure as Error).message}`; }
+    } catch (failure) { selectionError.value = uiText('截图失败：{0}', [(failure as Error).message]); }
   }
   cancelSelection();
 }
@@ -177,7 +180,7 @@ function followFrame() {
 }
 function captureQuestion(draftId: string): import('../../../core/src/generated/VideoQuestionContext').VideoQuestionContext {
   const video = player.value, published = props.published;
-  if (!video || !published || frameTime.value === null || video.seeking || video.readyState < 2) throw new Error('请等待视频画面加载后再输入');
+  if (!video || !published || frameTime.value === null || video.seeking || video.readyState < 2) throw new Error(uiText('请等待视频画面加载后再输入'));
   video.pause();
   return { draft_id: draftId, publication: { ...published.publication }, material: structuredClone(JSON.parse(JSON.stringify(published.material))),
     frame: { video: { ...published.source.video }, actual_pts_ms: frameTime.value, width: video.videoWidth, height: video.videoHeight }, region: null, range: null };
@@ -219,7 +222,7 @@ async function refresh() {
     if (!disposed) { remember(); player.value?.pause(); error.value = (failure as Error).message; }
   } finally { if (!disposed) timer = setTimeout(refresh, 3000); }
 }
-function playbackError() { playbackFailure.value = '浏览器无法播放这份视频，请确认导入副本可读且浏览器支持 H.264/AAC MP4。'; }
+function playbackError() { playbackFailure.value = uiText('浏览器无法播放这份视频，请确认导入副本可读且浏览器支持 H.264/AAC MP4。'); }
 watch([player, mediaSource, playlist], connectPlayback);
 watch(player, video => {
   resizeObserver?.disconnect();
@@ -232,102 +235,99 @@ onMounted(() => { window.addEventListener('pagehide', remember); window.addEvent
 onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.disconnect(); window.removeEventListener('keydown', escapeSelection); window.removeEventListener('pagehide', remember); remember(); if (frameCallback !== undefined) player.value?.cancelVideoFrameCallback?.(frameCallback); releasePlayback?.(); });
 </script>
 <template>
-  <main ref="surface" class="video-reader" aria-label="视频学习">
+  <main ref="surface" class="video-reader" :aria-label="uiText('视频学习')">
     <header class="video-heading">
       <div class="video-heading-copy">
-        <div class="video-eyebrow"><span class="video-type"><Play :size="12" fill="currentColor" aria-hidden="true" />视频学习</span><span v-if="duration"><Clock3 :size="12" aria-hidden="true" />{{ timeLabel(duration) }}</span><span v-if="published"><Languages :size="13" aria-hidden="true" />双语伴读</span></div>
+        <div class="video-eyebrow"><span class="video-type"><Play :size="12" fill="currentColor" aria-hidden="true" />{{ uiText('视频学习') }}</span><span v-if="duration"><Clock3 :size="12" aria-hidden="true" />{{ timeLabel(duration) }}</span><span v-if="published"><Languages :size="13" aria-hidden="true" />{{ uiText('双语伴读') }}</span></div>
         <h1 :title="initial.title">{{ initial.title }}</h1>
       </div>
-      <button v-if="!embedded" class="back-library" @click="$emit('close')"><ArrowLeft :size="15" aria-hidden="true" />返回书架</button>
-      <div v-else class="video-watch-position" aria-label="播放器当前位置"><span>观看至 <strong>{{ timeLabel(position) }}</strong></span><div class="video-watch-track" role="progressbar" aria-label="观看位置" :aria-valuenow="Math.round(playbackProgress)" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: `${playbackProgress}%` }" /></div></div>
+      <button v-if="!embedded" class="back-library" @click="$emit('close')"><ArrowLeft :size="15" aria-hidden="true" />{{ uiText('返回书架') }}</button>
+      <div v-else class="video-watch-position" :aria-label="uiText('播放器当前位置')"><span>{{ uiText('观看至') }} <strong>{{ timeLabel(position) }}</strong></span><div class="video-watch-track" role="progressbar" :aria-label="uiText('观看位置')" :aria-valuenow="Math.round(playbackProgress)" aria-valuemin="0" aria-valuemax="100"><i :style="{ width: `${playbackProgress}%` }" /></div></div>
     </header>
     <div class="video-learning-layout">
-    <section class="video-viewing" aria-label="观看与选取">
+    <section class="video-viewing" :aria-label="uiText('观看与选取')">
     <div class="video-player-card">
     <div v-if="state.playable && !error" class="video-stage">
       <video ref="player" :controls="!selecting" playsinline preload="metadata"
         :poster="playback?.cover_url || undefined" @waiting="buffering = true" @loadeddata="buffering = false" @canplay="buffering = false" @playing="buffering = false"
         @timeupdate="position = ($event.target as HTMLVideoElement).currentTime * 1000" @seeking="seeking" @loadedmetadata="restore" @resize="measure" @play="playbackStarted" @pause="paused = true; remember()" @seeked="remember" @ratechange="remember" @error="playbackError" />
-      <div v-if="buffering && !playbackFailure" class="video-buffering" role="status">正在加载画面…</div>
-      <div v-if="selecting || visibleRegion" class="video-region-layer" :class="{ selecting }" :style="contentStyle" aria-label="画面框选区域"
+      <div v-if="buffering && !playbackFailure" class="video-buffering" role="status">{{ uiText('正在加载画面…') }}</div>
+      <div v-if="selecting || visibleRegion" class="video-region-layer" :class="{ selecting }" :style="contentStyle" :aria-label="uiText('画面框选区域')"
         @pointerdown="startSelection" @pointermove="moveSelection" @pointerup="finishSelection" @pointercancel="cancelSelection" @lostpointercapture="cancelSelection">
         <div v-if="visibleRegion" class="video-region-box" :style="regionStyle" />
       </div>
     </div>
-    <div v-if="published" class="video-tools" aria-label="视频提问工具">
+    <div v-if="published" class="video-tools" :aria-label="uiText('视频提问工具')">
       <div class="region-actions">
-        <button v-if="!selecting" :disabled="selectionDisabled || frameTime === null || !sameFrame" title="暂停视频，框选想了解的代码、公式或图示" @click="beginSelection"><Focus :size="16" aria-hidden="true" />{{ question?.region ? '重新框选' : '框选画面' }}</button>
-        <button v-else class="is-active" @click="cancelSelection"><X :size="15" aria-hidden="true" />退出框选</button>
+        <button v-if="!selecting" :disabled="selectionDisabled || frameTime === null || !sameFrame" :title="uiText('暂停视频，框选想了解的代码、公式或图示')" @click="beginSelection"><Focus :size="16" aria-hidden="true" />{{ question?.region ? uiText('重新框选') : uiText('框选画面') }}</button>
+        <button v-else class="is-active" @click="cancelSelection"><X :size="15" aria-hidden="true" />{{ uiText('退出框选') }}</button>
       </div>
-      <div class="range-actions"><button :class="{ 'is-active': rangeEditing }" :disabled="selectionDisabled || (!question && frameTime === null)" @click="beginRange"><Scissors :size="15" aria-hidden="true" />{{ question?.range ? '编辑时间范围' : '选择时间范围' }}</button></div>
-      <span class="video-tool-hint">{{ selecting ? '拖动框选代码、公式或图示' : '选取后，在伴读中提问' }}</span>
+      <div class="range-actions"><button :class="{ 'is-active': rangeEditing }" :disabled="selectionDisabled || (!question && frameTime === null)" @click="beginRange"><Scissors :size="15" aria-hidden="true" />{{ question?.range ? uiText('编辑时间范围') : uiText('选择时间范围') }}</button></div>
+      <span class="video-tool-hint">{{ selecting ? uiText('拖动框选代码、公式或图示') : uiText('选取后，在伴读中提问') }}</span>
     </div>
     <div v-if="question?.region || question?.range || (question && !sameFrame)" class="video-selection-summary">
-      <button v-if="question && !sameFrame" @click="seek(question.frame.actual_pts_ms)"><Crosshair :size="14" aria-hidden="true" />回到问题画面</button>
-      <template v-if="question?.region"><span><Check :size="13" aria-hidden="true" />已选区域 · {{ timeLabel(question.frame.actual_pts_ms) }}</span><button :disabled="selectionDisabled" @click="cancelSelection(); emit('clear-region')">取消选区</button></template>
-      <template v-if="question?.range"><span aria-label="已选时间范围">{{ videoTime(question.range.start_ms) }}–{{ videoTime(question.range.end_ms) }}</span><button :disabled="selectionDisabled" @click="cancelRangeEdit(); emit('clear-range')">取消时间范围</button></template>
+      <button v-if="question && !sameFrame" @click="seek(question.frame.actual_pts_ms)"><Crosshair :size="14" aria-hidden="true" />{{ uiText('回到问题画面') }}</button>
+      <template v-if="question?.region"><span><Check :size="13" aria-hidden="true" />{{ uiText('已选区域 ·') }} {{ timeLabel(question.frame.actual_pts_ms) }}</span><button :disabled="selectionDisabled" @click="cancelSelection(); emit('clear-region')">{{ uiText('取消选区') }}</button></template>
+      <template v-if="question?.range"><span :aria-label="uiText('已选时间范围')">{{ videoTime(question.range.start_ms) }}–{{ videoTime(question.range.end_ms) }}</span><button :disabled="selectionDisabled" @click="cancelRangeEdit(); emit('clear-range')">{{ uiText('取消时间范围') }}</button></template>
     </div>
-      <form v-if="rangeEditing && published" class="video-range-editor" aria-label="时间范围编辑" @submit.prevent="applyRange">
-        <div class="range-editor-heading"><strong>选取想讨论的片段</strong><span>单位：秒</span></div>
-        <div class="range-field"><label>起点（秒）<input v-model="rangeStart" type="number" step="any" min="0" :max="published.source.duration_ms / 1000" /></label><button type="button" @click="markRange('start')">当前位置设为起点</button></div>
-        <div class="range-field"><label>终点（秒）<input v-model="rangeEnd" type="number" step="any" min="0" :max="published.source.duration_ms / 1000" /></label><button type="button" @click="markRange('end')">当前位置设为终点</button></div>
-        <div class="range-editor-buttons"><button type="button" @click="cancelRangeEdit">放弃修改</button><button type="submit" class="primary-button">保存时间范围</button></div>
+      <form v-if="rangeEditing && published" class="video-range-editor" :aria-label="uiText('时间范围编辑')" @submit.prevent="applyRange">
+        <div class="range-editor-heading"><strong>{{ uiText('选取想讨论的片段') }}</strong><span>{{ uiText('单位：秒') }}</span></div>
+        <div class="range-field"><label>{{ uiText('起点（秒）') }}<input v-model="rangeStart" type="number" step="any" min="0" :max="published.source.duration_ms / 1000" /></label><button type="button" @click="markRange('start')">{{ uiText('当前位置设为起点') }}</button></div>
+        <div class="range-field"><label>{{ uiText('终点（秒）') }}<input v-model="rangeEnd" type="number" step="any" min="0" :max="published.source.duration_ms / 1000" /></label><button type="button" @click="markRange('end')">{{ uiText('当前位置设为终点') }}</button></div>
+        <div class="range-editor-buttons"><button type="button" @click="cancelRangeEdit">{{ uiText('放弃修改') }}</button><button type="submit" class="primary-button">{{ uiText('保存时间范围') }}</button></div>
       </form>
     </div>
     <p v-if="selectionError" class="video-error" role="alert">{{ selectionError }}</p>
     <p v-if="rangeError" role="alert">{{ rangeError }}</p>
-    <p v-if="error || playbackFailure || state.failure" role="alert">{{ error || playbackFailure || state.failure }} <button v-if="playbackFailure" type="button" @click="retryPlayback">重新加载</button></p>
-    <p v-if="detailsLoading" class="video-preparation" role="status">字幕与学习记录正在载入，可先观看视频。</p>
+    <p v-if="error || playbackFailure || state.failure" role="alert">{{ error || playbackFailure || state.failure }} <button v-if="playbackFailure" type="button" @click="retryPlayback">{{ uiText('重新加载') }}</button></p>
+    <p v-if="detailsLoading" class="video-preparation" role="status">{{ uiText('字幕与学习记录正在载入，可先观看视频。') }}</p>
     <p v-if="detailsError" class="video-error" role="alert">{{ detailsError }}</p>
-    <p v-if="adoptionError" class="video-preparation" role="status">新成果暂未接入：{{ adoptionError }}</p>
-    <section v-if="currentSegment" class="current-bilingual" aria-label="当前片段中英对照">
-      <div class="current-caption-label"><span><Captions :size="15" aria-hidden="true" />此刻在讲</span><button :aria-label="`重听当前句 ${timeLabel(currentSegment.location.start_ms)}`" @click="seek(currentSegment.location.start_ms)"><Play :size="11" fill="currentColor" aria-hidden="true" />{{ timeLabel(currentSegment.location.start_ms) }}</button></div>
+    <p v-if="adoptionError" class="video-preparation" role="status">{{ uiText('新成果暂未接入：') }}{{ adoptionError }}</p>
+    <section v-if="currentSegment" class="current-bilingual" :aria-label="uiText('当前片段中英对照')">
+      <div class="current-caption-label"><span><Captions :size="15" aria-hidden="true" />{{ uiText('此刻在讲') }}</span><button :aria-label="uiText('重听当前句 {0}', [timeLabel(currentSegment.location.start_ms)])" @click="seek(currentSegment.location.start_ms)"><Play :size="11" fill="currentColor" aria-hidden="true" />{{ timeLabel(currentSegment.location.start_ms) }}</button></div>
       <p class="current-original" lang="en">{{ currentSegment.text }}</p>
       <p class="current-translation" :class="{ 'translation-pending': !translations.has(currentSegment.segment_id) }">{{ translations.get(currentSegment.segment_id) ?? translationStatus(currentSegment.segment_id) }}</p>
     </section>
     <div v-if="!published && !playback" class="video-preparation" role="status">
-      <template v-if="state.stage === 'copying'">正在保留原片副本 <progress :value="state.copied_bytes" :max="state.total_bytes" /> {{ Math.floor(state.copied_bytes / state.total_bytes * 100) }}%</template>
-      <template v-else-if="state.stage === 'probing'">原片已导入，正在检查媒体与解码能力。</template>
-      <template v-else-if="state.stage === 'failed'">准备未完成。处理失败原因后，请恢复此视频的导入任务。</template>
-      <template v-else-if="state.english_ready">视频字幕已发布，可按当前画面提问并回看回答来源。</template>
-      <template v-else-if="state.transcript_progress">
-        视频转写：{{ state.transcript_progress.chunks.filter(c=>c.status==='completed').length }} / {{ state.transcript_progress.chunks.length }} 块完成。
-        <p v-if="state.transcript_progress.failure" role="alert">{{ state.transcript_progress.failure }}</p>
-        <span v-if="state.transcript_progress.stage==='ready'">正文与时间映射已完成，等待发布。</span>
+      <template v-if="state.stage === 'copying'">{{ uiText('正在保留原片副本') }} <progress :value="state.copied_bytes" :max="state.total_bytes" /> {{ Math.floor(state.copied_bytes / state.total_bytes * 100) }}%</template>
+      <template v-else-if="state.stage === 'probing'">{{ uiText('原片已导入，正在检查媒体与解码能力。') }}</template>
+      <template v-else-if="state.stage === 'failed'">{{ uiText('准备未完成。处理失败原因后，请恢复此视频的导入任务。') }}</template>
+      <template v-else-if="state.english_ready">{{ uiText('视频字幕已发布，可按当前画面提问并回看回答来源。') }}</template>
+      <template v-else-if="state.transcript_progress"> {{ uiText('视频转写：') }}{{ state.transcript_progress.chunks.filter(c=>c.status==='completed').length }} / {{ state.transcript_progress.chunks.length }} {{ uiText('块完成。') }} <p v-if="state.transcript_progress.failure" role="alert">{{ state.transcript_progress.failure }}</p>
+        <span v-if="state.transcript_progress.stage==='ready'">{{ uiText('正文与时间映射已完成，等待发布。') }}</span>
       </template>
-      <template v-else><span v-if="state.playable">原片可观看。</span>视频转写与首个发布尚未就绪。</template>
+      <template v-else><span v-if="state.playable">{{ uiText('原片可观看。') }}</span>{{ uiText('视频转写与首个发布尚未就绪。') }}</template>
     </div>
     <details v-if="published && transcript" class="video-readiness">
-      <summary><span class="readiness-dot" :class="{ pending: untranslated.length }" /><span>{{ untranslated.length ? `中文翻译 ${transcript.segments.length - untranslated.length} / ${transcript.segments.length}` : '双语字幕已就绪' }}</span><ChevronDown :size="14" aria-hidden="true" /></summary>
-      <div class="readiness-content"><p v-if="published.coverage" aria-label="已接入成果">已接入 {{ published.translations?.length ?? 0 }} 段中文 · 视觉索引已覆盖 {{ Math.round((published.coverage.find(c => c.capability === 'visual_index')?.accepted.reduce((n, r) => n + r.end_ms - r.start_ms, 0) ?? 0) / 1000) }} 秒</p>
-      <div aria-label="中文翻译进度">
-      中文 {{ transcript.segments.length - untranslated.length }} / {{ transcript.segments.length }} 段 · 待补齐 {{ untranslated.length }} 段<span v-if="failedTranslations.length"> · 失败 {{ failedTranslations.length }} 段，构建恢复时只重试未完成内容</span>
-      <button v-if="untranslated.length" @click="seek(untranslated[0].location.start_ms)">回看首个待翻译片段 {{ timeLabel(untranslated[0].location.start_ms) }}</button>
+      <summary><span class="readiness-dot" :class="{ pending: untranslated.length }" /><span>{{ untranslated.length ? uiText('中文翻译 {0} / {1}', [transcript.segments.length - untranslated.length, transcript.segments.length]) : uiText('双语字幕已就绪') }}</span><ChevronDown :size="14" aria-hidden="true" /></summary>
+      <div class="readiness-content"><p v-if="published.coverage" :aria-label="uiText('已接入成果')">{{ uiText('已接入') }} {{ published.translations?.length ?? 0 }} {{ uiText('段中文 · 视觉索引已覆盖') }} {{ Math.round((published.coverage.find(c => c.capability === 'visual_index')?.accepted.reduce((n, r) => n + r.end_ms - r.start_ms, 0) ?? 0) / 1000) }} {{ uiText('秒') }}</p>
+      <div :aria-label="uiText('中文翻译进度')"> {{ uiText('中文') }} {{ transcript.segments.length - untranslated.length }} / {{ transcript.segments.length }} {{ uiText('段 · 待补齐') }} {{ untranslated.length }} {{ uiText('段') }}<span v-if="failedTranslations.length"> {{ uiText('· 失败') }} {{ failedTranslations.length }} {{ uiText('段，构建恢复时只重试未完成内容') }}</span>
+      <button v-if="untranslated.length" @click="seek(untranslated[0].location.start_ms)">{{ uiText('回看首个待翻译片段') }} {{ timeLabel(untranslated[0].location.start_ms) }}</button>
       </div></div>
     </details>
-    <button v-if="!embedded && state.publication" class="primary-button open-video-reader" @click="emit('ready', state.publication)">打开视频阅读与提问</button>
-    <label v-if="!embedded && !state.publication" class="video-question">伴读问题<textarea disabled placeholder="转写与发布就绪后开放问答" /></label>
-    <button v-if="!embedded && !state.publication" disabled>{{ state.english_ready ? '视觉伴读接入中，暂不能提问' : '准备中，暂不能提问' }}</button>
+    <button v-if="!embedded && state.publication" class="primary-button open-video-reader" @click="emit('ready', state.publication)">{{ uiText('打开视频阅读与提问') }}</button>
+    <label v-if="!embedded && !state.publication" class="video-question">{{ uiText('伴读问题') }}<textarea disabled :placeholder="uiText('转写与发布就绪后开放问答')" /></label>
+    <button v-if="!embedded && !state.publication" disabled>{{ state.english_ready ? uiText('视觉伴读接入中，暂不能提问') : uiText('准备中，暂不能提问') }}</button>
     </section>
 
-    <section v-if="transcript" class="transcript-panel" aria-label="视频字幕">
-      <header class="transcript-heading"><div><h2><Captions :size="18" aria-hidden="true" />字幕</h2><span>{{ transcript.segments.length }} 段 · 点击跳转</span></div><button class="follow-transcript" :class="{ active: followingTranscript && !transcriptQuery.trim() }" :aria-pressed="followingTranscript && !transcriptQuery.trim()" @click="followCurrent"><Crosshair :size="14" aria-hidden="true" />{{ followingTranscript && !transcriptQuery.trim() ? '跟随播放' : '回到当前' }}</button></header>
+    <section v-if="transcript" class="transcript-panel" :aria-label="uiText('视频字幕')">
+      <header class="transcript-heading"><div><h2><Captions :size="18" aria-hidden="true" />{{ uiText('字幕') }}</h2><span>{{ transcript.segments.length }} {{ uiText('段 · 点击跳转') }}</span></div><button class="follow-transcript" :class="{ active: followingTranscript && !transcriptQuery.trim() }" :aria-pressed="followingTranscript && !transcriptQuery.trim()" @click="followCurrent"><Crosshair :size="14" aria-hidden="true" />{{ followingTranscript && !transcriptQuery.trim() ? uiText('跟随播放') : uiText('回到当前') }}</button></header>
       <div class="transcript-controls">
-        <label class="transcript-search"><Search :size="15" aria-hidden="true" /><input v-model="transcriptQuery" type="search" aria-label="搜索字幕" placeholder="搜索字幕中的内容…" /><button v-if="transcriptQuery" aria-label="清除字幕搜索" @click="transcriptQuery = ''"><X :size="14" aria-hidden="true" /></button></label>
-        <div class="transcript-languages" role="group" aria-label="字幕语言"><button :aria-pressed="transcriptLanguage === 'bilingual'" @click="transcriptLanguage = 'bilingual'">双语</button><button :aria-pressed="transcriptLanguage === 'en'" @click="transcriptLanguage = 'en'">原文</button><button :aria-pressed="transcriptLanguage === 'zh'" @click="transcriptLanguage = 'zh'">中文</button></div>
+        <label class="transcript-search"><Search :size="15" aria-hidden="true" /><input v-model="transcriptQuery" type="search" :aria-label="uiText('搜索字幕')" :placeholder="uiText('搜索字幕中的内容…')" /><button v-if="transcriptQuery" :aria-label="uiText('清除字幕搜索')" @click="transcriptQuery = ''"><X :size="14" aria-hidden="true" /></button></label>
+        <div class="transcript-languages" role="group" :aria-label="uiText('字幕语言')"><button :aria-pressed="transcriptLanguage === 'bilingual'" @click="transcriptLanguage = 'bilingual'">{{ uiText('双语') }}</button><button :aria-pressed="transcriptLanguage === 'en'" @click="transcriptLanguage = 'en'">{{ uiText('原文') }}</button><button :aria-pressed="transcriptLanguage === 'zh'" @click="transcriptLanguage = 'zh'">{{ uiText('中文') }}</button></div>
       </div>
-      <p v-if="transcriptQuery.trim()" class="transcript-result-count" role="status">找到 {{ filteredSegments.length }} 段字幕</p>
-      <div ref="transcriptSurface" class="transcript" aria-label="视频转写" tabindex="0" @wheel.passive="browseTranscript" @touchmove.passive="browseTranscript" @pointerdown="$event.target === transcriptSurface && browseTranscript()" @keydown="['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes($event.key) && browseTranscript()">
-      <button v-for="segment in filteredSegments" :key="segment.segment_id" :data-segment="segment.segment_id" class="transcript-row" :class="{ current: currentSegment?.segment_id === segment.segment_id }" :aria-current="currentSegment?.segment_id === segment.segment_id ? 'true' : undefined" :aria-label="`回看 ${timeLabel(segment.location.start_ms)}`" @click="seek(segment.location.start_ms)">
+      <p v-if="transcriptQuery.trim()" class="transcript-result-count" role="status">{{ uiText('找到') }} {{ filteredSegments.length }} {{ uiText('段字幕') }}</p>
+      <div ref="transcriptSurface" class="transcript" :aria-label="uiText('视频转写')" tabindex="0" @wheel.passive="browseTranscript" @touchmove.passive="browseTranscript" @pointerdown="$event.target === transcriptSurface && browseTranscript()" @keydown="['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes($event.key) && browseTranscript()">
+      <button v-for="segment in filteredSegments" :key="segment.segment_id" :data-segment="segment.segment_id" class="transcript-row" :class="{ current: currentSegment?.segment_id === segment.segment_id }" :aria-current="currentSegment?.segment_id === segment.segment_id ? 'true' : undefined" :aria-label="uiText('回看 {0}', [timeLabel(segment.location.start_ms)])" @click="seek(segment.location.start_ms)">
         <span class="segment-time"><Play v-if="currentSegment?.segment_id === segment.segment_id" :size="10" fill="currentColor" aria-hidden="true" />{{ timeLabel(segment.location.start_ms) }}</span>
         <span class="segment-copy"><span v-if="transcriptLanguage !== 'zh'" class="segment-original" lang="en">{{ segment.text }}</span>
         <template v-if="transcriptLanguage !== 'en'"><span v-if="translations.has(segment.segment_id)" class="segment-translation">{{ translations.get(segment.segment_id) }}</span>
         <span v-else-if="published" class="segment-translation translation-pending">{{ translationStatus(segment.segment_id) }}</span>
-        <span v-else class="segment-translation translation-pending">待翻译</span></template></span>
+        <span v-else class="segment-translation translation-pending">{{ uiText('待翻译') }}</span></template></span>
       </button>
-      <div v-if="!filteredSegments.length" class="transcript-empty"><Search :size="24" aria-hidden="true" /><p>{{ transcriptQuery.trim() ? '没有找到相关字幕' : '字幕正在准备中' }}</p><span>{{ transcriptQuery.trim() ? '试试更短的词，中文和英文都可以' : '准备完成后，可以在这里逐句回看' }}</span></div>
+      <div v-if="!filteredSegments.length" class="transcript-empty"><Search :size="24" aria-hidden="true" /><p>{{ transcriptQuery.trim() ? uiText('没有找到相关字幕') : uiText('字幕正在准备中') }}</p><span>{{ transcriptQuery.trim() ? uiText('试试更短的词，中文和英文都可以') : uiText('准备完成后，可以在这里逐句回看') }}</span></div>
       </div>
-      <footer class="transcript-footer">视频字幕 · 技术词可能需要校正</footer>
+      <footer class="transcript-footer">{{ uiText('视频字幕 · 技术词可能需要校正') }}</footer>
     </section>
     </div>
   </main>

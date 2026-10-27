@@ -8,7 +8,7 @@ MU4 提供应用登录、授权书库与私人对象读取入口；MU5 已增加
 
 ```bash
 cargo build --locked -p server --bin server --bin manage_reader --bin publish_book
-# 输入密码不放在命令参数或 shell 历史中。密码为 12–1024 字节。
+# 输入密码不放在命令参数或 shell 历史中。新密码为 8–64 个字符，不要求字符种类组合。
 read -rsp 'New reader password: ' reader_password
 printf '%s' "$reader_password" | target/debug/manage_reader /srv/understand-book create reader_a
 unset reader_password

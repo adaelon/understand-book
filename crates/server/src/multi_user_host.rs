@@ -507,7 +507,7 @@ pub(crate) fn dispatch(
         site.validate(headers, !matches!(method, "GET" | "HEAD"))?;
         // Only this fixed credential-free shell is public. No SPA/static fallback for unknown URLs.
         if method == "GET" {
-            let public = match url {
+            let public = match url.split('?').next().unwrap_or(url) {
                 "/" | "/login" => Some((
                     include_str!("multi_user_login.html"),
                     "text/html; charset=utf-8",
@@ -559,6 +559,14 @@ pub(crate) fn dispatch(
         let token = headers
             .get("Cookie")
             .and_then(|c| auth::token_from_cookie(c).ok());
+        if url == "/api/auth/guest" {
+            expect_method(method, "POST")?;
+            let token = access.registration.guest(serde_json::from_str(body).map_err(|_| invalid())?, token, now)?;
+            let principal = access.auth.authenticate(&token, now)?;
+            let mut reply = HttpReply::json(json!({"user_id":principal.user_id(),"email":null,"is_guest":true,"csrf_token":auth::csrf(&token),"capabilities":{"presentation":access.sandbox.capability(),"admin":false}}));
+            reply.cookie = Some(auth::cookie(&token, false));
+            return Ok(reply);
+        }
         if matches!(url, "/api/auth/password/forgot" | "/api/auth/password/reset") {
             expect_method(method, "POST")?;
             let resetting = path == "/auth/password/reset";
@@ -783,7 +791,7 @@ pub(crate) fn dispatch(
             Capability::Me => {
                 expect_method(method, "GET")?;
                 return Ok(HttpReply::json(
-                    json!({"user_id":principal.user_id(),"email":access.auth.email(&principal,now)?,"csrf_token":auth::csrf(token),"capabilities":{"presentation":access.sandbox.capability(),"admin":access.auth.is_reader_admin(&principal, now)?}}),
+                    json!({"user_id":principal.user_id(),"email":access.auth.email(&principal,now)?,"is_guest":access.auth.is_guest(&principal,now)?,"csrf_token":auth::csrf(token),"capabilities":{"presentation":access.sandbox.capability(),"admin":access.auth.is_reader_admin(&principal, now)?}}),
                 ));
             }
             Capability::Logout => {
@@ -1037,6 +1045,9 @@ pub(crate) fn dispatch(
                     access.sync_learning_goal(&user, id, &now.to_string())?;
                 }
                 let mut learning = user.learning_store_for_workspace(scope)?;
+                if let Some(source) = query.get("source_id").filter(|source| !source.is_empty()) {
+                    learning = learning.with_source(source);
+                }
                 let value = if mutate {
                     let request: memory::learning::TutorMutation = serde_json::from_value(input).map_err(|_| invalid())?;
                     if matches!(request.action, memory::learning::TutorAction::SyncWorkspaceGoal { .. }) {
@@ -1105,6 +1116,7 @@ pub(crate) fn dispatch(
                         // Read again after selecting the live stream: completion may have crossed the first read.
                         let value = reader_run_view(access, &context, context.turn(&id)?)?;
                         let snapshot = crate::agent_stream::RunSnapshot {
+                            board_commits: serde_json::from_value(value["turn"]["board_commits"].clone()).unwrap_or_default(),
                             music_command: None,
                             presentation_command: None,
                             descriptor: crate::agent_stream::RunDescriptor {

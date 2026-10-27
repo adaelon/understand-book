@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { AgentAnswerPart, OuterOutcome } from './api';
 import type { AgentAnswerSource } from './generated/AgentAnswerSource';
 import { renderMarkdown } from './md';
@@ -13,7 +14,7 @@ export function sourceMarkedParts(text: string, sources: AgentAnswerSource[]): A
   for (const match of text.matchAll(/\[\[source:([^\]]*)\]\]/g)) {
     parts.push({ kind: 'markdown', text: text.slice(cursor, match.index) });
     const id = match[1].trim();
-    parts.push(known.has(id) ? { kind: 'sources', source_ref_ids: [id] } : { kind: 'markdown', text: '（来源不可用）' });
+    parts.push(known.has(id) ? { kind: 'sources', source_ref_ids: [id] } : { kind: 'markdown', text: uiText('（来源不可用）') });
     cursor = match.index! + match[0].length;
   }
   parts.push({ kind: 'markdown', text: text.slice(cursor) });
@@ -80,8 +81,8 @@ function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>,
   }
   const label = document.createElement("span");
   label.textContent = part.source_ref_ids.length === 1
-    ? sourceChipLabel(sources, part.source_ref_ids[0])
-    : `${part.source_ref_ids.length} 个来源`;
+    ? sourceChipLabel(sources, part.source_ref_ids[0], uiText('来源不可用'))
+    : uiText('{0} 个来源', [part.source_ref_ids.length]);
   button.append(label);
   return button;
 }

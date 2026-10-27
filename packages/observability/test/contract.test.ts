@@ -34,6 +34,14 @@ it("preserves optional reasoning output without adding it to billed totals", () 
   expect(() => parseObservation({ ...observation, usage: { ...observation.usage, reasoning_output_tokens: -1 } })).toThrow();
 });
 
+it("preserves the serving provider while accepting older observations without it", () => {
+  const observation = structuredClone(parseObservation(fixtures.valid[0]));
+  expect(observation.metadata.model_provider).toBeUndefined();
+  observation.metadata.model_provider = "deepseek";
+  expect(parseObservation(observation).metadata.model_provider).toBe("deepseek");
+  expect(() => parseObservation({ ...observation, metadata: { ...observation.metadata, model_provider: {} } })).toThrow();
+});
+
 it("accepts request differences alongside usage and rejects content in diagnostic fields", () => {
   const observation = structuredClone(parseObservation(fixtures.valid[0]));
   const diagnostics: RequestDiagnostics = {

@@ -1,6 +1,98 @@
 use super::*;
 use crate::video_draft;
 
+pub(super) fn media_learning_state(root: &Path, book: Book) -> AppState {
+    let mut state = state_named(&format!("media-learning-{}", uuid::Uuid::now_v7()));
+    state.user.store = MemoryStore::open(root.join("memory.json")).unwrap();
+    state.user.history_path = Some(root.join("history.json"));
+    state.workspace.book = Arc::new(book);
+    state.workspace.book_dir = root.into();
+    state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
+    assert_eq!(post(&mut state,"/agent/new","{}").status, 200);
+    let mut store = state.user.learning_store().unwrap();
+    store.mutate(&memory::learning::TutorMutation { operation_id:"enable-media".into(), expected_revision:0,
+        action:memory::learning::TutorAction::SetEnabled {enabled:true} }, "now").unwrap();
+    let before = store.state().unwrap();
+    store.mutate(&memory::learning::TutorMutation { operation_id:"old-source-stage".into(), expected_revision:before.control.revision,
+        action:memory::learning::TutorAction::Start { user_intent:"Learn the previous book".into(), explicit_constraints:vec![],
+            material_scope:vec![memory::learning::TutorMaterial {source_id:"previous-book".into(),scope_refs:vec![],role:memory::learning::TutorMaterialRole::Primary}],
+            default_teaching_intent:None, learning_purpose:None } }, "now").unwrap();
+    state
+}
+
+pub(super) fn media_purpose_input(state: &AppState, key: &str) -> Value {
+    let head = state.user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == state.workspace.selected_chat.as_deref())
+        .and_then(|s| s.turns.last()).map(|turn| &turn.turn_id);
+    json!({"message":"","entry_action":"learn_with_purpose","learning_purpose":"understand",
+        "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint(),
+        "session_id":state.workspace.selected_chat,"expected_chat_head":head,"client_request_id":key})
+}
+
+pub(super) fn media_continue_input(state: &AppState, turn: &AgentTurnRef) -> Value {
+    json!({"message":"","entry_action":"continue_answer","answer_ref":{"turn_id":turn.turn_id},
+        "session_id":state.workspace.selected_chat,"expected_chat_head":turn.turn_id,
+        "client_request_id":format!("continue-{}",turn.turn_id)})
+}
+
+#[test]
+fn video_learning_purpose_admission_freezes_scope_and_continues_original_material() {
+    for selected in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        let book = super::tutor_tests::video_tutor_foundation(root.path());
+        let mut state = media_learning_state(root.path(), book);
+        let mut input = media_purpose_input(&state, "video-purpose");
+        if selected {
+            let mut d = draft(&state.workspace, "video-purpose-draft", 492000.0);
+            d["context"]["image"] = question_image();
+            video_draft::command(&mut state.workspace, &state.user,
+                &json!({"window_id":"learning-purpose","action":"save","draft":d})).unwrap();
+            input["video_draft_id"] = json!("video-purpose-draft");
+            input["video_window_id"] = json!("learning-purpose");
+        }
+        let first = prepare_agent_chat(&mut state, &input.to_string(), "first").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(first.tutor.as_ref().unwrap()["status"], "active");
+        let session_id = first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
+        let learning = state.user.learning_store().unwrap().state().unwrap();
+        let stage = &learning.sessions[&session_id];
+        assert_eq!(stage.material_scope[0].source_id, "vi6", "the old book must be replaced by an explicit media purpose");
+        assert_eq!(!stage.material_scope[0].scope_refs.is_empty(), selected);
+        assert_eq!(stage.learning_purpose, Some(memory::learning::LearningPurpose::Understand));
+        assert_eq!(first.scope.reader_input.video_question.is_some(), selected);
+        let saved = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == first.turn_ref.turn_id).unwrap();
+        assert!(saved.domain.interaction.as_ref().unwrap().source_bindings.is_empty(), "a video learning scope must not fabricate observed text evidence");
+        assert!(saved.domain.interaction.as_ref().unwrap().accepted_request.contains(if selected {"视频片段"} else {"当前视频"}));
+        let store = state.user.learning_store().unwrap();
+        let dependency = store.coach_turn_dependency(&first.turn_ref.session_id, &first.turn_ref.turn_id).unwrap().unwrap();
+        let bootstrap = store.coach_job(&dependency.job_ref.unwrap()).unwrap().unwrap();
+        let mut coach_question = json!(first.scope.reader_input.video_question);
+        if let Some(image) = coach_question.get_mut("image").and_then(Value::as_object_mut) { image.remove("png_base64"); }
+        assert_eq!(bootstrap.input.context["video_question"], coach_question);
+        drop(store);
+        super::tutor_loop_tests::finish(&mut state, &first.turn_ref, &super::tutor_loop_tests::outcome(None));
+        let after = state.user.learning_store().unwrap().coach_job_for_source(&session_id,
+            memory::tutor_coach::CoachJobOrigin::AfterTurn, &first.turn_ref.turn_id).unwrap().unwrap();
+        assert_eq!(after.input.context["video_question"], coach_question);
+        let next_input = media_continue_input(&state, &first.turn_ref);
+        let next = prepare_agent_chat(&mut state, &next_input.to_string(), "next").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(next.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id);
+        assert_eq!(json!(next.scope.reader_input.video_question), json!(first.scope.reader_input.video_question));
+        let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().unwrap();
+        assert_eq!(dependency.job_ref, Some(after.input.job_ref), "the next teaching turn must consume guidance from the actual previous delivery");
+        super::tutor_loop_tests::finish(&mut state, &next.turn_ref, &super::tutor_loop_tests::outcome(None));
+        let again_input = media_continue_input(&state, &next.turn_ref);
+        let again = prepare_agent_chat(&mut state, &again_input.to_string(), "again").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(again.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id);
+        assert_eq!(json!(again.scope.reader_input.video_question), json!(first.scope.reader_input.video_question));
+        if selected {
+            super::tutor_loop_tests::finish(&mut state, &again.turn_ref, &super::tutor_loop_tests::outcome(None));
+            let whole_input = media_purpose_input(&state, "video-whole-after-clip");
+            let whole = prepare_agent_chat(&mut state, &whole_input.to_string(), "whole").unwrap_or_else(|r| panic!("{}",r.body));
+            assert_ne!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id,
+                "changing a clip goal to the whole video must start the requested scope");
+        }
+    }
+}
+
 pub(super) fn fixture(dir: &Path) -> Book {
     std::fs::create_dir_all(dir.join("media")).unwrap();
     let video = json!({"media_id":"v","media_revision":"1"});

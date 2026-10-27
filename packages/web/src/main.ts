@@ -1,9 +1,15 @@
+import { t as uiText } from './i18n';
 import { createApp } from "vue";
 import App from "./LocalApp.vue";
 import NetworkApp from "./NetworkApp.vue";
 import { installAppViewportHeightFallback } from "./app-viewport-height";
 import "katex/dist/katex.min.css"; // agent 答案 LaTeX 公式样式
 import "./style.css";
+import { initializeLanguage } from './i18n';
+import { initializeDesktopLanguage } from './desktop-language';
+
+initializeLanguage(uiText('understand-book 阅读器'));
+initializeDesktopLanguage();
 
 async function mountReader() {
   // Keep the inline startup animation visible while production styles download.

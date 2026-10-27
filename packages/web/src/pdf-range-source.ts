@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { PDFDataRangeTransport, type getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 // 256 KiB reduces dependency round trips without the overfetch of MiB-sized chunks.
@@ -15,20 +16,20 @@ export async function pdfRangeSource(
     credentials: 'same-origin', signal: controller.signal,
   });
   const first = await read(0, CHUNK_SIZE);
-  if (!first.ok) throw new Error(`PDF 读取失败（${first.status}）`);
+  if (!first.ok) throw new Error(uiText('PDF 读取失败（{0}）', [first.status]));
   const initialData = new Uint8Array(await first.arrayBuffer());
   // The local Reader's endpoint returns the complete PDF when Range is unsupported.
   if (first.status === 200) return { data: initialData };
   const length = Number(first.headers.get('Content-Range')?.match(/\/(\d+)$/)?.[1]);
   if (first.status !== 206 || !Number.isSafeInteger(length) || length <= 0) {
-    throw new Error('PDF 分段响应缺少文件长度');
+    throw new Error(uiText('PDF 分段响应缺少文件长度'));
   }
   const range = new PDFDataRangeTransport(length, initialData, true);
   range.abort = () => controller.abort();
   range.requestDataRange = (begin, end) => {
     void (async () => {
       const response = await read(begin, end);
-      if (response.status !== 206) throw new Error(`PDF 分段读取失败（${response.status}）`);
+      if (response.status !== 206) throw new Error(uiText('PDF 分段读取失败（{0}）', [response.status]));
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (!controller.signal.aborted) range.onDataRange(begin, bytes);
     })().catch(error => {

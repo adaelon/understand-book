@@ -39,6 +39,10 @@ Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务
 旧目录缺少摘要时从已有描述补齐，不新建 BuildPlan 或 invocation。摘要单独存放在目录头，旧引擎重写目录会丢弃该提示。
 性能和恢复证据见[计划摘要复用测量](../performance/automatic-build-digest-reuse-20261021.md)。
 
+2026-10-24 修订：同一次 Driver 决策内，plan、doctor、next 与派发重放复用 `loadDriverState` 已验证的来源 target。
+每个新请求及准备、写入、恢复后的状态刷新仍重新解析来源；不把该 target 保存为跨请求缓存。
+来源变化仍触发现有基础恢复或计划变更边界，恢复原文后仍可继续原有 handoff。
+
 **否决**:
 
 - 将整份可变状态作为跨 `build.step` 的权威：child 可能已提交，不能遮蔽当前持久事实。
@@ -61,6 +65,10 @@ Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务
 
 **命门**:复用既有持久 task/descriptor、policy、dispatch、input 与 receipt；完整保留当前身份、依赖和输出合同检查，需重规划时交还 Driver。
 **展开**:[P4](../切片方案-预构建控制面有界读取与执行器补位.md#p4-executor-单任务读取)。
+
+2026-10-24 修订：新认知材料任务首包直接交付必读目标原文，最多 2,000 个 UTF-16 单位，
+并受剩余读取量、上下文和完整输入预算共同约束。只有最终 packet 实际包含的范围才进入阅读账本。
+已冻结的旧首包及已接受步骤保留原输入和任务身份；跨段取证、范围引用与缺口搜索要求不变。
 
 ## §4 调度槽与执行器交接
 
@@ -103,3 +111,9 @@ Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务
 
 **命门**:同模型、同宿主、同程序、同输入与起始状态对照；同时记录 snapshot/step/MCP 耗时、文件操作、slot 区间、attempt 与 durable commits，结果质量和复用集合不退化。
 **展开**:[B1/V1](../切片方案-预构建控制面有界读取与执行器补位.md#b1-代表性基线与最小计时夹具)。
+
+2026-10-24 修订：Codex refill 和 DSH 宿主在消费终态、释放 child 占位后记录可用容量，
+关联到后续实际派发的 handoff，再由首次 `generation.start` 在 GENERATE 结果持久化就绪后记录终点。
+首次容量与终态补位分别计数；多工作单元 handoff 只消费一次容量观察，重放不重置时间，旧数据缺失不填零。
+分项记录容量观察到 ready、本轮调度、ready 到 open、open 到 GENERATE 就绪；该端点不代表模型首 token。
+观测落盘不参与租约、调度或恢复决定。基线、候选、回归与开销见[首批预构建提速测量](../performance/prebuild-first-batch-20261023/README.md)。

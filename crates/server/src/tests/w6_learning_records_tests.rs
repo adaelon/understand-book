@@ -1,6 +1,9 @@
 use super::*;
 use runtime::run_context::ResidentStatePort;
 
+#[path = "workspace_record_search_tests.rs"]
+mod workspace_record_search_tests;
+
 pub(super) fn reference_learning(f: &Fixture, chat: &str, operation: &str) -> (String, String) {
     let handle = context(f, &f.a).user;
     let publication = f.access.library.lock().unwrap().load("A", &f.y).unwrap();
@@ -138,7 +141,11 @@ fn w6_selection_keeps_unselected_chat_out_and_checks_current_goal_before_linking
     let mut port = f.run(&target_reader,"target");
     assert!(port.workspace_records_available());
     let listed = port.workspace_records(json!({"operation":"list"})).unwrap();
-    assert_eq!(listed["records"].as_array().unwrap().len(),1);
+    let records = listed["records"].as_array().unwrap();
+    assert_eq!(records.len(),2);
+    assert!(records.iter().any(|record|record["chat_session_id"] == first_chat && record["origin"] == "linked"));
+    assert!(records.iter().any(|record|record["chat_session_id"] == target_reader["selected_chat"] && record["origin"] == "native"));
+    assert!(records.iter().all(|record|record["chat_session_id"] != second_chat));
     let read = port.workspace_records(json!({"operation":"read","chat_session_id":first_chat,"limit":20})).unwrap();
     assert!(read["selection"]["source_learning_workspace_id"].is_null());
     assert_eq!(read["records"][0]["user"],"选定这段学习记录");

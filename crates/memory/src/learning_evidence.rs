@@ -10,7 +10,32 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const ESTIMATOR_VERSION: &str = "learner.conditions.v2";
+pub const ESTIMATOR_VERSION: &str = "learner.conditions.v3";
+
+// Interpretations may be written by a later background job. Their position in
+// learning history comes from the last actual expression they interpret, never
+// from the time at which that job happened to finish.
+const ORIGIN_JOIN_TEMPLATE: &str = "LEFT JOIN teaching_trace origin ON origin.learning_workspace_id=e.learning_workspace_id AND origin.seq=(
+    SELECT t.seq FROM teaching_trace t WHERE t.learning_workspace_id=e.learning_workspace_id
+    AND json_extract(t.event,'$.binding.source_id')=e.source_id
+    AND json_extract(t.event,'$.binding.source_revision')=json_extract(e.evidence,'$.source_revision')
+    AND t.session_id=json_extract(e.evidence,'$.session_id')
+    AND (t.event_id=json_extract(e.evidence,'$.action_ref') OR t.event_id IN (SELECT value FROM json_each(e.evidence,'$.fact_refs')))
+    AND (json_extract(t.event,'$.kind')='learner_action' OR (json_extract(t.event,'$.kind')='usage_observed' AND json_extract(t.event,'$.payload.usage.kind') IN ('user_message','reading_action')))
+    AND coalesce(json_extract(t.event,'$.payload.response_origin.kind'),'')!='interface_request'
+    AND NOT (coalesce(json_extract(t.event,'$.payload.response_origin.kind'),'')='presentation_prefill' AND json_extract(t.event,'$.payload.response_origin.prefill_text')=json_extract(t.event,'$.payload.response'))
+    AND length(trim(coalesce(CASE WHEN json_extract(t.event,'$.payload.usage.kind')='reading_action' AND json_type(t.event,'$.payload.interaction')='object' THEN json_extract(t.event,'$.payload.interaction.user_supplement') ELSE json_extract(t.event,'$.payload.response') END,'')))>0
+    ORDER BY EXPRESSION_TIME DESC,t.seq DESC LIMIT 1)";
+
+const ORIGIN_ORDER: &str = "CASE
+    WHEN trim(coalesce(json_extract(origin.event,'$.occurred_at'),''))!='' AND json_extract(origin.event,'$.occurred_at') NOT GLOB '*[^0-9.]*'
+    THEN CAST(json_extract(origin.event,'$.occurred_at') AS REAL) / CASE WHEN CAST(json_extract(origin.event,'$.occurred_at') AS REAL)>100000000000 THEN 1000 ELSE 1 END
+    WHEN json_extract(origin.event,'$.occurred_at') GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'
+    THEN (julianday(json_extract(origin.event,'$.occurred_at'))-2440587.5)*86400 END";
+
+fn origin_join() -> String {
+    ORIGIN_JOIN_TEMPLATE.replace("EXPRESSION_TIME", &ORIGIN_ORDER.replace("origin.event","t.event"))
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -46,6 +71,10 @@ pub struct LearningEvidence {
     pub label: String,
     pub capability: String,
     pub assistance_refs: Vec<String>,
+    /// Explanations already delivered before the expression, separate from
+    /// activity help (hints/reveals) and never the answer to this expression.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub support_delivery_refs: Vec<String>,
     pub attempt: u64,
     pub assessment_ref: Option<String>,
     pub status: AssessmentStatus,
@@ -328,6 +357,7 @@ impl LearningStore {
                             action.payload["assistance_refs"].clone(),
                         )
                         .unwrap_or_default(),
+                        support_delivery_refs: serde_json::from_value(action.payload.get("support_delivery_refs").cloned().unwrap_or(json!([]))).unwrap_or_default(),
                         attempt: action.payload["attempt"].as_u64().unwrap_or(1),
                         assessment_ref: assessment.as_ref().map(|_| action.event_id.clone()),
                         status: status.clone(),
@@ -400,7 +430,8 @@ impl LearningStore {
     /// Current source-bound interpretations, including source-only performances.
     /// Replacement is resolved before the page limit, so superseded claims never reappear.
     pub fn current_interpretations(&self, source: &str, revision: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut q = self.connection.prepare("SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.learning_workspace_id=? AND e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY e.seq DESC LIMIT ? OFFSET ?").map_err(storage)?;
+        let origin_join=origin_join();
+        let mut q = self.connection.prepare(&format!("SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=? AND e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC LIMIT ? OFFSET ?")).map_err(storage)?;
         let rows = q.query_map(params![self.workspace_scope,source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
     }
@@ -408,17 +439,82 @@ impl LearningStore {
     /// Stable relationship IDs carry across revisions of the same private design only.
     /// Relevant older understanding is fetched before the recency limit is applied.
     pub fn current_design_interpretations(&self, session: &str, source: &str, revision: &str, design_ref: Option<&str>, blocks: &[String], limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
-        let mut q=self.connection.prepare("WITH RECURSIVE lineage(id) AS (
+        let origin_join=origin_join();
+        let mut q=self.connection.prepare(&format!("WITH RECURSIVE lineage(id) AS (
             SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
             SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?7 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)
-            SELECT e.seq,e.evidence FROM learning_evidence e WHERE e.learning_workspace_id=?7 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3
+            SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=?7 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3
             AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
             ORDER BY CASE WHEN json_extract(e.evidence,'$.session_id')=?4
               AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM lineage)
               AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
-              THEN 0 ELSE 1 END, e.seq DESC LIMIT ?6").map_err(storage)?;
+              THEN 0 ELSE 1 END, {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC LIMIT ?6")).map_err(storage)?;
         let rows=q.query_map(params![design_ref,source,revision,session,serde_json::to_string(blocks).map_err(storage)?,limit.min(20),self.workspace_scope],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| {let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?))}).collect()
+    }
+
+    /// Presentation metadata only: absent or invalid legacy timestamps stay unknown.
+    pub fn evidence_chronology(&self, id: &str) -> Result<Value, ToolError> {
+        let origin_join=origin_join();
+        self.connection.query_row(&format!("SELECT origin.seq,
+            CASE WHEN {ORIGIN_ORDER} IS NOT NULL THEN json_extract(origin.event,'$.occurred_at') END,
+            json_extract(origin.event,'$.binding.chat_session_id'),json_extract(origin.event,'$.binding.turn_id')
+            FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=? AND e.evidence_id=?"),
+            params![self.workspace_scope,id], |r| Ok(json!({
+                "fact_sequence":r.get::<_,Option<u64>>(0)?,"occurred_at":r.get::<_,Option<String>>(1)?,
+                "source_session_id":r.get::<_,Option<String>>(2)?,"source_turn_id":r.get::<_,Option<String>>(3)?
+            }))).map_err(storage)
+    }
+
+    pub fn evidence_expressions(&self, evidence: &LearningEvidence) -> Result<Vec<(u64, TeachingEvent)>, ToolError> {
+        let mut refs=evidence.fact_refs.clone();
+        refs.push(evidence.action_ref.clone());
+        let expression_order=ORIGIN_ORDER.replace("origin.event","event");
+        let mut q=self.connection.prepare(&format!("SELECT seq,event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=?
+            AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.binding.source_revision')=?
+            AND event_id IN (SELECT value FROM json_each(?)) ORDER BY {expression_order},seq")).map_err(storage)?;
+        let rows=q.query_map(params![self.workspace_scope,evidence.session_id,evidence.source_id,evidence.source_revision,serde_json::to_string(&refs).map_err(storage)?],
+            |r| Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+        let mut expressions=Vec::new();
+        for row in rows {
+            let (seq,text)=row.map_err(storage)?;
+            let fact:TeachingEvent=serde_json::from_str(&text).map_err(storage)?;
+            if fact.learner_expression().is_some() { expressions.push((seq,fact)); }
+        }
+        Ok(expressions)
+    }
+
+    /// Same relation across learning observations, including corrections as history.
+    /// A matching title or source paragraph alone is not a relationship identity.
+    pub fn understanding_timeline(&self, id: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
+        let seed=self.evidence(id)?;
+        let mut objects:Vec<Value>=seed.target.as_ref().into_iter().flat_map(|target| &target.object_refs)
+            .map(|object|json!({"object_id":object.object_id,"object_revision":object.object_revision})).collect();
+        if let (Some(id),Some(revision))=(&seed.object_id,seed.object_revision) { objects.push(json!({"object_id":id,"object_revision":revision})); }
+        let origin_join=origin_join();
+        let sql=format!("WITH RECURSIVE
+            ancestors(id) AS (SELECT ?1 WHERE ?1 IS NOT NULL UNION
+                SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN ancestors a ON t.event_id=a.id
+                WHERE t.learning_workspace_id=?2 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL),
+            family(id) AS (SELECT id FROM ancestors UNION SELECT t.event_id FROM teaching_trace t JOIN family f ON json_extract(t.event,'$.payload.design.previous_ref')=f.id
+                WHERE t.learning_workspace_id=?2 AND t.session_id=?3 AND json_extract(t.event,'$.binding.source_id')=?4 AND json_extract(t.event,'$.binding.source_revision')=?5),
+            correction_edges(a,b) AS (SELECT evidence_id,json_extract(evidence,'$.supersedes') FROM learning_evidence
+                WHERE learning_workspace_id=?2 AND source_id=?4 AND json_extract(evidence,'$.source_revision')=?5 AND json_extract(evidence,'$.supersedes') IS NOT NULL),
+            corrections(id) AS (SELECT ?6 UNION SELECT CASE WHEN c.id=edge.a THEN edge.b ELSE edge.a END FROM correction_edges edge JOIN corrections c ON c.id=edge.a OR c.id=edge.b)
+            SELECT e.seq,e.evidence FROM learning_evidence e {origin_join}
+            WHERE e.learning_workspace_id=?2 AND e.source_id=?4 AND json_extract(e.evidence,'$.source_revision')=?5 AND (
+              e.evidence_id IN (SELECT id FROM corrections)
+              OR (json_extract(e.evidence,'$.session_id')=?3 AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM family)
+                  AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?7) focus ON b.value=focus.value))
+              OR (json_extract(e.evidence,'$.capability')=?8 AND EXISTS (SELECT 1 FROM json_each(?9) o
+                  WHERE (json_extract(o.value,'$.object_id')=json_extract(e.evidence,'$.object_id') AND json_extract(o.value,'$.object_revision')=json_extract(e.evidence,'$.object_revision'))
+                  OR EXISTS (SELECT 1 FROM json_each(e.evidence,'$.target.object_refs') target WHERE json_extract(o.value,'$.object_id')=json_extract(target.value,'$.object_id') AND json_extract(o.value,'$.object_revision')=json_extract(target.value,'$.object_revision')))))
+            ORDER BY {ORIGIN_ORDER},origin.seq,e.seq LIMIT ?10 OFFSET ?11");
+        let mut q=self.connection.prepare(&sql).map_err(storage)?;
+        let rows=q.query_map(params![seed.design_ref,self.workspace_scope,seed.session_id,seed.source_id,seed.source_revision,seed.evidence_id,
+            serde_json::to_string(&seed.block_refs).map_err(storage)?,seed.capability,serde_json::to_string(&objects).map_err(storage)?,limit.min(20),after],
+            |r| Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
+        rows.map(|row| { let (seq,text)=row.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
     }
 
     pub fn evidence_page(
@@ -503,9 +599,10 @@ impl LearningStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(storage)?;
         let all: Vec<(u64, LearningEvidence)> = {
+            let origin_join=origin_join();
             let mut q = tx
                 .prepare(
-                    "SELECT seq,evidence FROM learning_evidence WHERE learning_workspace_id=? AND source_id=? ORDER BY seq",
+                    &format!("SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=? AND e.source_id=? ORDER BY {ORIGIN_ORDER},origin.seq,e.seq"),
                 )
                 .map_err(storage)?;
             let rows = q
@@ -555,7 +652,7 @@ impl LearningStore {
                     evidence_refs: vec![],
                 });
             match e.status {
-                AssessmentStatus::Correct if !e.assistance_refs.is_empty() => {
+                AssessmentStatus::Correct if !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty() => {
                     row.assisted_support += 1
                 }
                 AssessmentStatus::Correct if e.attempt > 1 => row.revised_support += 1,
@@ -588,16 +685,11 @@ impl LearningStore {
                     |r| r.get(0),
                 )
                 .map_err(storage)?;
-            if paths
-                .get(&key)
-                .is_none_or(|p| p["action_sequence"].as_u64().unwrap_or(0) <= action_sequence)
-            {
-                paths.insert(key,json!({"session_id":e.session_id,"object_id":e.object_id,"object_revision":e.object_revision,"source_revision":e.source_revision,"capability":e.capability,"last_status":e.status,"assistance_refs":e.assistance_refs,"attempt":e.attempt,"evidence_ref":e.evidence_id,"action_sequence":action_sequence}));
-            }
+            paths.insert(key,json!({"session_id":e.session_id,"object_id":e.object_id,"object_revision":e.object_revision,"source_revision":e.source_revision,"capability":e.capability,"last_status":e.status,"assistance_refs":e.assistance_refs,"support_delivery_refs":e.support_delivery_refs,"attempt":e.attempt,"evidence_ref":e.evidence_id,"action_sequence":action_sequence}));
         }
         let projection = LearnerProjection {
             estimator_version: ESTIMATOR_VERSION.into(),
-            evidence_watermark: all.last().map_or(0, |(seq, _)| *seq),
+            evidence_watermark: all.iter().map(|(seq, _)| *seq).max().unwrap_or(0),
             teaching_map_revision_refs: all
                 .iter()
                 .filter_map(|(_, e)| e.map_revision.clone())
@@ -644,6 +736,123 @@ mod tests {
                 "capability":"explanation","source_bindings":[{"source_id":fact.binding.source_id,
                     "source_revision":fact.binding.source_revision,"start_lid":"1.1","end_lid":"1.2"}],"object_refs":[]}
         })).unwrap()
+    }
+
+    #[test]
+    fn understanding_timeline_orders_original_expressions_before_late_background_writes() {
+        let directory=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&directory.path().join("learning.db"),false).unwrap();
+        let mut earlier=observation("earlier",TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"prefill 和 decode 怎么区分？"}));
+        earlier.occurred_at="2026-10-24T03:00:00Z".into();
+        earlier.binding.turn_id="first-turn".into();
+        let mut later=observation("later",TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"prefill 处理输入，decode 逐个生成，对吗？"}));
+        later.occurred_at="2026-10-24T11:01:00+08:00".into();
+        later.binding.turn_id="second-turn".into();
+        store.append_teaching(&earlier).unwrap();
+        store.append_teaching(&later).unwrap();
+        let later=hypothesis(&later);
+        let earlier=hypothesis(&earlier);
+        store.append_evidence(&later).unwrap();
+        store.append_evidence(&earlier).unwrap();
+        let current=store.current_interpretations("book","source-v1",0,20).unwrap();
+        assert_eq!(current.iter().map(|(_,e)|e.evidence_id.as_str()).collect::<Vec<_>>(),vec![later.evidence_id.as_str(),earlier.evidence_id.as_str()]);
+        assert_eq!(store.current_interpretations("book","source-v1",1,1).unwrap()[0].1.evidence_id,earlier.evidence_id);
+        let chronology=store.evidence_chronology(&later.evidence_id).unwrap();
+        assert_eq!(chronology["occurred_at"],"2026-10-24T11:01:00+08:00");
+        assert_eq!(chronology["source_turn_id"],"second-turn");
+        assert_eq!(chronology["fact_sequence"],2);
+        assert_eq!(store.current_design_interpretations("session","book","source-v1",None,&[],20).unwrap()[0].1.evidence_id,later.evidence_id);
+        // Equal labels and paragraphs alone never manufacture a learning trajectory.
+        assert_eq!(store.understanding_timeline(&later.evidence_id,0,20).unwrap().len(),1);
+    }
+
+    fn relation_design(store: &mut LearningStore, id: &str, previous: Option<&str>, fact: &TeachingEvent) {
+        let mut event=fact.clone();
+        event.event_id=id.into();
+        event.kind=TeachingFact::DesignRevised;
+        let target=hypothesis(fact).target.unwrap();
+        event.payload=json!({"design":{"target":target,"organizing_model":"input then generation",
+            "blocks":[{"block_id":"phase","relation":"prefill versus decode","purpose":"distinguish stages","source_bindings":target.source_bindings}],
+            "focus_block_refs":["phase"],"representation":{"kind":"text","reason":"compare two stages"},"revision_reason":"clarify phases","previous_ref":previous}});
+        store.append_teaching(&event).unwrap();
+    }
+
+    #[test]
+    fn understanding_timeline_keeps_hypothesis_evolution_and_corrections_in_design_lineage() {
+        let directory=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&directory.path().join("learning.db"),false).unwrap();
+        let mut earlier=observation("before",TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"两个阶段是同时做吗？"}));
+        earlier.occurred_at="2026-10-24T03:00:00Z".into();
+        let mut later=observation("after",TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"输入先处理完，再持续生成。"}));
+        later.occurred_at="2026-10-24T03:05:00Z".into();
+        store.append_teaching(&earlier).unwrap();store.append_teaching(&later).unwrap();
+        relation_design(&mut store,"design:one",None,&earlier);
+        relation_design(&mut store,"design:two",Some("design:one"),&later);
+        relation_design(&mut store,"design:unrelated",None,&later);
+        let mut first=hypothesis(&earlier);first.design_ref=Some("design:one".into());first.block_refs=vec!["phase".into()];
+        let mut second=hypothesis(&later);second.design_ref=Some("design:two".into());second.block_refs=vec!["phase".into()];
+        store.append_evidence(&second).unwrap();store.append_evidence(&first).unwrap();
+        let corrected=store.correct_evidence(&first.evidence_id,"fix-earlier","我是在问流程顺序，不是在断言同时发生").unwrap();
+        let mut unrelated=second.clone();unrelated.evidence_id="other-design".into();unrelated.design_ref=Some("design:unrelated".into());
+        store.append_evidence(&unrelated).unwrap();
+        let rows=store.understanding_timeline(&second.evidence_id,0,20).unwrap();
+        assert_eq!(rows.iter().map(|(_,e)|e.evidence_id.as_str()).collect::<Vec<_>>(),vec![first.evidence_id.as_str(),corrected.evidence_id.as_str(),second.evidence_id.as_str()]);
+        assert!(store.evidence_is_superseded(&first.evidence_id).unwrap());
+        assert!(!store.evidence_is_superseded(&second.evidence_id).unwrap());
+        assert_eq!(store.evidence(&first.evidence_id).unwrap(),first,"later learning and correction both retain the original interpretation");
+        assert_eq!(store.understanding_timeline(&first.evidence_id,2,1).unwrap()[0].1.evidence_id,second.evidence_id);
+        let current=store.current_interpretations("book","source-v1",0,20).unwrap();
+        assert!(!current.iter().any(|(_,e)|e.evidence_id==first.evidence_id));
+    }
+
+    #[test]
+    fn understanding_timeline_formal_relations_do_not_cross_sources_versions_or_workspaces() {
+        let directory=tempfile::tempdir().unwrap();
+        let path=directory.path().join("learning.db");
+        let mut store=LearningStore::open(&path,false).unwrap().with_workspace(Some("main"));
+        let mut seeds=Vec::new();
+        for (id,source,revision,object_revision) in [("a","book","source-v1",1),("b","book","source-v1",1),("other-source","other","source-v1",1),("new-source-version","book","source-v2",1),("new-object-version","book","source-v1",2)] {
+            let mut fact=observation(id,TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"我能区分两个阶段"}));
+            fact.binding.source_id=source.into();fact.binding.source_revision=revision.into();
+            store.append_teaching(&fact).unwrap();
+            let mut evidence=hypothesis(&fact);
+            evidence.target.as_mut().unwrap().object_refs=vec![crate::teaching::TeachingObjectRevision {source_id:source.into(),object_id:"phase".into(),object_revision}];
+            store.append_evidence(&evidence).unwrap();seeds.push(evidence);
+        }
+        let mut other=LearningStore::open(&path,false).unwrap().with_workspace(Some("other"));
+        let fact=store.teaching_event("a").unwrap();other.append_teaching(&fact).unwrap();other.append_evidence(&seeds[0]).unwrap();
+        assert_eq!(store.understanding_timeline(&seeds[0].evidence_id,0,20).unwrap().iter().map(|(_,e)|e.evidence_id.as_str()).collect::<Vec<_>>(),vec!["hypothesis:a","hypothesis:b"]);
+        assert_eq!(other.understanding_timeline(&seeds[0].evidence_id,0,20).unwrap().len(),1);
+        assert!(store.evidence_chronology(&seeds[0].evidence_id).unwrap()["occurred_at"].is_null(),"legacy unknown time is not replaced with background completion time");
+    }
+
+    #[test]
+    fn understanding_timeline_combined_observation_uses_latest_actual_expression_not_help() {
+        let directory=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&directory.path().join("learning.db"),false).unwrap();
+        let mut before=observation("before",TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"不懂"}));
+        before.occurred_at="2026-10-24T03:00:00Z".into();
+        let mut after=before.clone();after.event_id="after".into();after.occurred_at="2026-10-24T03:01:00Z".into();after.payload["response"]=json!("我现在能说出区别");
+        let help=observation("help",TeachingFact::MessageDelivered,json!({"answer":"解释"}));
+        for event in [&before,&after,&help] { store.append_teaching(event).unwrap(); }
+        let mut evidence=hypothesis(&before);evidence.fact_refs.push(after.event_id.clone());
+        store.append_evidence(&evidence).unwrap();
+        assert_eq!(store.evidence_chronology(&evidence.evidence_id).unwrap()["occurred_at"],after.occurred_at);
+        assert_eq!(store.evidence_expressions(&evidence).unwrap().iter().map(|(_,f)|f.event_id.as_str()).collect::<Vec<_>>(),vec!["before","after"]);
+        let projection=store.rebuild_learner_projection("book").unwrap();
+        assert_eq!(projection.evidence_watermark,store.learner_projection("book").unwrap().1);
+    }
+
+    #[test]
+    fn understanding_timeline_compares_real_epoch_seconds_milliseconds_and_rfc3339() {
+        let directory=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&directory.path().join("learning.db"),false).unwrap();
+        for (id,at) in [("latest","1720000001000"),("oldest","2024-07-03T09:46:39Z"),("middle","1720000000")] {
+            let mut fact=observation(id,TeachingFact::UsageObserved,json!({"usage":{"kind":"user_message"},"response":"我在复述关系"}));
+            fact.occurred_at=at.into();store.append_teaching(&fact).unwrap();store.append_evidence(&hypothesis(&fact)).unwrap();
+            assert_eq!(store.evidence_chronology(&format!("hypothesis:{id}")).unwrap()["occurred_at"],at);
+        }
+        assert_eq!(store.current_interpretations("book","source-v1",0,20).unwrap().iter().map(|(_,e)|e.evidence_id.as_str()).collect::<Vec<_>>(),vec!["hypothesis:latest","hypothesis:middle","hypothesis:oldest"]);
     }
 
     #[test]
@@ -819,8 +1028,8 @@ mod tests {
         assert_eq!(correction.supersedes.as_deref(), Some("assessment:same-id:gradient"));
         assert!(!b.evidence_is_superseded("assessment:same-id:gradient").unwrap());
         assert_eq!(b.current_interpretations("book", "source-v1", 0, 20).unwrap()[0].1.status, AssessmentStatus::Correct);
-        assert_eq!(a.current_interpretations("book", "source-v1", 0, 1).unwrap()[0].1.evidence_id, correction.evidence_id);
-        assert_eq!(a.current_interpretations("book", "source-v1", 1, 1).unwrap()[0].1.evidence_id, "assessment:only-a:gradient");
+        assert_eq!(a.current_interpretations("book", "source-v1", 0, 1).unwrap()[0].1.evidence_id, "assessment:only-a:gradient");
+        assert_eq!(a.current_interpretations("book", "source-v1", 1, 1).unwrap()[0].1.evidence_id, correction.evidence_id,"correcting an old interpretation does not make its original expression newer");
         let first = a.evidence_page("book", 0, 1).unwrap();
         let second = a.evidence_page("book", first[0].0, 1).unwrap();
         assert_eq!(first[0].1.status, AssessmentStatus::Incorrect);
@@ -865,7 +1074,7 @@ mod tests {
             target:Some(crate::teaching::TeachingTarget { media_bindings:None, music_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
                 capability:"explanation".into(), source_bindings:vec![crate::teaching::TeachingSourceBinding {source_id:"book".into(), source_revision:"source-v1".into(),start_lid:"L1".into(),end_lid:"L2".into()}],object_refs:vec![] }),
             design_ref:None, block_refs:vec![], fact_refs:vec!["question".into()], teaching_implication:"结合方向导数解释".into(),
-            label:"梯度方向".into(),capability:"explanation".into(),assistance_refs:vec![],attempt:1,assessment_ref:None,
+            label:"梯度方向".into(),capability:"explanation".into(),assistance_refs:vec![],support_delivery_refs:vec![],attempt:1,assessment_ref:None,
             status:AssessmentStatus::Unassessed,interpretation:"用户对梯度方向有疑问".into(),learner_quote:"我不理解梯度为什么指向增长方向".into(),
             interpreter_version:"test".into(),supersedes:None,correction:None,source_quotes:json!([]),
         };

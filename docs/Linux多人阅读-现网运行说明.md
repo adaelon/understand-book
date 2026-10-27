@@ -1,5 +1,37 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-27 18:26:17 HKT 已补齐《西方经济学（宏观部分·第八版）》197 张图片；18:29:25 HKT 普通读者经公网逐张验证全部 HTTP 200、内容与本地已解码图片一致，缺图 0，随后正文及 4 张完整补图的浏览器抽查通过。原发布 ID、正文、结构、读者授权和阅读位置标识保持；release 仍为 `registration-gift-20261027`，验证时 PID 317538、schema 20。成功修复维护 9.54 秒，备份及首次启动探测回退记录见[插图恢复与线上验证](performance/macro-image-recovery-20261027/README.md)。刷新原书即可加载图片。以下日期段落保留历史。
+
+2026-10-27 18:15:03 HKT 已上线邮箱注册赠送：注册成功同事务开通 10 元 AI 使用额度、30 天有效，重复提交不重复赠送；注册前和成功提示已同步中英文。用户指定漏领账号已补发 10 元，有效至 2026-11-26 18:14:32 HKT。当前 release `registration-gift-20261027`、PID 316139，schema 20；数据副本完整注册、补发重试、原账号健康与公网资源复核通过。见[发布记录](performance/registration-gift-20261027/README.md)。
+
+2026-10-27 12:18:50 HKT 已不停服发布《庄子》当前已完成的预构建成果，书籍 `zhuangzi`，默认发布 `01a17b95-11ce-77a0-a914-d4fdf470da73`。仅 `admin`、`adaelon`、`puff` 可读；正文、图片和全书结构公网验证通过，Tutor 可用，正式教学素材仍在准备中。服务 PID 283510 和现网 release 保持。见[发布与验证记录](performance/zhuangzi-publication-20261027/README.md)。
+
+2026-10-27 12:03:30 HKT 已合并发布画板候选—教学检查—正式保存链路和内测码游客体验，当前 release `board-chain-guest-20261027`、PID 283510、schema 20。用户原问题在真实隔离服务中完成生成与更正，最终 60 项内容、58 个原生图形及五步路线保存、内容和浏览器验收通过；合并程序恢复 34 个旧聊天、两个工作区及原画板一致。游客输码后直接进入，每枚码一次 5 元，开放邀请人可读默认材料并排除项目书；已修复既有自动默认授权与游客授权重复的问题。维护 33.43 秒，无数据迁移；首页、Reader、五份 JS/CSS 和公开游客入口复核通过。Windows 0.3.8 安装包保持，刷新云端页面即可。见[合并发布与验收记录](performance/board-chain-guest-20261027/README.md)。以下日期段落保留历史。
+
+2026-10-26 23:16:27 HKT 已发布刷新恢复修复，当前 release 为 `board-refresh-20261026`、PID 227778，schema 20。22:30 的新回复保存规则误用于旧画板回执读取，导致旧账号历史加载失败；22:45 已先恢复旧服务，本次将新内容判断与旧记录恢复分开，并保留上下文容量修复。最终程序使用含 2 个工作区、28 个聊天的实际账号副本验证书库、旧聊天、原画板及讨论，刷新重读一致；12 项保存测试通过。维护 11.71 秒，没有数据迁移，前端与 Windows 0.3.8 安装包未变。见[故障与发布记录](performance/board-refresh-fix-20261026/README.md)。以下日期段落保留历史。
+
+2026-10-26 22:30:08 HKT 已上线长对话续问的上下文容量判断与失败卡片修复，当前 release 为 `board-context-20261026`、PID 220655，schema 20。实际请求超长时先进入已有整理和压缩流程；未完成回复保留在讨论中，不再自动成为画板成果。维护 15.53 秒，切换时没有活跃任务，既有账号、书籍和正文检查一致，22:31 公网入口正常。前端资源和 Windows 0.3.8 安装包未变，云端窗口使用新服务。见[故障与发布记录](performance/board-context-fix-20261026/README.md)。以下日期段落保留历史。
+
+2026-10-26 21:44:30 HKT 已上线新画板运行反馈及原生图解教学检查修复，当前 release 为 `board-running-20261026`、PID 216245，schema 20。图解候选和实际预览进入保存前的教学检查；前端显示工作步骤，修复静止加载图标及跨画板残留完成提示。维护 16.45 秒，已有账号和资料目录保持一致；21:45:54 公网多人页面及所引用的 5 份 JS/CSS 与构建产物一致。见[故障与发布记录](performance/board-running-fix-20261026/README.md)。以下日期段落保留历史。
+
+2026-10-26 20:27:07 HKT 已完成 WB6 部署纠正与画板公式显示修复。19:27:17 HKT 将误装的本地版页面替换为多人云端构建；20:16:11 HKT 修正多人服务启动时的画板预览资源目录，维护 7.67 秒。当前 release `board-book-20261026`、schema 20、PID 211799。用用户失败轮次的原草稿在实际服务账户下重新预览，15 个原生图元能正常渲染；草稿仍有一处布局重叠，需要后续生成回合调整，不代表旧回答已重新交付。原账号、资料、画板及 Windows 0.3.8 下载保留。本次没有模型请求或数据迁移，详情见[部署纠正记录](performance/reader-cloud-fix-20261026/README.md)。以下保留历史发布记录，18:48 的文件与接口检查未覆盖本次两个故障。
+
+2026-10-26 18:44:57 HKT 已上线画板内直接提问、持续讨论、工作区相关历史检索、原生导图与原位改图。当前 release `board-book-20261026`、schema 20、验证时 PID 208500，维护 11.6 秒。真实两轮验收完成原节点改字、右移 80px 与完整蓝圈，历史原文和旧修订保留；AI Infra 8206 项预构建继续可导入。18:48:28 HKT 公网页面/资源/导入重开与 Windows 0.3.8 完整下载复核通过，专用 QA 账号已停用。见[WB6 发布与验收](performance/board-book-20261026/README.md)。以下保留历史发布记录。
+
+2026-10-26 12:57:20 HKT 已上线 Pass1、Discourse 与 BookStructure 直接加入知识画板，修复 AI Infra 既有预构建不出现在目录的问题。当前 release `board-prebuild-20261026`、schema 20、PID 174506，维护 14.8 秒。三类共 8,206 项，支持分类与全量搜索、导入重开和原文预览；既有账号、授权资料、数据根与 Windows 0.3.8 下载保留。本次无模型调用，专用验收账号已停用。见[发布与恢复记录](performance/board-prebuild-20261026/README.md)。以下保留历史发布记录。
+
+2026-10-26 11:06:09 HKT 已发布 Windows **0.3.8**，更新本机阅读资源、原生中英文菜单与语言接续，连接当天最新云端版本。官网两个下载入口完整文件比对通过；原生 7 项、前端 8 项测试通过。仅替换下载文件，release `combined-20261026`、PID 162658 保持，无服务重启或数据库修改。真实安装与 WebView2 启动验证被自动审批阻止，本机仍为 0.3.7；证据、限制与旧包恢复见[Windows 发布记录](performance/windows-release-038-20261026/README.md)。以下保留历史发布记录。
+
+2026-10-26 09:27:37 HKT 已合并上线知识画板 WB1–WB4、公式输出、Harness 缓存机制、LangSmith 观测修复，以及此前未上线的构建与结构提取改动。当前 release `combined-20261026`、schema 20、PID 162658；维护 14.48 秒，原数据根、账号、授权资料及首页与管理界面保留。发布前发现并修复 Messages 续问的计价格式兼容问题；实际模型两轮与恢复续问、费用结算、Linux 画板预览及公网桌面／手机关键流程通过。Windows 下载包仍为 0.3.7。详情见[合并发布记录](performance/combined-release-20261026/README.md)。以下保留历史发布记录。
+
+2026-10-24 20:28:55 HKT 已更新首页为阅读、视频与音乐的学习工作区，接入最新真实截图与中英场景展示。仅追加首页资源、原子替换 `home.html`，当前 release 仍为 `english-20261024`，服务 PID 34889 与 Reader 入口保持，无重启。首页独立包及公网验证见[发布与恢复记录](performance/home-workspaces-20261024/README.md)。后续从远端旧源码重建首页时须带入本次源文件与文案。
+
+2026-10-24 19:07:10 HKT 已上线网站与云端阅读器英文适配，当前 release `english-20261024`、schema 20、验证时 PID 34889。维护 12.85 秒，原数据、授权资料及今天的其他更新保留，管理后台继续中文。正式页面调用 `deepseek-v4-flash` 的三轮英文提问、中文提问与中文理解反馈，均完整输出英文；手机语言切换及刷新通过。Windows 下载包仍为 0.3.7。后台分析两项未成功及一条缺失用量记录据实保留，见[发布、真实模型与费用记录](performance/english-release-20261024/README.md)。以下保留历史发布记录。
+
+2026-10-24 08:00:15 HKT 已上线目标按资料与工作区恢复、历史演示首次读取修复，当前 release `goal-presentation-20261024`、schema 20、验证时 PID 733416。以原线上源码为基线收拢本次修改，维护 13.30 秒，账号、资料和数据根保留。线上接口及公网浏览器六组目标恢复、四次切换、历史演示首次读取与刷新恢复验证通过；测试账号已停用，模型调用 0。见[发布与验收记录](performance/goal-presentation-recovery-20261023/release-20261024/README.md)。以下保留历史发布记录。
+
+2026-10-23 17:43:11 HKT 已上线开书等待优化与加载、取消、15 秒超时重试，当前 release `book-open-20261023`、schema 20、验证时 PID 691209。去掉旧 Reader 提前加载和重复恢复请求，开书时暂停 PDF 封面；响应丢失后的创建/隐式连接重试复用现场。同条件源站浏览器三次中位数：视频/文字进入 Reader 由 17.425/19.539 秒降至 4.570/3.860 秒。维护 12.18 秒，既有账号授权、资料与数据根保留；Windows 下载仍为 0.3.7。测试、测量网络边界、备份及上线复核见[发布记录](performance/book-open-20261023/README.md)。以下保留历史发布记录。
+
 2026-10-23 13:00:51 HKT 已上线谱面事实全链路与谱面截图提问，当前 release `music-score-images-20261023`、schema 20、验证时 PID 677907。舒伯特默认发布为 `01a16721-f123-7850-a8fd-b59c4beb1a1f`，课程第 3 版；Windows 0.3.7 已公开下载并更新本机安装。维护窗口 14.05 秒，历史账号授权与原数据根保留。候选服务、公网事实与媒体、完整安装包比对通过；真实模型图片联测含两条可解析来源。见[发布、验收与已知问题](performance/music-score-images-release-20261023/README.md)。以下保留历史发布记录。
 
 2026-10-21 已上线视频按需分段播放与启动链路修复，当前 release `video-playback-20261021`、schema 20、验证时 PID 551569。派生媒体先授权再由 nginx 发送，通过 `opt-understand\x2dbook-media.mount` 将播放缓存只读挂载到 `/opt/understand-book/media`，私有数据根保持 0700。Windows 0.3.5 已发布并安装。公网 Edge 完整阅读页首帧本次实测 26.919 秒，之前 90 秒内未出画面；限速对照为 67.490 → 13.986 秒。配置、数据准确性、Windows 验收与回退见 [视频播放发布记录](performance/video-playback-release-20261021/README.md)。以下保留历史发布记录。
@@ -59,7 +91,7 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/music-score-images-20261023`；服务、沙箱 worker、Reader 与 Windows 下载目录已同步更新。Rust `--release`，schema20。旧 release 被资源链接引用，须保留。见[本次发布记录](performance/music-score-images-release-20261023/README.md)。
+- release：`/opt/understand-book/releases/registration-gift-20261027`；服务、沙箱 worker、Reader 与下载目录指向当前版本，Windows 为 0.3.8。Rust `--release`，schema20。多人服务 `UNDERSTAND_BOOK_WEB_DIST` 指向该 release 的 `packages/web/dist-multi`；原数据根保持。旧 release 与停止态备份保留用于恢复。见[本次注册赠额发布](performance/registration-gift-20261027/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
 - 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema20；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。

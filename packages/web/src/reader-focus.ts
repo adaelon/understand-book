@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { ReaderPagination, compareCursor, type PaginationLayout, type PaginationOptions, type PreparedScreen, type SourceCursor } from './reader-pagination';
 import { FocusSource } from './reader-focus-source';
 import { renderPaginationSource } from './reader-pagination-render';
@@ -69,7 +70,7 @@ export class FocusReader {
             this.metrics.imageFailures++;
             const placeholder = document.createElement('span');
             placeholder.className = 'focus-image-unavailable';
-            placeholder.textContent = img.alt ? `图片暂不可用：${img.alt}` : '图片暂不可用';
+            placeholder.textContent = img.alt ? uiText('图片暂不可用：{0}', [img.alt]) : uiText('图片暂不可用');
             img.removeAttribute('src'); img.replaceWith(placeholder);
           }
         }));

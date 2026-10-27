@@ -143,6 +143,39 @@ impl FrameBatch {
     }
 }
 
+/// Reopen only the original observed frames/crops for teaching review or assessment.
+/// Callers retain their own admission rules; this read must preserve source identity.
+pub(crate) fn read_exact_visual_targets(
+    targets: &[(&base_schema::EvidenceTarget, f64)],
+    mut read: impl FnMut(&PublishedBookRef, ReadFrames) -> Result<FrameBatch, read_tools::ToolError>,
+) -> Result<Vec<FrameBatch>, read_tools::ToolError> {
+    let mut batches: Vec<FrameBatch> = Vec::new();
+    for (target, duration_ms) in targets {
+        for member in crate::video_source::members(target) {
+            let base_schema::EvidenceTarget::Visual { publication, frames, regions } = member else { continue; };
+            for (frame, region) in frames.iter().map(|f| (f, None))
+                .chain(regions.iter().map(|r| (&r.frame, Some(r)))) {
+                if batches.iter().any(|batch| batch.publication == *publication
+                    && batch.images[0].read.frame == *frame && batch.images[0].region.as_ref() == region) {
+                    continue;
+                }
+                let request = ReadFrames {
+                    location: MediaLocation { video: frame.video.clone(), start_ms: frame.actual_pts_ms,
+                        end_ms: (frame.actual_pts_ms + 1000.0).min(*duration_ms) },
+                    sampling: vec![frame.actual_pts_ms], region: region.map(|r| r.rect_normalized),
+                };
+                let batch = read(publication, request)?;
+                if batch.publication != *publication || batch.images.len() != 1
+                    || batch.images[0].read.frame != *frame || batch.images[0].region.as_ref() != region {
+                    return Err(memory::teaching::invalid("Frozen video frame or crop could not be reacquired; original source evidence is required"));
+                }
+                batches.push(batch);
+            }
+        }
+    }
+    Ok(batches)
+}
+
 #[derive(Debug, Clone)]
 pub struct ModelVideoImage {
     pub run_id: String,

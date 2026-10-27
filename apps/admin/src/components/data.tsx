@@ -57,7 +57,7 @@ export function DataTable<T>({
     getCoreRowModel: getCoreRowModel(),
   });
   return (
-    <Table>
+    <div className="data-table min-w-0"><Table>
       <TableHeader>
         {table.getHeaderGroups().map((group) => (
           <TableRow key={group.id}>
@@ -76,7 +76,7 @@ export function DataTable<T>({
         {table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
             {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
+              <TableCell key={cell.id} data-label={typeof cell.column.columnDef.header === 'string' ? cell.column.columnDef.header : undefined}>
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </TableCell>
             ))}
@@ -93,7 +93,7 @@ export function DataTable<T>({
           </TableRow>
         )}
       </TableBody>
-    </Table>
+    </Table></div>
   );
 }
 export function Pagination({
@@ -108,7 +108,7 @@ export function Pagination({
   size?: number;
 }) {
   return (
-    <div className="flex items-center justify-end gap-3 py-3 text-sm">
+    <div className="flex flex-wrap items-center justify-end gap-3 py-3 text-sm">
       <span>
         共 {total} 条 · 第 {Math.floor(offset / size) + 1} 页
       </span>

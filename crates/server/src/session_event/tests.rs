@@ -192,6 +192,7 @@ fn session_event_question_tool_result_and_terminal_match_legacy_view() {
         arguments: r#"{"lid":"1.1"}"#.into(),
     });
     call.provider_continuation = Some(runtime::ProviderContinuation {
+                messages_content: Vec::new(),
         model: "deepseek".into(),
         reasoning_content: "private-protocol".into(),
     });

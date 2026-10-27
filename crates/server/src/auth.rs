@@ -83,6 +83,28 @@ pub(crate) fn cookie(token: &str, clear: bool) -> String {
         if clear { 0 } else { SESSION_SECONDS }
     )
 }
+// Both password sign-in and invite redemption issue the same persistent session.
+// The caller owns the transaction so a guest can never exist without its grant.
+pub(crate) fn write_session(
+    db: &rusqlite::Connection,
+    owner: &str,
+    epoch: i64,
+    previous: Option<&str>,
+    now: i64,
+) -> Result<String, ToolError> {
+    let mut bytes = [0u8; 32];
+    OsRng.try_fill_bytes(&mut bytes).map_err(|_| storage())?;
+    let token = URL_SAFE_NO_PAD.encode(bytes);
+    db.execute("DELETE FROM auth_sessions WHERE expires_at<=?", [now])
+        .map_err(|_| storage())?;
+    if let Some(previous) = previous {
+        db.execute("DELETE FROM auth_sessions WHERE token_digest=?", [digest(previous)])
+            .map_err(|_| storage())?;
+    }
+    db.execute("DELETE FROM auth_sessions WHERE token_digest IN (SELECT token_digest FROM auth_sessions WHERE owner_user_id=? ORDER BY expires_at DESC, rowid DESC LIMIT -1 OFFSET ?)", params![owner, MAX_SESSIONS - 1]).map_err(|_| storage())?;
+    db.execute("INSERT INTO auth_sessions(token_digest,owner_user_id,auth_epoch,expires_at) VALUES(?,?,?,?)", params![digest(&token), owner, epoch, now + SESSION_SECONDS]).map_err(|_| storage())?;
+    Ok(token)
+}
 pub(crate) fn token_from_cookie(value: &str) -> Result<&str, ToolError> {
     let mut tokens = value
         .split(';')
@@ -102,11 +124,11 @@ pub(crate) fn token_from_cookie(value: &str) -> Result<&str, ToolError> {
 }
 
 pub(crate) fn encode_password(password: &str) -> Result<String, ToolError> {
-    if !(12..=1024).contains(&password.len()) {
+    if !(8..=64).contains(&password.chars().count()) {
         return Err(error(
             "PASSWORD_INVALID",
             "validation",
-            "Use a password of 12 to 1024 bytes",
+            "Use a password of 8 to 64 characters",
         ));
     }
     let salt = SaltString::generate(&mut OsRng);
@@ -297,26 +319,13 @@ impl AuthService {
         Argon2::default()
             .verify_password(password.as_bytes(), &hash_parsed)
             .map_err(|_| unauthenticated())?;
-        let mut bytes = [0u8; 32];
-        OsRng.try_fill_bytes(&mut bytes).map_err(|_| storage())?;
-        let token = URL_SAFE_NO_PAD.encode(bytes);
         let mut control = self.control.lock().unwrap();
         let tx = control.connection.transaction().map_err(|_| storage())?;
         let current: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM users WHERE user_id=? AND disabled=0 AND auth_epoch=? AND password_hash=?)", params![owner, epoch, hash], |r| r.get(0)).map_err(|_| storage())?;
         if !current {
             return Err(unauthenticated());
         }
-        tx.execute("DELETE FROM auth_sessions WHERE expires_at<=?", [now])
-            .map_err(|_| storage())?;
-        if let Some(previous) = previous {
-            tx.execute(
-                "DELETE FROM auth_sessions WHERE token_digest=?",
-                [digest(previous)],
-            )
-            .map_err(|_| storage())?;
-        }
-        tx.execute("DELETE FROM auth_sessions WHERE token_digest IN (SELECT token_digest FROM auth_sessions WHERE owner_user_id=? ORDER BY expires_at DESC, rowid DESC LIMIT -1 OFFSET ?)", params![owner, MAX_SESSIONS - 1]).map_err(|_| storage())?;
-        tx.execute("INSERT INTO auth_sessions(token_digest,owner_user_id,auth_epoch,expires_at) VALUES(?,?,?,?)", params![digest(&token), owner, epoch, now + SESSION_SECONDS]).map_err(|_| storage())?;
+        let token = write_session(&tx, owner, epoch, previous, now)?;
         tx.commit().map_err(|_| storage())?;
         Ok(token)
     }
@@ -388,6 +397,14 @@ impl AuthService {
             .optional()
             .map_err(|_| storage())
     }
+    pub(crate) fn is_guest(&self, principal: &Principal, now: i64) -> Result<bool, ToolError> {
+        let control = self.control.lock().unwrap();
+        principal.validate_in(&control.connection, now)?;
+        control.connection.query_row(
+            "SELECT password_hash IS NULL AND EXISTS(SELECT 1 FROM beta_invites WHERE used_by=users.user_id) FROM users WHERE user_id=?",
+            [principal.user_id()], |row| row.get(0),
+        ).map_err(|_| storage())
+    }
     pub fn validate(&self, principal: &Principal, now: i64) -> Result<(), ToolError> {
         let valid: bool = self.control.lock().unwrap().connection.query_row(
             "SELECT EXISTS(SELECT 1 FROM auth_sessions s JOIN users u ON u.user_id=s.owner_user_id WHERE s.token_digest=? AND s.owner_user_id=? AND s.auth_epoch=? AND s.expires_at>? AND u.disabled=0 AND u.auth_epoch=s.auth_epoch)", params![principal.auth_session_id, principal.user_id, principal.auth_epoch, now], |r| r.get(0)
@@ -436,6 +453,36 @@ impl AuthService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn new_passwords_count_characters_without_composition_rules() {
+        for password in ["a".repeat(7), "a".repeat(65), "中文密码".into(), "📚".repeat(65)] {
+            assert_eq!(encode_password(&password).unwrap_err().error_code, "PASSWORD_INVALID");
+        }
+        for password in ["a".repeat(8), "a".repeat(64), "中文密码无需算字节".into(), "📚".repeat(64)] {
+            let encoded = encode_password(&password).unwrap();
+            let hash = PasswordHash::new(&encoded).unwrap();
+            assert!(Argon2::default().verify_password(password.as_bytes(), &hash).is_ok());
+        }
+    }
+
+    #[test]
+    fn existing_long_passwords_can_still_sign_in_and_authorize_a_change() {
+        let root = tempfile::tempdir().unwrap();
+        let writer = crate::control_store::ServiceWriter::acquire(root.path()).unwrap();
+        let mut store = ControlStore::open(writer.clone()).unwrap();
+        // Existing credentials were allowed up to 1024 bytes, so read paths keep that limit.
+        let password = "a".repeat(80);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash = Argon2::default().hash_password(password.as_bytes(), &salt).unwrap().to_string();
+        let tx = store.connection.transaction().unwrap();
+        write_password(&tx, "reader", &hash, true).unwrap();
+        tx.commit().unwrap();
+        let service = AuthService::new(ControlStore::open(writer).unwrap());
+        let token = service.login("reader", &password, None, 100).unwrap();
+        let principal = service.authenticate(&token, 101).unwrap();
+        assert!(service.verify_current_password(&principal, &password, 101).is_ok());
+    }
+
     #[test]
     fn reading_login_survives_an_overnight_break_and_expires_after_thirty_days() {
         let root = tempfile::tempdir().unwrap();

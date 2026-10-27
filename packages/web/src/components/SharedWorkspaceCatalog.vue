@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { onBeforeUnmount, ref, watch } from 'vue';
 import { ApiError } from '../api';
 import { network, type LearningWorkspace } from '../network-context';
@@ -17,11 +19,11 @@ const sprintEnabled = ref(false), examDate = ref(''), syllabus = ref(''), minute
 const entryMode = ref<'diagnostic' | 'question'>('diagnostic'), question = ref('');
 let request = 0, operationId = '', submittedGoal = '';
 let pendingRead: AbortController | null = null;
-const failureMessage = (failure: unknown) => failure instanceof Error ? failure.message : '共享工作区暂时无法读取';
+const failureMessage = (failure: unknown) => failure instanceof Error ? failure.message : uiText('共享工作区暂时无法读取');
 async function readCatalog<T>(read: (signal: AbortSignal) => Promise<T>): Promise<T> {
   pendingRead?.abort();
   const controller = new AbortController(); pendingRead = controller;
-  const timeout = setTimeout(() => controller.abort(new Error('共享工作区读取超时，请重试。')), 15_000);
+  const timeout = setTimeout(() => controller.abort(new Error(uiText('共享工作区读取超时，请重试。'))), 15_000);
   try { return await read(controller.signal); }
   finally { clearTimeout(timeout); if (pendingRead === controller) pendingRead = null; }
 }
@@ -60,33 +62,33 @@ onBeforeUnmount(() => { request++; pendingRead?.abort(); });
 </script>
 
 <template>
-  <section class="shared-catalog" aria-label="共享预构建工作区" :aria-busy="loading || busy">
-    <div class="heading"><div><h2>课程工作区</h2><p>教材、课程与复习路线已提前准备，按自己的目标开始。公共资料不占个人上传空间。</p></div><button :disabled="loading || busy" @click="load(page?.offset ?? 0)">刷新共享工作区</button></div>
-    <p v-if="error" role="alert">{{ error }}</p><p v-if="loading" role="status">正在读取共享工作区…</p>
+  <section class="shared-catalog" :aria-label="uiText('共享预构建工作区')" :aria-busy="loading || busy">
+    <div class="heading"><div><h2>{{ uiText('课程工作区') }}</h2><p>{{ uiText('教材、课程与复习路线已提前准备，按自己的目标开始。公共资料不占个人上传空间。') }}</p></div><button :disabled="loading || busy" @click="load(page?.offset ?? 0)">{{ uiText('刷新共享工作区') }}</button></div>
+    <p v-if="error" role="alert">{{ error }}</p><p v-if="loading" role="status">{{ uiText('正在读取共享工作区…') }}</p>
     <template v-if="selected">
-      <article class="shared-selection" aria-label="共享工作区详情">
-        <div class="heading"><h3>{{ selected.manifest.name }}</h3><button :disabled="busy" @click="selected = null">返回共享列表</button></div>
+      <article class="shared-selection" :aria-label="uiText('共享工作区详情')">
+        <div class="heading"><h3>{{ selected.manifest.name }}</h3><button :disabled="busy" @click="selected = null">{{ uiText('返回共享列表') }}</button></div>
         <SharedWorkspaceManifest :release="selected" :books="books" />
-        <p v-if="selected.archived" role="status">此共享工作区已归档，暂不接受新的使用。</p>
+        <p v-if="selected.archived" role="status">{{ uiText('此共享工作区已归档，暂不接受新的使用。') }}</p>
         <form class="shared-goal" @submit.prevent="start">
-          <label>确认你的学习目标<textarea v-model="goal" required :disabled="busy || selected.archived" /></label>
-          <label><input v-model="sprintEnabled" type="checkbox" :disabled="busy" />用于考试冲刺</label>
+          <label>{{ uiText('确认你的学习目标') }}<textarea v-model="goal" required :disabled="busy || selected.archived" /></label>
+          <label><input v-model="sprintEnabled" type="checkbox" :disabled="busy" />{{ uiText('用于考试冲刺') }}</label>
           <template v-if="sprintEnabled">
-            <label>考试日期<input v-model="examDate" type="date" required :disabled="busy" /></label>
-            <label>已知考试范围<textarea v-model="syllabus" :disabled="busy" placeholder="老师划定的章节、题型或考纲，暂无可留空。" /></label>
-            <label>每天可用分钟数（选填）<input v-model.number="minutes" type="number" min="1" max="1440" :disabled="busy" /></label>
-            <fieldset :disabled="busy"><legend>从哪里开始</legend><label><input v-model="entryMode" type="radio" value="diagnostic" />先做短诊断</label><label><input v-model="entryMode" type="radio" value="question" />直接提问，跳过诊断</label></fieldset>
-            <label v-if="entryMode === 'question'">第一道问题（选填）<textarea v-model="question" :disabled="busy" placeholder="可以现在输入，或进入阅读后选中原文提问。" /></label>
+            <label>{{ uiText('考试日期') }}<input v-model="examDate" type="date" required :disabled="busy" /></label>
+            <label>{{ uiText('已知考试范围') }}<textarea v-model="syllabus" :disabled="busy" :placeholder="uiText('老师划定的章节、题型或考纲，暂无可留空。')" /></label>
+            <label>{{ uiText('每天可用分钟数（选填）') }}<input v-model.number="minutes" type="number" min="1" max="1440" :disabled="busy" /></label>
+            <fieldset :disabled="busy"><legend>{{ uiText('从哪里开始') }}</legend><label><input v-model="entryMode" type="radio" value="diagnostic" />{{ uiText('先做短诊断') }}</label><label><input v-model="entryMode" type="radio" value="question" />{{ uiText('直接提问，跳过诊断') }}</label></fieldset>
+            <label v-if="entryMode === 'question'">{{ uiText('第一道问题（选填）') }}<textarea v-model="question" :disabled="busy" :placeholder="uiText('可以现在输入，或进入阅读后选中原文提问。')" /></label>
           </template>
-          <p>可以接受上面的目标，也可以改成自己的计划。开始后会建立你的个人工作区，学习记录分别保存。</p>
-          <button :disabled="busy || !goal.trim() || selected.archived || selected.availability.status !== 'ready'">{{ busy ? '正在建立个人工作区…' : '确认目标并开始学习' }}</button>
+          <p>{{ uiText('可以接受上面的目标，也可以改成自己的计划。开始后会建立你的个人工作区，学习记录分别保存。') }}</p>
+          <button :disabled="busy || !goal.trim() || selected.archived || selected.availability.status !== 'ready'">{{ busy ? uiText('正在建立个人工作区…') : uiText('确认目标并开始学习') }}</button>
         </form>
       </article>
     </template>
     <template v-else-if="page && !loading">
-      <div class="shared-list"><article v-for="release in page.items" :key="`${release.release_id}:${release.version}`" class="shared-card"><div class="shared-card-covers" aria-hidden="true"><div v-for="material in release.manifest.materials.slice(0, 3)" :key="sharedBookKey(material.published_book_ref)" :class="{ 'is-video': materialBook(material.published_book_ref)?.media_kind === 'video' }"><MaterialCover :title="sharedBookLabel(material.published_book_ref, books, release.manifest.materials)" :cover="materialBook(material.published_book_ref)?.cover" :video="materialBook(material.published_book_ref)?.media_kind === 'video'" :music="materialBook(material.published_book_ref)?.media_kind === 'music'" compact /></div></div><div><h3>{{ release.manifest.name }}</h3><small>{{ release.manifest.publisher }} · 第 {{ release.version }} 版</small></div><p>{{ release.manifest.public_goal }}</p><p class="status">{{ release.archived ? '已归档' : release.availability.status === 'ready' ? '资料已就绪' : '尚未完整就绪' }} · {{ release.manifest.materials.length }} 份资料</p><button :disabled="busy" @click="select(release)">查看目标与路线</button></article></div>
-      <p v-if="!page.items.length">暂无可用的共享工作区。</p>
-      <nav v-if="page.total > page.limit" aria-label="共享工作区分页"><button :disabled="busy || !page.offset" @click="load(Math.max(0, page.offset - page.limit))">上一页共享工作区</button><span>{{ page.offset + 1 }}–{{ page.offset + page.items.length }} / {{ page.total }}</span><button :disabled="busy || page.offset + page.limit >= page.total" @click="load(page.offset + page.limit)">下一页共享工作区</button></nav>
+      <div class="shared-list"><article v-for="release in page.items" :key="`${release.release_id}:${release.version}`" class="shared-card"><div class="shared-card-covers" aria-hidden="true"><div v-for="material in release.manifest.materials.slice(0, 3)" :key="sharedBookKey(material.published_book_ref)" :class="{ 'is-video': materialBook(material.published_book_ref)?.media_kind === 'video' }"><MaterialCover :title="sharedBookLabel(material.published_book_ref, books, release.manifest.materials)" :cover="materialBook(material.published_book_ref)?.cover" :video="materialBook(material.published_book_ref)?.media_kind === 'video'" :music="materialBook(material.published_book_ref)?.media_kind === 'music'" compact /></div></div><div><h3>{{ release.manifest.name }}</h3><small>{{ release.manifest.publisher }} {{ uiText('· 第') }} {{ release.version }} {{ uiText('版') }}</small></div><p>{{ release.manifest.public_goal }}</p><p class="status">{{ release.archived ? uiText('已归档') : release.availability.status === 'ready' ? uiText('资料已就绪') : uiText('尚未完整就绪') }} · {{ release.manifest.materials.length }} {{ uiText('份资料') }}</p><button :disabled="busy" @click="select(release)">{{ uiText('查看目标与路线') }}</button></article></div>
+      <p v-if="!page.items.length">{{ uiText('暂无可用的共享工作区。') }}</p>
+      <nav v-if="page.total > page.limit" :aria-label="uiText('共享工作区分页')"><button :disabled="busy || !page.offset" @click="load(Math.max(0, page.offset - page.limit))">{{ uiText('上一页共享工作区') }}</button><span>{{ page.offset + 1 }}–{{ page.offset + page.items.length }} / {{ page.total }}</span><button :disabled="busy || page.offset + page.limit >= page.total" @click="load(page.offset + page.limit)">{{ uiText('下一页共享工作区') }}</button></nav>
     </template>
   </section>
 </template>

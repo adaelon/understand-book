@@ -17,6 +17,28 @@ const md = new MarkdownIt({
 });
 md.use(katexPlugin, { throwOnError: false });
 
+// Answers also use TeX's \(...\) and \[...\] delimiters. Parse these before
+// Markdown's backslash escape rule; code spans and fenced blocks stay literal.
+md.inline.ruler.before("escape", "tex_bracket_math", (state, silent) => {
+  const open = state.src.slice(state.pos, state.pos + 2);
+  if (open !== "\\(" && open !== "\\[") return false;
+  const close = state.src.indexOf(open === "\\(" ? "\\)" : "\\]", state.pos + 2);
+  if (close < 0 || close + 2 > state.posMax) return false;
+  const content = state.src.slice(state.pos + 2, close).trim();
+  if (!content) return false;
+  if (!silent) {
+    const token = state.push("tex_bracket_math", "math", 0);
+    token.content = content;
+    token.markup = open;
+  }
+  state.pos = close + 2;
+  return true;
+});
+md.renderer.rules.tex_bracket_math = (tokens, index) => katex.renderToString(tokens[index].content, {
+  displayMode: tokens[index].markup === "\\[",
+  throwOnError: false,
+});
+
 const SUP_TOKEN_PREFIX = "@@UB_INLINE_SUP_";
 const SUP_TOKEN_SUFFIX = "@@";
 

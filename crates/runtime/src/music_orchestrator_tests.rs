@@ -86,7 +86,7 @@ fn music_available_answer_keeps_actual_material_and_applied_playback() {
             turn_calls(vec![call("source","source.present",&serde_json::json!({"music_target":target}).to_string()),call("discover","tool.search",r#"{"task":"music.interact 播放 伴听","required_capabilities":["presentation_interaction"],"scope":"passage","operation":"compare","effect_mode":"read_only","max_results":2}"#)]),
             turn_calls(vec![call("observe","music.interact",&observe.to_string())]),turn_calls(vec![call("loop","music.interact",&looping.to_string())]),turn_calls(vec![call("play","music.interact",&act.to_string())]),turn_final("Listen to the returning theme.")];
         let adapter=RequestPlanRecordingAdapter::new(turns,vec![]);let snapshot=default_profile_snapshot(&b,&port.store,"t0");
-        let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        let mut context=RunContext::new(new_session(),OuterConfig { max_turns:Some(8),..Default::default() },adapter.model_runtime_profile());
         let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,&mut EphemeralCompactionCheckpointSink::default(),"Play this passage and explain the returning theme","t0").unwrap();
         assert!(!outcome.incomplete,"Actual observe/loop/play must not be mistaken for stalled tool batches");
         assert_eq!(port.calls,vec!["read","interact","interact","interact"]);
@@ -100,11 +100,22 @@ fn music_available_answer_keeps_actual_material_and_applied_playback() {
         let plans=adapter.seen_plans.borrow();
         assert!(plans[0].tools.iter().any(|tool|tool.name=="music.read"));
         assert!(plans[0].tools.iter().any(|tool|tool.name=="music.interact"),"Current music playback is an immediately available capability");
-        for plan in plans.iter() {
-            assert_eq!(plan.ordered_messages().iter().filter(|message| message.content.as_deref()
-                .is_some_and(|text| text.starts_with("runtime_state_snapshot.v1\n"))).count(),1,
-                "Superseded complete runtime snapshots must not accumulate across music samples");
+        for pair in plans.windows(2) {
+            assert!(!ActiveContextBudget::from_plan(&pair[1]).over_high_watermark,
+                "This regression covers ordinary music steps below context pressure");
+            let prior = crate::native_chat_request_projection("fixture", &pair[0]).0;
+            let current = crate::native_chat_request_projection("fixture", &pair[1]).0;
+            assert!(current["messages"].as_array().unwrap().starts_with(prior["messages"].as_array().unwrap()),
+                "A playback or teaching state update must append after the entire prior sent prefix");
         }
+        let latest_messages=plans.last().unwrap().ordered_messages();
+        let snapshots=latest_messages.iter().filter_map(|message|message.content.as_deref())
+            .filter(|text|text.starts_with("runtime_state_snapshot.v1\n")).collect::<Vec<_>>();
+        assert!(snapshots.len()>1,"Earlier decisions stay available until actual pressure");
+        let latest=snapshots.last().unwrap();
+        assert!(latest.contains("The latest active_keys manifest replaces earlier selections"));
+        assert!(latest.contains("Tool-loop sampling 6 of 8."),"The newest budget body remains authoritative");
+        assert!(snapshots[0].contains("Tool-loop sampling 1 of 8."),"Prior state is retained as history, not reapplied");
         let last=serde_json::to_string(&plans.last().unwrap().ordered_messages()).unwrap();
         assert!(last.contains("actual-state-1"));assert!(last.contains("frozen-question"));
         assert!(last.contains("prepared_music_material"));

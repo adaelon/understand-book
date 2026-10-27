@@ -32,6 +32,7 @@ pub enum ToolHandlerId {
     TutorStep,
     SourcePresent,
     PresentationAuthor,
+    BoardAuthor,
     PresentationInteract,
     VideoReadFrames,
     VideoSearch,
@@ -58,7 +59,7 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 51] = [
+    pub const ALL: [ToolHandlerId; 52] = [
         ToolHandlerId::LibraryList,
         ToolHandlerId::LibrarySearch,
         ToolHandlerId::LibraryRead,
@@ -80,6 +81,7 @@ impl ToolHandlerId {
         ToolHandlerId::Artifact(ArtifactToolId::Read),
         ToolHandlerId::SourcePresent,
         ToolHandlerId::PresentationAuthor,
+        ToolHandlerId::BoardAuthor,
         ToolHandlerId::PresentationInteract,
         ToolHandlerId::VideoReadFrames,
         ToolHandlerId::VideoSearch,
@@ -132,6 +134,7 @@ impl ToolHandlerId {
             ToolHandlerId::TutorStep => "tutor.step",
             ToolHandlerId::PresentationInteract => "presentation.interact",
             ToolHandlerId::PresentationAuthor => "presentation.author",
+            ToolHandlerId::BoardAuthor => "board.author",
             ToolHandlerId::VideoReadFrames => "video.read_frames",
             ToolHandlerId::VideoReviewAudio => "video.review_audio",
             ToolHandlerId::VideoSearch => "video.search",
@@ -246,6 +249,7 @@ pub enum ToolCapability {
     ArtifactRead,
     SourcePresentation,
     PresentationAuthoring,
+    BoardAuthoring,
     PresentationInteraction,
     ProfileRead,
     ProfileTrace,
@@ -259,7 +263,7 @@ pub enum ToolCapability {
 }
 
 impl ToolCapability {
-    pub const ALL: [ToolCapability; 21] = [
+    pub const ALL: [ToolCapability; 22] = [
         Self::Discovery,
         Self::ProgressReporting,
         Self::SourceRead,
@@ -271,6 +275,7 @@ impl ToolCapability {
         Self::ArtifactRead,
         Self::SourcePresentation,
         Self::PresentationAuthoring,
+        Self::BoardAuthoring,
         Self::PresentationInteraction,
         Self::ProfileRead,
         Self::ProfileTrace,
@@ -296,6 +301,7 @@ impl ToolCapability {
             Self::ArtifactRead => "artifact_read",
             Self::PresentationInteraction => "presentation_interaction",
             Self::PresentationAuthoring => "presentation_authoring",
+            Self::BoardAuthoring => "board_authoring",
             Self::SourcePresentation => "source_presentation",
             Self::ProfileRead => "profile_read",
             Self::ProfileTrace => "profile_trace",
@@ -582,6 +588,7 @@ impl ToolRegistration {
             "source.present" => "整理来源",
             "presentation.interact" => "操作当前演示",
             "presentation.author" => "制作与预览内容",
+            "board.author" => "制作与预览板书",
             "video.review_audio" => "复核短原音频",
             "video.read_frames" => "读取视频画面",
             "video.search" => "检索视频画面",
@@ -677,6 +684,11 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    pub(crate) fn without_board_authoring(mut self) -> Self {
+        self.registrations.retain(|r| r.handler != ToolHandlerId::BoardAuthor);
+        self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
+        self
+    }
     pub(crate) fn without_web(mut self) -> Self {
         self.registrations.retain(|r| !matches!(r.handler, ToolHandlerId::WebSearch | ToolHandlerId::WebFetch));
         self.by_name = self.registrations.iter().enumerate().map(|(i,r)|(r.spec.name.clone(),i)).collect();
@@ -954,7 +966,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (
+        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::BoardAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::EvidenceProjection,
             Parallelism::SequentialOnly,
@@ -1106,6 +1118,10 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         Handler::PresentationAuthor => migration(
             vec![Legacy::SourcePresentation],
             vec![Capability::PresentationAuthoring],
+        ),
+        Handler::BoardAuthor => migration(
+            vec![Legacy::SourcePresentation],
+            vec![Capability::BoardAuthoring],
         ),
         Handler::SourcePresent => migration(
             vec![Legacy::SourcePresentation],
@@ -1426,7 +1442,7 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             vec![Operation::ReadSource, Operation::Explain, Operation::Compare, Operation::MutateReader],
             Effect::PresentationWrite, vec![Precondition::BookAvailable, Precondition::ReaderWritePermission], all_profiles(), Cost::Low),
         Handler::PresentationInteract => shape(vec![Scope::Passage, Scope::Section, Scope::Document], vec![Operation::Explain, Operation::Compare], Effect::PresentationWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
-        Handler::PresentationAuthor => shape(
+        Handler::PresentationAuthor | Handler::BoardAuthor => shape(
             vec![
                 Scope::Selection,
                 Scope::Passage,
@@ -1680,6 +1696,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::MusicInteract => ("Observe and control the current music player: play, pause, seek, loop, focus, speed or labelled synthesis. 音乐 播放 暂停 循环 声部 高亮", "Observe before acting; only an applied browser receipt confirms completion. Playback is not proof of learner understanding or model hearing."),
         Handler::PresentationInteract => ("Observe and operate a declared action in the currently open presentation, then read its saved result.", "Do not use to modify content or claim learner understanding; use only the returned actions and exact observation receipt."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
+        Handler::BoardAuthor => ("Search relevant original workspace sources and conversations, collect exact snapshots, build and edit native mind maps on the same board, and explain through mappings and reveal/focus routes; preview before committing.", "Available for an accepted whole-board request or exact item focus, including blank boards. Keep retained answers and learner quotations immutable; update native drawings and retained layout explicitly. Never invent history, understanding or mastery; inspect the real candidate before publishing."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
             "Pass verbatim observed quote or a media target copied from successful observations; the tool resolves its location. Do not use source presentation as evidence retrieval.",
@@ -2244,6 +2261,11 @@ mod tests {
                 "presentation.author",
                 &["source_presentation"],
                 &["presentation_authoring"],
+            ),
+            (
+                "board.author",
+                &["source_presentation"],
+                &["board_authoring"],
             ),
             (
                 "presentation.interact",

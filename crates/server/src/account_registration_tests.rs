@@ -14,7 +14,7 @@ use std::{
 use tiny_http::{Response, Server};
 
 const ORIGIN: &str = "https://reader.example:8443";
-const PASSWORD: &str = "fixture-only-password";
+const PASSWORD: &str = "reader12";
 pub(crate) struct Mailbox {
     pub(crate) endpoint: String,
     pub(crate) received: mpsc::Receiver<Value>,
@@ -220,6 +220,8 @@ fn inv4_real_host_registration_receipt_and_account_defaults() {
     let (request, code) = f.start(" New+Tag@Example.com ", &invite);
     assert_eq!(request["resend_after"], 60);
     assert_eq!(f.count("users"), 1);
+    assert_eq!(f.count("allowance_periods"), 0);
+    assert_eq!(f.count("allowance_adjustments"), 0);
     assert_eq!(f.state(&invite), "unused");
     let (status, receipt) = f.finish(&request, &code);
     assert_eq!(status, 200, "{receipt}");
@@ -243,11 +245,25 @@ fn inv4_real_host_registration_receipt_and_account_defaults() {
     for table in [
         "auth_sessions",
         "book_grants",
-        "allowance_periods",
-        "allowance_adjustments",
+        "manual_receipts",
     ] {
         assert_eq!(f.count(table), 0);
     }
+    assert_eq!(f.count("allowance_periods"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 1);
+    let period_id: String = f.control.connection.query_row(
+        "SELECT period_id FROM allowance_periods WHERE user_id=?", [&owner], |r| r.get(0),
+    ).unwrap();
+    let allowance = crate::allowance_admin::period(&f.control.connection, &owner, &period_id).unwrap();
+    assert_eq!(allowance["starts_at"], verified);
+    assert_eq!(allowance["expires_at"].as_i64().unwrap() - verified, 30 * 86400);
+    assert_eq!(allowance["balance"]["granted_micro_cny"], 10_000_000);
+    assert_eq!(allowance["balance"]["available_micro_cny"], 10_000_000);
+    assert_eq!(allowance["balance"]["percentages"]["available"]["value"], "100");
+    let operation = format!("registration-gift-{}", invite["invite_id"].as_str().unwrap());
+    let recorded = f.access.admin.operation("admin", &operation).unwrap();
+    assert_eq!(recorded["allowance_period"], allowance);
+    assert_eq!(recorded["user_id"], owner);
     let saved = super::request(
         &f.control.connection,
         request["request_id"].as_str().unwrap(),
@@ -268,6 +284,9 @@ fn inv4_real_host_registration_receipt_and_account_defaults() {
             .unwrap(),
         receipt
     );
+    assert_eq!(f.count("allowance_periods"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 1);
+    assert_eq!(crate::allowance_admin::period(&f.control.connection, &owner, &period_id).unwrap(), allowance);
     // The generated stable identity remains usable alongside INV5 email login.
     assert!(f
         .access
@@ -544,12 +563,21 @@ fn inv4_write_failures_roll_back_every_completion_stage() {
     for event in [
         "BEFORE INSERT ON users",
         "BEFORE UPDATE OF email ON users",
+        "BEFORE INSERT ON allowance_periods",
+        "BEFORE INSERT ON allowance_bases",
+        "BEFORE INSERT ON allowance_period_bases",
+        "BEFORE INSERT ON admin_operations",
+        "BEFORE INSERT ON allowance_adjustments",
+        "BEFORE UPDATE ON admin_operations",
         "BEFORE UPDATE ON beta_invites",
         "BEFORE UPDATE OF completed_user_id ON registration_requests",
     ] {
         f.control.connection.execute_batch(&format!("CREATE TRIGGER fail_registration {event} BEGIN SELECT RAISE(ABORT,'fixture'); END;")).unwrap();
         assert_eq!(f.finish(&pending, &code).0, 503);
         assert_eq!(f.count("users"), 1);
+        for table in ["allowance_periods", "allowance_bases", "allowance_period_bases", "allowance_adjustments", "admin_operations"] {
+            assert_eq!(f.count(table), 0, "{event}: {table} must roll back");
+        }
         assert_eq!(f.state(&invite), "unused");
         let saved = request(
             &f.control.connection,
@@ -567,6 +595,8 @@ fn inv4_write_failures_roll_back_every_completion_stage() {
             .unwrap();
     }
     assert_eq!(f.finish(&pending, &code).0, 200);
+    assert_eq!(f.count("allowance_periods"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 1);
 }
 
 #[test]

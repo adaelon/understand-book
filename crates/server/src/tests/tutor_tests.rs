@@ -1,5 +1,78 @@
 use super::*;
 
+pub(super) fn video_tutor_foundation(root: &Path) -> Book {
+    let book = super::video_draft_tests::fixture(root);
+    let mut manifest: Value = serde_json::from_slice(&std::fs::read(root.join("video_source_manifest.json")).unwrap()).unwrap();
+    let map: Value = serde_json::from_slice(&std::fs::read(root.join("transcript_map.json")).unwrap()).unwrap();
+    let mut coverage = manifest["coverage"][0].clone();
+    coverage["capability"] = json!("discourse");
+    manifest["coverage"].as_array_mut().unwrap().push(coverage.clone());
+    std::fs::write(root.join("video_source_manifest.json"), manifest.to_string()).unwrap();
+    let file = "video-enrichments/structure/discourse.json";
+    std::fs::create_dir_all(root.join("video-enrichments/structure")).unwrap();
+    std::fs::write(root.join(file), json!({"version":"video_discourse.v1","material":manifest["material"],
+        "input_publication":{"book_id":book.base.book_id,"publication_id":"original"},
+        "items":[{"id":"discourse:frame","mode":"descriptive","local_function":"description","local_summary":"A frame",
+            "vu_ids":[],"evidence":[{"support_role":"original explanation","target":{"kind":"text",
+                "publication":{"book_id":book.base.book_id,"publication_id":"original"},
+                "transcript":manifest["material"]["transcript"],"text_range":map["segments"][0]["text_range"]}}],"relations":[]}],
+        "visual_units":[],"frames":[]}).to_string()).unwrap();
+    std::fs::write(root.join("video_enrichments.json"), json!({"version":"video_enrichments.v1","material":manifest["material"],
+        "batches":[{"batch_id":"structure","coverage":[coverage],"files":[file]}]}).to_string()).unwrap();
+    Book::load(root.to_str().unwrap()).unwrap()
+}
+
+#[test]
+fn tutor_video_admission_uses_native_structure_and_rechecks_missing_source_products() {
+    let root = tempfile::tempdir().unwrap();
+    let book = video_tutor_foundation(root.path());
+    let read = || crate::tutor_api::tutor_source_readiness(&book, root.path());
+    assert_eq!(read()["status"], "ready", "{}", read());
+    assert!(!root.path().join("book_structure.json").exists());
+    assert!(!root.path().join("teaching_readiness.json").exists());
+    std::fs::write(root.path().join("publication.json"), json!({"source_fingerprint":book.source_fingerprint(),
+        "tutor_readiness":{"source_id":book.base.book_id,"source_revision":book.source_fingerprint(),
+            "status":"preparing","reason":"old book-only admission","teaching_assets":{"status":"preparing"}}}).to_string()).unwrap();
+    assert_eq!(read()["status"], "ready", "saved admission must not override native source readiness");
+    for (file, stage) in [("media/original.mp4", "video_transcript"), ("transcript_map.json", "video_transcript"),
+        ("raw.json", "video_transcript"), ("video-enrichments/structure/discourse.json", "video_structure")] {
+        let path = root.path().join(file);
+        let saved = path.with_extension("held");
+        std::fs::rename(&path, &saved).unwrap();
+        assert_eq!(read()["blocked_stage"], stage, "{file}: {}", read());
+        std::fs::rename(saved, path).unwrap();
+    }
+    let path = root.path().join("video_source_manifest.json");
+    let original: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let mut partial = original.clone();
+    partial["coverage"][1]["accepted"][0]["end_ms"] = json!(1000);
+    std::fs::write(&path, partial.to_string()).unwrap();
+    assert_eq!(read()["blocked_stage"], "video_structure");
+    std::fs::write(path, original.to_string()).unwrap();
+    let catalog_path = root.path().join("video_enrichments.json");
+    let mut catalog: Value = serde_json::from_slice(&std::fs::read(&catalog_path).unwrap()).unwrap();
+    catalog["material"]["book_id"] = json!("another-video");
+    std::fs::write(catalog_path, catalog.to_string()).unwrap();
+    assert_eq!(read()["blocked_stage"], "video_structure");
+}
+
+#[test]
+fn tutor_music_admission_remains_bound_to_readable_music_and_structure() {
+    let root = tempfile::tempdir().unwrap();
+    let manifest = super::music_publication_tests::fixture(root.path());
+    let book = Book::load(root.path().to_str().unwrap()).unwrap();
+    let read = || crate::tutor_api::tutor_source_readiness(&book, root.path());
+    assert_eq!(read()["status"], "ready");
+    let score = root.path().join("music/source.musicxml");
+    std::fs::rename(&score, root.path().join("score-held.musicxml")).unwrap();
+    assert_eq!(read()["blocked_stage"], "music_prebuild");
+    std::fs::rename(root.path().join("score-held.musicxml"), score).unwrap();
+    let mut incomplete = manifest;
+    incomplete["structure"] = json!([]);
+    std::fs::write(root.path().join(crate::music_media::MANIFEST), incomplete.to_string()).unwrap();
+    assert_eq!(read()["blocked_stage"], "music_prebuild");
+}
+
 #[test]
 fn tutor_existing_artifacts_work_without_build_or_publication_receipts() {
     let root = tempfile::tempdir().unwrap();

@@ -67,13 +67,12 @@ pub fn execute(
         crate::Message::system(&instructions),
         crate::Message::user(&input),
     ];
-    let output_token_limit = 16_384;
-    let mut profile = adapter.model_runtime_profile();
+    let profile = adapter.model_runtime_profile();
+    let output_token_limit = profile.output_reserve_tokens;
     let reasoning_effort = profile
         .matched_model
         .starts_with("deepseek-")
         .then(|| "low".into());
-    profile.output_reserve_tokens = output_token_limit;
     let request_plan = crate::AgentRequestPlan::for_ad_hoc(profile, &messages, &[]);
     if !request_plan.active_context.fits {
         return (
@@ -95,6 +94,7 @@ pub fn execute(
     let _purpose = crate::run_events::purpose(adapter, "tutor_presentation_plan");
     let result = adapter.complete_structured_observed(
         crate::CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             output_token_limit: Some(output_token_limit),
             reasoning_effort,
@@ -333,7 +333,7 @@ mod tests {
             vec!["tutor_presentation_plan", "resident"]
         );
         let calls = adapter.calls.borrow();
-        assert_eq!(calls[0].output_token_limit, Some(16_384));
+        assert_eq!(calls[0].output_token_limit, Some(8_000));
         assert_eq!(calls[0].reasoning_effort, None);
         assert!(calls[0].images.is_empty());
     }
@@ -345,7 +345,7 @@ mod tests {
             adapter.model = model;
             assert!(execute(&adapter, json!({})).0.is_ok());
             let calls = adapter.calls.borrow();
-            assert_eq!(calls[0].output_token_limit, Some(16_384));
+            assert_eq!(calls[0].output_token_limit, Some(8_000));
             assert_eq!(
                 calls[0].reasoning_effort.as_deref(),
                 model.starts_with("deepseek-").then_some("low")

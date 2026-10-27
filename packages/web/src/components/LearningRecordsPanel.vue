@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { learningRecords } from '../network-client';
 import { ApiError } from '../api';
@@ -13,7 +15,7 @@ const preview = ref<{ sessionId: string; throughSeq: number } | null>(null);
 const candidates = computed(() => records.value.filter(item => !props.target || item.source_learning_workspace_id !== props.target.learning_workspace_id));
 function existing(record: LearningRecordSummary) { return linked.value.find(item => item.selection.chat_session_id === record.session_id && item.through_seq >= record.through_seq); }
 function hasEarlierImport(record: LearningRecordSummary) { return linked.value.some(item => item.selection.chat_session_id === record.session_id) && !existing(record); }
-function sourceName(record: LearningRecordSummary) { return record.source_goal || (record.source_learning_workspace_id ? '原工作区' : '旧单书记录'); }
+function sourceName(record: LearningRecordSummary) { return record.source_goal || (record.source_learning_workspace_id ? uiText('原工作区') : uiText('旧单书记录')); }
 let request = 0;
 async function load() {
   const current = ++request; loading.value = true; error.value = '';
@@ -40,12 +42,12 @@ async function linkSelected() {
     }
     if (current === request) {
       linked.value = (await learningRecords.linked(target.learning_workspace_id)).records;
-      notice.value = `已带入 ${completed} 份学习记录，可在这个工作区继续提问。`;
+      notice.value = uiText('已带入 {0} 份学习记录，可在这个工作区继续提问。', [completed]);
       window.dispatchEvent(new Event('tutor-state-changed'));
     }
   } catch (failure) {
     if (current === request) {
-      error.value = `${completed ? `已带入 ${completed} 份；其余记录尚未完成。` : ''}${failure instanceof Error ? failure.message : String(failure)}`;
+      error.value = `${completed ? uiText('已带入 {0} 份；其余记录尚未完成。', [completed]) : ''}${failure instanceof Error ? failure.message : String(failure)}`;
       if (failure instanceof ApiError && failure.status === 409) emit('refresh-goal');
       try { linked.value = (await learningRecords.linked(target.learning_workspace_id)).records; } catch { /* Keep the write error and selected items for the user's retry. */ }
     }
@@ -54,22 +56,22 @@ async function linkSelected() {
 </script>
 
 <template>
-  <section class="learning-records-panel" :aria-label="target ? '带入已有学习记录' : '已有聊天与学习记录'" :aria-busy="loading || saving">
-    <h3>{{ target ? '带入已有学习记录' : '已有聊天与学习记录' }}</h3>
-    <template v-if="target"><p class="record-target">带入到：<strong>{{ target.goal.text }}</strong> · 第 {{ target.goal.revision }} 版</p><p>选择与这个目标有关的记录。原聊天、解释和来源保持原样，后续学习保存在这个工作区。</p></template>
-    <p v-else>旧聊天、学习解释和来源保留在这里。查看原记录后，可在工作区中选择带入。</p>
-    <p v-if="loading" role="status">正在读取已有记录…</p>
-    <p v-if="error" role="alert">{{ error }} <button :disabled="saving || loading" @click="load">刷新记录</button></p>
+  <section class="learning-records-panel" :aria-label="target ? uiText('带入已有学习记录') : uiText('已有聊天与学习记录')" :aria-busy="loading || saving">
+    <h3>{{ target ? uiText('带入已有学习记录') : uiText('已有聊天与学习记录') }}</h3>
+    <template v-if="target"><p class="record-target">{{ uiText('带入到：') }}<strong>{{ target.goal.text }}</strong> {{ uiText('· 第') }} {{ target.goal.revision }} {{ uiText('版') }}</p><p>{{ uiText('选择与这个目标有关的记录。原聊天、解释和来源保持原样，后续学习保存在这个工作区。') }}</p></template>
+    <p v-else>{{ uiText('旧聊天、学习解释和来源保留在这里。查看原记录后，可在工作区中选择带入。') }}</p>
+    <p v-if="loading" role="status">{{ uiText('正在读取已有记录…') }}</p>
+    <p v-if="error" role="alert">{{ error }} <button :disabled="saving || loading" @click="load">{{ uiText('刷新记录') }}</button></p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <div class="record-list">
       <article v-for="record in candidates" :key="record.session_id" class="record-choice">
-        <label v-if="target" class="record-check"><input v-model="selected" type="checkbox" :value="record.session_id" :disabled="saving || loading || !!existing(record) || target.archived" :aria-label="`带入 ${record.title || '未命名聊天'}`" /><span class="sr-only">选择记录</span></label>
-        <div class="record-copy"><strong>{{ record.title || '未命名聊天' }}</strong><p>{{ sourceName(record) }} · {{ record.turn_count }} 个回合</p><small>{{ record.published_book_refs.length }} 份来源资料</small><span v-if="existing(record)" class="record-imported">已带入</span><span v-else-if="hasEarlierImport(record)" class="record-imported">有新增记录，可再次选择带入</span></div>
-        <button :disabled="saving" @click="preview = { sessionId: record.session_id, throughSeq: record.through_seq }">查看原记录</button>
+        <label v-if="target" class="record-check"><input v-model="selected" type="checkbox" :value="record.session_id" :disabled="saving || loading || !!existing(record) || target.archived" :aria-label="uiText('带入 {0}', [record.title || uiText('未命名聊天')])" /><span class="sr-only">{{ uiText('选择记录') }}</span></label>
+        <div class="record-copy"><strong>{{ record.title || uiText('未命名聊天') }}</strong><p>{{ sourceName(record) }} · {{ record.turn_count }} {{ uiText('个回合') }}</p><small>{{ record.published_book_refs.length }} {{ uiText('份来源资料') }}</small><span v-if="existing(record)" class="record-imported">{{ uiText('已带入') }}</span><span v-else-if="hasEarlierImport(record)" class="record-imported">{{ uiText('有新增记录，可再次选择带入') }}</span></div>
+        <button :disabled="saving" @click="preview = { sessionId: record.session_id, throughSeq: record.through_seq }">{{ uiText('查看原记录') }}</button>
       </article>
     </div>
-    <p v-if="!loading && !error && !candidates.length">{{ target ? '暂无可带入的其他聊天与学习记录。' : '还没有已保存的聊天与学习记录。' }}</p>
-    <div v-if="target" class="record-actions"><button :disabled="saving || loading || !selected.length || target.archived" @click="linkSelected">{{ saving ? '正在带入…' : `确认带入 ${selected.length} 份记录` }}</button><span>重复带入不会添加重复记录。</span></div>
+    <p v-if="!loading && !error && !candidates.length">{{ target ? uiText('暂无可带入的其他聊天与学习记录。') : uiText('还没有已保存的聊天与学习记录。') }}</p>
+    <div v-if="target" class="record-actions"><button :disabled="saving || loading || !selected.length || target.archived" @click="linkSelected">{{ saving ? uiText('正在带入…') : uiText('确认带入 {0} 份记录', [selected.length]) }}</button><span>{{ uiText('重复带入不会添加重复记录。') }}</span></div>
     <LearningRecordPreview v-if="preview" :session-id="preview.sessionId" :through-seq="preview.throughSeq" @close="preview = null" />
   </section>
 </template>

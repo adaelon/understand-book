@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AUTOMATIC_BUILD_MAX_WORKERS } from "../../packages/core/src/automatic-build-protocol";
 import type { AutomaticBuildStepRequestV1, AutomaticBuildStepResponseV1 } from "./automatic-build-driver";
+import type { AutomaticBuildRefillTimingObserver } from "../../packages/core/src/automatic-build-dispatch-timing";
 
 const ref = z.string().min(1).max(1024);
 const owned = z.object({ child: ref, opaque_handoff_ref: ref }).strict();
@@ -33,6 +34,7 @@ export class AutomaticBuildRefillRequestError extends Error {
 interface RefillEngine {
   validateStep: (request: unknown) => AutomaticBuildStepRequestV1;
   maxParallel: (invocationRef: string) => number;
+  timing?: AutomaticBuildRefillTimingObserver;
   step: (request: AutomaticBuildStepRequestV1, liveHandoffRefs?: string[], completedHandoffRefs?: string[]) => AutomaticBuildStepResponseV1 | Promise<AutomaticBuildStepResponseV1>;
 }
 export function automaticBuildRefill(value: unknown, engine: RefillEngine & { step: (...args: Parameters<RefillEngine["step"]>) => AutomaticBuildStepResponseV1 }): AutomaticBuildRefillResponseV1;
@@ -50,13 +52,16 @@ export function automaticBuildRefill(value: unknown, engine: RefillEngine): Auto
   const { capacity_limit, live_by_slot, completed_refs, terminal_children } = parsed;
   const completed = new Set(completed_refs);
   const terminal = new Set(terminal_children);
+  const released: Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> = [];
   for (const [slot, child] of Object.entries(live_by_slot)) {
     if (!terminal.has(child.child)) continue;
+    released.push({ opaque_handoff_ref: child.opaque_handoff_ref, dispatch_slot_ref: slot });
     completed.add(child.opaque_handoff_ref);
     delete live_by_slot[slot];
   }
   const capacity = Math.min(capacity_limit, engine.maxParallel(request.invocation_ref));
   const available = Math.max(0, capacity - Object.keys(live_by_slot).length) as AutomaticBuildStepRequestV1["available_agent_slots"];
+  engine.timing?.begin({ invocation_ref: request.invocation_ref, available_agent_slots: available, released });
   const result = engine.step({ ...request, available_agent_slots: available },
     Object.values(live_by_slot).map(child => child.opaque_handoff_ref), [...completed]);
   const finish = (step: AutomaticBuildStepResponseV1): AutomaticBuildRefillResponseV1 => {
@@ -71,6 +76,7 @@ export function automaticBuildRefill(value: unknown, engine: RefillEngine): Auto
       ready.push(executor);
     }
   }
+  engine.timing?.finish(ready);
   return { version: "automatic_build_refill.v1", live_by_slot, completed_refs: [...completed],
     available_agent_slots: available, step, ready_executors: ready };
   };

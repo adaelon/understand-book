@@ -4,6 +4,34 @@ import { segment } from "../src/segment";
 import { checkPartitionInvariant } from "../src/partition";
 
 describe("SA2 markdown asset block recognition", () => {
+  it.each([
+    ["联系 user\\@example.com。", "联系 user@example.com。"],
+    ["联系 user&#64;example.com。", "联系 user@example.com。"],
+    ["参考 https&#58;//example.com。", "参考 https://example.com。"],
+    ["参考 www\\.example.com。", "参考 www.example.com。"],
+  ])("preserves positioned display text for decoded autolink-like text: %s", (source, display) => {
+    const parsed = parseMarkdownSourceBlocks(source);
+    expect(parsed.display_segments).toEqual([
+      { role: "prose", source_span: { start: 0, end: source.length }, display_text: display },
+    ]);
+    expect(checkPartitionInvariant(segment(parsed.blocks), source)).toMatchObject({
+      ok: true, coverage: 1, violations: [],
+    });
+  });
+
+  it("retains native GFM links and exact spans around escaped text, emphasis, and math", () => {
+    const source = "# 联系 user\\@example.com\n\n- 参考 www\\.example.com 与 **https://example.com** 和 $x$。";
+    const parsed = parseMarkdownSourceBlocks(source);
+    expect(parsed.display_segments.map(item => item.display_text).join("")).toBe(
+      "联系 user@example.com参考 www.example.com 与 https://example.com 和 。",
+    );
+    const link = parsed.display_segments.find(item => item.display_text === "https://example.com")!;
+    expect(source.slice(link.source_span.start, link.source_span.end)).toBe("https://example.com");
+    expect(checkPartitionInvariant(segment(parsed.blocks), source)).toMatchObject({
+      ok: true, coverage: 1, violations: [],
+    });
+  });
+
   const src = [
     "# Assets",
     "",

@@ -114,9 +114,92 @@ fn mu8_presentation_restore_is_per_workspace_not_latest_private_state() {
     assert_eq!(f.action(&f.a, &saved, "parent", "presentation/read", request)["result"]["restored_state"]["values"]["slider"], 9);
 }
 
+#[test]
+fn mu8_historical_presentation_uses_original_publication_across_workspace_materials() {
+    let f = Fixture::new();
+    let learning = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({
+        "goal":{"text":"Compare both materials"}, "members":[f.x, f.y]
+    }));
+    let w = f.ok(&f.a, "POST", "/api/workspaces", json!({
+        "published_book_ref":f.x, "attachment_id":"parent", "learning_workspace_id":learning["learning_workspace_id"]
+    }));
+    let w = seed_presentation_in(&f, w);
+    let history = f.action(&f.a, &w, "parent", "chat/history", json!({}));
+    let request = json!({"session_id":w["selected_chat"],
+        "turn_id":history["result"]["current"]["turns"][0]["turn_id"],
+        "reference":{"presentation_id":"mu5-presentation","revision":1}});
+    let original = f.action(&f.a, &w, "parent", "presentation/read", request.clone());
+    let switched = f.action(&f.a, &w, "parent", "book/open", json!({"published_book_ref":f.y}));
+    assert_eq!(switched["selected_chat"], w["selected_chat"]);
+    let reopened = f.action(&f.a, &switched, "parent", "presentation/read", request.clone());
+    assert_eq!(reopened["result"], original["result"]);
+    assert_eq!(reopened["published_book_ref"], json!(f.y));
+    assert_eq!(reopened["reader"], switched["reader"]);
+    let source = json!({"turn_id":request["turn_id"], "source_ref_id":"mu8-source"});
+    let popup = f.action(&f.a, &switched, "parent", "agent/source.resolve", source.clone());
+    assert_eq!(popup["result"]["stale"], false);
+    assert!(popup["result"]["source_url"].as_str().unwrap().contains(&f.x.publication_id));
+    assert_eq!(f.action(&f.a, &switched, "parent", "agent/source.open", source)["published_book_ref"], json!(f.y));
+    let linked = f.action(&f.a, &switched, "parent", "linked/attach", request.clone());
+    let attachment = linked["attachment_id"].as_str().unwrap();
+    let mut observation = request.clone(); observation["text"] = json!("Nine");
+    observation["source_ref_ids"] = json!(["mu8-source"]);
+    assert_eq!(f.action(&f.a, &switched, attachment, "presentation/observe", observation)["result"]["accepted"], true);
+    let mut save = request.clone();
+    save["state"] = json!({"values":{"slider":9},"visible_step":null,"observed_result":"Nine","source_ref_ids":["mu8-source"]});
+    let saved = f.action(&f.a, &switched, attachment, "presentation/save", save.clone());
+    let receipt = saved["presentation"].clone();
+    save["state"]["values"]["slider"] = json!(2);
+    let changed = f.action(&f.a, &saved, attachment, "presentation/save", save);
+    let restored = f.action(&f.a, &changed, attachment, "presentation/restore", json!({"saved_state":receipt}));
+    assert_eq!(f.action(&f.a, &restored, attachment, "presentation/read", request.clone())["result"]["restored_state"]["values"]["slider"], 9);
+    let mut vote = request.clone(); vote["selection"] = json!({"choice":"like"});
+    let voted = f.action(&f.a, &restored, attachment, "presentation/feedback/set", vote);
+    let mut feedback = request.clone(); feedback["saved_state"] = receipt.clone();
+    feedback["feedback_revision"] = voted["result"]["feedback_revision"].clone();
+    assert_eq!(f.action(&f.a, &restored, attachment, "presentation/feedback/attach_state", feedback)["result"]["saved_state"], receipt);
+    assert_eq!(f.action(&f.a, &restored, attachment, "presentation/feedback/read", request.clone())["result"]["selection"]["choice"], "like");
+    assert!(f.action(&f.a, &restored, attachment, "presentation/feedback/clear", request.clone())["result"]["selection"].is_null());
+    let path = format!("/api/workspaces/{}/presentation/read", w["workspace_id"].as_str().unwrap());
+    let mut denied = Fixture::stamp(&restored, attachment);
+    denied.as_object_mut().unwrap().extend(request.as_object().unwrap().clone());
+    assert_eq!(f.call(&f.b, "POST", &path, denied.clone()).0, 404);
+    f.access.library.lock().unwrap().revoke("A", &f.x).unwrap();
+    assert_eq!(f.call(&f.a, "POST", &path, denied).0, 404);
+    assert_eq!(f.get(&f.a, &restored)["published_book_ref"], json!(f.y));
+}
+
+#[test]
+fn mu8_first_presentation_reads_accept_reader_revision_changes_but_not_scene_changes() {
+    let f = Fixture::new();
+    let w = seed_presentation(&f);
+    let history = f.action(&f.a, &w, "parent", "chat/history", json!({}));
+    let request = json!({"session_id":w["selected_chat"],
+        "turn_id":history["result"]["current"]["turns"][0]["turn_id"],
+        "reference":{"presentation_id":"mu5-presentation","revision":1}});
+    let advanced = f.action(&f.a, &w, "parent", "reader/goto", json!({"lid":"1.2"}));
+    for action in ["presentation/read", "presentation/observe", "presentation/feedback/read"] {
+        let mut input = request.clone();
+        if action == "presentation/observe" { input["text"] = json!("A scene"); }
+        let read = f.action(&f.a, &w, "parent", action, input);
+        assert_eq!(read["revision"], advanced["revision"]);
+    }
+    let mut stale_write = Fixture::stamp(&w, "parent");
+    stale_write.as_object_mut().unwrap().extend(request.as_object().unwrap().clone());
+    stale_write["selection"] = json!({"choice":"like"});
+    let path = |action| format!("/api/workspaces/{}/{action}", w["workspace_id"].as_str().unwrap());
+    assert_eq!(f.call(&f.a, "POST", &path("presentation/feedback/set"), stale_write.clone()).1["error_code"], "WORKSPACE_REVISION_CONFLICT");
+    f.action(&f.a, &advanced, "parent", "chat/new", json!({}));
+    assert_eq!(f.call(&f.a, "POST", &path("presentation/read"), stale_write).1["error_code"], "WORKSPACE_STALE");
+}
+
 fn seed_presentation(f: &Fixture) -> Value {
-    use runtime::presentation::*;
     let w = f.create(&f.a, &f.x, "parent");
+    seed_presentation_in(f, w)
+}
+
+fn seed_presentation_in(f: &Fixture, w: Value) -> Value {
+    use runtime::presentation::*;
     let w = f.action(&f.a, &w, "parent", "chat/new", json!({}));
     let port = f.run(&w, "parent");
     let reference = PresentationRef {

@@ -1,4 +1,4 @@
-//! A lossless, page-local projection for the independent teaching reviewer.
+//! Separate factual evidence from the learner-visible basis for explanation.
 //!
 //! Preview reports repeat the same whole-page text after each action and in
 //! each viewport. Keep the first exact text and point later copies to it; the
@@ -11,6 +11,138 @@ use serde_json::{json, Map, Value};
 const MIN_REUSED_TEXT_CHARS: usize = 128;
 
 const EVIDENCE_READING_GUIDE: &str = "author_claims 是作者说明，不是页面实际效果。按 author_preview_observations 中的环境与 observations 操作顺序阅读实际证据，结合 step、action、scroll、viewport、layout、scene 和截图说明确认位置及状态。dom.text 与 reading.text 是对应状态或 selector 的实际文字，不代表整段同时出现在屏幕；dom.visible_text 才描述该视口的可见文字。dom.semantic_text 仅作 DOM 语义证据，不作为逐字交付引文。same_text_as 是本页内直接指向完全相同原文的 JSON Pointer，读取该处原文即可，证据性质仍由当前字段决定；复用文字不复用视口、操作或可见范围，也不说明学习者看过这些内容。";
+
+/// Choose the evidence surface, not a predicted question difficulty. An
+/// explicit working target is required; media and page deliveries keep their
+/// full observation-aware review contract.
+pub fn uses_text_review(packet: &Value) -> bool {
+    if packet["proposed_board"].is_object()
+        || packet["proposed_presentations"].as_array().is_some_and(|pages| !pages.is_empty())
+        || !packet["frozen_input"]["video_question"].is_null()
+        || !packet["frozen_input"]["music_question"].is_null()
+        || packet["music_interactions"].as_array().is_some_and(|items| !items.is_empty())
+        || packet["presented_source_references"].as_array().into_iter().flatten()
+            .any(|source| !source["media"].is_null() || !source["music"].is_null()) {
+        return false;
+    }
+    packet["proposed_delivery"]["moves"].as_array().is_some_and(|moves| {
+        !moves.is_empty() && moves.iter().all(|movement| {
+            movement["target"].is_object() && movement["presentation"].is_null()
+                && movement["assessment"].is_null()
+                && ["media_bindings", "music_bindings"].into_iter().all(|field|
+                    movement["target"][field].as_array().is_none_or(Vec::is_empty))
+        })
+    })
+}
+
+/// Give the explanation reader only what the learner can use to understand
+/// this answer. Source retrieval, the author's plan and other reviewers' claims
+/// cannot fill a missing step in the delivered explanation.
+pub fn project_explanation(packet: &Value) -> Value {
+    let frozen = &packet["frozen_input"];
+    let action = &frozen["current_action"];
+    let grounding = &packet["learner_grounding"];
+    let expressions = grounding["expressions"].as_array().map(Vec::as_slice).unwrap_or_default();
+    // UI requests can have an application-generated accepted_request. The
+    // supplement is the learner's actual wording; never label the UI label as
+    // evidence that the learner has understood something.
+    let current_words = action["user_supplement"].as_str().filter(|text| !text.trim().is_empty())
+        .or_else(|| {
+            if matches!(action["action"]["origin"].as_str(), Some("ui_entry" | "ui_choice")) { None }
+            else { packet["original_request"].as_str().filter(|text| !text.trim().is_empty()) }
+        });
+    // Grounding is oldest-first. Repeated identical questions still have
+    // different input-time help: only the latest matching expression is current.
+    let current_expression = current_words.and_then(|words| expressions.iter().rposition(|expression|
+        expression["text"].as_str() == Some(words)));
+    let mut support_refs = Vec::new();
+    if let Some(index) = current_expression {
+        for field in ["support_delivery_refs", "assistance_refs"] {
+            support_refs.extend(expressions[index][field].as_array().into_iter().flatten().filter_map(Value::as_str));
+        }
+    }
+    if let Some(reference) = action["action"]["teaching_choice"]["delivery_ref"].as_str() {
+        support_refs.push(reference);
+    }
+    let delivered_support: Vec<_> = grounding["delivered_support"].as_array().into_iter().flatten()
+        .filter(|support| support["delivery_ref"].as_str().is_some_and(|reference| support_refs.contains(&reference)))
+        .map(|support| explanation_fields(support, &["delivery_ref", "kind", "occurred_at", "answer", "text"]))
+        .collect();
+    let reader_expressions: Vec<_> = expressions.iter().enumerate().filter(|(_, expression)| expression["text"].is_string())
+        .map(|(index, expression)| {
+            let mut words = explanation_fields(expression, &["text", "fact_ref", "evidence_ref", "kind", "source_turn_id"]);
+            words["scope"] = json!(if Some(index) == current_expression { "current" } else { "past" });
+            words
+        }).collect();
+    let mut request_context = explanation_fields(action, &["action", "accepted_request", "user_supplement", "answer_ref"]);
+    // A passage explicitly selected in the UI is part of the question. It is
+    // not the retrieved chapter and must not stand in for the answer's own
+    // explanation. Keep it distinct from previously delivered assistant help.
+    if let Some(selected) = action.get("source_excerpt").filter(|value| !value.is_null()) {
+        request_context["selected_text"] = selected.clone();
+    }
+    let committed_deliveries: Vec<_> = packet["committed_deliveries"].as_array().into_iter().flatten()
+        .map(|delivery| explanation_fields(delivery, &["delivery_id", "text", "answer_parts"]))
+        .collect();
+    json!({
+        "current_request":packet["original_request"],
+        "delivery_scope":packet["delivery_scope"],
+        "committed_deliveries":committed_deliveries,
+        "current_request_context":request_context,
+        "preceding_assistant_response":action["answer_text"],
+        "delivered_support":delivered_support,
+        "reader_expressions":reader_expressions,
+        "confirmed_background":packet["learner_view"]["confirmed_background"],
+        "confirmed_preferences":frozen["confirmed_preferences"],
+        "current_delivery":packet["proposed_delivery"]["text"]
+    })
+}
+
+fn explanation_fields(value: &Value, fields: &[&str]) -> Value {
+    Value::Object(fields.iter().filter_map(|field| value.get(*field).filter(|value| !value.is_null())
+        .map(|value| ((*field).to_owned(), value.clone()))).collect())
+}
+
+/// Check factual claims against the complete request, actual learner words and
+/// help, and every actually read source. The independent explanation reader
+/// owns pedagogical sufficiency; private teaching plans cannot narrow either
+/// review to the author's preferred target.
+/// The caller retains the unprojected packet for validation and durable audit.
+pub fn project_text(mut packet: Value) -> Value {
+    if let Some(fields) = packet.as_object_mut() {
+        for field in ["current_design", "local_design", "coach_context", "agent_working_state"] {
+            fields.remove(field);
+        }
+    }
+    for movement in packet["proposed_delivery"]["moves"].as_array_mut().into_iter().flatten() {
+        if let Some(fields) = movement.as_object_mut() {
+            // The joined final text above is the exact content under review.
+            for field in ["delivery_text", "explanation", "hint", "coach_ref", "coach_adjustment", "participation"] {
+                fields.remove(field);
+            }
+        }
+        if let Some(target) = movement.get_mut("target").and_then(Value::as_object_mut) {
+            target.remove("expected_performance");
+            target.remove("learning_focus");
+        }
+    }
+    if let Some(grounding) = packet.get_mut("learner_grounding").and_then(Value::as_object_mut) {
+        grounding.remove("interpretations");
+        for support in grounding.get_mut("delivered_support").and_then(Value::as_array_mut).into_iter().flatten() {
+            if let Some(fields) = support.as_object_mut() { fields.remove("move"); }
+        }
+    }
+    if let Some(prior) = packet["review_context"]["prior_reviews"].as_array_mut() {
+        for review in prior {
+            if let Some(fields) = review.as_object_mut() {
+                fields.remove("reading_path");
+                fields.remove("improvements");
+                fields.remove("changes_since_previous_review");
+            }
+        }
+    }
+    packet
+}
 
 /// Reduce repeated preview text without summarizing it or discarding states.
 /// References are confined to one saved presentation (including its revision).
@@ -107,6 +239,232 @@ fn reuse_exact_text(value: &mut Value, path: String, seen: &mut BTreeMap<String,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wb4_explanation_projection_keeps_full_request_and_actual_committed_parts() {
+        let packet = json!({
+            "original_request":"Explain how to compute the interval, then use it to calculate average speed.",
+            "delivery_scope":{"kind":"board_part","relation":"How the two times determine the interval.",
+                "remaining_request":"Use the interval to calculate average speed."},
+            "committed_deliveries":[{"delivery_id":"delivery-clock", "text":"Measure both times using the same clock.",
+                "answer_parts":[{"kind":"text","text":"Measure both times using the same clock."}],
+                "source_bindings":[{"preview_snapshot":"PRIVATE_SOURCE_TEXT"}],
+                "teaching_delivery_move_refs":["PRIVATE_MOVEMENT_REF"], "author_claims":"PRIVATE_AUTHOR_SUMMARY"}],
+            "proposed_delivery":{"text":"Subtract the start time from the end time.",
+                "moves":[{"explanation":"PRIVATE_NOT_DELIVERED"}]}
+        });
+        let projected = project_explanation(&packet);
+        assert_eq!(projected["current_request"], packet["original_request"]);
+        assert_ne!(projected["current_request"], packet["delivery_scope"]["relation"]);
+        assert_eq!(projected["delivery_scope"], packet["delivery_scope"]);
+        assert_eq!(projected["committed_deliveries"][0]["delivery_id"], "delivery-clock");
+        assert_eq!(projected["committed_deliveries"][0]["text"], packet["committed_deliveries"][0]["text"]);
+        assert_eq!(projected["committed_deliveries"][0]["answer_parts"], packet["committed_deliveries"][0]["answer_parts"]);
+        assert_eq!(projected["current_delivery"], packet["proposed_delivery"]["text"]);
+        assert!(!projected.to_string().contains("PRIVATE_"));
+        let factual = project_text(packet.clone());
+        assert_eq!(factual["original_request"], packet["original_request"]);
+        assert_eq!(factual["delivery_scope"], packet["delivery_scope"]);
+        assert_eq!(factual["committed_deliveries"], packet["committed_deliveries"]);
+
+        let mut final_packet = packet;
+        final_packet.as_object_mut().unwrap().remove("delivery_scope");
+        final_packet["proposed_delivery"]["text"] = json!("Together the saved steps establish the calculation.");
+        let final_projection = project_explanation(&final_packet);
+        assert!(final_projection["delivery_scope"].is_null());
+        assert_eq!(final_projection["current_request"], final_packet["original_request"]);
+        assert_eq!(final_projection["committed_deliveries"], projected["committed_deliveries"]);
+    }
+
+    #[test]
+    fn explanation_projection_cannot_borrow_the_authors_explanation_or_review_verdict() {
+        let packet = json!({
+            "original_request":"Why does B remain?",
+            "frozen_input":{"current_request":"Why does B remain?", "user_intent":"PRIVATE_OLD_GOAL",
+                "confirmed_preferences":["Show the operation."]},
+            "learner_view":{"confirmed_background":["New to partial updates."],
+                "pending_activity":{"answer":"PRIVATE_PENDING_ANSWER"}},
+            "learner_grounding":{"expressions":[{"fact_ref":"current", "text":"Why does B remain?",
+                "support_delivery_refs":["help"]}],
+                "delivered_support":[{"delivery_ref":"help", "answer":"The update changes A; B remains.",
+                    "move":{"explanation":"PRIVATE_PREVIOUS_PLAN"}}],
+                "interpretations":[{"interpretation":"PRIVATE_LEARNER_DIAGNOSIS"}]},
+            "current_design":{"target":{"expected_performance":"PRIVATE_EXPECTED_PERFORMANCE"}},
+            "current_source_evidence":[{"text":"PRIVATE_SOURCE_EXPLANATION"}],
+            "agent_working_state":{"understanding":"PRIVATE_AUTHOR_MEMORY"},
+            "coach_context":{"guidance":"PRIVATE_COACH_GUIDANCE"},
+            "review_context":{"prior_reviews":[{"decision":"accept", "reason":"PRIVATE_PRIOR_VERDICT"}]},
+            "proposed_delivery":{"text":"B remains.", "moves":[{"explanation":"PRIVATE_AUTHOR_EXPLANATION"}]}
+        });
+        let projected = project_explanation(&packet);
+        assert_eq!(projected["current_request"], "Why does B remain?");
+        assert_eq!(projected["current_delivery"], "B remains.");
+        assert_eq!(projected["delivered_support"][0]["answer"], "The update changes A; B remains.");
+        assert_eq!(projected["confirmed_background"], packet["learner_view"]["confirmed_background"]);
+        assert_eq!(projected["confirmed_preferences"], packet["frozen_input"]["confirmed_preferences"]);
+        assert!(!projected.to_string().contains("PRIVATE_"));
+    }
+
+    #[test]
+    fn explanation_projection_uses_current_words_and_their_input_time_help() {
+        let packet = json!({
+            "original_request":"Please explain directly.",
+            "frozen_input":{"current_request":"Old copied request", "learner_request":"Quiz me."},
+            "learner_grounding":{"expression_order":"oldest_first", "expressions":[
+                {"fact_ref":"first", "text":"Please explain directly.", "support_delivery_refs":["old-help"]},
+                {"fact_ref":"second", "text":"Quiz me.", "support_delivery_refs":["quiz-help"]},
+                {"fact_ref":"current", "text":"Please explain directly.", "support_delivery_refs":["current-help"]}],
+                "delivered_support":[
+                    {"delivery_ref":"old-help", "answer":"Old answer."},
+                    {"delivery_ref":"current-help", "answer":"The exact most recent answer."},
+                    {"delivery_ref":"quiz-help", "answer":"Quiz answer."}]},
+            "proposed_delivery":{"text":"Here is the explanation."}
+        });
+        let projected = project_explanation(&packet);
+        assert_eq!(projected["current_request"], "Please explain directly.");
+        assert_eq!(projected["reader_expressions"][0]["scope"], "past");
+        assert_eq!(projected["reader_expressions"][1]["scope"], "past");
+        assert_eq!(projected["reader_expressions"][2]["scope"], "current");
+        assert_eq!(projected["delivered_support"].as_array().unwrap().len(), 1);
+        assert_eq!(projected["delivered_support"][0]["answer"], "The exact most recent answer.");
+    }
+
+    #[test]
+    fn explanation_projection_preserves_ui_question_context_without_source_or_target_expansion() {
+        let packet = json!({
+            "original_request":"Explain the selected sentence.",
+            "frozen_input":{"current_action":{
+                "action":{"origin":"ui_entry", "entry_action":"explain_selection"},
+                "accepted_request":"Explain the selected sentence.", "user_supplement":"Please use words, not matrices.",
+                "source_excerpt":"The state stores a sum of outer products.",
+                "source_bindings":[{"preview_snapshot":"PRIVATE_WHOLE_CHAPTER"}],
+                "target":{"expected_performance":"PRIVATE_AUTHOR_TARGET"},
+                "answer_ref":{"turn_id":"previous", "excerpt":"The state has fixed dimensions."},
+                "answer_text":"The state has fixed dimensions."}},
+            "learner_grounding":{"expressions":[{"text":"Please use words, not matrices.",
+                "support_delivery_refs":["help"]}],
+                "delivered_support":[{"delivery_ref":"help", "text":"Previous public help."}]},
+            "proposed_delivery":{"text":"Each new item changes the values inside the same slots."}
+        });
+        let projected = project_explanation(&packet);
+        assert_eq!(projected["current_request_context"]["user_supplement"], "Please use words, not matrices.");
+        assert_eq!(projected["current_request_context"]["selected_text"], "The state stores a sum of outer products.");
+        assert_eq!(projected["preceding_assistant_response"], "The state has fixed dimensions.");
+        assert_eq!(projected["reader_expressions"][0]["scope"], "current");
+        assert_eq!(projected["delivered_support"][0]["text"], "Previous public help.");
+        assert!(!projected.to_string().contains("PRIVATE_"));
+    }
+
+    #[test]
+    fn explanation_projection_does_not_turn_a_ui_click_into_current_learner_words() {
+        let packet = json!({
+            "original_request":"Continue.",
+            "frozen_input":{"current_action":{"action":{"origin":"ui_choice",
+                "teaching_choice":{"delivery_ref":"offering-help", "option_id":"continue"},"move_kind":"explain"},
+                "accepted_request":"Continue.", "user_supplement":""}},
+            "learner_grounding":{"expressions":[{"text":"Continue.", "support_delivery_refs":["old-help"]}],
+                "delivered_support":[{"delivery_ref":"old-help", "answer":"Unrelated old help."},
+                    {"delivery_ref":"offering-help", "answer":"Actual offering answer."}]},
+            "proposed_delivery":{"text":"The next step."}
+        });
+        let projected = project_explanation(&packet);
+        assert_eq!(projected["reader_expressions"][0]["scope"], "past");
+        assert_eq!(projected["delivered_support"].as_array().unwrap().len(), 1);
+        assert_eq!(projected["delivered_support"][0]["answer"], "Actual offering answer.");
+    }
+
+    #[test]
+    fn text_projection_preserves_factual_evidence_and_actual_help_without_private_teaching_plans() {
+        let packet = json!({
+            "original_request":"Explain all required steps, then confirm my interpretation.",
+            "frozen_input":{"current_request":"Explain all required steps, then confirm my interpretation.",
+                "learning_purpose":"Understand how the catalog update works, not memorize the final entries.",
+                "constraints":["Explain the reason"]},
+            "learner_grounding":{"expressions":[{"fact_ref":"current","text":"B remains when omitted, right?","support_delivery_refs":["help"]}],
+                "delivered_support":[{"delivery_ref":"help","occurred_at":"12345","answer":"Original help, retained verbatim.",
+                    "move":{"explanation":"PRIVATE_HISTORICAL_PLAN"}}],
+                "interpretations":[{"interpretation":"PRIVATE_READER_DIAGNOSIS"}]},
+            "current_design":{"design_ref":"design:one","design":{
+                "target":{"learning_focus":"How a partial update preserves unmentioned entries.",
+                    "expected_performance":"Trace an update of A and explain why B remains."},
+                "organizing_model":"Follow the same catalog before, during and after the update.",
+                "basis_refs":["current","help"],
+                "revision_reason":"The previous answer named the result but did not show the update operation.",
+                "representation":{"kind":"text","reason":"A small before-and-after trace can show each operation."},
+                "blocks":[{"block_id":"local","relation":"Not selected does not imply deleted."},
+                    {"block_id":"later","relation":"LATER_RELATION".repeat(500)}]}},
+            "proposed_delivery":{"text":"B remains in the catalog.","moves":[{"target":{
+                "source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}],
+                "learning_focus":"AUTHOR_FOCUS", "expected_performance":"AUTHOR_EXPECTED_PERFORMANCE"},
+                "block_refs":["local"],"delivery_text":"B remains in the catalog.",
+                "explanation":"Trace the effect of changing A while B is absent from the update.","hint":"Only entries named by the update are changed.",
+                "coach_ref":"coach:previous","coach_adjustment":{"reason":"The reader asks for the steps directly.","fact_refs":["current"]},
+                "participation":{"choice":"conclude","reason":"Confirm the requested relationship."}}]},
+            "proposed_presentations":[],"coach_context":{"status":"ready","coach_ref":"coach:previous","source_turn_ref":"previous",
+                "guidance":{"next_step":{"focus":"Show how a partial update affects the catalog.",
+                    "participation":{"choice":"invite","reason":"Let the reader predict which entries remain.","support":"Start with A and B.","learner_inference":"The effect of omitting B."}},
+                    "reason":"The previous explanation gave the result without the process."}},
+            "agent_working_state":{"current_work":{"review_ref":"review:previous","request":{"text":"What changes in a partial update?","truncated":false},
+                    "agent_work":{"understanding":[{"statement":"An omitted entry is retained.","sources":[{"lid":"1.1","quote":"unmentioned entries remain"}]}],
+                        "open_questions":["The reader has not yet seen why B remains."]},
+                    "proposed_text":{"text":"REPEATED_PRIVATE_DRAFT".repeat(100),"truncated":false}},
+                "previous_work":[{"review_ref":"review:earlier","agent_work":{"understanding":[],"open_questions":["Explain the update operation."]},
+                    "proposed_text":{"text":"OLDER_PRIVATE_DRAFT".repeat(100),"truncated":false}}],
+                "corrections":[{"review_ref":"review:correction","revision":{"text":"Omission is not deletion; show the operation.","truncated":false},
+                    "review_status":"accepted_by_review","follow_up_changes":[{"changes":[{"before":"OLD_CHANGE_TEXT".repeat(100),"after":"Repaired text."}]}]}],
+                "meaning":"Teacher work is not learner understanding or proof of delivery."},
+            "current_source_evidence":[{"source_id":"book","segments":[{"lid":"1.1","text":"FULL_ORIGINAL_SOURCE".repeat(100)}]}],
+            "current_web_evidence":[{"url":"https://example.org/reference","text":"Full observed external reference."}],
+            "review_context":{"round":2,"prior_reviews":[{"decision":"revise","revision":"Preserve the necessary condition.","improvements":[{"suggested_change":"OPTIONAL_POLISH"}]}]}
+        });
+        assert!(uses_text_review(&packet), "selection depends on the actual evidence surface, not short wording");
+        let projected = project_text(packet.clone());
+        for key in ["original_request", "frozen_input", "current_source_evidence", "current_web_evidence"] {
+            assert_eq!(projected[key], packet[key], "{key}");
+        }
+        assert_eq!(projected["learner_grounding"]["expressions"], packet["learner_grounding"]["expressions"]);
+        for key in ["delivery_ref", "occurred_at", "answer"] {
+            assert_eq!(projected["learner_grounding"]["delivered_support"][0][key],
+                packet["learner_grounding"]["delivered_support"][0][key]);
+        }
+        assert_eq!(projected["proposed_delivery"]["text"], packet["proposed_delivery"]["text"]);
+        assert_eq!(projected["proposed_delivery"]["moves"][0]["target"]["source_bindings"],
+            packet["proposed_delivery"]["moves"][0]["target"]["source_bindings"]);
+        for key in ["participation", "explanation", "hint", "coach_ref", "coach_adjustment"] {
+            assert!(projected["proposed_delivery"]["moves"][0][key].is_null(), "{key}");
+        }
+        for key in ["current_design", "local_design", "coach_context", "agent_working_state"] {
+            assert!(projected[key].is_null(), "{key}");
+        }
+        assert_eq!(projected["review_context"]["prior_reviews"][0]["revision"], "Preserve the necessary condition.");
+        for absent in ["LATER_RELATION", "REPEATED_PRIVATE_DRAFT", "OLDER_PRIVATE_DRAFT", "OLD_CHANGE_TEXT", "OPTIONAL_POLISH",
+            "AUTHOR_FOCUS", "AUTHOR_EXPECTED_PERFORMANCE", "PRIVATE_HISTORICAL_PLAN", "PRIVATE_READER_DIAGNOSIS"] {
+            assert!(!projected.to_string().contains(absent), "{absent}");
+        }
+        assert!(projected.to_string().len() < packet.to_string().len() / 2, "projection must materially remove repeated unrelated tasks");
+    }
+
+    #[test]
+    fn local_followup_new_media_keep_full_review_and_prior_help_stays_verbatim() {
+        let text = json!({"proposed_delivery":{"text":"A relation","moves":[{"target":{"source_bindings":[]}}]},"proposed_presentations":[]});
+        assert!(uses_text_review(&text));
+        for field in ["scene", "presentation"] {
+            let mut scene = text.clone();
+            scene["learner_grounding"] = json!({"expressions":[{}]});
+            scene["learner_grounding"]["expressions"][0][field] = json!({"id":"original-scene"});
+            assert!(uses_text_review(&scene));
+            assert_eq!(project_text(scene.clone())["learner_grounding"], scene["learner_grounding"]);
+        }
+        let mut page = text.clone();
+        page["proposed_presentations"] = json!([{"reference":{"presentation_id":"p"}}]);
+        assert!(!uses_text_review(&page));
+        let mut board = text.clone();
+        board["proposed_board"] = json!({"status":"inspected_candidate","items":[{"reading_text":"A drawn relation"}]});
+        assert!(!uses_text_review(&board), "a native diagram requires the visual review that includes its observations");
+        let mut media = text;
+        media["proposed_delivery"]["moves"][0]["target"]["media_bindings"] = json!([{"target":"frame"}]);
+        assert!(!uses_text_review(&media));
+    }
 
     fn restore_text(value: &Value, packet: &Value) -> Value {
         match value {

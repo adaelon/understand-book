@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { percentage, percentageInput, milliPercentage } from "@/lib/allowance";
 import { McpCorrectionDialog } from "./mcp";
 import { CloudPlansPanel } from "./cloud-plans";
+import { AllowanceValue, Disclosure, Distribution, Metric, Notice, overviewMoney, overviewPercentage } from '@/components/analytics';
 
 export function AllowancePanel({
   userId,
@@ -77,7 +78,7 @@ export function AllowancePanel({
     return ops.submit(action, `${base}/${path}`, body);
   };
   return (
-    <section className="space-y-4 rounded-lg border p-5">
+    <section className="analytics-panel">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2>AI 使用额度</h2>
         <div className="flex flex-wrap gap-2">
@@ -102,29 +103,27 @@ export function AllowancePanel({
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        额度按每期固定基准显示百分比，实际收款单独以元记录。补充额度不会改变旧用量比例，新一期不自动结转旧余额。
+        百分比按本期固定基准计算，实际收款单独以元记录。
       </p>
-      <CloudPlansPanel userId={userId} />
       {current ? (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-            {(
-              [
-                ["可用", "available"],
-                ["授予 / 调整", "granted"],
-                ["已扣减", "debited"],
-                ["在途预留", "active_reserved"],
-                ["待核算占用", "pending"],
-              ] as const
-            ).map(([label, key]) => (
-              <div key={key} className="rounded-md bg-muted/50 p-3">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <strong className="mt-2 block text-lg tabular-nums">
-                  {percentage(current.balance.percentages?.[key])}
-                </strong>
-              </div>
-            ))}
-          </div>
+          <dl className="grid grid-cols-2 gap-3"><Metric label="当前可用" value={<AllowanceValue ratio={current.balance.percentages?.available} amount={current.balance.available_micro_cny}/>} detail="可用于后续 AI 调用" tone="green" /><Metric label="本期授予 / 调整" value={<AllowanceValue ratio={current.balance.percentages?.granted} amount={current.balance.granted_micro_cny}/>} detail={current.balance.allowance_basis ? '按本期固定基准计算，可超过 100%' : '本额度期累计授予与调整金额'} /></dl>
+          <Distribution label="本期额度分配" total={current.balance.granted_micro_cny} segments={([
+            ['debited','已扣减',current.balance.debited_micro_cny,'blue'],
+            ['active_reserved','在途预留',current.balance.active_reserved_micro_cny,'violet'],
+            ['pending','待核算占用',current.balance.pending_micro_cny,'amber'],
+            ['available','可用',Math.max(0,current.balance.available_micro_cny),'green'],
+          ] as const).map(([key,label,value,tone])=>({label,value,tone,display:current.balance.percentages ? overviewPercentage(current.balance.percentages[key]) : `${overviewMoney(value)} 元`}))} note={current.balance.allowance_basis ? '色条表示本期额度的分配；各项百分比沿用固定基准。' : '色条按本期实际金额分配。'} />
+          {!current.balance.allowance_basis && <Notice warning>此额度期尚未设置百分比基准，当前按金额展示。配置基准后可使用比例管理。</Notice>}
+          {current.balance.pending_micro_cny > 0 && <Notice warning>有 <AllowanceValue ratio={current.balance.percentages?.pending} amount={current.balance.pending_micro_cny}/> 额度等待核算，可在「费用与账单」中处理。</Notice>}
+          {current.balance.available_micro_cny < 0 && <Notice warning>当前可用额度不足，请核对账目或补充额度。</Notice>}
+          <Disclosure title="精确额度与基准"><dl className="number-detail text-sm">{([
+            ['granted','本期授予 / 调整',current.balance.granted_micro_cny],
+            ['available','当前可用',current.balance.available_micro_cny],
+            ['debited','已扣减',current.balance.debited_micro_cny],
+            ['active_reserved','在途预留',current.balance.active_reserved_micro_cny],
+            ['pending','待核算占用',current.balance.pending_micro_cny],
+          ] as const).map(([key,label,value])=><div key={key}><dt>{label}</dt><dd>{money(value)} 元{current.balance.percentages && <> · {percentage(current.balance.percentages[key])}</>}</dd></div>)}<div><dt>固定百分比基准</dt><dd>{current.balance.allowance_basis ? `${current.balance.allowance_basis.version} · ${money(current.balance.allowance_basis.basis_micro_cny)} 元` : '尚未配置'}</dd></div></dl></Disclosure>
           <p className="text-sm">
             有效期：{date(current.starts_at)} — {date(current.expires_at)}
             （香港时间）
@@ -133,6 +132,8 @@ export function AllowancePanel({
       ) : (
         <p>当前无有效额度期。账号仍可阅读已授权材料与历史。</p>
       )}
+      <CloudPlansPanel userId={userId} />
+      <p className="text-xs text-muted-foreground">补充额度不会改变旧用量比例，新一期不自动结转旧余额。</p>
       <details>
         <summary className="cursor-pointer text-sm">
           查看各额度期 / 操作旧期
@@ -155,7 +156,7 @@ export function AllowancePanel({
                 {
                   header: "可用额度",
                   cell: ({ row }) =>
-                    percentage(row.original.balance.percentages?.available),
+                    <AllowanceValue ratio={row.original.balance.percentages?.available} amount={row.original.balance.available_micro_cny}/>,
                 },
                 {
                   header: "操作",

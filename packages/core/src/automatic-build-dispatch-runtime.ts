@@ -2,12 +2,15 @@ import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "
 import { AUTOMATIC_BUILD_MAX_WORKERS } from "./automatic-build-protocol";
 import { createHash } from "node:crypto";
 import {
+  closeSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -738,6 +741,7 @@ function resumableDispatchPlan(
   acceptedPlanDigest: string,
   now: string,
   currentPending: ReadonlySet<string>,
+  priorityRetryIds: readonly string[] = [],
 ): AutomaticBuildPersistedDispatchPlanV1 | undefined {
   const directory = dispatchPlanDirectory(target, stage);
   if (!existsSync(directory)) return undefined;
@@ -749,6 +753,16 @@ function resumableDispatchPlan(
       readJson<AutomaticBuildPersistedDispatchPlanV1>(path.join(directory, entry.name)),
     ))
     .filter((record) => record.accepted_plan_digest === acceptedPlanDigest)
+    // A recovery authorizes another attempt, not advancement past the old failure.
+    // Reuse a run only if it can still execute every pending authorized retry.
+    .filter(record => priorityRetryIds.every(workUnitId => {
+      const manifest = record.dispatch_plan.dispatches.find(dispatch => dispatch.ordered_work_unit_ids.includes(workUnitId));
+      if (!manifest) return false;
+      const persisted = { manifest, created_at: record.created_at };
+      return !terminalReceiptAfterDispatch(target, persisted, workUnitId)
+        && !manifest.ordered_work_unit_ids.slice(0, manifest.ordered_work_unit_ids.indexOf(workUnitId))
+          .some(previousId => terminalReceiptAfterDispatch(target, persisted, previousId)?.state === "retryable_failure");
+    }))
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at)
       || right.dispatch_plan.dispatch_plan_digest.localeCompare(left.dispatch_plan.dispatch_plan_digest));
   return candidates.find((record) => {
@@ -766,6 +780,7 @@ export function selectAutomaticBuildDispatchHandoff(
     available_new_executor_slots: number;
     created_at: string;
     held_work_unit_ids?: string[];
+    priority_retry_ids?: string[];
   },
 ): {
   persisted_plan: AutomaticBuildPersistedDispatchPlanV1;
@@ -785,6 +800,7 @@ export function selectAutomaticBuildDispatchHandoff(
     input.accepted_plan_digest,
     input.created_at,
     currentPending,
+    input.priority_retry_ids,
   ) ?? persistAutomaticBuildDispatchPlan(
     target,
     input.accepted_plan_digest,
@@ -922,7 +938,7 @@ function compactTaskReceipt(receipt: AutomaticBuildTaskReceiptV2): AutomaticBuil
 
 function terminalReceiptAfterDispatch(
   target: AutomaticBuildTarget,
-  persisted: AutomaticBuildPersistedDispatchV1,
+  persisted: Pick<AutomaticBuildPersistedDispatchV1, "manifest" | "created_at">,
   workUnitId: string,
 ): AutomaticBuildDispatchTaskReceiptV1 | undefined {
   const binding = persisted.manifest.task_bindings?.[workUnitId];
@@ -991,9 +1007,10 @@ function writeProgressCreateOnly(
 ): AutomaticBuildDispatchProgressV1 {
   const file = progressPath(target, persisted, value.ordinal);
   mkdirSync(path.dirname(file), { recursive: true });
+  const bytes = `${JSON.stringify(value, null, 2)}\n`;
+  let descriptor: number;
   try {
-    writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-    return value;
+    descriptor = openSync(file, "wx");
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
@@ -1003,6 +1020,18 @@ function writeProgressCreateOnly(
     }
     return existing;
   }
+  try {
+    try {
+      writeFileSync(descriptor, bytes, { encoding: "utf8" });
+    } finally {
+      closeSync(descriptor);
+    }
+  } catch (error) {
+    // Remove only this call's incomplete projection; the canonical task receipt remains authoritative.
+    try { unlinkSync(file); } catch { /* Preserve the original write error. */ }
+    throw error;
+  }
+  return value;
 }
 
 function refreshProgress(

@@ -89,8 +89,9 @@ afterEach(async () => { await unmount(); queryClient.clear(); vi.unstubAllGlobal
 
 it("shows free, paid, expired batch history and Hong Kong reset/expiry separately", async () => {
   await mount();
-  expect(text()).toContain("当月免费剩余 1000 次");
-  expect(text()).toContain("有效已购剩余 1400 次");
+  const metric = (label: string) => [...host.querySelectorAll('dt')].find(dt => dt.textContent === label)?.nextElementSibling?.textContent;
+  expect(metric('当月免费剩余')).toBe('1,000 次');
+  expect(metric('有效已购剩余')).toBe('1,400 次');
   expect(text()).toContain("1400 / 0");
   expect(text()).toContain("2000 / -100 / 500");
   expect(text()).toContain("2026年11月1日 00:00");

@@ -5,20 +5,20 @@ export type { BuildExecutorToolNameV1, BuildExecutorToolContractV1 } from "./bui
 export * from "./codex-build-executor-contract";
 type BuildExecutorResponse = AutomaticBuildExecutorSessionResponse;
 
-export function createBuildExecutorToolAdapter(input: {
+export function createBuildExecutorToolAdapter<T extends BuildExecutorResponse | Promise<BuildExecutorResponse> = BuildExecutorResponse>(input: {
   session_protocol?: BuildExecutorResponse["version"];
   authorize_connection: (
     capability: unknown,
     call: { tool_name: BuildExecutorToolNameV1; request: unknown },
   ) => boolean;
-  execute_request?: (request: unknown) => BuildExecutorResponse;
+  execute_request?: (request: unknown) => T;
 }): {
   list_tools: () => readonly BuildExecutorToolContractV1[];
   call_tool: (
     toolName: BuildExecutorToolNameV1,
     request: unknown,
     connectionCapability?: unknown,
-  ) => BuildExecutorResponse;
+  ) => T;
 } {
   if (typeof input.authorize_connection !== "function") {
     throw new Error("Build Executor adapter requires a child connection authorizer");
@@ -30,7 +30,7 @@ export function createBuildExecutorToolAdapter(input: {
       toolName: BuildExecutorToolNameV1,
       request: unknown,
       connectionCapability?: unknown,
-    ): BuildExecutorResponse => {
+    ): T => {
       if (!(BUILD_EXECUTOR_TOOL_NAMES_V1 as readonly string[]).includes(toolName)) {
         throw new Error("Build Executor tool is unsupported");
       }
@@ -40,10 +40,13 @@ export function createBuildExecutorToolAdapter(input: {
         throw new Error("Build Executor child connection capability is missing or invalid");
       }
       const response = executeRequest(request);
+      const validate = (response: ReturnType<typeof runAutomaticBuildExecutorSessionCommand>) => {
       if (response.version !== (input.session_protocol ?? "automatic_build_executor_session.v3")) {
         throw new Error("Build Executor MCP accepts only V3 session responses");
       }
-      return response;
+      return response as BuildExecutorResponse;
+      };
+      return (response instanceof Promise ? response.then(validate) : validate(response)) as T;
     },
   });
 }

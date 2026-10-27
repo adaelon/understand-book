@@ -11,6 +11,8 @@ import { AllowancePanel, HistoryPanel } from "./allowance";
 import { McpPanel } from "./mcp";
 import { ChargesPanel } from "./charges";
 import { ActivitySummary, UsagePage } from "./usage";
+import { AllowanceValue, Metric, StatusBadge, ViewSwitch, Disclosure } from '@/components/analytics';
+import { percentage } from '@/lib/allowance';
 
 export function UsersPage() {
   const [offset, setOffset] = useState(0),
@@ -36,7 +38,7 @@ export function UsersPage() {
         </Button>
       </div>
       <form
-        className="flex flex-wrap items-end gap-3"
+        className="filter-bar"
         onSubmit={(event) => {
           event.preventDefault();
           setOffset(0);
@@ -70,7 +72,7 @@ export function UsersPage() {
       <DataState query={query} />
       {query.data && (
         <>
-          <div className="rounded-lg border">
+          <div>
             <DataTable
               rows={query.data.users}
               columns={[
@@ -78,38 +80,29 @@ export function UsersPage() {
                   header: "账号",
                   accessorKey: "user_id",
                   cell: ({ row }) => (
-                    <Link
+                    <div className="max-w-64 whitespace-normal break-all"><Link
                       className="font-medium underline underline-offset-4"
                       to="/users/$userId"
                       params={{ userId: row.original.user_id }}
                     >
                       {row.original.user_id}
-                    </Link>
+                    </Link><p className="mt-1 text-xs text-muted-foreground">{row.original.email ?? '未绑定邮箱'}</p></div>
                   ),
-                },
-                {
-                  header: "邮箱",
-                  cell: ({ row }) => row.original.email ?? "未绑定",
                 },
                 {
                   header: "状态",
                   cell: ({ row }) => (
-                    <Badge
-                      variant={row.original.disabled ? "secondary" : "outline"}
-                    >
+                    <StatusBadge tone={row.original.disabled ? 'muted' : 'green'}>
                       {row.original.disabled ? "停用" : "启用"}
                       {row.original.is_admin ? " · 管理员" : ""}
-                    </Badge>
+                    </StatusBadge>
                   ),
                 },
                 {
-                  header: "可用额度（元）",
+                  header: "可用额度",
                   cell: ({ row }) =>
                     row.original.current_allowance
-                      ? money(
-                          row.original.current_allowance.balance
-                            .available_micro_cny,
-                        )
+                      ? <div className="space-y-2"><strong><AllowanceValue ratio={row.original.current_allowance.balance.percentages?.available} amount={row.original.current_allowance.balance.available_micro_cny}/></strong><div className="cost-bar-track w-28 max-w-full" aria-hidden="true"><span style={{width:`${Math.max(0,Math.min(100,row.original.current_allowance.balance.available_micro_cny/Math.max(1,row.original.current_allowance.balance.granted_micro_cny)*100))}%`,background:'var(--viz-green)'}}/></div><details className="text-xs text-muted-foreground"><summary className="cursor-pointer">精确额度</summary>{money(row.original.current_allowance.balance.available_micro_cny)} 元 · {percentage(row.original.current_allowance.balance.percentages?.available)}</details></div>
                       : "无有效额度期",
                 },
                 {
@@ -162,6 +155,7 @@ export function UsersPage() {
 export function UserPage({ userId }: { userId: string }) {
   const [offset, setOffset] = useState(0),
     [action, setAction] = useState("");
+  const [view, setView] = useState<'overview'|'allowance'|'mcp'|'materials'|'billing'|'usage'>('overview');
   const query = useData<User>(
     `/admin/users/${encodeURIComponent(userId)}?limit=20&offset=${offset}`,
   );
@@ -174,7 +168,7 @@ export function UserPage({ userId }: { userId: string }) {
         ← 全部账号
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div><h1>{userId}</h1><p className="mt-2 break-all text-sm">{user?.email ?? "未绑定邮箱"}</p></div>
+        <div className="min-w-0"><h1 className="break-all">{userId}</h1><p className="mt-2 break-all text-sm text-muted-foreground">{user?.email ?? "未绑定邮箱"}</p></div>
         {user && (
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">
@@ -198,13 +192,20 @@ export function UserPage({ userId }: { userId: string }) {
       <DataState query={query} />
       {user && (
         <>
-          <ActivitySummary activity={user.activity} />
-          <AllowancePanel userId={userId} current={user.current_allowance} />
-          <McpPanel userId={userId} />
-          <Materials user={user} offset={offset} setOffset={setOffset} />
-          <ChargesPanel userId={userId} />
-          <HistoryPanel userId={userId} />
-          <UsagePage userId={userId} />
+          <ViewSwitch label="账号管理分区" value={view} options={[["overview","账号概览"],["allowance","额度与套餐"],["mcp","MCP 调用包"],["materials","材料授权"],["billing","费用与账单"],["usage","用量分析"]]} onChange={setView} />
+          {view === 'overview' && <>
+            <dl className="grid gap-3 sm:grid-cols-3">
+              <Metric label="当前可用额度" value={user.current_allowance ? <AllowanceValue ratio={user.current_allowance.balance.percentages?.available} amount={user.current_allowance.balance.available_micro_cny}/> : '未开通'} detail={<button className="underline underline-offset-4" onClick={() => setView('allowance')}>管理额度与套餐 →</button>} tone="green" />
+              <Metric label="已授权材料" value={user.book_grants.total} detail={<button className="underline underline-offset-4" onClick={() => setView('materials')}>管理材料授权 →</button>} />
+              <Metric label="额度到期时间" value={<span className="text-lg">{date(user.current_allowance?.expires_at)}</span>} detail="香港时间" tone="muted" />
+            </dl>
+            <ActivitySummary activity={user.activity} />
+          </>}
+          {view === 'allowance' && <AllowancePanel userId={userId} current={user.current_allowance} />}
+          {view === 'mcp' && <McpPanel userId={userId} />}
+          {view === 'materials' && <Materials user={user} offset={offset} setOffset={setOffset} />}
+          {view === 'billing' && <><ChargesPanel userId={userId} /><Disclosure title="收款、额度调整与操作记录"><HistoryPanel userId={userId} /></Disclosure></>}
+          {view === 'usage' && <UsagePage userId={userId} />}
           <OperationDialog
             title={`${action} · ${userId}`}
             description={

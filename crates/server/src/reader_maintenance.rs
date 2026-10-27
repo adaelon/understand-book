@@ -1139,3 +1139,42 @@ pub fn export_user(root: &Path, owner: &str, destination: &Path) -> Result<Value
     tool(Gate::enforce(&destination.join("private/.permissions")))?;
     Ok(json!({"state":"complete","user_id":owner,"directory":destination}))
 }
+
+/// Queue one historical expression for the normal, metered background worker.
+/// Maintenance takes the same exclusive writer lease as all offline operations.
+pub fn queue_understanding_observation(root: &Path, owner: &str, turn_id: &str, retry_failed: bool) -> Result<Value> {
+    tool(validate_user_id(owner))?;
+    let root=absolute(root)?;
+    let writer=tool(ServiceWriter::acquire(&root))?;
+    let control=tool(ControlStore::open(writer.clone()))?;
+    let paths=tool(control.user_paths(owner))?;
+    let timestamp=crate::multi_user_host::now().to_string();
+    let mut memory=tool(memory::MemoryStore::open_private_with_learning(paths.memory.clone(),paths.learning.clone()))?;
+    memory.retain_writer_lease(writer);
+    let (history,session_store)=tool(crate::session_store::load_chat_storage(&Some(paths.history.clone())))?;
+    let mut user=crate::user_runtime::UserRuntime::local(memory,Some(paths.history.clone()),history,Some(paths.private.clone()));
+    user.session_store=session_store;
+    let (session,turn)=user.agent_history.sessions.iter().find_map(|session|
+        session.turns.iter().find(|turn|turn.turn_id==turn_id).map(|turn|(session,turn)))
+        .ok_or("Original reader turn was not found")?;
+    let turn_ref=crate::AgentTurnRef {session_id:session.id.clone(),turn_id:turn.turn_id.clone(),user_turn_ordinal:turn.user_turn_ordinal};
+    tool(crate::teaching_coach::enqueue_observation_backfill(&user,&turn_ref,&timestamp))?;
+    let store=tool(user.learning_store_for_workspace(session.learning_workspace_id.as_deref()))?;
+    let binding=tool(store.teaching_event(&format!("binding:{turn_id}")))?;
+    let mut job=tool(store.coach_job_for_source(&binding.binding.tutor_session_id,memory::tutor_coach::CoachJobOrigin::ObservationBackfill,turn_id))?
+        .ok_or("Original turn has no saved usable delivery or observation scope")?;
+    if job.status==memory::tutor_coach::CoachJobStatus::Pending
+        || retry_failed && matches!(job.status,memory::tutor_coach::CoachJobStatus::Failed|memory::tutor_coach::CoachJobStatus::Interrupted) {
+        let reference=turn.published_book_ref.as_ref().ok_or("Original publication reference is missing")?;
+        let publication=tool(crate::published_library::PublishedLibrary::new(control).load(owner,reference))?;
+        job=tool(crate::teaching_coach::freeze_observation_reads(&user,&job,&publication.book,retry_failed))?;
+        if retry_failed {
+            tool(crate::teaching_coach::retry_observation_backfill(&user,&turn_ref,&timestamp))?;
+            job=tool(store.coach_job(&job.input.job_ref))?.ok_or("Observation job disappeared")?;
+        }
+    }
+    Ok(json!({"job_ref":job.input.job_ref,"status":job.status,"turn_id":turn_id,"workspace_id":session.learning_workspace_id,
+        "observation_count":job.input.context["observation_facts"].as_array().map_or(0,Vec::len),
+        "verified_read_range_count":job.input.context["verified_read_ranges"].as_array().map_or(0,Vec::len),
+        "verified_read_ranges":job.input.context.get("verified_read_ranges").cloned().unwrap_or(json!([]))}))
+}

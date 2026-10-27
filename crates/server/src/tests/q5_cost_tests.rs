@@ -161,6 +161,7 @@ fn q5_actual_transport_reconciles_parent_workspace_account_and_platform_once() {
         assert_eq!(
             adapter
                 .complete_structured(CompletionRequest {
+                    followup_user: None,
                     images: Vec::new(),
                     system: "fixture".into(),
                     user: "fixture".into(),
@@ -184,6 +185,7 @@ fn q5_actual_transport_reconciles_parent_workspace_account_and_platform_once() {
     adapter.set_model_purpose("prebuild");
     adapter
         .complete_structured(CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             system: "fixture".into(),
             user: "fixture".into(),

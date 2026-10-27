@@ -78,9 +78,13 @@ import {
   readAutomaticBuildAttemptSnapshot,
   readAutomaticBuildExecutionIdentity,
 } from "../src/automatic-build-task-store";
-import { readAutomaticBuildInputObservation } from "../src/automatic-build-metrics";
-import { claimAutomaticBuildTask } from "../src/automatic-build-lease";
-import { submitAutomaticBuildCandidate } from "../src/automatic-build-mailbox";
+import { readAutomaticBuildInputObservation, buildAutomaticBuildStageMetricsSummary,
+  readAutomaticBuildLifecycleEvents } from "../src/automatic-build-metrics";
+import { createAutomaticBuildRefillTimingObserver } from "../src/automatic-build-dispatch-timing";
+import { automaticBuildRefill } from "../../../skills/build/automatic-build-refill";
+import type { AutomaticBuildStepRequestV1 } from "../../../skills/build/automatic-build-driver";
+import { claimAutomaticBuildTask, startAutomaticBuildLease } from "../src/automatic-build-lease";
+import { failAutomaticBuildTask, submitAutomaticBuildCandidate } from "../src/automatic-build-mailbox";
 import { ExtractorContractError } from "../src/extractor-contract";
 import { automaticBuildPolicyGenerationPath } from "../src/automatic-build-policy-generation";
 import { resolveAutomaticBuildTarget } from "../src/build-orchestrator";
@@ -93,6 +97,7 @@ import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
 import { createBuildExecutorMcpSession } from "../../../skills/build/build-executor-mcp";
 import {
   inspectAutomaticBuildDispatchRecoveryGeneration,
+  inspectAutomaticBuildDispatch,
   type AutomaticBuildRecoveryGenerationIdentity,
 } from "../src/automatic-build-dispatch-runtime";
 
@@ -1164,6 +1169,52 @@ describe("automatic build bounded executor session V3", () => {
     });
   }, 30_000);
 
+  it("finishes a dispatch at an exhausted previous task instead of reporting executor startup failure", () => {
+    const body = Array.from({ length: 12 }, (_, index) => `## Part ${index + 1}\n\n${"A deterministic paragraph explains an independent point. ".repeat(150)}`).join("\n\n");
+    const value = v3Fixture("v3-exhausted-previous-task", body);
+    const ids = value.envelope.manifest.ordered_work_unit_ids;
+    expect(ids.length).toBeGreaterThan(1);
+    const firstId = ids[0];
+    const descriptor = value.plan.snapshot.stages.find(stage => stage.stage === value.envelope.manifest.stage)!
+      .work_units!.find(unit => unit.work_unit_id === firstId)!;
+    const binding = value.envelope.manifest.task_bindings![firstId];
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const claim = claimAutomaticBuildTask(value.target, value.envelope.manifest.stage, firstId, {
+        owner: `seed-${attempt}`, now: `2026-08-07T08:00:0${attempt * 2}.000Z`, binding, descriptor,
+        policy_generation: "v3_only", max_semantic_attempts: 3,
+      });
+      if (claim.status !== "leased") throw new Error("expected seed lease");
+      startAutomaticBuildLease(value.target, claim.lease_ref, claim.lease.token, {
+        now: `2026-08-07T08:00:0${attempt * 2}.000Z`,
+      });
+      failAutomaticBuildTask(value.target, claim.lease_ref, claim.lease.token, {
+        diagnostic_code: "semantic_invalid", now: `2026-08-07T08:00:0${attempt * 2 + 1}.000Z`,
+      });
+    }
+    const thirdRef = issueCurrentRecoveryHandoff(value, "2026-09-01T08:00:10.000Z").opaque_handoff_ref;
+    const generated = startV3GenerationForHandoff(thirdRef, "2026-09-01T08:00:11.000Z");
+    expect(generated.semantic_attempt).toBe(3);
+    const session = JSON.parse(readFileSync(path.join(value.registryRoot, "executor-task-sessions", `${generated.opaque_session_ref}.json`), "utf8"));
+    failAutomaticBuildTask(value.target, session.lease_ref, session.lease_token, {
+      diagnostic_code: "semantic_invalid", now: "2026-09-01T08:00:12.000Z",
+    });
+    const nextRef = issueCurrentRecoveryHandoff(value, "2026-09-01T08:00:13.000Z").opaque_handoff_ref;
+    const delivered = collectV3Delivery(expectDeliverInput(openAutomaticBuildExecutorSessionV3(nextRef,
+      { now: "2026-09-01T08:00:14.000Z" })), "2026-09-01T08:00:14.000Z");
+    const phases: string[] = [];
+    expect(startAutomaticBuildExecutorGeneration(delivered.start_request, {
+      now: "2026-09-01T08:00:15.000Z", timing: { complete_phase: phase => { phases.push(phase); } },
+    })).toEqual({ version: "automatic_build_executor_session.v3", action: { kind: "DONE", status: "retryable_failure" } });
+    expect(phases).toEqual(["current-state/claim", "input-render-or-reuse"]);
+    const finished = inspectAutomaticBuildDispatch(value.target, value.envelope.manifest.stage,
+      value.envelope.manifest.dispatch_id, "2026-09-01T08:00:16.000Z", value.envelope.dispatch_run_id);
+    expect(finished).toMatchObject({ state: "finished", receipt: {
+      terminal_reason: "task_failure", unclaimed_work_unit_ids: ids.slice(1),
+    } });
+    expect(readAutomaticBuildAttemptSnapshot(value.target).stages[value.envelope.manifest.stage]?.[ids[1]])
+      .toBeUndefined();
+  }, 30_000);
+
   it("RG4 projects a finished dispatch without creating an attempt or candidate action", () => {
     const value = v3Fixture("v3-r1-current-work-unit");
     const delivery = expectDeliverInput(openAutomaticBuildExecutorSessionV3(
@@ -1345,6 +1396,22 @@ describe("automatic build bounded executor session V3", () => {
     expect(replacement.recovery_identity).toMatchObject({ semantic_attempt: 1, lease_epoch: 2 });
     expect(replacement.opaque_handoff_ref).not.toBe(value.envelope.opaque_handoff_ref);
 
+    const refillTimes = ["2026-08-09T08:00:02.000Z", "2026-08-09T08:00:02.500Z"];
+    const refilled = automaticBuildRefill({ version: "automatic_build_refill_request.v1",
+      invocation_ref: "generation-timing-recovery", capacity_limit: 1,
+      live_by_slot: { [value.envelope.dispatch_slot_ref]: {
+        child: "expired-child", opaque_handoff_ref: value.envelope.opaque_handoff_ref } },
+      completed_refs: [], terminal_children: ["expired-child"],
+    }, {
+      validateStep: request => request as AutomaticBuildStepRequestV1, maxParallel: () => 1,
+      timing: createAutomaticBuildRefillTimingObserver({ registry_root: value.registryRoot,
+        now: () => refillTimes.shift()! }),
+      step: () => ({ version: "automatic_build_step.v1", action: { kind: "SPAWN_EXECUTORS", executors: [{
+        opaque_handoff_ref: replacement.opaque_handoff_ref, dispatch_slot_ref: value.envelope.dispatch_slot_ref,
+      }] } }),
+    });
+    expect(refilled.ready_executors[0].opaque_handoff_ref).toBe(replacement.opaque_handoff_ref);
+
     let staleStartError: unknown;
     try {
       startAutomaticBuildExecutorGeneration(firstDelivered.start_request, {
@@ -1374,6 +1441,27 @@ describe("automatic build bounded executor session V3", () => {
     expect(replacementGeneration).toMatchObject({ semantic_attempt: 1 });
     expect(replacementGeneration.opaque_session_ref).not.toBe(firstGeneration.opaque_session_ref);
     expect(replacementGeneration.candidate_sink_ref).not.toBe(firstGeneration.candidate_sink_ref);
+    // Replaying the accepted start must keep its first timestamp and the old epoch unavailable.
+    startAutomaticBuildExecutorGeneration(replacementDelivered.start_request, { now: "2026-08-09T08:00:05.500Z" });
+    const timingSummary = buildAutomaticBuildStageMetricsSummary(value.target, value.envelope.manifest.stage, {
+      now: "2026-08-09T08:00:05.500Z",
+    });
+    expect(timingSummary.dispatch_timing).toEqual({ coverage: 0.5, initial_capacity_attempts: 0,
+      terminal_refill_attempts: 1, unavailable_attempts: 1 });
+    expect(timingSummary.phase_latency).toMatchObject({
+      dispatch_wait_ms: { p50: 3000, p95: 3000, observed_attempts: 1, unavailable_attempts: 1 },
+      slot_observation_to_ready_ms: { p50: 500 }, refill_step_ms: { p50: 500 },
+      handoff_ready_to_open_ms: { p50: 500 }, open_to_generation_start_ms: { observed_attempts: 2 },
+    });
+    expect(readAutomaticBuildLifecycleEvents(value.target, value.envelope.manifest.stage,
+      { now: "2026-08-09T08:00:05.500Z" }).filter(event => event.kind === "slot_available_observed"))
+      .toMatchObject([{ physical_attempt: 2, observed_at: "2026-08-09T08:00:02.000Z" }]);
+    const replacementSession = JSON.parse(readFileSync(path.join(value.registryRoot, "executor-task-sessions",
+      `${replacementGeneration.opaque_session_ref}.json`), "utf8"));
+    const replacementTiming = path.join(path.dirname(replacementSession.lease_ref), "generation-timing.json");
+    unlinkSync(replacementTiming);
+    startAutomaticBuildExecutorGeneration(replacementDelivered.start_request, { now: "2026-08-09T08:00:05.750Z" });
+    expect(existsSync(replacementTiming)).toBe(false); // A later replay cannot reconstruct an unobserved ready time.
     expect(readAutomaticBuildAttemptSnapshot(value.target)
       .stages[value.envelope.manifest.stage]?.[value.envelope.manifest.ordered_work_unit_ids[0]])
       .toMatchObject({ semantic_attempt: 1, lease_epoch: 2, failures: 0 });

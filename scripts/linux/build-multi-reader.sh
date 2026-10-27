@@ -5,7 +5,7 @@ cd "$source_root"
 # Build in the final release directory: runtime source paths are compiled in.
 rm -f -- multi-reader-build.txt
 pnpm install --frozen-lockfile
-VITE_MULTI_USER=1 pnpm -C packages/web build --outDir dist-multi
+pnpm -C packages/web build:multi
 pnpm -C apps/admin build
 mkdir -p packages/web/dist-multi/admin
 cp -a apps/admin/dist/. packages/web/dist-multi/admin/

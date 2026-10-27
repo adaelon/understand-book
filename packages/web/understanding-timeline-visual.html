@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>理解变化 · 界面验收示例</title></head>
+<body><div id="app"></div><script type="module">
+import { createApp, defineComponent, h, ref } from '/node_modules/.vite/deps/vue.js';
+import TutorPanel from '/src/components/TutorPanel.vue';
+import '/src/style.css';
+const sample = (id, extra) => ({ evidence_id: id, nature: 'hypothesis', label: 'Prefill 与 Decode 的分工', capability: 'explanation', prompt: '结合刚才的讲解，确认自回归生成的两个阶段。', learner_quote: '', interpretation: '', teaching_implication: '', correction: null, status: 'unassessed', assistance_count: 0, attempt: 0, feedback_hidden: false, source_quotes: [], source_session_id: 'example-chat', source_turn_id: id, source_session_title: '深入理解 AI Infra · 自回归生成', supersedes: null, superseded: false, ...extra });
+const first = sample('first', { occurred_at: '2026-10-23T11:36:00+08:00', learner_quote: '也就是说 prefill 是根据输入产出第一个 token，decode 是根据之前的 token 持续增量生成 token，直到模型输出停止符，对吗？', interpretation: '能用自己的话概括两个阶段的分工，并主动请求确认。停止条件仍需澄清；当前表达是在前一轮讲解后形成的，尚未验证独立应用。', teaching_implication: '围绕当前疑问解释停止条件，再看新的表达。', assistance: [{ fact_ref: 'help-1', kind: 'teaching_delivery', occurred_at: '2026-10-23T11:30:00+08:00', text: '此前讲解说明了 Prefill 对输入进行处理，以及 Decode 持续生成后续 token 的过程。' }] });
+const second = sample('second', { occurred_at: '2026-10-24T09:20:00+08:00', learner_quote: '我理解它们都在做下一 token 的预测，但 Prefill 一次处理已有输入，Decode 逐步接上新 token。停止也可能来自长度限制。这个区别和输入、输出长度怎样影响计算量有关，对吗？', interpretation: '能独立说明两个阶段以及停止条件。', superseded: true });
+const corrected = sample('corrected', { ...second, evidence_id: 'corrected', supersedes: 'second', superseded: false, correction: '这部分是参考前面的讲解总结出来的，还不能说我已经能独立分析新的例子。', interpretation: '能参考此前讲解说明两个阶段和停止条件；当前证据支持受助后的总结，尚未验证新情境下的独立应用。', teaching_implication: '后续若要判断应用能力，可以在用户愿意时结合新情境观察。' });
+const legacy = sample('legacy', { label: 'KV Cache 的作用', source_session_id: null, source_turn_id: null, source_session_title: null, learner_quote: 'KV Cache 会保存之前算过的结果吗？', interpretation: '正在确认缓存复用的含义；这条早期记录没有保留发言时间。' });
+const records = { first, second, corrected, legacy };
+const realFetch = window.fetch.bind(window);
+window.fetch = async (url, init) => {
+  if (!String(url).includes('/api/tutor/')) return realFetch(url, init);
+  const path = String(url).split('/').pop(), body = JSON.parse(init?.body || '{}');
+  if (path === 'understanding') return Response.json({ rows: [], interpretations: [corrected, first, legacy], next: null, stale: false });
+  if (path === 'evidence') return Response.json(records[body.evidence_ref]);
+  if (path === 'timeline') return Response.json({ entries: body.evidence_ref === 'legacy' ? [legacy] : [first, second, corrected], next: null, order: 'oldest_first' });
+  if (path === 'correct') { const record = records[body.evidence_ref]; records.edited = { ...record, evidence_id: 'edited', correction: body.text, interpretation: '原解释已被用户纠正，等待新的表现依据。', supersedes: record.evidence_id }; return Response.json({ evidence_ref: 'edited' }); }
+  throw new Error(`Unexpected visual fixture request: ${path}`);
+};
+createApp(defineComponent({ setup() {
+  const open = ref(true), location = ref('');
+  window.addEventListener('understanding-open-chat', event => { location.value = '已请求打开对应对话（界面验收示例）'; });
+  return () => h('main', { style: 'padding:24px;font-family:var(--sans)' }, [h('h1', '理解变化 · 界面验收示例'), h('p', '以下是展示时间、帮助条件与解释更正的示例数据，不是真实用户历史。'), h('p', { role: 'status' }, location.value), h('button', { onClick: () => open.value = true }, '打开我的理解'), open.value ? h(TutorPanel, { initialView: 'understanding', state: { control: { enabled: true, current_tutor_session_id: null, revision: 1 }, sessions: {} }, busy: false, error: '', pending: false, sourceId: 'example-book', label: '学习助手已就绪', readiness: { status: 'ready', reason: '可用', limitations: [] }, onClose: () => open.value = false }) : null]);
+} })).mount('#app');
+</script></body></html>

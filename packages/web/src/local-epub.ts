@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { unzipSync, strFromU8 } from 'fflate';
 
 export interface EpubChapter { title: string; html: string }
@@ -8,12 +9,12 @@ export function readerDocument(html: string): string {
 /** EPUB contents stay inside a scriptless, networkless iframe. */
 export function openLocalEpub(buffer: ArrayBuffer): { chapters: EpubChapter[]; dispose(): void } {
   const files = unzipSync(new Uint8Array(buffer)), parser = new DOMParser(), urls: string[] = [];
-  const text = (path: string) => { if (!files[path]) throw new Error(`EPUB 缺少 ${path}`); return strFromU8(files[path]); };
+  const text = (path: string) => { if (!files[path]) throw new Error(uiText('EPUB 缺少 {0}', [path])); return strFromU8(files[path]); };
   const resolve = (base: string, relative: string) => decodeURIComponent(new URL(relative, `https://epub.local/${base}`).pathname.slice(1));
   try {
     const container = parser.parseFromString(text('META-INF/container.xml'), 'application/xml');
     const packagePath = container.querySelector('rootfile')?.getAttribute('full-path');
-    if (!packagePath) throw new Error('EPUB 缺少阅读顺序。');
+    if (!packagePath) throw new Error(uiText('EPUB 缺少阅读顺序。'));
     const document = parser.parseFromString(text(packagePath), 'application/xml');
     const manifest = new Map(Array.from(document.querySelectorAll('manifest > item')).map(item => [item.getAttribute('id'), {
       path: resolve(packagePath, item.getAttribute('href') ?? ''), type: item.getAttribute('media-type') ?? '',
@@ -44,9 +45,9 @@ export function openLocalEpub(buffer: ArrayBuffer): { chapters: EpubChapter[]; d
         if (!link.getAttribute('href')?.startsWith('#')) link.removeAttribute('href');
         link.removeAttribute('target');
       }
-      chapters.push({ title: page.querySelector('h1,h2,h3,title')?.textContent?.trim() || `第 ${chapters.length + 1} 节`, html: readerDocument(page.body.innerHTML) });
+      chapters.push({ title: page.querySelector('h1,h2,h3,title')?.textContent?.trim() || uiText('第 {0} 节', [chapters.length + 1]), html: readerDocument(page.body.innerHTML) });
     }
-    if (!chapters.length) throw new Error('EPUB 没有可显示的章节。');
+    if (!chapters.length) throw new Error(uiText('EPUB 没有可显示的章节。'));
     return { chapters, dispose: () => urls.forEach(url => URL.revokeObjectURL(url)) };
   } catch (error) { urls.forEach(url => URL.revokeObjectURL(url)); throw error; }
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { ref } from 'vue';
 import { isTauri } from '@tauri-apps/api/core';
 import { localMaterials, localMaterialsSupported } from '../local-materials';
@@ -13,11 +15,11 @@ const desktop = isTauri(), local = localMaterialsSupported();
 <template>
   <template v-if="desktop">
     <LocalMaterials v-if="local && network.identity" :scope="{ account_id: network.identity.user_id, workspace_id: workspace.learning_workspace_id }" :workspace-name="workspace.goal.text" :archived="workspace.archived" @synced="showCloud = true; emit('ready')" @allowance="emit('allowance')" />
-    <section v-else class="desktop-update" aria-label="本机资料需要更新"><h3>本机资料</h3><p>本地导入不需要云端存储套餐。当前 Windows 版本尚未包含本机书库，请更新客户端后使用。</p><a href="/downloads/UnderstandBookSetup.exe" download>下载新版 Windows 客户端</a></section>
-    <button v-if="local" class="local-library-link" @click="localMaterials.openLibrary()">打开本机书库（可离线使用）</button>
+    <section v-else class="desktop-update" :aria-label="uiText('本机资料需要更新')"><h3>{{ uiText('本机资料') }}</h3><p>{{ uiText('本地导入不需要云端存储套餐。当前 Windows 版本尚未包含本机书库，请更新客户端后使用。') }}</p><a href="/downloads/UnderstandBookSetup.exe" download>{{ uiText('下载新版 Windows 客户端') }}</a></section>
+    <button v-if="local" class="local-library-link" @click="localMaterials.openLibrary()">{{ uiText('打开本机书库（可离线使用）') }}</button>
     <details class="cloud-copy-details" :open="showCloud" @toggle="showCloud = ($event.target as HTMLDetailsElement).open">
-      <summary>云端副本与准备进度 · 多端使用</summary>
-      <p>这里的文件保存在服务器，使用套餐云端空间。到期或空间不足不会影响本机资料。</p>
+      <summary>{{ uiText('云端副本与准备进度 · 多端使用') }}</summary>
+      <p>{{ uiText('这里的文件保存在服务器，使用套餐云端空间。到期或空间不足不会影响本机资料。') }}</p>
       <PersonalPreparations v-if="showCloud" :workspace="workspace" @ready="emit('ready')" @open="emit('open', $event)" @allowance="emit('allowance')" />
     </details>
   </template>

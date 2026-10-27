@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { VideoSourceRef } from "../../core/src/generated/VideoSourceRef";
 import type { VideoImportStage } from "../../core/src/generated/VideoImportStage";
 export type PreparingVideo = { video: VideoSourceRef; title: string; stage: VideoImportStage;
@@ -10,7 +11,7 @@ export function videoUrl(video: VideoSourceRef, leaf: string): string {
 }
 export async function videoGet<T>(url: string): Promise<T> {
   const response = await fetch(url, { credentials: "same-origin", cache: "no-store" });
-  if (!response.ok) throw new Error(response.status === 401 ? "请重新登录后打开视频" : "视频暂不可读取，请检查材料是否仍可用");
+  if (!response.ok) throw new Error(response.status === 401 ? uiText('请重新登录后打开视频') : uiText('视频暂不可读取，请检查材料是否仍可用'));
   return response.json();
 }
 export const videoCatalog = () => videoGet<{ videos: PreparingVideo[]; active?: VideoSourceRef | null }>("/api/videos");

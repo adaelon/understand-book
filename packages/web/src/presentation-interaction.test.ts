@@ -6,7 +6,7 @@ import { initialRun, reduceRun } from './agent-run-state';
 import { presentationDispatcher, registerPresentationHost, type PageOperationResult } from './presentation-interaction';
 import type { PresentationCommand } from './generated/PresentationCommand';
 
-const command: PresentationCommand = { command_id: 'c', run_turn_id: 'run', session_id: 's', delivery_turn_id: 'delivery',
+const command: PresentationCommand = { command_id: 'c', run_turn_id: 'run', session_id: 's', content_session_id: 's', delivery_turn_id: 'delivery',
   request: { operation: 'observe', reference: { presentation_id: 'p', revision: 1 } }, page_id: null, expected_values: {}, expected_edits: {}, available_actions: [] };
 const running = () => ({ ...initialRun({ book_id: 'book', session_id: 's', turn_id: 'run' }), presentation_command: command });
 afterEach(() => vi.restoreAllMocks());

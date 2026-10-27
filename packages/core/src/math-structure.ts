@@ -43,6 +43,15 @@ export interface MathStructureSource {
   byLid: ReadonlyMap<string, Pick<LidNode, "span">>;
 }
 
+/** A rejected source quotation is a candidate error, not a writer crash. */
+export class MathStructureQuoteError extends Error {
+  constructor(message: string, readonly json_pointer: string) {
+    super(message);
+    this.name = "MathStructureQuoteError";
+  }
+  readonly expected = "Copy an exact contiguous quotation from the cited source evidence, preserving whitespace and math markup. Cite all required evidence LIDs; do not paraphrase the quotation.";
+}
+
 function evidencePassages(lids: string[], input: MathStructureSource): string[] {
   const nodes = [...new Set(lids)].map((lid) => {
     const node = input.byLid.get(lid);
@@ -58,6 +67,45 @@ function evidencePassages(lids: string[], input: MathStructureSource): string[] 
   return spans.map((span) => input.source.slice(span.start, span.end));
 }
 
+/** Restore presentation-only quote differences to a unique span of the cited source.
+ * The stored candidate stays unchanged; the artifact still passes exact quote validation.
+ */
+export function restoreMathStructureSourceQuotes(candidates: MathStructureCandidate[], input: MathStructureSource): MathStructureCandidate[] {
+  const restore = (quote: string, lids: string[]): string => {
+    const passages = evidencePassages(lids, input);
+    if (passages.some(passage => passage.includes(quote))) return quote;
+    const needle = quote.replace(/\s/gu, "");
+    if (!needle) return quote;
+    let match: string | undefined;
+    for (const passage of passages) {
+      let normalized = "";
+      const offsets: number[] = [];
+      for (let index = 0; index < passage.length; index += 1) {
+        if (/\s/u.test(passage[index])) continue;
+        normalized += passage[index];
+        offsets.push(index);
+      }
+      const start = normalized.indexOf(needle);
+      if (start < 0) continue;
+      if (match !== undefined || normalized.indexOf(needle, start + 1) >= 0) return quote;
+      match = passage.slice(offsets[start], offsets[start + needle.length - 1] + 1);
+    }
+    return match ?? quote;
+  };
+  return candidates.map(item => ({
+    ...item,
+    ...(item.label === undefined ? {} : { label: restore(item.label, item.evidence_lids) }),
+    assumptions: item.assumptions.map(assumption => ({
+      ...assumption, quote: restore(assumption.quote, assumption.evidence_lids),
+    })),
+    references: item.references.map(reference => ({
+      ...reference,
+      quote: restore(reference.quote, reference.evidence_lids),
+      target_label: restore(reference.target_label, reference.evidence_lids),
+    })),
+  }));
+}
+
 /** Validate citations against the actual source; semantic classification remains the extractor's job. */
 export function validateMathStructureCandidates(candidates: MathStructureCandidate[], input: MathStructureSource & {
   anchor_lids: string[];
@@ -70,22 +118,23 @@ export function validateMathStructureCandidates(candidates: MathStructureCandida
     if (!lids.length || lids.some((lid) => !visible.has(lid))) throw new Error("math structure evidence is outside the visible source");
     return evidencePassages(lids, input);
   };
-  for (const candidate of candidates) {
+  for (const [candidateIndex, candidate] of candidates.entries()) {
+    const pointer = `/math_items/${candidateIndex}`;
     if (!anchors.has(candidate.anchor_lid) || seen.has(candidate.anchor_lid)) throw new Error("math structure anchor is out of scope or duplicated");
     seen.add(candidate.anchor_lid);
     const passages = checkEvidence(candidate.evidence_lids);
     if (!candidate.evidence_lids.includes(candidate.anchor_lid)) throw new Error("math structure evidence must include its anchor");
-    if (candidate.label && !passages.some((passage) => passage.includes(candidate.label!))) throw new Error("math structure label is not quoted from its evidence");
-    for (const assumption of candidate.assumptions) {
+    if (candidate.label && !passages.some((passage) => passage.includes(candidate.label!))) throw new MathStructureQuoteError("math structure label is not quoted from its evidence", `${pointer}/label`);
+    for (const [assumptionIndex, assumption] of candidate.assumptions.entries()) {
       if (assumption.evidence_lids.some((lid) => !candidate.evidence_lids.includes(lid))
         || !checkEvidence(assumption.evidence_lids).some((passage) => passage.includes(assumption.quote))) {
-        throw new Error("math structure assumption is not quoted from the item evidence");
+        throw new MathStructureQuoteError("math structure assumption is not quoted from the item evidence", `${pointer}/assumptions/${assumptionIndex}/quote`);
       }
     }
-    for (const ref of candidate.references) {
+    for (const [referenceIndex, ref] of candidate.references.entries()) {
       const referencePassages = checkEvidence(ref.evidence_lids);
-      if (!referencePassages.some((passage) => passage.includes(ref.quote))) throw new Error("math structure reference is not quoted from its evidence");
-      if (!referencePassages.some((passage) => passage.includes(ref.target_label))) throw new Error("math structure target label is not quoted from its evidence");
+      if (!referencePassages.some((passage) => passage.includes(ref.quote))) throw new MathStructureQuoteError("math structure reference is not quoted from its evidence", `${pointer}/references/${referenceIndex}/quote`);
+      if (!referencePassages.some((passage) => passage.includes(ref.target_label))) throw new MathStructureQuoteError("math structure target label is not quoted from its evidence", `${pointer}/references/${referenceIndex}/target_label`);
       if (ref.relation === "proves" && candidate.kind !== "proof") throw new Error("only a source proof may emit proves");
       if (ref.relation === "asks_to_prove" && candidate.kind !== "exercise") throw new Error("only an exercise may emit asks_to_prove");
     }

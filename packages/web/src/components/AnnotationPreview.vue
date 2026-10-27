@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { inject } from 'vue';
 import { shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
@@ -36,16 +38,16 @@ function source() {
 </script>
 
 <template>
-  <section class="annotation-preview" role="dialog" aria-label="正文批注" tabindex="-1"
+  <section class="annotation-preview" role="dialog" :aria-label="uiText('正文批注')" tabindex="-1"
     data-reader-selection-ignore data-note-placement-ignore @keydown.esc.stop.prevent="emit('close')">
     <header>
-      <strong>正文批注 · {{ props.records.length }} 条</strong>
-      <button aria-label="关闭批注" @click="emit('close')">×</button>
+      <strong>{{ uiText('正文批注 ·') }} {{ props.records.length }} {{ uiText('条') }}</strong>
+      <button :aria-label="uiText('关闭批注')" @click="emit('close')">×</button>
     </header>
-    <div class="annotation-records" v-if="props.records.length > 1" role="group" aria-label="此处的批注">
+    <div class="annotation-records" v-if="props.records.length > 1" role="group" :aria-label="uiText('此处的批注')">
       <button v-for="(record, index) in props.records" :key="record.mem_id"
         :aria-pressed="record.mem_id === props.active.mem_id" @click="emit('select', record.mem_id)">
-        {{ record.type === 'highlight' ? '高亮' : '笔记' }} {{ index + 1 }}
+        {{ record.type === 'highlight' ? uiText('高亮') : uiText('笔记') }} {{ index + 1 }}
       </button>
     </div>
     <NoteDetail v-if="props.active.type === 'note'" :note="props.active" embedded @answer="emit('open-note', props.active)" @locate="emit('open-note', props.active)" @restore="emit('open-note', props.active, true)" />
@@ -54,13 +56,13 @@ function source() {
       <div class="md" v-html="props.renderMarkdown(props.active.content)"></div>
     </div>
     <footer>
-      <button v-if="props.active.type === 'highlight' && shareHighlight" @click="shareHighlight(props.active)">生成分享图</button>
-      <button @click="emit('edit', props.active)">编辑</button>
-      <button @click="emit('delete', props.active)">删除</button>
+      <button v-if="props.active.type === 'highlight' && shareHighlight" @click="shareHighlight(props.active)">{{ uiText('生成分享图') }}</button>
+      <button @click="emit('edit', props.active)">{{ uiText('编辑') }}</button>
+      <button @click="emit('delete', props.active)">{{ uiText('删除') }}</button>
       <button v-if="props.active.type === 'note' && props.active.note_placement?.kind === 'lid_block' && !props.active.selection_context"
-        @click="emit('place', props.active)">移动</button>
-      <button v-if="props.active.anchor.lid" @click="source">查看来源</button>
-      <button @click="emit('show-notes', props.active)">在笔记中查看</button>
+        @click="emit('place', props.active)">{{ uiText('移动') }}</button>
+      <button v-if="props.active.anchor.lid" @click="source">{{ uiText('查看来源') }}</button>
+      <button @click="emit('show-notes', props.active)">{{ uiText('在笔记中查看') }}</button>
     </footer>
   </section>
 </template>

@@ -1,5 +1,34 @@
 use super::*;
 
+#[test]
+fn tutor_source_api_restores_each_book_inside_and_outside_learning_workspaces() {
+    let f = Fixture::new();
+    let (workspace, _) = learning_scene(&f, "联合学习", vec![]);
+    for scope in [None, Some(workspace.as_str())] {
+        let query = scope.map(|id| format!("learning_workspace_id={id}&")).unwrap_or_default();
+        for (key, source, intent) in [("a", &f.x.book_id, "理解计算图"), ("b", &f.y.book_id, "理解资源核算")] {
+            let path = format!("/api/tutor/state?{query}source_id={source}");
+            let before = f.ok(&f.a, "GET", &path, Value::Null);
+            assert!(before["control"]["current_tutor_session_id"].is_null());
+            let state = f.ok(&f.a, "POST", &format!("/api/tutor/mutate?{query}source_id={source}"), json!({
+                "operation_id":key, "expected_revision":before["control"]["revision"],
+                "action":{"kind":"start", "user_intent":intent, "explicit_constraints":[],
+                    "material_scope":[{"source_id":source,"scope_refs":[],"role":"primary"}], "default_teaching_intent":null}
+            }));
+            assert_eq!(state["control"]["current_tutor_session_id"], format!("tutor-{key}"));
+        }
+        for (key, source, intent) in [("a", &f.x.book_id, "理解计算图"), ("b", &f.y.book_id, "理解资源核算")] {
+            let restored = f.ok(&f.a, "GET", &format!("/api/tutor/state?{query}source_id={source}"), Value::Null);
+            let id = format!("tutor-{key}");
+            assert_eq!(restored["control"]["current_tutor_session_id"], id);
+            assert_eq!(restored["sessions"][&id]["user_intent"], intent);
+            assert_eq!(restored["sessions"].as_object().unwrap().len(), 2);
+        }
+        let empty = f.ok(&f.a, "GET", &format!("/api/tutor/state?{query}source_id=unread-book"), Value::Null);
+        assert!(empty["control"]["current_tutor_session_id"].is_null());
+    }
+}
+
 #[derive(Clone)]
 struct GoalProbe {
     calls: Arc<AtomicUsize>,

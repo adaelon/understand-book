@@ -36,7 +36,7 @@ fn om4_network_command_wait_releases_locks_and_uses_workspace_saved_receipt() {
     let mut port=f.run(&w,"om4");
     let stream=RunStream::new(RunDescriptor {book_id:f.x.book_id.clone(),session_id:port.scope.chat_session_id.clone(),turn_id:port.scope.turn_id.clone()});
     port.observe(&stream);
-    let request=InteractRequest::Observe {reference:reference.clone()};
+    let request=InteractRequest::Observe {board_target:None, reference:reference.clone()};
     let task=std::thread::spawn(move||{
         let result=port.interact_presentation(request,&CancellationToken::default());
         (port,result)
@@ -60,7 +60,7 @@ fn om4_network_command_wait_releases_locks_and_uses_workspace_saved_receipt() {
     let (mut port,result)=task.join().unwrap();
     let result=result.unwrap();
     assert_eq!(result["state"]["observed_result"],"10 metres");
-    let action=InteractRequest::Act {reference:reference.clone(),based_on:result["saved_state_ref"].as_str().unwrap().into(),
+    let action=InteractRequest::Act {board_target:None, reference:reference.clone(),based_on:result["saved_state_ref"].as_str().unwrap().into(),
         action:PresentationAction::SetParameters {values:BTreeMap::from([("speed".into(),json!(2))])}};
     let task=std::thread::spawn(move||port.interact_presentation(action,&CancellationToken::default()));
     let command=wait();

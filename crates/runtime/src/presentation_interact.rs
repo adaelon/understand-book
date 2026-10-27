@@ -33,16 +33,38 @@ pub enum PresentationAction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct BoardPresentationTarget {
+    pub board_id: String,
+    pub item_id: String,
+    pub board_revision: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum InteractRequest {
-    Observe { reference: PresentationRef },
-    Act { reference: PresentationRef, based_on: String, action: PresentationAction },
+    Observe {
+        reference: PresentationRef,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        board_target: Option<BoardPresentationTarget>,
+    },
+    Act {
+        reference: PresentationRef, based_on: String, action: PresentationAction,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        board_target: Option<BoardPresentationTarget>,
+    },
 }
 impl InteractRequest {
     pub fn reference(&self) -> &PresentationRef {
-        match self { Self::Observe { reference } | Self::Act { reference, .. } => reference }
+        match self { Self::Observe { reference, .. } | Self::Act { reference, .. } => reference }
+    }
+    pub fn board_target(&self) -> Option<&BoardPresentationTarget> {
+        match self { Self::Observe { board_target, .. } | Self::Act { board_target, .. } => board_target.as_ref() }
     }
 }
 
@@ -52,6 +74,10 @@ pub struct PresentationCommand {
     pub command_id: String,
     pub run_turn_id: String,
     pub session_id: String,
+    pub content_session_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub board_target: Option<BoardPresentationTarget>,
     pub delivery_turn_id: String,
     pub request: InteractRequest,
     pub page_id: Option<String>,
@@ -92,12 +118,13 @@ pub fn validate_action(action: &PresentationAction, contract: &[PresentationActi
 pub fn spec() -> ToolSpec {
     let reference = json!({"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer","minimum":1}},"required":["presentation_id","revision"],"additionalProperties":false});
     let action = book_tool_contracts::schema_value::<PresentationAction>();
+    let board_target = json!({"type":"object","properties":{"board_id":{"type":"string"},"item_id":{"type":"string"},"board_revision":{"type":"integer","minimum":1}},"required":["board_id","item_id","board_revision"],"additionalProperties":false});
     crate::tool_schema::complete_spec(ToolSpec {
         name: "presentation.interact".into(),
-        description: "Observe or operate the exact delivered presentation currently open in the Reader. Observe first; act uses its saved_state_ref and declared actions. Only applied with a saved receipt confirms completion. Chain a local demonstration from each actual receipt, leaving the same page available for learner edits. teaching.action_ref records teacher usage and teaching.assistance_refs identify the visible help saved with that scene; these are not learner answers or independent mastery. On conflict, cancellation or timeout observe again; never automatically retry an action. Parameters change runtime state, not the content version.".into(),
+        description: "Observe or operate the exact delivered presentation currently open in the Reader. A board_target addresses the retained item at the stated board revision, including content from another or deleted chat; it does not grant content authoring rights. Observe the current page first; act uses its saved_state_ref and declared actions, never a frozen question snapshot. Only applied with a saved receipt confirms completion. Chain a local demonstration from each actual receipt, leaving the same page available for learner edits. teaching.action_ref records teacher usage and teaching.assistance_refs identify the visible help saved with that scene; these are not learner answers or independent mastery. On conflict, cancellation or timeout observe again; never automatically retry an action. Parameters change runtime state, not the content version.".into(),
         parameters: json!({"type":"object","properties":{
             "operation":{"type":"string","enum":["observe","act"]},"reference":reference,
-            "based_on":{"type":"string"},"action":action
+            "based_on":{"type":"string"},"action":action,"board_target":board_target
         },"required":["operation","reference"],"additionalProperties":false,
         "anyOf":[
             {"properties":{"operation":{"enum":["observe"]}},"not":{"required":["action"]}},
@@ -105,6 +132,8 @@ pub fn spec() -> ToolSpec {
         ],
         "examples":[
             {"operation":"observe","reference":{"presentation_id":"PRESENTATION_ID","revision":1}},
+            {"operation":"observe","reference":{"presentation_id":"PRESENTATION_ID","revision":1},"board_target":{"board_id":"BOARD_ID","item_id":"PRESENTATION_ITEM_ID","board_revision":2}},
+            {"operation":"act","reference":{"presentation_id":"PRESENTATION_ID","revision":1},"board_target":{"board_id":"BOARD_ID","item_id":"PRESENTATION_ITEM_ID","board_revision":2},"based_on":"SAVED_STATE_REF","action":{"kind":"invoke","action_id":"apply"}},
             {"operation":"act","reference":{"presentation_id":"PRESENTATION_ID","revision":1},"based_on":"SAVED_STATE_REF","action":{"kind":"set_parameters","values":{"input_speed_b_m_s":2}}},
             {"operation":"act","reference":{"presentation_id":"PRESENTATION_ID","revision":1},"based_on":"SAVED_STATE_REF","action":{"kind":"invoke","action_id":"apply"}}
         ]}),
@@ -125,6 +154,7 @@ mod tests {
         for input in [
             json!({"operation":"act","reference":{"presentation_id":"p","revision":1},"action":{"kind":"invoke","action_id":"apply"}}),
             json!({"operation":"observe","reference":{"presentation_id":"p","revision":1},"based_on":"old"}),
+            json!({"operation":"observe","reference":{"presentation_id":"p","revision":1},"board_target":{"board_id":"b","item_id":"i","session_id":"old"}}),
             json!({"operation":"act","reference":{"presentation_id":"p","revision":1},"based_on":"saved","action":{"kind":"annotate","region_id":"r","text":"new unreviewed explanation"}}),
         ] {
             assert!(tool.validate_arguments(&input.to_string()).is_err());

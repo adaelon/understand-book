@@ -1,3 +1,4 @@
+import { t as uiText, formatLocale } from './i18n';
 export interface AllowancePercentage { value: string; nonzero: boolean; below_tenth: boolean }
 export interface AllowanceBasis { version: string; basis_micro_cny: number }
 export interface AllowancePercentages {
@@ -57,36 +58,36 @@ export interface AccountUsagePage { items: AccountUsage[]; total: number; limit:
 
 /** Server projections use the immutable original-period basis; never recompute from current grants. */
 export function allowancePercent(value: AllowancePercentage | null | undefined): string {
-  if (!value) return '待配置比例';
-  if (value.below_tenth && value.nonzero) return value.value.startsWith('-') ? '减少低于 0.1%' : '低于 0.1%';
+  if (!value) return uiText('待配置比例');
+  if (value.below_tenth && value.nonzero) return value.value.startsWith('-') ? uiText('减少低于 0.1%') : uiText('低于 0.1%');
   return `${value.value}%`;
 }
 export function allowanceTime(seconds: number): string {
-  return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Hong_Kong', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(seconds * 1000));
+  return new Intl.DateTimeFormat(formatLocale(), { timeZone: 'Asia/Hong_Kong', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(seconds * 1000));
 }
-export const usageState = { reserved: '正在预留', sent: '调用中', pending: '待核算', settled: '已扣减', released: '已释放（不扣减）' };
+export const usageState = { reserved: uiText('正在预留'), sent: uiText('调用中'), pending: uiText('待核算'), settled: uiText('已扣减'), released: uiText('已释放（不扣减）') };
 export function usageOccupation(item: AccountUsage): string {
   return ['reserved', 'sent', 'pending'].includes(item.state) ? allowancePercent(item.allowance_percentages?.reserved) : '0%';
 }
-const purposes: Record<string, string> = { web_search: '搜索', web_fetch: '网页读取', video_transcription: '视频转写', outer: '学习对话', main: '学习对话', memory: '记忆整理', memory_update: '记忆整理', memory_compaction: '记忆整理', compaction: '对话整理', context_compaction: '对话整理', build: '资料准备', book_build: '资料准备', prebuild: '预构建回答' };
-export function usagePurpose(purpose: string): string { return purpose === 'video_audio_review' ? '原声复核' : purposes[purpose] ?? (purpose.includes('memory') ? '记忆整理' : purpose.includes('build') ? '资料准备' : purpose.includes('compact') ? '对话整理' : '学习服务'); }
+const purposes: Record<string, string> = { web_search: uiText('搜索'), web_fetch: uiText('网页读取'), video_transcription: uiText('视频转写'), outer: uiText('学习对话'), main: uiText('学习对话'), memory: uiText('记忆整理'), memory_update: uiText('记忆整理'), memory_compaction: uiText('记忆整理'), compaction: uiText('对话整理'), context_compaction: uiText('对话整理'), build: uiText('资料准备'), book_build: uiText('资料准备'), prebuild: uiText('预构建回答') };
+export function usagePurpose(purpose: string): string { return purpose === 'video_audio_review' ? uiText('原声复核') : purposes[purpose] ?? (purpose.includes('memory') ? uiText('记忆整理') : purpose.includes('build') ? uiText('资料准备') : purpose.includes('compact') ? uiText('对话整理') : uiText('学习服务')); }
 
 const spendReasons: Record<string, string> = {
-  ALLOWANCE_INSUFFICIENT: '本期可用额度不足以开始下一次 AI 调用。',
-  ALLOWANCE_EXPIRED: '当前没有有效的 AI 使用额度期。',
-  MODEL_RATE_UNAVAILABLE: 'AI 计价配置暂不可用，请联系运营者。',
-  MODEL_SPEND_STORAGE_UNAVAILABLE: '费用记录暂时无法保存，AI 调用已停止，请稍后重试或联系运营者。',
-  MODEL_SPEND_SCOPE_MISSING: '本次 AI 调用无法确认费用归属，请联系运营者。',
-  RUN_PERMISSION_REVOKED: '本次 AI 调用的访问权限已失效，请联系运营者。',
-  MODEL_CHARGE_RECONCILIATION_REQUIRED: '本次调用费用需要核对，请联系运营者。',
+  ALLOWANCE_INSUFFICIENT: uiText('本期可用额度不足以开始下一次 AI 调用。'),
+  ALLOWANCE_EXPIRED: uiText('当前没有有效的 AI 使用额度期。'),
+  MODEL_RATE_UNAVAILABLE: uiText('AI 计价配置暂不可用，请联系运营者。'),
+  MODEL_SPEND_STORAGE_UNAVAILABLE: uiText('费用记录暂时无法保存，AI 调用已停止，请稍后重试或联系运营者。'),
+  MODEL_SPEND_SCOPE_MISSING: uiText('本次 AI 调用无法确认费用归属，请联系运营者。'),
+  RUN_PERMISSION_REVOKED: uiText('本次 AI 调用的访问权限已失效，请联系运营者。'),
+  MODEL_CHARGE_RECONCILIATION_REQUIRED: uiText('本次调用费用需要核对，请联系运营者。'),
 };
 export interface SpendError { error_code: string; category: string; message: string; execution_error?: SpendError | null }
 export interface SpendNotice { code: string; message: string }
 export function spendNotice(error: SpendError | null | undefined, persistence: 'saved' | 'pending' | 'failed' | 'unsubmitted'): SpendNotice | undefined {
   const cause = error?.error_code === 'TURN_UNSAVED' ? error.execution_error : error;
   if (cause?.category !== 'model_spend' || !spendReasons[cause.error_code]) return;
-  const saved = persistence === 'saved' ? '本次已完成内容已保存。'
-    : persistence === 'failed' ? '本次结果尚未保存，请先重试保存。'
-    : persistence === 'unsubmitted' ? '本次问题未提交。' : '正在确认本次内容的保存状态。';
+  const saved = persistence === 'saved' ? uiText('本次已完成内容已保存。')
+    : persistence === 'failed' ? uiText('本次结果尚未保存，请先重试保存。')
+    : persistence === 'unsubmitted' ? uiText('本次问题未提交。') : uiText('正在确认本次内容的保存状态。');
   return { code: cause.error_code, message: `${spendReasons[cause.error_code]}${saved}` };
 }

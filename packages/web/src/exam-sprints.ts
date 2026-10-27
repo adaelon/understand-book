@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { LearningWorkspace } from './network-context';
 import { networkFetch } from './network-client';
 
@@ -34,6 +35,6 @@ export function daysUntilExam(settings: ExamSprintInput, now = Date.now()) {
 }
 export function sprintRequest(mode: 'diagnostic' | 'question', question: string) {
   return mode === 'diagnostic'
-    ? '请根据我的考试日期、已确认范围、当前目标和已有作答，先用少量问题判断今天应优先复习什么。每次只给一个问题，等我作答后再继续；不要把看过视频当作已掌握。'
+    ? uiText('请根据我的考试日期、已确认范围、当前目标和已有作答，先用少量问题判断今天应优先复习什么。每次只给一个问题，等我作答后再继续；不要把看过视频当作已掌握。')
     : question.trim();
 }

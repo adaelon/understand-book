@@ -79,7 +79,22 @@ it('does not invent disabled state when the persisted control cannot be read', a
   expect(mutate).not.toHaveBeenCalled();
 });
 
-it('keeps enabled intent and session ownership across optional failure, pause, book switch and recovery', async () => {
+it('does not apply a previous book save after the local reader changes books', async () => {
+  const empty = { workspace_goal_revision: null, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} };
+  vi.spyOn(api, 'tutorState').mockResolvedValue(empty);
+  let finish!: (value: typeof empty) => void;
+  vi.spyOn(api, 'tutorMutate').mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const tutor = useTutorControl(); await tutor.load();
+  const saving = tutor.act({ kind: 'set_enabled', enabled: true });
+  tutor.reset(); await tutor.load();
+  finish({ ...empty, control: { ...empty.control, enabled: true, revision: 1 } });
+  await saving;
+  expect(tutor.state.value).toEqual(empty);
+  expect(tutor.pending.value).toBeNull();
+  expect(tutor.error.value).toBe('');
+});
+
+it('restores the server-selected source goal independently of teaching readiness', async () => {
   const state = { workspace_goal_revision: null, control: { enabled: true, revision: 2, current_tutor_session_id: 'learn' }, sessions: {
     learn: { id: 'learn', revision: 1, workspace_goal_revision: null, status: 'active' as const, user_intent: '理解速度', explicit_constraints: [],
       current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
@@ -93,20 +108,20 @@ it('keeps enabled intent and session ownership across optional failure, pause, b
   vi.mocked(api.tutorReadiness).mockResolvedValue(ready);
   await tutor.loadReadiness();
   expect(tutor.label.value).toContain('可以开始或继续学习');
-  expect(tutor.currentForSource.value?.id).toBe('learn');
+  expect(tutor.current.value?.id).toBe('learn');
   expect(tutor.state.value?.control.enabled).toBe(true);
   tutor.state.value!.sessions.learn!.status = 'paused';
   expect(tutor.label.value).toContain('已暂停');
   tutor.state.value!.sessions.learn!.status = 'active';
-  vi.mocked(api.tutorReadiness).mockResolvedValueOnce({ ...ready, source_id: 'other' });
+  vi.mocked(api.tutorReadiness).mockRejectedValueOnce(new Error('preparing'));
   await tutor.loadReadiness();
-  expect(tutor.label.value).toContain('不属于本次学习');
-  expect(tutor.currentForSource.value).toBeNull();
-  expect(tutor.hasOtherSourceSession.value).toBe(true);
-  tutor.state.value!.sessions.learn!.status = 'paused';
-  expect(tutor.label.value).toContain('不属于本次学习');
-  tutor.state.value!.sessions.learn!.status = 'active';
-  await tutor.loadReadiness();
-  expect(tutor.label.value).toContain('可以开始或继续学习');
   expect(tutor.current.value?.id).toBe('learn');
+  expect(tutor.label.value).toContain('读取失败');
+  vi.mocked(api.tutorState).mockResolvedValueOnce({ ...state, control: { ...state.control, current_tutor_session_id: null } });
+  await tutor.load();
+  expect(tutor.current.value).toBeNull();
+  expect(tutor.state.value?.sessions.learn).toBeDefined();
+  await tutor.load();
+  expect(tutor.current.value?.id).toBe('learn');
+  expect(tutor.label.value).toContain('可以开始或继续学习');
 });

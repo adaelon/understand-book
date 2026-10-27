@@ -44,6 +44,60 @@ fn save(directory: &Path, value: &Value) {
 }
 
 #[test]
+fn music_learning_purpose_admission_freezes_scope_and_continues_original_material() {
+    use super::video_draft_tests::{media_learning_state, media_purpose_input, media_continue_input};
+    for selected in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        let manifest = fixture(root.path());
+        let reference = base_schema::PublishedBookRef {book_id:manifest["book_id"].as_str().unwrap().into(),publication_id:"original".into()};
+        std::fs::write(root.path().join("publication.json"), json!({"version":"publication.v1","reference":reference,
+            "source_fingerprint":"fixture","files":{},"capabilities":{},"artifact_versions":{},"teaching_readiness":{},"build_readiness":{},"resident_bytes":0}).to_string()).unwrap();
+        let book = Book::load(root.path().to_str().unwrap()).unwrap();
+        let mut state = media_learning_state(root.path(), book);
+        let mut input = media_purpose_input(&state, "music-purpose");
+        if selected {
+            input["music_question"] = json!({"draft_id":"purpose-music-question","publication":reference,
+                "audio":{"recording":{"recording_id":"recording","revision":"1"},"start_ms":1100,"end_ms":1900},
+                "score":{"score":{"score_id":"score","revision":"1"},"source_ids":["s1"]},
+                "occurrence_id":"o2","focused_part_ids":["p"]});
+        }
+        let first = prepare_agent_chat(&mut state, &input.to_string(), "first").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(first.tutor.as_ref().unwrap()["status"], "active");
+        let stage_id = first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
+        let learning = state.user.learning_store().unwrap().state().unwrap();
+        assert_eq!(learning.sessions[&stage_id].material_scope[0].source_id, reference.book_id);
+        assert_eq!(!learning.sessions[&stage_id].material_scope[0].scope_refs.is_empty(), selected);
+        assert_eq!(learning.sessions[&stage_id].learning_purpose, Some(memory::learning::LearningPurpose::Understand));
+        assert_eq!(first.scope.music_question.is_some(), selected);
+        let saved = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == first.turn_ref.turn_id).unwrap();
+        assert!(saved.domain.interaction.as_ref().unwrap().source_bindings.is_empty(), "music scope is not the curator guide's text range");
+        assert!(saved.domain.interaction.as_ref().unwrap().accepted_request.contains(if selected {"音乐片段"} else {"当前音乐"}));
+        super::tutor_loop_tests::finish(&mut state, &first.turn_ref, &super::tutor_loop_tests::outcome(None));
+        let after = state.user.learning_store().unwrap().coach_job_for_source(&stage_id,
+            memory::tutor_coach::CoachJobOrigin::AfterTurn, &first.turn_ref.turn_id).unwrap().unwrap();
+        assert_eq!(after.input.context["music_question"], json!(first.scope.music_question));
+        let input = media_continue_input(&state, &first.turn_ref);
+        let next = prepare_agent_chat(&mut state, &input.to_string(), "next").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(next.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id);
+        assert_eq!(json!(next.scope.music_question), json!(first.scope.music_question));
+        let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().unwrap();
+        assert_eq!(dependency.job_ref, Some(after.input.job_ref));
+        super::tutor_loop_tests::finish(&mut state, &next.turn_ref, &super::tutor_loop_tests::outcome(None));
+        let again_input = media_continue_input(&state, &next.turn_ref);
+        let again = prepare_agent_chat(&mut state, &again_input.to_string(), "again").unwrap_or_else(|r| panic!("{}",r.body));
+        assert_eq!(again.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id);
+        assert_eq!(json!(again.scope.music_question), json!(first.scope.music_question));
+        if selected {
+            super::tutor_loop_tests::finish(&mut state, &again.turn_ref, &super::tutor_loop_tests::outcome(None));
+            let whole_input = media_purpose_input(&state, "music-whole-after-clip");
+            let whole = prepare_agent_chat(&mut state, &whole_input.to_string(), "whole").unwrap_or_else(|r| panic!("{}",r.body));
+            assert_ne!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id,
+                "changing a passage goal to the whole recording must start the requested scope");
+        }
+    }
+}
+
+#[test]
 fn music_publication_score_facts_reopen_with_original_provenance_and_pages() {
     let f = Fixture::new(); let input = f.root.path().join("score-facts");
     let mut manifest = fixture(&input);

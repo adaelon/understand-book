@@ -2,11 +2,6 @@ use super::*;
 use crate::presentation_author::{AuthorRequest, AuthorResult, PreviewImage};
 use serde_json::{json, Value};
 
-fn saved_source_read(messages: &[Message], id: &str) -> Value {
-    let result: Value = serde_json::from_str(tool_result(messages, id)).unwrap();
-    result["continuation"]["arguments"].clone()
-}
-
 #[test]
 fn cc1_tool_policy_changes_preserve_sent_message_prefix() {
     let b = book();
@@ -25,6 +20,7 @@ fn cc1_tool_policy_changes_preserve_sent_message_prefix() {
             &exposure, ArtifactExposureContext::no_overlay(),
             if step == 0 { EvidenceState::Unlocated } else { EvidenceState::KnownLids },
             &[], None, false, None, None,
+            None, None,
         ).unwrap();
         plans.push(plan);
         let id = format!("cc1-{step}");
@@ -102,6 +98,7 @@ fn teaching_presentation_stable_schema_waits_for_accepted_design() {
             &registry, &profile, ToolPermissions::default(), &exposure,
             ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
             &[], None, false, tutor.as_ref(), None,
+            None, None,
         ).unwrap();
         assert!(tools.is_visible("presentation.author"), "{label}: existing pages remain readable");
         let author = plan.tools.iter().find(|tool| tool.name == "presentation.author").unwrap();
@@ -142,6 +139,7 @@ fn teaching_presentation_design_changes_preserve_native_and_react_prefix() {
             COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile, ToolPermissions::default(),
             &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
             &[], None, false, Some(&tutor), None,
+            None, None,
         ).unwrap();
         let state = selection_state(&plan).unwrap();
         assert_eq!(state["allowed_operations"].as_array().unwrap().len() == 2, kind != Some("presentation"));
@@ -218,6 +216,7 @@ fn teaching_presentation_same_batch_design_cannot_grant_unsampled_operations() {
             .find(|example| example["operation"] == "design").unwrap().clone();
         request["design"]["representation"] = json!({"kind":"presentation","reason":"Keep the elapsed interval visible.",
             "observation":"The stopped interval is still part of the trip."});
+        if kind.is_some() { request["design"]["previous_ref"] = json!("design:previous"); }
         let adapter = RequestPlanRecordingAdapter::new(vec![
             discover(),
             turn_calls(vec![call("design", "tutor.step", &request.to_string()),
@@ -284,6 +283,7 @@ fn teaching_presentation_reuses_focused_design_and_preserves_review() {
             &registry, &profile, ToolPermissions::default(), &exposure,
             ArtifactExposureContext::no_overlay(), EvidenceState::KnownLids,
             &[], authoring, false, Some(&tutor), None,
+            None, None,
         ).unwrap();
         assert_eq!(selection_state(&plan).unwrap()["phase"], expected_phase, "{label}");
         assert!(plan.ordered_messages().iter().filter_map(|message|message.content.as_deref())
@@ -429,21 +429,8 @@ fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
     assert!(design(&plans[10]).is_none());
     let history = serde_json::to_string(&context.messages).unwrap();
     assert!(!history.contains("sampling_guidance.v1") && !history.contains("runtime_state_snapshot.v1"), "run-local projections leaked into persisted messages");
-    for (offset, pair) in plans[1..].windows(2).enumerate() {
-        let mut expected_before = pair[0].clone();
-        if offset + 1 == 6 {
-            // EX13.2 deliberately changes this one call after its first saved
-            // receipt sampling; phase changes must still preserve everything else.
-            let saved = pair[1].input.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "write").unwrap();
-            let args: Value = serde_json::from_str(&saved.arguments).unwrap();
-            assert!(args.get("html").is_none());
-            assert!(args.get("saved_source").is_none());
-            assert_eq!(saved_source_read(&pair[1].input, "write")["candidate_id"], "c1");
-            expected_before.input.iter_mut().flat_map(|m| &mut m.tool_calls).find(|c| c.id == "write").unwrap().arguments = saved.arguments.clone();
-            expected_before.input.iter_mut().find(|m| m.tool_call_id.as_deref() == Some("write")).unwrap().content =
-                pair[1].input.iter().find(|m| m.tool_call_id.as_deref() == Some("write")).unwrap().content.clone();
-        }
-        let (before, _) = crate::native_chat_request_projection("ex13-controlled", &expected_before);
+    for pair in plans[1..].windows(2) {
+        let (before, _) = crate::native_chat_request_projection("ex13-controlled", &pair[0]);
         let (after, _) = crate::native_chat_request_projection("ex13-controlled", &pair[1]);
         assert_eq!(before["tools"], after["tools"]);
         let before = before["messages"].as_array().unwrap();
@@ -451,7 +438,7 @@ fn ex13_guidance_changes_append_after_results_and_keep_provider_prefix() {
         // Preview image attachments are ephemeral observations, tested separately.
         let prefix_len = before.len() - usize::from(!pair[0].preview_images.is_empty());
         assert_eq!(before[..prefix_len], after[..prefix_len], "native rewrote an existing message");
-        let before = crate::react_chat_request_projection("ex13-controlled", &expected_before);
+        let before = crate::react_chat_request_projection("ex13-controlled", &pair[0]);
         let after = crate::react_chat_request_projection("ex13-controlled", &pair[1]);
         let before = before["messages"].as_array().unwrap();
         assert_eq!(before[..prefix_len + 1], after["messages"].as_array().unwrap()[..prefix_len + 1], "ReAct moved tail guidance");
@@ -467,7 +454,7 @@ fn ex12_scroll_history_keeps_candidate_environment_and_action() {
 }
 
 #[test]
-fn ex13_saved_source_projection_keeps_first_observation_and_raw_history() {
+fn ex13_saved_source_projection_keeps_observed_source_and_provider_prefix_until_pressure() {
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex13-saved-source");
     let source = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -512,17 +499,32 @@ fn ex13_saved_source_projection_keeps_first_observation_and_raw_history() {
         .find(|c| c.id == id).unwrap().arguments.clone();
     for (index, original) in original_calls.iter().enumerate() {
         let first = 2 + index * 2;
-        assert_eq!(args(&plans[first].input, &original.id), original.arguments);
-        let compact = args(&plans[first + 1].input, &original.id);
-        let value: Value = serde_json::from_str(&compact).unwrap();
-        assert!(value.get("html").is_none() && value.get("readable_content").is_none());
-        assert!(value.get("saved_source").is_none());
-        assert_eq!(saved_source_read(&plans[first + 1].input, &original.id), json!({"operation":"read","candidate_id":format!("c{}",index+1),"file":"index.html"}));
-        for plan in &plans[first + 1..] {
-            assert_eq!(args(&plan.input, &original.id), compact);
+        let original_result = tool_result(&plans[first].input, &original.id);
+        for plan in &plans[first..] {
+            assert!(!ActiveContextBudget::from_plan(plan).over_high_watermark, "this scenario must exercise stable history below the pressure boundary");
+            assert_eq!(args(&plan.input, &original.id), original.arguments,
+                "saving or sampling another candidate cannot rewrite observed source");
+            assert_eq!(tool_result(&plan.input, &original.id), original_result,
+                "recovery continuation must not be injected before pressure");
             assert_eq!(plan.input.iter().filter(|m| m.tool_call_id.as_deref() == Some(&original.id)).count(), 1);
         }
         assert_eq!(args(&context.messages, &original.id), original.arguments);
+    }
+    for pair in plans[1..].windows(2) {
+        let (native_before, _) = crate::native_chat_request_projection("ex13-controlled", &pair[0]);
+        let (native_after, _) = crate::native_chat_request_projection("ex13-controlled", &pair[1]);
+        assert_eq!(native_before["tools"], native_after["tools"]);
+        let before = native_before["messages"].as_array().unwrap();
+        let after = native_after["messages"].as_array().unwrap();
+        // The current preview image is a transient observation appended at the
+        // tail; all previously sent source and tool results must stay exact.
+        let prefix_len = before.len() - usize::from(!pair[0].preview_images.is_empty());
+        assert_eq!(&before[..prefix_len], &after[..prefix_len], "native changed the saved-source prefix");
+        let react_before = crate::react_chat_request_projection("ex13-controlled", &pair[0]);
+        let react_after = crate::react_chat_request_projection("ex13-controlled", &pair[1]);
+        assert_eq!(&react_before["messages"].as_array().unwrap()[..prefix_len + 1],
+            &react_after["messages"].as_array().unwrap()[..prefix_len + 1],
+            "ReAct changed the saved-source prefix");
     }
     assert_eq!(context.presentation_candidates.len(), 2);
     assert_eq!(port.deliveries, 0);
@@ -1365,15 +1367,49 @@ fn check_framework_survives_mid_turn_compaction(selected_phase: &str, needs: Val
         }
     }
     assert_eq!(sampled[3][0].content, sampled[4][0].content, "compaction rebuilt different common instructions");
-    let saved = sampled[4].iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
-    let args: Value = serde_json::from_str(&saved.arguments).unwrap();
-    assert!(args.get("html").is_none());
-    assert!(args.get("saved_source").is_none());
-    assert_eq!(saved_source_read(&sampled[4], "saved-before-pressure")["candidate_id"], "c1");
-    assert_eq!(sampled[4].iter().filter(|m| m.tool_call_id.as_deref() == Some("saved-before-pressure")).count(), 1);
+    let before_save = sampled[3].iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&before_save.arguments).unwrap()["html"], "<p>Example</p>",
+        "the save source must remain exact before the checkpoint is installed");
+    let before_result: Value = serde_json::from_str(tool_result(&sampled[3], "saved-before-pressure")).unwrap();
+    assert_eq!(before_result["model_body"]["candidate_id"], "c1");
+    assert!(before_result.get("continuation").is_none(), "retirement instructions must start at the actual rebuild");
+    // The early save is now an eligible closed step within this long turn.
+    // It must leave the active request as a complete pair, with both source
+    // records covered by the checkpoint. The latest save is still fresh/raw.
+    assert!(!sampled[4].iter().flat_map(|m| &m.tool_calls).any(|c| c.id == "saved-before-pressure"));
+    assert!(!sampled[4].iter().any(|m| m.tool_call_id.as_deref() == Some("saved-before-pressure")));
+    let latest = sampled[4].iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "pressure-after-selection").unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&latest.arguments).unwrap()["html"], "<p>Example</p>");
+    let latest_result: Value = serde_json::from_str(tool_result(&sampled[4], "pressure-after-selection")).unwrap();
+    assert_eq!(latest_result["model_body"]["candidate_id"], "c2");
+    assert!(latest_result.get("continuation").is_none(), "an unsampled recent step must stay complete");
+    assert_eq!(sampled[4].iter().filter(|m| m.tool_call_id.as_deref() == Some("pressure-after-selection")).count(), 1);
     let raw = context.messages.iter().flat_map(|m| &m.tool_calls).find(|c| c.id == "saved-before-pressure").unwrap();
     assert_eq!(serde_json::from_str::<Value>(&raw.arguments).unwrap()["html"], "<p>Example</p>");
     let checkpoint = sink.installed.as_ref().unwrap();
+    let old_result = tool_result(&context.messages, "saved-before-pressure");
+    let expected_receipt = historical_tool_receipt("presentation.author", &raw.arguments, old_result, &b);
+    assert!(checkpoint.tool_receipts.contains(&expected_receipt), "the compacted save keeps its actual receipt");
+    // Source IDs are assigned from the durable history position before the
+    // generator chooses a full, retired or receipt body projection. Select by
+    // that position, not by a candidate ID inside a body that may be retired.
+    let old_indices = context.messages.iter().enumerate().filter_map(|(index, message)| {
+        (message.tool_call_id.as_deref() == Some("saved-before-pressure")
+            || message.tool_calls.iter().any(|call| call.id == "saved-before-pressure"))
+            .then_some(index)
+    }).collect::<BTreeSet<_>>();
+    assert_eq!(old_indices.len(), 2, "the durable history keeps the complete old save pair");
+    let old_sources = adapter.compaction_requests.borrow().iter().flat_map(|request| &request.eligible_items)
+        .filter_map(|source| {
+            let index = source.source_item_id.strip_prefix("source.")?.split('.').next()?.parse::<usize>().ok()?;
+            if !old_indices.contains(&index) { return None; }
+            assert_eq!(source.role, context.messages[index].role);
+            Some(source.source_item_id.clone())
+        }).collect::<BTreeSet<_>>();
+    assert_eq!(old_sources.len(), 2, "the old assistant call and its tool result must both be selected");
+    for source in old_sources {
+        assert!(checkpoint.semantic.source_coverage.iter().any(|coverage| coverage.source_item_id == source));
+    }
     for request in adapter.compaction_requests.borrow().iter() {
         for id in &request.required_source_ids {
             assert!(checkpoint.semantic.source_coverage.iter().any(|coverage| &coverage.source_item_id == id));
@@ -1531,7 +1567,7 @@ fn presentation_sampling_pressure_rebases_runtime_context_without_dropping_turn_
         fragments.upsert(ContextFragment::new("agent.learner_context",FragmentScope::Dynamic,Role::System,state,FragmentSensitivity::Private)).unwrap();
         let before=raw.clone();
         let (_,plan)=build_sample_request(&raw,&mut fragments,&b,&mut results,None,COMPACTION_CONSUMPTION_WRAPPER,&registry,&profile,
-            ToolPermissions::default(),&exposure,ArtifactExposureContext::no_overlay(),EvidenceState::Unlocated,&[],None,false,None,None).unwrap();
+            ToolPermissions::default(),&exposure,ArtifactExposureContext::no_overlay(),EvidenceState::Unlocated,&[],None,false,None,None, None, None).unwrap();
         let count=plan.input.iter().filter(|message|message.content.as_deref().is_some_and(|text|text.starts_with("runtime_state_snapshot.v1\n"))).count();
         assert_eq!(raw,before);
         assert!(plan.active_context.fits);

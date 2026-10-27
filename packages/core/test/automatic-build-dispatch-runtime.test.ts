@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import * as fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -38,6 +39,11 @@ import {
   createWorkUnitDescriptor,
   taskPolicyBindingForWorkUnit,
 } from "../src/stage-work-unit";
+
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, openSync: vi.fn(actual.openSync), writeFileSync: vi.fn(actual.writeFileSync) };
+});
 
 function fixture(count = 8) {
   const root = mkdtempSync(path.join(tmpdir(), "understand-book-dispatch-runtime-"));
@@ -651,6 +657,49 @@ describe("automatic build executor dispatch runtime", () => {
     expect(listAutomaticBuildStoredAttempts(target, "profile_sidecar")).toHaveLength(8);
 
   }, 15_000);
+
+  it.each([0, 893])("removes a progress write interrupted after %i bytes and recovers from the canonical receipt", async partialBytes => {
+    const actualFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    const { target, descriptors, manifest, bindings } = fixture(2);
+    const publication = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "progress-write-recovery", created_at: "2026-10-22T00:00:00.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    });
+    const options = { descriptors, task_bindings: bindings, now: "2026-10-22T00:00:01.000Z" };
+    const first = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, options);
+    if (first.status !== "leased") throw new Error("expected first lease");
+    const receipt = commit(target, first, 0);
+    const file = path.join(path.dirname(publication.manifest_path), "progress", "0000.json");
+    const diskFull = Object.assign(new Error("disk full"), { code: "ENOSPC", syscall: "write" });
+    let progressDescriptor: number | undefined;
+    vi.mocked(fs.openSync).mockImplementation((...args) => {
+      const descriptor = actualFs.openSync(...args);
+      if (args[0] === file) progressDescriptor = descriptor;
+      return descriptor;
+    });
+    vi.mocked(fs.writeFileSync).mockImplementation((destination, data, writeOptions) => {
+      if (destination === file || destination === progressDescriptor) {
+        actualFs.writeFileSync(destination, Buffer.alloc(partialBytes), writeOptions);
+        throw diskFull;
+      }
+      actualFs.writeFileSync(destination, data, writeOptions);
+    });
+    try {
+      expect(() => advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, options)).toThrow(diskFull);
+      expect(existsSync(file)).toBe(false);
+    } finally {
+      vi.mocked(fs.openSync).mockRestore();
+      vi.mocked(fs.writeFileSync).mockRestore();
+    }
+    const next = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, options);
+    expect(next.status).toBe("leased");
+    if (next.status !== "leased") throw new Error("expected next lease");
+    expect(next.descriptor.work_unit_id).toBe(manifest.ordered_work_unit_ids[1]);
+    expect(JSON.parse(readFileSync(file, "utf8")).task_receipt).toMatchObject({
+      task_ref: receipt.task_ref, state: "committed", attempt: 1,
+    });
+    expect(listAutomaticBuildStoredAttempts(target, "profile_sidecar", manifest.ordered_work_unit_ids[0])).toHaveLength(1);
+  });
 
   it("preserves three commits, recovers the fourth lease, and never claims the remaining suffix", () => {
     const { target, descriptors, manifest, bindings } = fixture();

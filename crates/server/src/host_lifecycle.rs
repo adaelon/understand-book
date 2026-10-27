@@ -48,6 +48,13 @@ impl ServiceAdapter {
 }
 
 impl ModelAdapter for ServiceAdapter {
+    fn tool_update_mode(&self) -> Option<runtime::deepseek_messages::ToolUpdateMode> { self.inner.tool_update_mode() }
+    fn context_request_projection(&self, request: &runtime::AgentRequestPlan) -> Option<serde_json::Value> { self.inner.context_request_projection(request) }
+    fn projection_identity(&self) -> Option<String> { self.inner.projection_identity() }
+
+    fn model_provider(&self) -> Option<String> {
+        self.inner.model_provider()
+    }
     fn stream_text_is_structured(&self) -> bool {
         self.inner.stream_text_is_structured()
     }
@@ -126,6 +133,7 @@ mod tests {
         };
         let error = adapter
             .complete_structured(CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 output_token_limit: None,
                 reasoning_effort: None,
@@ -179,6 +187,7 @@ mod tests {
         .unwrap();
         let adapter = ServiceAdapter::from_config(config, stop.clone());
         let request = CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,

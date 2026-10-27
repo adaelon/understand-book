@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { onBeforeUnmount, ref } from 'vue';
 import { Copy, ImagePlus, X } from '@lucide/vue';
 import type { VideoQuestionImage } from '../../../core/src/generated/VideoQuestionImage';
@@ -11,7 +13,7 @@ let alive = true;
 onBeforeUnmount(() => { alive = false; });
 async function acceptFiles(files: File[]) {
   if (props.disabled || busy.value) return;
-  if (files.length !== 1) { error.value = '每次请添加一张图片'; return; }
+  if (files.length !== 1) { error.value = uiText('每次请添加一张图片'); return; }
   error.value = ''; copied.value = false; busy.value = true; emit('loading', true);
   try { const image = await questionImageFromFile(files[0]); if (alive) emit('change', image); }
   catch (failure) { if (alive) error.value = (failure as Error).message; }
@@ -34,18 +36,18 @@ function remove() { copied.value = false; error.value = ''; emit('change', null)
 defineExpose({ paste, chooseFile });
 </script>
 <template>
-  <div v-show="image || busy || error" class="question-image-input" aria-label="问题图片附件">
+  <div v-show="image || busy || error" class="question-image-input" :aria-label="uiText('问题图片附件')">
     <div v-if="image" class="attached-image">
-      <button type="button" class="image-thumbnail" aria-label="放大问题图片" title="点击放大" @click="preview?.showModal()"><img :src="questionImageUrl(image)" alt="待发送的问题图片" /></button>
-      <button type="button" class="remove-image" aria-label="移除图片" title="移除图片" :disabled="disabled || busy" @click="remove"><X :size="12" aria-hidden="true" /></button>
+      <button type="button" class="image-thumbnail" :aria-label="uiText('放大问题图片')" :title="uiText('点击放大')" @click="preview?.showModal()"><img :src="questionImageUrl(image)" :alt="uiText('待发送的问题图片')" /></button>
+      <button type="button" class="remove-image" :aria-label="uiText('移除图片')" :title="uiText('移除图片')" :disabled="disabled || busy" @click="remove"><X :size="12" aria-hidden="true" /></button>
     </div>
-    <span v-if="busy" class="image-loading" role="status">正在添加图片…</span>
-    <input ref="picker" type="file" accept="image/png,image/jpeg,image/webp" aria-label="选择问题图片" hidden @change="acceptFiles(Array.from(($event.target as HTMLInputElement).files ?? [])); ($event.target as HTMLInputElement).value = ''" />
+    <span v-if="busy" class="image-loading" role="status">{{ uiText('正在添加图片…') }}</span>
+    <input ref="picker" type="file" accept="image/png,image/jpeg,image/webp" :aria-label="uiText('选择问题图片')" hidden @change="acceptFiles(Array.from(($event.target as HTMLInputElement).files ?? [])); ($event.target as HTMLInputElement).value = ''" />
     <p v-if="error" role="alert">{{ error }}</p>
-    <dialog v-if="image" ref="preview" class="question-image-preview" aria-label="问题图片预览" @click.self="preview?.close()">
+    <dialog v-if="image" ref="preview" class="question-image-preview" :aria-label="uiText('问题图片预览')" @click.self="preview?.close()">
       <div class="preview-content">
-        <div class="preview-toolbar"><span>{{ image.origin === 'selection' ? '框选截图' : '问题图片' }}</span><button type="button" :disabled="busy" @click="copy"><Copy :size="15" aria-hidden="true" />{{ copied ? '已复制' : '复制图片' }}</button><button type="button" :disabled="disabled || busy" @click="chooseFile"><ImagePlus :size="15" aria-hidden="true" />替换图片</button><button type="button" class="close-preview" aria-label="关闭图片预览" @click="preview?.close()"><X :size="18" aria-hidden="true" /></button></div>
-        <img class="expanded-image" :src="questionImageUrl(image)" alt="问题图片放大预览" />
+        <div class="preview-toolbar"><span>{{ image.origin === 'selection' ? uiText('框选截图') : uiText('问题图片') }}</span><button type="button" :disabled="busy" @click="copy"><Copy :size="15" aria-hidden="true" />{{ copied ? uiText('已复制') : uiText('复制图片') }}</button><button type="button" :disabled="disabled || busy" @click="chooseFile"><ImagePlus :size="15" aria-hidden="true" />{{ uiText('替换图片') }}</button><button type="button" class="close-preview" :aria-label="uiText('关闭图片预览')" @click="preview?.close()"><X :size="18" aria-hidden="true" /></button></div>
+        <img class="expanded-image" :src="questionImageUrl(image)" :alt="uiText('问题图片放大预览')" />
         <p v-if="error" role="alert">{{ error }}</p>
       </div>
     </dialog>

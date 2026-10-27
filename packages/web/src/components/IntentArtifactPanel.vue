@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed } from "vue";
 import { RefreshCw } from "@lucide/vue";
 import ArtifactRecordContent from './ArtifactRecordContent.vue';
@@ -37,10 +39,10 @@ const acceptedCount = computed(() => (
 ));
 
 const artifactLabels: Record<IntentArtifactType, string> = {
-  timeline: "时间线",
-  concept_map: "概念图",
-  comparison_table: "对照表",
-  argument_map: "论证图",
+  timeline: uiText('时间线'),
+  concept_map: uiText('概念图'),
+  comparison_table: uiText('对照表'),
+  argument_map: uiText('论证图'),
 };
 
 const legacyBlueprints: Record<IntentArtifactType, IntentArtifactDisplayBlueprintV1> = {
@@ -73,12 +75,12 @@ const legacyBlueprints: Record<IntentArtifactType, IntentArtifactDisplayBlueprin
 const supportedShapes = new Set(["collection", "table", "graph", "sequence", "document"]);
 
 const argumentRoleLabels: Record<IntentArgumentRole, string> = {
-  problem: "问题",
-  method: "方法",
-  evidence: "证据",
-  result: "结果",
-  limitation: "局限",
-  future_work: "后续方向",
+  problem: uiText('问题'),
+  method: uiText('方法'),
+  evidence: uiText('证据'),
+  result: uiText('结果'),
+  limitation: uiText('局限'),
+  future_work: uiText('后续方向'),
 };
 
 function conceptLabel(payload: IntentConceptMapPayloadV1, id: string): string {
@@ -122,7 +124,7 @@ function blueprintFor(artifact: IntentArtifactProjectionV1): IntentArtifactDispl
   if (artifact.blueprint) return artifact.blueprint;
   if (isLegacyType(artifact.artifact_type)) return legacyBlueprints[artifact.artifact_type];
   return {
-    title: "目标成果",
+    title: uiText('目标成果'),
     purpose: "",
     shape: "collection",
     summary_fields: [],
@@ -132,7 +134,7 @@ function blueprintFor(artifact: IntentArtifactProjectionV1): IntentArtifactDispl
 function artifactTitle(artifact: IntentArtifactProjectionV1): string {
   return isLegacyType(artifact.artifact_type)
     ? artifactLabels[artifact.artifact_type]
-    : blueprintFor(artifact).title || "目标成果";
+    : blueprintFor(artifact).title || uiText('目标成果');
 }
 
 function artifactShape(artifact: IntentArtifactProjectionV1): IntentArtifactDisplayBlueprintV1["shape"] {
@@ -275,8 +277,8 @@ function pointerValue(input: unknown, pointer: string): { found: boolean; value?
 function fieldLabel(path: string): string {
   const encoded = path.split("/").at(-1) ?? path;
   const key = encoded.replace(/~1/gu, "/").replace(/~0/gu, "~");
-  const labels: Record<string, string> = { label: '名称', title: '标题', heading: '标题', body: '正文', detail: '说明', description: '说明', summary: '摘要', step: '步骤', term: '概念', definition: '含义', subject: '对象', relation: '关系', task: '任务', owner: '负责人', status: '状态', claim: '观点', role: '作用', mechanism: '机制', tradeoff: '取舍', evidence: '依据', order_hint: '阶段', name: '名称', content: '内容', explanation: '解释' };
-  return labels[key] ?? (key.replace(/[_-]+/gu, " ") || "内容");
+  const labels: Record<string, string> = { label: uiText('名称'), title: uiText('标题'), heading: uiText('标题'), body: uiText('正文'), detail: uiText('说明'), description: uiText('说明'), summary: uiText('摘要'), step: uiText('步骤'), term: uiText('概念'), definition: uiText('含义'), subject: uiText('对象'), relation: uiText('关系'), task: uiText('任务'), owner: uiText('负责人'), status: uiText('状态'), claim: uiText('观点'), role: uiText('作用'), mechanism: uiText('机制'), tradeoff: uiText('取舍'), evidence: uiText('依据'), order_hint: uiText('阶段'), name: uiText('名称'), content: uiText('内容'), explanation: uiText('解释') };
+  return labels[key] ?? (key.replace(/[_-]+/gu, " ") || uiText('内容'));
 }
 
 function orderedFieldPaths(
@@ -322,10 +324,10 @@ function genericCell(record: IntentArtifactInstanceRecordV2, path: string): stri
 function genericRecordLabel(artifact: IntentArtifactProjectionV1, recordId: string): string {
   const records = genericRecords(artifact);
   const index = records.findIndex((record) => record.record_id === recordId);
-  if (index < 0) return "未知记录";
+  if (index < 0) return uiText('未知记录');
   const fields = fieldsFor(artifact, records[index].data);
   return fields.find(field => /^\/(heading|title|label|name|term|step|claim|subject)$/.test(field.path))?.value
-    || fields[0]?.value || `记录 ${String(index + 1).padStart(2, "0")}`;
+    || fields[0]?.value || uiText('记录 {0}', [String(index + 1).padStart(2, "0")]);
 }
 
 function relationFields(
@@ -345,17 +347,16 @@ function openEvidence(artifactId: string, lid: string) {
   <div class="intent-artifact-panel">
     <header class="artifact-panel-head">
       <div>
-        <p class="artifact-kicker">目标成果</p>
+        <p class="artifact-kicker">{{ uiText('目标成果') }}</p>
         <h3 v-if="props.overlay?.artifacts.length">
-          {{ acceptedCount }} / {{ props.overlay.artifacts.length }} 已就绪
-        </h3>
-        <h3 v-else>把阅读整理成成果</h3>
+          {{ acceptedCount }} / {{ props.overlay.artifacts.length }} {{ uiText('已就绪') }} </h3>
+        <h3 v-else>{{ uiText('把阅读整理成成果') }}</h3>
       </div>
       <button
         type="button"
         class="artifact-refresh"
-        aria-label="刷新目标成果"
-        title="刷新目标成果"
+        :aria-label="uiText('刷新目标成果')"
+        :title="uiText('刷新目标成果')"
         :disabled="props.loading"
         @click="emit('refresh')"
       >
@@ -364,12 +365,12 @@ function openEvidence(artifactId: string, lid: string) {
     </header>
 
     <p v-if="props.error" class="artifact-state artifact-error">{{ props.error }}</p>
-    <p v-else-if="props.loading && !props.overlay" class="artifact-state">正在刷新...</p>
+    <p v-else-if="props.loading && !props.overlay" class="artifact-state">{{ uiText('正在刷新...') }}</p>
     <div v-else-if="!props.overlay || props.overlay.artifacts.length === 0" class="artifact-state artifact-empty">
-      <strong>阅读有了目标，成果就有了方向</strong>
-      <p>概念关系、对照表或阅读摘要，会在资料准备完成后出现在这里。每一项都能回到正文查看依据。</p>
-      <button v-if="preparationAvailable" type="button" @click="emit('prepare')">准备目标成果</button>
-      <p v-else>这份材料还没有目标成果，可以先阅读正文，并在对话中整理你的问题。</p>
+      <strong>{{ uiText('阅读有了目标，成果就有了方向') }}</strong>
+      <p>{{ uiText('概念关系、对照表或阅读摘要，会在资料准备完成后出现在这里。每一项都能回到正文查看依据。') }}</p>
+      <button v-if="preparationAvailable" type="button" @click="emit('prepare')">{{ uiText('准备目标成果') }}</button>
+      <p v-else>{{ uiText('这份材料还没有目标成果，可以先阅读正文，并在对话中整理你的问题。') }}</p>
     </div>
 
     <div v-else class="artifact-list" :aria-busy="props.loading">
@@ -381,8 +382,8 @@ function openEvidence(artifactId: string, lid: string) {
         <header class="artifact-section-head">
           <span class="artifact-index">{{ String(artifactIndex + 1).padStart(2, "0") }}</span>
           <h4>{{ artifactTitle(artifact) }}</h4>
-          <span v-if="artifact.state === 'pending'" class="artifact-pending">准备中</span>
-          <span v-else class="artifact-ready">已就绪</span>
+          <span v-if="artifact.state === 'pending'" class="artifact-pending">{{ uiText('准备中') }}</span>
+          <span v-else class="artifact-ready">{{ uiText('已就绪') }}</span>
         </header>
 
         <template v-if="artifact.state === 'accepted'">
@@ -392,7 +393,7 @@ function openEvidence(artifactId: string, lid: string) {
               <div class="artifact-record">
                 <small v-if="item.order_hint">{{ item.order_hint }}</small>
                 <p class="artifact-label artifact-wrap">{{ item.label }}</p>
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in item.evidence_lids"
                     :key="lid"
@@ -411,7 +412,7 @@ function openEvidence(artifactId: string, lid: string) {
             <div class="graph-node-list">
               <div v-for="node in conceptPayload(artifact).nodes" :key="node.id" class="graph-node">
                 <p class="artifact-label artifact-wrap">{{ node.label }}</p>
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in node.evidence_lids"
                     :key="lid"
@@ -429,7 +430,7 @@ function openEvidence(artifactId: string, lid: string) {
                 <span class="artifact-wrap">{{ conceptLabel(conceptPayload(artifact), link.source) }}</span>
                 <strong class="artifact-wrap">{{ link.relation }}</strong>
                 <span class="artifact-wrap">{{ conceptLabel(conceptPayload(artifact), link.target) }}</span>
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in link.evidence_lids"
                     :key="lid"
@@ -448,9 +449,9 @@ function openEvidence(artifactId: string, lid: string) {
             <table>
               <thead>
                 <tr>
-                  <th>对象</th>
+                  <th>{{ uiText('对象') }}</th>
                   <th v-for="dimension in comparisonDimensions(comparisonPayload(artifact))" :key="dimension">{{ dimension }}</th>
-                  <th>依据</th>
+                  <th>{{ uiText('依据') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -460,7 +461,7 @@ function openEvidence(artifactId: string, lid: string) {
                     {{ displayDimension(row.dimensions[dimension]) }}
                   </td>
                   <td>
-                    <div class="evidence-links table-evidence" aria-label="正文依据">
+                    <div class="evidence-links table-evidence" :aria-label="uiText('正文依据')">
                       <button
                         v-for="lid in row.evidence_lids"
                         :key="lid"
@@ -482,7 +483,7 @@ function openEvidence(artifactId: string, lid: string) {
               <div v-for="claim in argumentPayload(artifact).claims" :key="claim.id" class="claim-row">
                 <span class="claim-role">{{ argumentRoleLabel(claim.role) }}</span>
                 <p class="artifact-label artifact-wrap">{{ claim.claim }}</p>
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in claim.evidence_lids"
                     :key="lid"
@@ -500,7 +501,7 @@ function openEvidence(artifactId: string, lid: string) {
                 <span class="artifact-wrap">{{ claimLabel(argumentPayload(artifact), relation.source) }}</span>
                 <strong class="artifact-wrap">{{ relation.relation }}</strong>
                 <span class="artifact-wrap">{{ claimLabel(argumentPayload(artifact), relation.target) }}</span>
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in relation.evidence_lids"
                     :key="lid"
@@ -523,9 +524,7 @@ function openEvidence(artifactId: string, lid: string) {
             <p v-if="blueprintFor(artifact).purpose" class="artifact-purpose artifact-wrap">
               {{ blueprintFor(artifact).purpose }}
             </p>
-            <p v-if="hasUnknownShape(artifact)" class="artifact-fallback-note">
-              未知展示形态，已按列表展示
-            </p>
+            <p v-if="hasUnknownShape(artifact)" class="artifact-fallback-note"> {{ uiText('未知展示形态，已按列表展示') }} </p>
 
             <div v-if="artifactShape(artifact) === 'collection'" class="generic-collection">
               <article
@@ -535,7 +534,7 @@ function openEvidence(artifactId: string, lid: string) {
               >
                 <span class="generic-record-index">{{ String(recordIndex + 1).padStart(2, "0") }}</span>
                 <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in record.evidence_lids"
                     :key="lid"
@@ -547,7 +546,7 @@ function openEvidence(artifactId: string, lid: string) {
                   </button>
                 </div>
               </article>
-              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">暂无记录</p>
+              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">{{ uiText('暂无记录') }}</p>
             </div>
 
             <div v-else-if="artifactShape(artifact) === 'table'" class="artifact-table-scroll generic-table">
@@ -555,7 +554,7 @@ function openEvidence(artifactId: string, lid: string) {
                 <thead>
                   <tr>
                     <th v-for="path in genericTablePaths(artifact)" :key="path">{{ fieldLabel(path) }}</th>
-                    <th>依据</th>
+                    <th>{{ uiText('依据') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -564,7 +563,7 @@ function openEvidence(artifactId: string, lid: string) {
                       {{ genericCell(record, path) }}
                     </td>
                     <td>
-                      <div class="evidence-links table-evidence" aria-label="正文依据">
+                      <div class="evidence-links table-evidence" :aria-label="uiText('正文依据')">
                         <button
                           v-for="lid in record.evidence_lids"
                           :key="lid"
@@ -579,14 +578,14 @@ function openEvidence(artifactId: string, lid: string) {
                   </tr>
                 </tbody>
               </table>
-              <p v-else class="generic-empty">暂无记录</p>
+              <p v-else class="generic-empty">{{ uiText('暂无记录') }}</p>
             </div>
 
             <div v-else-if="artifactShape(artifact) === 'graph'" class="artifact-graph generic-graph">
               <div class="graph-node-list">
                 <article v-for="record in genericRecords(artifact)" :key="record.record_id" class="graph-node generic-card">
                   <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
-                  <div class="evidence-links" aria-label="正文依据">
+                  <div class="evidence-links" :aria-label="uiText('正文依据')">
                     <button
                       v-for="lid in record.evidence_lids"
                       :key="lid"
@@ -606,9 +605,9 @@ function openEvidence(artifactId: string, lid: string) {
                   class="relation-row generic-relation"
                 >
                   <span class="artifact-wrap">{{ genericRecordLabel(artifact, relation.source) }}</span>
-                  <strong class="artifact-wrap">{{ relationFields(artifact, relation)[0]?.value || '关联' }}</strong>
+                  <strong class="artifact-wrap">{{ relationFields(artifact, relation)[0]?.value || uiText('关联') }}</strong>
                   <span class="artifact-wrap">{{ genericRecordLabel(artifact, relation.target) }}</span>
-                  <div class="evidence-links" aria-label="正文依据">
+                  <div class="evidence-links" :aria-label="uiText('正文依据')">
                     <button
                       v-for="lid in relation.evidence_lids"
                       :key="lid"
@@ -621,7 +620,7 @@ function openEvidence(artifactId: string, lid: string) {
                   </div>
                 </div>
               </div>
-              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">暂无记录</p>
+              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">{{ uiText('暂无记录') }}</p>
             </div>
 
             <ol v-else-if="artifactShape(artifact) === 'sequence'" class="timeline-list generic-sequence">
@@ -629,7 +628,7 @@ function openEvidence(artifactId: string, lid: string) {
                 <span class="timeline-marker" aria-hidden="true"></span>
                 <div class="artifact-record">
                   <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
-                  <div class="evidence-links" aria-label="正文依据">
+                  <div class="evidence-links" :aria-label="uiText('正文依据')">
                     <button
                       v-for="lid in record.evidence_lids"
                       :key="lid"
@@ -642,7 +641,7 @@ function openEvidence(artifactId: string, lid: string) {
                   </div>
                 </div>
               </li>
-              <li v-if="genericRecords(artifact).length === 0" class="generic-empty">暂无记录</li>
+              <li v-if="genericRecords(artifact).length === 0" class="generic-empty">{{ uiText('暂无记录') }}</li>
             </ol>
 
             <div v-else class="generic-document">
@@ -653,7 +652,7 @@ function openEvidence(artifactId: string, lid: string) {
               >
                 <span class="generic-record-index">{{ String(recordIndex + 1).padStart(2, "0") }}</span>
                 <ArtifactRecordContent :fields="fieldsFor(artifact, record.data)" />
-                <div class="evidence-links" aria-label="正文依据">
+                <div class="evidence-links" :aria-label="uiText('正文依据')">
                   <button
                     v-for="lid in record.evidence_lids"
                     :key="lid"
@@ -665,7 +664,7 @@ function openEvidence(artifactId: string, lid: string) {
                   </button>
                 </div>
               </article>
-              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">暂无记录</p>
+              <p v-if="genericRecords(artifact).length === 0" class="generic-empty">{{ uiText('暂无记录') }}</p>
             </div>
           </section>
         </template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { renderShare, saveShare, type ShareDraft, type ShareSource } from '../reading-share';
 
@@ -11,9 +13,9 @@ const choosingAnswer = ref(false);
 const answerRangeError = ref('');
 const selectedSource = computed<ShareSource>(() => props.source.answer ? { ...props.source,
   parts: [{ ...props.source.parts[0], text: answerText.value }],
-  association: answerText.value === props.source.answer.fullText ? '回答文字全文 · 本回答来源' : '回答节选 · 本回答来源',
+  association: answerText.value === props.source.answer.fullText ? uiText('回答文字全文 · 本回答来源') : uiText('回答节选 · 本回答来源'),
 } : props.source);
-const title = ref(props.source.diagram ? props.source.diagram.title : props.source.recap ? '本次阅读回顾' : '阅读随记'), reflection = ref('');
+const title = ref(props.source.diagram ? props.source.diagram.title : props.source.recap ? uiText('本次阅读回顾') : uiText('阅读随记')), reflection = ref('');
 const layout = ref<ShareDraft['layout']>(props.source.recap ? 'recap' : props.source.parts.every(p => p.id === 'excerpt') ? 'excerpt' : 'understanding'), palette = ref<ShareDraft['palette']>('blue');
 const hasContent = computed(() => !!props.source.diagram || selected.value.length > 0);
 const draft = computed<ShareDraft>(() => ({ source: selectedSource.value, selected: selected.value,
@@ -63,8 +65,8 @@ async function download() {
   const request = generation; saving.value = true; error.value = '';
   try {
     const saved = await saveShare(page.blob, page.url, () => request === generation, pages.value.length > 1 ? currentPage.value + 1 : undefined);
-    if (request === generation && saved) status.value = '已交给保存入口。也可以在下方打开图片后保存。';
-  } catch { if (request === generation) error.value = '保存失败，分享编辑与预览仍保留，请重试下载。'; }
+    if (request === generation && saved) status.value = uiText('已交给保存入口。也可以在下方打开图片后保存。');
+  } catch { if (request === generation) error.value = uiText('保存失败，分享编辑与预览仍保留，请重试下载。'); }
   finally { saving.value = false; }
 }
 async function reselect() {
@@ -78,7 +80,7 @@ function selectAnswerRange(all = false) {
   if (!full) return;
   const field = answerRange.value;
   const text = all ? full : full.slice(field?.selectionStart ?? 0, field?.selectionEnd ?? 0);
-  if (!text.trim()) { answerRangeError.value = '请先在回答中选择连续文字。'; return; }
+  if (!text.trim()) { answerRangeError.value = uiText('请先在回答中选择连续文字。'); return; }
   answerText.value = text; selected.value = ['body']; answerRangeError.value = ''; choosingAnswer.value = false;
 }
 onMounted(() => { mounted = true; dialog.value?.showModal(); schedulePreview(0); });
@@ -87,44 +89,44 @@ onBeforeUnmount(() => { mounted = false; generation++; clearTimeout(timer); rele
 
 <template>
   <dialog ref="dialog" class="share-image-panel" aria-labelledby="share-heading" @keydown.esc.stop.prevent="emit('close')" @cancel.prevent="emit('close')">
-    <header><div><h2 id="share-heading">{{ source.diagram ? '导出演示长图' : '生成分享图' }}</h2><p>{{ source.diagram ? '保存当前演示页面的完整画面。' : '把这次阅读，留成一张卡片。' }}</p></div><button class="share-close" aria-label="关闭分享" @click="emit('close')">×</button></header>
+    <header><div><h2 id="share-heading">{{ source.diagram ? uiText('导出演示长图') : uiText('生成分享图') }}</h2><p>{{ source.diagram ? uiText('保存当前演示页面的完整画面。') : uiText('把这次阅读，留成一张卡片。') }}</p></div><button class="share-close" :aria-label="uiText('关闭分享')" @click="emit('close')">×</button></header>
     <div class="share-workspace" :class="{ 'presentation-export': source.diagram }">
       <div v-if="!source.diagram" class="share-controls">
-        <fieldset ref="selection" tabindex="-1"><legend>选择内容</legend>
+        <fieldset ref="selection" tabindex="-1"><legend>{{ uiText('选择内容') }}</legend>
           <label v-for="part in selectedSource.parts" :key="part.id" class="share-choice">
             <span><input v-model="selected" type="checkbox" :value="part.id" :aria-label="part.label" :disabled="saving" />{{ part.label }}</span>
-            <details class="share-original"><summary>查看内容</summary><pre>{{ part.text }}</pre></details>
+            <details class="share-original"><summary>{{ uiText('查看内容') }}</summary><pre>{{ part.text }}</pre></details>
           </label>
         </fieldset>
         <template v-if="source.answer">
           <p class="share-range-label">{{ selectedSource.association.split(' · ')[0] }}</p>
-          <button :disabled="saving" class="share-reselect" @click="choosingAnswer = !choosingAnswer">调整回答范围</button>
+          <button :disabled="saving" class="share-reselect" @click="choosingAnswer = !choosingAnswer">{{ uiText('调整回答范围') }}</button>
           <div v-if="choosingAnswer" class="share-answer-range">
-            <p>选择连续文字，保留说明中的适用条件。也可包含全部回答文字。</p>
-            <textarea ref="answerRange" :value="source.answer.fullText" readonly rows="8" aria-label="原回答文字" />
-            <button :disabled="saving" @click="selectAnswerRange()">使用选中文字</button>
-            <button :disabled="saving" @click="selectAnswerRange(true)">包含全部回答文字</button>
+            <p>{{ uiText('选择连续文字，保留说明中的适用条件。也可包含全部回答文字。') }}</p>
+            <textarea ref="answerRange" :value="source.answer.fullText" readonly rows="8" :aria-label="uiText('原回答文字')" />
+            <button :disabled="saving" @click="selectAnswerRange()">{{ uiText('使用选中文字') }}</button>
+            <button :disabled="saving" @click="selectAnswerRange(true)">{{ uiText('包含全部回答文字') }}</button>
             <p v-if="answerRangeError" role="alert">{{ answerRangeError }}</p>
           </div>
         </template>
-        <button v-if="source.recap" :disabled="saving" class="share-reselect" @click="reselect">重新选材</button>
-        <label>标题<input v-model="title" :disabled="saving" /></label>
-        <label>我的感想<textarea v-model="reflection" rows="3" :disabled="saving" placeholder="写一句你的想法（可选）"></textarea></label>
-        <div class="share-style-options"><label>排版<select v-model="layout" :disabled="saving"><option v-if="source.recap" value="recap">阅读回顾卡</option><template v-else><option value="understanding">理解卡</option><option v-if="!source.answer" value="excerpt">摘录卡</option></template></select></label>
-        <label>配色<select v-model="palette" :disabled="saving"><option value="paper">暖纸珊瑚</option><option value="blue">奶油蓝</option></select></label></div>
-        <p v-if="loading" role="status">{{ source.answer ? '正在读取原回答来源…' : '正在读取材料名称…' }}</p>
-        <details v-else class="share-source-details"><summary>出处</summary><p v-if="selectedSource.association">{{ selectedSource.association }}</p><p v-for="sourceLabel in source.sources" :key="sourceLabel" class="share-source">{{ sourceLabel }}</p></details>
+        <button v-if="source.recap" :disabled="saving" class="share-reselect" @click="reselect">{{ uiText('重新选材') }}</button>
+        <label>{{ uiText('标题') }}<input v-model="title" :disabled="saving" /></label>
+        <label>{{ uiText('我的感想') }}<textarea v-model="reflection" rows="3" :disabled="saving" :placeholder="uiText('写一句你的想法（可选）')"></textarea></label>
+        <div class="share-style-options"><label>{{ uiText('排版') }}<select v-model="layout" :disabled="saving"><option v-if="source.recap" value="recap">{{ uiText('阅读回顾卡') }}</option><template v-else><option value="understanding">{{ uiText('理解卡') }}</option><option v-if="!source.answer" value="excerpt">{{ uiText('摘录卡') }}</option></template></select></label>
+        <label>{{ uiText('配色') }}<select v-model="palette" :disabled="saving"><option value="paper">{{ uiText('暖纸珊瑚') }}</option><option value="blue">{{ uiText('奶油蓝') }}</option></select></label></div>
+        <p v-if="loading" role="status">{{ source.answer ? uiText('正在读取原回答来源…') : uiText('正在读取材料名称…') }}</p>
+        <details v-else class="share-source-details"><summary>{{ uiText('出处') }}</summary><p v-if="selectedSource.association">{{ selectedSource.association }}</p><p v-for="sourceLabel in source.sources" :key="sourceLabel" class="share-source">{{ sourceLabel }}</p></details>
       </div>
       <div ref="previewArea" class="share-preview" :aria-busy="busy || pending">
-        <p v-if="busy || pending" class="share-update" role="status">{{ loading ? '正在读取出处…' : url ? '正在更新预览…' : '正在生成预览…' }}</p>
-        <p v-else-if="url && !ready" class="share-update">显示上一次预览，请重试生成后再保存。</p>
-        <nav v-if="pages.length > 1" aria-label="分享图分页"><button :disabled="currentPage === 0 || saving" @click="currentPage--">上一页</button><span>{{ currentPage + 1 }} / {{ pages.length }}</span><button :disabled="currentPage === pages.length - 1 || saving" @click="currentPage++">下一页</button></nav>
-        <img v-if="url" :src="url" alt="图片预览，与下载的 PNG 相同" />
-        <div v-else class="share-empty"><span aria-hidden="true">“</span><p>{{ busy || pending ? source.diagram ? '正在生成完整长图…' : '正在排好这一页…' : source.diagram ? '演示长图预览' : '选择你想分享的内容' }}</p><small>{{ source.diagram ? '保留当前页面的布局、样式与参数' : busy || pending ? '长内容会自动分页' : '勾选内容后，这里会自动生成预览' }}</small></div>
-        <template v-if="url && ready"><a :href="url" target="_blank" rel="noopener">打开图片</a><p>手机浏览器若未显示下载，可打开图片后长按保存。</p></template>
+        <p v-if="busy || pending" class="share-update" role="status">{{ loading ? uiText('正在读取出处…') : url ? uiText('正在更新预览…') : uiText('正在生成预览…') }}</p>
+        <p v-else-if="url && !ready" class="share-update">{{ uiText('显示上一次预览，请重试生成后再保存。') }}</p>
+        <nav v-if="pages.length > 1" :aria-label="uiText('分享图分页')"><button :disabled="currentPage === 0 || saving" @click="currentPage--">{{ uiText('上一页') }}</button><span>{{ currentPage + 1 }} / {{ pages.length }}</span><button :disabled="currentPage === pages.length - 1 || saving" @click="currentPage++">{{ uiText('下一页') }}</button></nav>
+        <img v-if="url" :src="url" :alt="uiText('图片预览，与下载的 PNG 相同')" />
+        <div v-else class="share-empty"><span aria-hidden="true">“</span><p>{{ busy || pending ? source.diagram ? uiText('正在生成完整长图…') : uiText('正在排好这一页…') : source.diagram ? uiText('演示长图预览') : uiText('选择你想分享的内容') }}</p><small>{{ source.diagram ? uiText('保留当前页面的布局、样式与参数') : busy || pending ? uiText('长内容会自动分页') : uiText('勾选内容后，这里会自动生成预览') }}</small></div>
+        <template v-if="url && ready"><a :href="url" target="_blank" rel="noopener">{{ uiText('打开图片') }}</a><p>{{ uiText('手机浏览器若未显示下载，可打开图片后长按保存。') }}</p></template>
       </div>
     </div>
-    <footer class="share-bottom"><div class="share-feedback"><p v-if="error" role="alert">{{ error }}</p><button v-if="error" @click="reselect">{{ source.diagram ? "返回图解" : "返回选材" }}</button><p v-if="status" role="status">{{ status }}</p><p v-if="!error && !status" class="share-hint">{{ pages.length > 1 ? `共 ${pages.length} 页，逐页保存` : source.recap ? '分享所选记录，不改动阅读事实' : source.diagram ? '完整长图，可滚动查看预览' : source.answer ? '助手解释与我的感想分别呈现' : '只为这次分享，不改动原笔记' }}</p></div><div class="share-actions"><button :disabled="loading || busy || saving || !hasContent" @click="showPreview">{{ busy ? '正在生成…' : '预览图片' }}</button><button class="share-save" :disabled="!ready || !url || loading || saving" @click="download">{{ saving ? '正在保存…' : source.diagram ? '下载长图 PNG' : '下载 PNG' }}</button></div></footer>
+    <footer class="share-bottom"><div class="share-feedback"><p v-if="error" role="alert">{{ error }}</p><button v-if="error" @click="reselect">{{ source.diagram ? uiText('返回图解') : uiText('返回选材') }}</button><p v-if="status" role="status">{{ status }}</p><p v-if="!error && !status" class="share-hint">{{ pages.length > 1 ? uiText('共 {0} 页，逐页保存', [pages.length]) : source.recap ? uiText('分享所选记录，不改动阅读事实') : source.diagram ? uiText('完整长图，可滚动查看预览') : source.answer ? uiText('助手解释与我的感想分别呈现') : uiText('只为这次分享，不改动原笔记') }}</p></div><div class="share-actions"><button :disabled="loading || busy || saving || !hasContent" @click="showPreview">{{ busy ? uiText('正在生成…') : uiText('预览图片') }}</button><button class="share-save" :disabled="!ready || !url || loading || saving" @click="download">{{ saving ? uiText('正在保存…') : source.diagram ? uiText('下载长图 PNG') : uiText('下载 PNG') }}</button></div></footer>
   </dialog>
 </template>
 

@@ -61,6 +61,7 @@ import {
   writePass1ShadowCandidate,
 } from "../../packages/core/src/pass1-reduction";
 import {
+  assertProfileSidecarProductionCandidatePath,
   freezeProfileSidecarDiscourseShadowTask,
   freezeProfileSidecarSemanticFastPathTask,
   profileSidecarMapReducePolicyMembers,
@@ -69,6 +70,8 @@ import {
   readProfileSidecarProductionTask,
   replayProfileSidecarDiscourseShadowInput,
   replayProfileSidecarSemanticFastPathInput,
+  writeProfileSidecarDiscourseShadowCandidate,
+  writeProfileSidecarSemanticFastPathCandidate,
 } from "../../packages/core/src/profile-sidecar-reduction";
 import {
   bookStructureGenerationTaskPath,
@@ -110,6 +113,7 @@ import {
   verifyModelInputBudgetProof,
 } from "../../packages/core/src/model-input-budget";
 import type { WorkUnitDescriptor, WorkUnitKind } from "../../packages/core/src/stage-work-unit";
+import { planAutomaticBuildExecutorDispatches } from "../../packages/core/src/automatic-build-dispatch";
 import { parseExtractorContractErrorFromStderr } from "../../packages/core/src/extractor-contract";
 import {
   failAutomaticBuildTask,
@@ -829,33 +833,27 @@ export function runAutomaticBuildStageWriter(
         },
       });
     }
-    forwardStageScript(
-      target,
-      script,
-      [
-        target.source_path,
-        taskId,
-        candidatePathForExecution,
-        ...stageScriptArgs(target).slice(1),
-        "--shadow-generation",
-        generation.policy_generation_id,
-        "--attempt",
-        String(generation.attempt),
-        "--generated-at",
-        generation.generated_at,
-        "--executor",
-        generation.executor,
-      ],
-      true,
-    );
-    return {
-      artifact_path: automaticBuildGenerationArtifactPath(
-        target,
-        generationStage,
-        generation.policy_generation_id,
-        taskId,
-      ),
+    // Frozen profile tasks already contain their routed input. As with Pass1,
+    // validate and write here instead of starting another engine and parsing the book again.
+    const task = readProfileSidecarProductionTask(target, generation.policy_generation_id, taskId);
+    const privateCandidatePath = assertProfileSidecarProductionCandidatePath({
+      target, task, candidate_path: candidatePathForExecution,
+    });
+    const sourceBytes = readFileSync(target.source_path);
+    const source = /\.epub$/iu.test(target.source_path)
+      ? epubToSource(new Uint8Array(sourceBytes)).source : sourceBytes.toString("utf8");
+    const input = {
+      target, source,
+      candidate: JSON.parse(readFileSync(privateCandidatePath, "utf8").replace(/^\uFEFF/, "")) as unknown,
+      provenance: {
+        executor: generation.executor,
+        attempt: generation.attempt,
+        generated_at: generation.generated_at,
+      },
     };
+    return task.version === "profile_sidecar_semantic_fast_path_task.v1"
+      ? writeProfileSidecarSemanticFastPathCandidate({ ...input, task })
+      : writeProfileSidecarDiscourseShadowCandidate({ ...input, task });
   }
   forwardStageScript(
     target,
@@ -1319,8 +1317,10 @@ export function automaticBuildPlan(
   rootDir: string,
   options: AutomaticBuildPlanOptions = {},
   preparedRoute?: ReturnType<typeof routeAutomaticBuildSnapshot>,
+  // Internal reuse within a driver decision. Public calls resolve their own source.
+  validatedTarget?: AutomaticBuildTarget,
 ) {
-  const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
+  const target = validatedTarget ?? resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const qualityProfile = options.quality_profile ?? "full";
   const requestedWorkers = options.requested_workers ?? 1;
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
@@ -1658,10 +1658,14 @@ function expandAction(
         },
       };
     }
+    const priorityRetryIds = claimInspections.flatMap(item =>
+      item.inspection.status === "ready" && item.inspection.retry_recovery ? [item.task_id] : []);
     const executionBlockers = claimInspections
       .filter((item) => item.inspection.status === "retry_exhausted"
         || item.inspection.status === "executor_instability");
-    if (executionBlockers.length) {
+    // Finish already-authorized retries before asking about a different exhausted unit.
+    // Only the explicit recovery subset is dispatched while that boundary remains pending.
+    if (executionBlockers.length && (!executorDispatches || !priorityRetryIds.length)) {
       const reason = executionBlockers.some((item) => item.inspection.status === "retry_exhausted")
         ? "retry_exhausted"
         : "executor_instability";
@@ -1859,15 +1863,26 @@ function expandAction(
       ? persistAutomaticBuildEvaluationAcceptance(target, preflight, leaseOptions.now)
       : undefined;
     if (executorDispatches) {
+      const priorityRetries = new Set(priorityRetryIds);
+      const dispatchPlan = priorityRetryIds.length ? planAutomaticBuildExecutorDispatches({
+        execution_profile: executionProfile,
+        target_ref: target.target_ref,
+        stage: action.stage,
+        work_units: allPendingUnits.filter(unit => priorityRetries.has(unit.work_unit_id)),
+        pending_ids: priorityRetryIds,
+        task_bindings: productionStageState.task_bindings,
+        available_agent_slots: preflight.worker_plan.max_workers,
+      }) : preflight.dispatch_plan;
       let handoff: ReturnType<typeof selectAutomaticBuildDispatchHandoff>;
       try {
         handoff = selectAutomaticBuildDispatchHandoff(target, {
           accepted_plan_digest: preflight.descriptor_plan_digest,
-          current_dispatch_plan: preflight.dispatch_plan,
+          current_dispatch_plan: dispatchPlan,
           max_parallel: preflight.worker_plan.requested_workers,
           available_new_executor_slots: preflight.worker_plan.max_workers,
           created_at: leaseOptions.now,
           held_work_unit_ids: heldWorkUnitIds,
+          priority_retry_ids: priorityRetryIds,
         });
       } catch (error) {
         if (!(error instanceof AutomaticBuildLegacyPartialDispatchRunError)) throw error;
@@ -2335,8 +2350,9 @@ export function automaticBuildNext(
   maxParallel = 5,
   options: AutomaticBuildNextOptions = {},
   decisionSnapshot?: ReturnType<typeof buildAutomaticBuildSnapshot>,
+  validatedTarget?: AutomaticBuildTarget,
 ) {
-  const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
+  const target = validatedTarget ?? resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const protocol = resolveAutomaticBuildClaimProtocol(options.protocol, options.executor_dispatches === true);
   const leaseOptions = {
     owner: options.owner ?? `automatic-build:${process.pid}:${randomUUID()}`,
@@ -2807,8 +2823,9 @@ export function automaticBuildEngineContract(
   targetInput: string,
   rootDir: string,
   options: AutomaticBuildPlanOptions = {},
+  validatedTarget?: AutomaticBuildTarget,
 ) {
-  const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
+  const target = validatedTarget ?? resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const releaseContract = buildAutomaticBuildReleaseContractCheck(target.profile_id);
   const checkedExtractors: string[] = [];
   const resolvedDispatchPrompts: ResolvedAutomaticBuildExecutorPromptV1[] = [];
@@ -2879,8 +2896,9 @@ export function automaticBuildProtocolContract(
   targetInput: string,
   rootDir: string,
   options: AutomaticBuildPlanOptions = {},
+  validatedTarget?: AutomaticBuildTarget,
 ) {
-  const engine = automaticBuildEngineContract(targetInput, rootDir, options);
+  const engine = automaticBuildEngineContract(targetInput, rootDir, options, validatedTarget);
   const releaseContract = engine.checks.release_contract;
   const promptSource = engine.checks.prompt_provider.source;
   let executorAgentTemplate = "";

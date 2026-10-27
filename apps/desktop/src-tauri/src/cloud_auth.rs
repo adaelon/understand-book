@@ -20,12 +20,14 @@ use url::Url;
 
 pub struct CloudDesktop {
     pub origin: Url,
+    pub language: Mutex<String>,
     pending: Mutex<Option<Arc<AtomicBool>>>,
 }
 impl CloudDesktop {
     pub fn new(origin: Url) -> Self {
         Self {
             origin,
+            language: Mutex::new("zh-CN".into()),
             pending: Mutex::new(None),
         }
     }
@@ -33,6 +35,10 @@ impl CloudDesktop {
         if let Some(pending) = self.pending.lock().unwrap().take() {
             pending.store(true, Ordering::Release);
         }
+    }
+    pub fn navigation_url(&self, mut url: Url) -> Url {
+        url.query_pairs_mut().append_pair("lang", &self.language.lock().unwrap());
+        url
     }
 }
 pub fn configured_origin() -> Result<Url, String> {
@@ -152,7 +158,7 @@ pub fn sign_in(app: &tauri::AppHandle) -> Result<(), String> {
         }
         *pending = Some(cancelled.clone());
     }
-    let result = sign_in_inner(app, &desktop.origin, &cancelled);
+    let result = sign_in_inner(app, &desktop.navigation_url(desktop.origin.clone()), &cancelled);
     let mut pending = desktop.pending.lock().unwrap();
     if pending
         .as_ref()
@@ -253,6 +259,9 @@ mod tests {
     #[test]
     fn browser_request_uses_pkce_and_callback_accepts_only_matching_attempt() {
         let origin = parse_origin("https://reader.example").unwrap();
+        let desktop = CloudDesktop::new(origin.clone());
+        *desktop.language.lock().unwrap() = "en".into();
+        let origin = desktop.navigation_url(origin);
         let verifier = "A".repeat(43);
         let state = "B".repeat(43);
         let url = authorization_url(
@@ -262,6 +271,8 @@ mod tests {
             &state,
         );
         assert!(!url.as_str().contains("code_verifier"));
+        assert!(url.query_pairs().any(|(key, value)| key == "lang" && value == "en"));
+        assert!(desktop.navigation_url("http://tauri.localhost/".parse().unwrap()).as_str().ends_with("?lang=en"));
         assert!(url.query_pairs().any(|(key, value)| key == "code_challenge"
             && value == URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()))));
         let code = "C".repeat(43);

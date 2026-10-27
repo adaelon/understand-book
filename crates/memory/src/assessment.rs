@@ -14,7 +14,11 @@ pub struct RubricItem {
     pub id: String,
     /// Includes necessary conditions, accepted equivalents and permitted omissions.
     pub criterion: String,
+    #[serde(default)]
     pub source_lids: Vec<String>,
+    /// Current-turn source.present IDs for prepared music or observed video.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_ref_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -34,7 +38,10 @@ pub enum ScoringRule {
 #[serde(deny_unknown_fields)]
 pub struct AssessmentContract {
     pub rule: ScoringRule,
+    #[serde(default)]
     pub source_lids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_ref_ids: Vec<String>,
     /// An explicitly incomplete source cannot justify a correctness judgment.
     pub source_sufficient: bool,
     /// Criterion-level feedback is private until the learner explicitly reveals it.
@@ -50,7 +57,7 @@ pub enum FeedbackPolicy {
 
 impl AssessmentContract {
     pub fn validate(&self) -> Result<(), ToolError> {
-        if self.source_lids.is_empty() {
+        if self.source_lids.is_empty() && self.source_ref_ids.is_empty() {
             return Err(invalid("评分合同缺少来源"));
         }
         match &self.rule {
@@ -78,10 +85,11 @@ impl AssessmentContract {
                     || items.iter().any(|i| {
                         i.id.trim().is_empty()
                             || i.criterion.trim().is_empty()
-                            || i.source_lids.is_empty()
+                            || (i.source_lids.is_empty() && i.source_ref_ids.is_empty())
                             || i.source_lids
                                 .iter()
                                 .any(|lid| !self.source_lids.contains(lid))
+                            || i.source_ref_ids.iter().any(|id| !self.source_ref_ids.contains(id))
                     })
                 {
                     return Err(invalid("原子评分标准或来源不完整"));
@@ -113,8 +121,31 @@ pub enum ItemVerdict {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SourceQuote {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub lid: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_ref_id: Option<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub quote: String,
+    /// A visible feature in an attached frozen frame/crop, never a text quotation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation: Option<String>,
+}
+
+/// Host-frozen evidence for a media rubric; kept private with the selected move.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AssessmentSource {
+    pub source_id: String,
+    pub source_revision: String,
+    pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visual: Option<AssessmentVisual>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AssessmentVisual {
+    pub target: base_schema::EvidenceTarget,
+    pub duration_ms: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -176,6 +207,7 @@ pub fn accept_open(
     contract: &AssessmentContract,
     response: &str,
     sources: &BTreeMap<String, String>,
+    source_references: &BTreeMap<String, AssessmentSource>,
     items: &[ItemAssessment],
 ) -> Result<AssessmentStatus, ToolError> {
     let ScoringRule::Open { items: rubric } = &contract.rule else {
@@ -195,12 +227,16 @@ pub fn accept_open(
             || !response.contains(&item.response_quote)
             || (item.verdict == ItemVerdict::Supported && item.response_quote.trim().is_empty())
             || (item.verdict != ItemVerdict::Uncertain && item.sources.is_empty())
-            || item.sources.iter().any(|s| {
-                s.quote.trim().is_empty()
-                    || !criterion.source_lids.contains(&s.lid)
-                    || !sources
-                        .get(&s.lid)
-                        .is_some_and(|text| text.contains(&s.quote))
+            || item.sources.iter().any(|s| !match &s.source_ref_id {
+                Some(id) if s.lid.is_empty() && criterion.source_ref_ids.contains(id) =>
+                    source_references.get(id).is_some_and(|source| match &s.observation {
+                        Some(observation) => source.visual.is_some() && s.quote.is_empty() && !observation.trim().is_empty(),
+                        None => !s.quote.trim().is_empty() && source.text.contains(&s.quote),
+                    }),
+                None => s.observation.is_none() && !s.quote.trim().is_empty()
+                    && criterion.source_lids.contains(&s.lid)
+                    && sources.get(&s.lid).is_some_and(|text| text.contains(&s.quote)),
+                _ => false,
             })
         {
             return Err(invalid("评估缺少回答片段或引用不属于冻结来源"));
@@ -264,6 +300,56 @@ impl LearningStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn media_assessment_contract_accepts_real_refs_without_text_lids_and_rejects_foreign_refs() {
+        let mut contract: AssessmentContract = serde_json::from_value(json!({
+            "rule":{"kind":"open","items":[{"id":"return","criterion":"Identifies the repeated theme", "source_ref_ids":["read-music"]}]},
+            "source_ref_ids":["read-music"],"source_sufficient":true,"feedback":"after_submit"
+        })).unwrap();
+        contract.validate().unwrap();
+        assert!(contract.source_lids.is_empty());
+        let refs = BTreeMap::from([("read-music".into(), AssessmentSource {
+            source_id:"music".into(),source_revision:"1".into(),
+            text:"The opening theme returns in the same register.".into(),visual:None,
+        })]);
+        let response = "The opening theme returns";
+        let mut items: Vec<ItemAssessment> = serde_json::from_value(json!([{
+            "id":"return","verdict":"supported","response_quote":response,
+            "sources":[{"source_ref_id":"read-music","quote":"opening theme returns"}],
+            "reason":"Matches the frozen score analysis"
+        }])).unwrap();
+        assert_eq!(accept_open(&contract,response,&BTreeMap::new(),&refs,&items).unwrap(),AssessmentStatus::Correct);
+        items[0].sources[0].source_ref_id=Some("other-read".into());
+        assert!(accept_open(&contract,response,&BTreeMap::new(),&refs,&items).is_err());
+        items[0].sources[0].source_ref_id=Some("read-music".into());
+        items[0].sources[0].quote="invented analysis".into();
+        assert!(accept_open(&contract,response,&BTreeMap::new(),&refs,&items).is_err());
+        let ScoringRule::Open { items } = &mut contract.rule else { unreachable!() };
+        items[0].source_ref_ids=vec!["other-read".into()];
+        assert!(contract.validate().is_err());
+    }
+
+    #[test]
+    fn media_assessment_visual_observations_require_frozen_visual_sources() {
+        let contract: AssessmentContract = serde_json::from_value(json!({
+            "rule":{"kind":"open","items":[{"id":"shape","criterion":"Compares visible slopes","source_ref_ids":["read-frame"]}]},
+            "source_ref_ids":["read-frame"],"source_sufficient":true,"feedback":"after_submit"
+        })).unwrap();
+        contract.validate().unwrap();
+        let mut refs = BTreeMap::from([("read-frame".into(),AssessmentSource {
+            source_id:"video".into(),source_revision:"1".into(),text:String::new(),
+            visual:Some(serde_json::from_value(json!({"target":{"kind":"visual",
+                "publication":{"book_id":"video","publication_id":"original"},
+                "frames":[{"video":{"media_id":"v","media_revision":"1"},"actual_pts_ms":1000,"width":640,"height":480}],"regions":[]},"duration_ms":2000})).unwrap()),
+        })]);
+        let items:Vec<ItemAssessment>=serde_json::from_value(json!([{"id":"shape","verdict":"supported",
+            "response_quote":"A is steeper","sources":[{"source_ref_id":"read-frame","observation":"Line A rises faster than line B"}],"reason":"Matches the frame"}])).unwrap();
+        assert_eq!(accept_open(&contract,"A is steeper",&BTreeMap::new(),&refs,&items).unwrap(),AssessmentStatus::Correct);
+        refs.get_mut("read-frame").unwrap().visual=None;
+        assert!(accept_open(&contract,"A is steeper",&BTreeMap::new(),&refs,&items).is_err(),"a locator or prepared music analysis does not supply visual pixels");
+    }
     #[test]
     fn frozen_choice_rules_distinguish_equivalence_partial_error_and_uncertainty() {
         let mut c = AssessmentContract {
@@ -272,6 +358,7 @@ mod tests {
                 correct: vec!["A".into(), "B".into()],
             },
             source_lids: vec!["1".into()],
+            source_ref_ids: vec![],
             source_sufficient: true,
             feedback: FeedbackPolicy::AfterSubmit,
         };
@@ -303,15 +390,18 @@ mod tests {
                         id: "distance".into(),
                         criterion: "Uses total distance, equivalent wording accepted".into(),
                         source_lids: vec!["1".into()],
+                        source_ref_ids: vec![],
                     },
                     RubricItem {
                         id: "time".into(),
                         criterion: "Uses total time".into(),
                         source_lids: vec!["1".into()],
+                        source_ref_ids: vec![],
                     },
                 ],
             },
             source_lids: vec!["1".into()],
+            source_ref_ids: vec![],
             source_sufficient: true,
             feedback: FeedbackPolicy::AfterSubmit,
         };
@@ -327,6 +417,8 @@ mod tests {
                 response_quote: "All distance".into(),
                 sources: vec![SourceQuote {
                     lid: "1".into(),
+                    source_ref_id: None,
+                    observation: None,
                     quote: "total distance".into(),
                 }],
                 reason: "Equivalent quantity".into(),
@@ -337,29 +429,31 @@ mod tests {
                 response_quote: "all time".into(),
                 sources: vec![SourceQuote {
                     lid: "1".into(),
+                    source_ref_id: None,
+                    observation: None,
                     quote: "total time".into(),
                 }],
                 reason: "Equivalent denominator".into(),
             },
         ];
         assert_eq!(
-            accept_open(&c, response, &sources, &items).unwrap(),
+            accept_open(&c, response, &sources, &BTreeMap::new(), &items).unwrap(),
             AssessmentStatus::Correct
         );
         items[1].verdict = ItemVerdict::Unsupported;
         items[1].response_quote = String::new();
         assert_eq!(
-            accept_open(&c, response, &sources, &items).unwrap(),
+            accept_open(&c, response, &sources, &BTreeMap::new(), &items).unwrap(),
             AssessmentStatus::Partial
         );
         items[1].verdict = ItemVerdict::Uncertain;
         items[1].sources.clear();
         assert_eq!(
-            accept_open(&c, response, &sources, &items).unwrap(),
+            accept_open(&c, response, &sources, &BTreeMap::new(), &items).unwrap(),
             AssessmentStatus::Uncertain
         );
-        assert!(accept_open(&c, response, &sources, &items[..1]).is_err());
+        assert!(accept_open(&c, response, &sources, &BTreeMap::new(), &items[..1]).is_err());
         items[0].sources[0].quote = "invented".into();
-        assert!(accept_open(&c, response, &sources, &items).is_err());
+        assert!(accept_open(&c, response, &sources, &BTreeMap::new(), &items).is_err());
     }
 }

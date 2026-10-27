@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DataState, DataTable, Pagination, useData } from '@/components/data';
 import { Field, OperationDialog, useOperations } from '@/components/operation';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,27 @@ import { bookKey, bookLabel, type ReleaseMaterial } from '@/lib/workspace-releas
 import { buildState, type OperatorBuild, type OperatorMaterial } from '@/lib/operator-builds';
 import { session } from '@/lib/api';
 import { ReleaseEditor } from './workspace-releases';
+import { Amount, Distribution, Metric, Notice, StatusBadge, ViewSwitch } from '@/components/analytics';
+
+const activeBuild = (state:string) => ['queued_prepare','preparing','queued','running'].includes(state);
+const needsAttention = (state:string) => ['draft','awaiting_confirmation','interrupted','paused'].includes(state);
+const buildTone = (state:string) => needsAttention(state) ? 'amber' as const : activeBuild(state) ? 'blue' as const : ['ready','published'].includes(state) ? 'green' as const : 'muted' as const;
 
 export function OperatorBuildsPage() {
   const [offset,setOffset]=useState(0),[selected,setSelected]=useState<string|null>(null),[create,setCreate]=useState(false);
+  const [filter,setFilter]=useState<'all'|'attention'|'active'|'ready'>('all');
   const query=useData<Page<OperatorBuild>>(`/admin/operator-builds?limit=20&offset=${offset}`);
   const ops=useOperations();
   return <section className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><h1>运营资料构建</h1><div className="flex gap-2"><Button variant="outline" onClick={()=>void query.refetch()}>刷新任务</Button><Button disabled={ops.blocked} onClick={()=>setCreate(true)}>创建准备任务</Button></div></div>
-    <p className="text-sm text-muted-foreground">已有成果直接复用；视频或精选音乐填写位置与预算后即可开始。构建期间显示已完成的实际单元，完成后可以发布共享工作区。书籍仍先查看准备计划。</p>
-    <DataState query={query}/>{query.data&&<><DataTable rows={query.data.items} columns={[
+    <p className="text-sm text-muted-foreground">查看准备进度、处理待确认任务，并将就绪成果发布为共享工作区。</p>
+    <DataState query={query}/>{query.data&&<><div className="analytics-panel"><Distribution label="本页构建状态" segments={[
+      {label:'需要操作',value:query.data.items.filter(t=>needsAttention(t.state)).length,tone:'amber'},
+      {label:'排队与构建中',value:query.data.items.filter(t=>activeBuild(t.state)).length,tone:'blue'},
+      {label:'已就绪 / 已发布',value:query.data.items.filter(t=>['ready','published'].includes(t.state)).length,tone:'green'},
+    ]} note={`共 ${query.data.total} 个任务，色条与筛选仅统计当前页。`} /><ViewSwitch label="筛选本页构建任务" value={filter} options={[["all","本页全部"],["attention","需要操作"],["active","构建中"],["ready","成果已就绪"]]} onChange={setFilter}/></div><DataTable rows={query.data.items.filter(t=>filter==='all'||(filter==='attention'?needsAttention(t.state):filter==='active'?activeBuild(t.state):['ready','published'].includes(t.state)))} columns={[
       {header:'任务',cell:({row})=><strong>{row.original.name}</strong>},
-      {header:'状态',cell:({row})=>buildState(row.original.state)},
-      {header:'平台预算上限',cell:({row})=>`${money(row.original.max_micro_cny)} 元`},
+      {header:'状态',cell:({row})=><StatusBadge tone={buildTone(row.original.state)}>{buildState(row.original.state)}</StatusBadge>},
+      {header:'平台预算上限',cell:({row})=><Amount value={row.original.max_micro_cny} />},
       {header:'更新时间',cell:({row})=>date(row.original.updated_at)},
       {header:'操作',cell:({row})=><Button variant="ghost" onClick={()=>setSelected(row.original.task_id)}>查看构建任务</Button>},
     ]}/><Pagination offset={offset} total={query.data.total} change={setOffset}/></>}
@@ -60,9 +70,11 @@ function CreateBuild({close,created}:{close:()=>void;created:(taskId:string)=>vo
   </OperationDialog>;
 }
 function BuildDetail({taskId,close}:{taskId:string;close:()=>void}) {
+  const anchor=useRef<HTMLElement>(null);
   const query=useData<OperatorBuild>(`/admin/operator-builds/${encodeURIComponent(taskId)}`);
   const [action,setAction]=useState<'prepare'|'start'|'continue'|'pause'|null>(null),[publish,setPublish]=useState(false),[receipts,setReceipts]=useState(false);
   const ops=useOperations(),task=query.data;
+  useEffect(()=>{if(task){anchor.current?.focus({preventScroll:true});anchor.current?.scrollIntoView?.({block:'start'});}},[!!task]);
   const videoTask=!!task&&task.materials.some(m=>!m.published_book_ref&&m.material_kind==='video')&&task.materials.every(m=>m.published_book_ref||m.material_kind==='video');
   const mediaTask=!!task&&task.materials.some(m=>!m.published_book_ref)&&task.materials.every(m=>m.published_book_ref||m.material_kind==='video'||m.material_kind==='music');
   const mediaStartLabel=videoTask?'开始视频构建':'开始音乐构建';
@@ -72,10 +84,17 @@ function BuildDetail({taskId,close}:{taskId:string;close:()=>void}) {
     return()=>clearInterval(timer);
   },[task?.state,query.refetch]);
   const labels={prepare:'准备构建计划',start:mediaTask?mediaStartLabel:'确认计划并启动',continue:'继续构建',pause:'暂停构建'};
-  return <section className="space-y-4 rounded-lg border p-5" aria-label="运营构建任务详情"><div className="flex flex-wrap justify-between gap-2"><h2>{task?.name??'构建任务'}</h2><div><Button variant="ghost" onClick={()=>void query.refetch()}>刷新构建状态</Button><Button variant="ghost" onClick={close}>关闭构建详情</Button></div></div><DataState query={query}/>{task&&<>
-    <p>{buildState(task.state)}{task.pause_requested&&['running','preparing'].includes(task.state)?' · 正在等待当前执行收尾':''}</p>{task.error&&<p role="alert">{task.error.includes('BUILD_BUDGET_EXHAUSTED')?'本任务剩余预算不足，已暂停后续执行。请核对费用回执或提高预算后继续。':task.error}</p>}
+  return <section ref={anchor} tabIndex={-1} className="analytics-panel outline-none" aria-label="运营构建任务详情"><div className="flex flex-wrap justify-between gap-2"><h2>{task?.name??'构建任务'}</h2><div><Button variant="ghost" onClick={()=>void query.refetch()}>刷新构建状态</Button><Button variant="ghost" onClick={close}>关闭构建详情</Button></div></div><DataState query={query}/>{task&&<>
+    <StatusBadge tone={buildTone(task.state)}>{buildState(task.state)}{task.pause_requested&&['running','preparing'].includes(task.state)?' · 正在等待当前执行收尾':''}</StatusBadge>{task.error&&<div role="alert"><Notice warning>{task.error.includes('BUILD_BUDGET_EXHAUSTED')?'本任务剩余预算不足，已暂停后续执行。请核对费用回执或提高预算后继续。':task.error}</Notice></div>}
     {task.state.startsWith('queued')&&<p className="text-sm">等待连接到同一服务的构建宿主。宿主启动并恢复原运营会话后会接续任务。</p>}
-    <dl className="grid gap-3 text-sm sm:grid-cols-3"><div><dt>平台预算上限</dt><dd>{money(task.max_micro_cny)} 元</dd></div>{task.budget&&<><div><dt>已确认供应商成本</dt><dd>{money(task.budget.provider_cost_micro_cny)} 元</dd></div><div><dt>处理成本估计</dt><dd>{money(task.budget.estimated_cost_micro_cny ?? 0)} 元</dd></div><div><dt>待核算占用</dt><dd>{money(task.budget.pending_micro_cny)} 元 · {task.budget.unknown_count} 笔费用未完整确认</dd></div><div><dt>当前执行占用</dt><dd>{money(task.budget.reserved_micro_cny)} 元</dd></div><div><dt>剩余可准入预算</dt><dd>{money(task.budget.remaining_micro_cny)} 元</dd></div></>}</dl>
+    <dl className="grid gap-3 sm:grid-cols-2"><Metric label="剩余可准入预算" value={task.budget?<Amount value={task.budget.remaining_micro_cny}/>: '尚未开始'} detail="可用于后续执行" tone="green"/><Metric label="平台预算上限" value={<Amount value={task.max_micro_cny}/>} detail={`精确上限 ${money(task.max_micro_cny)} 元`}/></dl>
+    {task.budget&&<><Distribution label="构建预算分配" total={task.max_micro_cny} segments={[
+      {label:'已确认成本',value:task.budget.provider_cost_micro_cny,display:`${money(task.budget.provider_cost_micro_cny)} 元`,tone:'blue'},
+      {label:'处理成本估计',value:task.budget.estimated_cost_micro_cny??0,display:`${money(task.budget.estimated_cost_micro_cny??0)} 元`,tone:'violet'},
+      {label:'待核算占用',value:task.budget.pending_micro_cny,display:`${money(task.budget.pending_micro_cny)} 元`,tone:'amber'},
+      {label:'当前执行占用',value:task.budget.reserved_micro_cny,display:`${money(task.budget.reserved_micro_cny)} 元`,tone:'muted'},
+      {label:'剩余预算',value:task.budget.remaining_micro_cny,display:`${money(task.budget.remaining_micro_cny)} 元`,tone:'green'},
+    ]}/>{task.budget.unknown_count>0&&<Notice warning>{task.budget.unknown_count} 笔费用未完整确认，请通过费用回执核对。</Notice>}</>}
     <div className="flex flex-wrap gap-2">{task.state==='draft'&&mediaTask?<Button disabled={ops.blocked} onClick={()=>setAction('start')}>{mediaStartLabel}</Button>:(task.state==='draft'||(task.state==='interrupted'&&!mediaTask&&task.materials.some(m=>!m.published_book_ref&&!m.plan)))&&<Button disabled={ops.blocked} onClick={()=>setAction('prepare')}>准备构建计划</Button>}{task.state==='awaiting_confirmation'&&<Button disabled={ops.blocked} onClick={()=>setAction('start')}>{labels.start}</Button>}{['interrupted','paused'].includes(task.state)&&(mediaTask||task.materials.every(m=>m.published_book_ref||m.plan))&&<Button disabled={ops.blocked} onClick={()=>setAction('continue')}>继续构建</Button>}{['running','preparing','queued','queued_prepare'].includes(task.state)&&<Button disabled={ops.blocked||task.pause_requested} variant="outline" onClick={()=>setAction('pause')}>暂停构建</Button>}{['ready','published'].includes(task.state)&&<Button disabled={ops.blocked} onClick={()=>setPublish(true)}>选择成果并发布</Button>}{task.budget&&<Button variant="outline" onClick={()=>setReceipts(v=>!v)}>{receipts?'收起费用回执':'查看费用回执'}</Button>}</div>
     {task.state==='interrupted'&&<p className="text-sm text-muted-foreground">已完成的单元会保留。若预算不足，可在继续构建时调整上限；待核算费用仍计入占用。</p>}
     {receipts&&<BuildReceipts taskId={task.task_id} active={['running','preparing','queued','queued_prepare'].includes(task.state)}/>}

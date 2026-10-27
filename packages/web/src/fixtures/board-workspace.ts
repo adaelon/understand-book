@@ -1,0 +1,32 @@
+import type { BoardDocument } from '../generated/BoardDocument';
+import type { BoardItem } from '../generated/BoardItem';
+import type { BoardView } from '../generated/BoardView';
+import type { BoardCatalogItem } from '../api';
+import type { PresentationView } from '../generated/PresentationView';
+
+export const boardFixtureReceipt = { session_id: 'chat-original', turn_id: 'turn-original', reference: { presentation_id: 'presentation-bayes', revision: 1 }, state_revision: 1, saved_state_ref: 'scene-original' };
+const source = { source_ref_id: 'source-bayes', book_id: 'book-probability', evidence_range: { start_lid: '2.3', end_lid: '2.3' }, evidence_text_digest: 'fixture-evidence', label_snapshot: '第二章 · 条件概率与贝叶斯定理', preview_snapshot: '后验概率与先验概率及似然成正比。只有把基准发生率一起考虑，才能解释检测结果。' };
+const common = { size: { width: 280, height: 220 }, created_at: '2026-10-25T08:30:00Z', source_bindings: [source], explanation_blocks: [] };
+export const boardFixtureItems: BoardItem[] = [
+  { ...common, item_id: 'item-prebuild', title: '贝叶斯定理：从证据更新信念', readable_content: '## 一个更新规则\n\n观察到证据后，怎样调整对事件的判断？\n\n$$P(A\\mid B)=\\frac{P(B\\mid A)P(A)}{P(B)}$$\n\n**先验概率**表达证据出现前的判断；**似然**表达假设成立时出现这份证据的可能性。\n\n把两者放在一起，再经过归一化，就得到了后验概率。', position: { x: 0, y: 0 }, target: { kind: 'prebuild', source_id: 'book-probability', object_id: 'bayes-rule', object_revision: 1, map_revision: 'map-1', object_snapshot: { label: '贝叶斯定理' } } },
+  { ...common, item_id: 'item-answer', block_id: 'block-item-answer', title: '为什么阳性不等于真的患病？', readable_content: '即使检测准确，判断阳性结果仍然需要看疾病有多常见。\n\n假设 1,000 人里有 10 人患病。检测能找出其中 9 人，同时 990 位健康者中有 99 人也会被判为阳性。\n\n所以在全部 108 位阳性者中，真正患病的有 9 人，约为 8.3%。\n\n## 理解这件事的关键\n\n不是把“准确率”直接当成“患病概率”，而是比较所有能产生这条证据的情形。\n\n**基准发生率改变，同样的检测结果也会得到不同的后验判断。**', position: { x: 320, y: 0 }, target: { kind: 'answer', session_id: 'chat-original', turn_id: 'turn-original', question: '检测准确率很高，为什么阳性还不能确定患病？', answer_parts: [] } },
+  { ...common, item_id: 'item-presentation', title: '改变先验，看看后验如何变化', readable_content: '通过滑块改变先验概率，观察同样证据下后验概率的变化。', position: { x: 0, y: 260 }, target: { kind: 'presentation', receipt: boardFixtureReceipt } },
+  { ...common, item_id: 'item-understanding', title: '我开始理解“基准发生率”了', readable_content: '用户能够用总体人数解释阳性结果，需要进一步区分似然与后验。', position: { x: 320, y: 260 }, target: { kind: 'understanding', evidence_id: 'evidence-bayes', source_id: 'book-probability', source_revision: '1', object_id: 'bayes-rule', object_revision: 1, learner_quote: '我原来只看检测的准确率，现在觉得要先问人群中本来有多少人患病。阳性的人里面，也会有健康的人。', interpretation: '这段表达已经把**基准发生率**纳入判断，也注意到阳性结果的两个来源。\n\n下一步可以尝试独立算出一个新例子的后验概率，看看能否把这个理解迁移到不同人数的人群。', evidence_snapshot: { status: 'partial' } } },
+];
+export function boardFixture(): { document: BoardDocument; view: BoardView } {
+  return structuredClone({ document: { board_id: 'board-bayes', learning_workspace_id: 'learning-probability', book_id: 'book-probability', publication_id: 'pub-1', source_revision: '1', title: '贝叶斯：把新证据放进判断', revision: 1, created_at: '2026-10-25T08:00:00Z', updated_at: '2026-10-25T08:30:00Z', items: boardFixtureItems, deliveries: [], links: [], mappings: [], routes: [] }, view: { x: 35, y: 37, zoom: .92, selected_item_id: 'item-answer', selected_block_id: null, reading_item_id: null, playback: null, presentation_states: {} } });
+}
+export const boardFixtureCatalog: BoardCatalogItem[] = boardFixtureItems.flatMap<BoardCatalogItem>(item => {
+  if (item.target.kind === 'drawing') return [];
+  if (item.target.kind === 'artifact') return [{ kind: 'prebuild', category: item.target.artifact, title: item.title, summary: item.readable_content,
+    source: { kind: 'artifact', artifact: item.target.artifact, entry_id: item.target.entry_id, source_revision: item.target.source_revision } }];
+  return [{ kind: item.target.kind, title: item.title, summary: item.readable_content,
+  source: item.target.kind === 'prebuild' ? { kind: 'prebuild', object_id: item.target.object_id, object_revision: item.target.object_revision, map_revision: item.target.map_revision }
+    : item.target.kind === 'answer' ? { kind: 'answer', session_id: item.target.session_id, turn_id: item.target.turn_id }
+      : item.target.kind === 'presentation' ? { kind: 'presentation', session_id: item.target.receipt.session_id, turn_id: item.target.receipt.turn_id, reference: item.target.receipt.reference, receipt: item.target.receipt }
+        : { kind: 'understanding', evidence_id: item.target.evidence_id } }];
+});
+
+export function boardFixturePresentation(): PresentationView {
+  return { reference: boardFixtureReceipt.reference, title: '先验概率与后验判断', entrypoint: 'index.html', content_files: { 'index.html': `<!doctype html><html><head><meta charset="utf-8"><style>body{font:15px system-ui;background:#fbfaf7;color:#252523;padding:25px;line-height:1.8}h1{font-size:22px;font-weight:550}.number{font-size:40px;color:#b38256;font-weight:600}input{width:100%;accent-color:#b38256}.row{display:flex;justify-content:space-between;gap:20px}p{font-size:13px;color:#6c6a64}.caption{font-size:11px;color:#8e8b82}</style></head><body><h1>一份证据，不同的起点</h1><p>保持检测条件相同，改变人群中的先验概率。</p><label>患病率 <strong id="priorLabel">1%</strong><input id="prior" aria-label="患病率" type="range" min="1" max="50" value="1"></label><div class="row"><div><p>阳性后患病的概率</p><div id="posterior" class="number">8.3%</div></div><div><p>似然比</p><div class="number">9</div></div></div><p class="caption">后验 = 0.9 × 先验 ÷ (0.9 × 先验 + 0.1 × (1 − 先验))</p><script>const input=document.querySelector('#prior');function update(){const p=Number(input.value)/100;document.querySelector('#priorLabel').textContent=input.value+'%';document.querySelector('#posterior').textContent=(100*.9*p/(.9*p+.1*(1-p))).toFixed(1)+'%'}input.addEventListener('input',()=>{update();presentation.commitState()});presentation.registerStateReader(()=>({values:{prior:Number(input.value)},visible_step:'compare',observed_result:document.querySelector('#posterior').textContent,source_ref_ids:['source-bayes']}));presentation.registerStateRestorer(state=>{input.value=String(state.values.page?.prior??1);update()});</script></body></html>` }, readable_view: { parts: [{ kind: 'markdown', text: '保持检测条件不变。先验增加时，阳性结果对应的后验概率也会增加。' }], sources: [{ source_ref_id: source.source_ref_id, label: source.label_snapshot }] }, sources: [{ source_ref_id: source.source_ref_id, label: source.label_snapshot }], assumptions: [], initial_state: {}, restored_state: null, restored_state_revision: null, action_contract: [], animation_assets: {} };
+}

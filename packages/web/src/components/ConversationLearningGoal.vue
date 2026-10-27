@@ -1,17 +1,21 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { nextTick, ref, watch } from 'vue';
 import { Target } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
 import LearningPurposeEntry from './LearningPurposeEntry.vue';
 import type { LearningPurpose } from '../generated/LearningPurpose';
 import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
-const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; otherSession: boolean; error: string; workspaceScoped?: boolean;
-  learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean }>();
+const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; error: string; workspaceScoped?: boolean; musicMode?: boolean; videoMode?: boolean;
+  learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean; learningPurposeReason?: string }>();
 const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void;
   (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void }>();
 const editing = ref(false);
 const draft = ref('');
 const requestedGoal = ref<string | null>(null);
+const savedGoal = ref(false);
+const resumeRevision = ref<number | null>(null);
 const goalInput = ref<HTMLInputElement>();
 const editButton = ref<HTMLButtonElement>();
 function cancelEdit() { if (props.busy) return; editing.value = false; requestedGoal.value = null; void nextTick(() => editButton.value?.focus()); }
@@ -24,11 +28,16 @@ function onEditorKeydown(event: KeyboardEvent) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
 }
 watch(() => props.session, session => {
+  if (resumeRevision.value !== null && session?.status === 'active' && session.revision > resumeRevision.value && !props.error) {
+    savedGoal.value = false; resumeRevision.value = null;
+  }
   if (requestedGoal.value && !props.error && session?.user_intent === requestedGoal.value) {
     editing.value = false; requestedGoal.value = null;
+    savedGoal.value = true;
     void nextTick(() => editButton.value?.focus());
   }
 });
+function resume() { resumeRevision.value = props.session?.revision ?? 0; emit('resume'); }
 async function edit() { draft.value = props.session?.user_intent ?? ''; requestedGoal.value = null; editing.value = true; await nextTick(); goalInput.value?.focus(); }
 function save() {
   if (props.busy || !props.available || !draft.value.trim()) return;
@@ -40,28 +49,28 @@ function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
 }
 </script>
 <template>
-  <section v-if="session || otherSession || editing" class="conversation-learning-goal" aria-label="本次学习目标">
+  <section v-if="session || available || editing" class="conversation-learning-goal" :aria-label="uiText('本次学习目标')">
     <template v-if="session">
       <div class="goal-heading">
         <span class="goal-icon" aria-hidden="true"><Target :size="18" /></span>
-        <span class="goal-label">{{ workspaceScoped ? '当前阶段' : '本次学习' }}</span>
+        <span class="goal-label">{{ workspaceScoped ? uiText('当前阶段') : uiText('本次学习') }}</span>
         <p class="goal-text">{{ session.user_intent }}</p>
-        <div class="goal-actions"><button ref="editButton" type="button" :aria-label="workspaceScoped ? '调整阶段' : '调整目标'" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">{{ workspaceScoped ? '调整阶段' : '调整目标' }}</span><span class="mobile-adjust">调整</span></button><button class="goal-manage" type="button" @click="emit('manage')">详情</button></div>
+        <div class="goal-actions"><button ref="editButton" type="button" :aria-label="workspaceScoped ? uiText('调整阶段') : uiText('调整目标')" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">{{ workspaceScoped ? uiText('调整阶段') : uiText('调整目标') }}</span><span class="mobile-adjust">{{ uiText('调整') }}</span></button><button class="goal-manage" type="button" @click="emit('manage')">{{ uiText('详情') }}</button></div>
       </div>
-      <p v-if="workspaceScoped && otherSession">当前阶段聚焦另一份资料，可回到原资料继续，或从这里提问。</p>
-      <div v-else-if="session.status !== 'active'" class="goal-resume"><span>{{ session.status === 'ended' ? '这次学习已结束' : '连续教学已暂停' }}</span><button type="button" :disabled="busy || !available || !ready" @click="emit('resume')">{{ enabled ? '继续这次学习' : '开启并继续这次学习' }} <span aria-hidden="true">→</span></button></div>
+      <div v-if="session.status !== 'active' || !enabled || savedGoal" class="goal-resume"><span>{{ savedGoal ? uiText('学习目标已保存') : session.status === 'ended' ? uiText('这次学习已结束') : !enabled ? uiText('连续教学已关闭') : uiText('连续教学已暂停') }}</span><button type="button" :disabled="busy || !available || !ready" @click="resume">{{ savedGoal ? enabled ? uiText('开始这次学习') : uiText('开启并开始这次学习') : enabled ? uiText('继续这次学习') : uiText('开启并继续这次学习') }} <span aria-hidden="true">→</span></button></div>
+      <p v-if="!ready && learningPurposeReason" role="status">{{ learningPurposeReason }}</p>
     </template>
-    <template v-else-if="otherSession">
-      <p>{{ workspaceScoped ? '当前阶段聚焦另一份资料，可回到原资料继续，或从这里提问。' : '当前学习属于其他书籍。' }}</p><button ref="editButton" type="button" :disabled="busy || !available" @click="edit">{{ workspaceScoped ? '调整阶段焦点' : '为这本书设定目标' }}</button>
-    </template>
+    <div v-else class="goal-empty">
+      <p>{{ workspaceScoped ? uiText('这份资料还没有阶段目标') : musicMode ? uiText('这首作品还没有学习目标') : videoMode ? uiText('这段视频还没有学习目标') : uiText('这本书还没有学习目标') }}</p><button ref="editButton" type="button" :disabled="busy || !available" @click="edit">{{ workspaceScoped ? uiText('设定阶段目标') : musicMode ? uiText('为这首作品设定目标') : videoMode ? uiText('为这段视频设定目标') : uiText('为这本书设定目标') }}</button>
+    </div>
     <div v-if="editing" class="goal-editor-overlay" @click.self="cancelEdit">
-    <form role="dialog" aria-modal="true" aria-label="调整目标" @submit.prevent="save" @keydown="onEditorKeydown">
-      <h3>{{ workspaceScoped ? '调整当前阶段' : '调整目标' }}</h3>
-      <LearningPurposeEntry :available="!!learningPurposeAvailable" :ready="ready && available" :enabled="enabled" :busy="busy"
+    <form role="dialog" aria-modal="true" :aria-label="uiText('调整目标')" @submit.prevent="save" @keydown="onEditorKeydown">
+      <h3>{{ workspaceScoped ? uiText('调整当前阶段') : uiText('调整目标') }}</h3>
+      <LearningPurposeEntry :music-mode="musicMode" :video-mode="videoMode" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="ready && available" :enabled="enabled" :busy="busy"
         :scope-options="learningScopeOptions" :show-custom="false" @choose="choosePurpose" />
-      <label>{{ workspaceScoped ? '阶段焦点' : '学习目标' }}<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
-      <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">保存目标</button><button type="button" :disabled="busy" @click="cancelEdit">取消</button></div>
-      <p v-if="error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">重试</button></p>
+      <label>{{ workspaceScoped ? uiText('阶段焦点') : uiText('学习目标') }}<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
+      <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">{{ uiText('保存目标') }}</button><button type="button" :disabled="busy" @click="cancelEdit">{{ uiText('取消') }}</button></div>
+      <p v-if="error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">{{ uiText('重试') }}</button></p>
     </form>
     </div>
   </section>
@@ -73,6 +82,7 @@ function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
 .goal-label { grid-column: 2; font-size: .7rem; letter-spacing: .06em; }
 .goal-heading .goal-actions { grid-column: 3; grid-row: 1 / 3; }
 .goal-resume { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; color: var(--steel); font-size: .76rem; }
+.goal-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; color: var(--steel); }
 .goal-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 p { margin: 4px 0; line-height: 1.6; overflow-wrap: anywhere; }
 .goal-text { grid-column: 2; grid-row: 2; margin: 2px 0 0; color: var(--ink); font-size: .85rem; font-weight: 500; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

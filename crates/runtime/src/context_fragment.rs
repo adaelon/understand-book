@@ -110,6 +110,8 @@ pub struct ContextFragmentLedger {
     // Run-local snapshots anchored after a complete raw message/tool-result group.
     sampling_snapshots: Vec<(usize, Vec<Message>)>,
     sampling_instructions: Vec<InstructionModule>,
+    sampling_fragments: Vec<ContextFragment>,
+    sampling_messages: Vec<Message>,
     recorded_sampling_anchor: Option<usize>,
 }
 
@@ -120,6 +122,13 @@ pub struct ContextFragmentSnapshot {
 }
 
 impl ContextFragmentLedger {
+    /// Expire only records owned by this key namespace. The next sampling's
+    /// active_keys manifest makes removal visible without rewriting old bodies.
+    pub fn retain_keys_with_prefix(&mut self, prefix: &str, retained: &[String]) {
+        self.active.retain(|key, _| !key.starts_with(prefix) || retained.contains(key));
+        self.projection_order.retain(|key| self.active.contains_key(key));
+    }
+
     pub fn upsert(
         &mut self,
         fragment: ContextFragment,
@@ -202,8 +211,14 @@ impl ContextFragmentLedger {
             .collect()
     }
 
-    /// Capture each decision's complete dynamic state, including unchanged fields.
-    /// A rebuild after compaction reuses this decision's original snapshot.
+    /// Messages contributed by the current turn, excluding the session prefix.
+    pub fn turn_projection_message_count(&self) -> usize {
+        self.active.values().filter(|fragment| fragment.scope == FragmentScope::TurnFrozen).count()
+            + self.sampling_snapshots.iter().map(|(_, messages)| messages.len()).sum::<usize>()
+    }
+
+    /// Append only changed dynamic bodies while retaining an authoritative key
+    /// manifest. A rebuild after compaction reuses this decision's original delta.
     pub fn record_sampling(
         &mut self,
         raw_message_count: usize,
@@ -214,50 +229,54 @@ impl ContextFragmentLedger {
             return;
         }
         self.recorded_sampling_anchor = Some(raw_message_count);
-        let mut content = format!(
-            "runtime_state_snapshot.v1\nsampling={}\nThe last runtime state snapshot is authoritative. Earlier snapshots describe earlier decisions; rules applying only to those decisions have expired.\n",
-            self.sampling_snapshots.len() + 1,
-        );
-        let mut task_data = Vec::new();
-        for fragment in self
-            .snapshot()
-            .fragments
-            .iter()
-            .filter(|f| f.scope == FragmentScope::Dynamic)
+        let fragments = self.projection_order.iter()
+            .filter_map(|key| self.active.get(key))
+            .filter(|fragment| fragment.scope == FragmentScope::Dynamic)
+            .cloned().collect::<Vec<_>>();
+        // A restored model prefix can contain the previous turn's manifests.
+        // Publish all three replacement boundaries once, even when now empty.
+        let first_sampling = self.sampling_snapshots.is_empty();
+        if !first_sampling && self.sampling_fragments == fragments
+            && self.sampling_instructions == instructions
+            && self.sampling_messages == current_messages
         {
-            if fragment.role == Role::System {
-                content.push_str(&format!("\nkey={}\n{}\n", fragment.key, fragment.content));
-            } else {
-                task_data.push(fragment.projected_message());
-            }
+            return;
         }
-        let mut snapshot = vec![Message::system(content)];
-        if self.sampling_instructions != instructions {
-            snapshot.push(sampling_guidance(instructions, &self.sampling_instructions));
-            self.sampling_instructions = instructions.to_vec();
+        let mut snapshot = sampling_state(
+            self.sampling_snapshots.len() + 1, &fragments, &self.sampling_fragments,
+        );
+        if first_sampling || self.sampling_instructions != instructions {
+            snapshot.insert(1, sampling_guidance(instructions, &self.sampling_instructions));
         }
-        snapshot.extend(task_data);
-        snapshot.extend(current_messages);
+        if first_sampling || self.sampling_messages != current_messages {
+            snapshot.extend(sampling_messages(&current_messages));
+        }
         self.sampling_snapshots.push((raw_message_count, snapshot));
+        self.sampling_fragments = fragments;
+        self.sampling_instructions = instructions.to_vec();
+        self.sampling_messages = current_messages;
     }
 
     /// Retain only sampling history; transient dynamic rules stay on their decision.
     pub fn retain_sampling_history(&mut self, sampled: &Self) {
         self.sampling_snapshots = sampled.sampling_snapshots.clone();
         self.sampling_instructions = sampled.sampling_instructions.clone();
+        self.sampling_fragments = sampled.sampling_fragments.clone();
+        self.sampling_messages = sampled.sampling_messages.clone();
         // A rejected premature final answer can start another sampling without
         // adding raw messages. It still needs fresh budget/Goal state.
         self.recorded_sampling_anchor = None;
     }
 
     /// At request pressure, obsolete runtime decisions can leave the model
-    /// context. The latest snapshot is complete; its active guidance must be
-    /// republished in full because earlier delta definitions are removed too.
+    /// context. Republish the complete current state and guidance because the
+    /// earlier bodies referenced by later deltas are being removed too.
     pub fn retire_sampling_history(&mut self) -> bool {
         if self.sampling_snapshots.len() <= 1 { return false; }
-        let (anchor, mut snapshot)=self.sampling_snapshots.pop().unwrap();
-        snapshot.retain(|message| !message.content.as_deref().is_some_and(|text|text.starts_with("sampling_guidance.v1\n")));
+        let anchor=self.sampling_snapshots.last().unwrap().0;
+        let mut snapshot=sampling_state(1, &self.sampling_fragments, &[]);
         snapshot.insert(1,sampling_guidance(&self.sampling_instructions, &[]));
+        snapshot.extend(sampling_messages(&self.sampling_messages));
         self.sampling_snapshots.clear();
         self.sampling_snapshots.push((anchor,snapshot));
         true
@@ -276,6 +295,38 @@ impl ContextFragmentLedger {
             messages.splice(insert_at..insert_at, snapshot.clone());
         }
     }
+}
+
+fn sampling_state(
+    sampling: usize,
+    fragments: &[ContextFragment],
+    previous: &[ContextFragment],
+) -> Vec<Message> {
+    let active_keys = fragments.iter().map(|fragment| &fragment.key).collect::<Vec<_>>();
+    let mut content = format!(
+        "runtime_state_snapshot.v1\nsampling={sampling}\nThe latest active_keys manifest replaces earlier selections of dynamic context. Apply each listed key's latest published body below or in earlier runtime snapshots. Unchanged bodies remain active while listed; unlisted keys have expired. Superseded bodies describe earlier decisions. Sampling guidance and decision messages have their own replacement rules.\nactive_keys={}\n",
+        serde_json::json!(active_keys),
+    );
+    let mut task_data = Vec::new();
+    for fragment in fragments.iter().filter(|fragment| !previous.contains(fragment)) {
+        if fragment.role == Role::System {
+            content.push_str(&format!("\nkey={}\n{}\n", fragment.key, fragment.content));
+        } else {
+            task_data.push(fragment.projected_message());
+        }
+    }
+    let mut messages = vec![Message::system(content)];
+    messages.extend(task_data);
+    messages
+}
+
+fn sampling_messages(messages: &[Message]) -> Vec<Message> {
+    let mut projected = vec![Message::system(format!(
+        "runtime_decision_messages.v1\nmessage_count={}\nThe next message_count messages replace all earlier decision messages. They remain active until the next runtime_decision_messages replacement; zero expires all previous decision messages. Dynamic context and sampling guidance keep their own manifests.\n",
+        messages.len(),
+    ))];
+    projected.extend_from_slice(messages);
+    projected
 }
 
 fn sampling_guidance(instructions: &[InstructionModule], previous: &[InstructionModule]) -> Message {
@@ -322,6 +373,21 @@ mod tests {
             content,
             FragmentSensitivity::Private,
         )
+    }
+
+    #[test]
+    fn first_empty_sampling_expires_restored_turn_state_guidance_and_decision_messages() {
+        let mut ledger = ContextFragmentLedger::default();
+        let retained = vec![Message::user("Previous turn's retained runtime messages")];
+        ledger.record_sampling(1, &[], Vec::new());
+        let mut projected = retained.clone();
+        ledger.project_sampling_snapshots(&mut projected, 1);
+        assert_eq!(projected[0], retained[0]);
+        let text = projected.iter().skip(1).filter_map(|message| message.content.as_deref()).collect::<Vec<_>>().join("\n");
+        assert!(text.contains("active_keys=[]") && text.contains("active_assets=[]") && text.contains("message_count=0"));
+        assert_eq!(ledger.turn_projection_message_count(), 3);
+        ledger.record_sampling(2, &[], Vec::new());
+        assert_eq!(ledger.turn_projection_message_count(), 3, "unchanged empty state must not repeat clears at every step");
     }
 
     #[test]
@@ -409,9 +475,11 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("remaining=2"));
-        assert_eq!(compacted[4].tool_calls[0].id, "read");
-        assert_eq!(compacted[5].tool_call_id.as_deref(), Some("read"));
-        assert!(compacted[6]
+        assert!(compacted[4].content.as_deref().unwrap().contains("active_assets=[]"));
+        assert!(compacted[5].content.as_deref().unwrap().contains("message_count=0"));
+        assert_eq!(compacted[6].tool_calls[0].id, "read");
+        assert_eq!(compacted[7].tool_call_id.as_deref(), Some("read"));
+        assert!(compacted[8]
             .content
             .as_deref()
             .unwrap()
@@ -443,6 +511,97 @@ mod tests {
         assert_eq!(ledger.sampling_snapshots[1].1.len(), 2, "same selection re-appended guidance");
         ledger.record_sampling(14, &[], Vec::new());
         assert!(ledger.sampling_snapshots[2].1.iter().any(|m| m.content.as_deref().unwrap().contains("Earlier sampling guidance and design data have expired")));
+    }
+
+    #[test]
+    fn unchanged_large_dynamic_state_is_shared_until_changed_or_retired() {
+        let mut ledger = ContextFragmentLedger::default();
+        let learner = "PAST_DELIVERIES_AND_READER_EXPRESSIONS ".repeat(1_000);
+        ledger.upsert(ContextFragment::new(
+            "agent.learner_context", FragmentScope::Dynamic, Role::System,
+            &learner, FragmentSensitivity::Private,
+        )).unwrap();
+        ledger.record_sampling(2, &[], vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
+        let initial = ledger.sampling_snapshots[0].clone();
+        for anchor in [4, 6, 8] {
+            ledger.upsert(ContextFragment::new(
+                "budget", FragmentScope::Dynamic, Role::System,
+                format!("remaining={}", 10-anchor), FragmentSensitivity::Private,
+            )).unwrap();
+            ledger.record_sampling(anchor, &[], vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
+        }
+        assert_eq!(ledger.sampling_snapshots[0], initial, "sent prefixes must stay unchanged");
+        let history = serde_json::to_string(&ledger.sampling_snapshots).unwrap();
+        assert_eq!(history.matches("PAST_DELIVERIES_AND_READER_EXPRESSIONS").count(), 1_000);
+        assert_eq!(history.matches("CURRENT_AUTHOR_DESIGN").count(), 1);
+        let appended_bytes = ledger.sampling_snapshots[1..].iter()
+            .map(|(_, messages)| serde_json::to_vec(messages).unwrap().len()).sum::<usize>();
+        assert!(appended_bytes < learner.len() / 10, "small budget changes repeated the large learner context");
+
+        ledger.record_sampling(10, &[], vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
+        assert_eq!(ledger.sampling_snapshots.len(), 4, "an unchanged decision appended another state");
+        assert!(ledger.retire_sampling_history());
+        let rebased = serde_json::to_string(&ledger.sampling_snapshots).unwrap();
+        assert_eq!(rebased.matches("PAST_DELIVERIES_AND_READER_EXPRESSIONS").count(), 1_000);
+        assert!(rebased.contains("CURRENT_AUTHOR_DESIGN") && rebased.contains("remaining=2"));
+        assert!(!rebased.contains("remaining=6"));
+        ledger.record_sampling(12, &[], vec![Message::user("CURRENT_AUTHOR_DESIGN")]);
+        assert_eq!(ledger.sampling_snapshots.len(), 1, "retirement lost the comparison baseline");
+    }
+
+    #[test]
+    fn dynamic_manifests_expire_missing_keys_and_republish_reactivated_bodies() {
+        let data = ContextFragment::new(
+            "design", FragmentScope::Dynamic, Role::User,
+            "PRIOR_DESIGN_BODY", FragmentSensitivity::Private,
+        );
+        let mut first = ContextFragmentLedger::default();
+        first.upsert(data.clone()).unwrap();
+        first.record_sampling(2, &[], vec![Message::user("PRIOR_DECISION_DATA")]);
+
+        // Per-decision ledgers inherit sampling history, not transient active rules.
+        let mut next = ContextFragmentLedger::default();
+        next.retain_sampling_history(&first);
+        next.record_sampling(4, &[], Vec::new());
+        let removal = &next.sampling_snapshots.last().unwrap().1;
+        assert!(removal[0].content.as_deref().unwrap().contains("active_keys=[]"));
+        assert!(removal.iter().any(|message| message.content.as_deref()
+            .is_some_and(|text| text.contains("runtime_decision_messages.v1\nmessage_count=0"))));
+        assert!(!serde_json::to_string(removal).unwrap().contains("PRIOR_DESIGN_BODY"));
+        next.upsert(data).unwrap();
+        next.record_sampling(6, &[], Vec::new());
+        let reactivated = &next.sampling_snapshots.last().unwrap().1;
+        assert!(reactivated[0].content.as_deref().unwrap().contains("active_keys=[\"design\"]"));
+        assert!(reactivated.iter().any(|message| message.role == Role::User
+            && message.content.as_deref().unwrap().contains("PRIOR_DESIGN_BODY")));
+        assert!(next.retire_sampling_history());
+        let rebased = serde_json::to_string(&next.sampling_snapshots).unwrap();
+        assert!(rebased.contains("PRIOR_DESIGN_BODY"));
+        assert!(!rebased.contains("PRIOR_DECISION_DATA"));
+    }
+
+    #[test]
+    fn retained_sampling_retry_at_same_raw_anchor_publishes_changed_state() {
+        let mut first = ContextFragmentLedger::default();
+        first.upsert(ContextFragment::new(
+            "draft", FragmentScope::Dynamic, Role::System,
+            "PREMATURE_FINAL", FragmentSensitivity::Private,
+        )).unwrap();
+        first.record_sampling(2, &[], Vec::new());
+        let mut retry = ContextFragmentLedger::default();
+        retry.retain_sampling_history(&first);
+        retry.upsert(ContextFragment::new(
+            "draft", FragmentScope::Dynamic, Role::System,
+            "DELIVERY_STILL_REQUIRED", FragmentSensitivity::Private,
+        )).unwrap();
+        retry.record_sampling(2, &[], Vec::new());
+        let mut projected = vec![Message::system("checkpoint"), Message::user("current task")];
+        retry.project_sampling_snapshots(&mut projected, 2);
+        assert_eq!(retry.sampling_snapshots.len(), 2);
+        assert!(projected.last().unwrap().content.as_deref().unwrap().contains("DELIVERY_STILL_REQUIRED"));
+        assert!(retry.retire_sampling_history());
+        let rebased = serde_json::to_string(&retry.sampling_snapshots).unwrap();
+        assert!(!rebased.contains("PREMATURE_FINAL") && rebased.contains("DELIVERY_STILL_REQUIRED"));
     }
 
     #[test]
@@ -568,6 +727,11 @@ mod tests {
         }).collect();
         let snapshots=ledger.sampling_snapshots.len();
         let latest=ledger.sampling_snapshots.last().unwrap().1.clone();
+        // This replay consumes recorded complete snapshots from before dynamic
+        // deltas. Keep that last opaque state as decision data so the retirement
+        // measurement still retains its exact bodies without parsing user prose.
+        ledger.sampling_messages=latest.iter().filter(|message| !message.content.as_deref()
+            .is_some_and(|text|text.starts_with("sampling_guidance.v1\n"))).cloned().collect();
         let original_raw=raw.clone();
         let mut before=raw.clone(); ledger.project_sampling_snapshots(&mut before,raw.len());
         assert_eq!(before,input,"reconstructed sampling history must reproduce the actual recorded request exactly");

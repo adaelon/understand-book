@@ -1,3 +1,4 @@
+import { t as uiText, formatLocale } from './i18n';
 import type { MemoryRecord } from './api';
 
 export type NoteFilter = 'all' | 'original' | 'answer' | 'presentation' | 'highlight' | 'unknown';
@@ -9,7 +10,7 @@ export function noteKind(record: MemoryRecord): Exclude<NoteFilter, 'all'> {
   return 'unknown';
 }
 export function noteKindLabel(record: MemoryRecord): string {
-  return { original: '原文笔记', answer: '回答笔记', presentation: '演示笔记', highlight: '高亮', unknown: '阅读笔记' }[noteKind(record)];
+  return { original: uiText('原文笔记'), answer: uiText('回答笔记'), presentation: uiText('演示笔记'), highlight: uiText('高亮'), unknown: uiText('阅读笔记') }[noteKind(record)];
 }
 export function noteTimestamp(record: MemoryRecord): number | null {
   const value = record.generated_at;
@@ -20,7 +21,7 @@ export function noteTimestamp(record: MemoryRecord): number | null {
 }
 export function noteTimeLabel(record: MemoryRecord): string {
   const time = noteTimestamp(record);
-  return time === null ? '保存时间未知' : new Date(time).toLocaleString('zh-CN', { hour12: false });
+  return time === null ? uiText('保存时间未知') : new Date(time).toLocaleString(formatLocale(), { hour12: false });
 }
 export function notePreview(record: MemoryRecord): string {
   const text = (record.content.trim() || record.note?.retained_excerpt?.text || '').replace(/\s+/g, ' ');

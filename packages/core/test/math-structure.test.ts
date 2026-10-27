@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveContentProfile } from "../src/content-profile";
-import { parseExtractorCandidate } from "../src/extractor-contract";
-import { buildMathStructureIndex, queryMathStructure, type MathStructureCandidate } from "../src/math-structure";
+import { automaticBuildFailureDiagnosticFromWriterError, automaticBuildCandidateCorrection, parseExtractorContractErrorFromStderr, parseExtractorCandidate, ExtractorContractError } from "../src/extractor-contract";
+import { buildMathStructureIndex, queryMathStructure, restoreMathStructureSourceQuotes, validateMathStructureCandidates, type MathStructureCandidate } from "../src/math-structure";
 import { markdownToBlocks } from "../src/md-adapter";
 import { buildReproducibleProfileArtifactHeader } from "../src/profile-artifact";
 import { analyzeProfileSidecarSemanticUnits, buildProfileSidecarSemanticArtifact } from "../src/profile-sidecar-router";
@@ -45,6 +45,55 @@ function optimizationMathFixture(maxLeavesSoft = 2) {
 const header = buildReproducibleProfileArtifactHeader({ book_id: "optimization-context", content_profile: "technical_learning" });
 
 describe("lightweight mathematical structure", () => {
+  it("restores unique cited source quotes before strict writer validation without changing the candidate", () => {
+    const input = optimizationMathFixture();
+    const candidate = structuredClone(input.theorem);
+    candidate.label = candidate.label!.replace(/\s/gu, "");
+    for (const assumption of candidate.assumptions) assumption.quote = assumption.quote.replace(/\s/gu, "");
+    const original = structuredClone(candidate);
+    const artifact = buildProfileSidecarSemanticArtifact(input.packet("定理 5.3"), { math_items: [candidate] }, input);
+    expect(candidate).toEqual(original);
+    expect(artifact.math_items).toEqual([input.theorem]);
+    expect(() => validateMathStructureCandidates(artifact.math_items!, {
+      ...input, anchor_lids: [input.theorem.anchor_lid], visible_lids: input.packet("定理 5.3").visible_lids,
+    })).not.toThrow();
+  });
+
+  it.each([
+    ["x <= 4", "x  <= 3"],
+    ["x >= 3", "x  <= 3"],
+    ["f 连续", "f 不连续"],
+    ["x <= 3", "x  <=3; x <=  3"],
+    ["x<=3", "x  <= 3", true],
+  ] as const)("keeps content changes, ambiguity and evidence boundaries strict: %s", (quote: string, source: string, outside: boolean = false) => {
+    const input = { source, byLid: new Map([[
+      "1", { span: { start: 0, end: outside ? 1 : source.length } },
+    ]]) };
+    const candidate: MathStructureCandidate = { kind: "assumption", anchor_lid: "1", evidence_lids: ["1"],
+      assumptions: [{ quote, evidence_lids: ["1"] }], references: [] };
+    const restored = restoreMathStructureSourceQuotes([candidate], input);
+    expect(restored[0].assumptions[0].quote).toBe(quote);
+    expect(() => validateMathStructureCandidates(restored, { ...input, anchor_lids: ["1"], visible_lids: ["1"] }))
+      .toThrow("assumption is not quoted");
+  });
+
+  it("transports a rejected math quotation as bounded correctable evidence feedback", () => {
+    const input = optimizationMathFixture();
+    const candidate = { ...input.theorem, assumptions: [{ quote: "invented assumption", evidence_lids: input.theorem.evidence_lids }] };
+    let failure: unknown;
+    try { buildProfileSidecarSemanticArtifact(input.packet("定理 5.3"), { math_items: [candidate] }, input); }
+    catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(ExtractorContractError);
+    const transported = parseExtractorContractErrorFromStderr((failure as Error).stack);
+    expect(transported).toBeInstanceOf(ExtractorContractError);
+    const diagnostic = automaticBuildFailureDiagnosticFromWriterError(transported, { writer_started: true });
+    expect(diagnostic).toMatchObject({ category: "evidence", code: "quote_not_in_evidence", phase: "artifact_writer",
+      json_pointer: "/math_items/0/assumptions/0/quote" });
+    expect(automaticBuildCandidateCorrection(diagnostic)?.expected).toContain("exact contiguous quotation");
+    expect(JSON.stringify(diagnostic)).not.toContain("invented assumption");
+    expect(automaticBuildFailureDiagnosticFromWriterError(new Error("disk failure"), {writer_started:true}))
+      .toMatchObject({category:"internal",code:"writer_failed"});
+  });
   it("routes unique mathematical anchors and gives proofs their visible theorem without adding a model pass", () => {
     const input = optimizationMathFixture();
     const anchors = Object.values(input.analysis.packets).flatMap((unit) => unit.math_anchor_lids);

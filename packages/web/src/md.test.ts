@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { renderFormulaSource, renderInlineMarkdown } from "./md";
+import { renderFormulaSource, renderInlineMarkdown, renderMarkdown } from "./md";
+
+describe("backslash-delimited answer math", () => {
+  it("renders the failed board reply's state update as display math", () => {
+    const html = renderMarkdown(String.raw`状态更新：
+\[
+S_t = S_{t-1} + k_t v_t^\top, \qquad o_t = q_t^\top S_t.
+\]`);
+    expect(html).toContain('class="katex-display"');
+    expect(html).toContain('encoding="application/x-tex"');
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("<br>\n[<br>");
+  });
+
+  it("renders inline state variables beside existing dollar math", () => {
+    const html = renderInlineMarkdown(String.raw`状态 \(S_t\)，查询 $q_t$。`);
+    expect(html.match(/class="katex"/g)).toHaveLength(2);
+    expect(html).not.toContain("katex-display");
+  });
+
+  it("preserves code examples and unmatched delimiters", () => {
+    const html = renderMarkdown("`\\(S_t\\)`\n\n```tex\n\\[S_t\\]\n```\n\n未闭合 \\(S_t");
+    expect(html).not.toContain('class="katex');
+    expect(html).toContain("<code>\\(S_t\\)</code>");
+    expect(html).toContain("\\[S_t\\]");
+    expect(html).toContain("未闭合 (S_t");
+  });
+});
 
 describe("renderInlineMarkdown", () => {
   it("renders spaced inline superscript math from paper author lines", () => {

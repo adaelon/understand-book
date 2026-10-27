@@ -53,11 +53,18 @@ impl<'de> Deserialize<'de> for SessionEvent {
                 "checkpoint.installed" => fields!(CheckpointInstalled {
                     checkpoint: CompactionCheckpoint
                 }),
+                "model_projection.updated" => fields!(ModelProjectionUpdated {
+                    projection: Option<runtime::active_projection::ActiveModelProjection>,
+                    input_from: usize
+                }),
                 "goal.updated" => fields!(GoalUpdated {
                     goal: runtime::goal::ResidentGoal
                 }),
                 "workspace_goal.updated" => fields!(WorkspaceGoalUpdated { goal: base_schema::WorkspaceGoal }),
                 "teaching.linked" => EventBody::TeachingLinked(serde_json::from_value(w.payload)?),
+                "board.delivered" => EventBody::BoardDelivered(serde_json::from_value(w.payload)?),
+                "board.committed" => EventBody::BoardCommitted(serde_json::from_value(w.payload)?),
+                "board.authoring_updated" => EventBody::BoardAuthoringUpdated(serde_json::from_value(w.payload)?),
                 "sources.bound" => fields!(SourcesBound { bindings: Vec<SourceBinding> }),
                 "effect.delivered" => fields!(EffectDelivered {
                     effect_id: String,
@@ -143,6 +150,16 @@ pub struct TeachingLink {
     pub receipt_ids: Vec<String>,
 }
 
+/// The board already contains the complete answer before this receipt is linked.
+/// Errors stay visible on the original answer; storage failures may be retried.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct BoardDelivered {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delivery: Option<memory::boards::BoardDelivery>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<AgentTurnError>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DeliveredEffect {
@@ -181,6 +198,12 @@ pub struct DispositionReceipt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnDomain {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) board_commits: Vec<crate::board_author::CommittedPart>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) board_context: Option<crate::board_api::FrozenBoardFollowUp>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) board_authoring: Option<crate::board_author::Candidate>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_goal_update: Option<base_schema::WorkspaceGoal>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -273,12 +296,26 @@ pub(crate) enum EventBody {
     HistoryRevised(MessageRevision),
     #[serde(rename = "checkpoint.installed")]
     CheckpointInstalled { checkpoint: CompactionCheckpoint },
+    /// Private model input, never part of public chat history or recap facts.
+    #[serde(rename = "model_projection.updated")]
+    ModelProjectionUpdated {
+        projection: Option<runtime::active_projection::ActiveModelProjection>,
+        /// Reuse this many messages of the preceding model input; projection.input
+        /// contains only its changed suffix, like the business MessageRevision.
+        input_from: usize,
+    },
     #[serde(rename = "goal.updated")]
     GoalUpdated { goal: runtime::goal::ResidentGoal },
     #[serde(rename = "workspace_goal.updated")]
     WorkspaceGoalUpdated { goal: base_schema::WorkspaceGoal },
     #[serde(rename = "teaching.linked")]
     TeachingLinked(TeachingLink),
+    #[serde(rename = "board.delivered")]
+    BoardDelivered(BoardDelivered),
+    #[serde(rename = "board.committed")]
+    BoardCommitted(crate::board_author::CommittedPart),
+    #[serde(rename = "board.authoring_updated")]
+    BoardAuthoringUpdated(crate::board_author::Candidate),
     #[serde(rename = "sources.bound")]
     SourcesBound { bindings: Vec<SourceBinding> },
     #[serde(rename = "effect.delivered")]

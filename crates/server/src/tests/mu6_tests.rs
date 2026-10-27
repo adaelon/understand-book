@@ -993,6 +993,68 @@ fn mu6b_unsaved_pins_chat_and_retries_exact_result_without_model() {
     assert_eq!(probe.calls.load(Ordering::SeqCst), count);
 }
 #[test]
+fn board_storage_failure_keeps_public_run_unsaved_and_retries_without_model() {
+    let (f, w, _, probe) = setup();
+    let w = f.action(&f.a, &w, "page", "boards/create", json!({"title":"保存完成边界"}));
+    let board = w["result"].clone();
+    let mut input = Fixture::stamp(&w, "page");
+    input["session_id"] = w["selected_chat"].clone();
+    input["client_request_id"] = json!("board-save-failure");
+    input["message"] = json!("你好");
+    input["board_follow_up"] = json!({"board_id":board["board_id"],"board_revision":board["revision"]});
+    let (status, accepted) = admit(&f, &w, &input);
+    assert_eq!(status, 202, "{accepted}");
+    let turn = accepted["turn_id"].as_str().unwrap();
+    let account = context(&f, &f.a);
+    let observation = f.access.runs.stream(&account, turn).unwrap();
+    let paths = f.access.users.lock().unwrap().paths("A").unwrap();
+    let blocker = paths.history.parent().unwrap().join("boards/unscoped")
+        .join(board["board_id"].as_str().unwrap()).join("head.replace.tmp");
+    assert!(blocker.starts_with(f.root.path().canonicalize().unwrap()), "{} must stay within {}", blocker.display(), f.root.path().display());
+    std::fs::create_dir(&blocker).unwrap();
+    f.access.runs.run_one(&f.access).unwrap();
+    let failed = f.ok(&f.a, "GET", &format!("/api/agent/runs/{turn}"), json!({}));
+    assert_eq!(failed["turn"]["status"], "completed", "the finished model result remains durable for save retry");
+    assert_eq!(failed["turn"]["board_follow_up"]["board_id"], board["board_id"]);
+    assert!(failed["turn"].get("board_delivery").is_some());
+    assert!(failed["turn"]["board_delivery"].is_null());
+    assert_eq!(failed["turn"]["board_delivery_error"]["error_code"], "INTERNAL_ERROR", "{failed}");
+    assert_eq!(failed["persistence_state"], "failed");
+    assert_eq!(failed["snapshot"]["persistence_state"], "failed");
+    assert!(row(&f, "board-save-failure")["unsaved"].as_bool().unwrap());
+    let (events, _) = observation.read_after(Some(0), Duration::ZERO);
+    assert!(!events.iter().any(|event| event.event_type == "run.completed"));
+    let completions = || f.control.connection.query_row(
+        "SELECT count(*) FROM admin_usage_events WHERE user_id='A' AND kind='completed' AND event_ref=?",
+        [turn], |row| row.get::<_,u64>(0)).unwrap();
+    assert_eq!(completions(), 0, "failed publication must not count as a completed delivery");
+    let calls = probe.calls.load(Ordering::SeqCst);
+    let (status, retry_failure) = f.call(&f.a, "POST", &format!("/api/agent/runs/{turn}/retry-save"), json!({}));
+    assert_ne!(status, 200);
+    assert_eq!(retry_failure["error_code"], "BOARD_DELIVERY_UNSAVED");
+    assert_eq!(observation.snapshot().persistence_state, "failed");
+    std::fs::remove_dir(&blocker).unwrap();
+    let saved = f.ok(&f.a, "POST", &format!("/api/agent/runs/{turn}/retry-save"), json!({}));
+    assert_eq!(saved["dispatch_state"], "settled");
+    assert_eq!(saved["persistence_state"], "saved");
+    assert!(saved["turn"]["board_delivery"].is_object());
+    assert_eq!(saved["turn"]["board_delivery"]["board_id"], board["board_id"]);
+    assert!(saved["turn"].get("board_delivery_error").is_some());
+    assert!(saved["turn"]["board_delivery_error"].is_null());
+    assert_eq!(saved["turn"]["outcome"], failed["turn"]["outcome"]);
+    assert_eq!(observation.snapshot().execution_state, "completed");
+    assert_eq!(observation.snapshot().persistence_state, "saved");
+    assert_eq!(completions(), 1);
+    let read = f.action(&f.a, &w, "page", "boards/read", json!({"board_id":board["board_id"]}));
+    let persisted = read["result"]["document"].clone();
+    assert_eq!(persisted["deliveries"].as_array().unwrap().len(), 1);
+    f.ok(&f.a, "POST", &format!("/api/agent/runs/{turn}/retry-save"), json!({}));
+    let read_again = f.action(&f.a, &read, "page", "boards/read", json!({"board_id":board["board_id"]}));
+    assert_eq!(read_again["result"]["document"], persisted);
+    assert_eq!(probe.calls.load(Ordering::SeqCst), calls);
+    assert_eq!(completions(), 1);
+}
+#[test]
 fn mu6a_real_http_concurrent_keys_old_chat_and_other_reader_share_the_core() {
     let (f, w, input, probe) = setup();
     let server = multi_user_host::start_with_access(

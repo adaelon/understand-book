@@ -59,7 +59,7 @@ fn om4_local_waits_for_saved_result_and_cancelled_commands_cannot_replay() {
     let stream = start_stream(&mut state, &turn);
     let state = Arc::new(Mutex::new(state));
     let token = CancellationToken::default();
-    let task = run_command(state.clone(), turn.clone(), InteractRequest::Observe { reference:reference.clone() }, token.clone());
+    let task = run_command(state.clone(), turn.clone(), InteractRequest::Observe { board_target:None, reference:reference.clone() }, token.clone());
     let command = wait_command(&stream);
     let claim = json!({"operation":"claim","command_id":command.command_id,"run_turn_id":turn.turn_id,"page_id":"page-1"});
     let response = state.with_app(|s| post(s,"/agent/presentation.interaction",&claim.to_string()));
@@ -80,7 +80,7 @@ fn om4_local_waits_for_saved_result_and_cancelled_commands_cannot_replay() {
     assert!(result["state_contract"]["input_speed_b_m_s"].as_str().unwrap().contains("0..3"));
     assert!(stream.snapshot().presentation_command.is_none());
     let based_on = result["saved_state_ref"].as_str().unwrap().to_string();
-    let action = InteractRequest::Act { reference:reference.clone(), based_on:based_on.clone(), action:PresentationAction::SetParameters {values:BTreeMap::from([("input_speed_b_m_s".into(),json!(2))])} };
+    let action = InteractRequest::Act { board_target:None, reference:reference.clone(), based_on:based_on.clone(), action:PresentationAction::SetParameters {values:BTreeMap::from([("input_speed_b_m_s".into(),json!(2))])} };
     let task = run_command(state.clone(), turn.clone(), action, token.clone());
     let command = wait_command(&stream);
     assert_eq!(command.expected_values["input_speed_b_m_s"],1);
@@ -101,12 +101,12 @@ fn om4_missing_page_and_switching_workspace_end_with_actual_unavailability() {
     let turn = next_turn(&mut state);
     let stream = start_stream(&mut state,&turn);
     let state=Arc::new(Mutex::new(state));
-    let task=run_command(state.clone(),turn.clone(),InteractRequest::Observe { reference:reference.clone() },CancellationToken::default());
+    let task=run_command(state.clone(),turn.clone(),InteractRequest::Observe { board_target:None, reference:reference.clone() },CancellationToken::default());
     let command=wait_command(&stream);
     let result=state.with_app(|s|post(s,"/agent/presentation.interaction",&json!({"operation":"claim","command_id":command.command_id,"run_turn_id":turn.turn_id,"page_id":null}).to_string()));
     assert_eq!(result.status,200);
     assert_eq!(task.join().unwrap().unwrap()["status"],"unavailable");
-    let task=run_command(state.clone(),turn,InteractRequest::Observe {reference},CancellationToken::default());
+    let task=run_command(state.clone(),turn,InteractRequest::Observe {board_target:None, reference},CancellationToken::default());
     wait_command(&stream);
     state.with_app(|s|s.workspace.generation+=1);
     assert_eq!(task.join().unwrap().unwrap_err().error_code,"WORKSPACE_STALE");

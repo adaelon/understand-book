@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, openSync, closeSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { retrievalScopeIncludes, type BuildPlanV1, type BuildRetrievalSelection } from "./build-intent";
@@ -20,6 +20,7 @@ export interface BuildRetrievalRuntime {
   open_provider?: (signal?: AbortSignal) => Promise<{ provider: EmbeddingProvider; dispose: () => Promise<void> }>;
 }
 interface RetrievalState {
+  authorization?: BuildPlanV1;
   selection?: BuildRetrievalSelection;
   prepared: Record<string, PreparedRetrieval>;
   calls: Array<AutomaticBuildRetrievalCall & { plan_id: string; plan_revision: number; plan_digest: string }>;
@@ -54,6 +55,44 @@ export function retrievalConfigurationMatches(plan: BuildPlanV1, runtime: BuildR
 /** Only invoked after the orchestrator has validated the confirmed plan and reachable stage. */
 export async function prepareBuildRetrieval(input: { workspace: string; plan: BuildPlanV1; runtime: BuildRetrievalRuntime;
   request: TeachingRetrievalRequest; signal?: AbortSignal; model_tokens?: number }) {
+  let release: () => void;
+  try { release = await acquireRetrievalWriter(input.workspace, input.signal); }
+  catch (error) {
+    if (input.signal?.aborted) return { reason: "cancelled" as const, message: error instanceof Error ? error.message : String(error) };
+    throw error;
+  }
+  try { return await prepareBuildRetrievalLocked(input); }
+  finally { release(); }
+}
+
+// All theme executors share one embedding cache and budget ledger. Serialize only
+// preparation, so independent model work remains concurrent and charges cannot be lost.
+async function acquireRetrievalWriter(workspace: string, signal?: AbortSignal): Promise<() => void> {
+  const lock = file(workspace) + ".lock";
+  mkdirSync(path.dirname(lock), { recursive: true });
+  for (;;) {
+    signal?.throwIfAborted();
+    try {
+      const fd = openSync(lock, "wx");
+      try { writeFileSync(fd, String(process.pid)); }
+      catch (error) { closeSync(fd); unlinkSync(lock); throw error; }
+      closeSync(fd);
+      return () => unlinkSync(lock);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      try {
+        const pid = Number(readFileSync(lock, "utf8"));
+        if (pid > 0) {
+          try { process.kill(pid, 0); }
+          catch (e) { if ((e as NodeJS.ErrnoException).code === "ESRCH") { unlinkSync(lock); continue; } }
+        }
+      } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+}
+
+async function prepareBuildRetrievalLocked(input: Parameters<typeof prepareBuildRetrieval>[0]) {
   const { workspace, plan, runtime, request } = input;
   if (plan.status !== "confirmed" || !retrievalConfigurationMatches(plan, runtime)) throw new Error("retrieval authorization mismatch");
   const state = readBuildRetrievalState(workspace), d = request.dependencies;
@@ -65,7 +104,12 @@ export async function prepareBuildRetrieval(input: { workspace: string; plan: Bu
     || (d.mode === "semantic_required" && !sameEmbeddingIdentity(d.provider!, runtime.selection.provider!.identity)))
     throw new Error("retrieval request outside confirmed consumer scope");
   const previous = state.prepared[request.slot] ?? Object.values(state.prepared).filter(p => p.dependencies.projection_version === d.projection_version).at(-1);
-  if (retrievalPreparationMatches(previous, d)) return;
+  const authorizationChanged = state.authorization?.plan_digest !== plan.plan_digest;
+  state.authorization = structuredClone(plan);
+  if (retrievalPreparationMatches(previous, d)) {
+    if (authorizationChanged) save(workspace, state);
+    return;
+  }
   state.selection = structuredClone(runtime.selection);
   let provider = runtime.provider;
   let opened: Awaited<ReturnType<NonNullable<BuildRetrievalRuntime["open_provider"]>>> | undefined;

@@ -1,22 +1,24 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { ref, watch } from 'vue';
 import { Play, Music2 } from '@lucide/vue';
 import BookCover from './BookCover.vue';
 import type { BookCoverSource } from '../api';
-const props = defineProps<{ title: string; cover?: BookCoverSource | null; video?: boolean; music?: boolean; compact?: boolean }>();
+const props = defineProps<{ title: string; cover?: BookCoverSource | null; video?: boolean; music?: boolean; compact?: boolean; paused?: boolean }>();
 const failed = ref(false);
 watch(() => props.cover?.url, () => { failed.value = false; });
 </script>
 
 <template>
   <div v-if="video" class="material-video-cover" :class="{ compact }" aria-hidden="true">
-    <div class="video-cover-art"><span class="video-cover-eyebrow">VIDEO / 课程录像</span><strong>{{ title }}</strong><span class="video-cover-line"></span></div>
+    <div class="video-cover-art"><span class="video-cover-eyebrow">{{ uiText('VIDEO / 课程录像') }}</span><strong>{{ title }}</strong><span class="video-cover-line"></span></div>
     <img v-if="cover?.kind === 'image' && !failed" :src="cover.url" alt="" loading="lazy" decoding="async" @error="failed = true" />
     <span class="video-cover-play"><Play :size="compact ? 14 : 22" fill="currentColor" :stroke-width="1.5" /></span>
-    <span v-if="!compact" class="video-cover-label">课程视频</span>
+    <span v-if="!compact" class="video-cover-label">{{ uiText('课程视频') }}</span>
   </div>
-  <div v-else-if="music" class="material-music-cover" :class="{ compact }" aria-hidden="true"><Music2 :size="compact ? 22 : 38" /><span v-if="!compact">MUSIC / 精选伴听</span><strong v-if="!compact">{{ title }}</strong></div>
-  <BookCover v-else :title="title" :cover="cover" :compact="compact" />
+  <div v-else-if="music" class="material-music-cover" :class="{ compact }" aria-hidden="true"><Music2 :size="compact ? 22 : 38" /><span v-if="!compact">{{ uiText('MUSIC / 精选伴听') }}</span><strong v-if="!compact">{{ title }}</strong></div>
+  <BookCover v-else :title="title" :cover="cover" :compact="compact" :paused="paused" />
 </template>
 
 <style scoped>

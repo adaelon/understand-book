@@ -114,6 +114,10 @@ Consume only `automatic_build_executor_session.v3`. Handle each action exactly:
 
 - `action.kind=DELIVER_INPUT`: call `executor.input.next` with the exact
   fields from `next_request`, including `ack_through_ordinal` when present.
+  A successful submission can return another DELIVER_INPUT for the same theme. Continue in this
+  child with the returned refs until DONE; search, inspect, read and resolve are steps of one theme.
+  Reconstruct each input using only chunks for its generation_input_ref. The new input replaces
+  the preceding delivery; keep useful reasoning in the action's notes for recovery.
 - `action.kind=INPUT_BATCH`: retain every chunk's `payload_utf8` only in this dedicated child
   context, ordered by `segment`, `ordinal`, and `byte_range`. Do not summarize, alter, skip,
   duplicate, hash, or forward a chunk. If `final_for_generation=false`, call `executor.input.next`

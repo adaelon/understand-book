@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { ApiError } from "./api";
+import { getLocale } from './i18n';
 import type {
   SelectionContext,
   SelectionTranslationRequest,
@@ -42,6 +43,7 @@ const idleState = (): PdfSelectionTranslationState => ({
 
 function requestOf(draft: PdfSelectionTranslationDraft): SelectionTranslationRequest {
   return {
+    target_locale: getLocale(),
     status: draft.status,
     raw_quote: draft.raw_quote,
     resolved_quote: draft.resolved_quote,

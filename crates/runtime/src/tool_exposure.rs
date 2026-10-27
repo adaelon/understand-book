@@ -502,6 +502,22 @@ impl ToolExposurePlan {
         context: &ToolExposureContext,
         state: &ToolExposureState,
     ) -> Self {
+        Self::build_with_model_specs(registry, model, context, state, &[])
+    }
+
+    /// Model vocabulary can stay stable while the registry validates the
+    /// narrower operations allowed by the current execution state.
+    pub fn build_with_model_specs(
+        registry: &ToolRegistry,
+        model: &ModelRuntimeProfile,
+        context: &ToolExposureContext,
+        state: &ToolExposureState,
+        model_specs: &[ToolSpec],
+    ) -> Self {
+        let model_spec = |registration: &crate::tool_registry::ToolRegistration| {
+            model_specs.iter().find(|spec| spec.name == registration.spec.name)
+                .unwrap_or(&registration.spec).clone()
+        };
         let tutor_slot = usize::from(registry.registration("tutor.step").is_some() && state.activated.contains("tutor.step"));
         let batch_read_slot = usize::from(
             registry.registration("book.text_batch").is_some()
@@ -551,7 +567,7 @@ impl ToolExposurePlan {
                     disposition,
                     exposed: false,
                     reason,
-                    schema_bytes: tool_schema_bytes(&registration.spec),
+                    schema_bytes: tool_schema_bytes(&model_spec(registration)),
                 }
             })
             .collect();
@@ -611,7 +627,7 @@ impl ToolExposurePlan {
             .iter()
             .enumerate()
             .filter(|(index, _)| selected.contains(index))
-            .map(|(_, registration)| registration.spec.clone())
+            .map(|(_, registration)| model_spec(registration))
             .collect();
 
         Self {
@@ -1481,6 +1497,7 @@ fn classify(
 
     match handler {
         Handler::BookTextBatch => (Disposition::Hidden, Reason::RuntimeOwned),
+        Handler::BoardAuthor => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::AgentProgress => (Disposition::Direct, Reason::RuntimeOwned),
@@ -1580,7 +1597,7 @@ fn classify(
 fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
-        ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::TutorStep => 1,
+        ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::TutorStep | ToolHandlerId::BoardAuthor => 1,
         ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText | BookToolId::Search) => 3,
@@ -1698,6 +1715,46 @@ mod tests {
     // These existing exposure contracts describe runs without a learning workspace.
     fn resident_tool_registry() -> ToolRegistry {
         crate::orchestrator::resident_tool_registry().without_workspace_goal_update().without_workspace_records()
+    }
+    #[test]
+    fn board_authoring_does_not_mask_unavailable_html_presentation_authoring() {
+        let registry = resident_tool_registry();
+        let context = context(ContentProfileId::TechnicalLearning);
+        let request = r#"{"task":"create an interactive HTML presentation with a range input and persistent experimental state","required_capabilities":["presentation_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":3}"#;
+        let mut unavailable = ToolExposureState {
+            presentation_unavailable_reason: Some("not_configured"),
+            ..Default::default()
+        };
+        let plan = ToolExposurePlan::build(&registry, &model(), &context, &unavailable);
+        assert!(plan.is_visible("board.author"));
+        let outcome = search_and_activate(request, &context, &plan, &registry, &mut unavailable)
+            .unwrap();
+        assert!(outcome.matches.is_empty());
+        assert!(outcome.activated.is_empty());
+        assert_eq!(outcome.unmet_capabilities, vec![ToolCapability::PresentationAuthoring]);
+        assert!(outcome.blocked.iter().any(|blocked|
+            blocked.capability == ToolCapability::PresentationAuthoring
+                && blocked.reason == "presentation_unavailable"));
+
+        let native = search_and_activate(
+            r#"{"task":"draw native explanations on the current board","required_capabilities":["board_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":3}"#,
+            &context, &plan, &registry, &mut unavailable,
+        ).unwrap();
+        assert_eq!(native.matches.len(), 1);
+        assert_eq!(native.matches[0].name, "board.author");
+        assert_eq!(native.matches[0].visibility, ToolSearchVisibility::CurrentSampling);
+        assert!(native.unmet_capabilities.is_empty());
+
+        let mut available = ToolExposureState::default();
+        let plan = ToolExposurePlan::build(&registry, &model(), &context, &available);
+        let outcome = search_and_activate(request, &context, &plan, &registry, &mut available)
+            .unwrap();
+        assert_eq!(outcome.matches.len(), 1);
+        assert_eq!(outcome.matches[0].name, "presentation.author");
+        assert_eq!(outcome.activated, vec!["presentation.author"]);
+        assert!(outcome.unmet_capabilities.is_empty());
+        assert!(ToolExposurePlan::build(&registry, &model(), &context, &available)
+            .is_visible("presentation.author"));
     }
     #[test]
     fn web_tools_require_discovery_and_disappear_without_host_configuration() {

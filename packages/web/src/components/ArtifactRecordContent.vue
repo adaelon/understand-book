@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed } from 'vue';
 
 const props = defineProps<{ fields: { path: string; label: string; value: string }[] }>();
@@ -16,7 +18,7 @@ const details = computed(() => props.fields.filter(field => field !== title.valu
         <dt class="artifact-wrap">{{ field.label }}</dt><dd class="generic-field-value artifact-wrap">{{ field.value }}</dd>
       </template>
     </dl>
-    <p v-if="!fields.length" class="record-empty">暂无内容</p>
+    <p v-if="!fields.length" class="record-empty">{{ uiText('暂无内容') }}</p>
   </div>
 </template>
 

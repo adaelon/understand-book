@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { AlertTriangle, CheckCircle2, ChevronDown, Wrench } from "@lucide/vue";
 import type { PdfAlignmentQuality } from "../api";
 
@@ -17,41 +19,41 @@ function percentage(value: number): string {
 </script>
 
 <template>
-  <section class="alignment-quality-bar" :class="`is-${quality.tier}`" aria-label="PDF 对齐质量">
+  <section class="alignment-quality-bar" :class="`is-${quality.tier}`" :aria-label="uiText('PDF 对齐质量')">
     <details>
       <summary>
         <AlertTriangle v-if="quality.tier === 'degraded'" :size="16" aria-hidden="true" />
         <CheckCircle2 v-else :size="16" aria-hidden="true" />
-        <span>PDF 对齐：{{ quality.tier === "full" ? "完整" : "部分可用" }}</span>
+        <span>{{ uiText('PDF 对齐：') }}{{ quality.tier === "full" ? uiText('完整') : uiText('部分可用') }}</span>
         <ChevronDown class="alignment-quality-chevron" :size="15" aria-hidden="true" />
       </summary>
       <div class="alignment-quality-details">
         <dl>
           <div>
-            <dt>语义单元定位</dt>
+            <dt>{{ uiText('语义单元定位') }}</dt>
             <dd>{{ percentage(quality.unit_location_ratio) }}</dd>
           </div>
           <div>
-            <dt>文本精确范围</dt>
+            <dt>{{ uiText('文本精确范围') }}</dt>
             <dd>{{ percentage(quality.exact_text_span_ratio) }}</dd>
           </div>
           <div>
-            <dt>公式精确区域</dt>
+            <dt>{{ uiText('公式精确区域') }}</dt>
             <dd>{{ percentage(quality.exact_formula_ratio) }}</dd>
           </div>
           <div>
-            <dt>标题定位</dt>
+            <dt>{{ uiText('标题定位') }}</dt>
             <dd>{{ percentage(quality.heading_location_ratio) }}</dd>
           </div>
         </dl>
         <button
           v-if="workbenchAvailable"
           data-testid="alignment-diagnostics"
-          title="在构建工作台中查看对齐诊断"
+          :title="uiText('在构建工作台中查看对齐诊断')"
           @click="emit('open-workbench')"
         >
           <Wrench :size="16" aria-hidden="true" />
-          <span>打开对齐诊断</span>
+          <span>{{ uiText('打开对齐诊断') }}</span>
         </button>
       </div>
     </details>

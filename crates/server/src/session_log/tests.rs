@@ -48,6 +48,63 @@ fn session_log_reopen_and_position_keep_frozen_prefix() {
 }
 
 #[test]
+fn session_log_model_projection_survives_restart_without_entering_business_history() {
+    use runtime::active_projection::ActiveModelProjection;
+    let dir = tempfile::tempdir().unwrap();
+    let mut log = open(&dir);
+    for event in accepted_events() { log.append(event).unwrap(); }
+    let id = log.projection.session.as_ref().unwrap().turns[0].turn_id.clone();
+    let raw = log.projection.session.as_ref().unwrap().messages.clone();
+    let profile = runtime::ModelRuntimeProfile::fallback("projection-fixture", runtime::ProviderToolProtocol::Native);
+    let mut plan = runtime::AgentRequestPlan::for_agent_turn(profile, &raw, &[]);
+    plan.input.push(Message::system("private exact frozen model prefix"));
+    let saved = ActiveModelProjection::capture_request(&plan, raw.len(), Some("fixture-route"), None,
+        &Default::default()).unwrap();
+    log.append(log.next_event("sampled", Some(&id), EventBody::ModelProjectionUpdated {
+        projection: Some(saved.clone()), input_from: 0,
+    })).unwrap();
+    let saved_seq = log.projection.through_seq;
+    let mut reopened = open(&dir);
+    assert_eq!(reopened.projection.active_model_projection.as_ref(), Some(&saved));
+    assert!(!serde_json::to_string(reopened.projection.session.as_ref().unwrap()).unwrap()
+        .contains("private exact frozen model prefix"));
+    let mut suffix = saved.clone();
+    suffix.input = vec![Message::system("newly appended context")];
+    reopened.append(reopened.next_event("next sample", Some(&id), EventBody::ModelProjectionUpdated {
+        projection: Some(suffix), input_from: saved.input.len(),
+    })).unwrap();
+    let restarted = open(&dir);
+    let updated = restarted.projection.active_model_projection.as_ref().unwrap();
+    assert!(updated.input.starts_with(&saved.input));
+    assert_eq!(updated.input.last(), Some(&Message::system("newly appended context")));
+    reopened.append(reopened.next_event("rebuild", Some(&id), EventBody::ModelProjectionUpdated {
+        projection: None, input_from: 0,
+    })).unwrap();
+    assert!(open(&dir).projection.active_model_projection.is_none());
+    assert_eq!(reopened.at(saved_seq).unwrap().active_model_projection, Some(saved));
+}
+
+#[test]
+fn session_log_revising_the_saved_prefix_invalidates_model_projection() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut log = open(&dir);
+    for event in accepted_events() { log.append(event).unwrap(); }
+    let id = log.projection.session.as_ref().unwrap().turns[0].turn_id.clone();
+    let raw = log.projection.session.as_ref().unwrap().messages.clone();
+    let profile = runtime::ModelRuntimeProfile::fallback("projection-fixture", runtime::ProviderToolProtocol::Native);
+    let plan = runtime::AgentRequestPlan::for_agent_turn(profile, &raw, &[]);
+    let saved = runtime::active_projection::ActiveModelProjection::capture_request(
+        &plan, raw.len(), Some("fixture-route"), None, &Default::default()).unwrap();
+    log.append(log.next_event("sampled", Some(&id), EventBody::ModelProjectionUpdated {
+        projection: Some(saved), input_from: 0,
+    })).unwrap();
+    log.append(log.next_event("changed history", Some(&id), EventBody::HistoryRevised(
+        crate::session_event::MessageRevision { from: 0, suffix: vec![Message::system("new policy")] },
+    ))).unwrap();
+    assert!(open(&dir).projection.active_model_projection.is_none());
+}
+
+#[test]
 fn session_log_torn_tail_is_read_only_then_repaired_by_writer() {
     for tail in [
         b"{\"version\":".as_slice(),

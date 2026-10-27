@@ -287,6 +287,7 @@ impl Cdp<'_> {
           text: document.body.innerText.slice(0, 16000),
           semantic_text: (()=>{const copy=document.body.cloneNode(true);copy.querySelectorAll('script,style,[data-source-ref]').forEach(e=>e.remove());return [copy.textContent,...[...document.querySelectorAll('[alt],[title],[aria-label],input,textarea,select')].filter(e=>!e.closest('[data-source-ref]')).map(e=>[e.getAttribute('alt'),e.getAttribute('title'),e.getAttribute('aria-label'),e.value].filter(Boolean).join(' '))].join('\n');})(),
           action_problems: window.__presentationPreviewActions?.inspect() ?? [],
+          board: window.__boardPreviewInspect?.() ?? null,
           source_ref_ids: [...document.querySelectorAll('[data-source-ref]')].map(e=>e.getAttribute('data-source-ref')),
           unsupported_assets: [...document.querySelectorAll('script[src],script[type=module],link[rel=stylesheet],img:not([src^="data:"]),video[src]:not([src^="data:"]),video source[src]:not([src^="data:"]),video[poster]:not([poster^="data:"]),iframe,object,embed')].map(e=>e.outerHTML.slice(0,200)),
           controls: [...document.querySelectorAll('input,select,textarea,button,output')].slice(0,128).map(e => ({
@@ -304,7 +305,11 @@ impl Cdp<'_> {
         let audit = self.evaluate(&format!(r#"(() => {{
           const width=document.documentElement.clientWidth;
           const controls=[...document.querySelectorAll('button,a[href],[role=button],input,select,textarea')].slice(0,128).map((e,index)=>{{
-            const r=e.getBoundingClientRect();return {{index,tag:e.tagName,id:e.id,width:r.width,height:r.height,hidden:!r.width||!r.height,small_touch:{}&&(r.width<44||r.height<44)}};
+            const r=e.getBoundingClientRect();
+            // Native board cards select on their whole pointer surface, including
+            // the label and footer; the inner text button is not the entire target.
+            const target=window.__boardPreviewInspect?(e.closest('.board-card')??e).getBoundingClientRect():r;
+            return {{index,tag:e.tagName,id:e.id,width:target.width,height:target.height,hidden:!r.width||!r.height,small_touch:{}&&(target.width<44||target.height<44)}};
           }});
           const ids=new Map();
           document.querySelectorAll('[id]').forEach(e=>{{if(e.id)ids.set(e.id,(ids.get(e.id)||0)+1)}});
@@ -312,6 +317,14 @@ impl Cdp<'_> {
             duplicate_ids:[...ids].filter(([,count])=>count>1).map(([id,count])=>({{id,count}}))}};
         }})()"#, matches!(environment.input, PreviewInput::Touch)))?;
         let mut issues = Vec::new();
+        if let Some(board) = dom.get("board").filter(|value| !value.is_null()) {
+            if board["ready"].as_bool() != Some(true) {
+                issues.push(PreviewIssue { kind: "board_renderer_not_ready".into(), message: "The Reader BoardCanvas did not finish mounting".into() });
+            }
+            for issue in board["issues"].as_array().into_iter().flatten() {
+                if let Ok(issue) = serde_json::from_value::<PreviewIssue>(issue.clone()) { issues.push(issue); }
+            }
+        }
         for duplicate in audit["duplicate_ids"].as_array().into_iter().flatten() {
             issues.push(PreviewIssue { kind:"duplicate_dom_id".into(), message:format!(
                 "DOM id {} occurs {} times. Give sections, controls and graphics unique IDs; getElementById and saved-control restoration must resolve the intended element.",duplicate["id"],duplicate["count"]) });

@@ -146,6 +146,27 @@ impl SessionLog {
         Ok(read_prefix(&self.path, Some(through_seq))?.0)
     }
 
+    /// Original committed tool receipts retain their turn ownership even after
+    /// the visible transcript is compacted or revised.
+    pub fn turn_messages(&self, turn: &str) -> Result<Vec<Message>, ToolError> {
+        let file = File::open(&self.path).map_err(|e| failure(&self.path, 0, e))?;
+        let mut reader = BufReader::new(file.take(self.committed_len));
+        let mut messages = Vec::new();
+        let mut bytes = Vec::new();
+        let mut offset = 0;
+        loop {
+            bytes.clear();
+            let n = reader.read_until(b'\n', &mut bytes).map_err(|e| failure(&self.path, offset, e))?;
+            if n == 0 { break; }
+            let event: SessionEvent = serde_json::from_slice(&bytes).map_err(|e| failure(&self.path, offset, e))?;
+            if event.turn_id.as_deref() == Some(turn) {
+                if let EventBody::MessageAppended { messages: appended } = event.body { messages.extend(appended); }
+            }
+            offset += n as u64;
+        }
+        Ok(messages)
+    }
+
     #[cfg(test)]
     pub fn frozen_messages(&self, position: &HistoryPosition) -> Result<Vec<Message>, ToolError> {
         match position {

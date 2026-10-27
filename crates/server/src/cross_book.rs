@@ -155,7 +155,7 @@ pub(crate) fn learning(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, refe
     let evidence=LearningEvidence {evidence_id:format!("library-interpretation:{}:{}:{}:{}",turn.turn_id,reference.book_id,reference.publication_id,required("operation_id")?),
         action_ref:fact.event_id.clone(),delivery_ref:None,design_ref:None,block_refs:vec![],session_id:bind.tutor_session_id,source_id:bind.source_id.clone(),source_revision:bind.source_revision,map_revision:None,
         object_id:None,object_revision:None,nature:EvidenceNature::Hypothesis,label:target.learning_focus.clone(),capability:target.capability.clone(),target:Some(target),
-        fact_refs:vec![fact.event_id],teaching_implication:required("teaching_implication")?.into(),assistance_refs:assistance,attempt:0,assessment_ref:None,
+        fact_refs:vec![fact.event_id],teaching_implication:required("teaching_implication")?.into(),assistance_refs:assistance,support_delivery_refs:vec![],attempt:0,assessment_ref:None,
         status:AssessmentStatus::Unassessed,interpretation:required("interpretation")?.into(),learner_quote:quote.into(),interpreter_version:"resident.hypothesis.v1".into(),
         supersedes:request["supersedes"].as_str().map(str::to_owned),correction:None,source_quotes:json!(cited)};
     let accepted=store.append_evidence(&evidence)?;

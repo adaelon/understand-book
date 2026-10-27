@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { networkFetch } from './network-client';
 import type { AllowancePercentage } from './account-allowance';
 import type { PublishedBookRef } from './network-context';
@@ -40,7 +41,7 @@ export const preparations={
     const {upload_id}=session;
     session.cancelled=false;
     while(session.received<file.size) {
-      if(session.cancelled)throw new DOMException('上传已停止','AbortError');
+      if(session.cancelled)throw new DOMException(uiText('上传已停止'),'AbortError');
       const offset=session.received;
       const bytes=new Uint8Array(await file.slice(offset,offset+32*1024).arrayBuffer());
       let binary='';for(let start=0;start<bytes.length;start+=8192) binary+=String.fromCharCode(...bytes.subarray(start,start+8192));
@@ -48,7 +49,7 @@ export const preparations={
       session.received=result.received;
       progress(result.received);
     }
-    if(session.cancelled)throw new DOMException('上传已停止','AbortError');
+    if(session.cancelled)throw new DOMException(uiText('上传已停止'),'AbortError');
     session.saving=true;
     try {
       return await preparations.act(workspace,{action:'create',task_id:session.task_id,operation_id:session.operation_id,upload_id});

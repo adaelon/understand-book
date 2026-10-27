@@ -387,6 +387,7 @@ pub fn plan_build_intent_candidate(
     let planner_blueprints = bounded_blueprint_registry(request.available_blueprints);
     let value = adapter
         .complete_structured(CompletionRequest {
+            followup_user: None,
             images: Vec::new(),
             output_token_limit: None,
             reasoning_effort: None,

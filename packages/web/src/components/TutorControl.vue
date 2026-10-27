@@ -1,20 +1,21 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, useId } from 'vue';
 const props = defineProps<{ enabled: boolean; label: string; busy: boolean; unavailable: boolean; error: string }>();
-const routineHint = computed(() => ['可以开始或继续学习', '围绕你的目标逐步学'].includes(props.label));
+const routineHint = computed(() => [uiText('可以开始或继续学习'), uiText('围绕你的目标逐步学')].includes(props.label));
 const emit = defineEmits<{ (e: 'toggle'): void; (e: 'retry'): void }>();
 const descriptionId = useId();
 </script>
 <template>
   <div class="tutor-control">
     <div class="teaching-control-row">
-      <button type="button" class="teaching-switch" role="switch" aria-label="连续教学" title="连续教学开关对所有书籍生效" :aria-describedby="descriptionId" :aria-checked="enabled" :disabled="busy || unavailable" @click="emit('toggle')">
-        <span class="switch-track" aria-hidden="true"><span /></span>连续教学
-      </button>
+      <button type="button" class="teaching-switch" role="switch" :aria-label="uiText('连续教学')" :title="uiText('连续教学开关对所有书籍生效')" :aria-describedby="descriptionId" :aria-checked="enabled" :disabled="busy || unavailable" @click="emit('toggle')">
+        <span class="switch-track" aria-hidden="true"><span /></span>{{ uiText('连续教学') }} </button>
       <span class="teaching-hint" :class="{ routine: routineHint }" role="status">{{ label }}</span>
     </div>
-    <p :id="descriptionId" class="teaching-scope">连续教学开关对所有书籍生效</p>
-    <p v-if="error" class="teaching-error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">重试</button></p>
+    <p :id="descriptionId" class="teaching-scope">{{ uiText('连续教学开关对所有书籍生效') }}</p>
+    <p v-if="error" class="teaching-error" role="alert">{{ error }} <button type="button" :disabled="busy" @click="emit('retry')">{{ uiText('重试') }}</button></p>
   </div>
 </template>
 <style scoped>

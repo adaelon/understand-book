@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { api as sharedApi } from '../api';
 import { bindSceneApi, readerKey } from '../network-context';
@@ -66,19 +68,19 @@ function trapFocus(event: KeyboardEvent) {
       <section class="session-recap" role="dialog" aria-modal="true" aria-labelledby="recap-title"
         @keydown.esc.stop.prevent="emit('close')" @keydown="trapFocus">
         <header>
-          <div><p class="recap-kicker">{{ sessionTitle || '当前对话' }}</p><h2 id="recap-title">本次阅读回顾</h2></div>
-          <button ref="closeButton" class="recap-close" @click="emit('close')">返回聊天</button>
+          <div><p class="recap-kicker">{{ sessionTitle || uiText('当前对话') }}</p><h2 id="recap-title">{{ uiText('本次阅读回顾') }}</h2></div>
+          <button ref="closeButton" class="recap-close" @click="emit('close')">{{ uiText('返回聊天') }}</button>
         </header>
         <div class="recap-range">
-          <div v-if="recap"><p>从对话开始 · 截至 {{ recapTime(recap.through_at) }}</p><small>更新于 {{ recapTime(recap.generated_at) }}</small></div>
-          <p v-else>正在读取已保存记录</p>
-          <button class="recap-refresh" :disabled="loading || navigating" @click="refresh">{{ loading ? '读取中…' : '刷新回顾' }}</button>
+          <div v-if="recap"><p>{{ uiText('从对话开始 · 截至') }} {{ recapTime(recap.through_at) }}</p><small>{{ uiText('更新于') }} {{ recapTime(recap.generated_at) }}</small></div>
+          <p v-else>{{ uiText('正在读取已保存记录') }}</p>
+          <button class="recap-refresh" :disabled="loading || navigating" @click="refresh">{{ loading ? uiText('读取中…') : uiText('刷新回顾') }}</button>
         </div>
-        <p class="recap-hint">新记录会在刷新后加入。已回答表示回答已交付。</p>
+        <p class="recap-hint">{{ uiText('新记录会在刷新后加入。已回答表示回答已交付。') }}</p>
         <p v-if="error" role="alert" class="recap-error">{{ error }}</p>
-        <p v-if="loading && !recap" role="status">正在整理本次阅读…</p>
-        <section v-if="focused" class="recap-focus" aria-label="当前查看重点">
-          <p class="recap-kicker">当前查看 · {{ recapGroups.find(group => group.kind === focused!.group)?.label }}</p>
+        <p v-if="loading && !recap" role="status">{{ uiText('正在整理本次阅读…') }}</p>
+        <section v-if="focused" class="recap-focus" :aria-label="uiText('当前查看重点')">
+          <p class="recap-kicker">{{ uiText('当前查看 ·') }} {{ recapGroups.find(group => group.kind === focused!.group)?.label }}</p>
           <h3 v-if="focused.label">{{ focused.label }}</h3>
           <p class="recap-text">{{ focused.text }}</p>
           <span v-if="focused.status" class="recap-status">{{ focused.status }}</span>
@@ -90,8 +92,8 @@ function trapFocus(event: KeyboardEvent) {
             <p v-if="!group.entries.length" class="recap-empty">{{ group.empty }}</p>
             <article v-for="(item, index) in group.entries" :key="item.id" :class="{ 'is-focused': focused?.id === item.id }" @click="focusedId = item.id">
               <div class="recap-item-tools">
-                <label><input v-model="selected" type="checkbox" :value="item.id" :aria-label="`分享${group.label}第${index + 1}项`" @click.stop />选入分享</label>
-                <button class="recap-focus-button" :aria-pressed="focused?.id === item.id" @click="focusedId = item.id">重点查看</button>
+                <label><input v-model="selected" type="checkbox" :value="item.id" :aria-label="uiText('分享{0}第{1}项', [group.label, index + 1])" @click.stop />{{ uiText('选入分享') }}</label>
+                <button class="recap-focus-button" :aria-pressed="focused?.id === item.id" @click="focusedId = item.id">{{ uiText('重点查看') }}</button>
               </div>
               <details v-if="item.group === 'questions'"><summary>{{ item.text.slice(0, 100) }}{{ item.text.length > 100 ? '…' : '' }}</summary><p class="recap-text">{{ item.text }}</p></details>
               <template v-else><h4 v-if="item.label">{{ item.label }}</h4><p class="recap-text">{{ item.text }}</p></template>
@@ -103,7 +105,7 @@ function trapFocus(event: KeyboardEvent) {
             </article>
           </section>
         </div>
-        <div class="recap-share-bar"><p>已选 {{ selected.length }} 项<span> · 仅分享勾选的记录</span></p><button ref="shareButton" :disabled="!selected.length || loading || navigating" @click="share">生成阅读回顾卡</button></div>
+        <div class="recap-share-bar"><p>{{ uiText('已选') }} {{ selected.length }} {{ uiText('项') }}<span> {{ uiText('· 仅分享勾选的记录') }}</span></p><button ref="shareButton" :disabled="!selected.length || loading || navigating" @click="share">{{ uiText('生成阅读回顾卡') }}</button></div>
       </section>
     </div>
     <ShareImagePanel v-if="shareSource" :source="shareSource" @close="closeShare" @reselect="closeShare" />

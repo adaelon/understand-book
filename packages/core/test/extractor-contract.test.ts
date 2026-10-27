@@ -48,6 +48,28 @@ function diagnosticOf(run: () => unknown) {
 }
 
 describe("automatic build extractor contracts", () => {
+  it.each(["label", "unit", "domain"])("explains the required nullable formula parameter %s after a real schema rejection", field => {
+    const parameter: Record<string, unknown> = {
+      symbol: "E", label: null, meaning: "能量项", unit: null, domain: null, evidence_lids: ["3.2.4"],
+    };
+    const candidate = { formula_semantics: [{
+      formula_lid: "3.2.4", context_lids: [], parameters: [parameter],
+      composition: { source_lid: "3.2.4", meaning: "表示能量关系", terms: ["E"], evidence_lids: ["3.2.4"] },
+      context_links: [],
+    }] };
+    const scope = { allowed_evidence_lids: ["3.2.4"], formula_lids: ["3.2.4"] };
+    delete parameter[field];
+    const failure = new ExtractorContractError(diagnosticOf(() => parseExtractorCandidate("profile_sidecar", candidate, scope)));
+    const diagnostic = automaticBuildFailureDiagnosticFromWriterError(failure, { writer_started: true });
+    expect(diagnostic).toMatchObject({ code: "schema_invalid", json_pointer: `/formula_semantics/0/parameters/0/${field}`, expected: "string" });
+    const correction = automaticBuildCandidateCorrection(diagnostic);
+    expect(correction?.expected).toContain("required and accepts a string or null");
+    expect(correction?.expected).toContain("Include label, unit and domain on every parameter");
+    parameter[field] = null;
+    expect(() => parseExtractorCandidate("profile_sidecar", candidate, scope)).not.toThrow();
+    const unrelated = { ...diagnostic, json_pointer: "/formula_semantics/0/parameters/0/meaning" };
+    expect(automaticBuildCandidateCorrection(unrelated)?.expected).toBe("string");
+  });
   it("corrects the persisted BookStructure role string error at the actual role_hints array", () => {
     const diagnostic = createAutomaticBuildFailureDiagnosticV3({
       category: "schema", code: "schema_invalid", phase: "artifact_writer",

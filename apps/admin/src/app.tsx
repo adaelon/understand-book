@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Users, Moon, Sun, ChartColumn, Ticket } from "lucide-react";
+import { BookOpen, Users, Moon, Sun, ChartColumn, Ticket, LogOut } from "lucide-react";
 import { login, logout, session, startIdentitySync } from "./lib/api";
 import { useTheme } from "./context/theme-provider";
 import { Button } from "./components/ui/button";
@@ -29,7 +29,7 @@ export function App() {
   );
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   useEffect(startIdentitySync, []);
   useEffect(() => {
     if (auth.status !== "ready") return;
@@ -160,30 +160,32 @@ export function App() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <header className="flex min-h-16 flex-wrap items-center gap-3 border-b px-4">
+        <header className="flex min-h-16 items-center gap-2 border-b px-4 sm:gap-3">
           <SidebarTrigger />
-          <span className="mr-auto break-all text-sm">{auth.identity.email || auth.identity.user_id}</span>
+          <span className="mr-auto min-w-0 truncate text-sm">{auth.identity.email || auth.identity.user_id}</span>
           <Button
             variant="ghost"
             size="icon"
             aria-label="切换主题"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            {theme === "dark" ? <Sun /> : <Moon />}
+            {resolvedTheme === "dark" ? <Sun /> : <Moon />}
           </Button>
-          <Button asChild variant="outline">
-            <a href="/">返回阅读</a>
+          <Button asChild variant="outline" className="shrink-0">
+            <a href="/" aria-label="返回阅读"><BookOpen className="sm:hidden" aria-hidden="true"/><span className="hidden sm:inline">返回阅读</span></a>
           </Button>
           <Button
             variant="ghost"
+            aria-label="退出登录"
+            className="shrink-0"
             disabled={busy}
             onClick={() => void signOut()}
           >
-            退出登录
+            <LogOut className="sm:hidden" aria-hidden="true"/><span className="hidden sm:inline">退出登录</span>
           </Button>
         </header>
-        <Main className="mx-auto w-full max-w-7xl space-y-6">
-          <p role="alert">{error}</p>
+        <Main className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
+          {error && <p role="alert">{error}</p>}
           <OperationsProvider key={auth.epoch}>
             <Outlet />
           </OperationsProvider>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref, onBeforeUnmount } from 'vue';
 import type { SourcePopupView } from '../api';
 import type { EvidenceTarget } from '../../../core/src/generated/EvidenceTarget';
@@ -36,35 +38,35 @@ function bound(event: Event, start: number, end: number) {
 }
 </script>
 <template>
-  <section ref="root" class="media-source-preview" aria-label="媒体来源预览">
+  <section ref="root" class="media-source-preview" :aria-label="uiText('媒体来源预览')">
     <p v-if="source.unavailable_reason || failure" role="alert">{{ source.unavailable_reason || failure }}</p>
-    <section v-if="visualTimes.length" aria-label="画面引用覆盖">
-      <p>画面引用仅支持所列帧或区域；原片上下文供回看。</p>
-      <ul v-if="visualTimes.length > 1" aria-label="未连续观察的间隙">
-        <li v-for="(time, i) in visualTimes.slice(1)" :key="time">{{ videoTime(visualTimes[i]) }}–{{ videoTime(time) }}：帧间过程未连续观察</li>
+    <section v-if="visualTimes.length" :aria-label="uiText('画面引用覆盖')">
+      <p>{{ uiText('画面引用仅支持所列帧或区域；原片上下文供回看。') }}</p>
+      <ul v-if="visualTimes.length > 1" :aria-label="uiText('未连续观察的间隙')">
+        <li v-for="(time, i) in visualTimes.slice(1)" :key="time">{{ videoTime(visualTimes[i]) }}–{{ videoTime(time) }}{{ uiText('：帧间过程未连续观察') }}</li>
       </ul>
     </section>
     <figure v-for="(image, i) in orderedFrames" :key="i">
-      <img :src="image.url" :alt="`实际读取${image.region ? '区域' : '画面'} ${videoTime(image.frame.actual_pts_ms)}`" />
-      <figcaption>{{ image.region ? '已读取区域' : '已读取画面' }} · {{ videoTime(image.frame.actual_pts_ms) }}</figcaption>
+      <img :src="image.url" :alt="uiText('实际读取{0} {1}', [image.region ? uiText('区域') : uiText('画面'), videoTime(image.frame.actual_pts_ms)])" />
+      <figcaption>{{ image.region ? uiText('已读取区域') : uiText('已读取画面') }} · {{ videoTime(image.frame.actual_pts_ms) }}</figcaption>
     </figure>
     <template v-if="!source.stale && source.media_url">
       <div v-for="(clip, i) in clips" :key="`${source.source_ref_id}-${i}`" class="media-clip">
-        <p>{{ clip.role }} {{ clip.audio ? '原音频' : '原片上下文' }} · {{ videoTime(clip.start) }}–{{ videoTime(clip.end) }}</p>
+        <p>{{ clip.role }} {{ clip.audio ? uiText('原音频') : uiText('原片上下文') }} · {{ videoTime(clip.start) }}–{{ videoTime(clip.end) }}</p>
         <component :is="clip.audio ? 'audio' : 'video'" controls playsinline preload="metadata" :src="source.media_url"
           @loadedmetadata="initialize($event, clip.start)" @timeupdate="bound($event, clip.start, clip.end)"
-          @error="failure = '原发布媒体当前不可用；已保留引用位置和文字快照。'" />
+          @error="failure = uiText('原发布媒体当前不可用；已保留引用位置和文字快照。')" />
       </div>
     </template>
-    <section v-if="source.media?.audio_reviews?.length" aria-label="原音频复核结果">
+    <section v-if="source.media?.audio_reviews?.length" :aria-label="uiText('原音频复核结果')">
       <div v-for="review in source.media.audio_reviews" :key="review.review_result_ref">
-        <p>原音频复核 · 机器识别候选 · {{ videoTime(review.location.start_ms) }}–{{ videoTime(review.location.end_ms) }}</p>
-        <p>{{ review.reviewed_text || '未识别出措辞' }}</p>
+        <p>{{ uiText('原音频复核 · 机器识别候选 ·') }} {{ videoTime(review.location.start_ms) }}–{{ videoTime(review.location.end_ms) }}</p>
+        <p>{{ review.reviewed_text || uiText('未识别出措辞') }}</p>
         <ul><li v-for="uncertainty in review.uncertainties" :key="uncertainty">{{ uncertainty }}</li></ul>
       </div>
     </section>
-    <section v-if="source.media?.transcript.length" aria-label="相关英文与译文">
-      <p class="transcript-note">相关英文 · 机器转写 · 句段定位</p>
+    <section v-if="source.media?.transcript.length" :aria-label="uiText('相关英文与译文')">
+      <p class="transcript-note">{{ uiText('相关英文 · 机器转写 · 句段定位') }}</p>
       <div v-for="segment in source.media.transcript" :key="segment.segment_id">
         <p>{{ videoTime(segment.location.start_ms) }} {{ segment.text }}</p>
         <p v-for="translation in source.media.translations.filter(t => t.segment_id === segment.segment_id)" :key="translation.segment_id" lang="zh">{{ translation.zh_text }}</p>

@@ -1538,13 +1538,13 @@ export function replayProfileSidecarSemanticFastPathInput(input: {
   return { descriptor: task.descriptor, rendered_input: renderedInput, packet: task.packet };
 }
 
-export function writeProfileSidecarSemanticFastPathCandidate(input: {
+export function buildProfileSidecarSemanticFastPathEnvelope(input: {
   target: AutomaticBuildTarget;
   source: string;
   task: ProfileSidecarSemanticFastPathTaskV1;
   candidate: unknown;
   provenance: SemanticArtifactProvenanceV2;
-}): ProfileSidecarSemanticFastPathWriteResultV1 {
+}) {
   const replayed = replayProfileSidecarSemanticFastPathInput(input);
   const output = parseExtractorCandidate("profile_sidecar", input.candidate, {
     allowed_evidence_lids: [...replayed.packet.visible_lids],
@@ -1558,7 +1558,7 @@ export function writeProfileSidecarSemanticFastPathCandidate(input: {
     }),
     content_hash: replayed.descriptor.input_hash,
   };
-  const envelope = buildSemanticArtifactEnvelopeV3({
+  return buildSemanticArtifactEnvelopeV3({
     target: replayed.descriptor.target,
     stage: "profile_sidecar",
     work_unit_id: replayed.descriptor.work_unit_id,
@@ -1568,16 +1568,22 @@ export function writeProfileSidecarSemanticFastPathCandidate(input: {
     provenance: input.provenance,
     payload,
   });
+}
+
+export function writeProfileSidecarSemanticFastPathCandidate(
+  input: Parameters<typeof buildProfileSidecarSemanticFastPathEnvelope>[0],
+): ProfileSidecarSemanticFastPathWriteResultV1 {
+  const envelope = buildProfileSidecarSemanticFastPathEnvelope(input);
   const artifactPath = writeAutomaticBuildGenerationArtifact(input.target, envelope);
   return {
     version: "profile_sidecar_semantic_fast_path_write_result.v1",
-    work_unit_id: replayed.descriptor.work_unit_id,
+    work_unit_id: envelope.work_unit_id,
     artifact_path: artifactPath,
     artifact_hash: envelope.artifact_hash,
     output_counts: {
-      discourse_items: payload.discourse_items.length,
-      formula_semantics: payload.formula_semantics.length,
-      math_items: payload.math_items.length,
+      discourse_items: envelope.payload.discourse_items.length,
+      formula_semantics: envelope.payload.formula_semantics.length,
+      math_items: envelope.payload.math_items.length,
     },
   };
 }

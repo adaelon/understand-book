@@ -178,6 +178,34 @@ fn video_workspace_operator_reuses_prebuilt_video_and_publishes_without_new_call
 }
 
 #[test]
+fn video_workspace_tutor_readiness_uses_current_native_products_after_old_publication() {
+    let f = super::b1_operator_build_tests::fixture();
+    let directory = f.root.path().join("video-tutor");
+    super::tutor_tests::video_tutor_foundation(&directory);
+    let publication = f.access.library.lock().unwrap().publish(&directory).unwrap();
+    f.access.library.lock().unwrap().grant("A", &publication.reference).unwrap();
+    let loaded = f.access.library.lock().unwrap().load("A", &publication.reference).unwrap();
+    let material = crate::workspace_publication::Material {published_book_ref:publication.reference.clone(), required_capabilities:vec!["video".into(), "tutor".into()]};
+    let read = || crate::workspace_publication::material_readiness(&f.control.connection, &material).unwrap();
+    let path = loaded.directory().join("publication.json");
+    let mut saved: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    saved["tutor_readiness"]["status"] = json!("preparing");
+    saved["tutor_readiness"]["reason"] = json!("old book-only admission");
+    let permissions = std::fs::metadata(&path).unwrap().permissions();
+    let mut writable = permissions.clone(); writable.set_readonly(false);
+    std::fs::set_permissions(&path, writable).unwrap();
+    std::fs::write(&path, saved.to_string()).unwrap();
+    std::fs::set_permissions(&path, permissions).unwrap();
+    f.control.connection.execute("UPDATE book_publications SET manifest=? WHERE book_id=? AND publication_id=?",
+        rusqlite::params![saved.to_string(),publication.reference.book_id,publication.reference.publication_id]).unwrap();
+    assert_eq!(read()["missing_capabilities"], json!([]));
+    assert_eq!(crate::tutor_api::readiness_view(&loaded.book, loaded.directory())["status"], "ready");
+    let structure = loaded.directory().join("video-enrichments/structure/discourse.json");
+    std::fs::rename(&structure, structure.with_extension("held")).unwrap();
+    assert_eq!(read()["missing_capabilities"], json!(["tutor"]));
+}
+
+#[test]
 fn video_workspace_readiness_requires_original_media_and_accepted_dependencies() {
     let f=super::b1_operator_build_tests::fixture();
     let dir=f.root.path().join("video");super::video_draft_tests::fixture(&dir);
@@ -237,7 +265,7 @@ fn video_workspace_catalog_existing_course_benchmark() {
     db.execute_batch("CREATE TABLE book_publications(book_id TEXT,publication_id TEXT,manifest TEXT,directory TEXT)").unwrap();
     db.execute("INSERT INTO book_publications VALUES(?,?,?,?)",rusqlite::params![manifest.reference.book_id,manifest.reference.publication_id,serde_json::to_string(&manifest).unwrap(),directory.to_str().unwrap()]).unwrap();
     let material=crate::workspace_publication::Material {published_book_ref:manifest.reference,
-        required_capabilities:["text","video","transcript","translation","visual_index","graph","discourse"].into_iter().map(str::to_owned).collect()};
+        required_capabilities:["text","video","transcript","translation","visual_index","graph","discourse","tutor"].into_iter().map(str::to_owned).collect()};
     let mut samples=Vec::new();
     for _ in 0..3 {
         let start=std::time::Instant::now();

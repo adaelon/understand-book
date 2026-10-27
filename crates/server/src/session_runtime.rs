@@ -2,6 +2,10 @@
 use crate::session_event::{EventBody, MessageRevision, TurnFinished};
 use crate::*;
 
+#[cfg(test)]
+#[path = "tests/board_commit_session_tests.rs"]
+mod board_commit_tests;
+
 pub(crate) fn append(
     user: &mut user_runtime::UserRuntime,
     reference: &AgentTurnRef,
@@ -116,6 +120,31 @@ pub(crate) fn finish(
 pub(crate) fn clean(messages: &mut [Message]) {
     runtime::presentation_author::redact_history(messages);
     runtime::tool_exposure::redact_history(messages);
+}
+
+/// Commit the accepted model surface separately from the redacted business
+/// transcript. A terminal turn then commits against this same history position.
+pub(crate) fn model_projection(
+    user: &mut user_runtime::UserRuntime,
+    reference: &AgentTurnRef,
+    messages: &[Message],
+    projection: Option<&runtime::active_projection::ActiveModelProjection>,
+) -> Result<(), ToolError> {
+    if user.session_store.is_none() { return Ok(()); }
+    progress(user, reference, messages, &[])?;
+    let current = &user.session_store.as_ref().unwrap().logs[&reference.session_id]
+        .projection.active_model_projection;
+    if current.as_ref() == projection { return Ok(()); }
+    let input_from = current.as_ref().zip(projection)
+        .filter(|(old, new)| old.provider_identity == new.provider_identity
+            && old.runtime_profile == new.runtime_profile && old.instructions == new.instructions)
+        .map_or(0, |(old, new)| old.input.iter().zip(&new.input).take_while(|(a, b)| a == b).count());
+    let projection = projection.cloned().map(|mut projection| {
+        projection.input.drain(..input_from);
+        projection
+    });
+    append(user, reference, &multi_user_host::now().to_string(),
+        EventBody::ModelProjectionUpdated { projection, input_from })
 }
 
 pub(crate) fn progress(
@@ -296,6 +325,143 @@ fn current_turn<'a>(user: &'a user_runtime::UserRuntime, reference: &AgentTurnRe
     user.agent_history.sessions.iter().find(|s| s.id == reference.session_id)
         .and_then(|s| s.turns.iter().find(|t| t.turn_id == reference.turn_id))
         .ok_or_else(|| agent_history_internal("original turn missing"))
+}
+
+pub(crate) fn link_board_delivery(
+    user: &mut user_runtime::UserRuntime,
+    reference: &AgentTurnRef,
+    at: &str,
+    link: crate::session_event::BoardDelivered,
+) -> Result<(), ToolError> {
+    if let Some(store) = user.session_store.as_mut() {
+        store.settle(&mut user.agent_history, &reference.session_id)?;
+    }
+    let turn = current_turn(user, reference)?;
+    if turn.board_delivery.is_some()
+        || (link.delivery.is_none() && turn.board_delivery_error == link.error)
+    { return Ok(()); }
+    if user.session_store.is_some() {
+        return append(user, reference, at, EventBody::BoardDelivered(link));
+    }
+    let mut candidate = user.agent_history.clone();
+    let session = candidate.sessions.iter_mut().find(|session| session.id == reference.session_id)
+        .ok_or_else(|| agent_history_internal("original session missing"))?;
+    let turn = session.turns.iter_mut().find(|turn| turn.turn_id == reference.turn_id)
+        .ok_or_else(|| agent_history_internal("original turn missing"))?;
+    turn.board_delivery = link.delivery;
+    turn.board_delivery_error = link.error;
+    session.updated_at = at.into();
+    save_agent_history_path(&user.history_path, &candidate)?;
+    user.agent_history = candidate;
+    Ok(())
+}
+
+pub(crate) fn update_board_authoring(
+    user: &mut user_runtime::UserRuntime, reference: &AgentTurnRef, at: &str,
+    authoring: crate::board_author::Candidate,
+) -> Result<(), ToolError> {
+    if user.session_store.is_some() {
+        return append(user, reference, at, EventBody::BoardAuthoringUpdated(authoring));
+    }
+    if current_turn(user, reference)?.status != AgentAssistantStatus::PendingAssistant {
+        return Err(agent_history_internal("board authoring requires a pending turn"));
+    }
+    let mut candidate = user.agent_history.clone();
+    let session = candidate.sessions.iter_mut().find(|s| s.id == reference.session_id)
+        .ok_or_else(|| agent_history_internal("original session missing"))?;
+    let turn = session.turns.iter_mut().find(|t| t.turn_id == reference.turn_id)
+        .ok_or_else(|| agent_history_internal("original turn missing"))?;
+    turn.domain.board_authoring = Some(authoring);
+    session.updated_at = at.into();
+    save_agent_history_path(&user.history_path, &candidate)?;
+    user.agent_history = candidate;
+    Ok(())
+}
+
+/// A local unit is already in the board store. Its transcript receipt survives
+/// any later run termination and is replayed without creating another unit.
+pub(crate) fn validate_board_commit(
+    session_id: &str, turn: &AgentChatTurn, part: &crate::board_author::CommittedPart,
+) -> Result<(), ToolError> {
+    let Some(context) = &turn.domain.board_context else {
+        return Err(agent_history_internal("board commit requires its accepted target"));
+    };
+    let delivery = &part.delivery;
+    if delivery.commit_id.as_deref().is_none_or(str::is_empty)
+        || delivery.board_id != context.follow_up.board_id
+        || delivery.parent_item_id != context.follow_up.item_id
+        || delivery.origin_session_id != session_id || delivery.origin_turn_id != turn.turn_id
+        || part.candidate_revision == 0 || part.committed_at.is_empty() {
+        return Err(agent_history_internal("board commit does not belong to its accepted target and turn"));
+    }
+    if let Some(old) = turn.domain.board_commits.iter().find(|old| old.delivery.commit_id == delivery.commit_id) {
+        if serde_json::to_value(old).map_err(|e| agent_history_internal(e.to_string()))?
+            != serde_json::to_value(part).map_err(|e| agent_history_internal(e.to_string()))? {
+            return Err(agent_history_internal("a board commit cannot be replaced with a different payload"));
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn record_board_commit(
+    user: &mut user_runtime::UserRuntime, reference: &AgentTurnRef,
+    part: &crate::board_author::CommittedPart,
+) -> Result<(), ToolError> {
+    if let Some(store) = user.session_store.as_mut() {
+        store.settle(&mut user.agent_history, &reference.session_id)?;
+    }
+    let turn = current_turn(user, reference)?;
+    validate_board_commit(&reference.session_id, turn, part)?;
+    if turn.domain.board_commits.iter().any(|old| old.delivery.commit_id == part.delivery.commit_id) { return Ok(()); }
+    if user.session_store.is_some() {
+        return append(user, reference, &part.committed_at, EventBody::BoardCommitted(part.clone()));
+    }
+    let mut candidate = user.agent_history.clone();
+    let session = candidate.sessions.iter_mut().find(|session| session.id == reference.session_id)
+        .ok_or_else(|| agent_history_internal("original session missing"))?;
+    let turn = session.turns.iter_mut().find(|turn| turn.turn_id == reference.turn_id)
+        .ok_or_else(|| agent_history_internal("original turn missing"))?;
+    turn.domain.board_commits.push(part.clone());
+    session.updated_at = part.committed_at.clone();
+    save_agent_history_path(&user.history_path, &candidate)?;
+    user.agent_history = candidate;
+    Ok(())
+}
+
+pub(crate) fn board_commits(turn: &AgentChatTurn) -> Vec<memory::boards::BoardDelivery> {
+    turn.domain.board_commits.iter().map(|part| part.delivery.clone()).collect()
+}
+
+/// Permit exact already-committed presentation versions before the whole run
+/// finishes. The immutable effect identity makes commit repair idempotent.
+pub(crate) fn deliver_presentations(
+    user: &mut user_runtime::UserRuntime, reference: &AgentTurnRef,
+    references: &[runtime::presentation::PresentationRef], now: &str,
+) -> Result<(), ToolError> {
+    if let Some(store) = user.session_store.as_mut() {
+        store.settle(&mut user.agent_history, &reference.session_id)?;
+        for presentation in references {
+            deliver(user, reference, &format!("presentation:{}:{}", presentation.presentation_id, presentation.revision),
+                crate::session_event::DeliveredEffect::Presentation { reference: presentation.clone() })?;
+        }
+        return Ok(());
+    }
+    let mut candidate = user.agent_history.clone();
+    let session = candidate.sessions.iter_mut().find(|session| session.id == reference.session_id)
+        .ok_or_else(|| agent_history_internal("original session missing"))?;
+    let turn = session.turns.iter_mut().find(|turn| turn.turn_id == reference.turn_id)
+        .ok_or_else(|| agent_history_internal("original turn missing"))?;
+    for presentation in references {
+        let effect_id = format!("presentation:{}:{}", presentation.presentation_id, presentation.revision);
+        if !turn.domain.effects.iter().any(|effect| effect.effect_id == effect_id) {
+            turn.domain.effects.push(crate::session_event::EffectRecord { effect_id,
+                effect: crate::session_event::DeliveredEffect::Presentation { reference: presentation.clone() }, disposition: None });
+        }
+    }
+    session.updated_at = now.into();
+    save_agent_history_path(&user.history_path, &candidate)?;
+    user.agent_history = candidate;
+    Ok(())
 }
 
 fn deliver(user: &mut user_runtime::UserRuntime, reference: &AgentTurnRef, id: &str,

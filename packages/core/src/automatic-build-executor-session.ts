@@ -1,4 +1,7 @@
+import { fitStructureThemeSession, checkpointStructureThemeAction, StructureThemeActionRejected } from "./book-structure-theme-session";
+import { renderBookStructureGenerationTaskInput, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
 import type { AutomaticBuildExecutorInputManifestV4 } from "./build-executor-input-manifest";
+import { recordAutomaticBuildGenerationTiming } from "./automatic-build-dispatch-timing";
 import { readBuildExecutorMediaInput, assertExecutorMediaBudget, executorMediaManifest,
   type ExecutorMediaInputV1, type ExecutorMediaManifestV1 } from "./build-executor-media";
 import { executorMcpResultByteLimit } from "./executor-transport";
@@ -562,6 +565,7 @@ interface AutomaticBuildExecutorTaskSessionRecordV1 {
   lease_epoch: number;
   lease_ref: string;
   lease_token: string;
+  generation_input_ref?: string;
   created_at: string;
 }
 
@@ -1609,7 +1613,12 @@ function validateOpaqueHandoffRecord(
 function readOpaqueHandoffRecord(opaqueHandoffRef: string): AutomaticBuildOpaqueHandoffRecord {
   const file = registryFile("opaque-handoffs", opaqueHandoffRef);
   if (!existsSync(file)) throw new Error("opaque handoff ref does not exist");
-  return validateOpaqueHandoffRecord(decodeJsonRecord(file), opaqueHandoffRef);
+  try {
+    return validateOpaqueHandoffRecord(decodeJsonRecord(file), opaqueHandoffRef);
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+    throw new Error(`opaque handoff record ${opaqueHandoffRef}: ${error.message}`, { cause: error });
+  }
 }
 
 function semanticPromptFromPublishedHandoff(
@@ -2212,7 +2221,7 @@ function validateTaskSessionRecord(
     "lease_ref",
     "lease_token",
     "created_at",
-  ]);
+  ], ["generation_input_ref"]);
   if (value.version !== "automatic_build_executor_task_session_record.v1"
     || value.opaque_session_ref !== expectedRef) {
     throw new Error("executor task session record identity is invalid");
@@ -2239,6 +2248,7 @@ function validateTaskSessionRecord(
     lease_epoch: positiveSafeInteger(value.lease_epoch, "lease_epoch"),
     lease_ref: path.resolve(leaseRef),
     lease_token: boundedString(value.lease_token, "lease_token", 512),
+    ...(value.generation_input_ref === undefined ? {} : { generation_input_ref: validateGenerationInputRef(value.generation_input_ref) }),
     created_at: isoTimestamp(value.created_at, "created_at"),
   };
   const identity = {
@@ -2252,6 +2262,7 @@ function validateTaskSessionRecord(
     lease_epoch: record.lease_epoch,
     lease_ref: record.lease_ref,
     lease_token: record.lease_token,
+    ...(record.generation_input_ref ? { generation_input_ref: record.generation_input_ref } : {}),
   };
   if (taskSessionRefFor(identity) !== expectedRef) {
     throw new Error("executor task session record digest is invalid");
@@ -2276,6 +2287,7 @@ function persistTaskSessionRecord(input: {
   open_record: AutomaticBuildExecutorOpenRecordV1;
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   claim: ActiveAutomaticBuildClaim;
+  generation_input_ref?: string;
   created_at: string;
 }): AutomaticBuildExecutorTaskSessionRecordV1 {
   const identity = {
@@ -2289,6 +2301,7 @@ function persistTaskSessionRecord(input: {
     lease_epoch: input.claim.execution_identity.lease_epoch,
     lease_ref: path.resolve(input.claim.lease_ref),
     lease_token: input.claim.lease.token,
+    ...(input.generation_input_ref ? { generation_input_ref: input.generation_input_ref } : {}),
   };
   const opaqueSessionRef = taskSessionRefFor(identity);
   const record: AutomaticBuildExecutorTaskSessionRecordV1 = {
@@ -2354,7 +2367,7 @@ function taskDescriptor(
   persisted: AutomaticBuildPersistedDispatchV1,
   workUnitId: string,
 ): { descriptor: WorkUnitDescriptor; descriptors: WorkUnitDescriptor[];
-  task_bindings: Record<string, AutomaticBuildTaskPolicyBinding> } {
+  task_bindings: Record<string, AutomaticBuildTaskPolicyBinding>; theme_task?: BookStructureGenerationTaskV1 } {
   try {
     const manifest = persisted.manifest;
     if (!manifest.ordered_work_unit_ids.includes(workUnitId)) throw new Error("executor work unit is outside dispatch");
@@ -2365,6 +2378,7 @@ function taskDescriptor(
         throw new Error("policy_generation_conflict: executor current policy record changed");
       }
     }
+    let themeTask: BookStructureGenerationTaskV1 | undefined;
     let descriptor: WorkUnitDescriptor | undefined;
     let currentBinding: AutomaticBuildTaskPolicyBinding | undefined;
     if (binding && isAutomaticBuildTaskPolicyBindingV2(binding)
@@ -2395,6 +2409,7 @@ function taskDescriptor(
     } else {
       const task = binding && isAutomaticBuildTaskPolicyBindingV2(binding) && manifest.stage === "book_structure"
         ? readBookStructureGenerationTask(target, binding.policy_generation_id, workUnitId) : undefined;
+      if (task?.output_role === "organization_theme") themeTask = task;
       if (binding && isAutomaticBuildTaskPolicyBindingV2(binding) && manifest.stage === "book_structure" && !task) {
         throw new Error("policy_generation_conflict: frozen BookStructure task is unavailable");
       }
@@ -2417,7 +2432,7 @@ function taskDescriptor(
       throw new Error("policy_generation_conflict: executor dispatch descriptor identity changed");
     }
     validateWorkUnitTaskPolicyBinding(descriptor, currentBinding);
-    return { descriptor, descriptors: [descriptor], task_bindings: { [workUnitId]: currentBinding } };
+    return { descriptor, descriptors: [descriptor], task_bindings: { [workUnitId]: currentBinding }, ...(themeTask ? { theme_task: themeTask } : {}) };
   } catch (error) {
     // This operation cannot proceed with an unverified current task or dependency.
     // Return the existing session recovery boundary; the Driver owns replanning.
@@ -2556,6 +2571,7 @@ function deliverySessionRefFor(input: {
   work_unit_id: string;
   descriptor_input_hash: string;
   transport_profile: ExecutorTransportProfile;
+  theme_action_ordinal?: number;
 }): string {
   return `absession1_${sha256({
     version: "automatic_build_executor_delivery_session_identity.v2",
@@ -4503,6 +4519,9 @@ export function openAutomaticBuildExecutorSessionV3(
     openRecord = validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, published.owner);
   }
   const stage = taskDescriptor(published.target, published.persisted, workUnitId);
+  const themeSession = stage.theme_task ? fitStructureThemeSession(published.target, stage.theme_task, {
+    semantic_prompt: published.semantic_prompt, policy_fingerprint: stage.descriptor.policy_fingerprint,
+  }, profile.transport_profile) : undefined;
   const deliverySessionRef = deliverySessionRefFor({
     open_session_ref: openRecord.opaque_session_ref,
     opaque_handoff_ref: opaqueHandoffRef,
@@ -4511,6 +4530,7 @@ export function openAutomaticBuildExecutorSessionV3(
     work_unit_id: stage.descriptor.work_unit_id,
     descriptor_input_hash: stage.descriptor.input_hash,
     transport_profile: profile.transport_profile,
+    ...(themeSession ? { theme_action_ordinal: themeSession.ordinal } : {}),
   });
   const material = renderDeliveryMaterial({
     execution_profile: profile,
@@ -4521,6 +4541,7 @@ export function openAutomaticBuildExecutorSessionV3(
     opaque_handoff_ref: opaqueHandoffRef,
     owner: published.owner,
     work_unit_id: workUnitId,
+    ...(themeSession ? { semantic_input: themeSession.rendered } : {}),
   });
   persistGenerationInputRecord(material, now);
   const delivery = persistDeliverySessionRecord(deliveryRecordFromMaterial({
@@ -4791,6 +4812,15 @@ export function startAutomaticBuildExecutorGeneration(
   if (!currentRecoveryIdentity) {
     throw new Error("executor generation.start current recovery identity is unavailable");
   }
+  const observeGeneration = (taskSession: AutomaticBuildExecutorTaskSessionRecordV1, startedAt: string) => {
+    recordAutomaticBuildGenerationTiming(registryRoot(), taskSession.lease_ref, {
+      opaque_handoff_ref: context.delivery.opaque_handoff_ref,
+      dispatch_id: context.owner.dispatch_id, dispatch_run_id: context.owner.dispatch_run_id,
+      work_unit_id: taskSession.work_unit_id, physical_attempt: taskSession.physical_attempt,
+      semantic_attempt: taskSession.semantic_attempt, lease_epoch: taskSession.lease_epoch,
+      opened_at: context.open_record.opened_at, generation_started_at: startedAt,
+    });
+  };
   // Reuse this request's validated descriptor; rebuilding a stitch descriptor routes the whole book.
   // The next request still resolves current dependencies and policy afresh.
   const stage = context.task_stage;
@@ -4798,7 +4828,12 @@ export function startAutomaticBuildExecutorGeneration(
   if (!currentBinding) {
     throw new Error("executor generation.start current task policy binding is unavailable");
   }
-  if (isAutomaticBuildTaskPolicyBindingV2(currentBinding)
+  if (stage.theme_task) {
+    const current = fitStructureThemeSession(context.target, stage.theme_task, {
+      semantic_prompt: context.semantic_prompt, policy_fingerprint: stage.descriptor.policy_fingerprint,
+    }, deliveryExecutionProfile(context.delivery).transport_profile);
+    if (current.rendered !== context.material.semantic_input) throw new AutomaticBuildExecutorStaleGenerationSessionError();
+  } else if (isAutomaticBuildTaskPolicyBindingV2(currentBinding)
     && currentBinding.input_hash !== context.delivery.semantic_input_sha256) {
     throw new Error("executor generation.start frozen input no longer matches the current task binding");
   }
@@ -4858,6 +4893,19 @@ export function startAutomaticBuildExecutorGeneration(
       max_lease_epochs: MAX_LEASE_EPOCHS,
     },
   );
+  if (advanced.status === "retry_exhausted") {
+    // A failed predecessor can exhaust its retry window after delivery selected
+    // the next unit. Close that dispatch as a task failure, as the V1 driver does;
+    // this is not an executor startup failure and must not consume bootstrap retries.
+    const receipt = finishAutomaticBuildDispatch(context.target, context.owner.stage, context.owner.dispatch_id, {
+      terminal_reason: "task_failure",
+      now,
+      dispatch_run_id: context.owner.dispatch_run_id,
+    });
+    options.timing?.complete_phase("current-state/claim");
+    options.timing?.complete_phase("input-render-or-reuse");
+    return v3DoneResponse(terminalStatus(receipt.terminal_reason), deliveryExecutionProfile(context.delivery));
+  }
   let claim: ActiveAutomaticBuildClaim;
   if (advanced.status === "leased") {
     claim = advanced.claim;
@@ -4893,16 +4941,20 @@ export function startAutomaticBuildExecutorGeneration(
     open_record: context.open_record,
     owner: context.owner,
     claim,
+    ...(stage.theme_task ? { generation_input_ref: context.delivery.generation_input_ref } : {}),
     created_at: acceptance.accepted_at,
   });
   options.timing?.complete_phase("current-state/claim");
-  runAutomaticBuildFrozenTaskInput(
+  if (stage.theme_task && advanced.status === "waiting") {
+    heartbeatAutomaticBuildLease(context.target, taskSession.lease_ref, taskSession.lease_token,
+      { now: acceptance.accepted_at, ttl_ms: context.persisted.run_ttl_ms });
+  } else runAutomaticBuildFrozenTaskInput(
     context.target,
     taskSession.stage,
     taskSession.work_unit_id,
     taskSession.lease_ref,
     taskSession.lease_token,
-    context.material.semantic_input,
+    stage.theme_task ? renderBookStructureGenerationTaskInput(stage.theme_task) : context.material.semantic_input,
     { now: acceptance.accepted_at, run_ttl_ms: context.persisted.run_ttl_ms },
   );
   const outputContract = semanticCandidateContractV3(stage.descriptor, context.delivery.transport_profile);
@@ -4943,7 +4995,12 @@ export function startAutomaticBuildExecutorGeneration(
     started_at: acceptance.accepted_at,
   };
   const file = generationStartRecordFile(grant.generation_grant_ref);
-  if (writeCreateOnly(file, record)) return response;
+  if (writeCreateOnly(file, record)) {
+    // The protocol's accepted_at remains the lease/claim clock. Observability ends
+    // only once GENERATE is durable and ready to return, including local claim work.
+    observeGeneration(taskSession, nowValue === undefined ? new Date().toISOString() : now);
+    return response;
+  }
   return validateGenerationStartRecord(decodeJsonRecord(file), grant).response;
 }
 
@@ -5101,6 +5158,29 @@ export function submitAutomaticBuildExecutorCandidateV3(
     );
     options.timing?.complete_phase("candidate-gate");
     return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
+  }
+  if (stage.theme_task) {
+    const inspection = inspectAutomaticBuildTask(taskSession.target, taskSession.task_session.lease_ref, taskSession.task_session.lease_token);
+    if (inspection.state === "committed" || inspection.state === "retryable_failure")
+      return v3DoneResponse(inspection.state, deliveryExecutionProfile(deliveryContext.delivery));
+    assertActiveAutomaticBuildLease(taskSession.target, taskSession.task_session.lease_ref,
+      taskSession.task_session.lease_token, now);
+    let outcome: "continue" | "resolve" = "resolve";
+    try {
+      outcome = checkpointStructureThemeAction(taskSession.target, stage.theme_task,
+        deliveryContext.delivery.generation_input_ref, deliveryContext.material.semantic_input, validation.request.candidate);
+    } catch (error) {
+      // Invalid semantic actions go through the ordinary writer failure/feedback path.
+      // Disk and stale-input failures must retain their own recovery meaning.
+      if (!(error instanceof StructureThemeActionRejected)) throw error;
+    }
+    if (outcome === "continue") {
+      heartbeatAutomaticBuildLease(taskSession.target, taskSession.task_session.lease_ref,
+        taskSession.task_session.lease_token, { now, ttl_ms: taskSession.persisted.run_ttl_ms });
+      options.timing?.complete_phase("candidate-gate");
+      options.timing?.complete_phase("writer/commit");
+      return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
+    }
   }
   stageAutomaticBuildCandidateValue(
     taskSession.target,

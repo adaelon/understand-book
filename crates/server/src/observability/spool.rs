@@ -48,6 +48,8 @@ struct PersistedItem {
     config_epoch: String,
     target: TargetDescriptor,
     persisted_at_unix_ms: u128,
+    #[serde(default)]
+    confirmed: bool,
     item: PersistedExportItem,
 }
 
@@ -116,6 +118,7 @@ pub struct SpoolStatus {
 pub struct SpoolOpen {
     pub spool: Spool,
     pub recovered: Vec<ExportItem>,
+    pub confirmed_revisions: HashSet<(String, u32)>,
     pub stats: SpoolOpenStats,
 }
 
@@ -185,6 +188,10 @@ impl Spool {
                 .then_with(|| left.item.run_id.cmp(&right.item.run_id))
                 .then_with(|| left.item.revision.cmp(&right.item.revision))
         });
+        let confirmed_revisions = persisted.iter()
+            .filter(|record| record.confirmed)
+            .map(|record| (record.item.run_id.clone(), record.item.revision))
+            .collect();
         let mut recovered = persisted
             .into_iter()
             .map(|record| record.item.into_export())
@@ -198,10 +205,16 @@ impl Spool {
                 Err(_) => stats.dropped += 1,
             }
         }
+        // A recovered root terminal releases the exporter's dependency state and
+        // spool. Close reconstructed children before sending that terminal.
+        recovered.sort_by_key(|item| {
+            item.run_id == item.root_run_id && item.operation == ExportOperation::Update
+        });
         stats.recovered = recovered.len().min(u64::MAX as usize) as u64;
         Ok(SpoolOpen {
             spool,
             recovered,
+            confirmed_revisions,
             stats,
         })
     }
@@ -253,6 +266,7 @@ impl Spool {
             config_epoch: self.config_epoch.clone(),
             target: self.target.clone(),
             persisted_at_unix_ms: unix_ms(SystemTime::now()),
+            confirmed: false,
             item: PersistedExportItem::from_export(item),
         };
         let bytes = serde_json::to_vec(&record)
@@ -260,6 +274,19 @@ impl Spool {
         let dropped = self.make_room(bytes.len() as u64, &item.root_run_id)?;
         atomic_write(&final_path, &bytes)?;
         Ok(dropped)
+    }
+
+    pub fn confirm(&mut self, item: &ExportItem) -> Result<(), String> {
+        let path = self.config.directory.join(record_file_name(item));
+        let mut record = read_json::<PersistedItem>(&path)?
+            .ok_or_else(|| "spool record missing during confirmation".to_owned())?;
+        if !record.confirmed {
+            record.confirmed = true;
+            let bytes = serde_json::to_vec(&record)
+                .map_err(|error| format!("serialize spool confirmation: {error}"))?;
+            atomic_write_replace(&path, &bytes)?;
+        }
+        Ok(())
     }
 
     pub fn remove_trace(&mut self, root_run_id: &str) -> Result<(), String> {
@@ -531,6 +558,7 @@ fn handle_target_change(
                     .ok_or_else(|| "old spool record disappeared".to_owned())?;
                 record.config_epoch = epoch.to_owned();
                 record.target = target.clone();
+                record.confirmed = false;
                 if record.item.operation_is_create() {
                     record.item.payload["session_name"] = Value::String(target.project.clone());
                 }
@@ -550,54 +578,34 @@ impl PersistedExportItem {
 }
 
 fn synthesize_interrupted_updates(items: &[ExportItem], project: &str) -> Vec<ExportItem> {
-    let roots = items
-        .iter()
-        .filter(|item| {
-            item.operation == ExportOperation::Create
-                && item.run_id == item.root_run_id
-                && item.parent_run_id.is_none()
-        })
-        .collect::<Vec<_>>();
-    let mut updates = Vec::new();
-    for root in roots {
-        let has_terminal = items.iter().any(|item| {
-            item.root_run_id == root.root_run_id
-                && item.run_id == root.root_run_id
-                && item.operation == ExportOperation::Update
-        });
-        if has_terminal {
-            continue;
+    let mut latest_by_run: HashMap<&str, ObservationEnvelope> = HashMap::new();
+    let mut last_observed_by_root: HashMap<&str, String> = HashMap::new();
+    for item in items {
+        let Some(observation) = observation_from_item(item) else { continue; };
+        if let Some(observed_at) = &observation.observed_at {
+            let latest = last_observed_by_root.entry(&item.root_run_id).or_default();
+            if observed_at.as_str() > latest.as_str() { *latest = observed_at.clone(); }
         }
-        let latest_observation = items
-            .iter()
-            .filter(|item| item.root_run_id == root.root_run_id)
-            .filter_map(observation_from_item)
-            .max_by(|left, right| {
-                left.observed_at
-                    .as_deref()
-                    .unwrap_or_default()
-                    .cmp(right.observed_at.as_deref().unwrap_or_default())
-            });
-        let Some(mut observation) = observation_from_item(root) else {
+        let latest = latest_by_run.entry(&item.run_id).or_insert_with(|| observation.clone());
+        if observation.revision > latest.revision { *latest = observation; }
+    }
+    let mut updates = Vec::new();
+    for start in items.iter().filter(|item| item.operation == ExportOperation::Create) {
+        let Some(mut observation) = latest_by_run.remove(start.run_id.as_str()) else {
             continue;
         };
-        observation.revision = items
-            .iter()
-            .filter(|item| item.run_id == root.run_id)
-            .map(|item| item.revision)
-            .max()
-            .unwrap_or(1)
-            .saturating_add(1);
-        observation.observed_at = latest_observation
-            .as_ref()
-            .and_then(|value| value.observed_at.clone())
+        if observation.execution_state != Some(ExecutionState::Running) { continue; }
+        observation.revision = observation.revision.saturating_add(1);
+        observation.observed_at = last_observed_by_root.get(start.root_run_id.as_str()).cloned()
             .or_else(|| observation.observed_at.clone());
         observation.elapsed_ms = None;
         observation.duration_ms = None;
         observation.timing_source = TimingSource::LastObserved;
         observation.execution_state = Some(ExecutionState::Interrupted);
-        observation.delivery_state = Some(DeliveryState::Unknown);
-        observation.persistence_state = Some(PersistenceState::Unknown);
+        if start.run_id == start.root_run_id {
+            observation.delivery_state = Some(DeliveryState::Unknown);
+            observation.persistence_state = Some(PersistenceState::Unknown);
+        }
         observation.metadata.error_code = Some("OBSERVATION_INTERRUPTED".into());
         observation.metadata.interruption_detected_at = Some(format_system_time(SystemTime::now()));
         observation.completeness.reconstructed = true;
@@ -835,6 +843,23 @@ mod tests {
     }
 
     #[test]
+    fn acknowledgement_applies_only_to_the_persisted_revision() {
+        let temp = TempDir::new().unwrap();
+        let config = config(temp.path());
+        let root = root_create();
+        let mut opened = Spool::open(&config).unwrap();
+        opened.spool.persist(&root).unwrap();
+        opened.spool.confirm(&root).unwrap();
+        drop(opened);
+
+        let recovered = Spool::open(&config).unwrap();
+        assert_eq!(recovered.recovered.len(), 2);
+        assert!(recovered.confirmed_revisions.contains(&(root.run_id.clone(), 1)));
+        // Restart synthesized this interrupted terminal; it was never sent.
+        assert!(!recovered.confirmed_revisions.contains(&(root.run_id.clone(), 2)));
+    }
+
+    #[test]
     fn recovery_orders_children_before_root_terminal_when_persist_times_collide() {
         let temp = TempDir::new().unwrap();
         let config = config(temp.path());
@@ -870,6 +895,7 @@ mod tests {
                         request_diagnostics: None,
                         model_name: Some("configured-model".into()),
                         model_name_source: Some("configured".into()),
+                        model_provider: None,
                         accepted_evidence_count: None,
                         evidence_refs: Vec::new(),
                     },
@@ -906,12 +932,20 @@ mod tests {
         }
 
         let recovered = Spool::open(&config).unwrap().recovered;
-        assert_eq!(recovered.len(), 3);
+        assert_eq!(recovered.len(), 4);
         assert_eq!(recovered[0].operation, ExportOperation::Create);
         assert_eq!(recovered[0].run_id, recovered[0].root_run_id);
         assert_ne!(recovered[1].run_id, recovered[1].root_run_id);
         assert_eq!(recovered[2].operation, ExportOperation::Update);
-        assert_eq!(recovered[2].run_id, recovered[2].root_run_id);
+        assert_eq!(recovered[2].run_id, recovered[1].run_id);
+        let interrupted = observation_from_item(&recovered[2]).unwrap();
+        assert_eq!(interrupted.execution_state, Some(ExecutionState::Interrupted));
+        assert_eq!(interrupted.timing_source, TimingSource::LastObserved);
+        assert_eq!(interrupted.usage, runtime::observation::TokenUsage::unknown());
+        assert_eq!(interrupted.delivery_state, None);
+        assert_eq!(interrupted.persistence_state, None);
+        assert_eq!(recovered[3].operation, ExportOperation::Update);
+        assert_eq!(recovered[3].run_id, recovered[3].root_run_id);
     }
 
     #[test]
@@ -943,13 +977,16 @@ mod tests {
         let replay_dir = TempDir::new().unwrap();
         let first = config(replay_dir.path());
         let mut opened = Spool::open(&first).unwrap();
-        opened.spool.persist(&root_create()).unwrap();
+        let root = root_create();
+        opened.spool.persist(&root).unwrap();
+        opened.spool.confirm(&root).unwrap();
         drop(opened);
         let mut replay = config(replay_dir.path());
         replay.project = "project-b".into();
         replay.spool.as_mut().unwrap().target_change = SpoolTargetChange::Replay;
         let replayed = Spool::open(&replay).unwrap();
         assert_eq!(replayed.recovered.len(), 2);
+        assert!(replayed.confirmed_revisions.is_empty());
         assert!(replayed
             .recovered
             .iter()

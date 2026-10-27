@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type Hls from 'hls.js';
 
 export function preloadVideoPlayback() { return import('hls.js'); }
@@ -17,12 +18,12 @@ export function attachVideoPlayback(video: HTMLVideoElement, source: string, pla
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!disposed && data.fatal) {
           hls?.stopLoad();
-          fail(data.type === Hls.ErrorTypes.NETWORK_ERROR ? '视频片段暂时加载失败，请检查网络后重试。' : '视频播放中断，请重试加载。');
+          fail(data.type === Hls.ErrorTypes.NETWORK_ERROR ? uiText('视频片段暂时加载失败，请检查网络后重试。') : uiText('视频播放中断，请重试加载。'));
         }
       });
       hls.loadSource(playlist);
       hls.attachMedia(video);
-    }).catch(() => { if (!disposed) fail('播放器未能加载，请检查网络后重试。'); });
+    }).catch(() => { if (!disposed) fail(uiText('播放器未能加载，请检查网络后重试。')); });
   }
   return () => {
     disposed = true;

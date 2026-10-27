@@ -1,3 +1,4 @@
+import { StructureThemeRetrievalRequired, prepareStructureThemeRetrieval } from "../../packages/core/src/book-structure-theme-session";
 import { DSH_BUILD_EXECUTOR_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
 import type { Readable, Writable } from "node:stream";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, DSH_BUILD_EXECUTION_PROFILE_V1 } from "../../packages/core/src/build-execution-profile";
@@ -154,25 +155,28 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
   });
   const nowMs = options.now_ms ?? (() => performance.now());
   let activeTiming: AutomaticBuildExecutorServerTimingObserverV1 | undefined;
-  const adapter = createBuildExecutorToolAdapter({
+  const adapter = createBuildExecutorToolAdapter<AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse>>({
     session_protocol: profile.session_protocol,
     authorize_connection: connection.authorize_connection,
     execute_request: (request) => {
       if (!activeTiming) throw new Error("Build Executor MCP timing boundary is unavailable");
-      let response: AutomaticBuildExecutorSessionResponse;
-      try {
-        response = options.execute_request
-          ? options.execute_request(request, activeTiming)
-          : runAutomaticBuildExecutorSessionCommand(request, { timing: activeTiming, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse;
-      } catch (error) {
-        throw new BuildExecutorSessionCommandError(error);
-      }
-      if (response.version !== profile.session_protocol) {
-        throw new BuildExecutorSessionCommandError(
-          new Error("Build Executor MCP received a legacy session response"),
-        );
-      }
-      return response;
+      const timing = activeTiming;
+      const completed = new Set<AutomaticBuildExecutorServerPhaseBoundaryV1>();
+      const observer = { complete_phase: (phase: AutomaticBuildExecutorServerPhaseBoundaryV1) => {
+        if (!completed.has(phase)) { timing.complete_phase(phase); completed.add(phase); }
+      } };
+      const execute = (): AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse> => {
+        try {
+          return options.execute_request ? options.execute_request(request, observer)
+            : runAutomaticBuildExecutorSessionCommand(request, { timing: observer, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse;
+        } catch (error) {
+          if (error instanceof StructureThemeRetrievalRequired) {
+            return prepareStructureThemeRetrieval(error).then(execute).catch(error => { throw new BuildExecutorSessionCommandError(error); });
+          }
+          throw new BuildExecutorSessionCommandError(error);
+        }
+      };
+      return execute();
     },
   });
   let connectionCallOrdinal = 0;
@@ -264,17 +268,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
     let responseActionKind: string | null = null;
     let outcome: ExecutorMcpServerTimingV2["outcome"] = "bounded_error";
     let sessionCommandCompleted = false;
-    try {
-      activeTiming = timing;
-      if (!isRecord(request.params) || !isRecord(request.params.arguments)) {
-        throw new BuildExecutorInvalidArgumentsError("arguments");
-      }
-      const call = { tool_name: toolName, request: request.params.arguments };
-      const response = adapter.call_tool(
-        toolName,
-        request.params.arguments,
-        connection.connection_capability,
-      );
+    const accept = (response: AutomaticBuildExecutorSessionResponse) => {
+      const call = { tool_name: toolName, request: (request.params as Record<string, unknown>).arguments };
       sessionCommandCompleted = true;
       if (response.action.kind === "INPUT_BATCH") {
         if (Buffer.byteLength(serializeExecutorMcpToolResult(response), "utf8")
@@ -299,7 +294,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       if (Buffer.byteLength(`${JSON.stringify(rpcResponse)}\n`, "utf8") > CODEX_EXECUTOR_MEDIA_CAPABILITY_V1.max_jsonrpc_line_bytes) {
         throw new Error("Build Executor MCP JSON-RPC envelope exceeds its media tier");
       }
-    } catch (error) {
+    };
+    const reject = (error: unknown) => {
       const phase = operationPhase(toolName);
       // Only an unbound, mistyped ref can be corrected on this connection by Root.
       // Every other MCP error finishes the dedicated child under its lifecycle contract.
@@ -314,9 +310,8 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
             ? automaticBuildExecutorMcpErrorFromSessionError(error, phase)
             : createAutomaticBuildExecutorProtocolMcpErrorV2(phase),
       );
-    } finally {
-      activeTiming = undefined;
-    }
+    };
+    const report = () => {
     const serializedResponse = `${JSON.stringify(rpcResponse)}\n`;
     const finishedAtMs = nowMs();
     let serverPhaseElapsedMs: ExecutorMcpServerPhaseElapsedV2 | null = null;
@@ -346,6 +341,17 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       server_phase_elapsed_ms: serverPhaseElapsedMs,
     });
     return rpcResponse;
+    };
+    activeTiming = timing;
+    try {
+      if (!isRecord(request.params) || !isRecord(request.params.arguments)) throw new BuildExecutorInvalidArgumentsError("arguments");
+      const response = adapter.call_tool(toolName, request.params.arguments, connection.connection_capability);
+      if (response instanceof Promise) return response.then(accept).catch(reject).then(report)
+        .finally(() => { activeTiming = undefined; });
+      accept(response);
+    } catch (error) { reject(error); }
+    activeTiming = undefined;
+    return report();
   };
 
   return Object.freeze({ handle_message: handleMessage, is_terminal: () => terminal });
@@ -379,6 +385,7 @@ export function serveBuildExecutorMcpSession(
 ): void {
   input.setEncoding("utf8");
   let pending = "";
+  let requests = Promise.resolve();
   input.on("data", (chunk: string) => {
     pending += chunk;
     if (Buffer.byteLength(pending, "utf8") > MAX_MCP_LINE_BYTES) {
@@ -393,24 +400,17 @@ export function serveBuildExecutorMcpSession(
       const line = pending.slice(0, newline).replace(/\r$/u, "");
       pending = pending.slice(newline + 1);
       if (!line) continue;
-      let response: unknown;
-      try {
-        response = session.handle_message(JSON.parse(line));
-      } catch {
-        response = rpcError(null, -32700, "Parse error");
-      }
-      if (response !== undefined) {
-        const line = `${JSON.stringify(response)}\n`;
+      requests = requests.then(async () => {
+        if (session.is_terminal()) return;
+        let response: unknown;
+        try { response = await session.handle_message(JSON.parse(line)); }
+        catch { response = rpcError(null, -32700, "Parse error"); }
+        if (response === undefined) return;
+        const responseLine = `${JSON.stringify(response)}\n`;
         if (session.is_terminal()) {
-          // A connection owns one handoff. Flush DONE before closing the pipe; the host
-          // may retain the finished child, but it must not retain this service process.
-          pending = "";
-          input.destroy();
-          output.end(line);
-          return;
-        }
-        output.write(line);
-      }
+          pending = ""; input.destroy(); output.end(responseLine);
+        } else output.write(responseLine);
+      });
     }
   });
 }

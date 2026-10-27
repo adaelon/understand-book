@@ -118,6 +118,7 @@ const AUTOMATIC_BUILD_FAILURE_CODES: Record<AutomaticBuildFailureCategory, Reado
     "semantic_output_invalid",
   ]),
   evidence: new Set([
+    "quote_not_in_evidence",
     "evidence_required",
     "evidence_out_of_scope",
     "defined_at_not_occurrence",
@@ -522,6 +523,10 @@ export function automaticBuildCandidateCorrection(diagnostic: AutomaticBuildFail
     return { code: diagnostic.code, json_pointer: "/", expected: diagnostic.expected
       ?? "Shorten the candidate to fit output_contract.transport token AND byte limits, including the request envelope. Preserve required fields, source coverage and evidence; reduce verbosity and duplicate text." };
   }
+  if (diagnostic.phase === "artifact_writer" && diagnostic.category === "evidence"
+    && diagnostic.code === "quote_not_in_evidence" && diagnostic.json_pointer && diagnostic.expected) {
+    return { code: diagnostic.code, json_pointer: diagnostic.json_pointer, expected: diagnostic.expected };
+  }
   if (diagnostic.phase !== "artifact_writer" || diagnostic.category !== "schema") return;
   // Persisted BookStructure role errors pointed at a nonexistent singular field.
   // Keep the unchanged role rule, but correct the actual array rather than adding that field.
@@ -530,6 +535,13 @@ export function automaticBuildCandidateCorrection(diagnostic: AutomaticBuildFail
       || diagnostic.expected === "non-empty UTF-8 string no larger than 64 bytes")) {
     return { code: diagnostic.code, json_pointer: "/role_hints",
       expected: "role_hints is an array; each item must be setup | foundation | method | application | case | synthesis. Remove any top-level role_hint field." };
+  }
+  // Zod reports only the string branch when a required nullable field is absent.
+  // Preserve the formula contract and make its grounded null representation explicit.
+  if (diagnostic.code === "schema_invalid" && diagnostic.expected === "string"
+    && /^\/formula_semantics\/\d+\/parameters\/\d+\/(?:label|unit|domain)$/u.test(diagnostic.json_pointer ?? "")) {
+    return { code: diagnostic.code, json_pointer: diagnostic.json_pointer!,
+      expected: "This formula parameter field is required and accepts a string or null. Include label, unit and domain on every parameter; use null when the visible source does not ground a value. Do not omit these fields or invent their values." };
   }
   if (diagnostic.code === "schema_invalid" && diagnostic.json_pointer && diagnostic.expected) {
     return { code: diagnostic.code, json_pointer: diagnostic.json_pointer, expected: diagnostic.expected };

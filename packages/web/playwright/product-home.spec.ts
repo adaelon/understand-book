@@ -1,9 +1,21 @@
-import { expect, test } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
-import path from 'node:path';
+import { expect, test, type Locator } from '@playwright/test';
+
+async function expectImageLoaded(image: Locator) {
+  await expect.poll(() => image.evaluate(node => {
+    const img = node as HTMLImageElement;
+    return img.complete && img.naturalWidth > 0;
+  })).toBe(true);
+}
+
+const scenes = [
+  { label: '阅读界面', id: 'reading', file: 'reading-workspace-20261024' },
+  { label: '理解视频', id: 'video', file: 'video-understanding-20261024' },
+  { label: '理解音乐', id: 'music', file: 'music-workspace-20261023' },
+  { label: '动手理解', id: 'explore', file: 'interactive-explanation' },
+];
 
 for (const width of [320, 390, 768, 1000, 1024, 1440]) {
-  test(`YY5 reading companion shares the learning scene without obscuring it at ${width}px`, async ({ page }) => {
+  test(`workspace introduction and primary actions fit at ${width}px`, async ({ page }, info) => {
     const height = width === 390 ? 844 : 900;
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -13,16 +25,11 @@ for (const width of [320, 390, 768, 1000, 1024, 1440]) {
     const companion = page.locator('.home-hero-companion');
     await expect(companion).toContainText('页页');
     await expect(companion.locator('.yeye-mascot')).toHaveAttribute('aria-hidden', 'true');
-    const pictures = page.locator('.home-nav .brand-logo, .home-hero-companion img');
-    await expect(pictures).toHaveCount(2);
-    await expect.poll(() => pictures.evaluateAll(images => images.every(image => {
-      const img = image as HTMLImageElement;
-      return img.complete && img.naturalWidth > 0;
-    }))).toBe(true);
-    await expect(page.locator('.home-note-first')).toContainText('今天 · 第一次学习');
-    await expect(page.locator('.home-note-next')).toContainText('下一次 · 接着往下学');
+    const pictures = page.locator('.home-nav .brand-logo, .home-hero-workspace img');
+    await expect(pictures).toHaveCount(3);
+    for (const picture of await pictures.all()) await expectImageLoaded(picture);
 
-    const bounds = await page.locator('.home-hero-copy, .home-hero-companion, .home-note-first, .home-note-next')
+    const bounds = await page.locator('.home-hero-copy, .home-hero-workspace')
       .evaluateAll(elements => elements.map(element => {
         const { left, right, top, bottom } = element.getBoundingClientRect();
         return { left, right, top, bottom };
@@ -37,37 +44,121 @@ for (const width of [320, 390, 768, 1000, 1024, 1440]) {
         expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top).toBe(true);
       }
     }
-    const [copy, mascot, first, next] = bounds;
-    expect(first!.bottom).toBeLessThanOrEqual(next!.top);
+    const [copy, workspace] = bounds;
     if (width <= 640) {
-      expect(copy!.bottom).toBeLessThanOrEqual(mascot!.top);
-      expect(mascot!.bottom).toBeLessThanOrEqual(first!.top);
+      expect(copy!.bottom).toBeLessThanOrEqual(workspace!.top);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-    const start = page.getByRole('link', { name: '试着想明白一个问题', exact: true });
+    const start = page.getByRole('link', { name: '看看怎样学', exact: true });
     if (width === 390 || width === 1440) {
       await expect(start).toBeInViewport({ ratio: 1 });
-      await expect(companion.locator('img')).toBeInViewport({ ratio: 1 });
-      const output = path.resolve('../../docs/performance/yeye-brand-yy5-20261013');
-      mkdirSync(output, { recursive: true });
-      await page.screenshot({ path: path.join(output, `home-viewport-${width}.png`) });
-      await page.locator('.home-hero').screenshot({ path: path.join(output, `home-scene-${width}.png`) });
+      await page.screenshot({ path: info.outputPath(`home-viewport-${width}.png`) });
+      await page.locator('.home-hero').screenshot({ path: info.outputPath(`home-workspace-${width}.png`) });
     }
     await start.focus();
     await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#experience$/);
+    await expect(page.getByRole('tablist', { name: '选择学习场景' })).toBeInViewport();
+    await page.getByRole('link', { name: '试着想明白一个问题', exact: true }).click();
     await expect(page).toHaveURL(/#learning-story$/);
     await expect(page.getByRole('radio', { name: '把一边拉得越长越好', exact: true })).toBeInViewport();
     await page.locator('.home-hero-actions').getByRole('link', { name: '参与内测', exact: false }).click();
     await expect(page).toHaveURL(/#begin$/);
-    await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toBeInViewport();
+    await expect(page.getByRole('link', { name: '输入内测码，开始体验', exact: false })).toBeInViewport();
     await expect(page.getByRole('link', { name: '已经有账号？继续阅读', exact: false })).toHaveAttribute('href', './?account=login');
     expect(errors).toEqual([]);
   });
 }
 
+for (const width of [390, 1440]) {
+  test(`workspace and learning scenes open the matching full-size screenshots at ${width}px`, async ({ page }, info) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/home.html');
+    const panel = page.getByRole('tabpanel');
+    const dialog = page.getByRole('dialog');
+    const imageViewport = dialog.locator('.home-image-viewport');
+    const dialogImage = imageViewport.locator('img');
+    const previews = [
+      { label: '阅读界面', id: 'hero', file: 'reading-workspace-20261024', container: '.home-hero-workspace' },
+      { label: '学习工作区', id: 'workspace', file: 'course-workspace-20261021', container: '#workspace' },
+      ...scenes.map(scene => ({ ...scene, container: '#scene-panel' })),
+    ];
+    for (const [index, scene] of previews.entries()) {
+      if (scene.container === '#scene-panel') {
+        const tab = page.getByRole('tab', { name: scene.label, exact: true });
+        await tab.click();
+        await expect(tab).toHaveAttribute('aria-selected', 'true');
+        await expect(page.getByRole('tab', { selected: true })).toHaveCount(1);
+        await expect(panel).toHaveAttribute('aria-labelledby', `scene-tab-${scene.id}`);
+      }
+      const preview = page.locator(scene.container).getByRole('button', { name: `放大查看：${scene.label}`, exact: true });
+      await preview.scrollIntoViewIfNeeded();
+      await expect(preview.locator('img')).toHaveAttribute('src', new RegExp(scene.file));
+      await expectImageLoaded(preview.locator('img'));
+      await preview.screenshot({ path: info.outputPath(`${scene.id}-${width}.png`) });
+      await preview.focus();
+      await preview.press('Enter');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading')).toHaveText(scene.label);
+      await expect(dialogImage).toHaveAttribute('src', (await preview.locator('img').getAttribute('src'))!);
+      await expectImageLoaded(dialogImage);
+      const originalSize = dialog.getByRole('button', { name: '原始尺寸', exact: true });
+      await expect(originalSize).toHaveAttribute('aria-pressed', 'false');
+      expect(await dialogImage.evaluate(img => img.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(await imageViewport.evaluate(el => el.clientWidth + 1));
+      await originalSize.click();
+      await expect(dialog.getByRole('button', { name: '适应窗口', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      const size = await dialogImage.evaluate(node => {
+        const image = node as HTMLImageElement;
+        return { rendered: image.getBoundingClientRect().width, original: image.naturalWidth };
+      });
+      expect(size.rendered).toBeCloseTo(size.original, 0);
+      if (width === 390) {
+        expect(await imageViewport.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+      }
+      if (index % 2 === 0) await page.keyboard.press('Escape');
+      else await dialog.getByRole('button', { name: '关闭大图', exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(preview).toBeFocused();
+    }
+
+    const reading = page.getByRole('tab', { name: '阅读界面', exact: true });
+    await reading.click();
+    for (const [key, index] of [['ArrowLeft', 3], ['ArrowRight', 0], ['End', 3], ['Home', 0], ['ArrowRight', 1]] as const) {
+      await page.keyboard.press(key);
+      const expectedScene = scenes[index]!;
+      const selected = page.getByRole('tab', { name: expectedScene.label, exact: true });
+      await expect(selected).toBeFocused();
+      await expect(selected).toHaveAttribute('aria-selected', 'true');
+      await expect(selected).toHaveAttribute('tabindex', '0');
+      await expect(page.locator('.home-gallery-tabs [tabindex="0"]')).toHaveCount(1);
+      await expect(panel).toHaveAttribute('aria-labelledby', `scene-tab-${expectedScene.id}`);
+      await expect(panel.locator('img')).toHaveAttribute('src', new RegExp(expectedScene.file));
+    }
+    await page.keyboard.press('Tab');
+    await expect(panel).toBeFocused();
+    await page.keyboard.press('Tab');
+    const videoPreview = panel.getByRole('button', { name: '放大查看：理解视频', exact: true });
+    await expect(videoPreview).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: '原始尺寸', exact: true }).click();
+    await dialog.getByRole('button', { name: '适应窗口', exact: true }).click();
+    await expect(dialog.getByRole('button', { name: '原始尺寸', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    expect(await dialogImage.evaluate(img => img.getBoundingClientRect().width))
+      .toBeLessThanOrEqual(await imageViewport.evaluate(el => el.clientWidth + 1));
+    await page.keyboard.press('Escape');
+    await expect(videoPreview).toBeFocused();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}
+
 for (const width of [1440, 390]) {
-  test(`garden experiment keeps attempts and checks changed conditions at ${width}px`, async ({ page }) => {
+  test(`garden experiment keeps attempts and checks changed conditions at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/home.html');
     await page.getByRole('link', { name: '试着想明白一个问题', exact: true }).click();
@@ -114,7 +205,7 @@ for (const width of [1440, 390]) {
       expect(activeStep!.x).toBeGreaterThanOrEqual(0);
       expect(activeStep!.x + activeStep!.width).toBeLessThanOrEqual(width);
     }
-    await page.screenshot({ path: `../../tmp/home-learning-20261012/recap-${width}.png` });
+    await page.screenshot({ path: info.outputPath(`recap-${width}.png`) });
   });
 }
 
@@ -139,7 +230,7 @@ test('skipped steps do not invent attempts, and a fresh page clears the illustra
   await expect(page.locator('.home-learning-note')).not.toContainText('看过的帮助');
 });
 
-test('homepage and experiment fit small and large screens; product images still open', async ({ page }) => {
+test('homepage and experiment fit small and large screens', async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   for (const width of [320, 390, 768, 1440]) {
@@ -160,15 +251,11 @@ test('homepage and experiment fit small and large screens; product images still 
     }
     await page.getByRole('button', { name: '02 动手试试', exact: false }).click();
     await page.getByRole('slider', { name: '调整一条边的长度' }).fill('5');
-    await page.locator('#learning-story').screenshot({ path: `../../tmp/home-learning-20261012/experiment-${width}.png` });
+    await page.locator('#learning-story').screenshot({ path: info.outputPath(`experiment-${width}.png`) });
     await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); scrollTo({ top: 0, behavior: 'instant' }); });
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
-    await page.screenshot({ path: `../../tmp/home-learning-20261012/home-${width}.png` });
+    await page.screenshot({ path: info.outputPath(`home-${width}.png`) });
   }
-  await page.getByRole('button', { name: '放大查看：阅读现场', exact: true }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).not.toBeVisible();
-  await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toHaveAttribute('href', './?account=register');
+  await expect(page.getByRole('link', { name: '输入内测码，开始体验', exact: false })).toHaveAttribute('href', './?account=guest');
   expect(errors).toEqual([]);
 });

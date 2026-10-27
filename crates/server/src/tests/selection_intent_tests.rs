@@ -11,6 +11,26 @@ impl ModelAdapter for IntentRequestRecorder {
         self.inner.complete(request)
     }
 
+    fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        // The synchronous host also drains background observation work after
+        // delivery. These intent fixtures make no learner-understanding claim.
+        if let Some(mut guidance) = crate::tests::tutor_loop_tests::fixture_coach_guidance(&request) {
+            let input: Value = serde_json::from_str(&request.user).unwrap();
+            guidance["observations"] = Value::Array(input["observation_facts"].as_array().into_iter().flatten()
+                .filter(|fact| fact["already_interpreted"] != true).map(|fact| json!({
+                    "fact_ref":fact["fact_ref"],"decision":"no_new_information",
+                    "reason":"This fixture tests explicit note intent, not a new understanding assessment."
+                })).collect());
+            if input["teaching_context"]["status"] == "observing" {
+                guidance["next_step"]["participation"] = json!({"choice":"conclude",
+                    "reason":"The requested operation is complete; do not schedule a lesson."});
+                guidance["needs_read"] = json!([]);
+            }
+            return Ok(guidance);
+        }
+        self.inner.complete_structured(request)
+    }
+
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         self.requests.lock().unwrap().push(json!({
             "tools": request.tools.iter().map(|tool| &tool.name).collect::<Vec<_>>(),

@@ -12,9 +12,9 @@ use lifecycle::{business_states, root_finished, root_started, RunIdentity};
 use mapping::{export_item, ActivityMapper};
 use queue::{BoundedQueue, ExportItem, ExportOperation, QueueLimits};
 use runtime::observation::PersistenceState;
-use runtime::run_events::{EvidenceObservation, RunEventSink, RuntimeEvent};
+use runtime::run_events::{RunEventSink, RuntimeEvent};
 use spool::{Spool, SpoolOpenStats};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -124,18 +124,18 @@ impl ObservabilityRuntime {
             max_item_bytes: config.max_item_bytes,
         }));
         let stats = Arc::new(RuntimeStats::new(None));
-        let (spool, recovered) = match config.spool.as_ref() {
+        let (spool, recovered, confirmed_revisions) = match config.spool.as_ref() {
             Some(_) => match Spool::open(&config) {
                 Ok(opened) => {
                     apply_spool_open_stats(&stats, opened.stats);
-                    (Some(Arc::new(Mutex::new(opened.spool))), opened.recovered)
+                    (Some(Arc::new(Mutex::new(opened.spool))), opened.recovered, opened.confirmed_revisions)
                 }
                 Err(_) => {
                     stats.error("OBSERVABILITY_SPOOL_OPEN_FAILED");
-                    (None, Vec::new())
+                    (None, Vec::new(), HashSet::new())
                 }
             },
-            None => (None, Vec::new()),
+            None => (None, Vec::new(), HashSet::new()),
         };
         let worker_queue = queue.clone();
         let worker_stats = stats.clone();
@@ -149,6 +149,7 @@ impl ObservabilityRuntime {
                 request_timeout,
                 worker_spool,
                 recovered,
+                confirmed_revisions,
             )
         });
         Arc::new(Self {
@@ -475,26 +476,6 @@ impl ObservationRun {
         }
     }
 
-    fn observe_evidence(&self, evidence: EvidenceObservation) {
-        if !self.inner.active.load(Ordering::Acquire) {
-            return;
-        }
-        let step_id = evidence.step_id;
-        let mapped = self
-            .inner
-            .mapper
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .map_evidence(&self.inner.identity, evidence);
-        let Some((observation, operation)) = mapped else {
-            return;
-        };
-        let project = &self.inner.runtime.config.as_ref().unwrap().project;
-        let _ = self
-            .inner
-            .runtime
-            .enqueue(self.content_item(export_item(observation, operation, project), step_id, false));
-    }
 }
 
 fn saturating_u32(value: usize) -> u32 {
@@ -609,9 +590,6 @@ impl RunEventSink for ActivityObservationSink {
         }
     }
 
-    fn evidence_accepted(&self, observation: EvidenceObservation) {
-        self.run.observe_evidence(observation);
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -627,10 +605,12 @@ fn export_loop(
     request_timeout: Duration,
     spool: Option<Arc<Mutex<Spool>>>,
     recovered: Vec<ExportItem>,
+    confirmed_revisions: HashSet<(String, u32)>,
 ) {
     let mut create_states: HashMap<String, CreateState> = HashMap::new();
     let mut revisions: HashMap<String, u32> = HashMap::new();
     let mut run_roots: HashMap<String, String> = HashMap::new();
+    let mut unconfirmed_runs: HashMap<String, String> = HashMap::new();
     let mut recovered = recovered.into_iter();
     loop {
         let item = match recovered.next().or_else(|| queue.pop()) {
@@ -666,6 +646,7 @@ fn export_loop(
         {
             continue;
         }
+        unconfirmed_runs.insert(item.run_id.clone(), item.root_run_id.clone());
         let dependency_ready = match item.operation {
             ExportOperation::Create => item
                 .parent_run_id
@@ -681,18 +662,38 @@ fn export_loop(
             }
             stats.dropped.fetch_add(1, Ordering::Relaxed);
             stats.error("OBSERVABILITY_PARENT_UNCONFIRMED");
+            if item.operation == ExportOperation::Update && item.run_id == item.root_run_id {
+                unconfirmed_runs.retain(|_, root| root != &item.root_run_id);
+            }
             continue;
         }
-        let result = send_with_retry(&queue, transport.as_mut(), &item, request_timeout);
+        // Final PATCHes are immutable at LangSmith. A persisted acknowledgement
+        // restores local dependency/revision state without writing the run again.
+        let was_confirmed = confirmed_revisions.contains(&(item.run_id.clone(), item.revision));
+        let result = if was_confirmed {
+            TransportResult::Confirmed
+        } else {
+            send_with_retry(&queue, transport.as_mut(), &item, request_timeout)
+        };
         match result {
             TransportResult::Confirmed => {
+                if !was_confirmed {
+                    if let Some(spool) = &spool {
+                        if spool.lock().unwrap_or_else(|error| error.into_inner()).confirm(&item).is_err() {
+                            stats.error("OBSERVABILITY_SPOOL_CONFIRM_FAILED");
+                        }
+                    }
+                    stats.sent.fetch_add(1, Ordering::Relaxed);
+                }
+                unconfirmed_runs.remove(&item.run_id);
                 if item.operation == ExportOperation::Create {
                     create_states.insert(item.run_id.clone(), CreateState::Confirmed);
                     run_roots.insert(item.run_id.clone(), item.root_run_id.clone());
                 }
                 revisions.insert(item.run_id.clone(), item.revision);
-                stats.sent.fetch_add(1, Ordering::Relaxed);
-                if item.operation == ExportOperation::Update && item.run_id == item.root_run_id {
+                if item.operation == ExportOperation::Update && item.run_id == item.root_run_id
+                    && !unconfirmed_runs.values().any(|root| root == &item.root_run_id)
+                {
                     if let Some(spool) = &spool {
                         if spool
                             .lock()
@@ -734,6 +735,9 @@ fn export_loop(
                     .is_some_and(|root| root != completed_root)
             });
             run_roots.retain(|_, root| root != completed_root);
+            // Failed child updates remain in the durable spool for a later replay.
+            // A successful root PATCH alone does not confirm their usage or end_time.
+            unconfirmed_runs.retain(|_, root| root != completed_root);
         }
     }
 }
@@ -744,7 +748,7 @@ fn send_with_retry(
     item: &ExportItem,
     request_timeout: Duration,
 ) -> TransportResult {
-    let retry_deadline = Instant::now() + Duration::from_secs(1);
+    let mut retry_delay_budget = Duration::from_secs(1);
     let mut attempts = 0;
     loop {
         attempts += 1;
@@ -759,13 +763,15 @@ fn send_with_retry(
             .unwrap_or(request_timeout);
         match transport.send(item, timeout) {
             TransportResult::Retry { after, code } if attempts < 3 => {
-                let remaining = retry_deadline.saturating_duration_since(Instant::now());
-                let shutdown_remaining = queue.remaining_shutdown_budget().unwrap_or(remaining);
-                let budget = remaining.min(shutdown_remaining);
+                // Network time belongs to each request's timeout. Counting it as
+                // backoff used to suppress every retry after a >1s HTTP failure.
+                let shutdown_remaining = queue.remaining_shutdown_budget().unwrap_or(retry_delay_budget);
+                let budget = retry_delay_budget.min(shutdown_remaining);
                 if after > budget || budget.is_zero() {
                     return TransportResult::Retry { after, code };
                 }
                 std::thread::sleep(after);
+                retry_delay_budget = retry_delay_budget.saturating_sub(after);
             }
             result => return result,
         }
@@ -881,6 +887,7 @@ mod tests {
                 inner: inner.as_ref(),
                 resources: crate::service_limits::Resources::new(Arc::new(Default::default())),
                 owner: "canary".into(), cancellation: Default::default(),
+                background: false,
                 usage: Mutex::new(Default::default()), stream: None, authorization: None,
             };
             let run = observability.start_run("observation-fixture", "observation-fixture").unwrap();
@@ -898,6 +905,7 @@ mod tests {
                 messages.push(Message::user("CANARY_PRIVATE_FOLLOWUP"));
             }
             let completion = || CompletionRequest {
+                followup_user: None,
                 images: Vec::new(),
                 system: "CANARY_PRIVATE_SYSTEM".into(), user: "CANARY_PRIVATE_INPUT".into(),
                 output_token_limit: Some(100), reasoning_effort: None,
@@ -980,7 +988,7 @@ mod tests {
     }
 
     #[test]
-    fn full_content_survives_rejected_tools_and_later_evidence_updates() {
+    fn full_content_and_evidence_are_in_the_only_tool_terminal_write() {
         use runtime::run_events::{ActivityStatus, RunEvents};
         let sent = Arc::new(Mutex::new(Vec::new()));
         let mut settings = config();
@@ -992,18 +1000,32 @@ mod tests {
         let activity = events.begin("tool", "goal.update", "update", false);
         events.input(activity.step_id, || serde_json::json!({"operation":"working"}));
         events.output(activity.step_id, || serde_json::json!({"result":{"error_code":"GOAL_UPDATE_INVALID","message":"missing next_move"}}));
-        let step_id = activity.step_id;
         events.finish(activity, ActivityStatus::Rejected, None, Some("GOAL_UPDATE_INVALID".into()), None);
-        run.observe_evidence(EvidenceObservation { step_id, accepted_count: 1, evidence_refs: vec!["1.1".into()] });
+        let mut reading = events.begin("tool", "book.text", "read", true);
+        events.input(reading.step_id, || serde_json::json!({"lid":"1.1"}));
+        events.output(reading.step_id, || serde_json::json!({"result":{"text":"observed source"}}));
+        reading.accept_evidence(&[read_tools::EvidenceRange {
+            start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: Vec::new(),
+        }]);
+        events.finish(reading, ActivityStatus::Succeeded, None, None, Some(1));
         run.finish(None, false, PersistenceState::Saved, None);
         runtime.shutdown();
         let sent = sent.lock().unwrap();
         let tool = sent.iter().find(|item| item.payload["name"] == "goal.update").unwrap();
         assert_eq!(tool.payload["inputs"]["operation"], "working");
         assert_eq!(tool.payload["outputs"]["result"]["message"], "missing next_move");
-        let update = sent.iter().find(|item| item.run_id == tool.run_id && item.operation == ExportOperation::Update).unwrap();
-        assert!(update.payload.get("inputs").is_none());
-        assert!(update.payload.get("outputs").is_none());
+        assert_eq!(sent.iter().filter(|item| item.run_id == tool.run_id).count(), 1);
+        assert!(tool.payload["end_time"].is_string());
+        let reading = sent.iter().find(|item| item.payload["name"] == "book.text").unwrap();
+        let terminals: Vec<_> = sent.iter().filter(|item| item.run_id == reading.run_id
+            && item.payload["end_time"].is_string()).collect();
+        assert_eq!(terminals.len(), 1);
+        assert_eq!(terminals[0].operation, ExportOperation::Update);
+        assert_eq!(terminals[0].payload["inputs"]["lid"], "1.1");
+        assert_eq!(terminals[0].payload["outputs"]["result"]["text"], "observed source");
+        let metadata = &terminals[0].payload["extra"]["metadata"]["ub_observation"]["metadata"];
+        assert_eq!(metadata["accepted_evidence_count"], 1);
+        assert_eq!(metadata["evidence_refs"], serde_json::json!(["1.1"]));
         assert!(run.inner.content.lock().unwrap().is_empty());
     }
 
@@ -1076,6 +1098,7 @@ mod tests {
                 request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
+                model_provider: None,
                 accepted_evidence_count: None,
                 evidence_refs: Vec::new(),
             },
@@ -1129,6 +1152,7 @@ mod tests {
                 request_diagnostics: None,
                 model_name: Some("configured-model".into()),
                 model_name_source: Some("configured".into()),
+                model_provider: None,
                 accepted_evidence_count: None,
                 evidence_refs: Vec::new(),
             },
@@ -1170,6 +1194,101 @@ mod tests {
         );
         assert_eq!(second.status().recovered, 2);
         assert_eq!(second.status().spool_pending, 0);
+    }
+
+    #[test]
+    fn confirmed_root_preserves_failed_child_usage_update_for_spool_replay() {
+        use runtime::run_events::{ActivityStatus, RunEvents};
+
+        #[derive(Default)]
+        struct RemoteRuns {
+            finalized: HashMap<String, ExportItem>,
+            attempts: Vec<ExportItem>,
+        }
+        struct ImmutableRunTransport {
+            remote: Arc<Mutex<RemoteRuns>>,
+            fail_child_updates: bool,
+        }
+        impl LangSmithTransport for ImmutableRunTransport {
+            fn send(&mut self, item: &ExportItem, _timeout: Duration) -> TransportResult {
+                let mut remote = self.remote.lock().unwrap();
+                remote.attempts.push(item.clone());
+                if item.operation == ExportOperation::Update {
+                    if remote.finalized.contains_key(&item.run_id) {
+                        // Match the real API's 409 for a repeated final PATCH.
+                        return TransportResult::Permanent { code: "LANGSMITH_REQUEST_REJECTED" };
+                    }
+                    if self.fail_child_updates && item.run_id != item.root_run_id {
+                        return TransportResult::Retry { after: Duration::ZERO, code: "LANGSMITH_TRANSPORT_ERROR" };
+                    }
+                    remote.finalized.insert(item.run_id.clone(), item.clone());
+                }
+                TransportResult::Confirmed
+            }
+        }
+
+        let temp = TempDir::new().unwrap();
+        let remote = Arc::new(Mutex::new(RemoteRuns::default()));
+        let first = ObservabilityRuntime::with_transport(config_with_spool(temp.path()),
+            Box::new(ImmutableRunTransport { remote: remote.clone(), fail_child_updates: true }));
+        let run = first.start_run("book", "session").unwrap();
+        let events = RunEvents::new(Some(run.sink()));
+        let mut activity = events.begin("model", "outer", "answer", true);
+        activity.model_name = Some("configured-model".into());
+        activity.usage = Some(runtime::provider_stream::ModelUsage {
+            input_tokens: Some(100), output_tokens: Some(23), cached_input_tokens: Some(80),
+            total_tokens: Some(123), ..Default::default()
+        });
+        events.finish(activity, ActivityStatus::Succeeded, Some(123), None, None);
+        run.finish(None, false, PersistenceState::Saved, None);
+        first.shutdown();
+        // Root creation, child creation, the failed child PATCH, and root PATCH
+        // all remain available to reconstruct the original dependency chain.
+        assert_eq!(first.status().spool_pending, 4);
+        assert_eq!(remote.lock().unwrap().finalized.len(), 1);
+        remote.lock().unwrap().attempts.clear();
+        drop(events);
+        drop(run);
+        drop(first);
+
+        let second = ObservabilityRuntime::with_transport(config_with_spool(temp.path()),
+            Box::new(ImmutableRunTransport { remote: remote.clone(), fail_child_updates: false }));
+        second.shutdown();
+        let remote = remote.lock().unwrap();
+        // Only the previously unconfirmed child PATCH reaches the network.
+        // A repeated root PATCH would be rejected by this transport.
+        assert_eq!(remote.attempts.len(), 1);
+        assert_eq!(remote.finalized.len(), 2);
+        let child = &remote.attempts[0];
+        assert_eq!(child.operation, ExportOperation::Update);
+        assert_ne!(child.run_id, child.root_run_id);
+        assert_eq!(child.payload["extra"]["metadata"]["usage_metadata"]["total_tokens"], 123);
+        assert_eq!(child.payload["extra"]["metadata"]["usage_metadata"]["input_token_details"]["cache_read"], 80);
+        assert_eq!(child.payload["extra"]["metadata"]["ub_observation"]["execution_state"], "completed");
+        assert_eq!(second.status().spool_pending, 0);
+        assert_eq!(second.status().sent, 1);
+        assert_eq!(second.status().dropped, 0);
+    }
+
+    #[test]
+    fn retry_budget_does_not_expire_while_waiting_for_first_http_result() {
+        struct SlowFirstFailure { attempts: usize }
+        impl LangSmithTransport for SlowFirstFailure {
+            fn send(&mut self, _item: &ExportItem, _timeout: Duration) -> TransportResult {
+                self.attempts += 1;
+                if self.attempts == 1 {
+                    std::thread::sleep(Duration::from_millis(1_020));
+                    TransportResult::Retry { after: Duration::from_millis(1), code: "LANGSMITH_TRANSPORT_ERROR" }
+                } else {
+                    TransportResult::Confirmed
+                }
+            }
+        }
+        let queue = BoundedQueue::new(QueueLimits { max_items: 1, max_bytes: 1024, max_item_bytes: 1024 });
+        let item = ExportItem::new("root".into(), "root".into(), None, 1, ExportOperation::Create, serde_json::json!({}));
+        let mut transport = SlowFirstFailure { attempts: 0 };
+        assert_eq!(send_with_retry(&queue, &mut transport, &item, Duration::from_secs(2)), TransportResult::Confirmed);
+        assert_eq!(transport.attempts, 2);
     }
 
     #[test]

@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { agentFailureMessage, initialRun, interruptRun, reduceRun, type RunActivity, type RunEvent } from "./agent-run-state";
+import { agentFailureMessage, initialRun, interruptRun, reduceRun, runStatusText, type RunActivity, type RunEvent } from "./agent-run-state";
 const descriptor = { book_id: "book", session_id: "session", turn_id: "turn" };
 const activity: RunActivity = { step_id: 1, parent_step_id: null, kind: "tool", name: "book.text", label: "读取原文", status: "running", started_ms: 5, duration_ms: null, error_code: null, result_count: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
 const event = (seq: number, type: string, payload: unknown): RunEvent => ({ turn_id: "turn", seq, type, payload, elapsed_ms: seq });
+
+it('shows the current work phase while preserving connection and terminal status', () => {
+  const state = { ...initialRun(descriptor), execution_state: 'running' as const, activities: [activity] };
+  expect(runStatusText(state, 'connected')).toBe('读取原文');
+  expect(runStatusText(state, 'reconnecting')).toBe('连接中断，正在恢复活动');
+  expect(runStatusText({ ...state, execution_state: 'completed' }, 'connected')).toBe('运行已结束');
+});
 
 it('explains the two recorded Embedding failures without rewriting their diagnostic data', () => {
   const legacy = { error_code: 'TEACHING_INVALID', category: 'validation', message: '教学设计或动作尚未就绪，无法将预算终答标为已交付' };
@@ -97,4 +104,27 @@ it("marks an unverifiable persisted run interrupted without changing its identit
   expect(interrupted.execution_state).toBe("interrupted");
   expect(interrupted.persistence_state).toBe("failed");
   expect(interrupted.error?.error_code).toBe("AGENT_RUN_NOT_FOUND");
+});
+
+it('retains committed board parts across draft clearing, replay, epoch reset and an incomplete terminal result', () => {
+  const first = { board_id: 'board', commit_id: 'part-one', before_revision: 1, after_revision: 2, item_ids: ['answer-one'], block_ids: ['block-one'], origin_session_id: 'session', origin_turn_id: 'turn', parent_item_id: 'point' };
+  const second = { ...first, commit_id: 'part-two', before_revision: 2, after_revision: 3, item_ids: ['answer-two'], block_ids: ['block-two'] };
+  let state = reduceRun(initialRun(descriptor), event(1, 'board.committed', { delivery: first }));
+  state = reduceRun(state, event(2, 'board.committed', { delivery: first }));
+  state = reduceRun(state, event(3, 'answer.patch', { message_id: 1, revision: 1, operation: 'discard', view: null }));
+  expect(state.board_commits).toEqual([first]);
+  state = reduceRun(state, event(3, 'run.snapshot', { ...initialRun(descriptor), board_commits: [second] }));
+  expect(state.board_commits).toEqual([first, second]);
+  expect(state.last_seq).toBe(3);
+  state = reduceRun(state, { ...event(0, 'run.snapshot', { ...initialRun(descriptor), board_commits: [second] }), observation_epoch: 'new-buffer', live_buffer_reset: true });
+  expect(state.board_commits).toEqual([first, second]);
+  state = reduceRun(state, { ...event(1, 'run.cancelled', { ...initialRun(descriptor), execution_state: 'cancelled', persistence_state: 'saved', board_commits: [first] }), observation_epoch: 'new-buffer' });
+  expect(state.board_commits).toEqual([first, second]);
+  expect(state.execution_state).toBe('cancelled');
+});
+
+it('treats explicit user cancellation as a normal stop while retaining real failures', () => {
+  expect(agentFailureMessage({ error_code: 'AGENT_RUN_CANCELLED', category: 'cancelled', message: 'Agent run was cancelled' })).toBeUndefined();
+  expect(agentFailureMessage({ error_code: 'PROVIDER_ERROR', category: 'provider', message: '服务暂时失败' })).toBe('服务暂时失败');
+  expect(agentFailureMessage({ error_code: 'TURN_UNSAVED', category: 'storage', message: '结果保存失败' })).toBe('结果保存失败');
 });

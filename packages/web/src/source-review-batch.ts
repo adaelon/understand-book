@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type {
   BuildWorkbenchSnapshot,
   SourceReviewBlock,
@@ -7,12 +8,12 @@ import type {
 } from "./api";
 
 export const SOURCE_REVIEW_LLM_AUTO_APPLY_CONFIDENCE = 0.8;
-export const SOURCE_REVIEW_LLM_BATCH_NOTE_PREFIX = "批量 LLM 自动采用";
+export const SOURCE_REVIEW_LLM_BATCH_NOTE_PREFIX = uiText('批量 LLM 自动采用');
 export const SOURCE_REVIEW_OVERLOAD_ABSOLUTE_COUNT = 100;
 export const SOURCE_REVIEW_OVERLOAD_MIN_COUNT = 20;
 export const SOURCE_REVIEW_OVERLOAD_UNRESOLVED_RATIO = 0.3;
 export const SOURCE_REVIEW_OVERLOAD_UNMATCHED_RATIO = 0.15;
-export const SOURCE_REVIEW_PAGE_GROUP_NOTE_PREFIX = "页面复核组保留 Markdown";
+export const SOURCE_REVIEW_PAGE_GROUP_NOTE_PREFIX = uiText('页面复核组保留 Markdown');
 
 export type SourceReviewLoadReason =
   | "absolute_count"
@@ -398,12 +399,12 @@ export function evaluateSourceReviewLlmBatchEligibility(
   suggestion: unknown,
 ): SourceReviewLlmBatchEligibility {
   if (!isSourceReviewLlmSuggestion(suggestion)) {
-    return contractFailure(blockId, "LLM 返回不符合 source_review_llm_suggestion.v1 契约");
+    return contractFailure(blockId, uiText('LLM 返回不符合 source_review_llm_suggestion.v1 契约'));
   }
   if (suggestion.block_id !== blockId) {
     return contractFailure(
       blockId,
-      `LLM 返回的 block_id 不一致：预期 ${blockId}，实际 ${suggestion.block_id}`,
+      uiText('LLM 返回的 block_id 不一致：预期 {0}，实际 {1}', [blockId, suggestion.block_id]),
     );
   }
   if (suggestion.recommendation === "uncertain") {
@@ -412,19 +413,19 @@ export function evaluateSourceReviewLlmBatchEligibility(
       failure: {
         block_id: blockId,
         kind: "uncertain",
-        message: "LLM 无法确定，保留人工复核",
+        message: uiText('LLM 无法确定，保留人工复核'),
         confidence: suggestion.confidence,
         recommendation: suggestion.recommendation,
       },
     };
   }
   if (!Number.isFinite(suggestion.confidence)) {
-    return contractFailure(blockId, "LLM 置信度不是有效数值");
+    return contractFailure(blockId, uiText('LLM 置信度不是有效数值'));
   }
 
   const replacementText = suggestion.replacement_text.trim();
   if (!replacementText) {
-    return contractFailure(blockId, "LLM 修订结果为空");
+    return contractFailure(blockId, uiText('LLM 修订结果为空'));
   }
   if (suggestion.confidence < SOURCE_REVIEW_LLM_AUTO_APPLY_CONFIDENCE) {
     return {
@@ -432,7 +433,7 @@ export function evaluateSourceReviewLlmBatchEligibility(
       failure: {
         block_id: blockId,
         kind: "low_confidence",
-        message: `LLM 置信度 ${Math.round(suggestion.confidence * 100)}%，低于自动采用阈值 ${Math.round(SOURCE_REVIEW_LLM_AUTO_APPLY_CONFIDENCE * 100)}%`,
+        message: uiText('LLM 置信度 {0}%，低于自动采用阈值 {1}%', [Math.round(suggestion.confidence * 100), Math.round(SOURCE_REVIEW_LLM_AUTO_APPLY_CONFIDENCE * 100)]),
         confidence: suggestion.confidence,
         recommendation: suggestion.recommendation,
       },
@@ -581,7 +582,7 @@ export async function runSourceReviewLlmBatch(
       recordFailure({
         block_id: block.id,
         kind: "resolve_failed",
-        message: "服务器未返回可用于重跑的当前复核决定",
+        message: uiText('服务器未返回可用于重跑的当前复核决定'),
         confidence: eligibility.confidence,
         recommendation: suggestion.recommendation,
       });

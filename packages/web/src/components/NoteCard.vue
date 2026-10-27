@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { notePreview } from '../reading-notes';
 import NoteDetail from "./NoteDetail.vue";
 import type { MemoryRecord } from "../api";
@@ -30,8 +32,8 @@ function leadingQuote(content: string): string | null {
 
 function noteSourceLabel(note: MemoryRecord): string {
   const quote = note.selection_context?.resolved_quote;
-  if (quote) return "引用来源";
-  return note.anchor.lid ? "跳到来源" : "无来源";
+  if (quote) return uiText('引用来源');
+  return note.anchor.lid ? uiText('跳到来源') : uiText('无来源');
 }
 
 function isLongNote(note: MemoryRecord): boolean {
@@ -48,7 +50,7 @@ function focusSource() {
 <template>
   <details class="note-card" :open="!isLongNote(props.note)">
     <summary class="note-summary">
-      <span class="note-kind">笔记</span>
+      <span class="note-kind">{{ uiText('笔记') }}</span>
       <button
         v-if="props.note.anchor.lid"
         class="note-source"
@@ -56,8 +58,8 @@ function focusSource() {
       >
         {{ noteSourceLabel(props.note) }}
       </button>
-      <span v-else class="note-source">无来源</span>
-      <span v-if="isLongNote(props.note)" class="note-fold">展开/收起</span>
+      <span v-else class="note-source">{{ uiText('无来源') }}</span>
+      <span v-if="isLongNote(props.note)" class="note-fold">{{ uiText('展开/收起') }}</span>
       <div
         v-if="isLongNote(props.note)"
         class="note-preview note-summary-preview"
@@ -65,9 +67,9 @@ function focusSource() {
     </summary>
     <NoteDetail :note="props.note" embedded @answer="emit('open-note', props.note)" @locate="emit('open-note', props.note)" @restore="emit('open-note', props.note, true)" />
     <div class="note-actions">
-      <button class="note-btn" @click="emit('show-notes', props.note)">在笔记中查看</button>
-      <button class="note-btn" title="编辑" @click="emit('edit', props.note)">编辑</button>
-      <button class="note-btn del" title="删除" @click="emit('delete', props.note)">删除</button>
+      <button class="note-btn" @click="emit('show-notes', props.note)">{{ uiText('在笔记中查看') }}</button>
+      <button class="note-btn" :title="uiText('编辑')" @click="emit('edit', props.note)">{{ uiText('编辑') }}</button>
+      <button class="note-btn del" :title="uiText('删除')" @click="emit('delete', props.note)">{{ uiText('删除') }}</button>
     </div>
   </details>
 </template>

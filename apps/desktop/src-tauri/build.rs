@@ -1,6 +1,7 @@
 fn main() {
     println!("cargo:rerun-if-env-changed=UNDERSTAND_BOOK_CLOUD_ORIGIN");
     let app_manifest = tauri_build::AppManifest::new().commands(&[
+        "desktop_set_language",
         "desktop_sign_in",
         "desktop_cancel_sign_in",
         "desktop_open_cloud",

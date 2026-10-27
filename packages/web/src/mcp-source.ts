@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { Manifest } from './api';
 import type { PublishedBookRef } from './network-context';
 
@@ -11,11 +12,11 @@ export function readMcpSource(search: string): McpSource | null {
   const params = new URLSearchParams(search);
   if (!sourceParams.some(key => params.has(key))) return null;
   const values = sourceParams.map(key => params.get(key));
-  if (values.some(value => !value?.trim())) throw new Error('来源链接不完整，请重新打开 Agent 返回的完整链接。');
+  if (values.some(value => !value?.trim())) throw new Error(uiText('来源链接不完整，请重新打开 Agent 返回的完整链接。'));
   const [book, publication, start, end, from, to] = values as string[];
   if (!/^\d+$/.test(from) || !/^\d+$/.test(to)
     || !Number.isSafeInteger(Number(from)) || !Number.isSafeInteger(Number(to)) || Number(to) <= Number(from)) {
-    throw new Error('来源范围无效，请重新打开 Agent 返回的完整链接。');
+    throw new Error(uiText('来源范围无效，请重新打开 Agent 返回的完整链接。'));
   }
   return { published_book_ref: { book_id: book, publication_id: publication },
     start_lid: start, end_lid: end, start_utf16: Number(from), end_utf16: Number(to) };
@@ -27,7 +28,7 @@ export function resolveMcpSource(source: McpSource, manifest: Manifest) {
   const last = manifest.tree.find(node => node.lid === source.end_lid);
   if (!first || !last || first.span.start > last.span.start
     || source.start_utf16 < first.span.start || source.end_utf16 > last.span.end) {
-    throw new Error('来源位置与该材料版本不符，请核对链接。');
+    throw new Error(uiText('来源位置与该材料版本不符，请核对链接。'));
   }
   const ranges = new Map<string, [number, number]>();
   for (const node of manifest.tree) {
@@ -36,7 +37,7 @@ export function resolveMcpSource(source: McpSource, manifest: Manifest) {
     if (end > start) ranges.set(node.lid, [start - node.span.start, end - node.span.start]);
   }
   const lid = ranges.keys().next().value;
-  if (!lid) throw new Error('来源范围内没有可显示的原文。');
+  if (!lid) throw new Error(uiText('来源范围内没有可显示的原文。'));
   return { lid, ranges };
 }
 

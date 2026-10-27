@@ -64,6 +64,7 @@ export interface ObservationMetadata {
   answer_first_patch_ms: number | null;
   model_name: string | null;
   model_name_source: "configured" | "provider_reported" | null;
+  model_provider?: string;
   accepted_evidence_count: number | null;
   evidence_refs: string[];
   final_source_ref_count: number | null;
@@ -121,7 +122,7 @@ const metadataKeys = new Set([
   "delivery_repair_issue_count", "delivery_classification", "delivery_error_codes",
   "request_count", "request_message_count", "request_tool_schema_count",
   "request_estimated_input_tokens", "request_estimate_source", "interruption_detected_at",
-  "request_diagnostics",
+  "request_diagnostics", "model_provider",
   "source_refs", "executed", "incomplete",
 ]);
 const kinds = new Set(["run", "model", "tool", "activity"]);
@@ -161,7 +162,7 @@ function validRequestDiagnostics(value: unknown): boolean {
 export function parseObservation(value: unknown): ObservationEnvelope {
   if (!exactKeys(value, topLevelKeys) || !exactKeys(value.usage, usageKeys, ["reasoning_output_tokens"])
       || !exactKeys(value.completeness, completenessKeys)
-      || !exactKeys(value.metadata, metadataKeys, ["request_diagnostics"])) {
+      || !exactKeys(value.metadata, metadataKeys, ["request_diagnostics", "model_provider"])) {
     throw new Error("observation contains missing or unknown fields");
   }
   if (value.schema_version !== OBSERVATION_SCHEMA_VERSION
@@ -203,6 +204,9 @@ export function parseObservation(value: unknown): ObservationEnvelope {
     throw new Error("observation completeness is invalid");
   }
   const metadata = value.metadata;
+  if (metadata.model_provider !== undefined && typeof metadata.model_provider !== "string") {
+    throw new Error("model provider must be an identifier");
+  }
   if (metadata.request_diagnostics !== undefined && !validRequestDiagnostics(metadata.request_diagnostics)) {
     throw new Error("request diagnostics must contain only structural metadata");
   }

@@ -10,6 +10,22 @@ use local_materials::*;
 use tauri::{ipc::CapabilityBuilder, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 static CHILD_WINDOWS: AtomicUsize = AtomicUsize::new(1);
 
+#[tauri::command]
+fn desktop_set_language(app: tauri::AppHandle, state: tauri::State<'_, CloudDesktop>, language: String) -> Result<(), String> {
+    let english = language == "en";
+    *state.language.lock().unwrap() = if english { "en" } else { "zh-CN" }.into();
+    if let Some(menu) = app.menu() {
+        for (id, zh, en) in [("local-library", "本机书库", "Local library"), ("cloud-learning", "云端学习", "Cloud learning")] {
+            if let Some(item) = menu.get(id) {
+                if let Some(item) = item.as_menuitem() {
+                    item.set_text(if english { en } else { zh }).map_err(|error| error.to_string())?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn allow_navigation(url: &url::Url, origin: &str) -> bool {
     if url.origin().ascii_serialization() == origin
         || url.as_str() == "about:blank"
@@ -42,7 +58,7 @@ fn desktop_open_cloud(
 ) -> Result<(), String> {
     app.get_webview_window("main")
         .ok_or("阅读窗口已关闭")?
-        .navigate(state.origin.clone())
+        .navigate(state.navigation_url(state.origin.clone()))
         .map_err(|error| error.to_string())
 }
 
@@ -50,7 +66,7 @@ fn desktop_open_cloud(
 fn desktop_open_local_library(app: tauri::AppHandle) -> Result<(), String> {
     let local_url = if cfg!(windows) { "http://tauri.localhost/" } else { "tauri://localhost/" };
     app.get_webview_window("main").ok_or("阅读窗口已关闭")?
-        .navigate(local_url.parse().unwrap()).map_err(|error| error.to_string())
+        .navigate(app.state::<CloudDesktop>().navigation_url(local_url.parse().unwrap())).map_err(|error| error.to_string())
 }
 
 fn main() {
@@ -72,6 +88,7 @@ fn main() {
             });
         })
         .invoke_handler(tauri::generate_handler![
+            desktop_set_language,
             desktop_sign_in,
             desktop_cancel_sign_in,
             desktop_open_cloud,
@@ -97,6 +114,7 @@ fn main() {
                     .permission("dialog:allow-open")
                     .permission("dialog:allow-save")
                     .permission("allow-desktop-sign-in")
+                    .permission("allow-desktop-set-language")
                     .permission("allow-desktop-cancel-sign-in")
                     .permission("allow-desktop-open-cloud")
                     .permission("allow-save-reading-share-image"),

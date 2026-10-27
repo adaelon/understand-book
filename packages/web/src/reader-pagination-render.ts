@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { renderInlineMarkdown, renderMarkdown, renderFormulaSource, renderTableSource, isDisplayFormulaSource } from './md';
 import { typographyHtml } from './reader-typography';
 import type { PaginationSource } from './reader-pagination';
@@ -23,7 +24,7 @@ export function renderPaginationSource(source: PaginationRenderSource): HTMLElem
   } else if (source.kind === 'formula') {
     root.className = isDisplayFormulaSource(source.text) ? 'focus-object formula-display' : 'focus-flow-leaf';
     root.innerHTML = source.preparedFormulaHtml ?? renderFormulaSource(source.text);
-    root.setAttribute('role', 'button'); root.tabIndex = 0; root.title = '查看公式语义剖面';
+    root.setAttribute('role', 'button'); root.tabIndex = 0; root.title = uiText('查看公式语义剖面');
   } else {
     if (flow) root.className = 'focus-flow-leaf';
     root.innerHTML = typographyHtml(block ? renderMarkdown(source.text) : flow ? renderInlineMarkdown(source.text) : `<p class="flow-paragraph">${renderInlineMarkdown(source.text)}</p>`);

@@ -274,7 +274,10 @@ function unfencedCodeProposals(
 export function parseMarkdownSourceBlocks(source: string): MarkdownSourceBlockParseResult {
   const tree = fromMarkdown(source, {
     extensions: [gfm(), math()],
-    mdastExtensions: [gfmFromMarkdown(), mathFromMarkdown()],
+    // GFM's autolink post-transform replaces decoded text with positionless
+    // nodes. Source mapping needs the original tokenizer positions; native
+    // autolinks still parse normally without that display-only transform.
+    mdastExtensions: [gfmFromMarkdown().map((extension) => ({ ...extension, transforms: [] })), mathFromMarkdown()],
   });
   const reviewProposals: MarkdownSourceReviewProposal[] = [];
   const blocks = tree.children

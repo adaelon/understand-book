@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { acceptFormalObjects } from "../src/teaching-map";
-import { advanceCognitiveWork, newCognitiveWork, collectCognitiveMaterials, cognitiveTaskInput, type CognitiveMaterial, type CognitiveWork } from "../src/cognitive-materials";
+import { advanceCognitiveWork, newCognitiveWork, collectCognitiveMaterials, cognitiveTaskInput, prepareCognitiveTaskInput, type CognitiveMaterial, type CognitiveWork } from "../src/cognitive-materials";
 import { source, proposal, binding, targets } from "./fixtures/teaching-source";
 
 const objects = acceptFormalObjects({ source, proposal, operation_id: "objects" });
@@ -10,6 +10,57 @@ export function materialFor(index: number): CognitiveMaterial {
     object_refs: [objects.active_refs[0]], steps: [{ id: "step1", content: source.passages.find(p => p.lid === targets[index].lid)!.text, source_bindings: [binding(targets[index].lid)] }], connections: [], conditions: [], gaps: [], patterns: [] };
 }
 describe("source-grounded cognitive construction", () => {
+  it("delivers the required target before the first action without changing the unissued ledger", () => {
+    const initial = newCognitiveWork(source, targets[1]);
+    const prepared = prepareCognitiveTaskInput(source, targets[1], objects, initial, budget);
+    const original = source.passages.find(p => p.lid === targets[1].lid)!.text;
+    expect(initial).toMatchObject({ readings: [], used: { read_chars: 0 } });
+    expect(prepared.packet.work.readings).toEqual([{ lid: "2.2", start: 0, end: original.length, text: original }]);
+    expect(prepared.packet.work.read_ranges).toEqual([{ lid: "2.2", start: 0, end: original.length }]);
+    expect(prepared.work.used.read_chars).toBe(original.length);
+    expect(advance(prepared.work, { kind: "finish", material: materialFor(1) }, 1).status).toBe("complete");
+    const recalled = advance(prepared.work, { kind: "read", lid: "2.2" }, 1);
+    expect(recalled.used).toEqual(prepared.work.used);
+    const resumed = JSON.parse(JSON.stringify(prepared.work)) as CognitiveWork;
+    expect(prepareCognitiveTaskInput(source, targets[1], objects, resumed, budget).work).toBe(resumed);
+  });
+  it("prefetches at most 2000 UTF-16 units and still rejects unseen parts of a long target", () => {
+    const large = structuredClone(source);
+    large.passages.find(p => p.lid === "2.1")!.text = "等距离条件。".repeat(500);
+    const prepared = prepareCognitiveTaskInput(large, targets[0], objects, newCognitiveWork(large, targets[0]), budget);
+    expect(prepared.packet.work.read_ranges).toEqual([{ lid: "2.1", start: 0, end: 2000 }]);
+    expect(prepared.work.used.read_chars).toBe(2000);
+    const finish = (material: CognitiveMaterial) => advanceCognitiveWork({ source: large, target: targets[0], objects,
+      work: prepared.work, budget, discourse: [], action: { kind: "finish", material } });
+    const material = materialFor(0);
+    expect(() => finish(material)).toThrow("unread source range");
+    material.steps[0].source_bindings[0].range_utf16 = { start: 0, end: 2000 };
+    expect(finish(material).status).toBe("complete");
+    material.steps[0].source_bindings[0].range_utf16 = { start: 1999, end: 2001 };
+    expect(() => finish(material)).toThrow("unread source range");
+  });
+  it("charges only source text that survives context, reading and complete packet limits", () => {
+    for (const limits of [{ ...budget, context_chars: 17 }, { ...budget, read_chars: 11 }]) {
+      const prepared = prepareCognitiveTaskInput(source, targets[0], objects, newCognitiveWork(source, targets[0]), limits);
+      const expected = Math.min(limits.context_chars, limits.read_chars);
+      expect(prepared.work.used.read_chars).toBe(expected);
+      expect(prepared.packet.work.readings[0].text.length).toBe(expected);
+      expect(prepared.packet.work.read_ranges).toEqual([{ lid: "2.1", start: 0, end: expected }]);
+    }
+    const initial = newCognitiveWork(source, targets[0]);
+    const fits = (body: unknown) => (body as ReturnType<typeof cognitiveTaskInput>).work.readings.every(r => r.text.length <= 23);
+    const prepared = prepareCognitiveTaskInput(source, targets[0], objects, initial, budget, fits);
+    expect(prepared.work.used.read_chars).toBe(23);
+    expect(prepared.packet.work.read_ranges).toEqual([{ lid: "2.1", start: 0, end: 23 }]);
+    const omitted = prepareCognitiveTaskInput(source, targets[0], objects, initial, budget,
+      body => !(body as ReturnType<typeof cognitiveTaskInput>).work.readings.length);
+    expect(omitted.work).toBe(initial);
+    expect(omitted.packet.work.readings).toEqual([]);
+    expect(omitted.packet.work.read_ranges).toEqual([]);
+    expect(omitted.work.used.read_chars).toBe(0);
+    const interrupted = { ...initial, stop_reason: "budget_exhausted" as const };
+    expect(prepareCognitiveTaskInput(source, targets[0], objects, interrupted, budget).work).toBe(interrupted);
+  });
   it("reads long LIDs by range, rejects overclaiming and recalls persisted ranges without charging twice", () => {
     const large = structuredClone(source);
     large.passages.find(p => p.lid === "2.1")!.text = "等距离速率条件。".repeat(2500) + "必要定义在末尾。";

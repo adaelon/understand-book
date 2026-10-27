@@ -538,6 +538,8 @@ impl AuthorizedContext {
 }
 pub(crate) fn turn_json(turn: &crate::AgentChatTurn) -> Value {
     json!({"turn_id":turn.turn_id,"user":turn.user,"status":turn.status,"domain":turn.domain,
+        "board_commits":crate::session_runtime::board_commits(turn),
+        "board_follow_up":turn.board_follow_up,"board_delivery":turn.board_delivery,"board_delivery_error":turn.board_delivery_error,
         "teaching_ref":turn.teaching_ref,"goal_ref":turn.goal_ref,"presentation_follow_up":turn.presentation_follow_up,
         "published_book_ref":turn.published_book_ref,"music_question":turn.music_question,"outcome":turn.outcome,
         "usage":turn.run_summary.as_ref().and_then(|s|s.usage.as_ref()),

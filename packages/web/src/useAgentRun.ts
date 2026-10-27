@@ -5,8 +5,9 @@ import { initialRun, interruptRun, reduceRun, type RunDescriptor, type RunEvent,
 
 import { presentationDispatcher } from "./presentation-interaction";
 import { musicDispatcher } from "./music-interaction";
+import { mergeBoardDeliveries } from './board-workspace';
 
-const events = ["music.command", "presentation.command", "run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "commentary.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
+const events = ["board.committed", "music.command", "presentation.command", "run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "commentary.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
 export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   const presentations = presentationDispatcher();
   const music = musicDispatcher();
@@ -57,6 +58,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   }
   function install(next: RunSnapshot) {
     const previous = snapshot.value;
+    next = { ...next, board_commits: mergeBoardDeliveries(sameDescriptor(previous?.descriptor, next.descriptor) ? previous?.board_commits : [], next.board_commits, next.final_view?.board_commits) };
     snapshot.value = next;
     presentations.update(next); music.update(next);
     if (next.persistence_state !== "pending") {
@@ -102,9 +104,11 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
         if (generation !== observationGeneration || !sameDescriptor(snapshot.value?.descriptor, descriptor)) return;
         flushDraft();
         const installed = snapshot.value;
-        if (!installed || (!network.value.enabled && recovered.last_seq < installed.last_seq)) return;
-        if (network.value.enabled && recovered.persistence_state === "pending") { snapshot.value = { ...installed, descriptor: recovered.descriptor }; openSource(descriptor, generation); return; }
-        if (installed.persistence_state !== "pending" && recovered.persistence_state === "pending") return;
+        if (!installed) return;
+        if ((!network.value.enabled && recovered.last_seq < installed.last_seq) || (installed.persistence_state !== 'pending' && recovered.persistence_state === 'pending')) {
+          snapshot.value = { ...installed, board_commits: mergeBoardDeliveries(installed.board_commits, recovered.board_commits, recovered.final_view?.board_commits) }; return;
+        }
+        if (network.value.enabled && recovered.persistence_state === "pending") { snapshot.value = { ...installed, descriptor: recovered.descriptor, board_commits: mergeBoardDeliveries(installed.board_commits, recovered.board_commits, recovered.final_view?.board_commits) }; openSource(descriptor, generation); return; }
         install(recovered);
         if (recovered.persistence_state === "pending") openSource(descriptor, generation);
       } catch (error) {
@@ -168,10 +172,12 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
       if (generation !== observationGeneration || !sameDescriptor(snapshot.value?.descriptor, current.descriptor)) return;
       flushDraft();
       const installed = snapshot.value!;
-      if (installed.persistence_state !== "pending" && next.persistence_state === "pending") return;
+      if (installed.persistence_state !== "pending" && next.persistence_state === "pending") {
+        snapshot.value = { ...installed, board_commits: mergeBoardDeliveries(installed.board_commits, next.board_commits, next.final_view?.board_commits) }; return;
+      }
       if (network.value.enabled && next.persistence_state === "pending") {
         // HTTP recovery omits the live event buffer; preserve the observed work.
-        snapshot.value = { ...installed, execution_state: next.execution_state, descriptor: next.descriptor };
+        snapshot.value = { ...installed, execution_state: next.execution_state, descriptor: next.descriptor, board_commits: mergeBoardDeliveries(installed.board_commits, next.board_commits, next.final_view?.board_commits) };
       } else if (network.value.enabled || next.last_seq >= installed.last_seq) install(next);
     } finally {
       if (generation === observationGeneration) cancellationPending.value = false;

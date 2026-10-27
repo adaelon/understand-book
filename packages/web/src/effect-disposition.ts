@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { AgentEffect } from './api';
 
 export interface EffectDisposition {
@@ -19,9 +20,9 @@ export function effectId(effect: AgentEffect): string {
 
 export function dispositionLabel(disposition: EffectDisposition | undefined, effect: AgentEffect): string | undefined {
   if (!disposition) return undefined;
-  if (!disposition.receipt) return '待核对';
-  if (disposition.receipt.error) return `处理失败：${disposition.receipt.error.message}`;
-  if (disposition.started.action === 'dismiss') return '已忽略';
-  if (disposition.started.action === 'undo') return '已撤销';
-  return effect.kind === 'LayoutProposal' || effect.kind === 'PaperMinimapProposal' ? '已应用' : '已保留';
+  if (!disposition.receipt) return uiText('待核对');
+  if (disposition.receipt.error) return uiText('处理失败：{0}', [disposition.receipt.error.message]);
+  if (disposition.started.action === 'dismiss') return uiText('已忽略');
+  if (disposition.started.action === 'undo') return uiText('已撤销');
+  return effect.kind === 'LayoutProposal' || effect.kind === 'PaperMinimapProposal' ? uiText('已应用') : uiText('已保留');
 }

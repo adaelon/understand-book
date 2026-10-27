@@ -24,6 +24,7 @@ export function acceptsPresentationMessage(event: MessageEvent, source: Window |
       && (data.help_kind === "hint" || data.help_kind === "explanation")
       && typeof data.region_id === "string" && typeof data.text === "string";
     case "region-located": return typeof data.region_id === "string" && typeof data.located === "boolean";
+    case "region-activated": return typeof data.region_id === "string";
     case "editing-focus": return typeof data.editing === "boolean" && Number.isSafeInteger(data.generation);
     case "ready": case "restore-partial": case "error": return true;
     default: return false;

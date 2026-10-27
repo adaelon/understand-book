@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { BookCoverSource } from '../api';
 import { renderPdfCover } from '../pdf-cover';
 
-const props = defineProps<{ title: string; cover?: BookCoverSource | null; compact?: boolean }>();
+const props = defineProps<{ title: string; cover?: BookCoverSource | null; compact?: boolean; paused?: boolean }>();
 const root = ref<HTMLElement | null>(null), canvas = ref<HTMLCanvasElement | null>(null);
 const visible = ref(false), loaded = ref(false), failed = ref(false);
 let observer: IntersectionObserver | undefined;
@@ -15,13 +15,16 @@ onMounted(() => {
   if (root.value) observer.observe(root.value);
 });
 onBeforeUnmount(() => observer?.disconnect());
-watch([visible, () => props.cover?.url, () => props.cover?.kind], async (_, __, cleanup) => {
-  loaded.value = false; failed.value = false;
-  if (!visible.value || props.cover?.kind !== 'pdf' || !canvas.value) return;
+watch([visible, () => props.cover?.url, () => props.cover?.kind, () => props.paused], async ([isVisible, url, kind, paused], previous, cleanup) => {
+  if (url !== previous?.[1] || kind !== previous?.[2]) {
+    loaded.value = false; failed.value = false;
+  }
+  if (!isVisible || paused || kind !== 'pdf' || !url || !canvas.value || loaded.value) return;
+  failed.value = false;
   const controller = new AbortController();
   cleanup(() => controller.abort());
   try {
-    await renderPdfCover(props.cover.url, canvas.value, controller);
+    await renderPdfCover(url, canvas.value, controller);
     if (!controller.signal.aborted) loaded.value = true;
   } catch {
     if (!controller.signal.aborted) failed.value = true;

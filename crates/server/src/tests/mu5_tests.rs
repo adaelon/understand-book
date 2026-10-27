@@ -1,6 +1,8 @@
 use super::*;
 #[path = "presentation_interact_network_tests.rs"]
 mod om4;
+#[path = "workspace_open_retry_tests.rs"]
+mod open_retry;
 use crate::{
     authorization::Authorization,
     control_store::ControlStore,
@@ -931,7 +933,7 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
     );
     let mut wrong = Fixture::stamp(&next_w, "new-parent");
     wrong["saved_state"] = json!(frozen);
-    let rejected = f.call(
+    let restored = f.call(
         &f.a,
         "POST",
         &format!(
@@ -940,7 +942,9 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
         ),
         wrong,
     );
-    assert_eq!(rejected.1["error_code"], "PUBLICATION_BINDING_MISMATCH");
+    assert_eq!(restored.0, 200, "{}", restored.1);
+    assert_eq!(restored.1["presentation"], json!(frozen));
+    assert_eq!(restored.1["published_book_ref"], json!(next));
 }
 
 #[test]

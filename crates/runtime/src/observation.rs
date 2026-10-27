@@ -186,6 +186,9 @@ pub struct ObservationMetadata {
     pub answer_first_patch_ms: Option<f64>,
     pub model_name: Option<String>,
     pub model_name_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub model_provider: Option<String>,
     pub accepted_evidence_count: Option<u32>,
     #[serde(default)]
     pub evidence_refs: Vec<String>,

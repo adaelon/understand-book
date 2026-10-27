@@ -8,7 +8,7 @@ use std::collections::{BTreeSet, HashMap};
 
 fn invalid() -> ToolError { error("INVALID_LEARNING_RECORD_REQUEST", "validation", "请选择原学习记录及已确认的工作区目标") }
 
-fn publications(session: &crate::AgentChatSession) -> Vec<base_schema::PublishedBookRef> {
+pub(crate) fn publications(session: &crate::AgentChatSession) -> Vec<base_schema::PublishedBookRef> {
     session.turns.iter().flat_map(|turn| turn.published_book_ref.clone().into_iter()
         .chain(turn.source_bindings.iter().filter_map(|binding| session_recap::source_publication(turn, binding))))
         .collect::<BTreeSet<_>>().into_iter().collect()
@@ -16,6 +16,12 @@ fn publications(session: &crate::AgentChatSession) -> Vec<base_schema::Published
 
 pub(crate) fn historical_turn(turn: &crate::AgentChatTurn, projection: &crate::session_event::SessionProjection) -> Value {
     let mut value = authorization::turn_json(turn);
+    value["user_authored_text"] = json!(turn.user_authored_text());
+    value["sources"] = json!(turn.source_bindings);
+    value["accepted_event_seq"] = json!(projection.accepted_seq.get(&turn.turn_id));
+    value["event_seq"] = json!(projection.turn_seq.get(&turn.turn_id));
+    value["occurred_at"] = json!(projection.turn_started_at.get(&turn.turn_id));
+    value["updated_at"] = json!(projection.turn_updated_at.get(&turn.turn_id));
     value["question_quote"] = json!(turn.question_quote);
     value["workspace_goal"] = json!(projection.inputs.get(&turn.turn_id).and_then(|input|input.learning_workspace_goal.as_ref())
         .or_else(||turn.domain.scene.as_ref().and_then(|scene|scene.workspace_goal.as_ref())));

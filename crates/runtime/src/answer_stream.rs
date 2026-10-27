@@ -166,7 +166,7 @@ impl ModelObserver for AnswerProjector {
     fn observe(&mut self, delta: ModelDelta) {
         match delta {
             ModelDelta::Text(text) => self.push(&text),
-            ModelDelta::ToolArguments { .. } => self.discard(),
+            ModelDelta::ToolArguments { .. } | ModelDelta::RetryReset => self.discard(),
             _ => {}
         }
     }
@@ -266,6 +266,30 @@ fn answer_field_prefix(raw: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn output_retry_withdraws_partial_preview_without_exposing_hidden_drafts() {
+        #[derive(Default)]
+        struct Patches(std::sync::Mutex<Vec<AnswerPatch>>);
+        impl crate::run_events::RunEventSink for Patches {
+            fn emit(&self, _: crate::run_events::RuntimeEvent) {}
+            fn answer_patch(&self, patch: AnswerPatch) { self.0.lock().unwrap().push(patch); }
+        }
+        for hidden in [false, true] {
+            let patches = std::sync::Arc::new(Patches::default());
+            let mut projector = AnswerProjector::new(
+                RunEvents::new(Some(patches.clone())), false, &[], &Default::default(), false,
+            );
+            if hidden { projector.discard(); }
+            projector.observe(ModelDelta::Text("未完成的草稿。".into()));
+            projector.observe(ModelDelta::RetryReset);
+            projector.observe(ModelDelta::Text("第二次输出。".into()));
+            let patches = patches.0.lock().unwrap();
+            assert_eq!(patches.last().unwrap().operation, "discard");
+            assert_eq!(patches.iter().filter(|p| p.view.is_some()).count(), if hidden { 0 } else { 1 });
+        }
+    }
+
     #[test]
     fn structured_prefix_decodes_escapes_and_ignores_nested_protocol() {
         assert_eq!(

@@ -86,6 +86,56 @@ fn available_answer_does_not_retry_cancellation_spend_or_storage_failures() {
 }
 
 #[test]
+fn available_answer_reports_explicit_provider_balance_failure_without_retrying() {
+    for (language, with_source) in [
+        (None, false),
+        (Some(crate::response_language::ResponseLanguage::English), false),
+        (None, true),
+    ] {
+        let b = book();
+        let adapter = RequestPlanRecordingAdapter::new(vec![], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        context.response_language = language;
+        if with_source {
+            context.evidence_ledger.observe(EvidenceRange { start_lid:"1.1".into(), end_lid:"1.1".into(), ranges:Vec::new() });
+        }
+        // Same status/body shape as the failed first teaching turn on 2026-10-25.
+        let error = ToolError { error_code:"PROVIDER_ERROR".into(), category:"provider".into(),
+            message:r#"HTTP 请求失败: status code 402; {"error":{"message":"Insufficient Balance (request_id: internal-request)","type":"insufficient_balance_error","param":null,"code":"invalid_request_error"}}"#.into() };
+        let result = delivery_fallback::deliver(&b, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), "Explain this chapter", &error, None).unwrap();
+        let answer = result.answer.as_deref().unwrap();
+        assert!(answer.contains(if language.is_some() { "insufficient balance" } else { "模型服务余额不足" }));
+        assert!(!answer.contains("可核对材料") && !answer.contains("verified material"));
+        assert!(!answer.contains("internal-request") && !answer.contains("status code") && !answer.contains("invalid_request_error"));
+        assert!(adapter.seen_plans.borrow().is_empty(), "a second model request cannot replenish the service balance");
+        assert_eq!(!result.source_bindings.is_empty(), with_source, "already read sources remain available");
+        assert!(result.incomplete && result.teaching_delivery_move_refs.is_empty());
+        assert_eq!(context.messages.last().unwrap().content, result.answer);
+    }
+}
+
+#[test]
+fn available_answer_distinguishes_provider_failure_from_missing_source_material() {
+    for (error, expected, excluded) in [
+        (ToolError { error_code:"PROVIDER_ERROR".into(), category:"provider".into(),
+            message:"HTTP 请求失败: status code 402".into() }, "模型服务本次未能完成回复", "余额不足"),
+        (ToolError { error_code:"TEACHING_EVIDENCE_REQUIRED".into(), category:"validation".into(),
+            message:"No source text was read".into() }, "尚未取得足够的可核对材料", "模型服务"),
+    ] {
+        let b = book();
+        let adapter = RequestPlanRecordingAdapter::new(vec![], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        let result = delivery_fallback::deliver(&b, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), "Explain this chapter", &error, None).unwrap();
+        let answer = result.answer.unwrap();
+        assert!(answer.contains(expected), "{answer}");
+        assert!(!answer.contains(excluded), "{answer}");
+        assert!(result.incomplete);
+    }
+}
+
+#[test]
 fn available_answer_preserves_accepted_and_saved_presentations_without_duplicates() {
     let b = book();
     let mut context = RunContext::new(new_session(), OuterConfig::default(), ModelRuntimeProfile::fallback("fallback", ProviderToolProtocol::Native));
@@ -190,7 +240,7 @@ fn available_answer_does_not_promote_candidates_or_previous_turn_pages() {
         &mut EphemeralCompactionCheckpointSink::default(),"Show a new demo",
         &ToolError {error_code:"PROVIDER_ERROR".into(),category:"provider".into(),message:"offline".into()},None).unwrap();
     let answer = result.answer.unwrap();
-    assert!(answer.contains("尚未取得足够的可核对材料"));
+    assert!(answer.contains("模型服务本次未能完成回复"));
     assert!(!answer.contains("已保存的演示") && !answer.contains("```"));
     assert!(!result.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})));
     assert!(result.incomplete && result.teaching_delivery_move_refs.is_empty());

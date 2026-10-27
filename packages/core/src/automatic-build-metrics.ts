@@ -23,6 +23,7 @@ import {
   type AutomaticBuildStoredAttemptV1,
 } from "./automatic-build-task-store";
 import type { WorkUnitDescriptor, WorkUnitKind } from "./stage-work-unit";
+import type { AutomaticBuildGenerationTimingV1 } from "./automatic-build-dispatch-timing";
 import {
   isAutomaticBuildFailureDiagnosticV3,
   legacyAutomaticBuildFailureDiagnostic,
@@ -108,6 +109,8 @@ interface ProvenanceDimensionSummaryV1 {
 export type AutomaticBuildLifecycleEventKind =
   | "lease_reserved"
   | "executor_started"
+  | "generation_started"
+  | "slot_available_observed"
   | "heartbeat"
   | "input_finished"
   | "candidate_submitted"
@@ -212,11 +215,22 @@ export interface AutomaticBuildStageMetricsSummaryV1 {
     submit_revisions: number;
   };
   phase_latency: {
+    /** Observed host capacity to a durable GENERATE response, never inferred from a task commit. */
     dispatch_wait_ms: ObservedPercentilesV1;
+    slot_observation_to_ready_ms: ObservedPercentilesV1;
+    refill_step_ms: ObservedPercentilesV1;
+    handoff_ready_to_open_ms: ObservedPercentilesV1;
+    open_to_generation_start_ms: ObservedPercentilesV1;
     reserve_wait_ms: ObservedPercentilesV1;
     running_executor_ms: ObservedPercentilesV1;
     writer_ms: ObservedPercentilesV1;
     unobserved_interval_ms: ObservedPercentilesV1;
+  };
+  dispatch_timing: {
+    coverage: number;
+    initial_capacity_attempts: number;
+    terminal_refill_attempts: number;
+    unavailable_attempts: number;
   };
   provenance: {
     model: ProvenanceDimensionSummaryV1;
@@ -630,6 +644,7 @@ interface AutomaticBuildAttemptFacts {
   metrics?: AutomaticBuildTaskMetricsV1;
   submit_revisions: AutomaticBuildSubmitRevisionRecord[];
   usage: AutomaticBuildUsageReceiptV1;
+  generation_timing?: AutomaticBuildGenerationTimingV1;
 }
 
 function readOptionalJson<T>(dir: string, name: string): T | undefined {
@@ -737,6 +752,7 @@ function readAttemptFacts(target: AutomaticBuildTarget, stage: AutomaticBuildSta
     const failure = readOptionalJson<AutomaticBuildTerminalRecord>(stored.attempt_dir, "failure.json");
     const receipt = readOptionalJson<AutomaticBuildTerminalRecord>(stored.attempt_dir, "receipt.json");
     const result = readOptionalJson<AutomaticBuildAttemptResult>(stored.attempt_dir, "result.json");
+    const generationTiming = readOptionalJson<AutomaticBuildGenerationTimingV1>(stored.attempt_dir, "generation-timing.json");
     const usage = metrics ? usageFromMetrics(metrics) : readAutomaticBuildUsageReceipt(path.join(stored.attempt_dir, "lease.json"));
     return {
       stored,
@@ -752,6 +768,12 @@ function readAttemptFacts(target: AutomaticBuildTarget, stage: AutomaticBuildSta
       ...(metrics ? { metrics } : {}),
       submit_revisions: submitRevisions,
       usage,
+      ...(generationTiming?.version === "automatic_build_generation_timing.v1"
+        && generationTiming.work_unit_id === stored.work_unit_id
+        && generationTiming.physical_attempt === stored.physical_attempt
+        && (!stored.execution_identity || (generationTiming.semantic_attempt === stored.execution_identity.semantic_attempt
+          && generationTiming.lease_epoch === stored.execution_identity.lease_epoch))
+        ? { generation_timing: generationTiming } : {}),
     };
   });
 }
@@ -823,6 +845,11 @@ function lifecycleEventsFromAttempts(
     if (facts.lease) add("lease_reserved", facts.lease.version === "automatic_build_task_lease.v2"
       ? facts.lease.reserved_at : facts.lease.issued_at);
     if (facts.start) add("executor_started", facts.start.started_at);
+    const timing = facts.generation_timing;
+    if (timing && Number.isFinite(Date.parse(timing.generation_started_at))) add("generation_started", timing.generation_started_at);
+    if (timing?.handoff?.vacancy && Number.isFinite(Date.parse(timing.handoff.vacancy.observed_at))) {
+      add("slot_available_observed", timing.handoff.vacancy.observed_at);
+    }
     for (const heartbeat of facts.heartbeats) add("heartbeat", heartbeat.updated_at);
     if (facts.input) add("input_finished", facts.input.finished_at);
     if (facts.submit_revisions.length) {
@@ -996,7 +1023,37 @@ export function buildAutomaticBuildStageMetricsSummary(
   const runningExecutor: number[] = [];
   const writer: number[] = [];
   const unobserved: number[] = [];
+  const dispatchWait: number[] = [];
+  const observationToReady: number[] = [];
+  const refillStep: number[] = [];
+  const handoffToOpen: number[] = [];
+  const openToGeneration: number[] = [];
+  let initialCapacity = 0;
+  let terminalRefill = 0;
+  const observeInterval = (values: number[], start?: string, end?: string): boolean => {
+    if (!start || !end) return false;
+    const elapsed = Date.parse(end) - Date.parse(start);
+    if (!Number.isFinite(elapsed) || elapsed < 0) return false;
+    values.push(elapsed);
+    return true;
+  };
   for (const attempt of attempts) {
+    const timing = attempt.generation_timing;
+    if (timing) {
+      const handoff = timing.handoff?.opaque_handoff_ref === timing.opaque_handoff_ref ? timing.handoff : undefined;
+      if (timing.first_generation_for_handoff) {
+        observeInterval(openToGeneration, timing.opened_at, timing.generation_started_at);
+      }
+      if (handoff) {
+        observeInterval(refillStep, handoff.refill_started_at, handoff.ready_at);
+        observeInterval(handoffToOpen, handoff.ready_at, timing.opened_at);
+        observeInterval(observationToReady, handoff.vacancy?.observed_at, handoff.ready_at);
+        if (handoff.vacancy && observeInterval(dispatchWait, handoff.vacancy.observed_at, timing.generation_started_at)) {
+          if (handoff.vacancy.source === "initial_capacity") initialCapacity++;
+          if (handoff.vacancy.source === "terminal_refill") terminalRefill++;
+        }
+      }
+    }
     if (!attempt.lease) continue;
     const reservedAt = attempt.lease.version === "automatic_build_task_lease.v2"
       ? attempt.lease.reserved_at
@@ -1077,11 +1134,21 @@ export function buildAutomaticBuildStageMetricsSummary(
       submit_revisions: attempts.reduce((sum, attempt) => sum + attempt.submit_revisions.length, 0),
     },
     phase_latency: {
-      dispatch_wait_ms: observedPercentiles([], attempts.length),
+      dispatch_wait_ms: observedPercentiles(dispatchWait, attempts.length),
+      slot_observation_to_ready_ms: observedPercentiles(observationToReady, attempts.length),
+      refill_step_ms: observedPercentiles(refillStep, attempts.length),
+      handoff_ready_to_open_ms: observedPercentiles(handoffToOpen, attempts.length),
+      open_to_generation_start_ms: observedPercentiles(openToGeneration, attempts.length),
       reserve_wait_ms: observedPercentiles(reserveWait, attempts.length),
       running_executor_ms: observedPercentiles(runningExecutor, attempts.length),
       writer_ms: observedPercentiles(writer, attempts.length),
       unobserved_interval_ms: observedPercentiles(unobserved, attempts.length),
+    },
+    dispatch_timing: {
+      coverage: attempts.length ? dispatchWait.length / attempts.length : 0,
+      initial_capacity_attempts: initialCapacity,
+      terminal_refill_attempts: terminalRefill,
+      unavailable_attempts: attempts.length - dispatchWait.length,
     },
     provenance: {
       model: provenanceDimension(attempts.map((attempt) => attempt.usage.model)),

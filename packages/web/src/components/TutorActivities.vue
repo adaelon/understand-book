@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { MessageCircle } from '@lucide/vue';
 import { api as sharedApi, ApiError, type TutorActivity, type TeachingResponseOrigin } from '../api';
@@ -95,8 +97,8 @@ const displayed = new Set<string>();
 const pendingPageHelp: Array<Omit<Parameters<typeof api.tutorPageHelp>[0], 'presentation_follow_up'> & { presentation_follow_up?: PresentationFollowUp }> = [];
 let savingPageHelp: Promise<void> | undefined;
 let pending: Parameters<typeof api.tutorAction>[0] | null = null;
-const labels: Record<string, string> = { submit: '提交回答', revise: '改答', request_hint: '提示', reveal: '直接讲解', skip: '跳过', self_report: '记录自评' };
-const assessmentLabels: Record<string,string> = { correct: '本次回答符合标准', partial: '本次回答部分符合标准', incorrect: '本次回答未符合标准', uncertain: '目前依据不足，暂不能判断', unassessed: '回答已记录，尚未评分。' };
+const labels: Record<string, string> = { submit: uiText('提交回答'), revise: uiText('改答'), request_hint: uiText('提示'), reveal: uiText('直接讲解'), skip: uiText('跳过'), self_report: uiText('记录自评') };
+const assessmentLabels: Record<string,string> = { correct: uiText('本次回答符合标准'), partial: uiText('本次回答部分符合标准'), incorrect: uiText('本次回答未符合标准'), uncertain: uiText('目前依据不足，暂不能判断'), unassessed: uiText('回答已记录，尚未评分。') };
 async function load() {
   const current = ++generation;
   try {
@@ -105,7 +107,7 @@ async function load() {
     activities.value = result.activities;
     await observeVisibleContent();
     await markDisplayed();
-  } catch (failure) { error.value = `学习内容读取失败：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = uiText('学习内容读取失败：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
 }
 async function markDisplayed() {
   if (props.ready === false || !activities.value.length) return;
@@ -118,7 +120,7 @@ async function markDisplayed() {
       await api.tutorDisplay(activity.delivery_ref, scene);
       displayed.add(activity.delivery_ref);
     }
-  } catch (failure) { error.value = `学习进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = uiText('学习进度未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   })();
   try { await marking; } finally { marking = undefined; }
 }
@@ -135,11 +137,11 @@ function focusActivity(moveId: string, response?: string) {
 }
 async function reportPageHelp(moveId: string, kind: 'hint' | 'explanation', text: string) {
   const activity = activities.value.find(item => item.move.move_id === moveId);
-  if (!activity || !props.snapshot || !text.trim()) throw new Error('当前演示没有可关联的教学邀请。');
+  if (!activity || !props.snapshot || !text.trim()) throw new Error(uiText('当前演示没有可关联的教学邀请。'));
   pendingPageHelp.push({ delivery_ref: activity.delivery_ref, kind, text });
   try {
     await waitForHelp();
-  } catch (failure) { error.value = `提示与讲解的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; throw failure; }
+  } catch (failure) { error.value = uiText('提示与讲解的阅读进度未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]); throw failure; }
 }
 async function waitForHelp() {
   if (savingPageHelp) return savingPageHelp;
@@ -147,7 +149,7 @@ async function waitForHelp() {
     while (pendingPageHelp.length) {
       const help = pendingPageHelp[0];
       help.presentation_follow_up ??= await props.snapshot?.();
-      if (!help.presentation_follow_up) throw new Error('暂时无法保存提示对应的演示状态，请重试。');
+      if (!help.presentation_follow_up) throw new Error(uiText('暂时无法保存提示对应的演示状态，请重试。'));
       await api.tutorPageHelp({ ...help, presentation_follow_up: help.presentation_follow_up });
       pendingPageHelp.shift();
     }
@@ -160,7 +162,7 @@ function continueLearning(eventId: string, text: string, scene?: PresentationFol
 }
 async function respond(activity: TutorActivity, request?: 'help' | 'explain' | 'defer') {
   if (busy.value || props.busy || activity.status !== 'active' || !invitationOpen(activity)) return;
-  const requests = { help: '我不知道从哪里开始想，请帮我找一个起点。', explain: '请先完整讲解这一步。', defer: '这次先暂缓这个问题，我想继续阅读。' };
+  const requests = { help: uiText('我不知道从哪里开始想，请帮我找一个起点。'), explain: uiText('请先完整讲解这一步。'), defer: uiText('这次先暂缓这个问题，我想继续阅读。') };
   const text = request ? requests[request] : responses.value[activity.delivery_ref] ?? '';
   if (!text.trim()) return;
   busy.value = true; error.value = '';
@@ -174,7 +176,7 @@ async function respond(activity: TutorActivity, request?: 'help' | 'explain' | '
     // This enters the ordinary chat admission path. Only the learner's actual
     // text is a possible understanding expression; requests retain their origin.
     continueLearning(activity.delivery_ref, text, scene, origin);
-  } catch (failure) { error.value = `消息未发送：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { error.value = uiText('消息未发送：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { busy.value = false; }
 }
 async function acknowledgeHelp(id: string) {
@@ -194,7 +196,7 @@ async function act(activity: TutorActivity, action: string) {
       response: ['submit', 'revise', 'self_report'].includes(action) ? responses.value[activity.delivery_ref] ?? '' : null,
       response_origin: responseOrigins.value[activity.delivery_ref], scene };
     await send();
-  } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = `操作未确认：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = uiText('操作未确认：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { busy.value = false; }
 }
 async function send() {
@@ -208,7 +210,7 @@ async function send() {
     await acknowledgeHelp(request.delivery_ref);
   } else {
     endResponseEditing();
-    continueLearning(result.event_id, request.response || '我跳过了这个活动，请调整接下来的讲法。', request.scene, request.response_origin);
+    continueLearning(result.event_id, request.response || uiText('我跳过了这个活动，请调整接下来的讲法。'), request.scene, request.response_origin);
   }
   await load();
 }
@@ -219,7 +221,7 @@ async function retry() {
     for (const id of failedFeedback) { await api.tutorFeedbackDisplayed(id); failedFeedback.delete(id); feedbackSeen.add(id); }
     if (pending) await send();
     else { for (const id of Object.keys(helps.value)) await acknowledgeHelp(id); await load(); }
-  } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = `操作未确认：${failure instanceof Error ? failure.message : String(failure)}`; }
+  } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = uiText('操作未确认：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { busy.value = false; }
 }
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
@@ -261,7 +263,7 @@ onMounted(() => {
       const feedback = node.dataset.feedbackRef;
       if (feedback && entry.isIntersecting && !feedbackSeen.has(feedback)) {
         feedbackSeen.add(feedback);
-        void api.tutorFeedbackDisplayed(feedback).catch(failure => { feedbackSeen.delete(feedback); failedFeedback.add(feedback); error.value = `学习反馈的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; });
+        void api.tutorFeedbackDisplayed(feedback).catch(failure => { feedbackSeen.delete(feedback); failedFeedback.add(feedback); error.value = uiText('学习反馈的阅读进度未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]); });
       }
       const helpFor = node.dataset.helpFor;
       const id = helpFor ?? node.dataset.deliveryRef;
@@ -269,7 +271,7 @@ onMounted(() => {
       if (!helpFor && activities.value.some(activity => activity.delivery_ref === id && invitationAnswerHost(activity))) continue;
       const targets = helpFor ? visibleHelp : visible;
       if (entry.isIntersecting) targets.add(id); else targets.delete(id);
-      if (helpFor && entry.isIntersecting) void acknowledgeHelp(id).catch(failure => { error.value = `提示与讲解的阅读进度未保存：${failure instanceof Error ? failure.message : String(failure)}`; });
+      if (helpFor && entry.isIntersecting) void acknowledgeHelp(id).catch(failure => { error.value = uiText('提示与讲解的阅读进度未保存：{0}', [failure instanceof Error ? failure.message : String(failure)]); });
     }
     void markDisplayed();
   });
@@ -279,37 +281,37 @@ onMounted(() => {
 onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); emit('response-available', false); });
 </script>
 <template>
-  <section ref="root" class="tutor-activities" aria-label="教学活动">
+  <section ref="root" class="tutor-activities" :aria-label="uiText('教学活动')">
     <Teleport v-if="answerInvitationHost()" :to="answerInvitationHost()!">
       <span ref="answerEnd" class="answer-delivery-end" aria-hidden="true"></span>
     </Teleport>
-    <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">重试</button></p>
+    <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">{{ uiText('重试') }}</button></p>
     <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length && !activity.move.response_expectation, invitation: !!activity.move.response_expectation }">
       <template v-if="activity.move.response_expectation">
         <div v-if="!invitationAnswerHost(activity)" class="activity-text md" v-html="renderText(activity.move.response_expectation.public_prompt)" @click="openSource(activity.move.response_expectation.public_prompt, $event)"></div>
-        <button v-if="activity.move.presentation && !reference" class="scene-link" @click="emit('locate-presentation', activity.move.presentation)">回到这个演示</button>
-        <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，仍可回看这个问题。' : '原教学来源不可用，仍可回看这个问题。' }}</p>
+        <button v-if="activity.move.presentation && !reference" class="scene-link" @click="emit('locate-presentation', activity.move.presentation)">{{ uiText('回到这个演示') }}</button>
+        <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? uiText('学习已暂停，仍可回看这个问题。') : uiText('原教学来源不可用，仍可回看这个问题。') }}</p>
         <template v-else-if="invitationOpen(activity)">
-          <textarea v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" aria-label="说说你的理解" placeholder="说说你的理解，或者还没想通的地方…" rows="2" :disabled="busy || props.busy" @focus="beginResponseEditing(activity.delivery_ref)" />
-          <small v-if="responseOrigins[activity.delivery_ref]?.kind === 'presentation_prefill'">演示已提供一段文字，你可以修改或说明自己的想法。</small>
+          <textarea v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('说说你的理解')" :placeholder="uiText('说说你的理解，或者还没想通的地方…')" rows="2" :disabled="busy || props.busy" @focus="beginResponseEditing(activity.delivery_ref)" />
+          <small v-if="responseOrigins[activity.delivery_ref]?.kind === 'presentation_prefill'">{{ uiText('演示已提供一段文字，你可以修改或说明自己的想法。') }}</small>
           <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
             <div class="activity-actions">
-              <button class="primary" :disabled="busy || props.busy || !responses[activity.delivery_ref]?.trim()" @click="respond(activity)">发送</button>
-              <details class="invitation-help"><summary>换一种继续方式</summary><div class="activity-actions">
-                <button :disabled="busy || props.busy" @click="respond(activity, 'help')">帮我找个起点</button>
-                <button :disabled="busy || props.busy" @click="respond(activity, 'explain')">先完整讲给我</button>
-                <button :disabled="busy || props.busy" @click="respond(activity, 'defer')">暂缓这个问题</button>
+              <button class="primary" :disabled="busy || props.busy || !responses[activity.delivery_ref]?.trim()" @click="respond(activity)">{{ uiText('发送') }}</button>
+              <details class="invitation-help"><summary>{{ uiText('换一种继续方式') }}</summary><div class="activity-actions">
+                <button :disabled="busy || props.busy" @click="respond(activity, 'help')">{{ uiText('帮我找个起点') }}</button>
+                <button :disabled="busy || props.busy" @click="respond(activity, 'explain')">{{ uiText('先完整讲给我') }}</button>
+                <button :disabled="busy || props.busy" @click="respond(activity, 'defer')">{{ uiText('暂缓这个问题') }}</button>
               </div></details>
             </div>
           </Teleport>
         </template>
-        <small v-else-if="activity.response_invitation_status === 'deferred'">这个问题先留在这里。</small>
+        <small v-else-if="activity.response_invitation_status === 'deferred'">{{ uiText('这个问题先留在这里。') }}</small>
       </template>
       <template v-else>
-      <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? '继续完善你的回答' : '轮到你了' }}</span><small>用自己的话试一试</small></header>
+      <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? uiText('继续完善你的回答') : uiText('轮到你了') }}</span><small>{{ uiText('用自己的话试一试') }}</small></header>
       <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
-      <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? '学习已暂停，可查看已交付内容和帮助。' : '原教学来源不可用，暂不能提交。' }}</p>
-      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" aria-label="活动回答" placeholder="写下你的理解，或还不确定的地方…" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
+      <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? uiText('学习已暂停，可查看已交付内容和帮助。') : uiText('原教学来源不可用，暂不能提交。') }}</p>
+      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('活动回答')" :placeholder="uiText('写下你的理解，或还不确定的地方…')" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
       <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
       <div v-if="activity.move.actions.length" class="activity-actions">
       <template v-for="action in activity.move.actions" :key="action">
@@ -320,11 +322,11 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
       </div>
       </Teleport>
       <div v-if="helps[activity.delivery_ref]" class="help activity-text md" :data-help-for="activity.delivery_ref" role="status" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
-      <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。</small>
-      <small v-if="activity.help_seen.length">此活动已展示过帮助；重开页面会保留这项记录。</small>
+      <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">{{ uiText('当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。') }}</small>
+      <small v-if="activity.help_seen.length">{{ uiText('此活动已展示过帮助；重开页面会保留这项记录。') }}</small>
       <small v-if="activity.attempted" role="status">{{ assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
-      <small v-if="activity.assessment?.assistance_count">本次回答前已展示帮助。</small>
-      <small v-if="(activity.assessment?.attempt ?? 0) > 1">这是第 {{ activity.assessment?.attempt }} 次作答。</small>
+      <small v-if="activity.assessment?.assistance_count">{{ uiText('本次回答前已展示帮助。') }}</small>
+      <small v-if="(activity.assessment?.attempt ?? 0) > 1">{{ uiText('这是第') }} {{ activity.assessment?.attempt }} {{ uiText('次作答。') }}</small>
       <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id"><div class="activity-text md" v-html="renderText(item.reason)" @click="openSource(item.reason, $event)"></div></li></ul>
       </template>
     </article>

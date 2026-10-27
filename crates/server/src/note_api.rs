@@ -26,7 +26,7 @@ fn bound_turn<'a>(
     Ok(turn)
 }
 
-fn bindings(values: &[SourceBinding]) -> Vec<NoteSourceBinding> {
+pub(crate) fn bindings(values: &[SourceBinding]) -> Vec<NoteSourceBinding> {
     values
         .iter()
         .map(|b| NoteSourceBinding {

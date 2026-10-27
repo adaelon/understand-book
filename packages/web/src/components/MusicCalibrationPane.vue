@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText, formatLocale } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { calibrationRevision, calibrationTime, createCalibrationDraft, type MusicAlignmentRevision, type MusicCalibrationContext } from '../music-calibration';
 
@@ -28,7 +30,7 @@ function resetDraft() {
   selectedNote.value = ''; localError.value = '';
 }
 resetDraft();
-watch(() => props.context, () => { resetDraft(); savedNotice.value = '已保存到本地工作区，修订历史已更新。'; });
+watch(() => props.context, () => { resetDraft(); savedNotice.value = uiText('已保存到本地工作区，修订历史已更新。'); });
 function changeRange() { if (last.value < first.value) last.value = first.value; resetDraft(); savedNotice.value = ''; }
 function selectOccurrence(id: string) { pause(); selectedOccurrence.value = id; selectedNote.value = ''; }
 watch(availablePages, pages => { if (!pages.includes(pageId.value)) pageId.value = pages[0] ?? ''; }, { immediate: true });
@@ -40,7 +42,7 @@ watch([pageId, () => props.context], async () => {
   scoreLoading.value = true;
   try {
     const response = await fetch(page.url);
-    if (!response.ok) throw new Error(`谱面载入失败（${response.status}）`);
+    if (!response.ok) throw new Error(uiText('谱面载入失败（{0}）', [response.status]));
     const source = await response.text();
     if (request === scoreRequest) { scoreSvg.value = source; await nextTick(); paintSelection(); }
   } catch (error) { if (request === scoreRequest) scoreError.value = (error as Error).message; }
@@ -82,9 +84,9 @@ async function play(which: 'original' | 'draft') {
   if (!audio.value) return;
   audition.value = which; localError.value = '';
   const interval = which === 'original' ? original.value : occurrence.value;
-  if (!Number.isFinite(interval.start_ms) || interval.start_ms >= interval.end_ms) { localError.value = '请先填写有效的复听区间。'; return; }
+  if (!Number.isFinite(interval.start_ms) || interval.start_ms >= interval.end_ms) { localError.value = uiText('请先填写有效的复听区间。'); return; }
   seek(interval.start_ms); audio.value.playbackRate = rate.value;
-  try { await audio.value.play(); playing.value = !audio.value.paused; } catch (error) { localError.value = `无法播放：${(error as Error).message}`; }
+  try { await audio.value.play(); playing.value = !audio.value.paused; } catch (error) { localError.value = uiText('无法播放：{0}', [(error as Error).message]); }
 }
 function updateTime() {
   if (!audio.value) return;
@@ -106,11 +108,11 @@ function save() {
   try { emit('save', calibrationRevision(props.context.manifest, draft.value, `calibration-${crypto.randomUUID()}`)); }
   catch (error) { localError.value = (error as Error).message; }
 }
-function occurrenceLabel(index: number) { const item = props.context.manifest.occurrences[index]; return `${index + 1} · 第 ${item.measure} 小节 · ${calibrationTime(item.start_ms)}`; }
+function occurrenceLabel(index: number) { const item = props.context.manifest.occurrences[index]; return uiText('{0} · 第 {1} 小节 · {2}', [index + 1, item.measure, calibrationTime(item.start_ms)]); }
 function noteLabel(id: string) {
   const item = objects.value.get(id)!;
-  const pitch = item.midi_pitch == null ? '未定音高' : `${['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][item.midi_pitch % 12]}${Math.floor(item.midi_pitch / 12) - 1}（实音）`;
-  return `${partNames.value.get(item.part_id) ?? item.part_id} · ${pitch} · 声部 ${item.voice} · 偏移 ${item.beat} 四分拍`;
+  const pitch = item.midi_pitch == null ? uiText('未定音高') : uiText('{0}{1}（实音）', [['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'][item.midi_pitch % 12], Math.floor(item.midi_pitch / 12) - 1]);
+  return uiText('{0} · {1} · 声部 {2} · 偏移 {3} 四分拍', [partNames.value.get(item.part_id) ?? item.part_id, pitch, item.voice, item.beat]);
 }
 onBeforeUnmount(() => { scoreRequest++; pause(); });
 </script>
@@ -118,58 +120,58 @@ onBeforeUnmount(() => { scoreRequest++; pause(); });
 <template>
   <main class="calibration-workbench">
     <header class="calibration-header">
-      <div><span class="calibration-eyebrow">本地材料 · 时间校准</span><h1>{{ context.manifest.work.title }}</h1><p>对照录音和乐谱，逐段修正候选时间，再决定接纳到哪一层精度。</p></div>
-      <button type="button" :disabled="dirty || saving" @click="emit('close')">返回工作区</button>
+      <div><span class="calibration-eyebrow">{{ uiText('本地材料 · 时间校准') }}</span><h1>{{ context.manifest.work.title }}</h1><p>{{ uiText('对照录音和乐谱，逐段修正候选时间，再决定接纳到哪一层精度。') }}</p></div>
+      <button type="button" :disabled="dirty || saving" @click="emit('close')">{{ uiText('返回工作区') }}</button>
     </header>
-    <audio ref="audio" :src="context.audio_url" preload="metadata" @timeupdate="updateTime" @pause="stopPlaybackClock" @ended="stopPlaybackClock" @play="startPlaybackClock" @error="localError = '录音载入失败，请检查本地音频文件。'; stopPlaybackClock()" />
-    <section class="calibration-transport" aria-label="校准录音播放器">
-      <div class="calibration-play-row"><button class="calibration-primary" @click="playing ? pause() : play('draft')">{{ playing ? '暂停' : '复听草稿' }}</button><button @click="play('original')">复听原时间</button><label><input v-model="looping" type="checkbox" /> 循环本小节</label><label>速度 <select v-model="rate" aria-label="复听速度" @change="changeRate"><option :value="0.5">0.5×</option><option :value="0.75">0.75×</option><option :value="1">1×</option></select></label><output class="calibration-clock">{{ calibrationTime(currentMs) }}</output></div>
-      <input type="range" aria-label="录音位置" min="0" :max="context.manifest.recording.duration_ms" step="10" :value="currentMs" @input="seek(Number(($event.target as HTMLInputElement).value))" />
-      <small>正在使用{{ audition === 'original' ? '原时间' : '草稿时间' }} · {{ context.manifest.recording.title }}<template v-if="context.manifest.recording.kind === 'score_synthesis'"> · 谱面合成示范</template></small>
+    <audio ref="audio" :src="context.audio_url" preload="metadata" @timeupdate="updateTime" @pause="stopPlaybackClock" @ended="stopPlaybackClock" @play="startPlaybackClock" @error="localError = uiText('录音载入失败，请检查本地音频文件。'); stopPlaybackClock()" />
+    <section class="calibration-transport" :aria-label="uiText('校准录音播放器')">
+      <div class="calibration-play-row"><button class="calibration-primary" @click="playing ? pause() : play('draft')">{{ playing ? uiText('暂停') : uiText('复听草稿') }}</button><button @click="play('original')">{{ uiText('复听原时间') }}</button><label><input v-model="looping" type="checkbox" /> {{ uiText('循环本小节') }}</label><label>{{ uiText('速度') }} <select v-model="rate" :aria-label="uiText('复听速度')" @change="changeRate"><option :value="0.5">0.5×</option><option :value="0.75">0.75×</option><option :value="1">1×</option></select></label><output class="calibration-clock">{{ calibrationTime(currentMs) }}</output></div>
+      <input type="range" :aria-label="uiText('录音位置')" min="0" :max="context.manifest.recording.duration_ms" step="10" :value="currentMs" @input="seek(Number(($event.target as HTMLInputElement).value))" />
+      <small>{{ uiText('正在使用') }}{{ audition === 'original' ? uiText('原时间') : uiText('草稿时间') }} · {{ context.manifest.recording.title }}<template v-if="context.manifest.recording.kind === 'score_synthesis'"> {{ uiText('· 谱面合成示范') }}</template></small>
     </section>
     <div v-if="localError || saveError" class="calibration-message error" role="alert">{{ localError || saveError }}</div>
     <div v-if="savedNotice" class="calibration-message success" role="status">{{ savedNotice }}</div>
-    <section class="calibration-window" aria-label="校准范围">
-      <div><strong>选择连续出现的范围</strong><p>反复段落按演奏顺序单独列出。要移动窗口外缘，请先把相邻小节一起选入。</p></div>
-      <label>从<select v-model="first" :disabled="dirty || saving" aria-label="窗口起始小节" @change="changeRange"><option v-for="(item, index) in context.manifest.occurrences" :key="item.occurrence_id" :value="index">{{ occurrenceLabel(index) }}</option></select></label>
-      <label>到<select v-model="last" :disabled="dirty || saving" aria-label="窗口结束小节" @change="changeRange"><option v-for="(item, index) in context.manifest.occurrences" :key="item.occurrence_id" :value="index" :disabled="index < first">{{ occurrenceLabel(index) }}</option></select></label>
-      <button :disabled="!dirty || saving" @click="resetDraft">放弃草稿修改</button>
-      <span v-if="dirty" class="calibration-unsaved">有未保存修改</span>
+    <section class="calibration-window" :aria-label="uiText('校准范围')">
+      <div><strong>{{ uiText('选择连续出现的范围') }}</strong><p>{{ uiText('反复段落按演奏顺序单独列出。要移动窗口外缘，请先把相邻小节一起选入。') }}</p></div>
+      <label>{{ uiText('从') }}<select v-model="first" :disabled="dirty || saving" :aria-label="uiText('窗口起始小节')" @change="changeRange"><option v-for="(item, index) in context.manifest.occurrences" :key="item.occurrence_id" :value="index">{{ occurrenceLabel(index) }}</option></select></label>
+      <label>{{ uiText('到') }}<select v-model="last" :disabled="dirty || saving" :aria-label="uiText('窗口结束小节')" @change="changeRange"><option v-for="(item, index) in context.manifest.occurrences" :key="item.occurrence_id" :value="index" :disabled="index < first">{{ occurrenceLabel(index) }}</option></select></label>
+      <button :disabled="!dirty || saving" @click="resetDraft">{{ uiText('放弃草稿修改') }}</button>
+      <span v-if="dirty" class="calibration-unsaved">{{ uiText('有未保存修改') }}</span>
     </section>
     <div class="calibration-columns">
-      <section class="calibration-score-panel" aria-label="谱面对照">
-        <div class="calibration-section-head"><h2>谱面对照</h2><label>谱页<select v-model="pageId" aria-label="校准谱页"><option v-for="id in availablePages" :key="id" :value="id">{{ id }}</option></select></label></div>
-        <p class="calibration-muted">点击本小节的音符可选中对应时间；这里只标出选择，不将候选时间显示为精确跟谱。</p>
-        <p v-if="scoreLoading" role="status">正在载入谱面…</p><p v-if="scoreError" role="alert">{{ scoreError }}</p>
+      <section class="calibration-score-panel" :aria-label="uiText('谱面对照')">
+        <div class="calibration-section-head"><h2>{{ uiText('谱面对照') }}</h2><label>{{ uiText('谱页') }}<select v-model="pageId" :aria-label="uiText('校准谱页')"><option v-for="id in availablePages" :key="id" :value="id">{{ id }}</option></select></label></div>
+        <p class="calibration-muted">{{ uiText('点击本小节的音符可选中对应时间；这里只标出选择，不将候选时间显示为精确跟谱。') }}</p>
+        <p v-if="scoreLoading" role="status">{{ uiText('正在载入谱面…') }}</p><p v-if="scoreError" role="alert">{{ scoreError }}</p>
         <div ref="scoreHost" class="calibration-svg" @click="selectScore" v-html="scoreSvg" />
       </section>
-      <section class="calibration-editor" aria-label="时间草稿">
-        <div class="calibration-section-head"><h2>时间草稿</h2><span class="calibration-badge">{{ missingNotes ? `${missingNotes} 个音符待补` : '音符时间已填齐' }}</span></div>
-        <label class="calibration-occurrence-label">当前小节出现<select :value="selectedOccurrence" aria-label="当前小节出现" @change="selectOccurrence(($event.target as HTMLSelectElement).value)"><option v-for="item in draft.occurrences" :key="item.occurrence_id" :value="item.occurrence_id">第 {{ item.measure }} 小节 · 演奏序号 {{ item.order + 1 }}</option></select></label>
-        <div class="calibration-original">原时间 {{ calibrationTime(original.start_ms) }} — {{ calibrationTime(original.end_ms) }}</div>
+      <section class="calibration-editor" :aria-label="uiText('时间草稿')">
+        <div class="calibration-section-head"><h2>{{ uiText('时间草稿') }}</h2><span class="calibration-badge">{{ missingNotes ? uiText('{0} 个音符待补', [missingNotes]) : uiText('音符时间已填齐') }}</span></div>
+        <label class="calibration-occurrence-label">{{ uiText('当前小节出现') }}<select :value="selectedOccurrence" :aria-label="uiText('当前小节出现')" @change="selectOccurrence(($event.target as HTMLSelectElement).value)"><option v-for="item in draft.occurrences" :key="item.occurrence_id" :value="item.occurrence_id">{{ uiText('第') }} {{ item.measure }} {{ uiText('小节 · 演奏序号') }} {{ item.order + 1 }}</option></select></label>
+        <div class="calibration-original">{{ uiText('原时间') }} {{ calibrationTime(original.start_ms) }} — {{ calibrationTime(original.end_ms) }}</div>
         <div class="calibration-boundaries">
-          <label>小节起点（秒）<input type="number" step="0.001" aria-label="小节起点秒" :value="occurrence.start_ms / 1000" @input="setBoundary('start_ms', inputMs($event))" /><button @click="setBoundary('start_ms', Math.round(currentMs))">取当前时间</button></label>
-          <label>小节终点（秒）<input type="number" step="0.001" aria-label="小节终点秒" :value="occurrence.end_ms / 1000" @input="setBoundary('end_ms', inputMs($event))" /><button @click="setBoundary('end_ms', Math.round(currentMs))">取当前时间</button></label>
+          <label>{{ uiText('小节起点（秒）') }}<input type="number" step="0.001" :aria-label="uiText('小节起点秒')" :value="occurrence.start_ms / 1000" @input="setBoundary('start_ms', inputMs($event))" /><button @click="setBoundary('start_ms', Math.round(currentMs))">{{ uiText('取当前时间') }}</button></label>
+          <label>{{ uiText('小节终点（秒）') }}<input type="number" step="0.001" :aria-label="uiText('小节终点秒')" :value="occurrence.end_ms / 1000" @input="setBoundary('end_ms', inputMs($event))" /><button @click="setBoundary('end_ms', Math.round(currentMs))">{{ uiText('取当前时间') }}</button></label>
         </div>
-        <p class="calibration-muted">修改相邻小节共用的边界时，两侧同时移动。音符起点仍需单独核对。</p>
-        <div class="calibration-note-picker"><label>音符<select v-model="selectedNote" aria-label="选择校准音符"><option value="">选择音符，或点选谱面</option><option v-for="note in visibleNotes" :key="note.score_object_id" :value="note.score_object_id">{{ noteLabel(note.score_object_id) }}{{ note.start_ms === null ? ' · 待补' : '' }}</option></select></label></div>
+        <p class="calibration-muted">{{ uiText('修改相邻小节共用的边界时，两侧同时移动。音符起点仍需单独核对。') }}</p>
+        <div class="calibration-note-picker"><label>{{ uiText('音符') }}<select v-model="selectedNote" :aria-label="uiText('选择校准音符')"><option value="">{{ uiText('选择音符，或点选谱面') }}</option><option v-for="note in visibleNotes" :key="note.score_object_id" :value="note.score_object_id">{{ noteLabel(note.score_object_id) }}{{ note.start_ms === null ? uiText(' · 待补') : '' }}</option></select></label></div>
         <div v-if="activeNote" class="calibration-note-editor">
           <strong>{{ noteLabel(activeNote.score_object_id) }}</strong><small>{{ activeNote.score_object_id }}</small>
-          <div class="calibration-boundaries"><label>音符起点（秒）<input type="number" step="0.001" aria-label="音符起点秒" :value="activeNote.start_ms === null ? '' : activeNote.start_ms / 1000" @input="activeNote.start_ms = inputMs($event)" /><button @click="activeNote.start_ms = Math.round(currentMs)">取当前时间</button></label><label>音符终点（秒）<input type="number" step="0.001" aria-label="音符终点秒" :value="activeNote.end_ms === null ? '' : activeNote.end_ms / 1000" @input="activeNote.end_ms = inputMs($event)" /><button @click="activeNote.end_ms = Math.round(currentMs)">取当前时间</button></label></div>
-          <label><input v-model="activeNote.attack" type="checkbox" /> 此处重新起音</label><p class="calibration-muted">延音线接续音不应再次起跳；当前谱面延音标记：{{ objects.get(activeNote.score_object_id)?.tie }}。</p>
-          <button @click="activeNote.start_ms = null; activeNote.end_ms = null">清除此音时间，保留待补</button>
+          <div class="calibration-boundaries"><label>{{ uiText('音符起点（秒）') }}<input type="number" step="0.001" :aria-label="uiText('音符起点秒')" :value="activeNote.start_ms === null ? '' : activeNote.start_ms / 1000" @input="activeNote.start_ms = inputMs($event)" /><button @click="activeNote.start_ms = Math.round(currentMs)">{{ uiText('取当前时间') }}</button></label><label>{{ uiText('音符终点（秒）') }}<input type="number" step="0.001" :aria-label="uiText('音符终点秒')" :value="activeNote.end_ms === null ? '' : activeNote.end_ms / 1000" @input="activeNote.end_ms = inputMs($event)" /><button @click="activeNote.end_ms = Math.round(currentMs)">{{ uiText('取当前时间') }}</button></label></div>
+          <label><input v-model="activeNote.attack" type="checkbox" /> {{ uiText('此处重新起音') }}</label><p class="calibration-muted">{{ uiText('延音线接续音不应再次起跳；当前谱面延音标记：') }}{{ objects.get(activeNote.score_object_id)?.tie }}。</p>
+          <button @click="activeNote.start_ms = null; activeNote.end_ms = null">{{ uiText('清除此音时间，保留待补') }}</button>
         </div>
-        <p v-else class="calibration-empty">当前小节有 {{ visibleNotes.length }} 个非休止音符。选择一个音符可编辑它的起止和是否重新起音。</p>
-        <details class="calibration-note-table"><summary>查看本小节全部音符时间</summary><div class="calibration-table-scroll"><table><thead><tr><th>音符 / 声部</th><th>起点</th><th>终点</th></tr></thead><tbody><tr v-for="note in visibleNotes" :key="note.score_object_id"><td><button @click="selectedNote = note.score_object_id">{{ noteLabel(note.score_object_id) }}</button></td><td>{{ note.start_ms === null ? '待补' : calibrationTime(note.start_ms) }}</td><td>{{ note.end_ms === null ? '待补' : calibrationTime(note.end_ms) }}</td></tr></tbody></table></div></details>
+        <p v-else class="calibration-empty">{{ uiText('当前小节有') }} {{ visibleNotes.length }} {{ uiText('个非休止音符。选择一个音符可编辑它的起止和是否重新起音。') }}</p>
+        <details class="calibration-note-table"><summary>{{ uiText('查看本小节全部音符时间') }}</summary><div class="calibration-table-scroll"><table><thead><tr><th>{{ uiText('音符 / 声部') }}</th><th>{{ uiText('起点') }}</th><th>{{ uiText('终点') }}</th></tr></thead><tbody><tr v-for="note in visibleNotes" :key="note.score_object_id"><td><button @click="selectedNote = note.score_object_id">{{ noteLabel(note.score_object_id) }}</button></td><td>{{ note.start_ms === null ? uiText('待补') : calibrationTime(note.start_ms) }}</td><td>{{ note.end_ms === null ? uiText('待补') : calibrationTime(note.end_ms) }}</td></tr></tbody></table></div></details>
       </section>
     </div>
-    <section class="calibration-save-panel" aria-label="保存校准修订">
-      <div><h2>保存这次判断</h2><p>范围 {{ calibrationTime(draft.start_ms) }} — {{ calibrationTime(draft.end_ms) }}。保存会记录前后差异和依据。</p></div>
-      <div class="calibration-save-fields"><label>修改原因<input v-model="draft.reason" aria-label="修改原因" placeholder="例如：第二次出现的收尾比候选时间更晚" /></label><label>时间判断的依据<textarea v-model="draft.evidence" aria-label="时间判断的依据" rows="2" placeholder="说明依据；尚未复听时如实写为待核候选" /></label></div>
-      <div class="calibration-save-controls"><label>保存精度<select v-model="draft.acceptance" aria-label="保存精度"><option value="pending">保存待核候选</option><option value="measure">接纳小节定位，音符仍待核</option><option value="note">接纳逐音符定位</option></select></label><label><input v-model="draft.reviewed" type="checkbox" /> 我已复听并核对本窗口</label><button class="calibration-primary" :disabled="saving" @click="save">{{ saving ? '正在保存…' : '保存本地修订' }}</button></div>
-      <p class="calibration-muted">接纳逐音符需要本窗口所有非休止音符都有时间。仅保存候选不会启用精确跟谱。</p>
+    <section class="calibration-save-panel" :aria-label="uiText('保存校准修订')">
+      <div><h2>{{ uiText('保存这次判断') }}</h2><p>{{ uiText('范围') }} {{ calibrationTime(draft.start_ms) }} — {{ calibrationTime(draft.end_ms) }}{{ uiText('。保存会记录前后差异和依据。') }}</p></div>
+      <div class="calibration-save-fields"><label>{{ uiText('修改原因') }}<input v-model="draft.reason" :aria-label="uiText('修改原因')" :placeholder="uiText('例如：第二次出现的收尾比候选时间更晚')" /></label><label>{{ uiText('时间判断的依据') }}<textarea v-model="draft.evidence" :aria-label="uiText('时间判断的依据')" rows="2" :placeholder="uiText('说明依据；尚未复听时如实写为待核候选')" /></label></div>
+      <div class="calibration-save-controls"><label>{{ uiText('保存精度') }}<select v-model="draft.acceptance" :aria-label="uiText('保存精度')"><option value="pending">{{ uiText('保存待核候选') }}</option><option value="measure">{{ uiText('接纳小节定位，音符仍待核') }}</option><option value="note">{{ uiText('接纳逐音符定位') }}</option></select></label><label><input v-model="draft.reviewed" type="checkbox" /> {{ uiText('我已复听并核对本窗口') }}</label><button class="calibration-primary" :disabled="saving" @click="save">{{ saving ? uiText('正在保存…') : uiText('保存本地修订') }}</button></div>
+      <p class="calibration-muted">{{ uiText('接纳逐音符需要本窗口所有非休止音符都有时间。仅保存候选不会启用精确跟谱。') }}</p>
     </section>
-    <section class="calibration-history" aria-label="校准历史"><h2>修订历史 <span>{{ context.history.length }}</span></h2><p v-if="!context.history.length" class="calibration-muted">尚无保存记录。</p><details v-for="(item, index) in [...context.history].reverse()" :key="`${item.receipt.revised_at}-${index}`"><summary>{{ item.receipt.reason }} <small>{{ new Date(item.receipt.revised_at).toLocaleString() }}</small></summary><p>{{ calibrationTime(item.receipt.start_ms) }} — {{ calibrationTime(item.receipt.end_ms) }} · {{ item.receipt.after.occurrences.length }} 次小节出现 · {{ item.receipt.after.note_alignments.length }} 个音符时间</p><ul><li v-for="coverage in item.receipt.after.coverage" :key="coverage.granularity">{{ coverage.granularity === 'note' ? '音符' : coverage.granularity === 'measure' ? '小节' : '段落' }}：{{ coverage.status === 'accepted' ? '已接纳' : '待核' }} · {{ coverage.detail }}</li></ul></details></section>
+    <section class="calibration-history" :aria-label="uiText('校准历史')"><h2>{{ uiText('修订历史') }} <span>{{ context.history.length }}</span></h2><p v-if="!context.history.length" class="calibration-muted">{{ uiText('尚无保存记录。') }}</p><details v-for="(item, index) in [...context.history].reverse()" :key="`${item.receipt.revised_at}-${index}`"><summary>{{ item.receipt.reason }} <small>{{ new Date(item.receipt.revised_at).toLocaleString(formatLocale()) }}</small></summary><p>{{ calibrationTime(item.receipt.start_ms) }} — {{ calibrationTime(item.receipt.end_ms) }} · {{ item.receipt.after.occurrences.length }} {{ uiText('次小节出现 ·') }} {{ item.receipt.after.note_alignments.length }} {{ uiText('个音符时间') }}</p><ul><li v-for="coverage in item.receipt.after.coverage" :key="coverage.granularity">{{ coverage.granularity === 'note' ? uiText('音符') : coverage.granularity === 'measure' ? uiText('小节') : uiText('段落') }}：{{ coverage.status === 'accepted' ? uiText('已接纳') : uiText('待核') }} · {{ coverage.detail }}</li></ul></details></section>
   </main>
 </template>
 

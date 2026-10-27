@@ -27,10 +27,11 @@ fn local_normalized(input: &Value) -> Result<Value, ToolError> {
 
 /// Read the original accepted identity before inspecting the current head or
 /// source. A pending/failed operation is returned, never executed a second time.
-pub(crate) fn local_repeat(state: &AppState, body: &str) -> Result<Option<Reply>, Reply> {
+pub(crate) fn local_repeat(state: &mut AppState, body: &str) -> Result<Option<Reply>, Reply> {
     let input = body_value(body)?;
     InteractionInput::parse(&input).map_err(|e|err_reply(&e))?;
     let Some(key) = input["client_request_id"].as_str() else { return Ok(None); };
+    crate::board_delivery::repair(&mut state.user, &crate::multi_user_host::now().to_string()).map_err(|e| err_reply(&e))?;
     let normalized = local_normalized(&input).map_err(|e|err_reply(&e))?;
     for session in &state.user.agent_history.sessions {
         for turn in &session.turns {
@@ -112,6 +113,10 @@ pub(crate) fn related_goal(user: &user_runtime::UserRuntime, chat: Option<&str>,
 }
 
 pub(crate) fn local_domain(state: &AppState, input: &Value, action: &ResolvedInteraction) -> Result<session_event::TurnDomain, ToolError> {
+    local_domain_for_request(state, input, Some(action))
+}
+
+pub(crate) fn local_domain_for_request(state: &AppState, input: &Value, action: Option<&ResolvedInteraction>) -> Result<session_event::TurnDomain, ToolError> {
     let key = input["client_request_id"].as_str().filter(|s|!s.is_empty() && s.len()<=128)
         .ok_or_else(||invalid("阅读操作缺少请求身份"))?;
     let session = state.user.agent_history.sessions.iter().find(|s|Some(s.id.as_str()) == state.workspace.selected_chat.as_deref())
@@ -126,7 +131,7 @@ pub(crate) fn local_domain(state: &AppState, input: &Value, action: &ResolvedInt
     if session.turns.iter().any(|t|t.status == AgentAssistantStatus::PendingAssistant) {
         return Err(user_storage_paths::error("AGENT_RUN_BUSY","conflict","请等待当前回答完成"));
     }
-    Ok(session_event::TurnDomain { interaction:Some(action.clone()),
+    Ok(session_event::TurnDomain { interaction:action.cloned(),
         local_action:Some(session_event::LocalActionInput { client_request_id:key.into(),normalized:local_normalized(input)? }),
         scene:Some(session_event::ReadingScene::capture(&state.workspace)),..Default::default() })
 }
@@ -138,6 +143,7 @@ impl InteractionInput {
         if *self == Self::Typed { return Ok(None); }
         self.validate_reference(user, workspace)?;
         let mut has_reference_sources = false;
+        let mut has_media_scope = false;
         let mut resolved = ResolvedInteraction {
             action: InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection },
             user_supplement: input["message"].as_str().unwrap_or_default().into(),
@@ -150,7 +156,7 @@ impl InteractionInput {
         if let Self::LearnWithPurpose { purpose, .. } = self {
             resolved.learning_purpose = Some(*purpose);
             if *purpose != LearningPurpose::Discover {
-                let view = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.state()?;
+                let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
                 if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
                     return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
                 }
@@ -216,13 +222,21 @@ impl InteractionInput {
                     return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新选择"));
                 }
                 if let Some(purpose) = resolved.learning_purpose.filter(|_| input.get("question_quote").is_none_or(Value::is_null)) {
-                    let first = workspace.book.base.lid_nodes.iter().min_by_key(|node|node.span.start)
-                        .ok_or_else(||invalid("当前材料尚无可定位的正文"))?;
-                    let last = workspace.book.base.lid_nodes.iter().max_by_key(|node|node.span.end).unwrap();
-                    resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose };
-                    resolved.accepted_request = purpose_request(purpose, "当前材料");
-                    resolved.source_bindings = vec![TeachingSourceBinding { source_id:workspace.book.base.book_id.clone(),
-                        source_revision:workspace.book.source_fingerprint().into(), start_lid:first.lid.clone(),end_lid:last.lid.clone() }];
+                    if let Some(scope) = media_purpose_scope(workspace, input) {
+                        // Media input locates the learning scope; it is not text
+                        // evidence. The run must read the prepared source before
+                        // constructing a source-grounded teaching target.
+                        resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose };
+                        resolved.accepted_request = purpose_request(purpose, scope);
+                    } else {
+                        let first = workspace.book.base.lid_nodes.iter().min_by_key(|node|node.span.start)
+                            .ok_or_else(||invalid("当前材料尚无可定位的正文"))?;
+                        let last = workspace.book.base.lid_nodes.iter().max_by_key(|node|node.span.end).unwrap();
+                        resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose };
+                        resolved.accepted_request = purpose_request(purpose, "当前材料");
+                        resolved.source_bindings = vec![TeachingSourceBinding { source_id:workspace.book.base.book_id.clone(),
+                            source_revision:workspace.book.source_fingerprint().into(), start_lid:first.lid.clone(),end_lid:last.lid.clone() }];
+                    }
                 } else {
                     let quote = quote.filter(|q| q.status == Some(SelectionResolution::Resolved)
                         && q.ranges.as_ref().is_some_and(|r| !r.is_empty()))
@@ -243,6 +257,24 @@ impl InteractionInput {
                     .unwrap().turns.iter().find(|t| t.turn_id == reference.turn_id).unwrap();
                 let outcome = turn.outcome.as_ref().unwrap();
                 has_reference_sources = turn.source_bindings.iter().any(|s| s.publication_id.is_some());
+                let media_source = media_purpose_scope(workspace, input).is_some();
+                let original_binding = if media_source || turn.domain.interaction.is_none() {
+                    match user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?
+                        .teaching_event(&format!("binding:{}", turn.turn_id)) {
+                        Ok(event) => Some(event),
+                        Err(error) if error.error_code == "TEACHING_INVALID" => None,
+                        Err(error) => return Err(error),
+                    }
+                } else { None };
+                if original_binding.as_ref().is_some_and(|event| event.binding.source_id != workspace.book.base.book_id
+                    || event.binding.source_revision != workspace.book.source_fingerprint()) {
+                    return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原回答的来源版本已变化"));
+                }
+                has_media_scope = media_source
+                    && (turn.video_question.is_some() || turn.music_question.is_some()
+                        || turn.domain.interaction.as_ref().is_some_and(|action| action.learning_purpose.is_some())
+                        || original_binding.is_some()
+                        || turn.source_bindings.iter().any(|source| source.media.is_some() || source.music.is_some()));
                 resolved.action = InteractionAction::UiEntry { entry_action: *action };
                 resolved.accepted_request = if *action == EntryAction::ContinueAnswer { "继续理解这段" } else { "这一步没跟上" }.into();
                 resolved.answer_ref = Some(reference.clone());
@@ -256,14 +288,6 @@ impl InteractionInput {
                 } else {
                     // Historical ordinary answers have no action snapshot. Verify their
                     // stored quote against the current book; never infer a new viewport.
-                    let original_binding = match user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&format!("binding:{}", turn.turn_id)) {
-                        Ok(event) => Some(event),
-                        Err(error) if error.error_code == "TEACHING_INVALID" => None,
-                        Err(error) => return Err(error),
-                    };
-                    if original_binding.as_ref().is_some_and(|e| e.binding.source_revision != workspace.book.source_fingerprint()) {
-                        return Err(user_storage_paths::error("INTERACTION_STALE","conflict","原回答的来源版本已变化"));
-                    }
                     let stored = parse_question_quote(&json!({"question_quote":turn.question_quote}), &workspace.book)
                         .map_err(|_| invalid("原回答的原文范围已失效"))?;
                     resolved.source_bindings = verified_question_evidence(&workspace.book, stored.as_ref()).iter()
@@ -306,14 +330,14 @@ impl InteractionInput {
             return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
         }
         if matches!(self, Self::Answer { action:EntryAction::ContinueAnswer, .. }) && !has_reference_sources {
-            let view = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.state()?;
+            let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
             let current = view.control.current_tutor_session_id.as_ref().and_then(|id|view.sessions.get(id));
             if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book,&workspace.book_dir)["status"] != "ready"
                 || current.is_some_and(|s| s.status != memory::learning::TutorSessionStatus::Active
                     || !s.material_scope.iter().any(|m|m.source_id == workspace.book.base.book_id)) {
                 return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并在当前材料显式开始或恢复学习"));
             }
-            if resolved.source_bindings.is_empty() { return Err(invalid("原回答没有可接续的原文范围，请重新选择原文")); }
+            if resolved.source_bindings.is_empty() && !has_media_scope { return Err(invalid("原回答没有可接续的原文范围，请重新选择原文")); }
         }
         Ok(Some(InteractionResolution::RunInput { interaction:resolved }))
     }
@@ -434,6 +458,14 @@ impl InteractionInput {
         }
         Ok(())
     }
+}
+
+fn media_purpose_scope(workspace: &reader_workspace::ReaderWorkspace, input: &Value) -> Option<&'static str> {
+    if workspace.book_dir.join("video_source_manifest.json").is_file() {
+        Some(if input.get("video_draft_id").is_some_and(|v| !v.is_null()) { "当前视频片段" } else { "当前视频" })
+    } else if workspace.book_dir.join("music_source_manifest.json").is_file() {
+        Some(if input.get("music_question").is_some_and(|v| !v.is_null()) { "当前音乐片段" } else { "当前音乐" })
+    } else { None }
 }
 
 fn purpose_request(purpose: LearningPurpose, scope: &str) -> String {

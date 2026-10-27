@@ -78,10 +78,16 @@ pub(crate) struct WorkspaceStamp {
     pub generation: u64,
     pub expected_revision: u64,
 }
+#[derive(PartialEq, Eq)]
+enum OpeningOrigin {
+    Created,
+    AttachedFrom(String),
+}
 pub(crate) struct ResidentWorkspace {
     pub workspace: ReaderWorkspace,
     pub(crate) revision: u64,
     attachment: Option<String>,
+    opening_origin: Option<OpeningOrigin>,
     linked: BTreeSet<String>,
     presentation: Option<runtime::presentation::PresentationFollowUp>,
     touched: Instant,
@@ -316,6 +322,7 @@ impl WorkspaceRegistry {
             workspace,
             revision: record.revision,
             attachment: None,
+            opening_origin: None,
             linked: BTreeSet::new(),
             presentation: record.checkpoint.presentation,
             touched: Instant::now(),
@@ -382,6 +389,12 @@ impl WorkspaceRegistry {
         let attachment = attachment(input)?;
         let reference = reference(input, library)?;
         let learning_workspace_id = learning_scope(input.get("learning_workspace_id"))?;
+        if let Some(result) = self.reuse_opening(
+            context.user_id(), user, library, &attachment, &reference,
+            learning_workspace_id.as_deref(), &OpeningOrigin::Created,
+        )? {
+            return Ok(result);
+        }
         self.create_bound(
             context.user_id(),
             user,
@@ -391,7 +404,37 @@ impl WorkspaceRegistry {
             None,
             None,
             learning_workspace_id,
+            Some(OpeningOrigin::Created),
         )
+    }
+    // A timed-out response must not consume another resident slot when the same
+    // browser retries. This receipt lives only as long as the bounded resident.
+    fn reuse_opening(
+        &mut self,
+        owner: &str,
+        user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>,
+        attachment: &str,
+        reference: &PublishedBookRef,
+        learning_workspace_id: Option<&str>,
+        origin: &OpeningOrigin,
+    ) -> Result<Option<Value>, ToolError> {
+        let handle = self.residents.iter().find_map(|((resident_owner, _), handle)| {
+            if resident_owner != owner { return None; }
+            let scene = handle.lock().unwrap();
+            (scene.attachment.as_deref() == Some(attachment)
+                && scene.opening_origin.as_ref() == Some(origin)
+                && scene.workspace.publication.as_ref().map(|p| &p.reference) == Some(reference)
+                && scene.workspace.learning_workspace_id.as_deref() == learning_workspace_id)
+                .then(|| handle.clone())
+        });
+        let Some(handle) = handle else { return Ok(None); };
+        library.lock().unwrap().authorize(owner, reference)?;
+        let mut scene = handle.lock().unwrap();
+        self.refresh_learning_scope(owner, &mut scene.workspace, true)?;
+        self.reconcile_chat(owner, &mut scene, user)?;
+        scene.touched = Instant::now();
+        Ok(Some(view(&scene)))
     }
     fn create_bound(
         &mut self,
@@ -403,6 +446,7 @@ impl WorkspaceRegistry {
         copy: Option<Checkpoint>,
         chat: Option<String>,
         learning_workspace_id: Option<String>,
+        opening_origin: Option<OpeningOrigin>,
     ) -> Result<Value, ToolError> {
         self.reserve(owner)?;
         let publication = library.lock().unwrap().load(owner, &reference)?;
@@ -455,6 +499,7 @@ impl WorkspaceRegistry {
             workspace,
             revision: 0,
             attachment: Some(attachment),
+            opening_origin,
             linked: BTreeSet::new(),
             presentation: checkpoint.and_then(|c| c.presentation),
             touched: Instant::now(),
@@ -603,8 +648,19 @@ impl WorkspaceRegistry {
                 let learning_workspace_id = scene.workspace.learning_workspace_id.clone();
                 drop(scene);
                 drop(handle);
+                let opening_origin = (action == "attach")
+                    .then(|| OpeningOrigin::AttachedFrom(id.to_owned()));
+                if let Some(origin) = opening_origin.as_ref() {
+                    if let Some(mut result) = self.reuse_opening(
+                        owner, user, library, &next, &reference,
+                        learning_workspace_id.as_deref(), origin,
+                    )? {
+                        result["forked_from"] = json!(id);
+                        return Ok(result);
+                    }
+                }
                 let mut result =
-                    self.create_bound(owner, user, library, reference, next, Some(saved), chat, learning_workspace_id)?;
+                    self.create_bound(owner, user, library, reference, next, Some(saved), chat, learning_workspace_id, opening_origin)?;
                 result["forked_from"] = json!(id);
                 return Ok(result);
             }
@@ -615,6 +671,7 @@ impl WorkspaceRegistry {
                     return Err(e);
                 }
                 scene.attachment = Some(next);
+                scene.opening_origin = None;
                 scene.linked.clear();
             }
             return Ok(view(&scene));
@@ -622,7 +679,9 @@ impl WorkspaceRegistry {
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall"
             | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
-            | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe") {
+            | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe"
+            | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/presentation.read" | "boards/presentation.observe"
+            | "presentation/read" | "presentation/observe" | "presentation/feedback/read") {
             scene.check_attachment(&stamp)?;
         } else {
             scene.check(&stamp)?;
@@ -633,6 +692,20 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
+        if matches!(action, "boards/source.resolve" | "boards/source.open") {
+            let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
+            let same_publication = binding.book_id == scene.workspace.book.base.book_id
+                && binding.publication_id.as_ref() == scene.workspace.publication.as_ref().map(|p| &p.reference.publication_id);
+            if !same_publication {
+                let mut value = view(&scene);
+                value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
+                return Ok(value);
+            }
+        }
+        if action.starts_with("boards/") && action != "boards/source.open" {
+            let result = crate::board_api::route(user, &scene.workspace, action.trim_start_matches("boards/"), input, now)?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if action == "agent/source.resolve" {
             let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
             let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
@@ -718,19 +791,10 @@ impl WorkspaceRegistry {
             }
             let reference =
                 serde_json::from_value(input["reference"].clone()).map_err(|_| invalid())?;
-            require_turn_publication(
-                user,
-                &scene.workspace,
-                session,
-                input["turn_id"].as_str().ok_or_else(invalid)?,
-            )?;
-            let private = private_context(user, &scene.workspace);
-            crate::presentation_api::delivered_version(
-                &private,
-                session,
-                input["turn_id"].as_str().ok_or_else(invalid)?,
-                &reference,
-            )?;
+            let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
+            with_turn_presentation(user, &scene.workspace, library, session, turn, |private| {
+                crate::presentation_api::delivered_version(private, session, turn, &reference)
+            })?;
             let linked = format!("view-{}", uuid::Uuid::now_v7());
             scene.linked.insert(linked.clone());
             let mut result = view(&scene);
@@ -802,6 +866,7 @@ impl WorkspaceRegistry {
                 workspace,
                 revision: scene.revision,
                 attachment: scene.attachment.clone(),
+                opening_origin: None,
                 linked: BTreeSet::new(),
                 presentation: None,
                 touched: Instant::now(),
@@ -897,14 +962,24 @@ impl WorkspaceRegistry {
             let session = input["session_id"].as_str().ok_or_else(invalid)?;
             let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
             if scene.workspace.selected_chat.as_deref() != Some(session) { return Err(stale()); }
-            require_turn_publication(user, &scene.workspace, session, turn)?;
-            let result = crate::workspace_client::reply(crate::presentation_api::feedback_route(
-                &private_context(user, &scene.workspace), &input.to_string(), action.rsplit('/').next().unwrap(), now,
-            ))?;
+            let result = with_turn_presentation(user, &scene.workspace, library, session, turn, |private| {
+                crate::workspace_client::reply(crate::presentation_api::feedback_route(
+                    private, &input.to_string(), action.rsplit('/').next().unwrap(), now,
+                ))
+            })?;
             let mut value = view(&scene); value["result"] = result; return Ok(value);
         }
         if action == "presentation/interaction" {
-            let result = crate::presentation_interact::respond(&scene.workspace, &private_context(user, &scene.workspace), input)?;
+            let result = if crate::presentation_interact::is_board_command(&scene.workspace, input) {
+                crate::presentation_interact::respond(&scene.workspace, &private_context(user, &scene.workspace), input)?
+            } else if let Some(receipt) = input.get("receipt").filter(|r| !r.is_null()) {
+                with_turn_presentation(user, &scene.workspace, library,
+                    receipt["session_id"].as_str().ok_or_else(invalid)?,
+                    receipt["turn_id"].as_str().ok_or_else(invalid)?,
+                    |private| crate::presentation_interact::respond(&scene.workspace, private, input))?
+            } else {
+                crate::presentation_interact::respond(&scene.workspace, &private_context(user, &scene.workspace), input)?
+            };
             let mut value = view(&scene); value["result"] = result; return Ok(value);
         }
         if action == "music/respond" {
@@ -915,14 +990,15 @@ impl WorkspaceRegistry {
             let session = input["session_id"].as_str().ok_or_else(invalid)?;
             let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
             if scene.workspace.selected_chat.as_deref() != Some(session) { return Err(stale()); }
-            require_turn_publication(user, &scene.workspace, session, turn)?;
             let mut request = input.clone();
             request["saved_state"] = scene.presentation.as_ref().filter(|saved|
                 saved.session_id == session && saved.turn_id == turn && json!(saved.reference) == input["reference"]
             ).map(|s| json!(s)).unwrap_or(Value::Null);
-            let result = crate::workspace_client::reply(crate::presentation_api::route_with_restore(
-                &private_context(user, &scene.workspace), &request.to_string(), action == "presentation/observe", false
-            ))?;
+            let result = with_turn_presentation(user, &scene.workspace, library, session, turn, |private| {
+                crate::workspace_client::reply(crate::presentation_api::route_with_restore(
+                    private, &request.to_string(), action == "presentation/observe", false
+                ))
+            })?;
             let mut value = view(&scene); value["result"] = result; return Ok(value);
         }
         if matches!(action, "profile/memory" | "profile/memory/apply" | "agent/goals/cancel") {
@@ -940,7 +1016,18 @@ impl WorkspaceRegistry {
         }
         if matches!(action, "agent/source.resolve" | "agent/source.open") {
             let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
-            let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            let mut binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
+            // Older delivered pages used an implicit current-book source. Resolve it
+            // against their saved turn, not whichever material the Reader now displays.
+            if binding.publication_id.is_none() && request.note_mem_id.is_none() {
+                if let Some(reference) = user.agent_history.sessions.iter()
+                    .filter(|s| s.matches_scope(scene.workspace.learning_workspace_id.as_deref(), &scene.workspace.book.base.book_id))
+                    .flat_map(|s| &s.turns).find(|t| t.turn_id == request.turn_id)
+                    .and_then(|t| t.published_book_ref.as_ref())
+                    .filter(|r| r.book_id == binding.book_id && scene.workspace.publication.as_ref().map(|p| &p.reference) != Some(*r)) {
+                    binding.publication_id = Some(reference.publication_id.clone());
+                }
+            }
             if binding.publication_id.is_some() {
                 let mut value = view(&scene);
                 value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
@@ -983,6 +1070,13 @@ impl WorkspaceRegistry {
         let mut presentation = scene.presentation.clone();
         let book = &scene.workspace.book;
         let result = match action {
+            "boards/source.open" => {
+                let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
+                let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
+                book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
+                reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
+                json!({"source_ref_id":binding.source_ref_id,"opened":true})
+            }
             "agent/source.open" => {
                 let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
                 let binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
@@ -1097,36 +1191,29 @@ impl WorkspaceRegistry {
                 if input["session_id"].as_str() != scene.workspace.selected_chat.as_deref() {
                     return Err(stale());
                 }
-                require_turn_publication(
+                let saved = with_turn_presentation(
                     user,
                     &scene.workspace,
+                    library,
                     input["session_id"].as_str().ok_or_else(invalid)?,
                     input["turn_id"].as_str().ok_or_else(invalid)?,
+                    |private| crate::workspace_client::reply(crate::presentation_api::save_browser_state(
+                        &scene.workspace, private, &input.to_string(), now,
+                    )),
                 )?;
-                let reply = crate::presentation_api::save_browser_state(
-                    &scene.workspace,
-                    &private_context(user, &scene.workspace),
-                    &input.to_string(),
-                    now,
-                );
-                if reply.status != 200 {
-                    return Err(invalid());
-                }
-                presentation = Some(serde_json::from_str(&reply.body).map_err(|_| storage())?);
+                presentation = Some(serde_json::from_value(saved).map_err(|_| storage())?);
                 json!(presentation)
             }
             "presentation/restore" => {
                 let saved: runtime::presentation::PresentationFollowUp =
                     serde_json::from_value(input["saved_state"].clone()).map_err(|_| invalid())?;
-                require_turn_publication(
+                with_turn_presentation(
                     user,
                     &scene.workspace,
+                    library,
                     &saved.session_id,
                     &saved.turn_id,
-                )?;
-                crate::presentation_api::follow_up_context(
-                    &private_context(user, &scene.workspace),
-                    &saved,
+                    |private| crate::presentation_api::follow_up_context(private, &saved),
                 )?;
                 presentation = Some(saved);
                 json!(presentation)
@@ -1193,6 +1280,33 @@ fn messages(user: &UserRuntime, chat: Option<&str>) -> Vec<runtime::Message> {
         .map(|s| s.messages.clone())
         .unwrap_or_default()
 }
+/// Historical pages retain their original source even when a shared chat is opened
+/// from another material. The selected chat, its scope and the original grant still apply.
+fn with_turn_presentation<R>(
+    user: &UserRuntime,
+    w: &ReaderWorkspace,
+    library: &Mutex<PublishedLibrary>,
+    chat: &str,
+    turn: &str,
+    operation: impl FnOnce(&crate::PrivateBookContext<'_>) -> Result<R, ToolError>,
+) -> Result<R, ToolError> {
+    if w.selected_chat.as_deref() != Some(chat) { return Err(stale()); }
+    let session = user.agent_history.sessions.iter()
+        .find(|s| s.id == chat && s.matches_scope(w.learning_workspace_id.as_deref(), &w.book.base.book_id))
+        .ok_or_else(missing)?;
+    let reference = session.turns.iter().find(|t| t.turn_id == turn)
+        .and_then(|t| t.published_book_ref.as_ref()).ok_or_else(missing)?;
+    let publication = library.lock().unwrap().load(user.user_id().ok_or_else(missing)?, reference)?;
+    operation(&crate::PrivateBookContext {
+        user,
+        learning_workspace_id: w.learning_workspace_id.as_deref(),
+        book: &publication.book,
+        book_dir: publication.directory(),
+        messages: &session.messages,
+        selected_chat: Some(chat),
+    })
+}
+
 fn require_turn_publication(
     user: &UserRuntime,
     w: &ReaderWorkspace,
@@ -1286,7 +1400,12 @@ impl NetworkRunPort {
         let w = scene.lock().unwrap();
         w.check(&stamp)?;
         require_turn_publication(&user, &w.workspace, &turn.session_id, &turn.turn_id)?;
+        let saved_turn = user.agent_history.sessions.iter()
+            .find(|session| session.id == turn.session_id)
+            .and_then(|session| session.turns.iter().find(|saved| saved.turn_id == turn.turn_id))
+            .ok_or_else(missing)?;
         let scope = crate::run_scope::RunScope {
+            board_context: saved_turn.domain.board_context.clone(),
             learning_workspace_id: w.workspace.learning_workspace_id.clone(),
             goal: w.workspace.learning_goal.clone(), members: w.workspace.learning_members.clone(),
             publication: w.workspace.publication.clone(),
@@ -1397,7 +1516,9 @@ impl NetworkRunPort {
         let mut scene = self.scene.as_ref().ok_or_else(stale)?.lock().unwrap();
         self.scope.check_scene(&scene.workspace)?;
         self.check_effect_revision(&scene)?;
-        crate::presentation_api::follow_up_context(&self.scope.private_user(&user), &saved)?;
+        with_turn_presentation(&user, &scene.workspace, &self.access.library,
+            &saved.session_id, &saved.turn_id,
+            |private| crate::presentation_api::follow_up_context(private, &saved))?;
         let old = scene.presentation.replace(saved);
         if let Err(e) = registry.persist(&self.scope.user_id, &mut scene, false) {
             scene.presentation = old;
@@ -1430,7 +1551,28 @@ impl crate::presentation_author::AuthorStorage for NetworkAuthorStorage<'_> {
         operation(&self.scope.private_user(&user))
     }
 }
+impl crate::board_author::Storage for NetworkAuthorStorage<'_> {
+    fn source_workspace(&self, reference: Option<&base_schema::PublishedBookRef>) -> Result<ReaderWorkspace, ToolError> {
+        let publication = if let Some(reference) = reference {
+            crate::cross_book::check_member(self.scope.members.as_deref(), reference)?;
+            Some(self.access.library.lock().unwrap().load(&self.scope.user_id, reference)?)
+        } else { self.scope.publication.clone() };
+        Ok(crate::board_author::source_workspace(self.scope, publication))
+    }
+    fn with_user<R>(&self, operation: impl FnOnce(&mut crate::user_runtime::UserRuntime) -> Result<R, ToolError>) -> Result<R, ToolError> {
+        self.access.library.lock().unwrap().authorize(&self.scope.user_id, &self.scope.publication.as_ref().ok_or_else(missing)?.reference)?;
+        let mut user = self.user.lock().unwrap();
+        self.scope.check_user(&user)?;
+        operation(&mut user)
+    }
+}
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn board_authoring_available(&self) -> bool { self.scope.board_context.is_some() }
+    fn author_board(&mut self, request: runtime::board_author::AuthorRequest, bindings: &[runtime::orchestrator::SourceBinding], messages: &[runtime::Message], cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::board_author::AuthorResult, ToolError> {
+        self.authorized()?;
+        let frozen = self.scope.board_context.as_ref().ok_or_else(runtime::board_author::unavailable)?;
+        crate::board_author::execute(&NetworkAuthorStorage { access: &self.access, user: &self.user, scope: &self.scope }, frozen, &self.turn, request, bindings, messages, cancellation)
+    }
     fn music_source_context(&mut self) -> Result<Option<Value>, ToolError> {
         self.authorized()?;
         self.scope.check_user(&self.user.lock().unwrap())?;
@@ -1493,13 +1635,13 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         result
     }
 
-    fn workspace_records_available(&self) -> bool { self.scope.learning_workspace_id.is_some() }
+    fn workspace_records_available(&self) -> bool { true }
     fn workspace_records(&mut self, request: Value) -> Result<Value, ToolError> {
         self.authorized()?;
         let user = self.user.lock().unwrap();
         self.scope.check_user(&user)?;
-        let id = self.scope.learning_workspace_id.as_deref().ok_or_else(missing)?;
-        crate::workspace_record_context::read(&user, id, request)
+        crate::workspace_record_context::read_scoped(&user, self.scope.learning_workspace_id.as_deref(),
+            &self.scope.book.base.book_id, request)
     }
     fn library_available(&self) -> bool { true }
     fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {

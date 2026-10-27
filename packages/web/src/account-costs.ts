@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import type { AccountUsageGroup } from './account-allowance';
 
 export interface AccountCostSummary {
@@ -7,7 +8,7 @@ export interface AccountCostSummary {
   cost_breakdown: Record<AccountCostCategory, AccountCostCategoryMetrics>;
   period_groups: (AccountUsageGroup & { starts_at: number | null; expires_at: number | null })[];
 }
-export const accountCostCategories = [['model', '模型'], ['web_search', '搜索'], ['web_fetch', '网页读取'], ['service', '其他服务']] as const;
+export const accountCostCategories = [['model', uiText('模型')], ['web_search', uiText('搜索')], ['web_fetch', uiText('网页读取')], ['service', uiText('其他服务')]] as const;
 export type AccountCostCategory = typeof accountCostCategories[number][0];
 export interface AccountCostCategoryMetrics {
   request_count: number;

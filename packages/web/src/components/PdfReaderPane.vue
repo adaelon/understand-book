@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { inject } from 'vue';
 import { shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
@@ -169,7 +171,7 @@ function decorateFocusPage(page: PdfSourceMap['pages'][number], layer: HTMLEleme
     ...highlightsForPage(page.pageIndex).map(item => h('span', { class: 'pdf-user-highlight',
       'data-mem-id': item.highlight.mem_id, style: projectedRectStyle(page, item.rect.bbox) })),
     ...noteMarkersForPage(page).map(marker => h('button', { class: ['pdf-note-marker', `side-${marker.side}`, `direction-${marker.direction}`],
-      style: markerStyle(marker), 'aria-label': `打开 ${marker.notes.length} 条 PDF 笔记`,
+      style: markerStyle(marker), 'aria-label': uiText('打开 {0} 条 PDF 笔记', [marker.notes.length]),
       onClick: (event: MouseEvent) => { event.stopPropagation(); openNoteSurface(marker, event); } }, [h(MessageSquareText, { size: 14 }), marker.notes.length > 1 ? String(marker.notes.length) : ''])),
   ]), layer);
 }
@@ -322,12 +324,12 @@ const activeRegion = computed(() => activeEntry.value?.primary_region ?? activeE
 const activePageIndex = computed(() => activeRegion.value?.pageIndex ?? null);
 const mapCapability = computed(() => props.sourceManifest?.capabilities.project_lid_to_pdf.status ?? "unavailable");
 const capabilityStatusLabels: Record<string, string> = {
-  available: "映射可用",
-  degraded: "映射降级可用",
-  missing: "缺少映射",
-  unavailable: "映射不可用",
-  external: "外部资源",
-  unsupported: "暂不支持",
+  available: uiText('映射可用'),
+  degraded: uiText('映射降级可用'),
+  missing: uiText('缺少映射'),
+  unavailable: uiText('映射不可用'),
+  external: uiText('外部资源'),
+  unsupported: uiText('暂不支持'),
 };
 const mapCapabilityLabel = computed(() => capabilityStatusLabels[mapCapability.value] ?? mapCapability.value);
 
@@ -613,8 +615,8 @@ function onPagePointerUp(pageIndex: number, event: PointerEvent) {
   }
   notePlacementCandidate.value = null;
   showNotePlacementFeedback(resolution.status === "ambiguous"
-    ? "该位置重叠多个正文目标，请点选更明确的位置。"
-    : "未命中可放置的 PDF 正文区域。");
+    ? uiText('该位置重叠多个正文目标，请点选更明确的位置。')
+    : uiText('未命中可放置的 PDF 正文区域。'));
 }
 
 function hitEntry(pageIndex: number, event: MouseEvent): PdfSourceMapEntry | null {
@@ -730,7 +732,7 @@ function emitNoteReselect(note: MemoryRecord) {
 }
 
 function noteReselectLabel(note: MemoryRecord): string {
-  return note.note_placement?.kind === "pdf_region" ? "移动" : "重新选择位置";
+  return note.note_placement?.kind === "pdf_region" ? uiText('移动') : uiText('重新选择位置');
 }
 
 function emitHighlightReselect(highlight: MemoryRecord) {
@@ -1376,22 +1378,20 @@ onBeforeUnmount(() => {
   <main class="pdf-reader-pane" :class="{ 'pdf-focus-mode': props.focusReading || focusShown }">
     <header class="pdf-reader-head" :class="{ 'pdf-focus-head': props.focusReading || focusShown }" v-show="!props.focusReading || focusTools">
       <div>
-        <strong>PDF 原版</strong>
-        <span>{{ pageCount }} 页<span v-if="mapCapability !== 'available'"> · {{ mapCapabilityLabel }}</span></span>
+        <strong>{{ uiText('PDF 原版') }}</strong>
+        <span>{{ pageCount }} {{ uiText('页') }}<span v-if="mapCapability !== 'available'"> · {{ mapCapabilityLabel }}</span></span>
       </div>
       <div class="pdf-reader-head-actions">
-        <span v-if="pdfLoading" role="status">正在加载 PDF</span>
+        <span v-if="pdfLoading" role="status">{{ uiText('正在加载 PDF') }}</span>
         <span v-else-if="pdfError" class="pdf-error">{{ pdfError }}</span>
-        <span v-else-if="props.annotationError" class="pdf-annotation-error" :title="props.annotationError">
-          标注定位暂不可用
-        </span>
-        <div class="pdf-reader-tools" role="group" aria-label="PDF 工具">
+        <span v-else-if="props.annotationError" class="pdf-annotation-error" :title="props.annotationError"> {{ uiText('标注定位暂不可用') }} </span>
+        <div class="pdf-reader-tools" role="group" :aria-label="uiText('PDF 工具')">
           <button
             type="button"
             class="pdf-note-visibility-toggle"
             :class="{ active: noteMarkersVisible }"
-            :title="noteMarkersVisible ? '隐藏笔记标记' : '显示笔记标记'"
-            :aria-label="noteMarkersVisible ? '隐藏笔记标记' : '显示笔记标记'"
+            :title="noteMarkersVisible ? uiText('隐藏笔记标记') : uiText('显示笔记标记')"
+            :aria-label="noteMarkersVisible ? uiText('隐藏笔记标记') : uiText('显示笔记标记')"
             :aria-pressed="noteMarkersVisible"
             @click="toggleNoteMarkers"
           >
@@ -1400,8 +1400,8 @@ onBeforeUnmount(() => {
           </button>
           <button
             type="button"
-            title="缩小"
-            aria-label="缩小 PDF"
+            :title="uiText('缩小')"
+            :aria-label="uiText('缩小 PDF')"
             :disabled="pdfLoading || zoom <= PDF_ZOOM_MIN"
             @click="setZoom(zoom - PDF_ZOOM_STEP)"
           >
@@ -1410,22 +1410,22 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="pdf-zoom-fit"
-            :title="props.focusReading ? '适合整页' : '适合栏宽'"
-            :aria-label="props.focusReading ? '适合整页' : '适合栏宽'"
+            :title="props.focusReading ? uiText('适合整页') : uiText('适合栏宽')"
+            :aria-label="props.focusReading ? uiText('适合整页') : uiText('适合栏宽')"
             :aria-pressed="zoom === 1"
             :disabled="pdfLoading"
             @click="setZoom(1)"
           >
             <Scan :size="15" aria-hidden="true" />
-            <span>{{ props.focusReading ? '适页' : '适宽' }}</span>
+            <span>{{ props.focusReading ? uiText('适页') : uiText('适宽') }}</span>
           </button>
-          <select class="pdf-zoom-select" :aria-label="props.focusReading ? 'PDF 缩放倍率（相对整页）' : 'PDF 缩放倍率（相对适宽）'" :value="zoom" :disabled="pdfLoading" @change="setZoom(Number(($event.target as HTMLSelectElement).value))">
+          <select class="pdf-zoom-select" :aria-label="props.focusReading ? uiText('PDF 缩放倍率（相对整页）') : uiText('PDF 缩放倍率（相对适宽）')" :value="zoom" :disabled="pdfLoading" @change="setZoom(Number(($event.target as HTMLSelectElement).value))">
             <option v-for="factor in [0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5]" :key="factor" :value="factor">{{ Math.round(factor * 100) }}%</option>
           </select>
           <button
             type="button"
-            title="放大"
-            aria-label="放大 PDF"
+            :title="uiText('放大')"
+            :aria-label="uiText('放大 PDF')"
             :disabled="pdfLoading || zoom >= PDF_ZOOM_MAX"
             @click="setZoom(zoom + PDF_ZOOM_STEP)"
           >
@@ -1484,8 +1484,8 @@ onBeforeUnmount(() => {
             class="pdf-note-marker"
             :class="[`side-${marker.side}`, `direction-${marker.direction}`]"
             :style="markerStyle(marker)"
-            :aria-label="`打开 ${marker.notes.length} 条 PDF 笔记`"
-            :title="`${marker.notes.length} 条笔记`"
+            :aria-label="uiText('打开 {0} 条 PDF 笔记', [marker.notes.length])"
+            :title="uiText('{0} 条笔记', [marker.notes.length])"
             @click.stop="openNoteSurface(marker, $event)"
           >
             <MessageSquareText :size="14" aria-hidden="true" />
@@ -1497,28 +1497,28 @@ onBeforeUnmount(() => {
           {{ renderStates[page.pageIndex]?.error }}
         </p>
       </section>
-      <p v-if="!props.sourceMap?.pages.length" class="pdf-empty">暂无 PDF 映射。</p>
+      <p v-if="!props.sourceMap?.pages.length" class="pdf-empty">{{ uiText('暂无 PDF 映射。') }}</p>
     </div>
 
     <div ref="focusHost" v-show="props.focusReading || focusShown" class="pdf-focus-host" :class="{ 'is-loading': !focusShown }"
       @pointerdown="focusPointerDown" @pointerup="focusPlacement" @mouseup="capturePdfSelection" @click="focusClick"
       @scroll.capture.passive="onViewportScroll"></div>
     <template v-if="props.focusReading">
-      <button class="focus-page-prev" aria-label="上一屏" :disabled="focusState.atStart" @click="focusTurn?.turn(-1)">‹</button>
-      <button class="focus-page-next" aria-label="下一屏" :disabled="focusState.atEnd" @click="focusTurn?.turn(1)">›</button>
-      <button class="focus-tools-toggle" aria-label="阅读工具" :aria-expanded="focusTools" @click="focusTools = !focusTools">···</button>
+      <button class="focus-page-prev" :aria-label="uiText('上一屏')" :disabled="focusState.atStart" @click="focusTurn?.turn(-1)">‹</button>
+      <button class="focus-page-next" :aria-label="uiText('下一屏')" :disabled="focusState.atEnd" @click="focusTurn?.turn(1)">›</button>
+      <button class="focus-tools-toggle" :aria-label="uiText('阅读工具')" :aria-expanded="focusTools" @click="focusTools = !focusTools">···</button>
       <button v-if="props.focusReturnLabel" class="focus-reading-return" @click="emit('focus-tool', 'return')">{{ props.focusReturnLabel }}</button>
-      <nav v-if="focusTools" class="focus-tools" aria-label="专注阅读工具">
-        <button @click="focusTools = false; emit('focus-tool', 'outline')">目录</button>
-        <button :aria-pressed="focusSingle" @click="focusSingle = !focusSingle">{{ focusSingle ? '自动双页' : '单页阅读' }}</button>
-        <button @click="focusTools = false; emit('focus-tool', 'surface')">重排正文</button>
-        <button @click="focusTools = false; emit('focus-tool', 'agent')">问答</button>
-        <button @click="focusTools = false; emit('focus-tool', 'notes')">笔记</button>
-        <button @click="focusTools = false; emit('focus-tool', 'exit')">退出专注</button>
+      <nav v-if="focusTools" class="focus-tools" :aria-label="uiText('专注阅读工具')">
+        <button @click="focusTools = false; emit('focus-tool', 'outline')">{{ uiText('目录') }}</button>
+        <button :aria-pressed="focusSingle" @click="focusSingle = !focusSingle">{{ focusSingle ? uiText('自动双页') : uiText('单页阅读') }}</button>
+        <button @click="focusTools = false; emit('focus-tool', 'surface')">{{ uiText('重排正文') }}</button>
+        <button @click="focusTools = false; emit('focus-tool', 'agent')">{{ uiText('问答') }}</button>
+        <button @click="focusTools = false; emit('focus-tool', 'notes')">{{ uiText('笔记') }}</button>
+        <button @click="focusTools = false; emit('focus-tool', 'exit')">{{ uiText('退出专注') }}</button>
       </nav>
       <div v-if="focusState?.waiting || focusState?.error || pdfError" class="focus-ready-status" role="status">
-        {{ focusState?.error || pdfError || '正在准备书页…' }}
-        <button v-if="focusState?.error" @click="focusLastGeometry = ''; resizeFocus()">重试</button>
+        {{ focusState?.error || pdfError || uiText('正在准备书页…') }}
+        <button v-if="focusState?.error" @click="focusLastGeometry = ''; resizeFocus()">{{ uiText('重试') }}</button>
       </div>
     </template>
 
@@ -1531,7 +1531,7 @@ onBeforeUnmount(() => {
     </p>
 
     <footer v-if="props.activeLid && !activeEntry" class="pdf-map-foot">
-      <button @click="props.activeLid && emit('focus-source', { lid: props.activeLid, quote: null })">打开来源正文</button>
+      <button @click="props.activeLid && emit('focus-source', { lid: props.activeLid, quote: null })">{{ uiText('打开来源正文') }}</button>
     </footer>
 
     <Teleport to="body">
@@ -1542,12 +1542,12 @@ onBeforeUnmount(() => {
         :style="annotationSurfaceStyle"
         role="dialog"
         aria-modal="false"
-        aria-label="PDF 用户标注"
+        :aria-label="uiText('PDF 用户标注')"
         @click.stop
       >
         <header class="pdf-annotation-surface-head">
-          <strong>{{ annotationSurface.kind === "notes" ? `${activeNoteMarker?.notes.length ?? 0} 条笔记` : "高亮" }}</strong>
-          <button title="关闭" aria-label="关闭" @click="closeAnnotationSurface">
+          <strong>{{ annotationSurface.kind === "notes" ? uiText('{0} 条笔记', [activeNoteMarker?.notes.length ?? 0]) : uiText('高亮') }}</strong>
+          <button :title="uiText('关闭')" :aria-label="uiText('关闭')" @click="closeAnnotationSurface">
             <X :size="16" />
           </button>
         </header>
@@ -1577,15 +1577,11 @@ onBeforeUnmount(() => {
         <div v-else-if="activeHighlight" class="pdf-highlight-surface">
           <p>{{ activeHighlight.record.content }}</p>
           <div class="pdf-highlight-actions">
-      <button v-if="shareHighlight" @click="shareHighlight(activeHighlight.record)">生成分享图</button>
-            <button title="重新选择高亮" @click="emitHighlightReselect(activeHighlight.record)">
-              <ScanText :size="15" />
-              重新选择
-            </button>
-            <button class="danger" title="删除高亮" @click="emit('delete-highlight', activeHighlight.record)">
-              <Trash2 :size="15" />
-              删除
-            </button>
+      <button v-if="shareHighlight" @click="shareHighlight(activeHighlight.record)">{{ uiText('生成分享图') }}</button>
+            <button :title="uiText('重新选择高亮')" @click="emitHighlightReselect(activeHighlight.record)">
+              <ScanText :size="15" /> {{ uiText('重新选择') }} </button>
+            <button class="danger" :title="uiText('删除高亮')" @click="emit('delete-highlight', activeHighlight.record)">
+              <Trash2 :size="15" /> {{ uiText('删除') }} </button>
           </div>
         </div>
       </section>

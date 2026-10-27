@@ -191,6 +191,8 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
     guided["default_teaching_intent"] = json!("guided_inquiry");
     let mut preferred = action("continue_answer");
     preferred["confirmed_preferences"] = json!([{"fact_id":"p","preference":"Compare first"}]);
+    let mut native_action = action("explain_selection");
+    native_action["native_board_candidate_pending"] = json!(true);
     let choice = |kind: &str| {
         let mut context = action("continue_answer");
         context["current_action"]["action"] = json!({"origin":"ui_choice","teaching_choice":{"delivery_ref":"delivery:fixture","option_id":"next"},"move_kind":kind});
@@ -198,6 +200,8 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
     };
     let cases = [
         ("active", json!({"status":"active"}), 13),
+        ("native_board_pending", json!({"status":"active","native_board_candidate_pending":true}), 13),
+        ("native_board_action", native_action, 11),
         ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 13),
         ("observing", json!({"status":"observing"}), 2),
         ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 2),
@@ -223,7 +227,15 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
             assert!(!examples[..index].contains(input), "duplicate in {name}");
             validate_schema(&spec.parameters, input, "$").unwrap_or_else(|e| panic!("{name}: {input}: {e:?}"));
             registration.validate_arguments(&input.to_string()).unwrap();
-            if context["current_action"].is_object() && input["operation"] == "select" {
+            if context["native_board_candidate_pending"] == true && input["operation"] == "select" {
+                assert_eq!(input["move"]["board_candidate_revision"], 1);
+                assert!(input["move"].get("delivery_text").is_none());
+                assert!(input.get("delivery_move_refs").is_none());
+                assert!(input["move"].get("design_ref").is_none());
+                assert!(input["move"].get("block_refs").is_none());
+                assert!(input["move"].get("target").is_none());
+            }
+            if context["current_action"].is_object() && context["native_board_candidate_pending"] != true && input["operation"] == "select" {
                 assert!(input["move"].get("capability").is_none());
                 assert!(input["move"]["target"].is_object());
                 if crate::tutor::action_intent(&context).is_some() {
@@ -295,6 +307,52 @@ fn tutor_schema_examples_stay_stable_when_actual_references_change() {
             assert!(next.parameters["properties"].get("move").is_none());
         }
     }
+}
+
+#[test]
+fn tutor_intent_origins_follow_the_frozen_mode_action_and_preferences() {
+    let start=json!({"status":"active","default_teaching_intent":null,
+        "current_request":"请继续本次学习，结合当前阅读位置和已有回应，选择一个有依据的教学动作。",
+        "user_intent":"先讲解一个关系，再根据我的回应继续。","confirmed_preferences":[]});
+    let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&start));
+    let registration=registry.registration("tutor.step").unwrap();
+    let properties=&registration.spec.parameters["properties"]["move"]["properties"];
+    assert_eq!(properties["intent_origin"]["enum"],json!(["current_request","neutral"]),
+        "having a saved goal must not advertise an absent session mode");
+    assert!(properties["intent_origin"]["description"].as_str().unwrap().contains("kind=explain remains valid"));
+    let mut selection=registration.spec.parameters["examples"].as_array().unwrap().iter()
+        .find(|example|example["operation"]=="select").unwrap().clone();
+    selection["move"]["kind"]=json!("explain");
+    selection["move"]["interaction_intent"]=json!("neutral");
+    selection["move"]["intent_origin"]=json!("session_default");
+    assert!(registration.validate_arguments(&selection.to_string()).is_err());
+    selection["move"]["intent_origin"]=json!("neutral");
+    registration.validate_arguments(&selection.to_string()).unwrap();
+    for mode in ["direct_explanation","guided_inquiry"] {
+        let mut context=start.clone();
+        context["default_teaching_intent"]=json!(mode);
+        let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
+        let registration=registry.registration("tutor.step").unwrap();
+        assert_eq!(registration.spec.parameters["properties"]["move"]["properties"]["intent_origin"]["enum"],
+            json!(["current_request","session_default","neutral"]));
+        selection["move"]["intent_origin"]=json!("session_default");
+        selection["move"]["interaction_intent"]=json!(mode);
+        registration.validate_arguments(&selection.to_string()).unwrap();
+    }
+    let action=json!({"action":{"origin":"ui_entry","entry_action":"clarify_answer"},"user_supplement":"",
+        "accepted_request":"Clarify the prior answer","answer_ref":null,"answer_text":null,
+        "source_excerpt":null,"source_bindings":[],"target":null,"expected_chat_head":null,"presentation_follow_up":null});
+    let mut context=start.clone();
+    context["current_action"]=action;
+    context["confirmed_preferences"]=json!([{"fact_id":"actual-preference","preference":"Compare first"}]);
+    let tool=crate::tutor::spec_for_context(&context).unwrap();
+    assert_eq!(tool.parameters["properties"]["move"]["properties"]["intent_origin"]["enum"],
+        json!(["current_request","current_action","confirmed_preference","neutral"]));
+    context["current_action"]["action"]["entry_action"]=json!("explain_selection");
+    let tool=crate::tutor::spec_for_context(&context).unwrap();
+    assert!(tool.parameters["properties"]["move"]["properties"].get("intent_origin").is_none(),
+        "a program-owned explanation action still binds intent on the host");
+    assert_eq!(tool.parameters["properties"]["move"]["properties"]["kind"]["enum"],json!(["explain"]));
 }
 
 #[test]

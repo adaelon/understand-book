@@ -223,9 +223,19 @@ impl ModelAdapter for RepairTeachingAdapter {
         unreachable!()
     }
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+        if let Some(guidance) = super::super::tutor_loop_tests::fixture_coach_guidance(&request) {
+            return Ok(guidance);
+        }
+        if request.system.contains("Teaching explanation acceptance review.") {
+            // This replay exercises page repair and persistence, not semantic
+            // judgment. Keep auxiliary text review separate from the two
+            // source/page verdicts whose findings drive the actual repair.
+            return Ok(super::super::tutor_loop_tests::fixture_delivery_review(&request).unwrap());
+        }
         assert!(request
             .system
-            .starts_with("Teaching delivery acceptance review."));
+            .contains("Teaching delivery acceptance review."),
+            "unexpected structured request: {}", request.system.chars().take(160).collect::<String>());
         let packet: Value = serde_json::from_str(&request.user).unwrap();
         let round = self.reviews.borrow().len() + 1;
         let source = &packet["current_source_evidence"][0];

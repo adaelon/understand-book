@@ -27,6 +27,7 @@ pub mod tutor_coach;
 pub mod assessment;
 pub mod learning_evidence;
 pub mod learning_records;
+pub mod boards;
 
 pub use backfill::{
     HistoricalBackfillClearOutcome, HistoricalBackfillCommitOutcome, HistoricalBackfillJob,
@@ -472,7 +473,7 @@ fn recover_interrupted_commit(path: &Path) -> Result<(), ToolError> {
 
 fn persist_document_atomically(
     path: &Path,
-    document: &MemoryDocument,
+    document: &impl Serialize,
     private: bool,
 ) -> Result<(), ToolError> {
     let parent = path

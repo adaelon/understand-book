@@ -49,6 +49,8 @@ struct RunProvider {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FrozenTurn<M = Vec<Message>> {
     #[serde(default)]
+    pub(crate) board_context: Option<crate::board_api::FrozenBoardFollowUp>,
+    #[serde(default)]
     exam_sprint: Option<crate::exam_sprints::SprintInput>,
     version: u32,
     #[serde(default)]
@@ -86,6 +88,7 @@ impl<M> FrozenTurn<M> {
     pub(crate) fn coach_provider_binding(&self) -> Value { json!(self.provider) }
     pub(crate) fn map_messages<N>(self, map: impl FnOnce(M) -> N) -> FrozenTurn<N> {
         FrozenTurn {
+            board_context: self.board_context,
             exam_sprint: self.exam_sprint,
             learning_workspace_id: self.learning_workspace_id,
             learning_workspace_goal: self.learning_workspace_goal,
@@ -124,11 +127,13 @@ impl FrozenTurn {
             .unwrap()
             .load(&self.owner, &self.publication)?;
         Ok(PreparedAgentChat {
+            response_language: runtime::response_language::ResponseLanguage::from_request(&self.normalized)?,
             exam_calendar: self.exam_sprint.as_ref().map(|sprint| sprint.calendar(
                 crate::multi_user_host::now(), self.learning_workspace_goal.as_ref().map_or(0, |goal| goal.revision),
             )).transpose()?,
             accepted_workspace_goal: None,
             scope: run_scope::RunScope {
+                board_context: self.board_context.clone(),
                 learning_workspace_id: self.learning_workspace_id.clone(),
                 goal: self.learning_workspace_goal.clone(), members: self.learning_workspace_members.clone(),
                 user_id: self.owner.clone(),
@@ -520,6 +525,7 @@ impl RunAdmissions {
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                board_context,
                 music_question,
                 video_question,
                 interaction,
@@ -550,6 +556,8 @@ impl RunAdmissions {
             )?;
             session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(&user, interaction.as_ref(), &turn_ref, now)?;
             session.turns.last_mut().unwrap().domain.interaction = interaction;
+            session.turns.last_mut().unwrap().board_follow_up = board_context.as_ref().map(|context| context.follow_up.clone());
+            session.turns.last_mut().unwrap().domain.board_context = board_context.clone();
             let private = PrivateBookContext {
                 learning_workspace_id: scene.workspace.learning_workspace_id.as_deref(),
                 user: &user,
@@ -572,6 +580,7 @@ impl RunAdmissions {
                 .and_then(|r| session.goals.iter().find(|g| g.id == r.id))
                 .cloned();
             let frozen = FrozenTurn {
+                board_context,
                 exam_sprint: scene.workspace.learning_workspace_id.as_ref().map(|id|
                     crate::exam_sprints::settings(&self.state.lock().unwrap().control.connection,&row.owner,id)
                 ).transpose()?.flatten(),
@@ -807,7 +816,8 @@ impl RunAdmissions {
             .cloned()
         {
             let turn = find_turn(user, row).unwrap();
-            stream.finish(Some(json!({"turn_id":turn.turn_id,"status":turn.status,"error":turn.error,"outcome":turn.outcome})),None);
+            stream.finish(Some(json!({"turn_id":turn.turn_id,"status":turn.status,"error":turn.error,"outcome":turn.outcome,
+                "board_commits":session_runtime::board_commits(turn)})),None);
         }
         Ok(())
     }
@@ -860,6 +870,7 @@ fn reply_error(reply: Reply) -> ToolError {
 }
 pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
     crate::interaction_input::InteractionInput::parse(input)?;
+    runtime::response_language::ResponseLanguage::from_request(input)?;
     let message = input["message"]
         .as_str()
         .ok_or_else(invalid)?;
@@ -886,7 +897,7 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["music_question", "entry_action", "learning_purpose", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
+    for key in ["board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }
@@ -912,7 +923,12 @@ impl RunAdmissions {
                 continue;
             };
             if turn.status != AgentAssistantStatus::PendingAssistant {
-                self.repair_saved(&mut user, &row)?;
+                if let Err(error) = self.repair_saved(&mut user, &row) {
+                    self.mark_unsaved(&row);
+                    if error.error_code != "BOARD_DELIVERY_UNSAVED" {
+                        return Err(error);
+                    }
+                }
                 continue;
             }
             let result = (|| {
@@ -1101,6 +1117,7 @@ impl RunAdmissions {
             frozen.effect_revision,
         )?;
         let cancellation = CancellationToken::default();
+        let board_commits = find_turn(&handle.lock().unwrap(), &row).map(session_runtime::board_commits).unwrap_or_default();
         let stream;
         {
             let mut state = self.state.lock().unwrap();
@@ -1133,6 +1150,7 @@ impl RunAdmissions {
                     )
                 })
                 .clone();
+            stream.restore_board_commits(&board_commits);
             stream.started();
             state.active.insert(
                 (row.owner.clone(), row.turn.clone()),
@@ -1163,6 +1181,7 @@ impl RunAdmissions {
             }, cancellation.clone(),
         )));
         let adapter = crate::service_limits::LimitedAdapter {
+            background: false,
             inner: provider_adapter.as_ref(),
             resources: access.resources.clone(),
             owner: row.owner.clone(),
@@ -1200,7 +1219,8 @@ impl RunAdmissions {
             let outcome = finished.result.as_ref().ok();
             let error = finished.result.as_ref().err().map(|error| error.error_code.as_str())
                 .or_else(|| outcome.filter(|outcome| crate::observability::lifecycle::delivery_failed(outcome))
-                    .map(|_| "ANSWER_DELIVERY_FAILED"));
+                    .map(|_| "ANSWER_DELIVERY_FAILED"))
+                .or_else(|| saved.as_ref().err().map(|error| error.error_code.as_str()));
             run.finish(
                 outcome,
                 finished.cancelled,
@@ -1253,10 +1273,21 @@ impl RunAdmissions {
             .map(|f| f.now.clone())
             .ok_or_else(|| fault("RUN_INPUT_MISSING", "conflict"))?;
         teaching::record_user_delivery(user, &reference, &now)?;
+        board_delivery::ensure_saved(user, &reference, &now)?;
         session_runtime::link_teaching(user, &reference, &now)?;
         let cursors = agent_history_review_cursors(&user.agent_history);
         user.store.reconcile_review_jobs(&cursors, &now)?;
         self.record_completed(user, &reference)?;
+        if let Some(stream) = self.state.lock().unwrap().streams
+            .get(&(row.owner.clone(), row.turn.clone())).cloned()
+        {
+            let turn = find_turn(user, row).ok_or_else(missing)?;
+            stream.finish(Some(json!({
+                "turn_id":turn.turn_id,"status":turn.status,"error":turn.error,"outcome":turn.outcome,
+                "board_follow_up":turn.board_follow_up,"board_delivery":turn.board_delivery,
+                "board_delivery_error":turn.board_delivery_error,"board_commits":session_runtime::board_commits(turn),
+            })), None);
+        }
         self.update(row, "settled", false)
     }
     fn save_finished(
@@ -1294,6 +1325,14 @@ impl RunAdmissions {
                 }
             }
         }
+        // A retry may still have an uncertain terminal append. Resolve it before
+        // deciding whether the model projection and terminal event need saving.
+        {
+            let user = &mut *user;
+            if let Some(store) = user.session_store.as_mut() {
+                store.settle(&mut user.agent_history, &prepared.turn_ref.session_id)?;
+            }
+        }
         let already_saved = user
             .agent_history
             .sessions
@@ -1306,6 +1345,10 @@ impl RunAdmissions {
             })
             .is_some_and(|t| t.status != AgentAssistantStatus::PendingAssistant);
         if !already_saved {
+            session_runtime::model_projection(
+                &mut user, &prepared.turn_ref, &finished.messages,
+                finished.active_model_projection.as_ref(),
+            )?;
             finalize_user_agent_turn(
                 &mut user,
                 &prepared.turn_ref,
@@ -1317,6 +1360,7 @@ impl RunAdmissions {
                 &prepared.now,
             )?;
         }
+        board_delivery::ensure_saved(&mut user, &prepared.turn_ref, &prepared.now)?;
         teaching::record_delivery(
             &prepared.scope.private_user(&user),
             &prepared.turn_ref,
@@ -1368,11 +1412,14 @@ impl RunAdmissions {
         if let Ok(saved) = context.turn(turn) {
             value["turn"] = saved["turn"].clone();
         }
+        let board_commits = serde_json::from_value::<Vec<memory::boards::BoardDelivery>>(value["turn"]["board_commits"].clone()).unwrap_or_default();
         let state = self.state.lock().unwrap();
         if let Some(stream) = state.streams.get(&(context.user_id().into(), turn.into())) {
+            stream.restore_board_commits(&board_commits);
             value["snapshot"] = json!(stream.snapshot());
         }
         if let Some(run) = state.unsaved.get(&(context.user_id().into(), turn.into())) {
+            run.stream.restore_board_commits(&board_commits);
             value["snapshot"] = json!(run.stream.snapshot());
             value["persistence_state"] = json!("failed");
         }
@@ -1383,6 +1430,11 @@ impl RunAdmissions {
         context: &AuthorizedContext,
         turn: &str,
     ) -> Option<Arc<agent_stream::RunStream>> {
+        let board_commits = {
+            let user = context.user.lock().unwrap();
+            user.agent_history.sessions.iter().flat_map(|session| &session.turns)
+                .find(|saved| saved.turn_id == turn).map(session_runtime::board_commits).unwrap_or_default()
+        };
         let mut state = self.state.lock().unwrap();
         let row = state
             .control
@@ -1399,9 +1451,10 @@ impl RunAdmissions {
             return None;
         }
         if let Some(run) = state.unsaved.get(&(row.owner.clone(), row.turn.clone())) {
+            run.stream.restore_board_commits(&board_commits);
             return Some(run.stream.clone());
         }
-        Some(
+        let stream =
             state
                 .streams
                 .entry((row.owner.clone(), row.turn.clone()))
@@ -1423,8 +1476,9 @@ impl RunAdmissions {
                     }
                     stream
                 })
-                .clone(),
-        )
+                .clone();
+        stream.restore_board_commits(&board_commits);
+        Some(stream)
     }
     /// Account disable persists cancel_requested in the account transaction first.
     /// Queued work uses run_one/end_pending; active work uses the normal cancel token.

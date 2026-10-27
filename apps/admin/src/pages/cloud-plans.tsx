@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { cloudPlanForm, durationLabels, tierLabels, unavailableLabels, type CloudPlanProduct, type UserCloudPlans } from '@/lib/cloud-plans';
 import { date, dateInput, money, timestamp } from '@/lib/format';
 import { milliPercentage } from '@/lib/allowance';
+import { StatusBadge } from '@/components/analytics';
 
 const megabytes = (value: number | null | undefined) => value == null ? '' : String(value / 1024 ** 2);
 export function CloudPlansPanel({ userId }: { userId: string }) {
@@ -22,8 +23,8 @@ export function CloudPlansPanel({ userId }: { userId: string }) {
     <DataState query={user} />
     {user.data && <div className="grid gap-3 md:grid-cols-2">
       {([['当前套餐', user.data.current], ['下一期套餐', user.data.next]] as const).map(([title, plan]) => <div key={title} className="rounded-md border p-3">
-        <h4>{title}</h4>
-        {plan ? <><p>{plan.title} · {tierLabels[plan.tier]} · {durationLabels[plan.duration]}</p><p className="text-sm">{date(plan.starts_at)} — {date(plan.expires_at)}（香港时间）</p><p className="text-sm">额度 {milliPercentage(plan.grant_milli_percent)} · 空间 {megabytes(plan.storage_bytes)} MB</p></> : <p className="text-sm text-muted-foreground">尚无安排</p>}
+        <h4 className="text-xs text-muted-foreground">{title}</h4>
+        {plan ? <div className="mt-3 space-y-3"><p className="font-semibold">{plan.title}</p><StatusBadge tone={title === '当前套餐' ? 'green' : 'blue'}>{tierLabels[plan.tier]} · {durationLabels[plan.duration]}</StatusBadge><dl className="number-detail text-sm"><div><dt>额度</dt><dd>{milliPercentage(plan.grant_milli_percent)}</dd></div><div><dt>空间</dt><dd>{megabytes(plan.storage_bytes)} MB</dd></div></dl><p className="text-xs text-muted-foreground">{date(plan.starts_at)} — {date(plan.expires_at)}（香港）</p></div> : <p className="py-4 text-sm text-muted-foreground">尚无安排</p>}
       </div>)}
     </div>}
     <details>
@@ -33,8 +34,8 @@ export function CloudPlansPanel({ userId }: { userId: string }) {
       <DataState query={catalog} />
       {!catalog.isPending && !catalog.error && !items.length && <p className="my-3">尚未配置套餐商品。</p>}
       <div className="my-3 grid gap-3 lg:grid-cols-2">{items.map(product => <article key={product.product_id} className="space-y-2 rounded-md border p-3">
-        <h4>{product.title} · {tierLabels[product.tier]} · {durationLabels[product.duration]}</h4>
-        <p className="text-sm">{product.amount_fen === null ? '价格待定' : `${money(product.amount_fen, 2)} 元`} · {product.grant_milli_percent === null ? '额度待定' : `额度 ${milliPercentage(product.grant_milli_percent)}`} · {product.storage_bytes === null ? '空间待定' : `${megabytes(product.storage_bytes)} MB`}</p>
+        <h4 className="font-semibold">{product.title}</h4><p className="text-xs text-muted-foreground">{tierLabels[product.tier]} · {durationLabels[product.duration]}</p>
+        <p className="py-2 text-2xl font-semibold tabular-nums">{product.amount_fen === null ? '价格待定' : `¥ ${money(product.amount_fen, 2)}`}</p><dl className="number-detail text-sm"><div><dt>每期额度</dt><dd>{product.grant_milli_percent === null ? '待定' : milliPercentage(product.grant_milli_percent)}</dd></div><div><dt>个人空间</dt><dd>{product.storage_bytes === null ? '待定' : `${megabytes(product.storage_bytes)} MB`}</dd></div></dl>
         <p className="text-sm text-muted-foreground">{product.test_only ? '测试商品' : product.saleable ? '可售' : '暂不可售'} · {product.enabled ? '已启用' : '已停用'} · 版本 {product.revision}</p>
         {!product.saleable && <p className="text-sm text-muted-foreground">{product.unavailable_reasons.map(reason => unavailableLabels[reason] ?? '暂不可售').join('；')}</p>}
         <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={ops.blocked} onClick={() => { setEditing(product); setOpen(true); }}>编辑套餐</Button><Button disabled={ops.blocked || !product.saleable || product.test_only} onClick={() => setPurchase(product)}>核款并开通</Button></div>

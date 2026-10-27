@@ -1,3 +1,4 @@
+import { t as uiText } from './i18n';
 import { ref } from 'vue';
 import type { VideoQuestionContext } from '../../core/src/generated/VideoQuestionContext';
 export type VideoDraft = { message: string; context: VideoQuestionContext };
@@ -60,7 +61,7 @@ export function createVideoQuestion(windowId: string, command: (input: DraftComm
     revision++;
     const current = draft.value?.context;
     if (current && (current.draft_id !== context.draft_id || JSON.stringify(current.frame) !== JSON.stringify(context.frame))) {
-      error.value = '请回到问题绑定画面再框选'; return;
+      error.value = uiText('请回到问题绑定画面再框选'); return;
     }
     if (!context.region) return;
     if (!draft.value) draft.value = { message: '', context: JSON.parse(JSON.stringify(context)) };
@@ -89,7 +90,7 @@ export function createVideoQuestion(windowId: string, command: (input: DraftComm
   function selectRange(context: VideoQuestionContext) {
     const current = draft.value?.context;
     if (current && (current.draft_id !== context.draft_id || JSON.stringify(current.frame) !== JSON.stringify(context.frame))) {
-      error.value = '问题绑定已改变，请重新选择时间范围'; return;
+      error.value = uiText('问题绑定已改变，请重新选择时间范围'); return;
     }
     if (!context.range) return;
     if (!draft.value) draft.value = { message: '', context: JSON.parse(JSON.stringify(context)) };
@@ -105,7 +106,7 @@ export function createVideoQuestion(windowId: string, command: (input: DraftComm
     // A second click after a failed save is an explicit retry of the same draft.
     if (error.value && draft.value) input(draft.value.message);
     await writes;
-    if (!draft.value) throw new Error('请先绑定当前视频画面');
+    if (!draft.value) throw new Error(uiText('请先绑定当前视频画面'));
     return { video_window_id: windowId, video_draft_id: draft.value.context.draft_id };
   }
   function accepted(id: string) {

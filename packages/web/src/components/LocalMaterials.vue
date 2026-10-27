@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText, errorMessage } from '../i18n';
+
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { localMaterials, materialSize, syncLocalMaterial, CloudSyncUnavailable, type LocalMaterial, type MaterialScope } from '../local-materials';
 import type { PreparationUpload } from '../personal-preparations';
@@ -10,7 +12,7 @@ const error = ref(''), notice = ref(''), needsPlan = ref(false), progress = ref<
 const used = computed(() => items.value.reduce((total, item) => total + item.bytes, 0));
 let alive = true, session: PreparationUpload | null = null, unlisten: (() => void) | undefined;
 async function refresh() { const next = await localMaterials.list(props.scope ?? null); if (alive) items.value = next; }
-function failure(reason: unknown) { if (alive) error.value = reason instanceof Error ? reason.message : String(reason); }
+function failure(reason: unknown) { if (alive) error.value = errorMessage(reason instanceof Error ? reason.message : String(reason)); }
 async function importPaths(paths?: string[]) {
   if (busy.value || props.archived) return;
   busy.value = true; error.value = ''; notice.value = ''; needsPlan.value = false;
@@ -18,13 +20,13 @@ async function importPaths(paths?: string[]) {
     const scope = props.scope ?? { account_id: '', workspace_id: '' };
     let imported: LocalMaterial | null = null;
     if (paths) {
-      for (const path of paths) imported = await localMaterials.import(path, scope, props.workspaceName ?? '本机书库');
+      for (const path of paths) imported = await localMaterials.import(path, scope, props.workspaceName ?? uiText('本机书库'));
     } else {
-      const item = await localMaterials.choose(scope, props.workspaceName ?? '本机书库');
+      const item = await localMaterials.choose(scope, props.workspaceName ?? uiText('本机书库'));
       if (!item) return;
       imported = item;
     }
-    await refresh(); if (alive) notice.value = '已保存在这台电脑，不占用云端空间。';
+    await refresh(); if (alive) notice.value = uiText('已保存在这台电脑，不占用云端空间。');
     if (alive && imported?.filename.toLowerCase().endsWith('.pdf')) selected.value = imported;
   } catch (reason) { failure(reason); }
   finally { busy.value = false; }
@@ -34,12 +36,12 @@ async function sync(item: LocalMaterial) {
   busy.value = true; error.value = ''; notice.value = ''; needsPlan.value = false; syncing.value = item.material_id;
   try {
     await syncLocalMaterial(item, props.scope, bytes => { if (alive) progress.value = Math.round(bytes / item.bytes * 100); }, value => { session = value; if (!alive) value.cancelled = true; });
-    if (alive) { notice.value = '云端副本已保存。可在云端准备区查看后续处理；本机副本继续保留。'; emit('synced'); await refresh(); }
+    if (alive) { notice.value = uiText('云端副本已保存。可在云端准备区查看后续处理；本机副本继续保留。'); emit('synced'); await refresh(); }
   } catch (reason) { failure(reason); if (alive) needsPlan.value = reason instanceof CloudSyncUnavailable; }
   finally { busy.value = false; progress.value = null; syncing.value = ''; session = null; }
 }
 async function remove(item: LocalMaterial) {
-  if (busy.value || !window.confirm(`删除“${item.filename}”的本机副本？原文件和已有云端副本不会删除。`)) return;
+  if (busy.value || !window.confirm(uiText('删除“{0}”的本机副本？原文件和已有云端副本不会删除。', [item.filename]))) return;
   busy.value = true; error.value = '';
   try { await localMaterials.remove(item.material_id); await refresh(); } catch (reason) { failure(reason); } finally { busy.value = false; }
 }
@@ -59,22 +61,22 @@ onMounted(async () => {
 onBeforeUnmount(() => { alive = false; unlisten?.(); if (session) session.cancelled = true; });
 </script>
 <template>
-  <section class="local-materials" aria-label="本机资料">
-    <header><div><h3>加入自己的资料</h3><p>默认保存在这台电脑。需要在其他设备使用时，再选择同步到云端。</p></div><span class="local-badge">仅本机</span></header>
-    <div class="local-space"><strong>本机资料</strong><span>{{ items.length }} 份 · {{ materialSize(used) }}</span><p>不占云端空间，不需要云端存储套餐。</p></div>
+  <section class="local-materials" :aria-label="uiText('本机资料')">
+    <header><div><h3>{{ uiText('加入自己的资料') }}</h3><p>{{ uiText('默认保存在这台电脑。需要在其他设备使用时，再选择同步到云端。') }}</p></div><span class="local-badge">{{ uiText('仅本机') }}</span></header>
+    <div class="local-space"><strong>{{ uiText('本机资料') }}</strong><span>{{ items.length }} {{ uiText('份 ·') }} {{ materialSize(used) }}</span><p>{{ uiText('不占云端空间，不需要云端存储套餐。') }}</p></div>
     <div v-if="!archived" class="local-import" :class="{ dragging }">
-      <div><strong>{{ dragging ? '松开，保存到本机' : '选择资料，或拖入窗口' }}</strong><p>EPUB · Markdown · TXT · PDF · MP4 · PPTX · PPT</p></div>
-      <button :disabled="busy" @click="importPaths()">{{ busy && !syncing ? '正在保存…' : '导入到本机' }}</button>
+      <div><strong>{{ dragging ? uiText('松开，保存到本机') : uiText('选择资料，或拖入窗口') }}</strong><p>EPUB · Markdown · TXT · PDF · MP4 · PPTX · PPT</p></div>
+      <button :disabled="busy" @click="importPaths()">{{ busy && !syncing ? uiText('正在保存…') : uiText('导入到本机') }}</button>
     </div>
-    <p v-if="loading" role="status">正在读取本机书库…</p>
+    <p v-if="loading" role="status">{{ uiText('正在读取本机书库…') }}</p>
     <p v-if="notice" role="status">{{ notice }}</p>
-    <p v-if="error" role="alert">{{ error }} <button v-if="needsPlan" @click="emit('allowance')">查看云端套餐</button></p>
+    <p v-if="error" role="alert">{{ error }} <button v-if="needsPlan" @click="emit('allowance')">{{ uiText('查看云端套餐') }}</button></p>
     <article v-for="item in items" :key="item.material_id" class="local-item">
-      <div><strong>{{ item.filename }}</strong><small>{{ materialSize(item.bytes) }} · 已保存在本机<template v-if="!scope"> · {{ item.workspace_name }}</template></small></div>
-      <div class="actions"><button @click="selected = item">打开资料</button><button v-if="scope && !archived" :disabled="busy" @click="sync(item)">{{ syncing === item.material_id ? (progress === null ? '正在检查云端空间…' : `正在同步 ${progress}%`) : '同步到云端' }}</button><button :disabled="busy" @click="remove(item)">删除本机副本</button></div>
+      <div><strong>{{ item.filename }}</strong><small>{{ materialSize(item.bytes) }} {{ uiText('· 已保存在本机') }}<template v-if="!scope"> · {{ item.workspace_name }}</template></small></div>
+      <div class="actions"><button @click="selected = item">{{ uiText('打开资料') }}</button><button v-if="scope && !archived" :disabled="busy" @click="sync(item)">{{ syncing === item.material_id ? (progress === null ? uiText('正在检查云端空间…') : uiText('正在同步 {0}%', [progress])) : uiText('同步到云端') }}</button><button :disabled="busy" @click="remove(item)">{{ uiText('删除本机副本') }}</button></div>
     </article>
-    <p v-if="!loading && !items.length">还没有本机资料。导入后可直接打开原文。</p>
-    <p class="local-note">本机原文可直接阅读。云端 AI 学习和深度资料准备使用单独的服务额度。</p>
+    <p v-if="!loading && !items.length">{{ uiText('还没有本机资料。导入后可直接打开原文。') }}</p>
+    <p class="local-note">{{ uiText('本机原文可直接阅读。云端 AI 学习和深度资料准备使用单独的服务额度。') }}</p>
     <LocalMaterialReader v-if="selected" :key="selected.material_id" :material="selected" @close="selected = null" />
   </section>
 </template>

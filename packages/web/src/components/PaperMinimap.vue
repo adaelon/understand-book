@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, ref } from "vue";
 import { ArrowRight, Map as MapIcon, Maximize2, Minimize2, Pin, PinOff, Undo2 } from "@lucide/vue";
 import type {
@@ -90,18 +92,18 @@ const lensFocusedRegionIds = computed(() => {
   return focused;
 });
 const focusedRegionLabel = computed(() => {
-  return focusedRegion.value ? regionDisplayLabel(focusedRegion.value) : "当前章节";
+  return focusedRegion.value ? regionDisplayLabel(focusedRegion.value) : uiText('当前章节');
 });
 const localStructureEmptyText = computed(() => {
   if (activeMode.value === "abstract" && props.lens && !props.lens.focus_region_id) {
-    return "未识别到摘要区域";
+    return uiText('未识别到摘要区域');
   }
   if (activeMode.value === "deep" && focusedRegion.value?.kind === "unknown") {
-    return "当前区域未分类，无法生成局部论证结构";
+    return uiText('当前区域未分类，无法生成局部论证结构');
   }
   return activeMode.value === "abstract"
-    ? "摘要没有可显示的论证结构"
-    : "当前章节没有可显示的论证结构";
+    ? uiText('摘要没有可显示的论证结构')
+    : uiText('当前章节没有可显示的论证结构');
 });
 const argumentLayerStatus = computed(() => (
   props.base?.layer_status.arguments?.status ?? "available"
@@ -115,15 +117,15 @@ const pinnedLandmarks = computed(() => new Set([
   ...(props.state?.saved_user_overlay.pinned_landmark_ids ?? []),
 ]));
 const modeOptions: Array<{ id: PaperMinimapMode; label: string }> = [
-  { id: "skim", label: "速览" },
-  { id: "abstract", label: "摘要" },
-  { id: "deep", label: "深读" },
+  { id: "skim", label: uiText('速览') },
+  { id: "abstract", label: uiText('摘要') },
+  { id: "deep", label: uiText('深读') },
 ];
 const layerOptions = [
-  { id: "regions", label: "章节区域" },
-  { id: "landmarks", label: "重点位置" },
-  { id: "arguments", label: "论证关系" },
-  { id: "user", label: "我的标记" },
+  { id: "regions", label: uiText('章节区域') },
+  { id: "landmarks", label: uiText('重点位置') },
+  { id: "arguments", label: uiText('论证关系') },
+  { id: "user", label: uiText('我的标记') },
 ];
 const pageBounds = computed(() => {
   const starts = regions.value.map((region) => region.page_span.start_page);
@@ -206,10 +208,10 @@ function onTrackKeydown(event: KeyboardEvent) {
 }
 
 const statusText = computed(() => {
-  if (props.loading) return "正在加载";
+  if (props.loading) return uiText('正在加载');
   if (props.error) return props.error;
-  if (!props.base || props.base.status === "unavailable") return "不可用";
-  return expanded.value ? "论文全局地图" : "论文地图";
+  if (!props.base || props.base.status === "unavailable") return uiText('不可用');
+  return expanded.value ? uiText('论文全局地图') : uiText('论文地图');
 });
 
 function layerUnavailable(layer: string): boolean {
@@ -224,35 +226,35 @@ function regionDisplayLabel(region: PaperRegion): string {
   const localized = activeLocalization.value?.region_labels[region.region_id]?.trim();
   if (localized) return localized;
   return {
-    abstract: "摘要",
-    introduction: "引言",
-    related_work: "相关工作",
-    method: "方法",
-    results: "结果",
-    discussion: "讨论",
-    conclusion: "结论",
-    references: "参考文献",
-    unknown: "其他区域",
-  }[region.kind] ?? "论文区域";
+    abstract: uiText('摘要'),
+    introduction: uiText('引言'),
+    related_work: uiText('相关工作'),
+    method: uiText('方法'),
+    results: uiText('结果'),
+    discussion: uiText('讨论'),
+    conclusion: uiText('结论'),
+    references: uiText('参考文献'),
+    unknown: uiText('其他区域'),
+  }[region.kind] ?? uiText('论文区域');
 }
 
 function landmarkDisplayLabel(landmark: PaperLandmark): string {
   const localized = activeLocalization.value?.landmark_labels[landmark.landmark_id]?.trim();
   if (localized) return localized;
   return {
-    research_question: "研究问题",
-    hypothesis: "研究假设",
-    related_work: "相关工作",
-    method: "关键方法",
-    experiment: "实验设计",
-    evidence: "关键证据",
-    result: "主要结果",
-    claim: "核心主张",
-    contribution: "主要贡献",
-    limitation: "研究局限",
-    future_work: "后续工作",
-    other: "重要位置",
-  }[landmark.kind] ?? "重要位置";
+    research_question: uiText('研究问题'),
+    hypothesis: uiText('研究假设'),
+    related_work: uiText('相关工作'),
+    method: uiText('关键方法'),
+    experiment: uiText('实验设计'),
+    evidence: uiText('关键证据'),
+    result: uiText('主要结果'),
+    claim: uiText('核心主张'),
+    contribution: uiText('主要贡献'),
+    limitation: uiText('研究局限'),
+    future_work: uiText('后续工作'),
+    other: uiText('重要位置'),
+  }[landmark.kind] ?? uiText('重要位置');
 }
 
 function relationLandmarkLabel(landmarkId: string): string {
@@ -262,46 +264,46 @@ function relationLandmarkLabel(landmarkId: string): string {
 
 function slotLabel(slot: string): string {
   const labels: Record<string, string> = {
-    background: "背景",
-    research_gap: "研究空白",
-    research_question: "研究问题",
-    hypothesis: "假设",
-    input: "输入",
-    object: "对象",
-    method_step: "方法步骤",
-    method: "方法",
-    output: "输出",
-    assumption: "前提",
-    experiment: "实验",
-    evidence: "证据",
-    result: "结果",
-    claim: "主张",
-    contribution: "贡献",
-    interpretation: "解释",
-    limitation: "局限",
-    future_work: "后续工作",
+    background: uiText('背景'),
+    research_gap: uiText('研究空白'),
+    research_question: uiText('研究问题'),
+    hypothesis: uiText('假设'),
+    input: uiText('输入'),
+    object: uiText('对象'),
+    method_step: uiText('方法步骤'),
+    method: uiText('方法'),
+    output: uiText('输出'),
+    assumption: uiText('前提'),
+    experiment: uiText('实验'),
+    evidence: uiText('证据'),
+    result: uiText('结果'),
+    claim: uiText('主张'),
+    contribution: uiText('贡献'),
+    interpretation: uiText('解释'),
+    limitation: uiText('局限'),
+    future_work: uiText('后续工作'),
   };
   return labels[slot] ?? slot.replaceAll("_", " ");
 }
 
 function relationLabel(relation: string): string {
   return {
-    frames: "界定",
-    addresses: "回应",
-    tests: "检验",
-    produces: "产生",
-    supports: "支持",
-    challenges: "质疑",
-    limits: "限制",
-    motivates: "推动",
-    builds_on: "承接",
-    contrasts: "对照",
+    frames: uiText('界定'),
+    addresses: uiText('回应'),
+    tests: uiText('检验'),
+    produces: uiText('产生'),
+    supports: uiText('支持'),
+    challenges: uiText('质疑'),
+    limits: uiText('限制'),
+    motivates: uiText('推动'),
+    builds_on: uiText('承接'),
+    contrasts: uiText('对照'),
   }[relation] ?? relation;
 }
 </script>
 
 <template>
-  <section class="paper-map-shell" :class="{ expanded }" :data-mode="props.state?.mode" aria-label="论文地图">
+  <section class="paper-map-shell" :class="{ expanded }" :data-mode="props.state?.mode" :aria-label="uiText('论文地图')">
     <header class="paper-map-toolbar">
       <div class="paper-map-title">
         <MapIcon :size="15" aria-hidden="true" />
@@ -310,8 +312,8 @@ function relationLabel(relation: string): string {
       <button
         class="paper-map-toggle"
         type="button"
-        :title="expanded ? '收起论文地图' : '展开论文地图'"
-        :aria-label="expanded ? '收起论文地图' : '展开论文地图'"
+        :title="expanded ? uiText('收起论文地图') : uiText('展开论文地图')"
+        :aria-label="expanded ? uiText('收起论文地图') : uiText('展开论文地图')"
         :aria-expanded="expanded"
         :disabled="!props.base || props.base.status === 'unavailable'"
         @click="emit('toggle')"
@@ -326,7 +328,7 @@ function relationLabel(relation: string): string {
         class="paper-map-track"
         role="slider"
         tabindex="0"
-        aria-label="论文全局位置"
+        :aria-label="uiText('论文全局位置')"
         aria-valuemin="0"
         aria-valuemax="100"
         :aria-valuenow="Math.round((dragRatio ?? props.state?.viewport_position.progress_ratio ?? 0) * 100)"
@@ -351,7 +353,7 @@ function relationLabel(relation: string): string {
           :style="{ top: `${topForPage(landmark.page_index)}%` }"
           :title="landmarkDisplayLabel(landmark)"
         ></span>
-        <span class="paper-map-viewport" :style="{ top: viewportTop }" aria-label="当前阅读位置"></span>
+        <span class="paper-map-viewport" :style="{ top: viewportTop }" :aria-label="uiText('当前阅读位置')"></span>
       </div>
 
       <div v-if="expanded" class="paper-map-region-list">
@@ -374,7 +376,7 @@ function relationLabel(relation: string): string {
       </div>
 
       <div v-if="expanded" class="paper-map-expanded-controls">
-        <div class="paper-map-modes" role="group" aria-label="论文地图模式">
+        <div class="paper-map-modes" role="group" :aria-label="uiText('论文地图模式')">
           <button
             v-for="option in modeOptions"
             :key="option.id"
@@ -388,7 +390,7 @@ function relationLabel(relation: string): string {
           </button>
         </div>
 
-        <div class="paper-map-layers" aria-label="地图图层">
+        <div class="paper-map-layers" :aria-label="uiText('地图图层')">
           <label
             v-for="layer in layerOptions"
             :key="layer.id"
@@ -406,7 +408,7 @@ function relationLabel(relation: string): string {
 
         <div v-if="visibleLayers.has('landmarks')" class="paper-map-lens">
           <section v-if="activeMode === 'skim'" class="paper-map-mode-section" data-testid="skim-route">
-            <h3 class="paper-map-section-title">全文主线</h3>
+            <h3 class="paper-map-section-title">{{ uiText('全文主线') }}</h3>
             <div v-if="globalLandmarks.length" class="paper-map-chain" data-testid="global-chain">
               <div
                 v-for="landmark in globalLandmarks"
@@ -419,8 +421,8 @@ function relationLabel(relation: string): string {
                 <button
                   class="paper-map-pin"
                   type="button"
-                  :title="pinnedLandmarks.has(landmark.landmark_id) ? '取消固定' : '固定地标'"
-                  :aria-label="pinnedLandmarks.has(landmark.landmark_id) ? '取消固定' : '固定地标'"
+                  :title="pinnedLandmarks.has(landmark.landmark_id) ? uiText('取消固定') : uiText('固定地标')"
+                  :aria-label="pinnedLandmarks.has(landmark.landmark_id) ? uiText('取消固定') : uiText('固定地标')"
                   @click.stop="emit('pin-toggle', landmark.landmark_id, pinnedLandmarks.has(landmark.landmark_id))"
                 >
                   <PinOff v-if="pinnedLandmarks.has(landmark.landmark_id)" :size="13" aria-hidden="true" />
@@ -428,7 +430,7 @@ function relationLabel(relation: string): string {
                 </button>
               </div>
             </div>
-            <p v-else class="paper-map-empty">没有可显示的全文重点</p>
+            <p v-else class="paper-map-empty">{{ uiText('没有可显示的全文重点') }}</p>
           </section>
 
           <section
@@ -437,7 +439,7 @@ function relationLabel(relation: string): string {
             :data-testid="activeMode === 'abstract' ? 'abstract-structure' : 'deep-region'"
           >
             <h3 class="paper-map-section-title">
-              {{ activeMode === 'abstract' ? '摘要结构' : `${focusedRegionLabel} · 深读` }}
+              {{ activeMode === 'abstract' ? uiText('摘要结构') : uiText('{0} · 深读', [focusedRegionLabel]) }}
             </h3>
             <div v-if="localBindings.length" class="paper-map-local-chain" data-testid="local-chain">
               <button
@@ -458,7 +460,7 @@ function relationLabel(relation: string): string {
               v-if="activeMode === 'abstract' && abstractCorrespondences.length"
               class="paper-map-correspondence-section"
             >
-              <h3 class="paper-map-section-title">对应正文</h3>
+              <h3 class="paper-map-section-title">{{ uiText('对应正文') }}</h3>
               <div class="paper-map-correspondences" data-testid="abstract-correspondences">
                 <button
                   v-for="item in abstractCorrespondences"
@@ -479,7 +481,7 @@ function relationLabel(relation: string): string {
           v-if="visibleLayers.has('arguments') && argumentLayerStatus !== 'unavailable' && lensRelations.length"
           class="paper-map-relations"
         >
-          <h3 class="paper-map-section-title">论证关系</h3>
+          <h3 class="paper-map-section-title">{{ uiText('论证关系') }}</h3>
           <div v-for="relation in lensRelations" :key="relation.relation_id">
             <span>{{ relationLandmarkLabel(relation.source_landmark_id) }}</span>
             <span class="paper-map-relation-kind">
@@ -494,33 +496,27 @@ function relationLabel(relation: string): string {
           class="paper-map-empty"
           data-testid="argument-status"
           :title="layerReason('arguments')"
-        >
-          论证关系不可用
-        </p>
+        > {{ uiText('论证关系不可用') }} </p>
         <p
           v-else-if="visibleLayers.has('arguments') && !lensRelations.length"
           class="paper-map-empty"
           data-testid="argument-status"
           :title="layerReason('arguments')"
-        >
-          当前模式暂无证据化关系
-        </p>
+        > {{ uiText('当前模式暂无证据化关系') }} </p>
         <p
           v-else-if="visibleLayers.has('arguments') && argumentLayerStatus === 'degraded'"
           class="paper-map-empty"
           data-testid="argument-status"
           :title="layerReason('arguments')"
-        >
-          部分论证关系因证据不完整未显示
-        </p>
+        > {{ uiText('部分论证关系因证据不完整未显示') }} </p>
 
         <div v-if="props.effectReason" class="paper-map-effect">
           <span>{{ props.effectReason }}</span>
           <button
             v-if="props.undoAvailable"
             type="button"
-            title="撤销上一次地图调整"
-            aria-label="撤销上一次地图调整"
+            :title="uiText('撤销上一次地图调整')"
+            :aria-label="uiText('撤销上一次地图调整')"
             :disabled="props.actionBusy"
             @click="emit('undo')"
           >

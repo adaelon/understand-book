@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t as uiText } from '../i18n';
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { FormulaSemantics, ImageAssetManifestEntry, MemoryRecord } from "../api";
 import type { Manifest } from "../api";
@@ -738,7 +740,7 @@ watch(
                   hl: props.isHighlighted(seg.lid),
                   'note-placement-candidate': seg.lid === placementCandidateLid,
                 }"
-                title="查看公式语义剖面"
+                :title="uiText('查看公式语义剖面')"
                 @click.stop="emit('open-formula', seg)"
               >
                 <span class="formula-open-source" v-html="renderBody(seg)"></span>
@@ -775,7 +777,7 @@ watch(
         >
           <button
             class="formula-open formula-display-open"
-            title="查看公式语义剖面"
+            :title="uiText('查看公式语义剖面')"
             @click.stop="emit('open-formula', item.segment)"
           ><span class="formula-open-source" v-html="renderBody(item.segment)"></span></button>
         </div>
@@ -818,11 +820,11 @@ watch(
                 type="button"
                 :aria-pressed="wrappedAssetLids.has(item.segment.lid)"
                 @click.stop="toggleAssetWrap(item.segment.lid)"
-              >{{ wrappedAssetLids.has(item.segment.lid) ? '不换行' : '换行' }}</button>
+              >{{ wrappedAssetLids.has(item.segment.lid) ? uiText('不换行') : uiText('换行') }}</button>
               <button type="button" @click.stop="toggleAssetExpanded(item.segment.lid)">
-                {{ item.segment.lid === expandedAssetLid ? '收起' : '展开' }}
+                {{ item.segment.lid === expandedAssetLid ? uiText('收起') : uiText('展开') }}
               </button>
-              <button v-if="!isTextAsset(item.segment)" class="asset-jump" title="选中该 LID" @click.stop="emit('select', item.segment.lid)">定位</button>
+              <button v-if="!isTextAsset(item.segment)" class="asset-jump" :title="uiText('选中该 LID')" @click.stop="emit('select', item.segment.lid)">{{ uiText('定位') }}</button>
             </span>
           </div>
           <pre v-if="item.segment.kind === 'code'" class="asset-source asset-code" :class="{ 'soft-wrap': wrappedAssetLids.has(item.segment.lid) }"><code v-html="renderBody(item.segment)"></code></pre>
@@ -832,14 +834,14 @@ watch(
               v-if="imageRenderSrc(props.imageAsset(item.segment.lid))"
               class="image-rendered"
               :src="imageRenderSrc(props.imageAsset(item.segment.lid)) || ''"
-              :alt="props.imageAsset(item.segment.lid)?.alt || props.imageMeta(item.segment.text)?.alt || '图片'"
+              :alt="props.imageAsset(item.segment.lid)?.alt || props.imageMeta(item.segment.text)?.alt || uiText('图片')"
               loading="lazy"
               decoding="async"
             />
             <div v-else class="image-preview">
-              <span>图片</span>
-              <strong>{{ props.imageMeta(item.segment.text)?.alt || '未命名图片' }}</strong>
-              <code>{{ props.imageMeta(item.segment.text)?.src || '来源不可用' }}</code>
+              <span>{{ uiText('图片') }}</span>
+              <strong>{{ props.imageMeta(item.segment.text)?.alt || uiText('未命名图片') }}</strong>
+              <code>{{ props.imageMeta(item.segment.text)?.src || uiText('来源不可用') }}</code>
             </div>
             <p v-if="props.imageAsset(item.segment.lid)?.warning" class="image-warning">
               {{ props.imageAsset(item.segment.lid)?.warning }}
@@ -850,12 +852,12 @@ watch(
 
 
       </div>
-      <p v-if="props.segments.length === 0" class="empty">暂无正文。请确认服务端已加载书并正在监听。</p>
+      <p v-if="props.segments.length === 0" class="empty">{{ uiText('暂无正文。请确认服务端已加载书并正在监听。') }}</p>
     </article>
     <div v-if="!paginated" class="annotation-markers" data-reader-selection-ignore data-note-placement-ignore>
       <button v-for="group in annotationGroups" :key="group.lid" class="annotation-marker"
         :data-annotation-lid="group.lid" :style="markerStyles[group.lid]"
-        :aria-label="`查看此处 ${group.records.length} 条批注`" :aria-expanded="activeAnnotation?.lid === group.lid"
+        :aria-label="uiText('查看此处 {0} 条批注', [group.records.length])" :aria-expanded="activeAnnotation?.lid === group.lid"
         aria-controls="reader-annotation-preview" @pointerdown.stop @mousedown.prevent
         @click="toggleAnnotation(group.lid, $event)">✎<span>{{ group.records.length }}</span></button>
     </div>

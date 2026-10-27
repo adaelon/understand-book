@@ -300,10 +300,47 @@ const LEGACY_LEARNING_SCHEMA: &str = "CREATE TABLE IF NOT EXISTS tutor_events (
              CREATE INDEX IF NOT EXISTS learning_evidence_source ON learning_evidence(source_id,seq);
              CREATE TABLE IF NOT EXISTS learner_projection (source_id TEXT PRIMARY KEY, projection TEXT NOT NULL);";
 
+/// The public state keeps all historical stages. The private projection also
+/// remembers which stage the reader last selected for each material. Replaying
+/// Start/Resume gives existing histories the same restoration as new ones.
+#[derive(Default, Serialize, Deserialize)]
+struct TutorProjection {
+    #[serde(flatten)]
+    state: TutorState,
+    source_sessions: BTreeMap<String, String>,
+}
+
+impl TutorProjection {
+    fn apply(&mut self, request: &TutorMutation) -> Result<(), ToolError> {
+        self.state.apply(request)?;
+        match request.action {
+            TutorAction::Start { .. } | TutorAction::Resume { .. } => {
+                if let Some(session) = self.state.control.current_tutor_session_id.as_ref()
+                    .and_then(|id| self.state.sessions.get(id)) {
+                    for material in &session.material_scope {
+                        self.source_sessions.insert(material.source_id.clone(), session.id.clone());
+                    }
+                }
+            }
+            TutorAction::SyncWorkspaceGoal { .. } => self.source_sessions.clear(),
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn view(mut self, source: Option<&str>) -> TutorState {
+        if let Some(source) = source {
+            self.state.control.current_tutor_session_id = self.source_sessions.get(source).cloned();
+        }
+        self.state
+    }
+}
+
 pub struct LearningStore {
     pub(crate) connection: Connection,
     pub(crate) writer_lease: Option<std::sync::Arc<dyn Send + Sync>>,
     pub(crate) workspace_scope: String,
+    source_scope: Option<String>,
 }
 
 impl LearningStore {
@@ -351,13 +388,20 @@ impl LearningStore {
             tx.pragma_update(None, "user_version", 4).map_err(storage)?;
             tx.commit().map_err(storage)?;
         }
-        Ok(Self { connection, writer_lease: None, workspace_scope: String::new() })
+        Ok(Self { connection, writer_lease: None, workspace_scope: String::new(), source_scope: None })
     }
 
     /// Select an immutable learning boundary for this handle. Legacy records stay
     /// in the absent-workspace scope until the user explicitly imports them.
     pub fn with_workspace(mut self, learning_workspace_id: Option<&str>) -> Self {
         self.workspace_scope = learning_workspace_id.unwrap_or_default().to_owned();
+        self
+    }
+
+    /// Select this material's saved stage without changing its lifecycle or
+    /// creating a teaching action merely because the reader navigated.
+    pub fn with_source(mut self, source_id: &str) -> Self {
+        self.source_scope = Some(source_id.to_owned());
         self
     }
 
@@ -385,13 +429,19 @@ impl LearningStore {
         let revision: u32 = self.connection.query_row(
             "SELECT coalesce(max(revision),0) FROM tutor_events", [], |row|row.get(0)).map_err(storage)?;
         if let Some((json,watermark)) = saved {
-            if watermark == revision { return serde_json::from_str(&json).map_err(storage); }
+            if watermark == revision {
+                // Old cached projections have no source index; the authoritative
+                // event history reconstructs it without rewriting any records.
+                if let Ok(projection) = serde_json::from_str::<TutorProjection>(&json) {
+                    return Ok(projection.view(self.source_scope.as_deref()));
+                }
+            }
         }
         self.replay(None)
     }
 
     fn replay(&self, until: Option<u32>) -> Result<TutorState, ToolError> {
-        replay_workspace(&self.connection, &self.workspace_scope, until)
+        Ok(replay_workspace(&self.connection, &self.workspace_scope, until)?.view(self.source_scope.as_deref()))
     }
 
     pub fn mutate(&mut self, request: &TutorMutation, now: &str) -> Result<TutorState, ToolError> {
@@ -404,7 +454,7 @@ impl LearningStore {
             if serde_json::from_str::<TutorMutation>(&json).map_err(storage)? != *request {
                 return Err(invalid("同一操作身份不能用于不同请求。"));
             }
-            return replay_workspace(&transaction, &self.workspace_scope, Some(revision));
+            return Ok(replay_workspace(&transaction, &self.workspace_scope, Some(revision))?.view(self.source_scope.as_deref()));
         }
         let mut state = replay_workspace(&transaction, &self.workspace_scope, None)?;
         state.apply(request)?;
@@ -417,7 +467,7 @@ impl LearningStore {
             "INSERT INTO tutor_projection(id,state,event_watermark,learning_workspace_id) VALUES (1,?,?,?) ON CONFLICT(learning_workspace_id,id) DO UPDATE SET state=excluded.state,event_watermark=excluded.event_watermark",
             params![serde_json::to_string(&state).map_err(storage)?,event_revision,self.workspace_scope]).map_err(storage)?;
         transaction.commit().map_err(storage)?;
-        Ok(state)
+        Ok(state.view(self.source_scope.as_deref()))
     }
 
     pub fn rebuild(&mut self) -> Result<TutorState, ToolError> {
@@ -429,18 +479,18 @@ impl LearningStore {
 /// The teaching switch is account-wide. A workspace's control revision changes
 /// for its own actions and global switch changes, never for another workspace's
 /// stage changes. The event log revision separately preserves total replay order.
-fn replay_workspace(connection: &Connection, scope: &str, until: Option<u32>) -> Result<TutorState, ToolError> {
+fn replay_workspace(connection: &Connection, scope: &str, until: Option<u32>) -> Result<TutorProjection, ToolError> {
     let mut statement = connection.prepare(
         "SELECT learning_workspace_id,request FROM tutor_events WHERE revision<=? ORDER BY revision").map_err(storage)?;
     let rows=statement.query_map([until.unwrap_or(u32::MAX)],|row|Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?))).map_err(storage)?;
-    let mut state=TutorState::default();
+    let mut state=TutorProjection::default();
     for row in rows {
         let (event_scope,json)=row.map_err(storage)?;
         let mut request: TutorMutation=serde_json::from_str(&json).map_err(storage)?;
         if event_scope == scope {
             state.apply(&request)?;
         } else if matches!(request.action,TutorAction::SetEnabled{..}) {
-            request.expected_revision=state.control.revision;
+            request.expected_revision=state.state.control.revision;
             state.apply(&request)?;
         }
     }
@@ -451,6 +501,60 @@ fn replay_workspace(connection: &Connection, scope: &str, until: Option<u32>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn source_goals_restore_old_history_without_borrowing_another_books_goal() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut store = LearningStore::open(&path, false).unwrap();
+        change(&mut store, "on", TutorAction::SetEnabled { enabled:true });
+        change(&mut store, "a", start("理解计算图"));
+        let mut book_b = start("理解资源核算");
+        if let TutorAction::Start { material_scope, .. } = &mut book_b {
+            material_scope[0].source_id = "book-b".into();
+        }
+        let legacy = change(&mut store, "b", book_b);
+        // Existing installations have a cached TutorState with no source index.
+        store.connection.execute("UPDATE tutor_projection SET state=?", [serde_json::to_string(&legacy).unwrap()]).unwrap();
+        let a = LearningStore::open(&path, false).unwrap().with_source("book-a").state().unwrap();
+        assert_eq!(a.control.current_tutor_session_id.as_deref(), Some("tutor-a"));
+        assert_eq!(a.sessions["tutor-a"].user_intent, "理解计算图");
+        assert_eq!(a.sessions["tutor-a"].status, TutorSessionStatus::Paused);
+        let empty = LearningStore::open(&path, false).unwrap().with_source("unread-book").state().unwrap();
+        assert!(empty.control.current_tutor_session_id.is_none());
+        assert_eq!(empty.sessions.len(), 2, "old stages remain in history");
+        let mut a = LearningStore::open(&path, false).unwrap().with_source("book-a");
+        let resumed = change(&mut a, "resume-a", TutorAction::Resume { session_id:"tutor-a".into() });
+        assert_eq!(resumed.control.current_tutor_session_id.as_deref(), Some("tutor-a"));
+        let b = LearningStore::open(&path, false).unwrap().with_source("book-b").state().unwrap();
+        assert_eq!(b.control.current_tutor_session_id.as_deref(), Some("tutor-b"));
+        assert_eq!(a.rebuild().unwrap(), resumed);
+    }
+
+    #[test]
+    fn source_goals_keep_workspace_and_joint_material_boundaries() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("learning.db");
+        let mut workspace = LearningStore::open(&path, false).unwrap().with_workspace(Some("study"));
+        workspace.sync_workspace_goal(1, "now").unwrap();
+        change(&mut workspace, "on", TutorAction::SetEnabled { enabled:true });
+        let mut joint = start("比较两份资料");
+        if let TutorAction::Start { material_scope, .. } = &mut joint {
+            material_scope.push(TutorMaterial { source_id:"book-b".into(), scope_refs:vec![], role:TutorMaterialRole::Supporting });
+        }
+        change(&mut workspace, "joint", joint);
+        let source_state = |scope, source| LearningStore::open(&path, false).unwrap().with_workspace(scope).with_source(source).state().unwrap();
+        assert_eq!(source_state(Some("study"), "book-a").control.current_tutor_session_id.as_deref(), Some("tutor-joint"));
+        assert_eq!(source_state(Some("study"), "book-b").control.current_tutor_session_id.as_deref(), Some("tutor-joint"));
+        change(&mut workspace, "a", start("只学当前书"));
+        assert_eq!(source_state(Some("study"), "book-a").control.current_tutor_session_id.as_deref(), Some("tutor-a"));
+        assert_eq!(source_state(Some("study"), "book-b").control.current_tutor_session_id.as_deref(), Some("tutor-joint"));
+        assert!(source_state(None, "book-a").control.current_tutor_session_id.is_none());
+        assert!(source_state(Some("other"), "book-a").control.current_tutor_session_id.is_none());
+        workspace.sync_workspace_goal(2, "later").unwrap();
+        assert!(source_state(Some("study"), "book-a").control.current_tutor_session_id.is_none());
+        assert!(source_state(Some("study"), "book-b").control.current_tutor_session_id.is_none());
+        assert_eq!(source_state(Some("study"), "book-a").sessions.len(), 2);
+    }
     #[test]
     fn w4_goal_revision_stops_old_stage_and_replays_without_changing_teaching_switch() {
         let root = tempfile::tempdir().unwrap();

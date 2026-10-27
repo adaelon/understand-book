@@ -130,11 +130,11 @@ it('scopes Tutor calls in main and linked windows and keeps material quotations 
   const scene = { workspace_id: 'scene', generation: 1, revision: 1, selected_chat: 'chat', published_book_ref: { book_id: 'book', publication_id: 'publication' }, reader: {}, learning_workspace_id: 'A' } as NetworkWorkspace;
   const fetch = vi.fn(async (_url: string, _init: RequestInit) => Response.json({ control: { enabled: false, revision: 0 }, sessions: {} })); vi.stubGlobal('fetch', fetch);
   installWorkspace(scene); const keyA = learningDraftKey(); saveLearningDraft(keyA, { message: '原问题', quote: null, goalId: null });
-  await api.tutorState(); expect(fetch.mock.calls[0][0]).toBe('/api/tutor/state?learning_workspace_id=A');
+  await api.tutorState(); expect(fetch.mock.calls[0][0]).toBe('/api/tutor/state?learning_workspace_id=A&source_id=book');
   installWorkspace({ ...scene, learning_workspace_id: 'B' }, 'linked', true);
-  expect(readLearningDraft(learningDraftKey())).toBeNull(); await api.tutorState(); expect(fetch.mock.calls[1][0]).toBe('/api/tutor/state?learning_workspace_id=B');
+  expect(readLearningDraft(learningDraftKey())).toBeNull(); await api.tutorState(); expect(fetch.mock.calls[1][0]).toBe('/api/tutor/state?learning_workspace_id=B&source_id=book');
   await api.tutorMutate({ operation_id: 'enable', expected_revision: 0, action: { kind: 'set_enabled', enabled: true } });
-  expect(fetch.mock.calls[2][0]).toBe('/api/tutor/mutate?learning_workspace_id=B');
+  expect(fetch.mock.calls[2][0]).toBe('/api/tutor/mutate?learning_workspace_id=B&source_id=book');
   expect(readLearningDraft(keyA)?.message).toBe('原问题');
 });
 

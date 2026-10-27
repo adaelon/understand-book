@@ -35,7 +35,7 @@ it.each([
   const dispatch = presentationDispatcher();
   try {
     dispatch.update({ ...initialRun({ book_id: 'b', session_id: 's', turn_id: 'run' }), presentation_command: {
-      command_id: 'om4', run_turn_id: 'run', session_id: 's', delivery_turn_id: 't',
+      command_id: 'om4', run_turn_id: 'run', session_id: 's', content_session_id: 's', delivery_turn_id: 't',
       request: status === 'observed' ? { operation: 'observe', reference } :
         { operation: 'act', reference, based_on: 'before', action: { kind: 'invoke', action_id: 'apply' } },
       page_id: null, expected_values: {}, expected_edits: {}, available_actions: [],
@@ -373,4 +373,18 @@ it('closes the tools before collapsing the live presentation on Escape', async (
   expect(wrapper.classes()).toContain('expanded');
   expect(wrapper.get('iframe').element).toBe(frame);
   wrapper.unmount();
+});
+
+it('rebuilds an already loaded frame after a runtime error without re-reading the saved presentation', async () => {
+  const { wrapper, frame, send } = await mountFeedback();
+  try {
+    await send({ kind: 'error' });
+    expect(wrapper.get('.presentation-error button').text()).toBe('重新加载');
+    await wrapper.get('.presentation-error button').trigger('click');
+    await flushPromises();
+    expect(api.presentationRead).toHaveBeenCalledTimes(1);
+    expect(wrapper.get('iframe').element).not.toBe(frame);
+    expect(wrapper.find('.presentation-error').exists()).toBe(false);
+    expect(wrapper.get('.presentation-title').text()).toBe(view.title);
+  } finally { wrapper.unmount(); }
 });

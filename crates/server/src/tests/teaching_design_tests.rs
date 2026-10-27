@@ -735,12 +735,15 @@ fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed()
     struct ReviewCounter {
         inner: ChatStubAdapter,
         reviewed: RefCell<Vec<Value>>,
+        explanations_reviewed: RefCell<Vec<Value>>,
     }
     impl ModelAdapter for ReviewCounter {
         fn complete(&self,request:CompletionRequest)->Result<ParsedResponse,AdapterError> { self.inner.complete(request) }
         fn complete_structured(&self,request:CompletionRequest)->Result<Value,AdapterError> {
-            if request.system.starts_with("Teaching delivery acceptance review.") {
+            if request.system.contains("Teaching delivery acceptance review.") {
                 self.reviewed.borrow_mut().push(serde_json::from_str(&request.user).unwrap());
+            } else if request.system.contains("Teaching explanation acceptance review.") {
+                self.explanations_reviewed.borrow_mut().push(serde_json::from_str(&request.user).unwrap());
             }
             self.inner.complete_structured(request)
         }
@@ -761,7 +764,7 @@ fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed()
     rewrite["move"]["delivery_text"]=json!("Elapsed time includes both moving and stopped intervals of the same journey.");
     let mut revision=rewrite.clone();
     revision["move"]["move_id"]=json!("revision");
-    let adapter=ReviewCounter {reviewed:RefCell::new(vec![]),inner:ChatStubAdapter::scripted(vec![
+    let adapter=ReviewCounter {reviewed:RefCell::new(vec![]),explanations_reviewed:RefCell::new(vec![]),inner:ChatStubAdapter::scripted(vec![
         tool("read","book.text",json!({"lid":"1.1","end_lid":"1.1"})),
         tool("design","tutor.step",design_request("review-identity",None)),
         tool("select-first","tutor.step",original.clone()),
@@ -776,9 +779,19 @@ fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed()
     assert!(reply["trace"].as_array().unwrap().iter().any(|step|
         step["result_digest"].as_str().is_some_and(|text|text.contains("同一教学操作不能改写已保存事实"))),"{reply}");
     let reviewed=adapter.reviewed.borrow();
-    assert_eq!(reviewed.len(),2,"only the original and the new identity may reach paid review: {reviewed:?}");
+    assert_eq!(reviewed.len(),2,"only the original and the new identity may reach fact review: {reviewed:?}");
     assert_eq!(reviewed[0]["proposed_delivery"]["text"],original["move"]["delivery_text"]);
     assert_eq!(reviewed[1]["proposed_delivery"]["text"],revision["move"]["delivery_text"]);
+    let explanations=adapter.explanations_reviewed.borrow();
+    assert_eq!(explanations.len(),2,"the rejected rewrite must not consume an explanation review: {explanations:?}");
+    assert_eq!(explanations[0]["current_delivery"],original["move"]["delivery_text"]);
+    assert_eq!(explanations[1]["current_delivery"],revision["move"]["delivery_text"]);
+    for explanation in explanations.iter() {
+        assert_eq!(explanation["current_request"],"Explain whole-trip speed.");
+        for excluded in ["current_source_evidence", "current_design", "agent_working_state", "review"] {
+            assert!(explanation.get(excluded).is_none(),"{excluded} must not supply the missing explanation");
+        }
+    }
     let store=state.user.learning_store().unwrap();
     let saved=store.teaching_event(&format!("move:{}:original",turn.turn_id)).unwrap();
     assert_eq!(saved.payload["move"]["delivery_text"],original["move"]["delivery_text"]);
@@ -854,6 +867,60 @@ fn teaching_select_validation_errors_identify_the_missing_field_and_invalid_sour
     request["move"]["delivery_text"]=json!("The stop belongs to the elapsed time.");
     let selected=call(&state,&run.turn_ref,request);
     assert!(selected["selected"].is_string(),"correcting the invalid body permits selection");
+}
+
+#[test]
+fn teaching_intent_saved_goal_without_mode_repairs_origin_and_delivers_the_same_design() {
+    // Actual video/music start requests use this UI-generated message after saving a goal.
+    // The goal's explanation request must not manufacture a session mode.
+    for mode in [None, Some("direct_explanation"), Some("guided_inquiry")] {
+        let (_root,mut state)=fixture();
+        let view=state.user.learning_store().unwrap().state().unwrap();
+        let goal="先讲解一个关系，再根据我的回应继续；保留可回看的来源。";
+        let mutation:memory::learning::TutorMutation=serde_json::from_value(json!({
+            "operation_id":"saved-media-goal","expected_revision":view.control.revision,
+            "action":{"kind":"start","user_intent":goal,"explicit_constraints":[],
+                "material_scope":[{"source_id":state.workspace.book.base.book_id,"scope_refs":[],"role":"primary"}],
+                "default_teaching_intent":mode}})).unwrap();
+        state.user.learning_store().unwrap().mutate(&mutation,"goal").unwrap();
+        let started=teaching::start_request(&state.private_context(),"start").unwrap();
+        let run=prepare_agent_chat(&mut state,&json!({"message":started["message"]}).to_string(),"now")
+            .unwrap_or_else(|error|panic!("{}",error.body));
+        let context=run.tutor.as_ref().unwrap();
+        assert_eq!(context["user_intent"],goal);
+        assert_eq!(context["default_teaching_intent"],json!(mode));
+        assert_eq!(context["current_request"],"请继续本次学习，结合当前阅读位置和已有回应，选择一个有依据的教学动作。");
+        let accepted=call(&state,&run.turn_ref,design_request("saved-goal-design",None));
+        let mut request=select_request("saved-goal-explain",accepted["design_ref"].as_str().unwrap(),false);
+        request["move"]["kind"]=json!("explain");
+        request["move"]["intent_origin"]=json!("session_default");
+        request["move"]["interaction_intent"]=json!("neutral");
+        let failure=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap_err();
+        assert_eq!(failure.error.error_code,"TEACHING_INVALID");
+        if let Some(expected)=mode {
+            assert!(failure.error.message.contains(&format!("interaction_intent={expected}")),"{}",failure.error.message);
+            request["move"]["interaction_intent"]=json!(expected);
+        } else {
+            assert!(failure.error.message.contains("default_teaching_intent=null"),"{}",failure.error.message);
+            assert!(failure.error.message.contains("intent_origin=neutral"),"{}",failure.error.message);
+            assert!(failure.error.message.contains("kind=explain"),"{}",failure.error.message);
+            // The second real failed attempt changed intent but kept the invalid origin.
+            request["move"]["interaction_intent"]=json!("direct_explanation");
+            let same_failure=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap_err();
+            assert_eq!(same_failure.error.message,failure.error.message);
+            request["move"]["interaction_intent"]=json!("neutral");
+            request["move"]["intent_origin"]=json!("neutral");
+        }
+        let normalized=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap();
+        assert_eq!(normalized["move"]["design_ref"],accepted["design_ref"]);
+        let selected=call(&state,&run.turn_ref,normalized);
+        complete(&mut state,&run.turn_ref,&selected,false);
+        let delivered=state.user.learning_store().unwrap().teaching_deliveries(&run.turn_ref.session_id,&run.turn_ref.turn_id).unwrap();
+        assert_eq!(delivered.len(),1);
+        assert_eq!(delivered[0].payload["move"]["kind"],"explain");
+        assert_eq!(delivered[0].payload["move"]["intent_origin"],if mode.is_some(){"session_default"}else{"neutral"});
+        assert_eq!(delivered[0].payload["move"]["interaction_intent"],mode.unwrap_or("neutral"));
+    }
 }
 
 #[test]

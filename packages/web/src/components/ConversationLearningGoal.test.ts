@@ -4,23 +4,25 @@ import { expect, it } from 'vitest';
 import ConversationLearningGoal from './ConversationLearningGoal.vue';
 import type { TutorSession } from '../generated/TutorSession';
 
-const defaults = { enabled:true,busy:false,available:true,ready:true,otherSession:false,error:'' };
+const defaults = { enabled:true,busy:false,available:true,ready:true,error:'' };
 
-it('keeps the workspace stage visible after switching materials without resuming outside its material scope', () => {
+it('shows only the restored stage for the current workspace material and never resumes it automatically', () => {
   const session = { id:'learning', user_intent:'复习链式法则', status:'paused' } as TutorSession;
-  const w = mount(ConversationLearningGoal, { props: { ...defaults, session, workspaceScoped: true, otherSession: true } });
+  const w = mount(ConversationLearningGoal, { props: { ...defaults, session, workspaceScoped: true } });
   expect(w.text()).toContain('当前阶段'); expect(w.text()).toContain('复习链式法则');
-  expect(w.text()).toContain('当前阶段聚焦另一份资料');
-  expect(w.find('.goal-resume').exists()).toBe(false);
+  expect(w.find('.goal-resume').exists()).toBe(true);
   expect(w.find('[aria-label="调整阶段"]').exists()).toBe(true);
+  expect(w.emitted('resume')).toBeUndefined();
   w.unmount();
 });
 
-it('leaves the first question to the chat input without an empty goal card', async () => {
+it('offers this book its own empty goal entry without starting teaching', async () => {
   const w = mount(ConversationLearningGoal,{ props:{ ...defaults,session:null,enabled:false } });
-  expect(w.find('section').exists()).toBe(false);
+  expect(w.text()).toContain('这本书还没有学习目标');
   expect(w.find('input').exists()).toBe(false);
   expect(w.emitted()).toEqual({});
+  await w.get('button').trigger('click');
+  expect(w.get('input').element.value).toBe('');
   w.unmount();
 });
 
@@ -42,12 +44,33 @@ it('edits the visible goal without sending a chat turn or opening the management
   expect(w.get('input').element.value).toBe('理解 KV 缓存');
   await w.setProps({ session:{ ...session,id:'next',user_intent:'理解 KV 缓存' } });
   expect(w.find('input').exists()).toBe(false);
+  expect(w.get('.goal-resume').text()).toContain('学习目标已保存');
+  expect(w.get('.goal-resume button').text()).toContain('开始这次学习');
+  w.unmount();
+});
+
+it.each([{ musicMode: true, label: '为这首作品设定目标', purpose: '带我听懂' }, { videoMode: true, label: '为这段视频设定目标', purpose: '带我看懂' }])('uses media language and saves a goal while teaching prepares: $label', async media => {
+  const w = mount(ConversationLearningGoal, { props: { ...defaults, ...media, session: null, enabled: false,
+    ready: false, learningPurposeAvailable: true, learningPurposeReason: '来源仍在准备' } });
+  expect(w.text()).toContain('还没有学习目标');
+  expect(w.get('button').text()).toBe(media.label);
+  await w.get('button').trigger('click');
+  expect(w.get('[data-purpose=understand]').text()).toContain(media.purpose);
+  expect(w.get('[data-purpose=discover]').attributes('disabled')).toBeUndefined();
+  expect(w.get('.purpose-notice').text()).toContain('来源仍在准备');
+  await w.get('input').setValue('能解释当前材料的重点');
+  await w.get('form').trigger('submit');
+  expect(w.emitted('goal')).toEqual([['能解释当前材料的重点']]);
+  await w.setProps({ session: { id: 'media-goal', user_intent: '能解释当前材料的重点', status: 'active' } as TutorSession, ready: true });
+  expect(w.get('.goal-resume button').text()).toContain('开启并开始这次学习');
+  await w.get('.goal-resume button').trigger('click');
+  expect(w.emitted('resume')).toHaveLength(1);
   w.unmount();
 });
 
 it('offers a direct goal entry when the current book has no matching learning session', async () => {
-  const w = mount(ConversationLearningGoal,{ props:{ ...defaults,session:null,otherSession:true } });
-  expect(w.text()).toContain('当前学习属于其他书籍');
+  const w = mount(ConversationLearningGoal,{ props:{ ...defaults,session:null } });
+  expect(w.text()).toContain('这本书还没有学习目标');
   await w.get('button').trigger('click');
   await w.get('input').setValue('理解这本书的核心论证');
   await w.get('form').trigger('submit');

@@ -69,6 +69,13 @@ impl CancellableAdapter<'_> {
 }
 
 impl crate::ModelAdapter for CancellableAdapter<'_> {
+    fn tool_update_mode(&self) -> Option<crate::deepseek_messages::ToolUpdateMode> { self.inner.tool_update_mode() }
+    fn context_request_projection(&self, request: &crate::AgentRequestPlan) -> Option<serde_json::Value> { self.inner.context_request_projection(request) }
+    fn projection_identity(&self) -> Option<String> { self.inner.projection_identity() }
+
+    fn model_provider(&self) -> Option<String> {
+        self.inner.model_provider()
+    }
     fn set_spend_context(&self, scope: crate::model_spend::ChargeScope, port: Option<std::sync::Arc<dyn crate::model_spend::ModelSpendPort>>) { self.inner.set_spend_context(scope,port); }
     fn set_model_purpose(&self, purpose: &str) { self.inner.set_model_purpose(purpose); }
     fn stream_text_is_structured(&self) -> bool {
@@ -196,6 +203,7 @@ mod tests {
             adapter.set_run_cancellation(cancellation);
             let error = adapter
                 .complete(CompletionRequest {
+                    followup_user: None,
                     images: Vec::new(),
                     output_token_limit: None,
                     reasoning_effort: None,
@@ -231,6 +239,10 @@ impl From<read_tools::ToolError> for TeachingSelectionPreflightError {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn board_authoring_available(&self) -> bool { false }
+    fn author_board(&mut self, _request: crate::board_author::AuthorRequest, _bindings: &[crate::orchestrator::SourceBinding], _messages: &[Message], _cancellation: &CancellationToken) -> Result<crate::board_author::AuthorResult, read_tools::ToolError> {
+        Err(crate::board_author::unavailable())
+    }
     fn music_source_context(&mut self) -> Result<Option<serde_json::Value>, read_tools::ToolError> { Ok(None) }
     fn read_music(&mut self, _reference: Option<&base_schema::PublishedBookRef>, _request: read_tools::music::MusicRead) -> Result<read_tools::music::MusicReadResult, read_tools::ToolError> { Err(crate::music::unavailable()) }
     fn interact_music(&mut self, _request: crate::music::MusicInteractRequest, _cancellation: &CancellationToken) -> Result<crate::music::MusicPlaybackReceipt, read_tools::ToolError> { Err(crate::music::unavailable()) }
@@ -337,6 +349,13 @@ impl ResidentStatePort for BorrowedResidentState<'_> {
 }
 
 pub struct RunContext {
+    /// The previous accepted turn's recoverable input. It never grants current
+    /// tool activation or evidence authority.
+    pub active_model_projection: Option<crate::active_projection::ActiveModelProjection>,
+    /// Last successful model sampling in this run; finalized with its accepted
+    /// response before the business transcript is redacted.
+    pub sampled_model_projection: Option<crate::active_projection::ActiveModelProjection>,
+    pub(crate) tool_declaration_history: crate::tool_history::ToolDeclarationHistory,
     pub(crate) model_turns: usize,
     pub(crate) tokens_spent: u32,
     pub(crate) request_audit: crate::agent_request_audit::AgentRequestAudit,
@@ -354,6 +373,10 @@ pub struct RunContext {
     pub teaching_delivery_move_refs: Vec<String>,
     /// Accepted teaching text and private allocation of reasoning for this turn.
     pub(crate) teaching_delivery_draft: Option<serde_json::Value>,
+    pub(crate) board_delivery_draft: Option<String>,
+    pub(crate) board_candidate_id: Option<String>,
+    pub(crate) board_review_preview: Option<crate::board_author::ReviewPreview>,
+    pub(crate) board_reviewed_candidate_id: Option<String>,
     /// Successful choices from this design in the current turn, including
     /// choices omitted from the latest draft but explicitly retained later.
     pub(crate) accepted_teaching_moves: std::collections::BTreeMap<String, serde_json::Value>,
@@ -363,6 +386,7 @@ pub struct RunContext {
     /// A revision explicitly accepted by the host during this run.
     pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub current_user_message: Option<String>,
+    pub response_language: Option<crate::response_language::ResponseLanguage>,
     pub(crate) presentation_authoring: Option<crate::presentation_author::PresentationAuthoringContext>,
     /// Current-request coach handoff, including unavailable attempts. Changing
     /// layout/technical needs during this run must not buy another coach call.
@@ -402,6 +426,29 @@ pub struct RunContext {
 }
 
 impl RunContext {
+    pub(crate) fn accepted_board_text(&self) -> Option<&str> {
+        self.board_delivery_draft.as_deref().filter(|text|
+            crate::board_author::validate_teaching_delivery(self.tutor.as_ref(), self.tutor_resolved,
+                self.teaching_delivery_draft.as_ref(), text).is_ok())
+    }
+    pub fn restore_model_projection(
+        &mut self,
+        projection: Option<crate::active_projection::ActiveModelProjection>,
+        provider_identity: Option<&str>,
+    ) {
+        self.active_model_projection = projection.filter(|projection|
+            projection.history_message_count == self.messages.len()
+                && projection.matches_provider(provider_identity, &self.runtime_profile));
+        if let Some(projection) = &self.active_model_projection {
+            self.tool_declaration_history = projection.tool_history.clone();
+            self.tool_declaration_history.resume_input(&projection.input);
+        }
+    }
+
+    pub fn finished_model_projection(&self) -> Option<crate::active_projection::ActiveModelProjection> {
+        self.sampled_model_projection.as_ref()?.finish(&self.messages)
+    }
+
     /// Close the provider protocol for the unexecuted suffix of a cancelled tool batch.
     /// These are cancellation receipts, not executed tools or activity records.
     pub fn close_cancelled_tool_calls(&mut self) {
@@ -444,6 +491,9 @@ impl RunContext {
         runtime_profile: ModelRuntimeProfile,
     ) -> Self {
         Self {
+            active_model_projection: None,
+            sampled_model_projection: None,
+            tool_declaration_history: Default::default(),
             model_turns: 0,
             tokens_spent: 0,
             request_audit: Default::default(),
@@ -457,11 +507,16 @@ impl RunContext {
             sampled_teaching_design_ref: None,
             teaching_delivery_move_refs: Vec::new(),
             teaching_delivery_draft: None,
+            board_delivery_draft: None,
+            board_candidate_id: None,
+            board_review_preview: None,
+            board_reviewed_candidate_id: None,
             accepted_teaching_moves: Default::default(),
             goal: None,
             workspace_goal: None,
             accepted_workspace_goal: None,
             current_user_message: None,
+            response_language: None,
             presentation_authoring: None,
             presentation_coach: None,
             presentation_authoring_finished: false,

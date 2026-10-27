@@ -86,10 +86,10 @@ fn om5_teacher_help_is_ordered_frozen_and_survives_cancel_and_reopen() {
     let turn=run.turn_ref;
     let stream=start_stream(&mut state,&turn);
     let state=Arc::new(Mutex::new(state));
-    let (_,_,task)=saved_command(&state,&stream,&turn,InteractRequest::Observe {reference:reference.clone()},scene(1,1,false),json!([]),true);
+    let (_,_,task)=saved_command(&state,&stream,&turn,InteractRequest::Observe {board_target:None, reference:reference.clone()},scene(1,1,false),json!([]),true);
     let mut current=task.join().unwrap().unwrap();
     let mut act=|action:PresentationAction,snapshot:Value,support:Value| {
-        let (_,_,task)=saved_command(&state,&stream,&turn,InteractRequest::Act {reference:reference.clone(),
+        let (_,_,task)=saved_command(&state,&stream,&turn,InteractRequest::Act {board_target:None, reference:reference.clone(),
             based_on:current["saved_state_ref"].as_str().unwrap().into(),action},snapshot,support,true);
         current=task.join().unwrap().unwrap();current.clone()
     };
@@ -112,9 +112,9 @@ fn om5_teacher_help_is_ordered_frozen_and_survives_cancel_and_reopen() {
     // A new teacher result has been seen/saved, but its final tool reply is held.
     let later=state.with_app(|s|prepare_agent_chat(s,r#"{"message":"再演示一次。"}"#,"later").unwrap().turn_ref);
     let later_stream=state.with_app(|s|start_stream(s,&later));
-    let (_,_,task)=saved_command(&state,&later_stream,&later,InteractRequest::Observe{reference:reference.clone()},scene(3,2,true),json!([]),true);
+    let (_,_,task)=saved_command(&state,&later_stream,&later,InteractRequest::Observe {board_target:None, reference:reference.clone()},scene(3,2,true),json!([]),true);
     let observed=task.join().unwrap().unwrap();
-    let (last,token,task)=saved_command(&state,&later_stream,&later,InteractRequest::Act{reference:reference.clone(),based_on:observed["saved_state_ref"].as_str().unwrap().into(),
+    let (last,token,task)=saved_command(&state,&later_stream,&later,InteractRequest::Act {board_target:None, reference:reference.clone(),based_on:observed["saved_state_ref"].as_str().unwrap().into(),
         action:PresentationAction::Invoke{action_id:"apply".into()}},scene(3,3,true),json!([{"region_id":"result","text":"A 走 10 米，B 走 30 米。"}]),false);
     token.cancel();later_stream.cancelling();
     assert_eq!(task.join().unwrap().unwrap_err().error_code,"AGENT_RUN_CANCELLED");

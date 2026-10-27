@@ -2,13 +2,57 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api';
 import { network, installIdentity, installWorkspace, forgetNetwork, bindSceneApi, readerKey, type NetworkWorkspace } from './network-context';
-import { networkFetch, recoverSubmissions, pendingSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
+import { admissionSnapshot, networkFetch, recoverSubmissions, pendingSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
 import { readReaderSurfacePreference, writeReaderSurfacePreference } from './reader-surface';
 const scene = { workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'chat', published_book_ref: { book_id: 'b', publication_id: 'p' }, reader: {} } as NetworkWorkspace;
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('admits the first whole-board question once into the chat created for it', async () => {
+    installWorkspace({ ...scene, selected_chat: null });
+    let current = { ...scene, selected_chat: null } as NetworkWorkspace;
+    const requests: Record<string, unknown>[] = [];
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/chat/new')) { current = { ...scene, generation: 3, selected_chat: 'first-board-chat' }; return json(current); }
+      if (url.endsWith('/agent/runs')) {
+        requests.push(JSON.parse(String(init?.body)));
+        return json({ turn_id: 'board-answer', session_id: current.selected_chat, book_id: 'b', dispatch_state: 'completed' });
+      }
+      return json(current);
+    });
+    vi.stubGlobal('fetch', fetch);
+    const context = { board_id: 'empty-board', board_revision: 1 };
+    expect(await api.agentRunCreate('请画出状态与上下文的关系', { session_id: '', client_request_id: 'first-board-question', board_follow_up: context })).toMatchObject({ turn_id: 'board-answer', session_id: 'first-board-chat' });
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/chat/new'))).toHaveLength(1);
+    expect(requests).toEqual([expect.objectContaining({ session_id: 'first-board-chat', client_request_id: 'first-board-question', board_follow_up: context })]);
+    expect(pendingSubmissions()).toEqual([]);
+  });
+  it('rejects a real chat change after first-board initialization without sending its captured question', async () => {
+    installWorkspace({ ...scene, selected_chat: null });
+    let created = false;
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/chat/new')) { created = true; return json({ ...scene, generation: 3, selected_chat: 'created' }); }
+      return json(created ? { ...scene, generation: 3, selected_chat: 'changed-elsewhere' } : { ...scene, selected_chat: null });
+    });
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.agentRunCreate('保留我的问题', { session_id: '', client_request_id: 'captured', board_follow_up: { board_id: 'board', board_revision: 1 } })).rejects.toMatchObject({ errorCode: 'CHAT_SELECTION_CHANGED' });
+    expect(fetch.mock.calls.some(([url]) => url.endsWith('/agent/runs'))).toBe(false);
+    expect(network.value.workspace?.selected_chat).toBe('changed-elsewhere');
+    expect(pendingSubmissions()).toEqual([]);
+  });
+  it('recovers a board question with the exact captured target and request key', async () => {
+    const input = { session_id: 'chat', client_request_id: 'wb2-question', board_follow_up: { board_id: 'board-A', board_revision: 8, item_id: 'point-A', block_id: 'block-A' } };
+    let saved: unknown;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('client_request_id=')) return json({ turn_id: 'board-answer', session_id: 'chat', book_id: 'b', dispatch_state: 'completed' });
+      if (url.endsWith('/agent/runs')) { saved = JSON.parse(String(init?.body)); throw new Error('response lost'); }
+      return json(scene);
+    }));
+    expect(await api.agentRunCreate('解释这一点', input)).toMatchObject({ turn_id: 'board-answer' });
+    expect(saved).toMatchObject({ ...input, message: '解释这一点' });
+    expect(pendingSubmissions()).toEqual([]);
+  });
   it('bounds a stalled video draft request without submitting or automatically retrying it', async () => {
     vi.useFakeTimers();
     try {
@@ -318,4 +362,14 @@ describe('JL6 workspace effect disposition', () => {
     expect(await api.disposeEffect({ session_id: 'chat', turn_id: 'turn', effect_id: 'memory:m', action: 'undo' })).toEqual(receipt);
     expect(network.value.workspace?.revision).toBe(4);
   });
+});
+
+it('projects durable board parts from pending, cancelled and failed admissions without a live event buffer', () => {
+  const part = { board_id: 'board', commit_id: 'saved-part', before_revision: 1, after_revision: 2, item_ids: ['answer'], block_ids: ['block'], origin_session_id: 'session', origin_turn_id: 'turn', parent_item_id: 'point' };
+  for (const dispatch of ['claimed', 'cancelled', 'failed']) {
+    const recovered = admissionSnapshot({ book_id: 'b', session_id: 'session', turn_id: 'turn', dispatch_state: dispatch, persistence_state: dispatch === 'claimed' ? 'pending' : dispatch === 'failed' ? 'failed' : 'saved',
+      turn: { turn_id: 'turn', user_turn_ordinal: 1, user: '继续解释', question_source_label: null, question_quote: null, status: dispatch === 'claimed' ? 'pending_assistant' : dispatch === 'cancelled' ? 'cancelled' : 'failed', effect_labels: [], board_commits: [part] } });
+    expect(recovered.board_commits).toEqual([part]);
+    expect(recovered.persistence_state).toBe(dispatch === 'claimed' ? 'pending' : dispatch === 'failed' ? 'failed' : 'saved');
+  }
 });

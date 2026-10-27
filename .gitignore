@@ -43,3 +43,54 @@ evals/semantic/quality-results/
 # OS / editor cruft
 .DS_Store
 Thumbs.db
+
+# Local execution state, scratch workspaces and generated caches
+/tmp/
+/output/
+.tmp-*/
+.tmp-*.log
+__pycache__/
+*.py[cod]
+.build/
+test-results/
+playwright-report/
+/crates/server/tmp/
+/packages/packages/
+/packages/web/dist-*/
+/packages/web/.wb*-results/
+/packages/web/.wb*-final/
+/packages/web/.wb*-retry/
+/docs/project-book/.chapter*-replay-*/
+/docs/project-book/.book-reference-*/
+/docs/project-book/exports/tools/vendor/
+
+# Machine-specific agent configuration and private execution handoffs
+/.codex/config.toml
+/.automatic-build-executor-private/
+/.codex-recovery/
+/.codex-temp-recovery/
+/.codex-*.json
+/.executor-private*/
+/.executor-private-*.json
+/.executor_candidate_*.json
+/.ub-*.json
+/.fluid/
+/.ua/
+/.understand-book-reset-backups/
+/dispatch-*.json
+/executor-task-current.json
+/ah6-live-handoff-*.json
+/server-*.log
+
+# Raw model requests and private browser/deployment state stay local
+/docs/performance/**/requests/
+*.private.json
+*.private.env
+*.private.log
+
+# Local input books and original audio are not release artifacts
+/AI-Infra-Book-offline/
+/AI-Infra-Book-offline.zip
+/evals/music/assets/*.flac
+/evals/music/assets/*.mp3
+/evals/music/assets/*.wav

@@ -1,4 +1,9 @@
 :root {
+  --viz-blue: #2563eb;
+  --viz-green: #087f67;
+  --viz-amber: #a96508;
+  --viz-violet: #7c3aed;
+  --viz-muted: #64748b;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
@@ -35,9 +40,14 @@
 }
 
 .dark {
+  --viz-blue: #7ba7ff;
+  --viz-green: #5ad6b3;
+  --viz-amber: #f3bd65;
+  --viz-violet: #b6a0ff;
+  --viz-muted: #94a3b8;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.14 0.04 259.21);
+  --card: oklch(0.18 0.028 259.21);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);

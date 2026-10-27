@@ -109,7 +109,7 @@ describe("PDF Note placement flow", () => {
     expect(app).toContain("page_index: target.region.pageIndex");
     expect(app).toContain("region_id: target.region.region_id");
     expect(app).toContain("async function startNotePlacement");
-    expect(app).toContain('const targetLabel = surface === "pdf" ? "PDF 正文区域" : "正文块";');
+    expect(app).toContain('const targetLabel = surface === "pdf" ? uiText(\'PDF 正文区域\') : uiText(\'正文块\');');
     expect(app).toContain('if (!note.selection_context && note.note_placement?.kind === "pdf_region")');
     expect(app).toContain("void startNotePlacement(note)");
     expect(app).toContain('pdfReselectTarget.value = { kind: "note", record: note }');
