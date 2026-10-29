@@ -453,6 +453,7 @@ pub(crate) fn execute(
         _ => vec![],
     };
     match request {
+        AuthorRequest::Plan { .. } => Err(runtime::board_author::error("BOARD_PLAN_RUNTIME_REQUIRED", "Expression planning is handled by the current runtime before board authoring.")),
         AuthorRequest::Catalog { kind, query, after, limit, .. } => storage.with_user(|user| {
             read_current(user, frozen)?;
             let body = board_api::catalog(user, &source_workspaces[0], &json!({"kind":kind,"query":query,"after":after,"limit":limit.unwrap_or(20)}))?;

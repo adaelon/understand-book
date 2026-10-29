@@ -12,6 +12,7 @@ import { ThemeProvider } from "./context/theme-provider";
 import { App } from "./app";
 import { UsersPage, UserPage } from "./pages/users";
 import { UsagePage } from "./pages/usage";
+import { MonitorPage } from "./pages/monitor";
 import { InvitesPage } from "./pages/invites";
 import { WorkspaceReleasesPage } from "./pages/workspace-releases";
 import { OperatorBuildsPage } from './pages/operator-builds';
@@ -46,7 +47,7 @@ const user = createRoute({
 });
 const usage = createRoute({getParentRoute: () => root, path: '/usage', component: UsagePage});
 const router = createRouter({
-  routeTree: root.addChildren([index, login, users, user, usage, createRoute({getParentRoute: () => root, path: '/invites', component: InvitesPage}), createRoute({getParentRoute: () => root, path: '/workspace-releases', component: WorkspaceReleasesPage}), createRoute({getParentRoute: () => root, path: '/operator-builds', component: OperatorBuildsPage})]),
+  routeTree: root.addChildren([index, login, users, user, usage, createRoute({getParentRoute: () => root, path: '/monitor', component: MonitorPage}), createRoute({getParentRoute: () => root, path: '/invites', component: InvitesPage}), createRoute({getParentRoute: () => root, path: '/workspace-releases', component: WorkspaceReleasesPage}), createRoute({getParentRoute: () => root, path: '/operator-builds', component: OperatorBuildsPage})]),
   basepath: "/admin",
 });
 ReactDOM.createRoot(document.getElementById("root")!).render(

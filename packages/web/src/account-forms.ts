@@ -3,10 +3,12 @@ import { ApiError } from './api';
 
 export const passwordHint = uiText('密码长度为 8–64 个字符。');
 export function validPassword(value: string) { const length = Array.from(value).length; return length >= 8 && length <= 64; }
-export type AccountView = 'guest' | 'register' | 'forgot-password' | 'reset-password';
+export type AccountView = 'register' | 'forgot-password' | 'reset-password';
 export function takeAccountLink(): { view: AccountView | null; token: string } {
   const url = new URL(location.href), value = url.searchParams.get('account');
-  const view = ['guest', 'register', 'forgot-password', 'reset-password'].includes(value ?? '') ? value as AccountView : null;
+  const view = value === 'guest' ? 'register'
+    : ['register', 'forgot-password', 'reset-password'].includes(value ?? '') ? value as AccountView : null;
+  if (value === 'guest') { url.searchParams.set('account', 'register'); history.replaceState(history.state, '', url); }
   const token = view === 'reset-password' ? new URLSearchParams(url.hash.slice(1)).get('token') ?? '' : '';
   if (view === 'reset-password') { url.hash = ''; history.replaceState(history.state, '', url); }
   return { view, token };
@@ -21,8 +23,6 @@ const messages: Record<string, string> = {
   ACCOUNT_EMAIL_IN_USE: uiText('该邮箱已有账号，请登录或找回密码。'),
   INVITE_INVALID: uiText('请核对内测码格式。'),
   INVITE_UNAVAILABLE: uiText('内测码已使用、已停用或不存在，请联系管理员。'),
-  GUEST_MATERIALS_UNAVAILABLE: uiText('示例材料暂未准备好，内测码尚未使用。请联系邀请人。'),
-  GUEST_TRIAL_UNAVAILABLE: uiText('体验暂时无法开通，内测码尚未使用。请稍后重试。'),
   REGISTRATION_EXPIRED: uiText('注册申请已过期，请重新开始。'),
   REGISTRATION_NOT_FOUND: uiText('注册申请不存在，请重新开始。'),
   REGISTRATION_CODE_INVALID: uiText('验证码不正确，请核对邮件。'),

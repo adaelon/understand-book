@@ -28,6 +28,9 @@ pub struct Principal {
     auth_epoch: i64,
 }
 impl Principal {
+    pub(crate) fn session_id(&self) -> &[u8] {
+        &self.auth_session_id
+    }
     pub fn user_id(&self) -> &str {
         &self.user_id
     }
@@ -83,8 +86,7 @@ pub(crate) fn cookie(token: &str, clear: bool) -> String {
         if clear { 0 } else { SESSION_SECONDS }
     )
 }
-// Both password sign-in and invite redemption issue the same persistent session.
-// The caller owns the transaction so a guest can never exist without its grant.
+// The caller owns the transaction that issues a persistent login session.
 pub(crate) fn write_session(
     db: &rusqlite::Connection,
     owner: &str,

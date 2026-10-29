@@ -166,6 +166,7 @@ function executorMcpConnection() {
     return JSON.parse(rpc.result.content[0]!.text);
   };
   const commit = (ref: string) => {
+    openLegacySingleTaskHandoff(ref, new Date().toISOString());
     const opened = call("executor.open", { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: ref });
     if (opened.action.kind !== "DELIVER_INPUT") throw new Error("expected delivery");
     const batch = call("executor.input.next", opened.action.next_request);
@@ -581,7 +582,16 @@ function publicV4HandoffFacts(opaqueHandoffRef: string): {
   };
 }
 
-function submitCommittedPublicV4Handoff(opaqueHandoffRef: string, now: string) {
+/** Persist the historical single-task open shape to exercise its recovery contract. */
+function openLegacySingleTaskHandoff(opaqueHandoffRef: string, now: string) {
+  openAutomaticBuildExecutorSessionV3(opaqueHandoffRef, { now });
+  const file = path.join(resolveAutomaticBuildExecutorRegistryRoot(), "executor-opens", `${opaqueHandoffRef}.json`);
+  const { recovery_generations: _generations, ...record } = JSON.parse(readFileSync(file, "utf8"));
+  writeFileSync(file, JSON.stringify({ ...record, version: "automatic_build_executor_open_record.v1" }));
+}
+
+function submitCommittedLegacyPublicV4Handoff(opaqueHandoffRef: string, now: string) {
+  openLegacySingleTaskHandoff(opaqueHandoffRef, now);
   const generated = startV3GenerationForHandoff(opaqueHandoffRef, now);
   if (generated.action.kind !== "GENERATE") {
     throw new Error("expected a public V4 generation action");
@@ -1319,7 +1329,127 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(released.ready_executors[0]!.opaque_handoff_ref).not.toBe(launch.opaque_handoff_ref);
   }, 30_000);
 
-  it("L1 refills the released slot while sibling children have not opened yet", async () => {
+  it("keeps the same persisted handoff while one child commits all three bounded units", async () => {
+    const driver = expectedDriver();
+    const value = fixture("bounded-three-unit-child", {
+      body: `# Guide\n\n${Array.from({ length: 160 }, (_, i) =>
+        `Paragraph ${i + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}`,
+    });
+    const registry = path.join(value.root, "registry");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", registry);
+    const invocation = await createInvocation(driver, value);
+    const first = await driver.automaticBuildStep({ version: "automatic_build_step_request.v1",
+      invocation_ref: invocation.invocation_ref, available_agent_slots: 1 });
+    if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected bounded dispatch");
+    const launch = first.action.executors[0]!;
+    const owner = publicV4HandoffFacts(launch.opaque_handoff_ref).owner_identity;
+    const target = resolveAutomaticBuildTarget(value.source, value.root);
+    const initial = inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id,
+      new Date().toISOString(), owner.dispatch_run_id);
+    expect(initial.manifest.ordered_work_unit_ids).toHaveLength(3);
+    const projectionDirectory = path.join(registry, "dispatch-projections", invocation.invocation_ref);
+    const projectionFiles = readdirSync(projectionDirectory);
+    const live = { [launch.dispatch_slot_ref!]: { child: "bounded-child", opaque_handoff_ref: launch.opaque_handoff_ref } };
+    const refill = { version: "automatic_build_refill_request.v1", invocation_ref: invocation.invocation_ref,
+      capacity_limit: 1, live_by_slot: live, completed_refs: [], terminal_children: [] };
+    for (let index = 0; index < 3; index++) {
+      const generated = startV3GenerationForHandoff(launch.opaque_handoff_ref, new Date().toISOString());
+      if (generated.action.kind !== "GENERATE" || !("work_unit_id" in generated.action.output_contract)) {
+        throw new Error("expected public generation");
+      }
+      expect(generated.action.output_contract.work_unit_id).toBe(initial.manifest.ordered_work_unit_ids[index]);
+      expect(generated.action.semantic_attempt).toBe(1);
+      const submitted = submitAutomaticBuildExecutorCandidateV3({ version: "automatic_build_executor_candidate_submit.v3",
+        opaque_session_ref: generated.action.opaque_session_ref, candidate_sink_ref: generated.action.candidate_sink_ref,
+        candidate: { nodes: [], edges: [] } });
+      expect(submitted.action.kind).toBe(index < 2 ? "DELIVER_INPUT" : "DONE");
+      if (index < 2) {
+        const held = await driver.runAutomaticBuildDriverCommand(refill) as
+          import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+        expect(held.step.action).toMatchObject({ kind: "WAIT", reason: "active_executors" });
+        expect(held.live_by_slot).toEqual(live);
+        expect(held.ready_executors).toEqual([]);
+        expect(held.available_agent_slots).toBe(0);
+        expect(readdirSync(projectionDirectory)).toEqual(projectionFiles);
+      }
+    }
+    expect(inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id,
+      new Date().toISOString(), owner.dispatch_run_id)).toMatchObject({ state: "finished",
+      receipt: { terminal_reason: "complete" } });
+  }, 30_000);
+
+  it("recovers a stopped bounded child without replacing its continuing live sibling", async () => {
+    const driver = expectedDriver();
+    const value = fixture("bounded-continuation-refill", {
+      body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>
+        `Paragraph ${i + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}`,
+    });
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+    const invocation = await createInvocation(driver, value, { max_parallel: 3 });
+    const request: AutomaticBuildStepRequestV1 = {
+      version: "automatic_build_step_request.v1", invocation_ref: invocation.invocation_ref,
+      available_agent_slots: 3,
+    };
+    const first = await driver.automaticBuildStep(request);
+    if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected bounded dispatch");
+    const launch = first.action.executors[0]!;
+    expect(first.action.executors).toHaveLength(3);
+    // Both children advance beyond their root identities before one stops.
+    for (const ref of [launch.opaque_handoff_ref, first.action.executors[1]!.opaque_handoff_ref]) {
+      const generated = startV3GenerationForHandoff(ref, new Date().toISOString());
+      if (generated.action.kind !== "GENERATE") throw new Error("expected first generation");
+      const continued = submitAutomaticBuildExecutorCandidateV3({
+        version: "automatic_build_executor_candidate_submit.v3",
+        opaque_session_ref: generated.action.opaque_session_ref,
+        candidate_sink_ref: generated.action.candidate_sink_ref,
+        candidate: { nodes: [], edges: [] },
+      });
+      expect(continued.action.kind).toBe("DELIVER_INPUT");
+    }
+
+    const replay = await driver.automaticBuildStep(request);
+    expect(replay.action).toEqual(first.action);
+    const live = Object.fromEntries(first.action.executors.map((item, index) => [item.dispatch_slot_ref!,
+      { child: `bounded-child-${index}`, opaque_handoff_ref: item.opaque_handoff_ref }]));
+    const refill = {
+      version: "automatic_build_refill_request.v1", invocation_ref: invocation.invocation_ref,
+      capacity_limit: 3, live_by_slot: live, completed_refs: [], terminal_children: [],
+    };
+    type Refill = import("../../../skills/build/automatic-build-refill").AutomaticBuildRefillResponseV1;
+    const held = await driver.runAutomaticBuildDriverCommand(refill) as Refill;
+    expect(held.live_by_slot).toEqual(live);
+    expect(held.ready_executors).toEqual([]);
+    expect(held.available_agent_slots).toBe(0);
+
+    const target = resolveAutomaticBuildTarget(value.source, value.root);
+    const owner = publicV4HandoffFacts(launch.opaque_handoff_ref).owner_identity;
+    const current = inspectAutomaticBuildDispatchRecoveryGeneration(target, owner.stage, owner.dispatch_id,
+      { dispatch_run_id: owner.dispatch_run_id });
+    const before = taskTreeBytes(target);
+    const recovered = await driver.runAutomaticBuildDriverCommand({ ...refill, terminal_children: ["bounded-child-0"] }) as Refill;
+    expect(recovered.ready_executors).toHaveLength(1);
+    const replacement = recovered.ready_executors[0]!;
+    expect(replacement.dispatch_slot_ref).toBe(launch.dispatch_slot_ref);
+    expect(replacement.opaque_handoff_ref).not.toBe(launch.opaque_handoff_ref);
+    if (recovered.step.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected recovered dispatch");
+    expect(recovered.step.action.executors.filter(item => item.dispatch_slot_ref !== launch.dispatch_slot_ref))
+      .toEqual(first.action.executors.slice(1));
+    expect(recovered.live_by_slot).toEqual(Object.fromEntries(Object.entries(live)
+      .filter(([slot]) => slot !== launch.dispatch_slot_ref)));
+    expect(publicV4HandoffFacts(replacement.opaque_handoff_ref).recovery_identity.current_work_unit_id)
+      .toBe(current.recovery_identity.current_work_unit_id);
+    const replacementIdentity = inspectAutomaticBuildDispatchRecoveryGeneration(target, owner.stage, owner.dispatch_id,
+      { dispatch_run_id: owner.dispatch_run_id }).recovery_identity;
+    expect(replacementIdentity).toMatchObject({ version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: 1,
+      current_work_unit_id: current.recovery_identity.current_work_unit_id,
+      semantic_attempt: current.recovery_identity.semantic_attempt, lease_epoch: current.recovery_identity.lease_epoch });
+    expect(taskTreeBytes(target)).toEqual(before);
+    expect(() => openAutomaticBuildExecutorSessionV3(launch.opaque_handoff_ref)).toThrow();
+    expect(startV3GenerationForHandoff(replacement.opaque_handoff_ref, new Date().toISOString()).action)
+      .toMatchObject({ kind: "GENERATE", semantic_attempt: 1 });
+  }, 30_000);
+
+  it("L1 legacy single-task sessions refill the released slot while sibling children have not opened yet", async () => {
     const driver = expectedDriver();
     const value = fixture("l1-unopened-siblings", { body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>
       `Paragraph ${i + 1} contains stable evidence for the current V4 submit fixture.`).join("\n\n")}` });
@@ -1330,13 +1460,13 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected initial three slots");
     expect(first.action.executors).toHaveLength(3);
     const [a, b, c] = first.action.executors;
-    submitCommittedPublicV4Handoff(a!.opaque_handoff_ref, new Date().toISOString());
+    submitCommittedLegacyPublicV4Handoff(a!.opaque_handoff_ref, new Date().toISOString());
     const second = await driver.automaticBuildStep({ ...request, available_agent_slots: 1 });
     if (second.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected A replacement");
     const replacementA = second.action.executors.find(x => x.dispatch_slot_ref === a!.dispatch_slot_ref)!;
     expect(replacementA.opaque_handoff_ref).not.toBe(a!.opaque_handoff_ref);
     // B and replacement A are live in the harness but still waiting to make their first call.
-    submitCommittedPublicV4Handoff(c!.opaque_handoff_ref, new Date().toISOString());
+    submitCommittedLegacyPublicV4Handoff(c!.opaque_handoff_ref, new Date().toISOString());
     const third = await driver.automaticBuildStep({ ...request, available_agent_slots: 1 });
     if (third.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected C replacement");
     const liveSlots = new Set([b!.dispatch_slot_ref, replacementA.dispatch_slot_ref]);
@@ -1346,7 +1476,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(refill[0]!.opaque_handoff_ref).not.toBe(c!.opaque_handoff_ref);
   }, 30_000);
 
-  it("L1 commits six units through fresh connections while refilling one of three live slots", async () => {
+  it("L1 legacy single-task sessions commit six units through fresh connections while refilling one of three live slots", async () => {
     const driver = expectedDriver();
     const value = fixture("l1-three-slot-six-units", {
       body: `# Guide\n\n${Array.from({ length: 900 }, (_, i) =>
@@ -1382,6 +1512,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       for (const launch of response.ready_executors) {
         const slot = launch.dispatch_slot_ref!;
         if (live.has(slot) || completed.has(launch.opaque_handoff_ref) || live.size === 3) continue;
+        openLegacySingleTaskHandoff(launch.opaque_handoff_ref, new Date().toISOString());
         const child = createBuildExecutorMcpSession({
           bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
           protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
@@ -1558,7 +1689,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       invocation_ref: invocation.invocation_ref, available_agent_slots: 1 as const };
     const first = await driver.automaticBuildStep(request);
     if (first.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected launch");
-    submitCommittedPublicV4Handoff(first.action.executors[0]!.opaque_handoff_ref, new Date().toISOString());
+    submitCommittedLegacyPublicV4Handoff(first.action.executors[0]!.opaque_handoff_ref, new Date().toISOString());
     const second = await driver.automaticBuildStep(request);
     if (second.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected next unit");
     const ref = second.action.executors[0]!.opaque_handoff_ref;
@@ -1569,7 +1700,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(taskTreeDigest(target)).toBe(before);
     expect(publicV4HandoffFacts(resumed.action.executors[0]!.opaque_handoff_ref))
       .toEqual(publicV4HandoffFacts(ref));
-    submitCommittedPublicV4Handoff(resumed.action.executors[0]!.opaque_handoff_ref, new Date().toISOString());
+    submitCommittedLegacyPublicV4Handoff(resumed.action.executors[0]!.opaque_handoff_ref, new Date().toISOString());
     const owner = publicV4HandoffFacts(ref).owner_identity;
     const state = inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id,
       new Date().toISOString(), owner.dispatch_run_id);
@@ -2388,7 +2519,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       expect(await driver.automaticBuildStep({ ...request, decision })).toEqual(recovered);
       // A restart without resending the decision must consume the same durable recovery.
       expect(await driver.automaticBuildStep(request)).toEqual(recovered);
-      const generated = submitCommittedPublicV4Handoff(retry.opaque_handoff_ref, "2026-08-10T02:00:06.000Z");
+      const generated = submitCommittedLegacyPublicV4Handoff(retry.opaque_handoff_ref, "2026-08-10T02:00:06.000Z");
       expect(generated).toMatchObject({ semantic_attempt: 4,
         retry_feedback: { code: "quote_not_in_evidence", json_pointer: "/math_items/0/assumptions/0/quote" } });
       const receipt = JSON.parse(readFileSync(path.join(automaticBuildTaskStoreRoot(target), "pass1", approvedId,
@@ -2458,7 +2589,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       const sibling = await driver.automaticBuildStep(request);
       if (sibling.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected the still-authorized sibling");
       expect(publicV4HandoffFacts(sibling.action.executors[0].opaque_handoff_ref).recovery_identity.current_work_unit_id).toBe(approvedId);
-      expect(submitCommittedPublicV4Handoff(sibling.action.executors[0].opaque_handoff_ref,
+      expect(submitCommittedLegacyPublicV4Handoff(sibling.action.executors[0].opaque_handoff_ref,
         "2026-08-10T02:00:08.000Z").semantic_attempt).toBe(4);
       vi.setSystemTime(new Date("2026-08-10T02:00:09.000Z"));
       expect((await driver.automaticBuildStep(request)).action).toMatchObject({ kind: "NEEDS_USER", reason: "retry_exhausted",
@@ -2544,7 +2675,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
           ...args: Parameters<typeof originalPass1Reduction.pass1ModelSlicePolicyMembers>
         ) => originalPass1Reduction.pass1ModelSlicePolicyMembers(...args).map((member) => (
           member.kind === "pass1_window"
-            ? { ...member, policy_generation_id: "pass1-window.full.v2" }
+            ? { ...member, policy_generation_id: `${member.policy_generation_id}.retry-test` }
             : member
         )),
       }));
@@ -2798,7 +2929,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
           .toBe(initial.manifest.ordered_work_unit_ids[ordinal]);
         const second = ordinal * 3 + 1;
         lastSubmitSecond = second;
-        submitCommittedPublicV4Handoff(
+        submitCommittedLegacyPublicV4Handoff(
           executor.opaque_handoff_ref,
           `2026-09-02T10:00:${String(second).padStart(2, "0")}.000Z`,
         );
@@ -2901,7 +3032,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       if (!unitA || !unitB || !unitC) throw new Error("expected V4 A/B/C work units");
       expect(firstFacts.recovery_identity.current_work_unit_id).toBe(unitA);
 
-      submitCommittedPublicV4Handoff(
+      submitCommittedLegacyPublicV4Handoff(
         firstExecutor.opaque_handoff_ref,
         "2026-09-02T11:00:01.000Z",
       );
@@ -2918,6 +3049,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       if (!secondExecutor) throw new Error("expected the V4 B executor ref");
       expect(publicV4HandoffFacts(secondExecutor.opaque_handoff_ref)
         .recovery_identity.current_work_unit_id).toBe(unitB);
+      openLegacySingleTaskHandoff(secondExecutor.opaque_handoff_ref, "2026-09-02T11:00:03.000Z");
       const failedGeneration = startV3GenerationForHandoff(
         secondExecutor.opaque_handoff_ref,
         "2026-09-02T11:00:03.000Z",
@@ -2953,7 +3085,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       if (!thirdExecutor) throw new Error("expected the V4 C executor ref");
       expect(publicV4HandoffFacts(thirdExecutor.opaque_handoff_ref)
         .recovery_identity.current_work_unit_id).toBe(unitC);
-      submitCommittedPublicV4Handoff(
+      submitCommittedLegacyPublicV4Handoff(
         thirdExecutor.opaque_handoff_ref,
         "2026-09-02T11:00:06.000Z",
       );

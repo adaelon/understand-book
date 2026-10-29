@@ -229,6 +229,7 @@ pub struct BoardLink {
     pub from: BoardVisualTarget,
     pub to: BoardVisualTarget,
     pub label: String,
+    #[serde(default)]
     pub based_on: Vec<BoardContentRef>,
 }
 
@@ -1761,6 +1762,20 @@ mod wb4_tests;
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn board_link_defaults_omitted_provenance_without_dropping_explicit_references() {
+        let mut value = json!({
+            "link_id": "changes-original", "label": "修改原数组",
+            "from": {"kind": "item", "item_id": "mutable-slice"},
+            "to": {"kind": "item", "item_id": "array-cell"}
+        });
+        let link: BoardLink = serde_json::from_value(value.clone()).unwrap();
+        assert!(link.based_on.is_empty());
+        value["based_on"] = json!([{"item_id": "answer-1", "block_id": "map-mut", "content_revision": 2}]);
+        let link: BoardLink = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&link).unwrap()["based_on"], value["based_on"]);
+    }
 
     pub(super) fn answer() -> BoardItem {
         BoardItem {

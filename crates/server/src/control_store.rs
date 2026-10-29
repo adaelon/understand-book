@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 20;
+pub const CONTROL_SCHEMA_VERSION: i64 = 21;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -180,6 +180,7 @@ impl ControlStore {
             tx.execute_batch(include_str!("exam_sprints.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("desktop_auth.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("web_usage.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("unlimited_allowance.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -315,6 +316,12 @@ impl ControlStore {
         if (1..=19).contains(&version) {
             let tx = connection.transaction().map_err(|_| storage())?;
             tx.execute_batch(include_str!("web_usage.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None, "user_version", 20).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=20).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("unlimited_allowance.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
             tx.commit().map_err(|_| storage())?;
         }

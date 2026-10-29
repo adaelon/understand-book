@@ -1,4 +1,12 @@
 import { fitStructureThemeSession, checkpointStructureThemeAction, StructureThemeActionRejected } from "./book-structure-theme-session";
+import {
+  finishAutomaticBuildWorker,
+  readAutomaticBuildWorker,
+  readAutomaticBuildWorkerForAssignment,
+  recordAutomaticBuildWorkerUsage,
+  waitForAutomaticBuildWorkerAssignment,
+  type AutomaticBuildWorkerRecord,
+} from "./automatic-build-worker";
 import { renderBookStructureGenerationTaskInput, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
 import type { AutomaticBuildExecutorInputManifestV4 } from "./build-executor-input-manifest";
 import { recordAutomaticBuildGenerationTiming } from "./automatic-build-dispatch-timing";
@@ -40,6 +48,7 @@ import {
   AutomaticBuildDispatchSettledError,
   finishAutomaticBuildDispatch,
   inspectAutomaticBuildDispatchRecoveryGeneration,
+  inspectAutomaticBuildDispatchRecoveryGenerations,
   recordAutomaticBuildDispatchBootstrapFailure,
   recordAutomaticBuildDispatchTerminalSession,
   inspectAutomaticBuildDispatch,
@@ -128,7 +137,7 @@ export type AutomaticBuildExecutorServerPhaseBoundaryV1 =
 export interface AutomaticBuildExecutorServerTimingObserverV1 {
   complete_phase: (phase: AutomaticBuildExecutorServerPhaseBoundaryV1) => void;
 }
-import { epubToSource } from "./epub-adapter";
+import { loadBookSource } from "./book-source";
 import {
   readAutomaticBuildTaskStage,
   currentAutomaticBuildTaskPolicy,
@@ -142,8 +151,6 @@ import {
   type IntentArtifactCompatibilityType,
   type IntentArtifactTaskEnvelopeV3,
 } from "./intent-artifact";
-import { markdownToBlocks } from "./md-adapter";
-import { segment } from "./segment";
 import type { WorkUnitDescriptor } from "./stage-work-unit";
 import { ReadOnlyBaseZ } from "./zod";
 
@@ -542,6 +549,15 @@ interface AutomaticBuildExecutorOpenRecordV1 {
   owner_identity: AutomaticBuildExecutorOwnerIdentityV1;
   opened_at: string;
 }
+
+interface AutomaticBuildExecutorOpenRecordV2 extends Omit<AutomaticBuildExecutorOpenRecordV1, "version"> {
+  version: "automatic_build_executor_open_record.v2";
+  // Freeze before the first generation. Replaying an old handoff must never adopt
+  // a later task's replacement lease or bootstrap epoch.
+  recovery_generations: AutomaticBuildRecoveryGenerationIdentity[];
+}
+
+type AutomaticBuildExecutorOpenRecord = AutomaticBuildExecutorOpenRecordV1 | AutomaticBuildExecutorOpenRecordV2;
 
 interface AutomaticBuildExecutorPrivateSessionRecordV1 {
   version: "automatic_build_executor_private_session_record.v1";
@@ -1860,7 +1876,7 @@ function validateOpenRecord(
   value: unknown,
   opaqueHandoffRef: string,
   owner: AutomaticBuildExecutorOwnerIdentityV1,
-): AutomaticBuildExecutorOpenRecordV1 {
+): AutomaticBuildExecutorOpenRecord {
   if (!isRecord(value)) throw new Error("executor open record is invalid");
   exactKeys(value, [
     "version",
@@ -1868,8 +1884,9 @@ function validateOpenRecord(
     "opaque_session_ref",
     "owner_identity",
     "opened_at",
+    ...(value.version === "automatic_build_executor_open_record.v2" ? ["recovery_generations"] : []),
   ]);
-  if (value.version !== "automatic_build_executor_open_record.v1"
+  if ((value.version !== "automatic_build_executor_open_record.v1" && value.version !== "automatic_build_executor_open_record.v2")
     || value.opaque_handoff_ref !== opaqueHandoffRef
     || typeof value.opaque_session_ref !== "string" || !OPAQUE_SESSION_REF.test(value.opaque_session_ref)) {
     throw new Error("executor open record identity is invalid");
@@ -1878,13 +1895,20 @@ function validateOpenRecord(
   if (canonicalAutomaticBuildJson(existingOwner) !== canonicalAutomaticBuildJson(owner)) {
     throw new Error("executor open record owner identity changed");
   }
-  return {
-    version: value.version,
+  const common = {
     opaque_handoff_ref: opaqueHandoffRef,
     opaque_session_ref: value.opaque_session_ref,
     owner_identity: existingOwner,
     opened_at: isoTimestamp(value.opened_at, "opened_at"),
   };
+  if (value.version === "automatic_build_executor_open_record.v2") {
+    if (!Array.isArray(value.recovery_generations) || value.recovery_generations.length === 0) {
+      throw new Error("executor open recovery generations are missing");
+    }
+    return { ...common, version: value.version,
+      recovery_generations: value.recovery_generations.map(validateRecoveryGenerationIdentity) };
+  }
+  return { ...common, version: value.version };
 }
 
 function positiveSafeInteger(value: unknown, field: string): number {
@@ -1989,14 +2013,7 @@ interface AutomaticBuildPrivateArtifactContextV1 {
 }
 
 function deriveAutomaticBuildTargetLids(target: AutomaticBuildTarget): string[] {
-  const bytes = readFileSync(target.source_path);
-  const loaded = /\.epub$/iu.test(target.source_path)
-    ? epubToSource(new Uint8Array(bytes))
-    : (() => {
-        const source = bytes.toString("utf8");
-        return { source, blocks: markdownToBlocks(source) };
-      })();
-  return segment(loaded.blocks).map((node) => node.lid);
+  return loadBookSource(target.source_path).lidNodes.map((node) => node.lid);
 }
 
 export function resolveAutomaticBuildTargetLids(target: AutomaticBuildTarget): string[] {
@@ -2159,7 +2176,7 @@ function validatePrivateSessionRecord(
 
 function persistPrivateSessionRecord(input: {
   opaque_handoff_ref: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   owner: AutomaticBuildPrivateArtifactOwnerIdentityV2;
   created_at: string;
 }): AutomaticBuildExecutorPrivateSessionRecordV1 {
@@ -2284,7 +2301,7 @@ type ActiveAutomaticBuildClaim = Extract<
 
 function persistTaskSessionRecord(input: {
   opaque_handoff_ref: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   claim: ActiveAutomaticBuildClaim;
   generation_input_ref?: string;
@@ -2397,9 +2414,7 @@ function taskDescriptor(
       // Source identity is revalidated when resolving the published target. Reducers additionally
       // replay only their bound accepted children; unrelated receipts never rerender source tasks.
       if (descriptor.input_basis.kind === "artifact_reduction") {
-        const sourceBytes = readFileSync(target.source_path);
-        const source = /\.epub$/iu.test(target.source_path)
-          ? epubToSource(new Uint8Array(sourceBytes)).source : sourceBytes.toString("utf8");
+        const { source } = loadBookSource(target.source_path);
         if (task.version === "pass1_shadow_task.v1") replayPass1ShadowInput({ target, source, task });
         else if (task.version === "profile_sidecar_discourse_shadow_task.v1") {
           replayProfileSidecarDiscourseShadowInput({ target, source, task });
@@ -2786,7 +2801,7 @@ function renderDeliveryMaterial(input: {
 
 function deliveryRecordFromMaterial(input: {
   opaque_handoff_ref: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   delivery_session_ref: string;
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   stage: AutomaticBuildStage;
@@ -2879,7 +2894,7 @@ function renderPrivateDeliveryMaterial(input: {
 
 function privateDeliveryRecordFromMaterial(input: {
   opaque_handoff_ref: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   delivery_session_ref: string;
   context: AutomaticBuildPrivateArtifactContextV1;
   material: AutomaticBuildExecutorDeliveryMaterialV3;
@@ -3833,7 +3848,7 @@ function terminalResponseFromReceipt(
 
 function drivePublicExecutorSession(input: {
   opaque_handoff_ref: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   target: AutomaticBuildTarget;
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   persisted: AutomaticBuildPersistedDispatchV1;
@@ -3968,7 +3983,7 @@ function resolveTaskSession(opaqueSessionRefValue: string): {
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   persisted: AutomaticBuildPersistedDispatchV1;
   semantic_prompt: string;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
 } {
   const taskSession = readTaskSessionRecord(opaqueSessionRefValue);
   const handoffRecord = readOpaqueHandoffRecord(taskSession.opaque_handoff_ref);
@@ -4071,7 +4086,7 @@ function privateGenerateAction(
 
 function resolvePrivateExecutorSession(opaqueSessionRefValue: string): {
   session: AutomaticBuildExecutorPrivateSessionRecordV1;
-  open_record: AutomaticBuildExecutorOpenRecordV1;
+  open_record: AutomaticBuildExecutorOpenRecord;
   context: AutomaticBuildPrivateArtifactContextV1;
 } | undefined {
   const session = readPrivateSessionRecord(opaqueSessionRefValue);
@@ -4127,6 +4142,7 @@ function inspectCurrentPublicRecovery(input: {
   target: AutomaticBuildTarget;
   owner: AutomaticBuildDispatchOwnerIdentityV1;
   handoff_record: AutomaticBuildOpaqueHandoffRecord;
+  open_record?: AutomaticBuildExecutorOpenRecord;
   work_unit_id: string;
   now: string;
 }): {
@@ -4148,12 +4164,31 @@ function inspectCurrentPublicRecovery(input: {
     input.owner.dispatch_id,
     { now: input.now, dispatch_run_id: input.owner.dispatch_run_id },
   ).recovery_identity;
-  if ((input.handoff_record.version === "automatic_build_opaque_handoff_record.v4" || input.handoff_record.version === "automatic_build_opaque_handoff_record.v5")
-    && canonicalAutomaticBuildJson(input.handoff_record.recovery_identity)
-      !== canonicalAutomaticBuildJson(recoveryIdentity)) {
-    throw new AutomaticBuildExecutorStaleGenerationSessionError();
+  if (input.handoff_record.version === "automatic_build_opaque_handoff_record.v4"
+    || input.handoff_record.version === "automatic_build_opaque_handoff_record.v5") {
+    const bound = input.open_record?.version === "automatic_build_executor_open_record.v2"
+      ? input.open_record.recovery_generations.find(item => item.current_work_unit_id === input.work_unit_id)
+      : input.handoff_record.recovery_identity;
+    if (!bound || canonicalAutomaticBuildJson(bound) !== canonicalAutomaticBuildJson(recoveryIdentity)) {
+      throw new AutomaticBuildExecutorStaleGenerationSessionError();
+    }
   }
   return { recovery_identity: recoveryIdentity };
+}
+
+/** Keep the original live child while its frozen batch still owns this generation. */
+export function isAutomaticBuildExecutorRecoveryCurrent(
+  opaqueHandoffRef: string,
+  recoveryIdentity: AutomaticBuildRecoveryGenerationIdentity,
+): boolean {
+  const record = readOpaqueHandoffRecord(validateOpaqueHandoffRef(opaqueHandoffRef));
+  if (record.version !== "automatic_build_opaque_handoff_record.v4"
+    && record.version !== "automatic_build_opaque_handoff_record.v5") return false;
+  const file = registryFile("executor-opens", opaqueHandoffRef);
+  const open = existsSync(file) ? validateOpenRecord(decodeJsonRecord(file), opaqueHandoffRef, record.owner_identity) : undefined;
+  const identities = open?.version === "automatic_build_executor_open_record.v2"
+    ? open.recovery_generations : [record.recovery_identity];
+  return identities.some(identity => canonicalAutomaticBuildJson(identity) === canonicalAutomaticBuildJson(recoveryIdentity));
 }
 
 export function openAutomaticBuildExecutorSession(
@@ -4171,7 +4206,7 @@ export function openAutomaticBuildExecutorSession(
     if (context.inspection.state === "committed") return doneResponse("committed");
     if (context.inspection.state === "retryable_failure") return doneResponse("retryable_failure");
     const openFile = registryFile("executor-opens", opaqueHandoffRef);
-    const openRecord: AutomaticBuildExecutorOpenRecordV1 = {
+    const openRecord: AutomaticBuildExecutorOpenRecord = {
       version: "automatic_build_executor_open_record.v1",
       opaque_handoff_ref: opaqueHandoffRef,
       opaque_session_ref: `absession1_${sha256({
@@ -4182,7 +4217,7 @@ export function openAutomaticBuildExecutorSession(
       owner_identity: context.owner,
       opened_at: now,
     };
-    let activeOpen = openRecord;
+    let activeOpen: AutomaticBuildExecutorOpenRecord = openRecord;
     if (!writeCreateOnly(openFile, openRecord)) {
       activeOpen = validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, context.owner);
     }
@@ -4208,7 +4243,7 @@ export function openAutomaticBuildExecutorSession(
   }
 
   const openFile = registryFile("executor-opens", opaqueHandoffRef);
-  const openRecord: AutomaticBuildExecutorOpenRecordV1 = {
+  const openRecord: AutomaticBuildExecutorOpenRecord = {
     version: "automatic_build_executor_open_record.v1",
     opaque_handoff_ref: opaqueHandoffRef,
     opaque_session_ref: `absession1_${sha256({
@@ -4219,7 +4254,7 @@ export function openAutomaticBuildExecutorSession(
     owner_identity: owner,
     opened_at: now,
   };
-  let activeOpen = openRecord;
+  let activeOpen: AutomaticBuildExecutorOpenRecord = openRecord;
   if (!writeCreateOnly(openFile, openRecord)) {
     activeOpen = validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, owner);
   }
@@ -4244,14 +4279,14 @@ type AutomaticBuildExecutorDeliveryContextV3 =
       owner: AutomaticBuildDispatchOwnerIdentityV1;
       persisted: AutomaticBuildPersistedDispatchV1;
       semantic_prompt: string;
-      open_record: AutomaticBuildExecutorOpenRecordV1;
+      open_record: AutomaticBuildExecutorOpenRecord;
       material: AutomaticBuildExecutorDeliveryMaterialV3;
     }
   | {
       kind: "private_artifact";
       delivery: AutomaticBuildExecutorPrivateDeliverySessionRecordV3;
       context: AutomaticBuildPrivateArtifactContextV1;
-      open_record: AutomaticBuildExecutorOpenRecordV1;
+      open_record: AutomaticBuildExecutorOpenRecord;
       material: AutomaticBuildExecutorDeliveryMaterialV3;
     };
 
@@ -4385,7 +4420,12 @@ export function recoverAutomaticBuildExecutorTerminalSession(
   const owner = record.owner_identity;
   const inspection = inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id, now, owner.dispatch_run_id);
   if (inspection.state !== "active") return false;
-  return recordAutomaticBuildDispatchTerminalSession(target, owner.stage, record.recovery_identity, ref, now);
+  const file = registryFile("executor-opens", ref);
+  const open = existsSync(file) ? validateOpenRecord(decodeJsonRecord(file), ref, owner) : undefined;
+  const identity = open?.version === "automatic_build_executor_open_record.v2"
+    ? open.recovery_generations.find(item => item.current_work_unit_id === inspection.next_work_unit_id)
+    : record.recovery_identity;
+  return identity ? recordAutomaticBuildDispatchTerminalSession(target, owner.stage, identity, ref, now) : false;
 }
 
 export function recordAutomaticBuildExecutorOpenCallCorrection(
@@ -4427,7 +4467,7 @@ export function openAutomaticBuildExecutorSessionV3(
       return v3DoneResponse("retryable_failure");
     }
     const openFile = registryFile("executor-opens", opaqueHandoffRef);
-    const proposedOpen: AutomaticBuildExecutorOpenRecordV1 = {
+    const proposedOpen: AutomaticBuildExecutorOpenRecord = {
       version: "automatic_build_executor_open_record.v1",
       opaque_handoff_ref: opaqueHandoffRef,
       opaque_session_ref: `absession1_${sha256({
@@ -4438,7 +4478,7 @@ export function openAutomaticBuildExecutorSessionV3(
       owner_identity: context.owner,
       opened_at: now,
     };
-    let openRecord = proposedOpen;
+    let openRecord: AutomaticBuildExecutorOpenRecord = proposedOpen;
     if (!writeCreateOnly(openFile, proposedOpen)) {
       openRecord = validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, context.owner);
     }
@@ -4494,29 +4534,38 @@ export function openAutomaticBuildExecutorSessionV3(
     );
     return v3DoneResponse(terminalStatus(receipt.terminal_reason), profile);
   }
+  const openFile = registryFile("executor-opens", opaqueHandoffRef);
+  let openRecord = existsSync(openFile)
+    ? validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, published.owner) : undefined;
   const currentness = inspectCurrentPublicRecovery({
     target: published.target,
     owner: published.owner,
     handoff_record: record,
+    open_record: openRecord,
     work_unit_id: workUnitId,
     now,
   });
   if (currentness.terminal_response) return currentness.terminal_response;
-  const openFile = registryFile("executor-opens", opaqueHandoffRef);
-  const proposedOpen: AutomaticBuildExecutorOpenRecordV1 = {
-    version: "automatic_build_executor_open_record.v1",
-    opaque_handoff_ref: opaqueHandoffRef,
-    opaque_session_ref: `absession1_${sha256({
-      version: "automatic_build_executor_session_identity.v1",
+  if (!openRecord) {
+    const proposedOpen: AutomaticBuildExecutorOpenRecord = {
+      ...(record.version === "automatic_build_opaque_handoff_record.v4"
+        ? { version: "automatic_build_executor_open_record.v2" as const,
+            recovery_generations: inspectAutomaticBuildDispatchRecoveryGenerations(
+              published.target, published.owner.stage, published.owner.dispatch_id,
+              { now, dispatch_run_id: published.owner.dispatch_run_id },
+            ).identities }
+        : { version: "automatic_build_executor_open_record.v1" as const }),
       opaque_handoff_ref: opaqueHandoffRef,
-      nonce: randomUUID(),
-    })}`,
-    owner_identity: published.owner,
-    opened_at: now,
-  };
-  let openRecord = proposedOpen;
-  if (!writeCreateOnly(openFile, proposedOpen)) {
-    openRecord = validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, published.owner);
+      opaque_session_ref: `absession1_${sha256({
+        version: "automatic_build_executor_session_identity.v1",
+        opaque_handoff_ref: opaqueHandoffRef,
+        nonce: randomUUID(),
+      })}`,
+      owner_identity: published.owner,
+      opened_at: now,
+    };
+    openRecord = writeCreateOnly(openFile, proposedOpen) ? proposedOpen
+      : validateOpenRecord(decodeJsonRecord(openFile), opaqueHandoffRef, published.owner);
   }
   const stage = taskDescriptor(published.target, published.persisted, workUnitId);
   const themeSession = stage.theme_task ? fitStructureThemeSession(published.target, stage.theme_task, {
@@ -4800,6 +4849,7 @@ export function startAutomaticBuildExecutorGeneration(
     target: context.target,
     owner: context.owner,
     handoff_record: context.handoff_record,
+    open_record: context.open_record,
     work_unit_id: context.delivery.work_unit_id,
     now,
   });
@@ -4818,7 +4868,8 @@ export function startAutomaticBuildExecutorGeneration(
       dispatch_id: context.owner.dispatch_id, dispatch_run_id: context.owner.dispatch_run_id,
       work_unit_id: taskSession.work_unit_id, physical_attempt: taskSession.physical_attempt,
       semantic_attempt: taskSession.semantic_attempt, lease_epoch: taskSession.lease_epoch,
-      opened_at: context.open_record.opened_at, generation_started_at: startedAt,
+      opened_at: context.open_record.version === "automatic_build_executor_open_record.v2"
+        ? context.delivery.created_at : context.open_record.opened_at, generation_started_at: startedAt,
     });
   };
   // Reuse this request's validated descriptor; rebuilding a stitch descriptor routes the whole book.
@@ -5157,6 +5208,10 @@ export function submitAutomaticBuildExecutorCandidateV3(
       },
     );
     options.timing?.complete_phase("candidate-gate");
+    if (deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v4"
+      || deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v5") {
+      return v3DoneResponse("retryable_failure", deliveryExecutionProfile(deliveryContext.delivery));
+    }
     return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
   }
   if (stage.theme_task) {
@@ -5206,6 +5261,15 @@ export function submitAutomaticBuildExecutorCandidateV3(
     { now },
   );
   options.timing?.complete_phase("writer/commit");
+  if (deliveryContext.open_record.version === "automatic_build_executor_open_record.v2" && receipt.state === "committed") {
+    const inspection = inspectAutomaticBuildDispatch(taskSession.target, deliveryContext.owner.stage,
+      deliveryContext.owner.dispatch_id, now, deliveryContext.owner.dispatch_run_id);
+    if (inspection.state === "active" && !deliveryContext.open_record.recovery_generations
+      .some(item => item.current_work_unit_id === inspection.next_work_unit_id)) {
+      return v3DoneResponse("committed", deliveryExecutionProfile(deliveryContext.delivery));
+    }
+    return openAutomaticBuildExecutorSessionV3(sink.opaque_handoff_ref, { now, execution_profile: options.execution_profile });
+  }
   if (deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v4" || deliveryContext.handoff_record.version === "automatic_build_opaque_handoff_record.v5") {
     return v3DoneResponse(receipt.state, deliveryExecutionProfile(deliveryContext.delivery));
   }
@@ -5601,6 +5665,96 @@ export function runAutomaticBuildExecutorSessionCommand(
   throw new Error("executor session request version is unsupported");
 }
 
+/**
+ * Keep the connection's initial handoff stable while the scheduler changes its
+ * assignment. Raw dispatch sessions retain their frozen recovery generations and
+ * candidate sinks; only a successfully committed dispatch can ask for more work.
+ */
+export function runAutomaticBuildWorkerExecutorSessionCommand(
+  value: unknown,
+  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> } = {},
+): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponse
+  | Promise<AutomaticBuildExecutorSessionResponse> {
+  let worker: AutomaticBuildWorkerRecord | undefined;
+  let rawHandoffRef: string | undefined;
+  let routedValue = value;
+  if (isRecord(value)) {
+    if (value.version === "automatic_build_executor_open_request.v3") {
+      const request = validateOpenRequestV3(value);
+      worker = readAutomaticBuildWorker(request.opaque_handoff_ref);
+      if (worker) {
+        rawHandoffRef = worker.current_handoff_ref;
+        routedValue = { ...request, opaque_handoff_ref: rawHandoffRef };
+      }
+    } else if (value.version === "automatic_build_executor_input_next_request.v4"
+      || value.version === "automatic_build_executor_generation_start_request.v3") {
+      const request = value.version === "automatic_build_executor_input_next_request.v4"
+        ? validateInputNextRequest(value) : validateGenerationStartRequest(value);
+      rawHandoffRef = readDeliverySessionRecord(request.opaque_session_ref).opaque_handoff_ref;
+      worker = readAutomaticBuildWorkerForAssignment(rawHandoffRef);
+    } else if (value.version === "automatic_build_executor_candidate_submit.v3") {
+      const request = validateCandidateSubmitRoutingV3(value);
+      const sink = readCandidateSinkRecord(request.opaque_session_ref);
+      rawHandoffRef = sink?.opaque_handoff_ref;
+      if (rawHandoffRef) worker = readAutomaticBuildWorkerForAssignment(rawHandoffRef);
+    }
+  }
+  if (!worker || !rawHandoffRef) return runAutomaticBuildExecutorSessionCommand(value, options);
+  const profile = options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+  if (worker.status === "done" && isRecord(value) && value.version === "automatic_build_executor_open_request.v3") {
+    return v3DoneResponse(worker.terminal_reason === "failed" ? "retryable_failure" : "committed", profile);
+  }
+  const response = runAutomaticBuildExecutorSessionCommand(routedValue, options) as AutomaticBuildExecutorSessionResponse;
+  if (response.action.kind === "INPUT_BATCH") {
+    const batch = response.action.batch;
+    for (const chunk of batch.chunks) {
+      recordAutomaticBuildWorkerUsage(worker.root_handoff_ref, {
+        delivery_ref: `${batch.generation_input_ref}:${chunk.ordinal}`,
+        input_bytes: Buffer.byteLength(chunk.payload_utf8, "utf8"),
+      });
+    }
+  }
+  if (isRecord(value) && value.version === "automatic_build_executor_candidate_submit.v3") {
+    recordAutomaticBuildWorkerUsage(worker.root_handoff_ref, {
+      submission_ref: value.candidate_sink_ref as string,
+      output_bytes: Buffer.byteLength(canonicalAutomaticBuildJson(value.candidate), "utf8"),
+    });
+  }
+  if (response.action.kind !== "DONE") return response;
+  if (response.action.status !== "committed") {
+    finishAutomaticBuildWorker(readAutomaticBuildWorker(worker.root_handoff_ref)!, "failed");
+    return response;
+  }
+  return continueAutomaticBuildWorkerExecutorSession(worker.root_handoff_ref, rawHandoffRef, options);
+}
+
+async function continueAutomaticBuildWorkerExecutorSession(
+  rootHandoffRef: string,
+  completedRawRef: string,
+  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> },
+): Promise<AutomaticBuildExecutorSessionResponse> {
+  const { claimNextAutomaticBuildWorkerAssignment } = await import("../../../skills/build/automatic-build-driver");
+  const profile = options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
+  const claim = await waitForAutomaticBuildWorkerAssignment(rootHandoffRef,
+    () => claimNextAutomaticBuildWorkerAssignment(rootHandoffRef, completedRawRef));
+  if (claim.kind === "WAIT") {
+    const response: AutomaticBuildExecutorSessionResponse = { version: profile.session_protocol, action: claim };
+    recordAutomaticBuildWorkerUsage(rootHandoffRef, {
+      wait_response_bytes: Buffer.byteLength(canonicalAutomaticBuildJson(response), "utf8"),
+    });
+    return response;
+  }
+  if (claim.kind === "DONE") return v3DoneResponse(claim.reason === "failed" ? "retryable_failure" : "committed", profile);
+  const response = openAutomaticBuildExecutorSessionV3(claim.opaque_handoff_ref, { execution_profile: profile });
+  if (response.action.kind === "DONE" && response.action.status === "committed") {
+    return continueAutomaticBuildWorkerExecutorSession(rootHandoffRef, claim.opaque_handoff_ref, options);
+  }
+  if (response.action.kind === "DONE") {
+    finishAutomaticBuildWorker(readAutomaticBuildWorker(rootHandoffRef)!, "failed");
+  }
+  return response;
+}
+
 function readStdinRequest(): unknown {
   const bytes = readFileSync(0);
   if (!bytes.byteLength || bytes.byteLength > MAX_STDIN_BYTES || bytes.includes(0)) {
@@ -5622,9 +5776,12 @@ function isCommandEntrypoint(): boolean {
 
 if (isCommandEntrypoint()) {
   try {
-    process.stdout.write(`${canonicalAutomaticBuildJson(runAutomaticBuildExecutorSessionCommand(
-      readStdinRequest(),
-    ))}\n`);
+    Promise.resolve(runAutomaticBuildWorkerExecutorSessionCommand(readStdinRequest())).then(response => {
+      process.stdout.write(`${canonicalAutomaticBuildJson(response)}\n`);
+    }).catch(() => {
+      process.stderr.write("executor session failed; inspect deterministic build state for diagnostics\n");
+      process.exitCode = 2;
+    });
   } catch {
     process.stderr.write("executor session failed; inspect deterministic build state for diagnostics\n");
     process.exitCode = 2;

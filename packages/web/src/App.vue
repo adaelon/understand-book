@@ -7,6 +7,7 @@ import ShareImagePanel from './components/ShareImagePanel.vue';
 import { answerShareSource, deliveredAnswerText, excerptShareSource, noteShareSource, shareHighlightKey, shareNoteKey, sharePresentationKey, type ShareSource } from './reading-share';
 import { FolderOpen, Highlighter, Languages, MessageSquareText, RotateCcw, Save, Sparkles, X } from "@lucide/vue";
 import { api as sharedApi, ApiError } from "./api";
+import { activeOutline, readerOutline, outlineTitle, type OutlineItem } from './reader-outline';
 import { pendingReadingActions, type PendingReadingAction } from './local-reading-action';
 import { network, bindSceneApi, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft } from './network-context';
 import { useReaderTypography } from './useReaderTypography';
@@ -28,7 +29,7 @@ import type { PaginationSource } from './reader-pagination';
 import { ReaderWindowTextCache } from './reader-window-text';
 import { FocusSource } from './reader-focus-source';
 import { typographyHtml } from './reader-typography';
-import { recoverSubmissions, recoverWorkspaceBinding, pendingSubmissions, retrySubmission } from './network-client';
+import { recoverSubmissions, recoverWorkspaceBinding, requestWorkspaceRecovery, pendingSubmissions, retrySubmission } from './network-client';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
 const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; materialTitle?: string }>(), { readerVisible: true });
@@ -295,12 +296,7 @@ function closeTypography() {
   nextTick(() => document.querySelector<HTMLElement>('.topbar [data-typography-trigger]')?.focus());
 }
 
-export interface OutlineItem {
-  lid: string;
-  kind: NodeKind;
-  depth: number;
-  title: string;
-}
+export type { OutlineItem } from './reader-outline';
 // ── 阅读区会话态 ──
 const leafOrder = ref<string[]>([]); // 全书叶 LID 序(读位感分母 + 进度)
 const kindByLid = ref<Map<string, NodeKind>>(new Map());
@@ -566,13 +562,8 @@ function fail(e: unknown) {
 // 读位感:anchor 在叶序中的位置 → 进度%;章节 = anchor 顶层段(LID 首段)。
 const readingAnchorLid = computed(() => currentReadingLid.value ?? viewport.value?.top_lid ?? null);
 const outlineAnchorLid = computed(() => outlineNavigationLid.value ?? readingAnchorLid.value);
-const activeOutlineItem = computed(() => {
-  const anchor = outlineAnchorLid.value;
-  if (!anchor) return null;
-  return outlineItems.value
-    .filter((item) => anchor === item.lid || anchor.startsWith(`${item.lid}.`))
-    .sort((a, b) => b.lid.length - a.lid.length)[0] ?? null;
-});
+const outlineAnchorOffset = computed(() => sourceManifestTree.value?.tree.find(node => node.lid === outlineAnchorLid.value)?.span.start);
+const activeOutlineItem = computed(() => activeOutline(outlineItems.value, outlineAnchorLid.value, outlineAnchorOffset.value));
 const activeChapterTitle = computed(() => activeOutlineItem.value?.title ?? chapterTitle.value);
 const guideChapter = computed(() => {
   const anchor = outlineAnchorLid.value;
@@ -1536,34 +1527,11 @@ async function openNoteAssociation(record: MemoryRecord, restore = false) {
 function kindOf(lid: string): NodeKind {
   return kindByLid.value.get(lid) ?? "paragraph";
 }
-function lidDepth(lid: string): number {
-  return lid.split(".").length - 1;
-}
-function fallbackTitle(lid: string): string {
-  return titleByLid.value.get(lid) ?? lid;
-}
-function firstTitleLine(text: string, lid: string): string {
-  const line = text
-    .split("\n")
-    .map((s) => s.trim())
-    .find(Boolean);
-  return (line ? stripMarkdownHeadingLine(line) : lid).slice(0, 80);
-}
-function buildOutline(tree: ManifestNode[]): OutlineItem[] {
-  return tree
-    .filter((n) => n.children.length > 0 || n.kind === "chapter" || n.kind === "section")
-    .map((n) => ({
-      lid: n.lid,
-      kind: n.kind,
-      depth: Math.min(lidDepth(n.lid), 4),
-      title: fallbackTitle(n.lid),
-    }));
-}
-function loadOutlineTitles(tree: ManifestNode[]) {
-  titleByLid.value = new Map(tree
+function loadOutlineTitles(manifest: import('./api').Manifest) {
+  titleByLid.value = new Map(manifest.tree
     .filter(node => node.children.length > 0 || node.kind === "chapter" || node.kind === "section")
-    .map(node => [node.lid, firstTitleLine(node.title ?? "", node.lid)]));
-  outlineItems.value = buildOutline(tree);
+    .map(node => [node.lid, outlineTitle(node.title ?? "", uiText('正文'))]));
+  outlineItems.value = readerOutline(manifest, uiText('正文'));
 }
 function isAsset(seg: Segment): boolean {
   return seg.kind === "code" || seg.kind === "table" || seg.kind === "image" || seg.kind === "formula";
@@ -2390,6 +2358,8 @@ async function rejectBuildIntent(payload: { plan_id: string }) {
 }
 
 let workspaceLoadSeq = 0;
+let workspaceInitializationFailed = false;
+let workspaceInitializationError: string | null = null;
 async function loadVideoDetails(current: () => boolean) {
   videoDetailsLoading.value = true;
   videoDetailsError.value = '';
@@ -2408,6 +2378,7 @@ async function loadVideoDetails(current: () => boolean) {
 async function init() {
   const request = ++workspaceLoadSeq;
   const current = () => !disposed && request === workspaceLoadSeq;
+  workspaceInitializationFailed = false;
   try {
     appSurface.value = "loading";
     focusTransition++;
@@ -2497,7 +2468,7 @@ async function init() {
     kindByLid.value = new Map(m.tree.map((n) => [n.lid, n.kind]));
     imageAssetByLid.value = new Map(assets.images.map((img) => [img.lid, img]));
     leafOrder.value = m.tree.filter((n) => n.children.length === 0).map((n) => n.lid);
-    loadOutlineTitles(m.tree);
+    loadOutlineTitles(m);
     profileSummary.value = st.profile;
     readerLayout.value = st.layout;
     void ensureProfileManifest(st.profile, current).catch(error => { if (current()) fail(error); });
@@ -2508,6 +2479,8 @@ async function init() {
     ]);
     if (!current()) return;
     appSurface.value = "reader";
+    if (banner.value === workspaceInitializationError) banner.value = '';
+    workspaceInitializationError = null;
     await nextTick();
     if (current() && st.visible_position) await restoreVisiblePosition(st.visible_position);
     void refreshAnnotations().catch(error => { if (current()) fail(error); });
@@ -2518,8 +2491,13 @@ async function init() {
     if (!network.value.enabled) void refreshIntentArtifacts();
   } catch (e) {
     if (!current()) return;
+    workspaceInitializationFailed = true;
+    agentHistoryLoading.value = false;
+    agentHistoryError.value = errorMessage(e);
+    workspaceInitializationError = errorMessage(e);
     appSurface.value = buildWorkbenchSnapshot.value?.readiness.route === "workbench" ? "workbench" : "reader";
     fail(e);
+    requestWorkspaceRecovery(e);
   }
 }
 
@@ -2528,9 +2506,11 @@ let workspaceRecoveryTimer: number | null = null;
 async function recoverWorkspaceState() {
   if (workspaceRecoveryTask || appSurface.value !== "reader" || agentHistoryLoading.value) return workspaceRecoveryTask;
   const expectedBookId = buildWorkbenchSnapshot.value?.book_id;
-  if (!expectedBookId) return;
+  if (!expectedBookId && !workspaceInitializationFailed) return;
   workspaceRecoveryTask = (async () => {
     try {
+      // A failed initial read may not have reached book identity or history yet.
+      if (workspaceInitializationFailed) { await init(); return; }
       const source = await api.sourceFingerprint();
       if (buildWorkbenchSnapshot.value?.book_id !== expectedBookId) return;
       if (source.book_id !== expectedBookId) {
@@ -2547,6 +2527,7 @@ async function recoverWorkspaceState() {
       if (agentHistoryError.value) await loadStartupHistory();
       else applyAgentHistory(await api.agentHistory());
     } catch (error) {
+      requestWorkspaceRecovery(error);
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         banner.value = uiText('认证已失效，请通过现有受保护入口恢复登录。');
       } else if (navigator.onLine === false) {
@@ -3878,6 +3859,30 @@ const boardPendingLocate = ref<BoardLocation | null>(initialBoardRoute?.itemId ?
 const boardWorkspaceRef = ref<InstanceType<typeof BoardWorkspace>>();
 const boardSourceError = ref('');
 const boardSourcePreview = ref<SourcePopupView | null>(null);
+const boardSourceRequest = ref<BoardSourceRequest | null>(null);
+const boardSourceLoading = ref(false), boardSourceOpening = ref(false), boardSourcePreviewError = ref('');
+let boardSourceSequence = 0;
+let boardSourceOpenLid: string | undefined;
+const boardSourceCanOpen = computed(() => {
+  const source = boardSourcePreview.value;
+  if (!source || source.stale || !source.can_open_in_reader) return false;
+  if (source.media) {
+    const current = (videoPlayback.value ?? publishedVideo.value)?.publication, target = source.media.publication;
+    return !!videoPane.value && current?.book_id === target.book_id && current.publication_id === target.publication_id && Number.isFinite(mediaSourceStart(source.media));
+  }
+  if (source.music) {
+    const current = musicContext.value?.publication, target = source.music.target.publication;
+    return !!musicPane.value && current?.book_id === target.book_id && current.publication_id === target.publication_id;
+  }
+  return true;
+});
+function closeBoardSourcePreview() {
+  boardSourceSequence++;
+  boardSourceRequest.value = null; boardSourcePreview.value = null; boardSourcePreviewError.value = '';
+  boardSourceLoading.value = false; boardSourceOpening.value = false;
+  boardSourceOpenLid = undefined;
+}
+onBeforeUnmount(closeBoardSourcePreview);
 function writeBoardRoute(id: string | null, target?: BoardLocation) {
   const url = boardRouteUrl(location.href, id ? { boardId: id,
     publication: network.value.workspace?.published_book_ref ?? null,
@@ -3906,7 +3911,7 @@ function openUnderstandingBoard(event: Event) {
 function closeBoard() {
   boardVisible.value = false; boardMounted.value = false; boardId.value = null;
   boardPendingImport.value = null; boardPendingLocate.value = null; boardSourceError.value = ''; writeBoardRoute(null);
-  boardSourcePreview.value = null;
+  closeBoardSourcePreview();
 }
 watch(() => buildWorkbenchSnapshot.value?.book_id, (book, previous) => {
   if (previous && book && book !== previous) closeBoard();
@@ -3921,33 +3926,48 @@ onMounted(() => window.addEventListener('understanding-open-board', openUndersta
 onBeforeUnmount(() => window.removeEventListener('understanding-open-board', openUnderstandingBoard));
 async function openBoardSource(request: BoardSourceRequest) {
   boardSourceError.value = '';
+  closeBoardSourcePreview();
+  boardSourceRequest.value = { ...request }; boardSourceLoading.value = true;
+  const sequence = boardSourceSequence;
   try {
     const source = await api.boardSourceResolve(request);
-    if (source.stale || !source.can_open_in_reader) { boardSourcePreview.value = source; return; }
+    if (sequence === boardSourceSequence) boardSourcePreview.value = source;
+  } catch (failure) {
+    if (sequence === boardSourceSequence) boardSourcePreviewError.value = errorMessage(failure);
+  } finally { if (sequence === boardSourceSequence) boardSourceLoading.value = false; }
+}
+function retryBoardSource() {
+  if (boardSourcePreview.value) void openBoardSourceInReader(boardSourceOpenLid);
+  else if (boardSourceRequest.value) void openBoardSource(boardSourceRequest.value);
+}
+async function openBoardSourceInReader(lid?: string) {
+  const request = boardSourceRequest.value, source = boardSourcePreview.value;
+  if (!request || !source || !boardSourceCanOpen.value || boardSourceOpening.value) return;
+  const sequence = boardSourceSequence;
+  boardSourceOpenLid = lid;
+  boardSourceOpening.value = true; boardSourcePreviewError.value = '';
+  try {
     const returnPoint: ReadingReturnPoint = { ...captureReadingReturnPoint(''), origin: 'board', boardId: request.board_id, boardItemId: request.item_id };
-    if (source.media) {
-      const current = (videoPlayback.value ?? publishedVideo.value)?.publication;
-      const target = source.media.publication, ms = mediaSourceStart(source.media);
-      if (!videoPane.value || current?.book_id !== target.book_id || current.publication_id !== target.publication_id || !Number.isFinite(ms)) {
-        boardSourcePreview.value = source; return;
-      }
-      videoPane.value.seek(ms);
-    }
-    else if (source.music) {
-      const current = musicContext.value?.publication, target = source.music.target;
-      if (!musicPane.value || current?.book_id !== target.publication.book_id || current.publication_id !== target.publication.publication_id) {
-        boardSourcePreview.value = source; return;
-      }
-      musicPane.value.openSource(target);
-    }
-    else {
-      const opened = await api.boardSourceOpen(request);
+    if (!source.media && !source.music) {
+      const opened = await api.boardSourceOpen(lid ? { ...request, lid } : request);
+      if (sequence !== boardSourceSequence) return;
       if (opened.source_url) { window.open(opened.source_url, '_blank', 'noopener,noreferrer'); return; }
+      if (!opened.opened) throw new Error(uiText('原文暂时无法在阅读器中打开，请重试。'));
     }
-    readingContinuity.push(returnPoint); updateReadingReturn(); boardVisible.value = false;
+    // On narrow screens the Reader may be hidden behind the assistant tab.
+    // Make its layout measurable before restoring the cited passage.
     workspaceRef.value?.showReader();
-    if (!source.media && !source.music) await syncViewport(true, true);
-  } catch (failure) { boardSourceError.value = failure instanceof Error ? failure.message : String(failure); }
+    await nextTick();
+    if (sequence !== boardSourceSequence) return;
+    if (source.media) videoPane.value?.seek(mediaSourceStart(source.media));
+    else if (source.music) musicPane.value?.openSource(source.music.target);
+    else await syncViewport(true, true);
+    if (sequence !== boardSourceSequence) return;
+    readingContinuity.push(returnPoint); updateReadingReturn(); boardVisible.value = false;
+    closeBoardSourcePreview();
+  } catch (failure) {
+    if (sequence === boardSourceSequence) boardSourcePreviewError.value = errorMessage(failure);
+  } finally { if (sequence === boardSourceSequence) boardSourceOpening.value = false; }
 }
 const returnToAnswerAvailable = ref(false);
 const readingReturnLabel = ref(uiText('返回回答'));
@@ -4425,23 +4445,26 @@ async function loadStartupHistory() {
       throw new Error(learningId ? uiText('对话所属工作区已变化，请重试') : uiText('对话所属书籍已变化，请重试'));
     applyAgentHistory(history);
   } catch (error) {
-    if (request === startupHistoryRequestSeq) agentHistoryError.value = errorMessage(error);
+    if (request === startupHistoryRequestSeq) {
+      agentHistoryError.value = errorMessage(error);
+      requestWorkspaceRecovery(error);
+    }
   } finally {
     if (request === startupHistoryRequestSeq) agentHistoryLoading.value = false;
   }
 }
 
 async function retryHistory() {
-  if (!network.value.enabled) { await loadStartupHistory(); return; }
+  if (!network.value.enabled) { await (workspaceInitializationFailed ? init() : loadStartupHistory()); return; }
   agentHistoryLoading.value = true;
   agentHistoryError.value = null;
   try {
     await recoverWorkspaceBinding();
     // A new generation remounts App; its startup owns the next history read.
     await nextTick();
-    if (!disposed) await loadStartupHistory();
+    if (!disposed) await (workspaceInitializationFailed ? init() : loadStartupHistory());
   } catch (error) {
-    if (!disposed) agentHistoryError.value = errorMessage(error);
+    if (!disposed) { agentHistoryError.value = errorMessage(error); requestWorkspaceRecovery(error); }
   } finally {
     if (!disposed) agentHistoryLoading.value = false;
   }
@@ -5661,6 +5684,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         v-model:goto-input="gotoInput"
         v-model:search-query="outlineSearch"
         :outline-items="outlineItems"
+        :anchor-offset="outlineAnchorOffset"
         :progress-pct="progressPct"
         :anchor-lid="outlineAnchorLid"
         :pending-lid="pendingNavigationLid"
@@ -5945,7 +5969,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       <BoardWorkspace ref="boardWorkspaceRef" :board-id="boardId" :pending-import="boardPendingImport" :pending-locate="boardPendingLocate" :run="boardRun"
         @follow-up="sendBoardQuestion" @retry-follow-up="retryBoardQuestion" @cancel-follow-up="cancelBoardQuestion" @located="boardPendingLocate = null"
         @board-open="boardOpened" @board-deleted="boardId = null; writeBoardRoute(null)" @close="closeBoard" @source="openBoardSource" @imported="boardPendingImport = null" />
-      <BoardSourcePreview v-if="boardSourcePreview" :source="boardSourcePreview" @close="boardSourcePreview = null" />
+      <BoardSourcePreview v-if="boardSourceRequest" :source="boardSourcePreview" :source-request="boardSourceRequest" :loading="boardSourceLoading" :opening="boardSourceOpening" :error="boardSourcePreviewError" :can-open-in-reader="boardSourceCanOpen" @close="closeBoardSourcePreview" @open-reader="openBoardSourceInReader" @retry="retryBoardSource" />
     </div>
 
     <aside

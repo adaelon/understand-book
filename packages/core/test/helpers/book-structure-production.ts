@@ -80,6 +80,8 @@ export function structureProductionResponse(task: BookStructureGenerationTaskV1)
   const p = task.input;
   switch (p.phase) {
     case "outline": return { chapters: p.context.chapters.map(c => ({ unit_lid: c.unit_lid, question: c.overview, progression: c.overview })), themes: [] };
+    case "outline_chapters": return { chapters: p.context.chapters.map(c => ({ unit_lid: c.unit_lid, question: c.overview, progression: c.overview })) };
+    case "outline_themes": return { kind: "finish" };
     case "chapter": {
       const candidates = p.context.catalog.candidates.filter(c => c.unit_lid === p.work.unit_lid);
       if (!candidates.length) {

@@ -1,7 +1,7 @@
 //! Background profile extraction for the multi-user service. Jobs remain in MemoryStore.
 use crate::{
     authorization::Authorization,
-    host::{copy_user_review_input, mark_review_retryable, ReviewMoment},
+    host::{copy_user_review_input, mark_review_retryable, review_job_is_running, user_review_session, ReviewMoment},
     service_limits::LimitedAdapter,
     user_registry::UserHandle,
     AgentAssistantStatus,
@@ -24,7 +24,7 @@ pub(crate) fn remember_pending(
             .review_state()
             .review_jobs
             .iter()
-            .any(|job| job.status != ReviewJobStatus::Completed)
+            .any(|job| job.status.is_pending())
         {
             let owner = user.user_id().expect("service user has owner");
             if !backlog.iter().any(|queued| queued == owner) {
@@ -49,13 +49,14 @@ fn millis(value: &str) -> u64 {
 }
 
 pub(crate) fn tick(access: &Arc<Authorization>, cancel: &CancellationToken, now_ms: u64) -> usize {
+    let started = std::time::Instant::now();
     let users = access.users.lock().unwrap().loaded_users();
     let mut completed = 0;
     for user in users {
         if cancel.is_cancelled() || access.runs.is_stopping() {
             break;
         }
-        match run_one(access, &user, cancel, now_ms) {
+        match run_one(access, &user, cancel, elapsed_millis(now_ms, started)) {
             Ok(true) => completed += 1,
             Ok(false) => {}
             Err(error) => eprintln!("Memory review: {}", error.error_code),
@@ -70,6 +71,7 @@ fn run_one(
     cancel: &CancellationToken,
     now_ms: u64,
 ) -> Result<bool, ToolError> {
+    let started = std::time::Instant::now();
     let now = now_ms.to_string();
     let (owner, job, publication) = {
         let mut user = handle.lock().unwrap();
@@ -94,6 +96,8 @@ fn run_one(
             .review_state()
             .review_jobs
             .iter()
+            .filter(|job| user.store.review_state().reviewed_through
+                .get(&job.session_id).copied().unwrap_or(0) == job.from_turn_exclusive)
             .filter(|job| match job.status {
                 ReviewJobStatus::Queued => {
                     job.to_turn_inclusive
@@ -133,6 +137,8 @@ fn run_one(
         (owner, claimed, publication)
     };
     let result = (|| {
+        // Verify source existence before loading a publication or obtaining model capacity.
+        user_review_session(&handle.lock().unwrap(), &job)?;
         let publication = match publication {
             Some(reference) => reference,
             None => access.library.lock().unwrap().default_ref(&job.book_id)?,
@@ -143,7 +149,7 @@ fn run_one(
             &job,
             crate::current_content_profile(&book.book),
         )?;
-        let adapter = access.runs.task_adapter().map_err(|mut e| {
+        let adapter = access.runs.review_adapter().map_err(|mut e| {
             e.error_code = "REVIEW_PROVIDER_UNCONFIGURED".into();
             e
         })?;
@@ -186,12 +192,18 @@ fn run_one(
         let turns: Vec<_> = input.turns.iter().map(|t| t.turn_id.clone()).collect();
         let mut user = handle.lock().unwrap();
         user.check_owner(&owner)?;
+        if !review_job_is_running(&user.store, &job.job_id) {
+            return Ok(false);
+        }
+        // A failed metadata save during deletion can still leave the JSONL removed.
+        // Recheck the authoritative in-memory session before committing late output.
+        user_review_session(&user, &job)?;
         user.store.commit_review_result(
             &job.job_id,
             &turns,
             &output.fact_candidates,
             &output.intent_observations,
-            &now,
+            &elapsed_millis(now_ms, started).to_string(),
         )?;
         Ok(true)
     })();
@@ -200,8 +212,12 @@ fn run_one(
             &mut handle.lock().unwrap().store,
             &job,
             error,
-            &ReviewMoment::from_millis(now_ms),
+            &ReviewMoment::from_millis(elapsed_millis(now_ms, started)),
         )?;
     }
     result
+}
+
+fn elapsed_millis(now_ms: u64, started: std::time::Instant) -> u64 {
+    now_ms.saturating_add(started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64)
 }

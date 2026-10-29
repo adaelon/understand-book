@@ -64,6 +64,17 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
   return value;
 }
 
+/** Retry read-side recovery through the shell, which owns authentication and attachment. */
+export function requestWorkspaceRecovery(failure: unknown) {
+  if (!network.value.enabled || !network.value.identity || !network.value.workspace || network.value.linked) return;
+  const retryable = failure instanceof ApiError
+    ? failure.status >= 500 || [408, 429].includes(failure.status)
+      || ['WORKSPACE_STALE', 'WORKSPACE_REVISION_CONFLICT'].includes(failure.errorCode)
+    : failure instanceof TypeError || failure instanceof SyntaxError
+      || (failure instanceof DOMException && failure.name === 'TimeoutError');
+  if (retryable) window.dispatchEvent(new Event('workspace-recovery-needed'));
+}
+
 // Serialize CAS writes from this page. Each operation captures its scene before joining the queue.
 let writes: Promise<unknown> = Promise.resolve();
 let queuedNavigation: { key: string; superseded: boolean } | null = null;
@@ -287,7 +298,7 @@ export async function workspaceRead<T = unknown>(action: string, body: Record<st
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
   });
 }
-const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
+const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/source.read', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
   'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'reader/selection.translate']);
 
 interface Admission extends RunDescriptor {

@@ -114,10 +114,15 @@ Consume only `automatic_build_executor_session.v3`. Handle each action exactly:
 
 - `action.kind=DELIVER_INPUT`: call `executor.input.next` with the exact
   fields from `next_request`, including `ack_through_ordinal` when present.
-  A successful submission can return another DELIVER_INPUT for the same theme. Continue in this
-  child with the returned refs until DONE; search, inspect, read and resolve are steps of one theme.
+  A successful submission can return another DELIVER_INPUT for the same theme, the next work
+  unit, or a newly ready task in another batch of this authorized build stage. Continue in this
+  child with the returned refs until DONE; do not wait for Root to dispatch each work unit or batch.
+  The Engine owns task selection and each assignment's recovery identity. A stable worker handoff
+  can span multiple batches, including tasks created only after an earlier result was accepted.
   Reconstruct each input using only chunks for its generation_input_ref. The new input replaces
-  the preceding delivery; keep useful reasoning in the action's notes for recovery.
+  the preceding delivery. Search, inspect, read and resolve remain steps of one theme; keep useful
+  reasoning in that theme's action notes for recovery. For a new work unit, use its newly delivered
+  evidence. Never use the preceding work unit's chunks, candidate, or notes as evidence for it.
 - `action.kind=INPUT_BATCH`: retain every chunk's `payload_utf8` only in this dedicated child
   context, ordered by `segment`, `ordinal`, and `byte_range`. Do not summarize, alter, skip,
   duplicate, hash, or forward a chunk. If `final_for_generation=false`, call `executor.input.next`
@@ -146,7 +151,7 @@ Consume only `automatic_build_executor_session.v3`. Handle each action exactly:
   `version=automatic_build_executor_candidate_submit.v3`, the exact returned `opaque_session_ref`
   and `candidate_sink_ref`, and that JSON value as `candidate`.
   Never return candidate JSON to the caller or put it in a file, command, log, or another tool.
-- `action.kind=WAIT`: wait exactly `retry_after_ms`, then call `executor.open` again with the same
+- `action.kind=WAIT`: the tool has already performed a bounded wait. Wait exactly `retry_after_ms`, then call `executor.open` again with the same
   original `opaque_handoff_ref`. Do not open another ref or claim work by another route.
 - `action.kind=DONE`: stop and return only the bounded lifecycle object defined below.
 
@@ -155,9 +160,15 @@ For DONE or an MCP error, the helper prints the serialized lifecycle object and 
 field values, adding quotes around the object, or appending punctuation. If needed, a tool-only
 `text(load("understand_book_lifecycle"))` cell can redisplay it without another MCP call.
 
-This child and its connection serve exactly one opaque handoff ref. After DONE or any terminal
-error, this child is finished. A later work unit or recovery ref requires a new child and a fresh
-connection, even when the dispatch slot is unchanged. Never accept another ref through followup.
+This child and its connection serve exactly one opaque worker handoff ref. The Engine may change
+the current task assignment behind that stable ref while keeping this child alive. A completed
+batch is not a child terminal boundary. WAIT means retain this child and reopen the original ref
+after the supplied delay; never interpret an empty ready queue as completion. The Engine decides
+stage completion, context rotation, and stopping at existing budget, quality, or failure boundaries.
+After DONE or any terminal error, this child is finished. A new handoff ref, including recovery or
+context rotation after a terminal result, requires a new child and a fresh connection. Never switch
+refs on your own, and never carry evidence from one assignment into another.
+Never accept another ref through followup.
 
 Every replay uses the exact previous request. Do not self-judge schema, evidence, identity,
 quality, writer, terminal, or retry state; tool responses and the durable Build Engine are

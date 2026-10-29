@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { zipSync, strToU8 } from "fflate";
+import { epubToSource } from "../src/epub-adapter";
 import { markdownToBlocks } from "../src/md-adapter";
-import { segment } from "../src/segment";
+import { segment, type SourceBlock } from "../src/segment";
 import type { LidNode } from "../src/generated/LidNode";
 import { splitWindows, estimateTokens, type WindowBudget, type Window } from "../src/window";
 import { routeModelInputSlices } from "../src/model-input-slice";
@@ -25,6 +27,22 @@ function assertLeafPartition(nodes: LidNode[], windows: Window[]) {
   for (const l of allLeaves) expect(seen.has(l)).toBe(true); // 全覆盖(逐一)
 }
 
+function unsectionedEpub(body: string) {
+  return epubToSource(zipSync({
+    "META-INF/container.xml": strToU8('<container><rootfiles><rootfile full-path="content.opf"/></rootfiles></container>'),
+    "content.opf": strToU8('<package><manifest><item id="text" href="text.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="text"/></spine></package>'),
+    "text.xhtml": strToU8(`<html><body>${body}</body></html>`),
+  }));
+}
+
+/** 既有裸根叶索引仍是 splitWindows 的合法输入,独立于当前 segment 的匿名容器布局。 */
+function rootLeafNodes(blocks: SourceBlock[]): LidNode[] {
+  return blocks.map((block, index) => ({
+    lid: String(index + 1), path: [index + 1], kind: block.assetKind ?? "paragraph",
+    span: { ...block.span }, children: [],
+  }));
+}
+
 describe("estimateTokens(确定性近似)", () => {
   it("CJK 按 1 / ASCII 按 0.25,向上取整", () => {
     expect(estimateTokens("你好")).toBe(2);
@@ -41,6 +59,70 @@ describe("S2 窗口切分 [ADR-0009]", () => {
   const blocks = markdownToBlocks(sampleSrc);
   const nodes = segment(blocks);
   const BIG: WindowBudget = { maxInputTokens: 1_000_000, maxLeavesSoft: 10_000 };
+
+  it("无标题 EPUB 的短段、正文和图片按预算合窗,不把每段当作一卷", () => {
+    const { source, blocks } = unsectionedEpub('<p>版权</p><p>作者</p><p>判断复杂系统时需要结合上下文。</p><img src="figure.png"/><p>图一</p>');
+    const n = segment(blocks);
+    const leaves = n.filter((node) => node.children.length === 0);
+    expect(n.map((node) => node.kind)).toEqual(["section", "paragraph", "paragraph", "paragraph", "image", "paragraph"]);
+    expect(leaves.map((node) => node.lid)).toEqual(["1.1", "1.2", "1.3", "1.4", "1.5"]);
+    const originalNodes = structuredClone(n);
+    const windows = splitWindows(n, source, BIG);
+    expect(windows).toHaveLength(1);
+    expect(windows[0].leafLids).toEqual(leaves.map((node) => node.lid));
+    expect(windows[0].spans).toEqual(leaves.map((node) => node.span));
+    expect(n).toEqual(originalNodes);
+    assertLeafPartition(n, windows);
+  });
+
+  it("无容器根叶仍遵守输入硬闸,只在完整叶子之间切分", () => {
+    const { source, blocks } = unsectionedEpub("<p>甲乙</p><p>丙丁</p><p>戊己</p><p>庚辛</p><p>壬癸</p>");
+    const n = rootLeafNodes(blocks);
+    const windows = splitWindows(n, source, { maxInputTokens: 4, maxLeavesSoft: 100 });
+    expect(windows.map((window) => window.leafLids)).toEqual([["1", "2"], ["3", "4"], ["5"]]);
+    expect(windows.map((window) => window.tokens)).toEqual([4, 4, 2]);
+    expect(windows.every((window) => !window.overBudget)).toBe(true);
+    assertLeafPartition(n, windows);
+  });
+
+  it("无容器根叶仍遵守叶子数软闸", () => {
+    const { source, blocks } = unsectionedEpub("<p>甲</p><p>乙</p><p>丙</p><p>丁</p><p>戊</p>");
+    const n = rootLeafNodes(blocks);
+    const windows = splitWindows(n, source, { maxInputTokens: 100, maxLeavesSoft: 2 });
+    expect(windows.map((window) => window.leafLids)).toEqual([["1", "2"], ["3", "4"], ["5"]]);
+    assertLeafPartition(n, windows);
+  });
+
+  it("超预算根叶独立成窗并标记,不遗漏该叶或吞并前后短段", () => {
+    const { source, blocks } = unsectionedEpub(`<p>甲</p><p>乙</p><p>${"长".repeat(20)}</p><p>丙</p><p>丁</p>`);
+    const n = rootLeafNodes(blocks);
+    const windows = splitWindows(n, source, { maxInputTokens: 4, maxLeavesSoft: 100 });
+    expect(windows.map((window) => window.leafLids)).toEqual([["1", "2"], ["3"], ["4", "5"]]);
+    expect(windows.map((window) => [window.tokens, window.overBudget])).toEqual([[2, false], [20, true], [2, false]]);
+    assertLeafPartition(n, windows);
+  });
+
+  it("容器前、中、后的游离根叶各自合窗,保留章节和有子节点容器的边界", () => {
+    const source = "甲乙丙丁戊己庚辛壬癸子丑";
+    const node = (lid: string, kind: LidNode["kind"], start: number, end: number, children: string[] = []): LidNode => ({
+      lid, path: lid.split(".").map(Number), kind, span: { start, end }, children,
+    });
+    const n = [
+      node("1", "paragraph", 0, 1), node("2", "image", 1, 2),
+      node("3", "chapter", 2, 4, ["3.1", "3.2"]),
+      node("3.1", "paragraph", 2, 3), node("3.2", "paragraph", 3, 4),
+      node("4", "paragraph", 4, 5), node("5", "paragraph", 5, 6),
+      node("6", "chapter", 6, 7), node("7", "section", 7, 8),
+      node("8", "paragraph", 8, 10, ["8.1", "8.2"]),
+      node("8.1", "paragraph", 8, 9), node("8.2", "paragraph", 9, 10),
+      node("9", "paragraph", 10, 11), node("10", "paragraph", 11, 12),
+    ];
+    const windows = splitWindows(n, source, BIG);
+    expect(windows.map((window) => window.leafLids)).toEqual([
+      ["1", "2"], ["3.1", "3.2"], ["4", "5"], ["6"], ["7"], ["8.1", "8.2"], ["9", "10"],
+    ]);
+    assertLeafPartition(n, windows);
+  });
 
   it("大预算下叶子被窗口划分(无遗漏无重叠)", () => {
     const windows = splitWindows(nodes, sampleSrc, BIG);

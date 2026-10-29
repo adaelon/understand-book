@@ -101,14 +101,14 @@ export function UsersPage() {
                 {
                   header: "可用额度",
                   cell: ({ row }) =>
-                    row.original.current_allowance
+                    row.original.current_allowance?.balance.unlimited ? <strong>内测不限额度</strong> : row.original.current_allowance
                       ? <div className="space-y-2"><strong><AllowanceValue ratio={row.original.current_allowance.balance.percentages?.available} amount={row.original.current_allowance.balance.available_micro_cny}/></strong><div className="cost-bar-track w-28 max-w-full" aria-hidden="true"><span style={{width:`${Math.max(0,Math.min(100,row.original.current_allowance.balance.available_micro_cny/Math.max(1,row.original.current_allowance.balance.granted_micro_cny)*100))}%`,background:'var(--viz-green)'}}/></div><details className="text-xs text-muted-foreground"><summary className="cursor-pointer">精确额度</summary>{money(row.original.current_allowance.balance.available_micro_cny)} 元 · {percentage(row.original.current_allowance.balance.percentages?.available)}</details></div>
                       : "无有效额度期",
                 },
                 {
                   header: "到期时间（香港）",
                   cell: ({ row }) =>
-                    date(row.original.current_allowance?.expires_at),
+                    row.original.current_allowance?.balance.unlimited ? '内测期间' : date(row.original.current_allowance?.expires_at),
                 },
                 {
                   header: "最近阅读 / 提问",
@@ -195,9 +195,9 @@ export function UserPage({ userId }: { userId: string }) {
           <ViewSwitch label="账号管理分区" value={view} options={[["overview","账号概览"],["allowance","额度与套餐"],["mcp","MCP 调用包"],["materials","材料授权"],["billing","费用与账单"],["usage","用量分析"]]} onChange={setView} />
           {view === 'overview' && <>
             <dl className="grid gap-3 sm:grid-cols-3">
-              <Metric label="当前可用额度" value={user.current_allowance ? <AllowanceValue ratio={user.current_allowance.balance.percentages?.available} amount={user.current_allowance.balance.available_micro_cny}/> : '未开通'} detail={<button className="underline underline-offset-4" onClick={() => setView('allowance')}>管理额度与套餐 →</button>} tone="green" />
+              <Metric label="当前可用额度" value={user.current_allowance?.balance.unlimited ? '内测不限额度' : user.current_allowance ? <AllowanceValue ratio={user.current_allowance.balance.percentages?.available} amount={user.current_allowance.balance.available_micro_cny}/> : '未开通'} detail={<button className="underline underline-offset-4" onClick={() => setView('allowance')}>管理额度与套餐 →</button>} tone="green" />
               <Metric label="已授权材料" value={user.book_grants.total} detail={<button className="underline underline-offset-4" onClick={() => setView('materials')}>管理材料授权 →</button>} />
-              <Metric label="额度到期时间" value={<span className="text-lg">{date(user.current_allowance?.expires_at)}</span>} detail="香港时间" tone="muted" />
+              <Metric label="额度到期时间" value={<span className="text-lg">{user.current_allowance?.balance.unlimited ? '内测期间' : date(user.current_allowance?.expires_at)}</span>} detail={user.current_allowance?.balance.unlimited ? undefined : '香港时间'} tone="muted" />
             </dl>
             <ActivitySummary activity={user.activity} />
           </>}

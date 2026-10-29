@@ -7,7 +7,7 @@ use crate::{
         self, AccountMail, VerificationPurpose, MAX_VERIFICATION_ATTEMPTS, RESEND_SECONDS,
         VERIFICATION_SECONDS,
     },
-    allowance_admin::{Adjustment, Mutation, Period},
+    allowance_admin::{Mutation, Period},
     auth,
     control_store::ControlStore,
     user_storage_paths::error,
@@ -22,10 +22,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-const REGISTRATION_GRANT_MICRO_CNY: i64 = 10 * MicroCny::PER_YUAN;
-const REGISTRATION_ALLOWANCE_SECONDS: i64 = 30 * 24 * 60 * 60;
+// The existing period ledger requires a finite timestamp. Beta access has no
+// automatic expiry; a future policy change can explicitly close this period.
+const BETA_ALLOWANCE_END: i64 = 253_402_300_799; // 9999-12-31 UTC
 
-fn grant_initial_allowance(
+fn open_beta_allowance(
     db: &Connection,
     invite_id: &str,
     owner: &str,
@@ -34,31 +35,31 @@ fn grant_initial_allowance(
     let actor: String = db
         .query_row("SELECT actor FROM beta_invites WHERE invite_id=?", [invite_id], |r| r.get(0))
         .map_err(|_| storage())?;
-    let operation = format!("registration-gift-{invite_id}");
-    let period = Mutation::Period(Period {
+    let operation = format!("registration-beta-{invite_id}");
+    let mutation = Mutation::Period(Period {
         starts_at: now,
-        expires_at: now + REGISTRATION_ALLOWANCE_SECONDS,
+        expires_at: BETA_ALLOWANCE_END,
         basis: Some(AllowanceBasis {
-            version: "registration-gift-10-cny-v1".into(),
-            basis_micro_cny: MicroCny::new(REGISTRATION_GRANT_MICRO_CNY),
+            // A cost reference for per-task budgets, not an allowance grant.
+            version: "beta-cost-reference-v1".into(),
+            basis_micro_cny: MicroCny::new(MicroCny::PER_YUAN),
         }),
-    }).apply(db, &actor, &operation, owner, now)?;
-    let adjustment = Mutation::Adjustment(Adjustment {
-        period_id: period["allowance_period"]["period_id"].as_str().unwrap().into(),
-        revision: 0,
-        delta_micro_cny: MicroCny::new(REGISTRATION_GRANT_MICRO_CNY),
-        reason: "邮箱注册赠送 10 元额度，有效期 30 天".into(),
     });
-    let parameters = adjustment.parameters();
+    let mut parameters = mutation.parameters();
+    parameters["unlimited"] = json!(true);
+    parameters["reason"] = json!("邮箱注册开通内测不限额度");
     db.execute(
         "INSERT INTO admin_operations(actor,operation_id,user_id,kind,parameters_json,result_json,created_at) VALUES(?,?,?,?,?,'{}',?)",
-        params![actor, operation, owner, adjustment.kind(), parameters.to_string(), now],
+        params![actor, operation, owner, mutation.kind(), parameters.to_string(), now],
     ).map_err(|_| storage())?;
-    let allowance = adjustment.apply(db, &actor, &operation, owner, now)?;
+    let allowance = mutation.apply(db, &actor, &operation, owner, now)?;
+    let period_id = allowance["allowance_period"]["period_id"].as_str().unwrap();
+    db.execute("UPDATE allowance_periods SET unlimited=1 WHERE period_id=?", [period_id])
+        .map_err(|_| storage())?;
     let result = json!({
-        "operation_id":operation,"actor":actor,"user_id":owner,"kind":adjustment.kind(),
+        "operation_id":operation,"actor":actor,"user_id":owner,"kind":mutation.kind(),
         "parameters":parameters,"created_at":now,"ok":true,
-        "allowance_period":allowance["allowance_period"],"receipt_id":null,
+        "allowance_period":crate::allowance_admin::period(db, owner, period_id)?,"receipt_id":null,
     });
     db.execute("UPDATE admin_operations SET result_json=? WHERE actor=? AND operation_id=?",
         params![result.to_string(), actor, operation]).map_err(|_| storage())?;
@@ -202,15 +203,6 @@ impl Registration {
             completions: Mutex::new(VecDeque::new()),
             password_slot: Mutex::new(()),
         }
-    }
-    pub(crate) fn guest(
-        &self,
-        input: crate::guest_trial::Start,
-        previous: Option<&str>,
-        now: i64,
-    ) -> Result<String, ToolError> {
-        reserve(&self.starts)?;
-        crate::guest_trial::redeem(&mut self.control.lock().unwrap().connection, input, previous, now)
     }
     pub(crate) fn start(
         &self,
@@ -371,7 +363,7 @@ impl Registration {
             params![pending.email, now, owner],
         )
         .map_err(|_| storage())?;
-        grant_initial_allowance(&tx, &pending.invite_id, &owner, now)?;
+        open_beta_allowance(&tx, &pending.invite_id, &owner, now)?;
         tx.execute(
             "UPDATE beta_invites SET state='used',used_by=?,used_at=? WHERE invite_id=?",
             params![owner, now, pending.invite_id],

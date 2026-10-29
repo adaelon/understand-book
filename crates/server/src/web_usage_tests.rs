@@ -103,6 +103,41 @@ impl Fixture {
 }
 
 #[test]
+fn unlimited_allowance_allows_web_usage_and_preserves_actual_costs() {
+    let f = Fixture::new(1);
+    f.rates(12_000_000, 3_000_000);
+    assert_eq!(f.admit(WebServiceKind::Search, "limited", 1).unwrap_err().error_code, "ALLOWANCE_INSUFFICIENT");
+    f.store.control.lock().unwrap().connection.execute("UPDATE allowance_periods SET unlimited=1 WHERE period_id='period'", []).unwrap();
+    for (kind, logical) in [(WebServiceKind::Search, "unlimited-search"), (WebServiceKind::Fetch, "unlimited-fetch")] {
+        let id = f.admit(kind, logical, 1).unwrap();
+        f.receipt(&id, WebChargeOutcome::Billed);
+    }
+    assert_eq!(f.balance().debited_micro_cny.value(), 15_000_000);
+    assert!(f.balance().can_reserve(20_000_000));
+}
+
+#[test]
+fn unlimited_allowance_schema20_upgrade_preserves_existing_balances() {
+    let f = Fixture::new(100);
+    f.seed_existing_costs(17, 11);
+    let writer = {
+        let control = f.store.control.lock().unwrap();
+        control.connection.execute_batch("ALTER TABLE allowance_periods DROP COLUMN unlimited; PRAGMA user_version=20;").unwrap();
+        control.writer.clone()
+    };
+    drop(f.store);
+    for _ in 0..2 {
+        let upgraded = ControlStore::open(writer.clone()).unwrap();
+        let balance = crate::account_allowance::balance(&upgraded.connection, "period").unwrap();
+        assert!(!balance.unlimited);
+        assert_eq!(balance.available_micro_cny.value(), 72);
+        assert!(balance.can_reserve(72));
+        assert!(!balance.can_reserve(73));
+        assert_eq!(upgraded.connection.pragma_query_value(None, "user_version", |r| r.get::<_,i64>(0)).unwrap(), CONTROL_SCHEMA_VERSION);
+    }
+}
+
+#[test]
 fn web_usage_requires_explicit_active_rates_and_settles_the_admitted_rate() {
     let f = Fixture::new(100);
     assert_eq!(
@@ -373,7 +408,8 @@ fn web_usage_schema_19_upgrade_preserves_model_service_and_their_receipts() {
         control
             .connection
             .execute_batch(
-                "DROP VIEW billable_usage;
+                "ALTER TABLE allowance_periods DROP COLUMN unlimited;
+             DROP VIEW billable_usage;
              DROP TABLE web_usage_reconciliations;
              DROP TABLE web_usage_receipts;
              DROP TABLE web_usage;",

@@ -12,6 +12,7 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const dialog = ref<HTMLDialogElement | null>(null);
 const summary = ref<AccountAllowanceSummary | null>(null), usage = ref<AccountUsagePage | null>(null);
 const allowance = computed(() => summary.value?.current_allowance);
+const unlimited = computed(() => allowance.value?.balance.unlimited === true);
 const percentages = computed(() => allowance.value?.balance.percentages);
 const guestAmount = (micro: number) => `¥${(Math.max(0, micro) / 1_000_000).toFixed(2)}`;
 const busy = ref(false), error = ref(''), loaded = ref(false), supplement = ref(false);
@@ -42,11 +43,16 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
   <dialog ref="dialog" class="account-allowance" aria-labelledby="allowance-title" @cancel.prevent="emit('close')">
     <header><h2 id="allowance-title">{{ uiText('AI 使用额度') }}</h2><button type="button" :aria-label="uiText('关闭使用额度')" @click="emit('close')">{{ uiText('关闭') }}</button></header>
     <div class="allowance-toolbar"><span>{{ uiText('学习对话、记忆整理与资料准备共用账号额度') }}</span><button type="button" :disabled="busy" @click="load()">{{ uiText('刷新额度与明细') }}</button></div>
-    <button type="button" :aria-expanded="showPlans" @click="showPlans = !showPlans">{{ showPlans ? uiText('收起套餐与权益') : uiText('套餐与权益 · 月付 / 冲刺') }}</button>
-    <CloudPlans v-if="showPlans" />
+    <button v-if="loaded && !unlimited" type="button" :aria-expanded="showPlans" @click="showPlans = !showPlans">{{ showPlans ? uiText('收起套餐与权益') : uiText('套餐与权益 · 月付 / 冲刺') }}</button>
+    <CloudPlans v-if="showPlans && !unlimited" />
     <p v-if="busy" role="status">{{ uiText('正在读取使用额度…') }}</p>
     <p v-if="error" role="alert">{{ error }}{{ uiText('。请点击刷新重试。') }}</p>
     <template v-if="loaded">
+      <section v-if="unlimited" class="allowance-overview" :aria-label="uiText('当前额度')">
+        <dl class="allowance-balances"><div class="available"><dt>{{ uiText('内测 AI 使用额度') }}</dt><dd>{{ uiText('不限额度') }}</dd></div></dl>
+        <p class="allowance-expiry">{{ uiText('内测期间 AI Token 免费使用，不限额度。') }}</p>
+      </section>
+      <template v-else>
       <template v-if="allowance">
         <section class="allowance-overview" :aria-label="uiText('当前额度')">
           <p v-if="network.identity?.is_guest">{{ uiText('游客体验额度') }} · {{ uiText('可用') }} {{ guestAmount(allowance.balance.available_micro_cny) }} / {{ uiText('已赠送') }} {{ guestAmount(allowance.balance.granted_micro_cny) }}</p>
@@ -92,10 +98,11 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
       <details class="allowance-details"><summary>{{ uiText('额度不足或到期后怎么办') }}</summary>
         <p class="explanation">{{ uiText('额度不足或到期时，仍可在现有授权范围内阅读原文、历史和已有成果。补充额度后，返回对话点击“继续任务”或发送问题；不会自动继续。') }}</p>
       </details>
-      <button type="button" :aria-expanded="showCosts" @click="showCosts = !showCosts">{{ showCosts ? uiText('收起任务与工作区汇总') : uiText('按任务与工作区查看') }}</button>
-      <AccountCostSummary v-if="showCosts" />
+      </template>
+      <button v-if="!unlimited" type="button" :aria-expanded="showCosts" @click="showCosts = !showCosts">{{ showCosts ? uiText('收起任务与工作区汇总') : uiText('按任务与工作区查看') }}</button>
+      <AccountCostSummary v-if="showCosts && !unlimited" />
       <h3>{{ uiText('使用记录') }} <small>{{ uiText('全部额度期 ·') }} {{ usage?.total ?? 0 }} {{ uiText('条') }}</small></h3>
-      <details v-if="usage?.period_groups.length" class="allowance-details"><summary>{{ uiText('按原额度期查看合计') }}</summary>
+      <details v-if="!unlimited && usage?.period_groups.length" class="allowance-details"><summary>{{ uiText('按原额度期查看合计') }}</summary>
         <section v-for="group in usage.period_groups" :key="group.period_id" class="period-group">
           <p>{{ uiText('额度期') }} {{ group.period_id }} {{ uiText('· 基准') }} {{ group.allowance_basis?.version ?? uiText('待配置') }}</p>
           <dl class="allowance-calculation">
@@ -108,10 +115,10 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
       </details>
       <ul v-if="usage?.items.length" class="usage-list">
         <li v-for="item in usage.items" :key="item.call_id">
-          <div class="usage-heading"><time>{{ allowanceTime(item.created_at) }}</time><strong>{{ usageState[item.state] }}</strong></div>
+          <div class="usage-heading"><time>{{ allowanceTime(item.created_at) }}</time><strong>{{ unlimited && item.state === 'settled' ? uiText('已完成') : usageState[item.state] }}</strong></div>
           <p>{{ usagePurpose(item.purpose) }}<span v-if="item.entry_kind === 'service' && item.quantity_ms != null"> · {{ (item.quantity_ms / 1000).toFixed(1) }} {{ uiText('秒') }}</span></p>
-          <dl class="usage-amounts"><div><dt>{{ uiText('已用额度') }}</dt><dd>{{ item.account_debit_micro_cny === null ? (item.state === 'pending' ? uiText('待核算') : item.state === 'released' ? '0%' : uiText('尚未结算')) : allowancePercent(item.allowance_percentages?.debited) }}</dd></div><div><dt>{{ uiText('当前占用') }}</dt><dd>{{ usageOccupation(item) }}</dd></div></dl>
-          <details><summary>{{ uiText('原额度期与任务') }}</summary><p>{{ uiText('额度期：') }}{{ item.period_id }} {{ uiText('· 基准') }} {{ item.allowance_basis?.version ?? uiText('待配置') }}</p><p>{{ uiText('调用：') }}{{ item.call_id }}</p><p v-if="item.run_ref">{{ uiText('任务：') }}{{ item.run_ref }}</p><p v-if="item.task_ref">{{ uiText('后台任务：') }}{{ item.task_ref }}</p></details>
+          <dl v-if="!unlimited" class="usage-amounts"><div><dt>{{ uiText('已用额度') }}</dt><dd>{{ item.account_debit_micro_cny === null ? (item.state === 'pending' ? uiText('待核算') : item.state === 'released' ? '0%' : uiText('尚未结算')) : allowancePercent(item.allowance_percentages?.debited) }}</dd></div><div><dt>{{ uiText('当前占用') }}</dt><dd>{{ usageOccupation(item) }}</dd></div></dl>
+          <details v-if="!unlimited"><summary>{{ uiText('原额度期与任务') }}</summary><p>{{ uiText('额度期：') }}{{ item.period_id }} {{ uiText('· 基准') }} {{ item.allowance_basis?.version ?? uiText('待配置') }}</p><p>{{ uiText('调用：') }}{{ item.call_id }}</p><p v-if="item.run_ref">{{ uiText('任务：') }}{{ item.run_ref }}</p><p v-if="item.task_ref">{{ uiText('后台任务：') }}{{ item.task_ref }}</p></details>
         </li>
       </ul>
       <p v-else>{{ uiText('暂无使用记录。') }}</p>

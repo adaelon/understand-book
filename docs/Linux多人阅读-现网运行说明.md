@@ -1,5 +1,19 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-29 10:26:13 HKT 已上线独立书架显示名称，当前 release `catalog-title-20261029`，在 `board-source-window-20261028` 基础上仅修改标题读取。10:27:10 公网管理员与普通读者验证《失败的逻辑：事情因何出错，世间有无妙策》中文书名及原书阅读通过；出版包、账号授权与资料类型保持。维护 7.06 秒，无数据迁移，详见[书架名称修正](performance/catalog-title-20261029/README.md)。
+
+2026-10-29 00:09:26 HKT 已上线画板全屏、书内主张引用规则与可连续滚动的临时原文阅读窗口。当前 release `board-source-window-20261028`，源码 `ce641fdd`、PID 422201、schema 21；维护 10.31 秒，无数据迁移，54 份聊天文件、100 份画板文件及 17 条额度记录保持。生产副本与公网验证通过，旧来源中 8 个缺失出版版本的问题经旧程序对照确认保持。刷新云端页面后生效，详见[发布记录](performance/board-source-window-20261028/README.md)。
+
+2026-10-28 20:28:02 HKT 已上线可编辑思维导图、页面返回恢复、画板纠错和后台实时监控，20:33 公网复核通过。当前 release `editable-mind-map-20261028`，PID 407117、schema 21；维护 10.11 秒，无数据迁移，53 份聊天、88 份画板和 15 条额度记录保持。见[完整上线记录](performance/combined-release-20261028/README.md)。发布源码提交 `341dcd4d`，位于 `codex/combined-release-20261028`；独立工作树 `../understand-book-mind-map`。后续发布应从当前 release 或该提交继续合并，主工作树尚未包含全部线上源码。以下日期段落保留历史。
+
+2026-10-28 17:43:29 HKT 已上线零基础教学默认与对话接续规则；当前 release `beginner-dialogue-20261028`、PID 400133、schema 21。维护 9.63 秒，无数据迁移；50 份聊天、85 份画板及 13 条额度周期保持。Linux 构建、数据副本旧画板读取和公网读者／管理员入口通过。已有聊天在下一轮使用新规则。见[上线与验证记录](performance/beginner-dialogue-20261028/deployment/README.md)。以下日期段落保留历史。
+
+2026-10-28 13:58:50 HKT 已上线 Rust 讲解与原生画板表达规划改进；当前 release `rust-board-teaching-20261028`、PID 392557、schema 21。维护 9.63 秒，无数据迁移；50 份聊天、85 份画板和 13 条额度周期保持，线上空间笔记与注册行为保留。合并前端 57 项测试、Linux 实际预览、隔离数据副本 8 张旧画板及公网读者／管理员入口通过。刷新页面使用新版。见[合并发布与验证记录](performance/rust-board-teaching-20261028/deployment/README.md)。以下日期段落保留历史。
+
+2026-10-28 10:35:23 HKT 已合并上线画板元素样式、数学排版、创作指导与播放后关系线保留修复；当前 release `board-visual-math-20261028`、PID 375303、schema 21。维护 11.19 秒，无数据迁移；原 46 份聊天、85 份画板文件和 12 条额度周期保持，空间笔记及邮箱注册／内测不限额度功能保留。80 项相关前端测试、Linux 服务账户实际预览、数据副本 8 张旧画板读取通过；10:37:25 HKT 公网入口、9 份 JS/CSS、画板预览资源及读者／管理员接口复核通过。刷新云端页面使用新版，已有画板沿用原位置。见[合并发布与恢复记录](performance/board-appearance-20261028/deployment/README.md)。以下日期段落保留历史。
+
+2026-10-27 23:06:31 HKT 已上线后台复核有限重试、孤儿取消、模型请求时限、用户锁及 SSE 并发修复；当前 release `capacity-fixes-20261027`、PID 339783、schema 21，保留此前空间笔记与内测不限额度。维护 12.15 秒，切换检查无在途或排队问答；两条孤儿任务已取消，44 份聊天文件及 10 条额度周期保留。数据副本与公网登录／阅读／历史／管理入口通过。200 人候选配置未启用，未压测；见[发布记录](performance/capacity-200-20261027/deployment.md)。以下日期段落保留历史。
+
 2026-10-27 18:26:17 HKT 已补齐《西方经济学（宏观部分·第八版）》197 张图片；18:29:25 HKT 普通读者经公网逐张验证全部 HTTP 200、内容与本地已解码图片一致，缺图 0，随后正文及 4 张完整补图的浏览器抽查通过。原发布 ID、正文、结构、读者授权和阅读位置标识保持；release 仍为 `registration-gift-20261027`，验证时 PID 317538、schema 20。成功修复维护 9.54 秒，备份及首次启动探测回退记录见[插图恢复与线上验证](performance/macro-image-recovery-20261027/README.md)。刷新原书即可加载图片。以下日期段落保留历史。
 
 2026-10-27 18:15:03 HKT 已上线邮箱注册赠送：注册成功同事务开通 10 元 AI 使用额度、30 天有效，重复提交不重复赠送；注册前和成功提示已同步中英文。用户指定漏领账号已补发 10 元，有效至 2026-11-26 18:14:32 HKT。当前 release `registration-gift-20261027`、PID 316139，schema 20；数据副本完整注册、补发重试、原账号健康与公网资源复核通过。见[发布记录](performance/registration-gift-20261027/README.md)。
@@ -91,9 +105,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/registration-gift-20261027`；服务、沙箱 worker、Reader 与下载目录指向当前版本，Windows 为 0.3.8。Rust `--release`，schema20。多人服务 `UNDERSTAND_BOOK_WEB_DIST` 指向该 release 的 `packages/web/dist-multi`；原数据根保持。旧 release 与停止态备份保留用于恢复。见[本次注册赠额发布](performance/registration-gift-20261027/README.md)。
+- release：`/opt/understand-book/releases/editable-mind-map-20261028`；服务、沙箱 worker、Reader、Admin 同版。数据根和 schema 21 保持。见[思维导图与近期改动合并发布](performance/combined-release-20261028/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema20；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema21；旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 

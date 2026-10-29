@@ -148,6 +148,26 @@ describe('MU8 authorized browser context', () => {
     expect(fetch.mock.calls.filter(([url]) => url.endsWith('/agent/runs'))).toHaveLength(1);
     expect(pendingSubmissions()).toEqual([]);
   });
+  it('reads a source window without blocking reader writes or reinstalling its older workspace revision', async () => {
+    let release!: (value: Response) => void;
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/boards/source.read')) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({ board_id: 'board', item_id: 'item', source_ref_id: 'source', anchor_lid: '2.3', direction: 'after', expected_revision: 3 });
+        return new Promise<Response>(resolve => { release = resolve; });
+      }
+      return json({ ...scene, revision: 4 });
+    });
+    vi.stubGlobal('fetch', fetch);
+    const read = api.boardSourceRead({ board_id: 'board', item_id: 'item', source_ref_id: 'source', anchor_lid: '2.3', direction: 'after' });
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    const write = workspaceAction('checkpoint');
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => url.endsWith('/checkpoint'))).toBe(true));
+    await write;
+    release(json({ ...scene, result: { source_ref_id: 'source', segments: [], source_lid: '1.2', focus_lid: '2.4', previous_lid: null, next_lid: null } }));
+    await expect(read).resolves.toMatchObject({ source_ref_id: 'source', focus_lid: '2.4' });
+    expect(network.value.workspace?.revision).toBe(4);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/boards/source.read'))).toHaveLength(1);
+  });
   it('does not put selection translation in the reader write queue', async () => {
     let release!: (value: Response) => void;
     const fetch = vi.fn(async (url: string) => {

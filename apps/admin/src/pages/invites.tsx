@@ -68,7 +68,7 @@ export function InvitesPage() {
     </article>)}</div>;
   }
   return <>
-    <div><h1>内测码</h1><p className="mt-2 text-sm text-muted-foreground">生成后手动发送给受邀者。每码可注册一个账号，长期有效；材料与使用额度另行开通。</p></div>
+    <div><h1>内测码</h1><p className="mt-2 text-sm text-muted-foreground">生成后手动发送给受邀者。每码可注册一个账号，长期有效；邮箱注册后，内测期间 AI 使用不限额度。材料沿用默认授权及后台管理。</p></div>
     <form className="filter-bar" onSubmit={event => {
       event.preventDefault();
       void execute(async () => {

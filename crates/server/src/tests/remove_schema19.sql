@@ -1,5 +1,6 @@
 -- Only used when a test reconstructs an older schema from a current fixture.
 -- Remove dependent commercial objects before dropping the older parent tables.
+ALTER TABLE allowance_periods DROP COLUMN unlimited;
 DROP VIEW billable_usage;
 DROP TABLE web_usage_reconciliations;
 DROP TABLE web_usage_receipts;

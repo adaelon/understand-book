@@ -217,7 +217,7 @@ body:has(.home-image-dialog[open], .home-info-dialog[open]) { overflow: hidden; 
 .home-begin-login { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--brand-accent-soft); margin-top: 19px; }
 .home-begin-login:hover { color: var(--brand-on-accent); }
 .home-begin-actions > p { font-size: 10px; line-height: 1.95; color: #bdb6aa; margin: 23px 0 0; text-align: center; }
-.home-begin-actions > .home-beta-notice { max-width: 300px; margin: 0 0 20px; font-size: 12px; }
+.home-begin-actions > .home-beta-notice { max-width: 300px; margin: 0 0 20px; font-size: 14px; font-weight: 600; color: #f6e6d8; }
 .home-footer { padding: 0 0 38px; text-align: center; color: #727769; }
 .home-footer-tagline { margin: 0 0 10px; font-size: 15px; line-height: 1.8; color: #5a6155; }
 .home-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; column-gap: 16px; row-gap: 2px; font-size: 12px; line-height: 1.8; }

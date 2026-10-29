@@ -398,6 +398,15 @@ pub(crate) fn route_delete(state: &mut AppState, book: &str, id: &str, now: &str
         state.workspace.messages.clear();
         state.workspace.invalidate();
     }
+    if !state.user.agent_history.sessions.iter().any(|s| s.id == id) {
+        if let Err(e) = state.user.store.cancel_session_review_jobs(id, memory::ReviewErrorState {
+            error_code: "REVIEW_SOURCE_DELETED".into(),
+            message: "Review cancelled because its source chat was deleted".into(),
+            occurred_at: now.into(),
+        }, now) {
+            return err_reply(&e);
+        }
+    }
     if let Err(e) = result {
         return err_reply(&e);
     }

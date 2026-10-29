@@ -25,6 +25,9 @@ const Candidate = defineComponent({
       if (candidateDrawings.length) canvas.value?.focusTargets(candidateDrawings.map(item => ({ kind: 'item', item_id: item.item_id })));
       else canvas.value?.fit();
       await nextTick();
+      await document.fonts.ready;
+      await nextTick();
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
       window.__boardPreviewReady = true;
     });
     return () => h('main', { class: 'board-preview', style: 'display:grid;grid-template-rows:auto minmax(0,1fr);height:100vh' }, [
@@ -52,6 +55,14 @@ window.__boardPreviewInspect = () => {
       const box = text.getBBox();
       if (box.x < -1 || box.y < -1 || box.x + box.width > item.size.width + 1 || box.y + box.height > item.size.height + 1) {
         issues.push({ kind: 'board_text_clipped', message: `Drawing ${item.item_id} clips its text; increase its size or shorten the visual label` });
+      }
+    }
+    const rich = element?.querySelector<HTMLElement>('[data-board-rich-text]');
+    if (rich && rect) {
+      const content = rich.getBoundingClientRect();
+      const math = [...rich.querySelectorAll<HTMLElement>('.katex-html')].map(formula => formula.getBoundingClientRect());
+      if (rich.dataset.boardRichOverflow === 'true' || [content, ...math].some(box => box.left < rect.left - 1 || box.top < rect.top - 1 || box.right > rect.right + 1 || box.bottom > rect.bottom + 1)) {
+        issues.push({ kind: 'board_text_clipped', message: `Drawing ${item.item_id} clips its formatted text or equation; increase its size or shorten the visual label` });
       }
     }
     const path = element?.querySelector<SVGGraphicsElement>('.board-native-path');

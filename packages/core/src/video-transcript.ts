@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { createInterface } from "node:readline";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 import { readVideoImport } from "./video-import";
@@ -32,6 +33,46 @@ function read<T>(file: string): T { return JSON.parse(readFileSync(file, "utf8")
 function save(file: string, value: unknown) {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(`${file}.tmp`, JSON.stringify(value, null, 2) + "\n"); renameSync(`${file}.tmp`, file);
+}
+/** One sequential adapter per build; each request starts only after its own service admission. */
+function startWhisper(python: string, script: string, modelDir: string, signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  const child = spawn(python, [script, "--resident", modelDir], {
+    windowsHide: true, signal, stdio: "pipe", env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+  });
+  const lines = createInterface({ input: child.stdout });
+  let stderr = "", failure: Error | undefined;
+  let pending: { resolve: () => void; reject: (error: Error) => void } | undefined;
+  const fail = (error: Error) => { failure = error; pending?.reject(error); pending = undefined; };
+  child.stderr.setEncoding("utf8").on("data", text => { stderr = (stderr + text).slice(-16_384); });
+  child.on("error", fail);
+  child.stdin.on("error", fail);
+  const closed = new Promise<void>(resolve => child.once("close", (code, exitSignal) => {
+    fail(failure ?? new Error(`Whisper exited (${exitSignal ?? code})${stderr ? `: ${stderr.trim()}` : ""}`));
+    lines.close(); resolve();
+  }));
+  lines.on("line", line => {
+    const current = pending;
+    if (!current) return;
+    pending = undefined;
+    try {
+      const response = JSON.parse(line);
+      if (response.ok !== true) throw new Error(response.error || "Whisper recognition failed");
+      current.resolve();
+    } catch (error) { current.reject(error instanceof Error ? error : new Error(String(error))); }
+  });
+  return {
+    get stopped() { return failure !== undefined; },
+    transcribe(audio: string, output: string) {
+      signal?.throwIfAborted();
+      if (failure) return Promise.reject(failure);
+      return new Promise<void>((resolve, reject) => {
+        pending = { resolve, reject };
+        child.stdin.write(JSON.stringify({ audio, output }) + "\n");
+      });
+    },
+    async close() { child.stdin.end(); await closed; },
+  };
 }
 export function planVideoChunks(duration: number, chunkMs = 300_000, contextMs = 2000): VideoChunk[] {
   if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(chunkMs) || chunkMs <= 0
@@ -169,6 +210,8 @@ export async function buildVideoTranscript(workspace: string, options: VideoOper
   if (build.stage === "ready") return build;
   build.stage="transcribing"; build.failure=null; save(file,build);
   const dir=path.join(workspace,".build/video"); mkdirSync(dir,{recursive:true}); mkdirSync(path.join(workspace,"transcript/raw"),{recursive:true});
+  let whisper: ReturnType<typeof startWhisper> | undefined;
+  try {
   for (const chunk of build.chunks) {
     options.signal?.throwIfAborted();
     const rawPath=path.join(workspace,`transcript/raw/${chunk.id}.json`);
@@ -190,15 +233,16 @@ export async function buildVideoTranscript(workspace: string, options: VideoOper
         else if (!existsSync(rawPath)) {
           const modelDir = options.modelDir || process.env.VIDEO_WHISPER_MODEL_DIR;
           if (!modelDir) throw new Error("Provide --model-dir or VIDEO_WHISPER_MODEL_DIR for the local small.en model; run video-doctor, then repeat video-transcribe to resume");
-          const request=path.join(dir,`${chunk.id}.request.json`);
-          save(request,{audio,model_dir:path.resolve(modelDir)});
-          let script = fileURLToPath(new URL("./video-whisper.py",import.meta.url));
-          if (process.env.UNDERSTAND_BOOK_SIDECAR_SELF) {
-            script = path.join(dir, 'whisper.py');
-            const asset = await run(process.env.UNDERSTAND_BOOK_SIDECAR_SELF, ['video-asset', 'whisper'], { windowsHide: true, signal: options.signal });
-            writeFileSync(script, asset.stdout);
+          if (!whisper) {
+            let script = fileURLToPath(new URL("./video-whisper.py",import.meta.url));
+            if (process.env.UNDERSTAND_BOOK_SIDECAR_SELF) {
+              script = path.join(dir, 'whisper.py');
+              const asset = await run(process.env.UNDERSTAND_BOOK_SIDECAR_SELF, ['video-asset', 'whisper'], { windowsHide: true, signal: options.signal });
+              writeFileSync(script, asset.stdout);
+            }
+            whisper = startWhisper(options.python || process.env.VIDEO_WHISPER_PYTHON || "python", script, path.resolve(modelDir), options.signal);
           }
-          await run(options.python || process.env.VIDEO_WHISPER_PYTHON || "python",[script,request,rawPath],{windowsHide:true, signal: options.signal});
+          await whisper.transcribe(audio,rawPath);
         }
         rawWords(read(rawPath),chunk,source);
       };
@@ -209,7 +253,9 @@ export async function buildVideoTranscript(workspace: string, options: VideoOper
     save(file,build);
     report();
     options.signal?.throwIfAborted();
+    if (whisper?.stopped) break;
   }
+  } finally { await whisper?.close(); }
   try {
     if (build.chunks.some(c=>c.status !== "completed")) throw new Error("Recognition failed for one or more chunks; resume to retry missing work");
     build.stage="assembling"; save(file,build);

@@ -254,7 +254,8 @@ impl ModelAdapter for ReviewedTeachingAdapter {
             let packet = captured_review_packet(&request);
             self.seen_explanation_reviews.borrow_mut().push(packet.clone());
             let standard = serde_json::json!({"original_request":packet["current_request"],
-                "proposed_delivery":{"text":packet["current_delivery"]}});
+                "proposed_delivery":{"text":packet["current_delivery"]},"open_issues":packet["open_issues"],
+                "revision_reference":packet["revision_reference"]});
             let result = self.explanation_reviews.borrow_mut().pop_front().unwrap_or_else(accepted_review)
                 .map(|review|review_fixture(review, &standard));
             if let Some(cancellation) = &self.cancel_after_explanation { cancellation.cancel(); }
@@ -335,6 +336,16 @@ fn native_board_revision_feedback_has_bounded_cross_tool_recovery() {
     assert!(!guard.recovery_available(), "Repeating an invalid revision must not renew recovery indefinitely");
     guard.observe_batch("candidate:1", "candidate:2");
     assert!(!guard.blocks("candidate:2"), "A real replacement candidate resets stalled progress");
+}
+
+#[test]
+fn native_board_failure_keeps_the_cause_without_internal_correction_schema() {
+    let original = ToolError {error_code:"TOOL_ARGUMENTS_INVALID".into(),category:"validation".into(),
+        message:"$.responds_to is not allowed\nPlace $.responds_to at $.move.responds_to\nSelected operation schema: {}".into()};
+    let final_error = unfinished_native_board(Some("board:run:1"), None, Some(&original)).unwrap();
+    assert_eq!(final_error.error_code, original.error_code);
+    assert_eq!(final_error.message, "$.responds_to is not allowed 本轮画板尚未保存，任务未完成。");
+    assert!(original.message.contains("$.move.responds_to"), "The model's full correction feedback stays available");
 }
 
 fn compact_board_selection(selection: &serde_json::Value, revision: u32) -> serde_json::Value {
@@ -448,15 +459,15 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     }
     // The real incident first omitted the body, then selected a different body;
     // its subsequent prepare was rejected as no progress. Recover that sequence.
-    for mode in ["reference", "resolved_reference", "guided_request", "repair", "review_revision", "explicit", "conflict", "invitation_revision", "changed_after_selection", "failed_after_selection", "unreviewed_part_commit"] {
+    for mode in ["reference", "resolved_reference", "guided_request", "repair", "review_revision", "explicit", "conflict", "invitation_revision", "changed_after_selection", "failed_after_selection", "unreviewed_part_commit", "misplaced_responds_to", "misplaced_invitation", "grace_accept", "grace_revise", "grace_wrong_call"] {
     let b = book(); let mut store = MemoryStore::open(tmp(&format!("native-board-teaching-review-{mode}"))).unwrap();
     let mut reader = Reader::new(&b, DEFAULT_RADIUS); let snapshot = default_profile_snapshot(&b, &store, "t0");
     let plain_text = "The catalog retains B even when this route does not select B.";
     let invitation = "Could another route still use B?";
-    let text = if matches!(mode, "invitation_revision" | "guided_request") { format!("{plain_text}\n\n{invitation}") } else { plain_text.into() };
+    let text = if matches!(mode, "invitation_revision" | "guided_request" | "misplaced_invitation") { format!("{plain_text}\n\n{invitation}") } else { plain_text.into() };
     let actual_request = if mode == "guided_request" {"Explain only the prerequisite, then let me try first."} else {"Explain why B remains available and draw it on the board."};
     let mut selection = selected_body("board", &text);
-    if matches!(mode, "invitation_revision" | "guided_request") {
+    if matches!(mode, "invitation_revision" | "guided_request" | "misplaced_invitation") {
         selection["move"]["response_expectation"] = serde_json::json!({"public_prompt":invitation,"block_refs":["keep-select"]});
         selection["move"]["participation"] = serde_json::json!({"choice":"invite","reason":"Leave the changed-route application for the learner.",
             "support":"The board supplies catalog retention.","learner_inference":"Judge whether another route can use B."});
@@ -483,10 +494,25 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     if mode == "explicit" {
         chats.push(turn_calls(vec![call("forbidden-text", "tutor.step", &selection.to_string())]));
     }
-    if matches!(mode, "reference" | "review_revision" | "conflict") { selection["finish"] = serde_json::json!(true); }
+    if matches!(mode, "reference" | "review_revision" | "conflict" | "grace_accept" | "grace_revise") { selection["finish"] = serde_json::json!(true); }
     selection = compact_board_selection(&selection, revision);
     if mode == "resolved_reference" { selection["move"].as_object_mut().unwrap().remove("interaction_intent"); }
-    chats.push(turn_calls(vec![call("select", "tutor.step", &selection.to_string())]));
+    if matches!(mode, "misplaced_responds_to" | "misplaced_invitation") {
+        selection["finish"] = serde_json::json!(true);
+        selection["move"]["responds_to"] = serde_json::json!({"fact_refs":["usage:before"],"disposition":"addressed"});
+        let mut misplaced = selection.clone();
+        for field in ["responds_to", "participation", "response_expectation"] {
+            if let Some(value) = misplaced["move"].as_object_mut().unwrap().remove(field) {
+                misplaced[field] = value;
+            }
+        }
+        chats.push(turn_calls(vec![call("misplaced-fields", "tutor.step", &misplaced.to_string())]));
+    }
+    if mode == "grace_wrong_call" {
+        chats.push(turn_calls(vec![call("wrong-grace-tool", "board.author", r#"{"operation":"deliver","candidate_revision":1}"#)]));
+    } else {
+        chats.push(turn_calls(vec![call("select", "tutor.step", &selection.to_string())]));
+    }
     if matches!(mode, "changed_after_selection" | "failed_after_selection") {
         chats.push(turn_calls(vec![call("changed-board", "board.author", &serde_json::json!({"operation":"revise","candidate_revision":if mode == "failed_after_selection" {999} else {1},
             "blocks":[{"block_id":"retained-card","markdown":"A replacement which has not been reviewed."}]}).to_string())]));
@@ -500,7 +526,7 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     chats.push(turn_final(&text));
     if mode == "conflict" { chats.push(turn_final(&text)); }
     let mut reviews = vec![];
-    if mode == "review_revision" { reviews.push(Ok(serde_json::json!({"decision":"revise",
+    if matches!(mode, "review_revision" | "grace_revise") { reviews.push(Ok(serde_json::json!({"decision":"revise",
         "revision":"Explain that omission from this route does not remove a catalog entry.","learner_claims":[]}))); }
     if mode == "unreviewed_part_commit" {
         reviews.push(Ok(serde_json::json!({"decision":"accept","revision":null,"learner_claims":[],
@@ -508,7 +534,9 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
                 "reason":"This complete local support explains retention; the route-selection part of the original request remains."}})));
     } else { reviews.push(accepted_review()); }
     let adapter = ReviewedTeachingAdapter::new(chats, reviews);
-    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    let mut context = RunContext::new(new_session(), OuterConfig {
+        max_turns: mode.starts_with("grace_").then_some(1), ..Default::default()
+    }, adapter.model_runtime_profile());
     context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     if mode == "resolved_reference" {
         context.tutor.as_mut().unwrap()["current_action"] = serde_json::json!({"action":{"origin":"ui_entry","entry_action":"explain_selection"},
@@ -519,6 +547,22 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
         accepted:vec![],selections:Default::default(),reviews:vec![]},text:if mode == "review_revision" { "B is available.".into() } else if mode == "invitation_revision" {plain_text.into()} else { text.clone() },deliveries:0,revision:1,fail_staging:mode == "conflict",resolved_intent:if mode == "resolved_reference" {Some("direct_explanation")} else {None},actual_request};
     let outcome = run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
         &mut EphemeralCompactionCheckpointSink::default(),actual_request,"t0");
+    if matches!(mode, "grace_revise" | "grace_wrong_call") {
+        let outcome = outcome.unwrap();
+        assert!(outcome.incomplete, "The existing text fallback cannot complete a rejected board");
+        assert_eq!(outcome.warning.as_deref(), Some(if mode == "grace_revise" {"TEACHING_INVALID"} else {"BOARD_DELIVERY_GRACE_REQUIRED"}));
+        if mode == "grace_revise" {
+            let error = outcome.delivery_diagnostics.as_ref().unwrap().initial.issues[0].trigger_value.as_ref().unwrap();
+            assert!(error.contains("Explain that omission") && error.contains("未完成"));
+        }
+        assert_eq!(port.deliveries, 0, "Reserved delivery must not publish an unaccepted candidate");
+        assert!(port.inner.accepted.is_empty() && context.board_delivery_draft.is_none());
+        assert_eq!(adapter.seen_reviews.borrow().len(), usize::from(mode == "grace_revise"));
+        let plans = adapter.inner.0.seen_plans.borrow();
+        assert_eq!(plans.len(), 3, "The failed reserved selection permits only the existing tool-free final fallback");
+        assert!(plans[2].tools.is_empty(), "Fallback must not renew the authoring budget");
+        continue;
+    }
     if mode == "conflict" {
         let error = outcome.unwrap_err();
         assert_eq!(error.error_code, "BOARD_REVISION_CONFLICT");
@@ -547,6 +591,27 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     assert!(!outcome.incomplete, "{:?}", outcome.warning);
     assert_eq!(port.deliveries, 1);
     assert_eq!(adapter.seen_reviews.borrow().len(), if mode == "review_revision" { 2 } else { 1 });
+    if mode == "grace_accept" {
+        assert_eq!(adapter.inner.0.seen_plans.borrow().len(), 2, "Preview gets exactly one reserved selection");
+        assert_eq!(port.inner.accepted, ["select"]);
+        assert!(outcome.turns > 1, "The reserved selection includes its normal teaching review");
+    }
+    if matches!(mode, "misplaced_responds_to" | "misplaced_invitation") {
+        let feedback = tool_result(&context.messages, "misplaced-fields");
+        assert_eq!(tool_result_error_code(&feedback).as_deref(), Some("TOOL_ARGUMENTS_INVALID"));
+        assert!(feedback.contains("$.move.responds_to"), "The rejected call must identify the correct field location: {feedback}");
+        if mode == "misplaced_invitation" {
+            for field in ["participation", "response_expectation"] {
+                assert!(feedback.contains(&format!("$.move.{field}")), "One correction must cover all misplaced teaching fields: {feedback}");
+            }
+        }
+        let plans = adapter.inner.0.seen_plans.borrow();
+        let correction = serde_json::to_string(&plans[2].ordered_messages()).unwrap();
+        assert!(correction.contains("$.move.responds_to"), "The model must consume the correction before retrying");
+        assert_eq!(port.inner.accepted, ["select"], "The invalid call must never execute or save");
+        assert_eq!(port.revision, 1, "Correcting metadata must reuse the inspected candidate");
+        assert_eq!(port.inner.reviews[0]["proposed_delivery"]["moves"][0]["responds_to"], selection["move"]["responds_to"]);
+    }
     if mode == "review_revision" {
         let feedback = context.messages.iter().find(|message| message.tool_call_id.as_deref() == Some("review-first-board"))
             .and_then(|message| message.content.as_deref()).unwrap();
@@ -725,7 +790,11 @@ fn teaching_writing_rules_reach_each_enabled_main_request_once() {
         assert_eq!(plan.instruction_assets.iter().filter(|asset|asset.asset_id == "resident-agent.tutor.writing").count(), enabled);
         let explanation_occurrences: usize = plan.ordered_messages().iter().filter_map(|message|message.content.as_deref())
             .map(|content|content.matches(include_str!("tutor_explanation_principle.md")).count()).sum();
-        assert_eq!(explanation_occurrences, enabled, "{status}: the teaching responsibility must reach the actual request");
+        assert_eq!(explanation_occurrences, 1, "{status}: the explanation responsibility must reach ordinary and active requests once");
+        assert_eq!(plan.instruction_assets.iter().filter(|asset|asset.asset_id == "resident-agent.teaching.explanation").count(), 1);
+        let starting_point_occurrences: usize = plan.ordered_messages().iter().filter_map(|message|message.content.as_deref())
+            .map(|content|content.matches(crate::agent_prompt::LEARNER_STARTING_POINT).count()).sum();
+        assert_eq!(starting_point_occurrences, 1, "{status}: the learner starting point is independent of Tutor activation");
     }
 }
 
@@ -758,7 +827,7 @@ fn text_review_checks_sources_and_preserves_verified_work_without_author_teachin
     verdict["agent_work"] = work.clone();
     let adapter = ReviewedTeachingAdapter::new(vec![], vec![Ok(verdict)]);
     let packet = serde_json::json!({"original_request":"Continue explaining.",
-        "frozen_input":{"learning_purpose":"understand","user_intent":"Explain how the retained collection is used."},
+        "frozen_input":{"has_board_context":true,"learning_purpose":"understand","user_intent":"Explain how the retained collection is used."},
         "current_design":{"design_ref":"d1","design":{"target":{"expected_performance":"Follow an item into the next selection."},
             "organizing_model":"Trace one retained item through selection.","blocks":[{"block_id":"b1","relation":"retention supports later selection"}]}},
         "proposed_delivery":{"text":"The selected material remains in the retained collection.",
@@ -768,6 +837,9 @@ fn text_review_checks_sources_and_preserves_verified_work_without_author_teachin
         ModelRuntimeProfile::fallback("deepseek-v4-flash", ProviderToolProtocol::Native), packet, Vec::new()).unwrap();
     let captured = &adapter.seen_reviews.borrow()[0];
     assert_eq!(captured["frozen_input"]["learning_purpose"], "understand");
+    assert_eq!(captured["frozen_input"]["has_board_context"], true,
+        "direct board text keeps its board scope in the actual factual review request");
+    assert!(adapter.seen_review_instructions.borrow()[0].contains("读过原文或调用 source.present 不能代替正文实际附引用"));
     assert!(captured.get("local_design").is_none(), "the factual reviewer must not inherit the author's claim of having explained the relationship");
     assert_eq!(adapter.seen_review_instructions.borrow()[0], crate::tutor::text_review_instructions());
     assert_eq!(adapter.seen_review_instructions.borrow()[0].matches(include_str!("tutor_explanation_principle.md")).count(), 0,
@@ -920,6 +992,22 @@ pub(super) fn review_fixture(mut review: serde_json::Value, packet: &serde_json:
         resolution.entry("answer_quotes").or_insert_with(||if unresolved {serde_json::json!([])}else{serde_json::json!([delivered])});
     }
     if review.get("findings").is_none() { review["findings"] = serde_json::json!([]); }
+    if review.get("issue_updates").is_none() {
+        if let Some(issues)=packet["open_issues"].as_array().filter(|issues|!issues.is_empty()) {
+            let status=if review["decision"]=="revise" {"unresolved"} else {"resolved"};
+            review["issue_updates"]=serde_json::json!(issues.iter().map(|issue|serde_json::json!({
+                "issue_ref":issue["issue_ref"],"status":status,
+                "reason":"The fixture reviewer explicitly carries or resolves this prior issue for the supplied decision."
+            })).collect::<Vec<_>>());
+        }
+    }
+    if review.get("revision_comparison").is_none() {
+        if let Some(reference) = packet["revision_reference"]["text"].as_str().filter(|text| !text.trim().is_empty()) {
+            review["revision_comparison"] = serde_json::json!({"reference_quotes":[reference],
+                "answer_quotes":[packet["proposed_delivery"]["text"]],"lost_relation":null,
+                "reason":"The fixture preserves the original explanatory role; its scripted request disposition controls other gaps."});
+        }
+    }
     review
 }
 
@@ -1390,7 +1478,9 @@ fn teaching_review_rejects_before_host_selection_and_delivers_only_the_revision(
     let mut store = MemoryStore::open(tmp("teaching-review-revision")).unwrap();
     let mut reader = Reader::new(&b, DEFAULT_RADIUS);
     let snapshot = default_profile_snapshot(&b, &store, "t0");
-    let rejected = selected_body("broad", "UNACCEPTED_BRANCHES_AND_COUNTERFACTUALS");
+    let rejected_text=format!("{}UNACCEPTED_TAIL_BEYOND_SUMMARY", "UNACCEPTED_BRANCHES_AND_COUNTERFACTUALS ".repeat(40));
+    let mut rejected = selected_body("broad", &rejected_text);
+    rejected["move"]["participation"]["reason"]=serde_json::json!("PRIVATE_REJECTED_REASONING_ALLOCATION");
     let revised = selected_body("focused", "The route leaves B out, while the retained catalog still has B.");
     let adapter = ReviewedTeachingAdapter::new(vec![
         turn_calls(vec![call("broad", "tutor.step", &rejected.to_string())]),
@@ -1399,7 +1489,10 @@ fn teaching_review_rejects_before_host_selection_and_delivers_only_the_revision(
     ], vec![Ok(serde_json::json!({"decision":"accept","revision":null,
         "request_resolution":{"status":"unresolved","question_quote":"I can follow B in only one list.",
             "reason":"Keep the catalog and this route fixed; the answer has not supplied the requested distinction, so omit the later changed-condition case."},
-        "findings":[],"agent_work":{"understanding":[{"statement":"This draft's private memory has an invalid citation.",
+        "findings":[{"rule_id":"R1","location":"opening comparison",
+            "evidence":"One list alone does not show the difference between storage and this route's selection.",
+            "required_change":"Keep the catalog and this route fixed, and explain B's status in each."}],
+        "agent_work":{"understanding":[{"statement":"This draft's private memory has an invalid citation.",
             "sources":[{"source_id":b.base.book_id,"source_revision":b.source_fingerprint(),"lid":"1.9","quote":"Not read at this position."}]}],"open_questions":[]}})), accepted_review()]);
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(8), ..Default::default()}, adapter.model_runtime_profile());
@@ -1454,8 +1547,10 @@ fn teaching_review_rejects_before_host_selection_and_delivers_only_the_revision(
     assert_eq!(port.reviews[1]["review"]["decision"],"accept");
     assert_eq!(outcome.answer.as_deref(),revised["move"]["delivery_text"].as_str());
     assert_eq!(outcome.teaching_delivery_move_refs,["selected:focused"]);
-    assert_eq!(outcome.turns,7,"both independent reviews of each draft consume the model-turn budget");
-    assert!(outcome.tokens_spent>=684,"all four review usage snapshots must be included");
+    assert_eq!(outcome.turns,6,"the factual rejection returns to the author without an explanation call");
+    assert_eq!(outcome.tokens_spent,3 * 10 + 3 * 171,"the skipped explanation consumes neither tokens nor a model turn");
+    assert_eq!(adapter.seen_explanation_reviews.borrow().len(),1);
+    assert_eq!(adapter.seen_explanation_reviews.borrow()[0]["current_delivery"],revised["move"]["delivery_text"]);
     let requests = adapter.seen_reviews.borrow();
     assert_eq!(requests.len(),2);
     assert_eq!(requests[0]["original_request"],"I can follow B in only one list.");
@@ -1479,17 +1574,86 @@ fn teaching_review_rejects_before_host_selection_and_delivers_only_the_revision(
     let review_context = &requests[1]["review_context"];
     assert_eq!(review_context["round"],2);
     assert!(review_context["prior_reviews"][0]["revision"].as_str().unwrap().contains("Keep the catalog and this route fixed"));
+    assert_eq!(review_context["prior_reviews"][0]["findings"],port.reviews[0]["review"]["findings"]);
+    assert_eq!(review_context["prior_reviews"][0]["request_resolution"],port.reviews[0]["review"]["request_resolution"]);
     let change = &review_context["changes_since_previous_review"][0];
     assert_eq!(change["path"],"delivery.text");
     assert_eq!(change["before"],rejected["move"]["delivery_text"]);
     assert_eq!(change["after"],revised["move"]["delivery_text"]);
     assert!(review_context["prior_reviews"][0].get("proposed_delivery").is_none(),"prior packets must not be repeated");
     let public = serde_json::to_string(&context.messages).unwrap();
-    assert!(public.contains("Keep the catalog and this route fixed"),"the next selection must receive the concrete revision");
     assert!(!public.contains("UNACCEPTED_BRANCHES_AND_COUNTERFACTUALS"));
+    assert!(!public.contains("PRIVATE_REJECTED_REASONING_ALLOCATION"));
+    let plans=adapter.inner.0.seen_plans.borrow();
+    let retry_messages=plans[1].ordered_messages();
+    let private=active_teaching_revision_draft(&retry_messages);
+    let feedback=&private["review_feedback"];
+    assert!(feedback["open_issues"].as_array().unwrap().iter().any(|issue|
+        issue["finding"]["required_change"].as_str().is_some_and(|change|change.contains("Keep the catalog and this route fixed"))),
+        "the next author request must receive the complete concrete action through its stable issue");
+    assert_eq!(feedback["open_issues"],port.reviews[0]["review"]["open_issues"]);
+    assert!(feedback.get("revision").is_none() && feedback.get("request_resolution").is_none());
+    assert_eq!(feedback["guidance"],TEACHING_REVISION_GUIDANCE);
+    assert!(retry_messages.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains(&rejected_text))),
+        "the next author sampling needs the complete rejected draft, including its tail beyond the working-memory excerpt");
+    assert!(retry_messages.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains("PRIVATE_REJECTED_REASONING_ALLOCATION"))),
+        "repairing a claim must not make the author reconstruct the original participation fields");
+    let retry_snapshot=retry_messages.iter().filter_map(|message|message.content.as_deref())
+        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+    assert!(retry_snapshot.contains("agent.teaching_revision"));
+    let accepted_messages=plans[2].ordered_messages();
+    let accepted_snapshot=accepted_messages.iter().filter_map(|message|message.content.as_deref())
+        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+    assert!(!accepted_snapshot.contains("agent.teaching_revision"),"acceptance expires the private revision draft");
+    let receipt:serde_json::Value=serde_json::from_str(plans[1].input.iter()
+        .find(|message|message.tool_call_id.as_deref()==Some("broad")).unwrap().content.as_deref().unwrap()).unwrap();
+    assert_eq!(receipt["model_body"]["error_code"],"TEACHING_INVALID");
+    assert_eq!(receipt["model_body"]["draft_ref"],private["draft_ref"]);
+    assert!(receipt["model_body"]["message"].as_str().unwrap().contains("review_feedback"));
+    assert!(receipt["model_body"].get("review_feedback").is_none(),"the brief receipt must not duplicate the private full feedback");
     let patches = serde_json::to_string(&*sink.0.lock().unwrap()).unwrap();
     assert!(patches.contains("retained catalog still has B"));
     assert!(!patches.contains("UNACCEPTED_BRANCHES") && !patches.contains("FREE_FINAL_MUST_NOT"));
+}
+
+#[test]
+fn teaching_revision_draft_expires_after_redesign_or_outside() {
+    for change in ["design","outside"] {
+        let b=book();
+        let mut store=MemoryStore::open(tmp(&format!("teaching-revision-clear-{change}"))).unwrap();
+        let mut reader=Reader::new(&b,DEFAULT_RADIUS);
+        let snapshot=default_profile_snapshot(&b,&store,"t0");
+        let rejected=selected_body("rejected","PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE");
+        let replacement=selected_body("replacement","The retained catalog keeps B available for a later route.");
+        let mut turns=vec![turn_calls(vec![call("rejected","tutor.step",&rejected.to_string())])];
+        let mut reviews=vec![Ok(serde_json::json!({"decision":"revise","revision":"The current request still needs its requested connection."}))];
+        if change=="design" {
+            let mut revised=design();
+            revised["previous_ref"]=serde_json::json!("design:current");
+            turns.push(turn_calls(vec![call("redesign","tutor.step",&serde_json::json!({"operation":"design","operation_id":"revised","design":revised}).to_string())]));
+            turns.push(turn_calls(vec![call("replacement","tutor.step",&replacement.to_string())]));
+            reviews.push(accepted_review());
+        } else {
+            turns.push(turn_calls(vec![call("outside","tutor.step",r#"{"operation":"outside"}"#)]));
+        }
+        turns.push(turn_final("ORDINARY_FINAL_TEXT"));
+        let adapter=ReviewedTeachingAdapter::new(turns,reviews);
+        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(10),..Default::default()},adapter.model_runtime_profile());
+        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+        let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
+        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"Explain the requested relation.","t0").unwrap();
+        assert!(!outcome.incomplete);
+        let plans=adapter.inner.0.seen_plans.borrow();
+        let current_snapshot=|index:usize| plans[index].ordered_messages().into_iter()
+            .filter_map(|message|message.content).rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+        assert!(current_snapshot(1).contains("agent.teaching_revision"));
+        let cleared=current_snapshot(2);
+        assert!(!cleared.contains("agent.teaching_revision"),"{change} must expire the previous design's rejected draft");
+        assert!(!cleared.contains("PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE"));
+        assert!(!serde_json::to_string(&context.messages).unwrap().contains("PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE"));
+        assert!(!port.selections.contains_key("selected:rejected"));
+    }
 }
 
 #[test]
@@ -1558,39 +1722,72 @@ fn teaching_review_renamed_and_cycled_drafts_do_not_restart_progress() {
     assert!(outcome.incomplete);
     assert!(port.accepted.is_empty());
     assert_eq!(adapter.seen_reviews.borrow().len(),5,"revision history must reach the reviewer until the no-progress guard stops unchanged work");
-    assert!(tool_result(&context.messages,"draft-4").contains("still unchanged"));
+    assert_eq!(port.reviews.len(),5);
+    assert!(port.reviews.last().unwrap()["review"]["revision"].as_str().unwrap().contains("still unchanged"),
+        "the final real review retains the concrete reason even when the progress guard prevents another author request");
+    let receipt=tool_result(&context.messages,"draft-4");
+    assert!(receipt.contains("TEACHING_INVALID") && receipt.contains("review_feedback") && receipt.contains("draft_ref"));
     assert!(outcome.turns<20,"unchanged drafts must terminate before exhausting the model budget");
 }
 
 #[test]
 fn teaching_review_same_draft_after_source_read_receives_the_new_evidence() {
-    let b=book();
+    let b=book_leaves(2);
     let mut store=MemoryStore::open(tmp("teaching-review-new-source-evidence")).unwrap();
     let mut reader=Reader::new(&b,DEFAULT_RADIUS);
     let snapshot=default_profile_snapshot(&b,&store,"t0");
     let selection=selected_body("same-draft","The retained catalog contains the card omitted from this route.");
     let adapter=ReviewedTeachingAdapter::new(vec![
+        turn_calls(vec![call("initial-read","book.text",r#"{"lid":"1.1"}"#)]),
         turn_calls(vec![call("before-read","tutor.step",&selection.to_string())]),
-        turn_calls(vec![call("read","book.text",r#"{"lid":"1.1"}"#)]),
+        turn_calls(vec![call("read","book.text",r#"{"lid":"1.2"}"#)]),
         turn_calls(vec![call("after-read","tutor.step",&selection.to_string())]),
         turn_final("Use the supported delivery."),
-    ],vec![Ok(serde_json::json!({"decision":"revise","revision":"Supply the actual source evidence for the retained card before accepting this claim."})),accepted_review()]);
+    ],vec![Ok(serde_json::json!({"decision":"revise","revision":"Supply the actual source evidence for the retained card before accepting this claim.",
+        "findings":[{"rule_id":"R2","location":"the retained catalog claim","evidence":"Only the first source passage has been read.",
+            "required_change":"Read the second source passage to establish the retained card's status."}]})),accepted_review()]);
     let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(12),..Default::default()},adapter.model_runtime_profile());
     context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
     let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),"Read the source and explain the retained card.","t0").unwrap();
+        &mut EphemeralCompactionCheckpointSink::default(),"Read 1.1 and 1.2 and explain the retained card.","t0").unwrap();
     assert!(!outcome.incomplete,"{outcome:?}");
     assert_eq!(port.accepted,["select"]);
     let reviews=adapter.seen_reviews.borrow();
     assert_eq!(reviews.len(),2);
     assert_eq!(reviews[0]["proposed_delivery"],reviews[1]["proposed_delivery"]);
-    assert!(reviews[0]["current_source_evidence"].as_array().unwrap().is_empty());
-    assert_eq!(reviews[1]["current_source_evidence"].as_array().unwrap().len(),1);
-    assert_eq!(reviews[1]["current_source_evidence"][0]["segments"][0]["text"],"X".repeat(100));
+    let segments = |review: &serde_json::Value| review["current_source_evidence"].as_array().unwrap().iter()
+        .flat_map(|range|range["segments"].as_array().unwrap().iter()).cloned().collect::<Vec<_>>();
+    let before=segments(&reviews[0]);
+    let after=segments(&reviews[1]);
+    assert_eq!(before.len(),1);
+    assert_eq!(before[0]["lid"],"1.1");
+    assert_eq!(after.len(),2);
+    assert!(after.contains(&before[0]),"the next review keeps the previously read evidence, not just new passages");
+    assert!(after.iter().any(|segment|segment["lid"]=="1.2" && segment["text"]=="X".repeat(10)));
     assert!(reviews[1]["presented_source_references"].as_array().unwrap().is_empty(),"reading alone must supply the review, without a citation-card operation");
     assert_eq!(reviews[1]["review_context"]["changes_since_previous_review"],serde_json::json!([]));
     assert!(reviews[1]["review_context"]["prior_reviews"][0]["revision"].as_str().unwrap().contains("source evidence"));
+    assert_eq!(reviews[1]["review_context"]["prior_reviews"][0]["findings"],port.reviews[0]["review"]["findings"]);
+    assert_eq!(reviews[1]["review_context"]["prior_reviews"][0]["request_resolution"],port.reviews[0]["review"]["request_resolution"]);
+    assert_eq!(outcome.answer.as_deref(),selection["move"]["delivery_text"].as_str(),"supplementing evidence need not rewrite a supported explanation");
+    assert_eq!(adapter.seen_explanation_reviews.borrow().len(),1);
+    assert_eq!(port.reviews[1]["independent_reviews"]["factual"]["review"]["decision"],"accept");
+    assert_eq!(port.reviews[1]["independent_reviews"]["explanation"]["review"]["decision"],"accept");
+    let plans=adapter.inner.0.seen_plans.borrow();
+    for index in [2,3] {
+        let sampled=plans[index].ordered_messages();
+        assert!(sampled.iter().any(|message|message.content.as_deref().is_some_and(|text|
+            text.contains(selection["move"]["delivery_text"].as_str().unwrap()))),
+            "the complete draft must remain available before and after a source-only read");
+        let current=sampled.iter().filter_map(|message|message.content.as_deref())
+            .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+        assert!(current.contains("agent.teaching_revision"),"source reading does not expire the draft under repair");
+    }
+    let sampled=plans[4].ordered_messages();
+    let current=sampled.iter().filter_map(|message|message.content.as_deref())
+        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+    assert!(!current.contains("agent.teaching_revision"));
 }
 
 #[test]
@@ -2061,7 +2258,7 @@ fn export_explanation_review_probe() {
             "frozen_system_file":"text-review-system.txt"}));
     }
     let context = json!({"status":"active","learner_context":{}});
-    let teacher = crate::tutor::instruction_modules(&context, &[], None).into_iter().map(|module| module.text).collect::<Vec<_>>().join("\n\n");
+    let teacher = explanation_probe_instructions(Some(&context));
     std::fs::write(directory.join("teacher-system.txt"), teacher).unwrap();
     std::fs::write(directory.join("inputs.json"), serde_json::to_vec_pretty(&json!({"cases":inputs})).unwrap()).unwrap();
 }
@@ -2097,7 +2294,21 @@ fn export_independent_explanation_review_probe() {
             "explanation":{"packet_file":explanation_file,"frozen_system_file":"explanation-review-system.txt"}}));
     }
     let context = json!({"status":"active","learner_context":{}});
-    let teacher = crate::tutor::instruction_modules(&context, &[], None).into_iter().map(|module|module.text).collect::<Vec<_>>().join("\n\n");
+    let teacher = explanation_probe_instructions(Some(&context));
     std::fs::write(output.join("teacher-system.txt"), teacher).unwrap();
+    std::fs::write(output.join("ordinary-system.txt"), explanation_probe_instructions(None)).unwrap();
     std::fs::write(output.join("inputs.json"), serde_json::to_vec_pretty(&json!({"cases":inputs})).unwrap()).unwrap();
 }
+
+fn explanation_probe_instructions(tutor: Option<&serde_json::Value>) -> String {
+    let mut modules = crate::agent_prompt::policy_modules_for_tools(&[]);
+    if let Some(context) = tutor {
+        modules.extend(crate::tutor::instruction_modules(context, &[], None));
+    }
+    AgentRequestPlan::for_agent_turn_with_modules(
+        ModelRuntimeProfile::fallback("explanation-probe", ProviderToolProtocol::Native),
+        &[Message::system(crate::agent_prompt::BASE_INSTRUCTIONS)], &[], &modules,
+    ).instructions
+}
+
+include!("teaching_patch_tests.rs");

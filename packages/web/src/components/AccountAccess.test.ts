@@ -24,13 +24,15 @@ it('registration keeps a timed-out request, resends, reports wrong codes and ret
     if(JSON.parse(String(init.body)).verification_code!=='123456') return Response.json({error_code:'REGISTRATION_CODE_INVALID'},{status:400});
     return Response.json({completed:true});
   }));
-  const w=access('register'); await fillRegistration(w); await w.get('form').trigger('submit'); await flushPromises();
+  const w=access('register');
+  expect(w.text()).toContain('内测期间 AI Token 免费使用'); expect(w.text()).toContain('Token 不限额度'); expect(w.text()).not.toContain('30 天');
+  await fillRegistration(w); await w.get('form').trigger('submit'); await flushPromises();
   expect(w.text()).toContain('可能已送达'); expect(w.find('input[type=password]').exists()).toBe(false);
   expect(button(w,'60 秒后可重发').attributes('disabled')).toBeDefined();
   vi.advanceTimersByTime(61_000); await flushPromises(); await button(w,'重发验证码').trigger('click'); await flushPromises();
   await w.get('input').setValue('000000'); await w.get('form').trigger('submit'); await flushPromises(); expect(w.text()).toContain('验证码不正确');
   await w.get('input').setValue('123456'); await w.get('form').trigger('submit'); await flushPromises();
-  expect(w.emitted('login')?.[0]).toEqual(['reader@example.com', '注册成功，已赠送 10 元 AI 使用额度，有效期 30 天。请登录。']); expect(calls).toHaveLength(4);
+  expect(w.emitted('login')?.[0]).toEqual(['reader@example.com', '注册成功，内测期间 AI Token 免费使用，不限额度。请登录。']); expect(calls).toHaveLength(4);
   for(const storage of [localStorage,sessionStorage]) { expect(JSON.stringify(storage)).not.toContain('fixture-password'); expect(JSON.stringify(storage)).not.toContain('ABCDE'); }
 });
 it('registration failures clear passwords and expired verification can restart', async () => {

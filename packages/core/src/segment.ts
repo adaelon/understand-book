@@ -1,6 +1,7 @@
 // 段级 LID 切分器(Model A `[ADR-0008]`)。
 // 输入 = 忠实块映射的源块序列(SourceBlock[]);输出 = LidNode[](物化路径树,深度可变)。
 // Model A:章/节 = 纯结构容器(span=子并集、不独占内容);标题文字 = 容器的首个叶子段。
+// 没有标题父节点的连续内容共用一个匿名 section;只分组,不补写标题或正文。
 // ⇒ 叶子(标题段 + 正文段)构成对全文的划分;容器不进叶子覆盖。
 import type { LidNode } from "./generated/LidNode";
 import type { NodeKind } from "./generated/NodeKind";
@@ -49,6 +50,7 @@ export function segment(blocks: SourceBlock[]): LidNode[] {
   const byLid = new Map<string, LidNode>();
   const childCount = new Map<string, number>(); // parentLid -> count;"" = 根
   const stack: Frame[] = [];
+  let anonymousRoot: LidNode | undefined;
   let rootCount = 0;
 
   const make = (parentLid: string, parentPath: number[], kind: NodeKind, span: Span): LidNode => {
@@ -67,6 +69,8 @@ export function segment(blocks: SourceBlock[]): LidNode[] {
 
   for (const b of blocks) {
     if (b.kind === "heading") {
+      // 匿名内容区不是标题层级;首个真实 heading 必须从自己的层级开始。
+      anonymousRoot = undefined;
       const level = b.level ?? 1;
       while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
       const parent = stack[stack.length - 1];
@@ -78,10 +82,8 @@ export function segment(blocks: SourceBlock[]): LidNode[] {
       // 标题 = 容器首个叶子段
       make(container.lid, container.path, "paragraph", b.span);
     } else {
-      const parent = stack[stack.length - 1];
-      const parentLid = parent ? parent.lid : "";
-      const parentPath = parent ? parent.path : [];
-      make(parentLid, parentPath, b.assetKind ?? "paragraph", b.span);
+      const parent = stack[stack.length - 1] ?? (anonymousRoot ??= make("", [], "section", b.span));
+      make(parent.lid, parent.path, b.assetKind ?? "paragraph", b.span);
     }
   }
 

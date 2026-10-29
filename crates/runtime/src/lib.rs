@@ -34,6 +34,8 @@ pub mod goal;
 pub mod workspace_goal;
 pub mod workspace_records;
 pub mod tutor;
+mod teaching_revision;
+mod teaching_review_issues;
 mod tutor_assessment;
 pub mod tutor_review_input;
 pub mod tutor_coach;
@@ -62,6 +64,8 @@ pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
 pub mod provider_stream;
+#[cfg(test)]
+mod provider_timeout_tests;
 pub mod request_diagnostics;
 pub mod run_context;
 pub mod run_events;
@@ -244,6 +248,23 @@ impl ProviderConfig {
 
 pub struct ProviderRegistry;
 
+/// Network limits for one HTTP request, including its streamed response body.
+/// They do not limit the duration of a multi-step agent run.
+#[derive(Debug, Clone, Copy)]
+pub struct ProviderRequestTimeouts {
+    pub request: std::time::Duration,
+    pub connect: std::time::Duration,
+}
+
+impl Default for ProviderRequestTimeouts {
+    fn default() -> Self {
+        Self {
+            request: std::time::Duration::from_secs(600),
+            connect: std::time::Duration::from_secs(15),
+        }
+    }
+}
+
 impl ProviderRegistry {
     pub fn adapter_from_env() -> Result<Box<dyn ModelAdapter + Send>, AdapterError> {
         let cfg = ProviderConfig::from_env()?;
@@ -274,9 +295,25 @@ impl ProviderRegistry {
         cfg: ProviderConfig,
         timeout: std::time::Duration,
     ) -> Box<dyn ModelAdapter + Send> {
+        Self::adapter_from_config_with_timeouts(cfg, ProviderRequestTimeouts {
+            request: timeout,
+            ..ProviderRequestTimeouts::default()
+        })
+    }
+
+    pub fn adapter_from_config_with_timeouts(
+        cfg: ProviderConfig,
+        timeouts: ProviderRequestTimeouts,
+    ) -> Box<dyn ModelAdapter + Send> {
         match cfg.mode {
-            ProviderMode::Native => Box::new(NativeAdapter::from_config_with_timeout(cfg, timeout)),
-            ProviderMode::ReAct => Box::new(ReActAdapter::from_config_with_timeout(cfg, timeout)),
+            ProviderMode::Native => Box::new(NativeAdapter::from_config_with_protocol(
+                cfg, ProviderToolProtocol::Native, None, timeouts,
+            )),
+            ProviderMode::ReAct => Box::new(ReActAdapter {
+                native: NativeAdapter::from_config_with_protocol(
+                    cfg, ProviderToolProtocol::ReAct, None, timeouts,
+                ),
+            }),
         }
     }
 }
@@ -2691,7 +2728,7 @@ pub struct NativeAdapter {
     model: String,
     runtime_profile: ModelRuntimeProfile,
     messages_capabilities: std::sync::OnceLock<Option<deepseek_messages::MessagesCapabilities>>,
-    request_timeout: Option<std::time::Duration>,
+    request_timeouts: ProviderRequestTimeouts,
     cancellation: std::cell::RefCell<Option<crate::run_context::CancellationToken>>,
     spend: std::cell::RefCell<Option<std::sync::Arc<dyn model_spend::ModelSpendPort>>>,
     spend_scope: std::cell::RefCell<Option<model_spend::ChargeScope>>,
@@ -2707,21 +2744,24 @@ impl NativeAdapter {
         cfg: ProviderConfig,
         runtime_profile: Option<ModelRuntimeProfile>,
     ) -> NativeAdapter {
-        Self::from_config_with_protocol(cfg, ProviderToolProtocol::Native, runtime_profile, None)
+        Self::from_config_with_protocol(cfg, ProviderToolProtocol::Native, runtime_profile, ProviderRequestTimeouts::default())
     }
 
     pub fn from_config_with_timeout(
         cfg: ProviderConfig,
         timeout: std::time::Duration,
     ) -> NativeAdapter {
-        Self::from_config_with_protocol(cfg, ProviderToolProtocol::Native, None, Some(timeout))
+        Self::from_config_with_protocol(cfg, ProviderToolProtocol::Native, None, ProviderRequestTimeouts {
+            request: timeout,
+            ..ProviderRequestTimeouts::default()
+        })
     }
 
     fn from_config_with_protocol(
         cfg: ProviderConfig,
         protocol: ProviderToolProtocol,
         runtime_profile: Option<ModelRuntimeProfile>,
-        request_timeout: Option<std::time::Duration>,
+        request_timeouts: ProviderRequestTimeouts,
     ) -> NativeAdapter {
         let resolved_profile =
             ModelRuntimeCatalog::default().resolve(&cfg.model, protocol, runtime_profile);
@@ -2731,7 +2771,7 @@ impl NativeAdapter {
             model: cfg.model,
             runtime_profile: resolved_profile,
             messages_capabilities: Default::default(),
-            request_timeout,
+            request_timeouts,
             cancellation: Default::default(),
             spend: Default::default(),
             spend_scope: Default::default(),
@@ -2764,8 +2804,10 @@ impl NativeAdapter {
             }
             if self.cancellation.borrow().as_ref().is_some_and(|token| token.check().is_err()) { return None; }
             let (models_url, _) = deepseek_messages::endpoint_urls(&self.base_url);
+            let timeout = self.request_timeouts.request.min(std::time::Duration::from_secs(10));
             let agent = ureq::AgentBuilder::new().redirects(0)
-                .timeout(self.request_timeout.unwrap_or(std::time::Duration::from_secs(10)).min(std::time::Duration::from_secs(10))).build();
+                .timeout(timeout)
+                .timeout_connect(self.request_timeouts.connect.min(timeout)).build();
             let listing: serde_json::Value = agent.get(&models_url)
                 .set("Authorization", &format!("Bearer {}", self.api_key))
                 .call().ok()?.into_json().ok()?;
@@ -2929,17 +2971,20 @@ impl NativeAdapter {
         body: &serde_json::Value,
         messages: bool,
     ) -> Result<ureq::Response, ureq::Error> {
-        let request = if messages { ureq::AgentBuilder::new().redirects(0).build().post(url) } else { ureq::post(url) }
+        // ureq enforces this deadline on the socket while reading the response
+        // body too. Its total timeout overrides timeout_read, so do not expose
+        // an idle timeout that this transport cannot enforce alongside it.
+        let builder = ureq::AgentBuilder::new()
+            .timeout(self.request_timeouts.request)
+            .timeout_connect(self.request_timeouts.connect.min(self.request_timeouts.request));
+        let agent = if messages { builder.redirects(0) } else { builder }.build();
+        let request = agent.post(url)
             .set("Authorization", &format!("Bearer {}", self.api_key))
             .set("Content-Type", "application/json");
         let request = if messages {
             let request = request.set("anthropic-version", "2023-06-01").set("x-api-key", &self.api_key);
             if deepseek_messages::uses_tool_updates(body) { request.set("anthropic-beta", deepseek_messages::TOOL_CHANGES_BETA) } else { request }
         } else { request };
-        let request = match self.request_timeout {
-            Some(timeout) => request.timeout(timeout),
-            None => request,
-        };
         request.send_json(body)
     }
 }
@@ -2984,6 +3029,20 @@ fn truncate_provider_error_body(body: &str) -> String {
 }
 
 fn is_retriable_chat_completion_error(err: &ureq::Error) -> bool {
+    // A timeout has already consumed its full request budget. Retrying it
+    // immediately would occupy the slot again and may duplicate a billed call.
+    let mut source: &(dyn std::error::Error + 'static) = err;
+    loop {
+        if source.downcast_ref::<std::io::Error>().is_some_and(|error| {
+            matches!(error.kind(), std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock)
+        }) {
+            return false;
+        }
+        match source.source() {
+            Some(next) => source = next,
+            None => break,
+        }
+    }
     let ureq::Error::Transport(transport) = err else {
         return false;
     };
@@ -3441,7 +3500,7 @@ impl ReActAdapter {
                 cfg,
                 ProviderToolProtocol::ReAct,
                 runtime_profile,
-                None,
+                ProviderRequestTimeouts::default(),
             ),
         }
     }
@@ -3455,7 +3514,10 @@ impl ReActAdapter {
                 cfg,
                 ProviderToolProtocol::ReAct,
                 None,
-                Some(timeout),
+                ProviderRequestTimeouts {
+                    request: timeout,
+                    ..ProviderRequestTimeouts::default()
+                },
             ),
         }
     }

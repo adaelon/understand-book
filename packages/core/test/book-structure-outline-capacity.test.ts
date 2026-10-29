@@ -4,16 +4,88 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { resolveAutomaticBuildTarget, buildAutomaticBuildSnapshot, nextAutomaticBuildAction } from "../src/build-orchestrator";
 import { buildBookStructureUnitSources, createBookStructureExecutionContractsV2, BOOK_STRUCTURE_EXECUTION_PROMPTS_V2, evaluateBookStructureExecution } from "../src/book-structure";
-import { structureOrganizationContracts, renderStructureOrganizationInput, type StructureOrganizationInput } from "../src/book-structure-organization";
+import { structureOrganizationContracts, renderStructureOrganizationInput, routeStructureOrganization, type StructureOrganizationInput } from "../src/book-structure-organization";
 import { structureSourceOutline, structureDiscoverySources } from "../src/book-structure-discovery";
 import { markdownToBlocks } from "../src/md-adapter";
 import { segment } from "../src/segment";
 import { resolveContentProfile } from "../src/content-profile";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1 } from "../src/build-execution-profile";
-import { createCandidateTransportContract } from "../src/executor-transport";
+import { createCandidateTransportContract, measureExecutorCandidateRequest } from "../src/executor-transport";
 import { estimateTokens } from "../src/window";
+import { collectStructureCandidates } from "../src/book-structure-candidates";
+import { freezeBookStructureGenerationTask, writeBookStructureGenerationCandidate } from "../src/book-structure-generation";
 
 describe("whole-book outline capacity", () => {
+  it("assembles all 184 source units from independently bounded, resumable outline submissions", async () => {
+    const root = mkdtempSync(path.join(tmpdir(), "outline-output-budget-"));
+    onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+    const source = path.join(root, "book.md");
+    const text = Array.from({ length: 184 }, (_, index) => `# 第${index + 1}单元\n\n说明输入、执行条件以及结果之间的关系。\n`).join("\n");
+    writeFileSync(source, text);
+    const target = resolveAutomaticBuildTarget(source, root);
+    mkdirSync(target.workspace_dir, { recursive: true });
+    writeFileSync(path.join(target.workspace_dir, "base.json"), JSON.stringify({ graph_nodes: [], graph_edges: [] }));
+    const header = { book_id: target.book_id, profile_id: target.profile_id };
+    for (const name of ["discourse_index.json", "formula_semantics.json"]) writeFileSync(path.join(target.workspace_dir, name), JSON.stringify({ header, items: [] }));
+    const nodes = segment(markdownToBlocks(text)), sources = buildBookStructureUnitSources({ source: text, lidNodes: nodes });
+    const outline = structureSourceOutline(structureDiscoverySources(sources, nodes, text), nodes, text);
+    const chapters = outline.chapters;
+    expect(chapters).toHaveLength(184);
+    const answer = (chapter: typeof chapters[number]) => ({ unit_lid: chapter.unit_lid,
+      question: { text: "本单元解释执行条件怎样影响结果。", evidence_lids: chapter.overview.evidence_lids },
+      progression: { text: "在前面介绍的基础上展开具体执行步骤。", evidence_lids: chapter.overview.evidence_lids } });
+    const transport = CODEX_BUILD_EXECUTION_PROFILE_V1.transport_profile;
+    const measure = (candidate: unknown) => measureExecutorCandidateRequest({ version: "automatic_build_executor_candidate_submit.v3",
+      opaque_session_ref: `absession1_${"0".repeat(64)}`, candidate_sink_ref: `absink1_${"0".repeat(64)}`, candidate }, transport);
+    expect(measure({ chapters: chapters.map(answer), themes: [] }).blocking_reasons).toContain("token_cap_exceeded");
+    const route = () => routeStructureOrganization({ target, execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1,
+      contracts: structureOrganizationContracts(createBookStructureExecutionContractsV2({
+        profile: resolveContentProfile("technical_learning"), quality_profile: "full", prompts: BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+      }).stitch_fragment), outline, context: { catalog: collectStructureCandidates([]), titles: {}, excerpts: [] }, stop_after_outline: true });
+    const first = route();
+    expect(first.pending.length).toBeGreaterThan(1);
+    expect(first.tasks.every(task => task.descriptor.kind === "structure_outline_chapters")).toBe(true);
+    const write = (task: typeof first.tasks[number], candidate: unknown) => {
+      expect(measure(candidate).blocking_reasons).toEqual([]);
+      freezeBookStructureGenerationTask(target, task);
+      writeBookStructureGenerationCandidate({ target, task, candidate,
+        provenance: { executor: "bounded-outline-test", attempt: 1, generated_at: "2026-10-29T00:00:00.000Z" } });
+    };
+    for (const [index, task] of first.tasks.entries()) {
+      if (!("phase" in task.input) || task.input.phase !== "outline_chapters") throw new Error("expected outline chapter batch");
+      const candidate = { chapters: task.input.context.chapters.map(answer) };
+      if (index === 0) {
+        freezeBookStructureGenerationTask(target, task);
+        expect(() => writeBookStructureGenerationCandidate({ target, task, candidate: { chapters: candidate.chapters.slice(1) },
+          provenance: { executor: "bounded-outline-test", attempt: 1, generated_at: "2026-10-29T00:00:00.000Z" } })).toThrow(/order/);
+      }
+      write(task, candidate);
+      await new Promise(resolve => setImmediate(resolve));
+      if (index === 0) {
+        const resumed = route();
+        expect(resumed.pending).not.toContain(task.descriptor.work_unit_id);
+        expect(resumed.pending).toEqual(first.pending.slice(1));
+        expect(resumed.outline_result).toBeUndefined();
+      }
+    }
+    const members = chapters.slice(0, 3), memberLids = members.map(chapter => chapter.unit_lid);
+    const memberEvidence = members.map(chapter => chapter.overview.evidence_lids[0]);
+    for (const candidate of [
+      { kind: "append", themes: [{ question: { text: "不同条件如何影响执行？", evidence_lids: memberEvidence.slice(0, 2) }, unit_lids: memberLids.slice(0, 2) }] },
+      { kind: "extend", theme_index: 0, unit_lids: memberLids.slice(2), evidence_lids: memberEvidence.slice(2) },
+      { kind: "finish" },
+    ]) {
+      const current = route();
+      expect(current.pending).toHaveLength(1);
+      expect(current.outline_result).toBeUndefined();
+      write(current.tasks.find(task => current.pending.includes(task.descriptor.work_unit_id))!, candidate);
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    const completed = route();
+    expect(completed.pending).toEqual([]);
+    expect(completed.outline_result?.chapters).toEqual(chapters.map(answer));
+    expect(completed.outline_result?.themes).toEqual([{ question: { text: "不同条件如何影响执行？", evidence_lids: memberEvidence }, unit_lids: memberLids }]);
+  }, 120000);
   it.each(["chapter", "theme", "reconcile"] as const)("removes only formatting overhead from oversized %s inputs", phase => {
     // Serialization does not consume the phase-specific acceptance context.
     const packet = { version: "book_structure_organization_input.v1", phase, context: {}, body: { candidates: Array.from({ length: 700 }, (_, i) => ({

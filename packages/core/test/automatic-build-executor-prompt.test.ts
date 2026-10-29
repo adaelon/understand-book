@@ -13,6 +13,8 @@ import {
   runAutomaticBuildExecutorPromptCli,
 } from "../../../skills/build/executor-prompt-cli";
 import { resolveAutomaticBuildExecutorPrompt, resolveAutomaticBuildPromptAsset } from "../../../skills/build/automatic-build";
+import { automaticBuildExtractorForWorkUnitKind } from "../src/build-orchestrator";
+import { STRUCTURE_ORGANIZATION_PROMPTS } from "../src/book-structure-organization-prompts";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -21,6 +23,15 @@ function normalizeBootstrapContract(text: string): string {
 }
 
 describe("automatic build executor prompt", () => {
+  it.each(["structure_outline_chapters", "structure_outline_themes"] as const)("delivers the registered %s semantic contract through the production prompt route", kind => {
+    const name = `${automaticBuildExtractorForWorkUnitKind("book_structure", kind)}.md`;
+    let stdout = "", stderr = "";
+    expect(runAutomaticBuildExecutorPromptCli([name, "--executor-protocol", "dispatch"], {
+      write_stdout: text => { stdout += text; }, write_stderr: text => { stderr += text; },
+    }), stderr).toBe(0);
+    const semantic = stdout.split(AUTOMATIC_BUILD_EXECUTOR_PROMPT_SEPARATOR)[1]?.slice(2);
+    expect(semantic).toBe(STRUCTURE_ORGANIZATION_PROMPTS[kind]);
+  });
   it("reads embedded prompt bytes without launching another executable", () => {
     const previous = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;
     const wrapper = readFileSync(path.join(REPO_ROOT, "agents", "automatic-build-dispatch-executor.md"), "utf8");

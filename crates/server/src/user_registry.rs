@@ -45,6 +45,13 @@ impl UserRegistry {
         self.control.user_paths(owner)
     }
     pub fn get(&mut self, owner: &str, now: &str) -> Result<UserHandle, ToolError> {
+        let handle = self.lookup(owner, now)?;
+        handle.lock().unwrap_or_else(|e| e.into_inner()).last_access = Instant::now();
+        Ok(handle)
+    }
+    /// Pin the unique private runtime without waiting for its lock. Shared hosts
+    /// release their registry guard before refreshing activity or using the user.
+    pub(crate) fn lookup(&mut self, owner: &str, now: &str) -> Result<UserHandle, ToolError> {
         let paths = self.control.user_paths(owner)?;
         self.load(owner, paths, now)
     }
@@ -94,9 +101,7 @@ impl UserRegistry {
             user.presentation_limits = Some(self.presentation_limits);
             self.users.insert(owner.into(), Arc::new(Mutex::new(user)));
         }
-        let handle = self.users.get(owner).unwrap();
-        handle.lock().unwrap_or_else(|e| e.into_inner()).last_access = Instant::now();
-        Ok(handle.clone())
+        Ok(self.users.get(owner).unwrap().clone())
     }
     pub(crate) fn flush_reads(&self) -> Result<(), ToolError> {
         for user in self.users.values() {
@@ -167,7 +172,9 @@ impl UserRegistry {
                         })?;
                     if document["review_state"]["review_jobs"]
                         .as_array()
-                        .is_some_and(|jobs| jobs.iter().any(|j| j["status"] != "completed"))
+                        .is_some_and(|jobs| jobs.iter().any(|j| {
+                            matches!(j["status"].as_str(), Some("queued" | "running" | "retryable"))
+                        }))
                     {
                         pending.push_back(owner);
                     }

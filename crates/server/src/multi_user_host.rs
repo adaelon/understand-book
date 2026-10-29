@@ -304,7 +304,7 @@ pub(crate) fn start_with_access(
                 crate::multi_user_review::tick(&access, &cancellation, now_ms as u64);
                 if let Some((owner,handle)) = recovering {
                     match handle {
-                        Ok(handle) => if handle.lock().unwrap().store.review_state().review_jobs.iter().any(|j| j.status != memory::ReviewJobStatus::Completed) { backlog.push_back(owner); },
+                        Ok(handle) => if handle.lock().unwrap().store.review_state().review_jobs.iter().any(|j| j.status.is_pending()) { backlog.push_back(owner); },
                         Err(e) if e.error_code == "USER_RUNTIME_CAPACITY" => backlog.push_back(owner),
                         Err(e) => eprintln!("Memory review recovery: {}",e.error_code),
                     }
@@ -353,7 +353,7 @@ pub(crate) fn start_with_access(
             }
         }));
     }
-    for _ in 0..4 {
+    for _ in 0..access.resources.limits.http_workers {
         let waiters = waiters.clone();
         let (server, stop, site, access) =
             (server.clone(), stop.clone(), site.clone(), access.clone());
@@ -559,14 +559,6 @@ pub(crate) fn dispatch(
         let token = headers
             .get("Cookie")
             .and_then(|c| auth::token_from_cookie(c).ok());
-        if url == "/api/auth/guest" {
-            expect_method(method, "POST")?;
-            let token = access.registration.guest(serde_json::from_str(body).map_err(|_| invalid())?, token, now)?;
-            let principal = access.auth.authenticate(&token, now)?;
-            let mut reply = HttpReply::json(json!({"user_id":principal.user_id(),"email":null,"is_guest":true,"csrf_token":auth::csrf(&token),"capabilities":{"presentation":access.sandbox.capability(),"admin":false}}));
-            reply.cookie = Some(auth::cookie(&token, false));
-            return Ok(reply);
-        }
         if matches!(url, "/api/auth/password/forgot" | "/api/auth/password/reset") {
             expect_method(method, "POST")?;
             let resetting = path == "/auth/password/reset";
@@ -787,6 +779,14 @@ pub(crate) fn dispatch(
                 } else { None };
                 let (limit,offset) = crate::admin_api::page(&pagination)?;
                 return access.spend.charges(Some(principal.user_id()),false,limit,offset,true,range.as_ref(),reference.as_ref().map(|(kind,value)|(*kind,value.as_str())),Some("account")).map(HttpReply::json);
+            }
+            Capability::Presence => {
+                expect_method(method, "POST")?;
+                if !query.is_empty() || input.as_object().is_none_or(|object| !object.is_empty()) {
+                    return Err(invalid());
+                }
+                access.monitor.heartbeat(&principal);
+                return Ok(HttpReply::json(json!({"ok":true})));
             }
             Capability::Me => {
                 expect_method(method, "GET")?;
@@ -1201,7 +1201,7 @@ pub(crate) fn dispatch(
                 }
                 Ok(HttpReply::from_reply(reply))
             }
-            Capability::Me | Capability::Logout | Capability::Allowance | Capability::CloudPlans | Capability::CloudStorage | Capability::CloudStorageDownload | Capability::DesktopAuthorize | Capability::AccountUsage | Capability::CostSummary | Capability::WorkspaceRelease(_, _) | Capability::WorkspaceReleaseUse(_,_) | Capability::WorkspaceInstance(_,_) | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) | Capability::LearningWorkspace(_, _) => unreachable!(),
+            Capability::Me | Capability::Presence | Capability::Logout | Capability::Allowance | Capability::CloudPlans | Capability::CloudStorage | Capability::CloudStorageDownload | Capability::DesktopAuthorize | Capability::AccountUsage | Capability::CostSummary | Capability::WorkspaceRelease(_, _) | Capability::WorkspaceReleaseUse(_,_) | Capability::WorkspaceInstance(_,_) | Capability::EmailBinding | Capability::Password | Capability::McpList | Capability::McpCreate | Capability::McpRevoke(_) | Capability::LearningWorkspace(_, _) => unreachable!(),
         }
     })();
     match result {

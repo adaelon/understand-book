@@ -14,6 +14,32 @@ afterEach(() => { wrapper?.unmount(); wrapper = undefined; document.body.innerHT
 async function open(source: SourcePopupView) { wrapper = mount(BoardSourcePreview, { props: { source }, attachTo: document.body }); await flushPromises(); return wrapper; }
 
 describe('board retained source preview', () => {
+  it('reads the available quote with surrounding context before explicitly opening the reader', async () => {
+    const source = { ...base(), can_open_in_reader: true, context_before: '前一段。', context_after: '后一段。', heading_path: ['第六章', '攻击距离'] };
+    const view = await open(source);
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('前一段。'); expect(dialog.textContent).toContain('后一段。');
+    expect(dialog.querySelector('mark')?.textContent).toBe(source.highlighted_quote);
+    expect(dialog.textContent).toContain('第六章 › 攻击距离');
+    expect(view.emitted('open-reader')).toBeUndefined();
+    (dialog.querySelector('.board-source-open-reader') as HTMLButtonElement).click(); await flushPromises();
+    expect(view.emitted('open-reader')).toHaveLength(1);
+    await view.setProps({ opening: true });
+    expect(dialog.querySelector('.board-source-open-reader')).toHaveProperty('disabled', true);
+    expect(dialog.textContent).toContain('正在打开…');
+  });
+  it('shows pending and retryable errors without an empty excerpt or reader navigation', async () => {
+    wrapper = mount(BoardSourcePreview, { props: { source: null, loading: true }, attachTo: document.body });
+    await flushPromises();
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('正在加载原文…');
+    expect(wrapper.findComponent(SourceExcerpt).exists()).toBe(false);
+    expect(dialog.querySelector('.board-source-open-reader')).toBeNull();
+    await wrapper.setProps({ loading: false, error: '网络连接已断开' });
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toContain('网络连接已断开');
+    (dialog.querySelector('.board-source-error button') as HTMLButtonElement).click(); await flushPromises();
+    expect(wrapper.emitted('retry')).toHaveLength(1);
+  });
   it('renders a stale text snapshot and its reason without navigating away from the board', async () => {
     const before = window.location.href;
     const source = { ...base(), stale: true, unavailable_reason: '原发布版本当前不可读取' };
@@ -23,6 +49,7 @@ describe('board retained source preview', () => {
     const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain(source.label); expect(dialog.textContent).toContain(source.highlighted_quote);
     expect(dialog.textContent).toContain('引用时的快照'); expect(dialog.textContent).toContain(source.unavailable_reason);
+    expect(dialog.querySelector('.board-source-open-reader')).toBeNull();
     expect(window.location.href).toBe(before);
   });
   it('uses the retained media projection and preserves unavailable feedback from the existing preview', async () => {
@@ -52,7 +79,9 @@ describe('board retained source preview', () => {
     expect(document.activeElement).toBe(last);
     last.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
     expect(document.activeElement).toBe(first);
-    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await flushPromises();
+    // A loading chapter can disable a focused control, leaving focus on body.
+    first.blur();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await flushPromises();
     expect(view.emitted('close')).toHaveLength(1);
     view.unmount(); wrapper = undefined;
     expect(document.activeElement).toBe(origin);

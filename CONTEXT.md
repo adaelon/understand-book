@@ -132,10 +132,13 @@ Agent在工作区冻结成员和当前授权范围内，以确切发布引用检
 获准管理受邀账号、材料授权、收款登记、使用额度和内测码的应用身份。管理员权限与普通读者对私人内容的访问范围分别表达；状态：EXISTING，原管理能力与 INV2 内测码管理已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)、[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
 
 ## 内测码（BetaInvite）
-由运营管理员生成并手动分发的一次性注册资格，一个有效内测码最多用于成功注册一个读者账号，长期有效且可在使用前停用。邮箱注册成功同事务赠送 10 元账号额度、30 天有效；游客兑换另按一次性 5 元规则。材料沿用对应入口的授权规则；状态：EXISTING，管理、注册核销与自动赠额已实现（2026-10-27，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
+由运营管理员生成并手动分发的一次性注册资格，一个有效内测码最多用于成功注册一个读者账号，长期有效且可在使用前停用。新邮箱注册成功同事务开通内测不限额权益，内测期间 AI Token 免费使用。游客新建入口已关闭，已有游客身份、有效会话和权益保留。材料沿用邮箱注册的授权规则；状态：EXISTING，管理、注册核销与自动权益开通已实现（2026-10-27，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
 
 ## 账号邮箱（AccountEmail）
 读者验证持有权后绑定到其账号、用于登录与找回密码的邮箱，一个邮箱只对应一个账号。绑定邮箱保留账号原有身份、私人阅读成果、材料授权和使用额度；状态：注册验证、邮箱登录、老账号首次绑定与找回密码已实现（2026-10-09，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
+
+## 内测默认资料（Beta default materials）
+站内账号默认可阅读当前已发布资料的默认版本，排除 `understandbook`；同一资料不重复发放历史版本。正式名单由 `default_book_grants` 保存，在邮箱注册或受信开户事务内复制到账号授权。发布新资料或替换默认版本时同步维护名单与已有账号授权；历史阅读所需的原授权保留。状态：EXISTING，2026-10-27 已补齐 14 份资料及已有邮箱账号，见[授权修复记录](docs/performance/catalog-access-20261027/README.md)。
 
 ## 待完成注册（PendingRegistration）
 持有内测码的申请者提交注册信息后、完成邮箱验证前的注册申请，尚未成为读者账号。仅成功完成注册时使用内测码，申请失败或过期不消耗注册资格；状态：EXISTING，INV4 已实现（2026-10-09，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
@@ -146,6 +149,8 @@ Agent在工作区冻结成员和当前授权范围内，以确切发布引用检
 云端商业方案已将视频准备和学习原声复核的实际转写毫秒数纳入同一账号服务额度；模型与处理共享余额、在途占用及任务上限，实际成本缺少凭据时保持未知。正式处理费率待配置，见[服务处理计量说明](docs/服务处理计量-20261020.md)与实施计划 C4。
 
 ## 额度期（AllowancePeriod）
+内测期间新邮箱账号的额度期带 `unlimited` 标记，持续记用量与成本，累计金额不触发准入限制；读者与后台显示“不限额度”。有限额账号继续沿用原余额、有效期和百分比口径。单任务确认的预算独立生效。
+
 一个账号使用额度的有效时间范围，同一账号同一时刻只有一个有效额度期。一次调用的费用归属固定到准入时的额度期，过期后仍可核算该次费用；状态：EXISTING，ADM3 建期/有效期编辑已实现（[ADR-0156](docs/adr/0156-reader-admin-and-account-allowance.md)）。
 
 ## 人工收款记录（ManualReceipt）
@@ -953,6 +958,9 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 ## User Understanding Space（用户理解空间）
 `LearningMemory` 内围绕学习目标与来源的私人理解视图，表达当前理解、困难、适用假设和真实教学反馈，由 `InteractionTrace`、`LearningEvidence` 及可用的 `LearnerKnowledgeState` 投影。查询、修订与重建按学习工作区及来源组织，保留用户原话和系统推断的区别；明确带入的原记录提供独立回看入口，不并入当前掌握统计。视图不独立拥有可编辑学习状态或改写公共 `TeachingMap`。状态：BOUNDARY_CHANGE，T16/T17及W3工作区范围、W6历史入口已实现（`grill.md` Q97、[ADR-0158](docs/adr/0158-book-structure-ready-tutor-and-optional-teaching-assets.md)、[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
 
+## 默认学习起点
+对当前知识点及理解它必需的前置知识，默认尚无已确认理解；据此提供可跟随的对象、含义和关键连接。此默认适用于普通问答、Tutor、教学与表达教练、讲解审核，不依赖连续教学开关，也不形成用户能力事实。真实表达支持按具体关系减少支撑，用户明确要求跳过基础或直接深入时立即适配；已交付帮助用于衔接，不能代替理解证据。状态：NEW，2026-10-28；权威指令见 [learner_starting_point.md](crates/runtime/src/learner_starting_point.md)，实现与验证见[实施记录](docs/实施记录-零基础教学默认.md)。
+
 ## 理解假设
 根据用户实际表达，对其当前如何理解、可能卡在哪里及何种教学支持值得采用形成的可修正解释，保留原话、适用范围和修订关系。已交付讲解、显示帮助和页面操作只说明表达发生时的支持条件，不能成为理解判断本身的依据。理解记录、教学设计和交付审阅共用宿主从原始交互解析的 `learner_grounding`；设计不另建用户画像，理解未知时仍正常讲清当前问题。它由 LearningMemory 持有并通过用户理解空间参与教学，保持暂定判断身份，不等同已确认画像事实、题目评分或对象级能力证明。状态:EXISTING（[ADR-0164 §11](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md#11-理解判断的共同依据)）。
 
@@ -966,6 +974,9 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 
 ## 下一步建议（TeachingContinuation）
 围绕本轮教学焦点提出的未来帮助选项，包含一个推荐项及至多一个备选项。它表达可以请求的解释、对比或观察方向，与本轮实际完成的教学动作、实际交付和学习表现分别表达。状态：EXISTING，设计已确认（[ADR-0163 §3](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
+
+## 学习对话的参与与探索
+在当前请求得到完整回应后，选择一个有价值且容易参与的接话入口：表达当前理解，或从已给对象和条件出发观察、猜想、预测，由此打开下一知识关系。邀请不以复习或证明掌握为前提，不要求猜陌生术语，也不构成新的课程关卡。普通聊天沿真实历史接续；主动教学沿既有 `participation=invite → response_expectation → responds_to` 保存并回应邀请，未来帮助仍归 `TeachingContinuation`。用户回答后先回应其具体关系再调整帮助；受助表达保留帮助条件，“不知道”“继续”及跳过均不产生掌握证明。状态：BOUNDARY_CHANGE，2026-10-28；权威原则见 [learner_starting_point.md](crates/runtime/src/learner_starting_point.md)，实现与验证见[实施记录](docs/实施记录-教学对话接续.md)。
 
 ## 建议选择（TeachingChoice）
 读者接受某次已交付建议中一个选项的明确请求。选择只表达本次希望获得的帮助，不代表已经执行、完成作答、掌握知识或确认长期偏好。状态：EXISTING，设计已确认（[ADR-0163 §4/§6](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。

@@ -1,7 +1,7 @@
 //! Pure presentation guidance selection; RunContext owns the current selection.
 use crate::InstructionModule;
 
-pub const REVISION: &str = "coach-handoff.v1";
+pub const REVISION: &str = "coach-handoff.v2";
 const COMMON: &str = include_str!("../../../../skills/presentation/SKILL.md");
 const ENGINEERING: &str = include_str!("../../../../skills/presentation/engineering.md");
 const DIRECTORY: &str = include_str!("../../../../skills/presentation/capabilities.md");

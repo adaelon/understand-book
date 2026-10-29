@@ -680,7 +680,7 @@ impl WorkspaceRegistry {
         if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall"
             | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
             | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe"
-            | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/presentation.read" | "boards/presentation.observe"
+            | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/source.read" | "boards/presentation.read" | "boards/presentation.observe"
             | "presentation/read" | "presentation/observe" | "presentation/feedback/read") {
             scene.check_attachment(&stamp)?;
         } else {
@@ -692,13 +692,17 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
-        if matches!(action, "boards/source.resolve" | "boards/source.open") {
+        if matches!(action, "boards/source.resolve" | "boards/source.read" | "boards/source.open") {
             let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
             let same_publication = binding.book_id == scene.workspace.book.base.book_id
                 && binding.publication_id.as_ref() == scene.workspace.publication.as_ref().map(|p| &p.reference.publication_id);
             if !same_publication {
                 let mut value = view(&scene);
-                value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
+                value["result"] = if action == "boards/source.read" {
+                    crate::cross_book::source_window(library, owner, &binding, input)?
+                } else {
+                    crate::cross_book::source_view_at(library, owner, &binding, action.ends_with(".open"), crate::board_api::optional_source_lid(input, "lid")?)?
+                };
                 return Ok(value);
             }
         }
@@ -1074,7 +1078,8 @@ impl WorkspaceRegistry {
                 let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
                 let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
                 book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
-                reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
+                let lid = crate::board_api::optional_source_lid(input, "lid")?.unwrap_or(&range.start_lid);
+                reader.goto_lid(book, &mut user.store, lid, now)?;
                 json!({"source_ref_id":binding.source_ref_id,"opened":true})
             }
             "agent/source.open" => {

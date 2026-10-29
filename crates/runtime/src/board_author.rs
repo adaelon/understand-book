@@ -6,6 +6,9 @@ use memory::boards::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+/// Shared by the board tool contract and the frozen context for direct replies.
+pub const SOURCE_CITATION_POLICY: &str = "Board source citations: Substantive claims about the book, including its rules, conditions and specific values, require clickable original-source citations in direct text answers, explanation blocks and each committed part. Read the relevant book/library evidence in this turn and call source.present with the supporting observed passage. Then place [[source:<source_ref_id>]] after the supported sentence or closely related group of claims, using the exact returned ID; calling source.present alone does not attach a citation. Put these markers in blocks[].markdown before prepare/revise, so the saved explanation blocks and committed parts retain clickable sources. A derivation must identify its cited source premises and distinguish the inference from the author's statement. Label learner assumptions and illustrative values as such; they are not book evidence. Historical source_ref_ids and retained source_bindings are not this turn's evidence: reacquire support for new book claims, and cite only the references actually supporting the current explanation. If a required claim has no supporting observed passage, state the gap or narrow the claim; never invent a citation. Greetings, interface operations and layout-only changes need no forced citation. A concise recap may reuse clear nearby citations without repeating them.";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExplanationBlock {
@@ -315,6 +318,12 @@ pub(crate) fn project_read(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
 pub enum AuthorRequest {
+    /// Run-local expression planning; intercepted before the persistent board port.
+    Plan {
+        focus: String,
+        #[serde(default)]
+        needs: Vec<String>,
+    },
     Catalog {
         kind: String,
         #[serde(default)]
@@ -544,9 +553,9 @@ pub fn spec() -> crate::ToolSpec {
         {"type":"object","properties":{"kind":{"enum":["link"]},"link_id":{"type":"string"}},"required":["kind","link_id"],"additionalProperties":false},
         {"type":"object","properties":{"kind":{"enum":["presentation_anchor"]},"item_id":{"type":"string"},"reference":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},"anchor_id":{"type":"string"}},"required":["kind","item_id","reference","anchor_id"],"additionalProperties":false}
     ]});
-    let graphic = json!({"oneOf":[
-        {"type":"object","properties":{"kind":{"enum":["text"]},"text":{"type":"string"}},"required":["kind","text"],"additionalProperties":false},
-        {"type":"object","properties":{"kind":{"enum":["shape"]},"shape":{"enum":["rectangle","ellipse"]},"text":{"type":"string"},"color":{"type":"string","description":"Outline and text color on the light canvas, not a background fill. Use a readable dark color."}},"required":["kind","shape","text","color"],"additionalProperties":false},
+    let graphic = json!({"description":r"Text and shape labels support the same math delimiters as explanation blocks: $...$, $$...$$, \(...\), \[...\]. Write valid LaTeX, e.g. \(S_t = S_{t-1} + k_t v_t^{\mathsf T}\); avoid bare pseudo-math such as S_(t-1).","oneOf":[
+        {"type":"object","properties":{"kind":{"enum":["text"]},"text":{"type":"string","description":"A short heading or label with only a few supporting lines; put detailed explanation in blocks and connect it with mappings."}},"required":["kind","text"],"additionalProperties":false},
+        {"type":"object","properties":{"kind":{"enum":["shape"]},"shape":{"enum":["rectangle","ellipse"]},"text":{"type":"string","description":"A concise node heading followed by a few short supporting lines. Let the shape and its links carry the visual model; move long prose to blocks."},"color":{"type":"string","description":"A readable dark outline/accent color on the light canvas. Reuse a small muted palette consistently for related concepts."}},"required":["kind","shape","text","color"],"additionalProperties":false},
         {"type":"object","properties":{"kind":{"enum":["path"]},"points":{"type":"array","items":point,"description":"Local coordinates within this drawing's size, relative to its position. Canvas coordinates equal position + point. For a circle around another item, place the path's position at the circle bounds and points around 0..width / 0..height; do not repeat absolute canvas coordinates."},"color":{"type":"string"},"width":{"type":"number"}},"required":["kind","points","color","width"],"additionalProperties":false}
     ]});
     let size = json!({"type":"object","properties":{"width":{"type":"number"},"height":{"type":"number"}},"required":["width","height"],"additionalProperties":false});
@@ -569,12 +578,14 @@ pub fn spec() -> crate::ToolSpec {
             "published_book_ref":publication,
             "source":source,
             "imports":{"type":"array","items":{"type":"object","properties":{"source":source,"published_book_ref":publication,"item_id":{"type":"string"},"position":point,"size":size},"required":["source","item_id","position","size"],"additionalProperties":false},"description":"Resolve exact original sources into the private candidate; full content and provenance are server owned."},
-            "update_drawings":{"type":"array","items":drawing,"description":"Explicitly replace native graphic/text/geometry of existing drawings using their exact item_id. Prior revisions stay readable."},
-            "layout":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"position":point,"size":size},"required":["item_id","position","size"],"additionalProperties":false},"description":"Move or resize retained items without changing their saved content."}
+            "update_drawings":{"type":"array","items":drawing,"description":"Explicitly replace native graphic/text/geometry of existing drawings using their exact item_id, including visual refinements to an existing board. Preserve source meaning and provenance; prior revisions stay readable."},
+            "layout":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"position":point,"size":size},"required":["item_id","position","size"],"additionalProperties":false},"description":"Move or resize retained items without changing their saved content. Use aligned groups and generous gaps so relationships and labels stay readable."}
     });
-    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this same accepted board as the primary learning space, including an empty board. Start by reading its layout and searching catalog plus workspace.records.read for relevant existing material and original conversations. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. State the current learning workspace scope and never fabricate history or understanding. Build native mind maps with text/shapes and labelled links; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
+    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this accepted board when a visual relationship helps the current request. A short explanation, correction or clarification can be answered directly without authoring a diagram. Prioritize the host-selected explanation block over the rest of a long previous answer. When drawing is useful, read the relevant board layout and exact sources. Call plan with the concrete relationship before preparing new visuals or changing the explanation strategy; consume its coach handoff in the next sampling before drawing. Plan is run-local and reused by later prepare/revise/preview calls. Layout, font or position-only adjustments do not need a new plan. Search catalog or workspace.records.read only when relevant existing material or original conversations are needed. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. State the current learning workspace scope and never fabricate history or understanding. Build native mind maps with text/shapes and labelled links; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
         "type":"object","properties":{
-            "operation":{"enum":["read","catalog","source_read","prepare","revise","preview","deliver","commit"]},
+            "operation":{"enum":["read","catalog","source_read","plan","prepare","revise","preview","deliver","commit"]},
+            "focus":{"type":"string","minLength":1,"description":"The concrete relationship the reader should understand, especially the selected explanation's unresolved point. Call plan before designing new visuals or changing the explanation strategy."},
+            "needs":{"type":"array","items":{"type":"string"},"description":"Unresolved evidence or representation needs for this explanation, not drawing coordinates."},
             "base_board_revision":{"type":"integer","minimum":1},
             "candidate_revision":{"type":"integer","minimum":1},
             "presentations":{"type":"array","items":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer","minimum":1}},"required":["presentation_id","revision"],"additionalProperties":false},"description":"Exact presentation versions already delivered by presentation.author in this run. They become independent retained board items in this part; do not invent Markdown presentation markers."},
@@ -582,11 +593,11 @@ pub fn spec() -> crate::ToolSpec {
             "offset":{"type":"integer","minimum":0},
             "length":{"type":"integer","minimum":1,"maximum":50},
             "board_revision":{"type":"integer","minimum":1,"description":"Pin continuation pages to the observed board revision; read again after a conflict."},
-            "blocks":{"type":"array","items":{"type":"object","properties":{"block_id":{"type":"string","description":"Stable ID unique across this board. Reuse it when revising the same uncommitted part; use a new ID for a later committed part."},"markdown":{"type":"string"}},"required":["block_id","markdown"],"additionalProperties":false}},
+            "blocks":{"type":"array","description":"The explanation needed for this request and this visual relationship. Attach this turn's returned [[source:<source_ref_id>]] markers to substantive book claims in markdown; source.present calls without markers do not create clickable citations. Explain how to read the new visual or resolve the selected point; do not repeat the previous full answer merely to attach a diagram. Keep prose here and map it to concise visual nodes.","items":{"type":"object","properties":{"block_id":{"type":"string","description":"Stable ID unique across this board. Reuse it when revising the same uncommitted part; use a new ID for a later committed part."},"markdown":{"type":"string"}},"required":["block_id","markdown"],"additionalProperties":false}},
             "drawings":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"title":{"type":"string"},"position":point,"size":{"type":"object","properties":{"width":{"type":"number"},"height":{"type":"number"}},"required":["width","height"],"additionalProperties":false},"graphic":graphic,"based_on":{"type":"array","items":content}},"required":["item_id","title","position","size","graphic"],"additionalProperties":false}},
-            "links":{"type":"array","items":{"type":"object","properties":{"link_id":{"type":"string"},"from":visual,"to":visual,"label":{"type":"string"},"based_on":{"type":"array","items":content}},"required":["link_id","from","to","label","based_on"],"additionalProperties":false}},
+            "links":{"type":"array","items":{"type":"object","properties":{"link_id":{"type":"string"},"from":visual,"to":visual,"label":{"type":"string"},"based_on":{"type":"array","items":content}},"required":["link_id","from","to","label"],"additionalProperties":false}},
             "mappings":{"type":"array","items":{"type":"object","properties":{"mapping_id":{"type":"string"},"explanation":content,"visual":visual},"required":["mapping_id","explanation","visual"],"additionalProperties":false}},
-            "routes":{"type":"array","items":{"type":"object","properties":{"route_id":{"type":"string"},"title":{"type":"string"},"steps":{"type":"array","items":{"type":"object","properties":{"step_id":{"type":"string"},"explanation":{"anyOf":[content,{"type":"null"}]},"reveal_targets":{"type":"array","items":visual},"focus_targets":{"type":"array","items":visual},"transition":{"enum":["instant","draw","reveal_text"]},"duration_ms":{"type":"integer","minimum":0}},"required":["step_id","explanation","reveal_targets","focus_targets","transition","duration_ms"],"additionalProperties":false}},},"required":["route_id","title","steps"],"additionalProperties":false}},
+            "routes":{"type":"array","description":"Focus each teaching step on a small related group and its connecting links. Keep the overall relationship model coherent instead of fitting all details into every step.","items":{"type":"object","properties":{"route_id":{"type":"string"},"title":{"type":"string"},"steps":{"type":"array","items":{"type":"object","properties":{"step_id":{"type":"string"},"explanation":{"anyOf":[content,{"type":"null"}]},"reveal_targets":{"type":"array","items":visual},"focus_targets":{"type":"array","items":visual},"transition":{"enum":["instant","draw","reveal_text"]},"duration_ms":{"type":"integer","minimum":0}},"required":["step_id","explanation","reveal_targets","focus_targets","transition","duration_ms"],"additionalProperties":false}},},"required":["route_id","title","steps"],"additionalProperties":false}},
             "viewport":{"type":"object","properties":{"width":{"type":"integer","minimum":240,"maximum":1920},"height":{"type":"integer","minimum":160,"maximum":2160},"input":{"enum":["mouse","touch"]}},"required":["width","height","input"],"additionalProperties":false}
         },"required":["operation"],"additionalProperties":false,
         "anyOf":[
@@ -596,6 +607,9 @@ pub fn spec() -> crate::ToolSpec {
             {"properties":{"operation":{"enum":["deliver"]}},"required":["operation","candidate_revision"]}
         ]
     }) };
+    spec.description.push(' ');
+    spec.description.push_str(SOURCE_CITATION_POLICY);
+    spec.description.push_str(" Compose around a clear visual model using shapes, spatial groups and labelled links. Give related nodes consistent alignment, generous whitespace and a small muted color palette. Keep node headings short and supporting text sparse; allocate enough space for ordinary headings around 22-26 px and body text around 16-19 px at natural scale. Put long explanations in blocks instead of shrinking text to cram the whole board onto one screen. Use local route focus to make each group readable while preserving the full model's relationships. Inspect hierarchy, spacing and readable text in the real preview. Continue revising only to fix a concrete wrong relationship, overlap, unreadable text or missing requested meaning; once those issues are resolved, deliver the inspected candidate.");
     spec.description.push_str(" revise changes only the supplied existing blocks by block_id and drawings by item_id in the current uncommitted candidate, preserving every other item, link, mapping and route. Supply at least one change. It creates a new revision and invalidates the previous preview and teaching approval. Read collection=candidate_blocks for the original source-bound blocks. Preview and inspect the revised candidate before selecting it by move.board_candidate_revision; never rewrite its teaching body at select.");
     spec.parameters["properties"].as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
     crate::tool_schema::complete_spec(spec)
@@ -604,6 +618,35 @@ pub fn spec() -> crate::ToolSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn registered_board_author_requires_clickable_sources_for_book_claims() {
+        let registry = crate::orchestrator::resident_tool_registry();
+        let registration = registry.registration("board.author").unwrap();
+        assert!(registration.spec.description.contains(SOURCE_CITATION_POLICY));
+        assert!(registration.spec.parameters["properties"]["blocks"]["description"]
+            .as_str().unwrap().contains("[[source:<source_ref_id>]]"));
+        let modules = crate::agent_prompt::policy_modules_for_tools(&[crate::ToolSpec {
+            name: "source.present".into(), description: String::new(), parameters: json!({}),
+        }]);
+        let policy = &modules.iter().find(|module| module.asset_id == "resident-agent.policy.source-delivery").unwrap().text;
+        assert!(policy.contains("Board replies are an exception"),
+            "the general optional-citation default must not contradict the board requirement");
+    }
+
+    #[test]
+    fn native_plan_and_links_without_evidence_pass_the_actual_tool_contract() {
+        let registry = crate::orchestrator::resident_tool_registry();
+        let registration = registry.registration("board.author").unwrap();
+        let plan = json!({"operation":"plan","focus":"一次写入如何改变原数组"});
+        registration.validate_arguments(&plan.to_string()).unwrap();
+        assert!(matches!(serde_json::from_value::<AuthorRequest>(plan).unwrap(), AuthorRequest::Plan { .. }));
+        let prepare = json!({"operation":"prepare","base_board_revision":1,"blocks":[{"block_id":"example","markdown":"同一个数组元素发生变化。"}],"drawings":[],
+            "links":[{"link_id":"mutation","from":{"kind":"item","item_id":"before"},"to":{"kind":"item","item_id":"after"},"label":"写入"}]});
+        registration.validate_arguments(&prepare.to_string()).unwrap();
+        let AuthorRequest::Prepare { links, .. } = serde_json::from_value::<AuthorRequest>(prepare).unwrap() else { panic!() };
+        assert!(links[0].based_on.is_empty());
+    }
 
     #[test]
     fn board_selection_requires_a_reference_and_never_accepts_a_second_body() {

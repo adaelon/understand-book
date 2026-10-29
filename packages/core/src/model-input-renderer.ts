@@ -132,7 +132,7 @@ export type ModelInputRenderRequest =
       >;
     }
   | { kind: "pass2_candidate_batch"; input: Pass2WorkPacket }
-  | { kind: "structure_outline" | "structure_chapter" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"; input: StructureOrganizationInput }
+  | { kind: "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"; input: StructureOrganizationInput }
   | { kind: "structure_unit"; input: BookStructureUnitSource }
   | { kind: "structure_fragment"; input: BookStructureFragmentInputV1 }
   | { kind: "structure_reduce"; input: BookStructureReductionInputV1 }
@@ -360,7 +360,7 @@ export function renderModelInput(request: ModelInputRenderRequest): string {
       return renderPaperLexiconModelInput(request.input);
     case "pass2_candidate_batch":
       return renderPass2ModelInput(request.input);
-    case "structure_outline": case "structure_chapter": case "structure_theme_plan": case "structure_theme": case "structure_theme_reconcile":
+    case "structure_outline": case "structure_outline_chapters": case "structure_outline_themes": case "structure_chapter": case "structure_theme_plan": case "structure_theme": case "structure_theme_reconcile":
       return renderStructureOrganizationInput(request.input);
     case "structure_unit":
     case "structure_stitch":

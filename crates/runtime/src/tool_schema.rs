@@ -29,6 +29,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
     let schema = &mut tool.parameters;
     match tool.name.as_str() {
         "board.author" => operations(schema, "operation", &[
+            ("plan", &["focus"], &["needs"]),
             ("read", &[], &["collection", "offset", "length", "board_revision", "candidate_revision"]),
             ("catalog", &["kind"], &["query", "after", "limit", "published_book_ref"]),
             ("source_read", &["source"], &["published_book_ref"]),
@@ -94,6 +95,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                     ("trace", &[], &["event_id", "after"]),
                     ("design", &["operation_id", "design"], &[]),
                     ("select", &["move"], &["delivery_move_refs", "finish", "delivery_scope"]),
+                    ("revise", &["draft_ref", "edits"], &[]),
                     ("outside", &[], &[]),
                     ("assess", &["action_ref"], &[]),
                     (

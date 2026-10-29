@@ -95,3 +95,85 @@ describe("SA3 epubToSource full chain with assets", () => {
     expect(nodes.filter((n) => n.children.length === 0)).toHaveLength(9);
   });
 });
+
+describe("EPUB images inside inline containers", () => {
+  it("preserves text and a nested image in reading order without duplicating text", () => {
+    const blocks = xhtmlToBlocks(
+      '<p>Before <span>inner <img alt="diagram" src="../Images/diagram.png" /> after</span> end.</p><p>Figure caption.</p>',
+      "OEBPS/Text/ch1.xhtml",
+    );
+
+    expect(blocks).toEqual([
+      { kind: "leaf", text: "Before inner" },
+      {
+        kind: "leaf",
+        assetKind: "image",
+        text: "![diagram](../Images/diagram.png)",
+        image: { alt: "diagram", src: "../Images/diagram.png", epubPath: "OEBPS/Images/diagram.png" },
+      },
+      { kind: "leaf", text: "after end." },
+      { kind: "leaf", text: "Figure caption." },
+    ]);
+  });
+
+  it("keeps multiple deeply nested images and their reference paths in order", () => {
+    const blocks = xhtmlToBlocks(
+      '<p><span><a href="#figure"><img alt="first" src="../Images/figure%201.png?size=2#view" /></a> between <em><img alt="second" src="../Images/second.jpg" /></em></span> tail.</p>',
+      "OEBPS/Text/ch1.xhtml",
+    );
+
+    expect(blocks.map((block) => [block.assetKind, block.text, block.image?.epubPath])).toEqual([
+      ["image", "![first](../Images/figure%201.png?size=2#view)", "OEBPS/Images/figure 1.png"],
+      [undefined, "between", undefined],
+      ["image", "![second](../Images/second.jpg)", "OEBPS/Images/second.jpg"],
+      [undefined, "tail.", undefined],
+    ]);
+  });
+
+  it("carries a nested image through source spans and segmentation without blank wrapper leaves", () => {
+    const zip = zipSync({
+      "META-INF/container.xml": strToU8('<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>'),
+      "OEBPS/content.opf": strToU8('<package><manifest><item id="c1" href="Text/ch1.xhtml"/></manifest><spine><itemref idref="c1"/></spine></package>'),
+      "OEBPS/Text/ch1.xhtml": strToU8('<html><body><h1>Chapter</h1><p>Before.</p><p> \n<span> <img alt="图示" src="../Images/figure.png" /> </span> </p><p>Figure caption.</p><p>After.</p></body></html>'),
+    });
+    const { source, blocks } = epubToSource(zip);
+    const nodes = segment(blocks);
+
+    expect(blocks.map((block) => block.text)).toEqual(["Chapter", "Before.", "![图示](../Images/figure.png)", "Figure caption.", "After."]);
+    const image = blocks[2];
+    expect(image.assetKind).toBe("image");
+    expect(image.image).toEqual({ alt: "图示", src: "../Images/figure.png", epubPath: "OEBPS/Images/figure.png" });
+    for (const block of blocks) expect(source.slice(block.span.start, block.span.end)).toBe(block.text);
+    expect(nodes.find((node) => node.kind === "image")?.span).toEqual(image.span);
+    expect(checkPartitionInvariant(nodes, source).violations).toEqual([]);
+  });
+
+  it("preserves image-table cells and their labels in reading order while retaining text tables", () => {
+    const blocks = xhtmlToBlocks(`<html><body>
+      <p>Before.</p>
+      <table><caption>Figure comparison.</caption><tbody><tr>
+        <td><p>Left label.</p><p><span><img alt="left" src="../Images/left.png" /></span></p><p>Left caption.</p></td>
+        <td><p>Right label.</p><p><span><img alt="right" src="../Images/right.png" /></span></p><p>Right caption.</p></td>
+      </tr></tbody></table>
+      <table><tr><th>Column</th><th>Value</th></tr><tr><td>Text</td><td>2</td></tr></table>
+      <p>After.</p>
+    </body></html>`, "OEBPS/Text/ch1.xhtml");
+
+    expect(blocks.map((block) => [block.assetKind, block.text])).toEqual([
+      [undefined, "Before."],
+      [undefined, "Figure comparison."],
+      [undefined, "Left label."],
+      ["image", "![left](../Images/left.png)"],
+      [undefined, "Left caption."],
+      [undefined, "Right label."],
+      ["image", "![right](../Images/right.png)"],
+      [undefined, "Right caption."],
+      ["table", "| Column | Value |\n| Text | 2 |"],
+      [undefined, "After."],
+    ]);
+    expect(blocks.filter((block) => block.assetKind === "image").map((block) => block.image?.epubPath)).toEqual([
+      "OEBPS/Images/left.png",
+      "OEBPS/Images/right.png",
+    ]);
+  });
+});

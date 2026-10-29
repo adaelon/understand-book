@@ -191,6 +191,19 @@ export interface AutomaticBuildDispatchRecoveryGenerationInspectionV1 {
   recovery_identity: AutomaticBuildRecoveryGenerationIdentity;
 }
 
+export interface AutomaticBuildDispatchRecoveryGenerationsInspectionV1 {
+  version: "automatic_build_dispatch_recovery_generations_inspection.v1";
+  dispatch_slot_ref: string;
+  identities: AutomaticBuildRecoveryGenerationIdentity[];
+}
+
+interface AutomaticBuildDispatchRecoveryGenerationInspectionOptions {
+  now?: string;
+  dispatch_run_id?: string;
+  max_semantic_attempts?: number;
+  max_lease_epochs?: number;
+}
+
 export interface AutomaticBuildExecutorDispatchReceiptV1 {
   version: "automatic_build_executor_dispatch_receipt.v1";
   dispatch_id: string;
@@ -1187,12 +1200,7 @@ export function inspectAutomaticBuildDispatchRecoveryGeneration(
   target: AutomaticBuildTarget,
   stage: AutomaticBuildStage,
   dispatchId: string,
-  options: {
-    now?: string;
-    dispatch_run_id?: string;
-    max_semantic_attempts?: number;
-    max_lease_epochs?: number;
-  } = {},
+  options: AutomaticBuildDispatchRecoveryGenerationInspectionOptions = {},
 ): AutomaticBuildDispatchRecoveryGenerationInspectionV1 {
   const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, options.dispatch_run_id);
   if (existsSync(dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id))) {
@@ -1202,6 +1210,24 @@ export function inspectAutomaticBuildDispatchRecoveryGeneration(
   if (!currentWorkUnitId) {
     throw new AutomaticBuildDispatchSettledError(`dispatch has no current work unit: ${dispatchId}`);
   }
+  const generation = inspectDispatchWorkUnitRecoveryGeneration(target, stage, persisted, currentWorkUnitId, options);
+  if (generation.status === "blocked") {
+    throw new Error(`dispatch recovery generation is not launchable: ${generation.reason}`);
+  }
+  return {
+    version: "automatic_build_dispatch_recovery_generation_inspection.v1",
+    dispatch_slot_ref: automaticBuildDispatchSlotRef(dispatchId, persisted.dispatch_run_id),
+    recovery_identity: generation.identity,
+  };
+}
+
+function inspectDispatchWorkUnitRecoveryGeneration(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  persisted: AutomaticBuildPersistedDispatchV1,
+  currentWorkUnitId: string,
+  options: AutomaticBuildDispatchRecoveryGenerationInspectionOptions,
+): { status: "launchable"; identity: AutomaticBuildRecoveryGenerationIdentity } | { status: "blocked"; reason: string } {
   const binding = persisted.manifest.task_bindings?.[currentWorkUnitId];
   const inspection = inspectAutomaticBuildTaskClaim(target, stage, currentWorkUnitId, {
     now: options.now,
@@ -1213,22 +1239,54 @@ export function inspectAutomaticBuildDispatchRecoveryGeneration(
     max_lease_epochs: options.max_lease_epochs,
   });
   if (inspection.status !== "ready" && inspection.status !== "already_leased") {
-    throw new Error(`dispatch recovery generation is not launchable: ${inspection.status}`);
+    return { status: "blocked", reason: inspection.status };
   }
   const identity: AutomaticBuildRecoveryGenerationIdentityV1 = {
     version: "automatic_build_recovery_generation_identity.v1",
-    dispatch_id: dispatchId,
+    dispatch_id: persisted.manifest.dispatch_id,
     dispatch_run_id: persisted.dispatch_run_id,
     current_work_unit_id: currentWorkUnitId,
     semantic_attempt: inspection.execution_identity.semantic_attempt,
     lease_epoch: inspection.execution_identity.lease_epoch,
   };
   const epoch = bootstrapEpoch(target, stage, identity);
+  return { status: "launchable", identity: epoch === 0 ? identity : { ...identity,
+    version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: epoch } };
+}
+
+/** Snapshot the remaining launchable prefix without claiming work. A later blocked unit
+ * ends the snapshot; a blocked current unit retains the single-generation error. */
+export function inspectAutomaticBuildDispatchRecoveryGenerations(
+  target: AutomaticBuildTarget,
+  stage: AutomaticBuildStage,
+  dispatchId: string,
+  options: AutomaticBuildDispatchRecoveryGenerationInspectionOptions = {},
+): AutomaticBuildDispatchRecoveryGenerationsInspectionV1 {
+  const persisted = readAutomaticBuildDispatch(target, stage, dispatchId, options.dispatch_run_id);
+  if (existsSync(dispatchReceiptPath(target, stage, dispatchId, persisted.dispatch_run_id))) {
+    throw new AutomaticBuildDispatchSettledError(`finished dispatch has no recovery generation: ${dispatchId}`);
+  }
+  const currentWorkUnitId = currentDispatchWorkUnitIdReadOnly(target, persisted);
+  if (!currentWorkUnitId) {
+    throw new AutomaticBuildDispatchSettledError(`dispatch has no current work unit: ${dispatchId}`);
+  }
+  const snapshotOptions = { ...options, now: options.now ?? new Date().toISOString() };
+  const remaining = persisted.manifest.ordered_work_unit_ids.slice(
+    persisted.manifest.ordered_work_unit_ids.indexOf(currentWorkUnitId),
+  );
+  const identities: AutomaticBuildRecoveryGenerationIdentity[] = [];
+  for (const workUnitId of remaining) {
+    const generation = inspectDispatchWorkUnitRecoveryGeneration(target, stage, persisted, workUnitId, snapshotOptions);
+    if (generation.status === "blocked") {
+      if (!identities.length) throw new Error(`dispatch recovery generation is not launchable: ${generation.reason}`);
+      break;
+    }
+    identities.push(generation.identity);
+  }
   return {
-    version: "automatic_build_dispatch_recovery_generation_inspection.v1",
+    version: "automatic_build_dispatch_recovery_generations_inspection.v1",
     dispatch_slot_ref: automaticBuildDispatchSlotRef(dispatchId, persisted.dispatch_run_id),
-    recovery_identity: epoch === 0 ? identity : { ...identity,
-      version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: epoch },
+    identities,
   };
 }
 

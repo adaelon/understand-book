@@ -89,7 +89,7 @@ export function AllowancePanel({
           >
             新建额度期
           </Button>
-          {current &&
+          {current && !current.balance.unlimited &&
             (current.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map((label) => (
               <Button
                 key={label}
@@ -103,9 +103,16 @@ export function AllowancePanel({
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        百分比按本期固定基准计算，实际收款单独以元记录。
+        {current?.balance.unlimited ? '内测不限额度，实际使用成本持续记录。' : '百分比按本期固定基准计算，实际收款单独以元记录。'}
       </p>
-      {current ? (
+      {current?.balance.unlimited ? (
+        <dl className="grid grid-cols-2 gap-3">
+          <Metric label="当前可用" value="不限额度" detail="内测期间有效" tone="green" />
+          <Metric label="累计已用" value={`${money(current.balance.debited_micro_cny)} 元`} detail="使用成本记录" />
+          <Metric label="在途预留" value={`${money(current.balance.active_reserved_micro_cny)} 元`} />
+          <Metric label="待核算" value={`${money(current.balance.pending_micro_cny)} 元`} />
+        </dl>
+      ) : current ? (
         <>
           <dl className="grid grid-cols-2 gap-3"><Metric label="当前可用" value={<AllowanceValue ratio={current.balance.percentages?.available} amount={current.balance.available_micro_cny}/>} detail="可用于后续 AI 调用" tone="green" /><Metric label="本期授予 / 调整" value={<AllowanceValue ratio={current.balance.percentages?.granted} amount={current.balance.granted_micro_cny}/>} detail={current.balance.allowance_basis ? '按本期固定基准计算，可超过 100%' : '本额度期累计授予与调整金额'} /></dl>
           <Distribution label="本期额度分配" total={current.balance.granted_micro_cny} segments={([
@@ -133,7 +140,7 @@ export function AllowancePanel({
         <p>当前无有效额度期。账号仍可阅读已授权材料与历史。</p>
       )}
       <CloudPlansPanel userId={userId} />
-      <p className="text-xs text-muted-foreground">补充额度不会改变旧用量比例，新一期不自动结转旧余额。</p>
+      {!current?.balance.unlimited && <p className="text-xs text-muted-foreground">补充额度不会改变旧用量比例，新一期不自动结转旧余额。</p>}
       <details>
         <summary className="cursor-pointer text-sm">
           查看各额度期 / 操作旧期
@@ -151,18 +158,18 @@ export function AllowancePanel({
                 },
                 {
                   header: "到期",
-                  cell: ({ row }) => date(row.original.expires_at),
+                  cell: ({ row }) => row.original.balance.unlimited ? '内测期间' : date(row.original.expires_at),
                 },
                 {
                   header: "可用额度",
                   cell: ({ row }) =>
-                    <AllowanceValue ratio={row.original.balance.percentages?.available} amount={row.original.balance.available_micro_cny}/>,
+                    row.original.balance.unlimited ? '不限额度' : <AllowanceValue ratio={row.original.balance.percentages?.available} amount={row.original.balance.available_micro_cny}/>,
                 },
                 {
                   header: "操作",
                   cell: ({ row }) => (
                     <div className="flex gap-1">
-                      {(row.original.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map(
+                      {(row.original.balance.unlimited ? ["编辑有效期"] : row.original.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map(
                         (label) => (
                           <Button
                             variant="ghost"

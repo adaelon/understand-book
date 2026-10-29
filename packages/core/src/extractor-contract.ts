@@ -528,6 +528,12 @@ export function automaticBuildCandidateCorrection(diagnostic: AutomaticBuildFail
     return { code: diagnostic.code, json_pointer: diagnostic.json_pointer, expected: diagnostic.expected };
   }
   if (diagnostic.phase !== "artifact_writer" || diagnostic.category !== "schema") return;
+  // Earlier bounded outlines validated the chapters array outside its envelope.
+  // Retain the recorded failure, but point correction at the actual candidate field.
+  if (diagnostic.code === "schema_invalid" && diagnostic.expected
+    && /^\/\d+\/(?:question|progression)\/(?:text|evidence_lids)(?:\/\d+)?$/u.test(diagnostic.json_pointer ?? "")) {
+    return { code: diagnostic.code, json_pointer: `/chapters${diagnostic.json_pointer}`, expected: diagnostic.expected };
+  }
   // Persisted BookStructure role errors pointed at a nonexistent singular field.
   // Keep the unchanged role rule, but correct the actual array rather than adding that field.
   if (diagnostic.code === "schema_invalid" && diagnostic.json_pointer === "/role_hint"

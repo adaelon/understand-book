@@ -98,7 +98,7 @@ const siteInfo = {
     title: uiText('服务条款'),
     intro: uiText('欢迎使用 Understand Book。这里说明当前邀请制内测的使用方式。'),
     sections: [
-      { title: uiText('账号与内测资格'), text: uiText('输入内测码即可获得独立的游客身份、示例材料和一次性 5 元体验额度，有效期 30 天。请保留浏览器数据，以便继续阅读；已有账号也可直接登录。') },
+      { title: uiText('账号与内测资格'), text: uiText('使用内测码和邮箱注册，完成邮箱验证后即可登录。内测期间 AI Token 免费使用，不限额度。已有账号可直接登录，继续之前的阅读与学习。') },
       { title: uiText('阅读材料与使用范围'), text: uiText('请仅提交和使用你有权使用的内容，尊重书籍、论文及其他材料的作者与权利人。获得阅读权限不代表获得转载、分发或商业使用的授权。') },
       { title: uiText('AI 回答与学习判断'), text: uiText('AI 生成的解释、引用和对理解程度的判断可能存在错误或遗漏。请结合原文和实际结果核对；你可以提出异议、纠正判断或调整学习方向。') },
       { title: uiText('内测期间的服务'), text: uiText('功能、可用材料与额度安排会随内测调整，维护时可能暂时无法使用。有关当前安排、使用问题与反馈，请联系邀请你参与内测的管理员。') },
@@ -165,7 +165,7 @@ const questions = [
   },
   {
     title: uiText('现在怎样开始使用？'),
-    answer: uiText('向邀请人领取内测码后，即可以游客身份进入，无需注册。每枚码赠送一次 5 元体验额度，有效期 30 天，并自动开通示例材料。从一份材料和一个想弄明白的问题开始。'),
+    answer: uiText('向邀请人领取内测码后，使用邮箱注册并完成验证。内测期间 AI Token 免费使用，不限额度。从已开放的材料和一个想弄明白的问题开始，下次用同一账号登录即可继续。'),
   },
 ];
 </script>
@@ -282,11 +282,11 @@ const questions = [
             <p>{{ uiText('带上想读的书、想学的课、想听懂的音乐。') }}<br />{{ uiText('从已开放的材料开始，一点点积累自己的理解。') }}</p>
           </div>
           <div class="home-begin-actions">
-            <p class="home-beta-notice">{{ uiText('已有内测码？无需注册，直接开始体验。') }}</p>
-            <a class="home-button home-button-light" href="./?account=guest">{{ uiText('输入内测码，开始体验') }} <ArrowUpRight :size="18" /></a>
+            <p class="home-beta-notice">{{ uiText('内测期间 AI Token 免费使用，不限额度。') }}</p>
+            <a class="home-button home-button-light" href="./?account=register">{{ uiText('已有内测码，开始注册') }} <ArrowUpRight :size="18" /></a>
             <a class="home-begin-login" href="./?account=login">{{ uiText('已经有账号？继续阅读') }} <ArrowRight :size="16" /></a>
             <a class="home-begin-login" href="/downloads/UnderstandBookSetup.exe" download>{{ uiText('下载 Windows 版 · 使用同一账号登录') }} <ArrowRight :size="16" /></a>
-            <p>{{ uiText('自动开通示例材料，并赠送一次 5 元体验额度，有效期 30 天。') }}</p>
+            <p>{{ uiText('使用内测码注册，验证邮箱后即可开始。') }}</p>
           </div>
         </div>
       </section>

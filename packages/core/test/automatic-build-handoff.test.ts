@@ -165,7 +165,7 @@ describe("automatic build Codex executor handoff", () => {
           phase: "reserved",
           reserved_at: "2026-07-19T00:00:00.000Z",
           reserve_expires_at: "2026-07-19T00:01:00.000Z",
-          policy_generation_id: "pass1-window.full.v1",
+          policy_generation_id: "pass1-window.full.v2",
         },
       });
       const executable = process.env.UNDERSTAND_BOOK_SIDECAR_SELF;

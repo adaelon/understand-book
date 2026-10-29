@@ -314,23 +314,25 @@ export function pass1ModelSlicePolicyMembers(
   profile: ContentProfileDefinition,
   qualityProfile: ExtractionQualityProfile = "full",
 ): AutomaticBuildStagePolicySetMemberInputV1[] {
+  // Source regrouping changes numeric window IDs and evidence LIDs. Keep the
+  // previous generation immutable even when the extraction contract is equal.
   return [
     {
       kind: "pass1_window",
       extractor: "pass1-local-extractor",
-      policy_generation_id: `pass1-window.${qualityProfile}.v1`,
+      policy_generation_id: `pass1-window.${qualityProfile}.v2`,
       policy_fingerprint: automaticBuildExtractionPolicy("pass1", profile, qualityProfile),
     },
     {
       kind: "pass1_source_slice",
       extractor: PASS1_SOURCE_FRAGMENT_EXTRACTOR,
-      policy_generation_id: `pass1-source-slice.${qualityProfile}.v1`,
+      policy_generation_id: `pass1-source-slice.${qualityProfile}.v2`,
       policy_fingerprint: pass1SourceFragmentPolicy(profile, qualityProfile),
     },
     {
       kind: "pass1_lid_stitch",
       extractor: PASS1_LID_STITCHER,
-      policy_generation_id: `pass1-lid-stitch.${qualityProfile}.v1`,
+      policy_generation_id: `pass1-lid-stitch.${qualityProfile}.v2`,
       policy_fingerprint: pass1LidStitchPolicy(profile, qualityProfile),
     },
   ];

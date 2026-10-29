@@ -135,7 +135,7 @@ pub(crate) fn request(access: &Arc<Authorization>, owner: &str, workspace: &str,
             if input["period_id"] != period { return Err(conflict("额度有效期已变化，请确认当前额度后继续")); }
             let basis = crate::account_allowance::basis(&tx,&period)?.ok_or_else(invalid)?;
             let amount = basis.grant(input["max_milli_percent"].as_i64().filter(|v|*v>0).ok_or_else(invalid)?)?.value();
-            if crate::account_allowance::balance(&tx,&period)?.available_micro_cny.value() <= 0 { return Err(conflict("当前额度不足，请补充后继续")); }
+            if !crate::account_allowance::balance(&tx,&period)?.can_reserve(1) { return Err(conflict("当前额度不足，请补充后继续")); }
             for material in &task.materials {
                 if material.input.published_book_ref.is_none() && material.input.material_kind.as_deref()==Some("video") {
                     crate::service_usage::rate(&service_root,"video_transcription",now)?;
@@ -165,7 +165,7 @@ fn view(db: &rusqlite::Connection, task: &builds::Task, now: i64, spend: &crate:
         let basis = crate::account_allowance::basis(db,&id)?;
         let balance = crate::account_allowance::balance(db,&id)?;
         let budget = builds::view(db,task)?["budget"].clone();
-        Ok(json!({"period_id":id,"expires_at":expires,"available":balance.percentages.as_ref().and_then(|v|v.get("available")),
+        Ok(json!({"period_id":id,"expires_at":expires,"unlimited":balance.unlimited,"available":balance.percentages.as_ref().and_then(|v|v.get("available")),
             "maximum":basis.as_ref().map(|b|b.percentage(task.max_micro_cny)),"remaining":basis.as_ref().and_then(|b|budget["remaining_micro_cny"].as_i64().map(|v|b.percentage(v)))}))
     }).transpose()?;
     let mut q=db.prepare("SELECT period_id,COALESCE(sum(account_debit_micro_cny),0),COALESCE(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0) FROM billable_usage WHERE parent_task_ref=? AND user_id=? GROUP BY period_id ORDER BY period_id").map_err(storage)?;

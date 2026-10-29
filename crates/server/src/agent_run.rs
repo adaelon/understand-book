@@ -393,6 +393,8 @@ pub(crate) fn execute_model(
         prepared.scope.provider_binding.clone(),
     );
     context.tutor = prepared.tutor.clone();
+    context.board_request_context = prepared.scope.board_context.as_ref()
+        .map(crate::board_api::FrozenBoardFollowUp::request_context);
     context.workspace_goal = prepared.scope.learning_workspace_id.as_ref()
         .zip(prepared.scope.goal.as_ref())
         .map(|(id, goal)| runtime::workspace_goal::WorkspaceGoalContext {

@@ -529,7 +529,7 @@ impl ReviewCoordinator {
             .review_state()
             .review_jobs
             .iter()
-            .filter(|job| review_job_is_ready(job, now_ms))
+            .filter(|job| review_job_is_ready(state.user.store.review_state(), job, now_ms))
             .count()
     }
 
@@ -649,12 +649,19 @@ impl ReviewCoordinator {
                 .review_state()
                 .review_jobs
                 .iter()
-                .find(|job| review_job_is_ready(job, moment.millis))
+                .find(|job| review_job_is_ready(state.user.store.review_state(), job, moment.millis))
                 .map(|job| job.job_id.clone())
             else {
                 return Ok(None);
             };
             let claimed = state.user.store.claim_review_job(&job_id, &moment.timestamp)?;
+            let input = match copy_review_input(&state, &claimed) {
+                Ok(input) => input,
+                Err(error) => {
+                    mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
+                    return Err(error);
+                }
+            };
             if config.is_none() {
                 let error = review_error(
                     "REVIEW_PROVIDER_UNCONFIGURED",
@@ -663,13 +670,6 @@ impl ReviewCoordinator {
                 mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
                 return Err(error);
             }
-            let input = match copy_review_input(&state, &claimed) {
-                Ok(input) => input,
-                Err(error) => {
-                    mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
-                    return Err(error);
-                }
-            };
             (job_id, input, claimed)
         };
 
@@ -682,6 +682,14 @@ impl ReviewCoordinator {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         state.user.check_owner(&self.owner)?;
+        if !review_job_is_running(&state.user.store, &claimed.job_id) {
+            return Ok(None);
+        }
+        let finished = ReviewMoment::from_millis(self.clock.now_millis().max(moment.millis));
+        if let Err(error) = user_review_session(&state.user, &claimed) {
+            mark_review_retryable(&mut state.user.store, &claimed, &error, &finished)?;
+            return Err(error);
+        }
         match execution {
             Ok(output) => {
                 let eligible_turn_ids: Vec<String> = input
@@ -694,16 +702,16 @@ impl ReviewCoordinator {
                     &eligible_turn_ids,
                     &output.fact_candidates,
                     &output.intent_observations,
-                    &moment.timestamp,
+                    &finished.timestamp,
                 ) {
-                    mark_review_retryable(&mut state.user.store, &claimed, &error, &moment)?;
+                    mark_review_retryable(&mut state.user.store, &claimed, &error, &finished)?;
                     return Err(error);
                 }
                 Ok(Some(ReviewRunOutcome { job_id, output }))
             }
             Err(error) => {
                 let provider_error = review_provider_error(error);
-                mark_review_retryable(&mut state.user.store, &claimed, &provider_error, &moment)?;
+                mark_review_retryable(&mut state.user.store, &claimed, &provider_error, &finished)?;
                 Err(provider_error)
             }
         }
@@ -864,7 +872,7 @@ fn ready_review_summary(state: &AppState, now_ms: u64) -> (bool, bool) {
     let mut has_ready_job = false;
     let mut has_due_retry = false;
     for job in &state.user.store.review_state().review_jobs {
-        if review_job_is_ready(job, now_ms) {
+        if review_job_is_ready(state.user.store.review_state(), job, now_ms) {
             has_ready_job = true;
             has_due_retry |= job.status == ReviewJobStatus::Retryable;
         }
@@ -872,7 +880,10 @@ fn ready_review_summary(state: &AppState, now_ms: u64) -> (bool, bool) {
     (has_ready_job, has_due_retry)
 }
 
-fn review_job_is_ready(job: &memory::ReviewJob, now_ms: u64) -> bool {
+fn review_job_is_ready(state: &memory::ReviewState, job: &memory::ReviewJob, now_ms: u64) -> bool {
+    if state.reviewed_through.get(&job.session_id).copied().unwrap_or(0) != job.from_turn_exclusive {
+        return false;
+    }
     match job.status {
         ReviewJobStatus::Queued => true,
         ReviewJobStatus::Retryable => job
@@ -880,7 +891,8 @@ fn review_job_is_ready(job: &memory::ReviewJob, now_ms: u64) -> bool {
             .as_deref()
             .and_then(|value| value.parse::<u64>().ok())
             .is_none_or(|next_attempt_ms| next_attempt_ms <= now_ms),
-        ReviewJobStatus::Running | ReviewJobStatus::Completed => false,
+        ReviewJobStatus::Running | ReviewJobStatus::Completed
+        | ReviewJobStatus::Failed | ReviewJobStatus::Cancelled => false,
     }
 }
 
@@ -897,6 +909,21 @@ pub(crate) fn mark_review_retryable(
     error: &read_tools::ToolError,
     moment: &ReviewMoment,
 ) -> Result<(), read_tools::ToolError> {
+    // A chat can be deleted while its provider call is in flight. Never revive it.
+    if !review_job_is_running(store, &job.job_id) {
+        return Ok(());
+    }
+    let error = ReviewErrorState {
+        error_code: error.error_code.clone(),
+        message: error.message.clone(),
+        occurred_at: moment.timestamp.clone(),
+    };
+    if error.error_code == "REVIEW_INPUT_MISSING" {
+        return store.cancel_session_review_jobs(&job.session_id, error, &moment.timestamp);
+    }
+    if matches!(error.error_code.as_str(), "REVIEW_INPUT_GAP" | "REVIEW_INPUT_MISMATCH") {
+        return store.fail_review_job(&job.job_id, error, &moment.timestamp);
+    }
     let next_attempt_at = moment
         .millis
         .saturating_add(retry_delay_ms(job.attempts))
@@ -904,14 +931,15 @@ pub(crate) fn mark_review_retryable(
     store.mark_review_job_retryable(
         &job.job_id,
         &next_attempt_at,
-        ReviewErrorState {
-            error_code: error.error_code.clone(),
-            message: error.message.clone(),
-            occurred_at: moment.timestamp.clone(),
-        },
+        error,
         &moment.timestamp,
     )?;
     Ok(())
+}
+
+pub(crate) fn review_job_is_running(store: &MemoryStore, job_id: &str) -> bool {
+    store.review_state().review_jobs.iter()
+        .any(|job| job.job_id == job_id && job.status == ReviewJobStatus::Running)
 }
 
 fn historical_backfill_job_is_running(store: &MemoryStore, job_id: &str) -> bool {
@@ -1015,12 +1043,7 @@ pub(crate) fn copy_user_review_input(
     job: &memory::ReviewJob,
     content_profile: &str,
 ) -> Result<ReviewInput, read_tools::ToolError> {
-    let session = user.agent_history
-        .sessions
-        .iter()
-        .find(|session| session.id == job.session_id && session.book_id == job.book_id
-            && session.learning_workspace_id == job.learning_workspace_id)
-        .ok_or_else(|| review_error("REVIEW_INPUT_MISSING", "review session does not exist"))?;
+    let session = user_review_session(user, job)?;
     let turns: Vec<ReviewTurnInput> = session
         .turns
         .iter()
@@ -1069,6 +1092,19 @@ pub(crate) fn copy_user_review_input(
         to_turn_inclusive: job.to_turn_inclusive,
         turns,
     })
+}
+
+pub(crate) fn user_review_session<'a>(
+    user: &'a crate::user_runtime::UserRuntime,
+    job: &memory::ReviewJob,
+) -> Result<&'a crate::AgentChatSession, read_tools::ToolError> {
+    let session = user.agent_history.sessions.iter()
+        .find(|session| session.id == job.session_id)
+        .ok_or_else(|| review_error("REVIEW_INPUT_MISSING", "review session does not exist"))?;
+    if session.book_id != job.book_id || session.learning_workspace_id != job.learning_workspace_id {
+        return Err(review_error("REVIEW_INPUT_MISMATCH", "review source ownership does not match its session"));
+    }
+    Ok(session)
 }
 
 fn review_error(code: &str, message: impl Into<String>) -> read_tools::ToolError {
@@ -1343,7 +1379,7 @@ fn start_server_with_memory_path(
         .review_state()
         .review_jobs
         .iter()
-        .any(|job| job.status != ReviewJobStatus::Completed);
+        .any(|job| job.status.is_pending());
     let state = Arc::new(Mutex::new(AppState {
         services: crate::service_state::ServiceState {
             desktop_host: config.desktop_host,
@@ -3120,6 +3156,99 @@ mod tests {
         assert_eq!(job.attempts, 2);
         assert_eq!(job.next_attempt_at.as_deref(), Some("3000"));
         assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn review_retry_deadline_starts_after_slow_provider_failure() {
+        struct SlowFailure(Arc<FakeClock>);
+        impl ReviewExecutorFactory for SlowFailure {
+            fn create(&self, _: &ProviderConfig) -> Box<dyn ReviewExecutor> {
+                Box::new(SlowFailure(self.0.clone()))
+            }
+        }
+        impl ReviewExecutor for SlowFailure {
+            fn execute(&mut self, _: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
+                self.0.set(180_000);
+                Err(AdapterError { message: "provider timed out".into(), spend_stop: None })
+            }
+        }
+        let state = review_test_state_with("retry-finish-clock", 1, 1);
+        let clock = Arc::new(FakeClock::default());
+        let coordinator = ReviewCoordinator::new_with_clock(
+            state.clone(), Some(review_provider("slow-review")),
+            Arc::new(SlowFailure(clock.clone())), clock.clone(),
+        );
+        coordinator.request_startup_run();
+        assert!(coordinator.scheduler_tick().is_err());
+        {
+            let state = state.lock().unwrap();
+            let job = &state.user.store.review_state().review_jobs[0];
+            assert_eq!(job.updated_at, "180000");
+            assert_eq!(job.next_attempt_at.as_deref(), Some("181000"));
+            assert_eq!(job.last_error.as_ref().unwrap().occurred_at, "180000");
+        }
+        clock.set(180_999);
+        assert_eq!(coordinator.scheduler_tick().unwrap(), 0);
+    }
+
+    #[test]
+    fn stopped_review_discards_provider_output_without_committing_or_retrying() {
+        struct DeleteDuringReview(Arc<Mutex<AppState>>);
+        impl ReviewExecutorFactory for DeleteDuringReview {
+            fn create(&self, _: &ProviderConfig) -> Box<dyn ReviewExecutor> {
+                Box::new(DeleteDuringReview(self.0.clone()))
+            }
+        }
+        impl ReviewExecutor for DeleteDuringReview {
+            fn execute(&mut self, input: &ReviewInput) -> Result<ReviewExecutionOutput, AdapterError> {
+                let mut state = self.0.lock().unwrap();
+                state.user.agent_history.sessions.retain(|session| session.id != input.session_id);
+                state.user.store.cancel_session_review_jobs(&input.session_id, ReviewErrorState {
+                    error_code: "REVIEW_SOURCE_DELETED".into(), message: "chat deleted".into(), occurred_at: "2".into(),
+                }, "2").unwrap();
+                Ok(ReviewExecutionOutput { fact_candidates: vec![], intent_observations: vec![] })
+            }
+        }
+        let state = review_test_state_with("review-deleted-inflight", 1, 1);
+        let coordinator = ReviewCoordinator::new_with_clock(
+            state.clone(), Some(review_provider("review-delete")),
+            Arc::new(DeleteDuringReview(state.clone())), Arc::new(FakeClock::default()),
+        );
+        assert!(coordinator.run_one("1").unwrap().is_none());
+        assert!(coordinator.run_one("3").unwrap().is_none());
+        let state = state.lock().unwrap();
+        let job = &state.user.store.review_state().review_jobs[0];
+        assert_eq!(job.status, ReviewJobStatus::Cancelled);
+        assert_eq!(job.attempts, 1);
+        assert!(state.user.store.review_state().reviewed_through.is_empty());
+    }
+
+    #[test]
+    fn permanent_review_input_errors_stop_before_model_calls() {
+        for reason in ["missing", "mismatch", "gap"] {
+            let state = review_test_state_with(&format!("review-permanent-{reason}"), 1, 2);
+            {
+                let mut state = state.lock().unwrap();
+                match reason {
+                    "missing" => state.user.agent_history.sessions.clear(),
+                    "mismatch" => state.user.agent_history.sessions[0].book_id = "different-book".into(),
+                    "gap" => { state.user.agent_history.sessions[0].turns.pop(); },
+                    _ => unreachable!(),
+                }
+            }
+            let calls = Arc::new(AtomicUsize::new(0));
+            let coordinator = ReviewCoordinator::new_with_clock(
+                state.clone(), Some(review_provider("review-invalid-source")),
+                Arc::new(ImmediateFactory { calls: calls.clone() }), Arc::new(FakeClock::default()),
+            );
+            assert!(coordinator.run_one("1").is_err());
+            assert!(coordinator.run_one("2").unwrap().is_none());
+            assert_eq!(calls.load(Ordering::SeqCst), 0);
+            let state = state.lock().unwrap();
+            let job = &state.user.store.review_state().review_jobs[0];
+            assert_eq!(job.status, if reason == "missing" { ReviewJobStatus::Cancelled } else { ReviewJobStatus::Failed });
+            assert_eq!(job.attempts, 1);
+        }
     }
 
     #[test]

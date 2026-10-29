@@ -80,6 +80,7 @@ impl FromSql for ReceiptFen {
 
 #[derive(Debug, Serialize)]
 pub struct AllowanceBalance {
+    pub unlimited: bool,
     pub granted_micro_cny: MicroCny,
     pub debited_micro_cny: MicroCny,
     pub active_reserved_micro_cny: MicroCny,
@@ -87,6 +88,12 @@ pub struct AllowanceBalance {
     pub available_micro_cny: MicroCny,
     pub allowance_basis: Option<AllowanceBasis>,
     pub percentages: Option<Value>,
+}
+
+impl AllowanceBalance {
+    pub(crate) fn can_reserve(&self, amount: i64) -> bool {
+        self.unlimited || self.available_micro_cny.value() >= amount
+    }
 }
 
 /// The explicit, immutable denominator for one allowance period. No price is
@@ -149,11 +156,11 @@ pub(crate) fn balance(
     db: &rusqlite::Connection,
     period: &str,
 ) -> Result<AllowanceBalance, read_tools::ToolError> {
-    let granted: i64 = db
+    let (unlimited, granted): (bool, i64) = db
         .query_row(
-            "SELECT COALESCE(sum(delta_micro_cny),0) FROM allowance_adjustments WHERE period_id=?",
+            "SELECT p.unlimited, COALESCE((SELECT sum(delta_micro_cny) FROM allowance_adjustments WHERE period_id=p.period_id),0) FROM allowance_periods p WHERE p.period_id=?",
             [period],
-            |r| r.get(0),
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .map_err(crate::allowance_admin::storage)?;
     let (debit,active,pending): (i64,i64,i64) = db.query_row("SELECT COALESCE(sum(account_debit_micro_cny),0),COALESCE(sum(CASE WHEN state IN ('reserved','sent') THEN reserved_micro_cny ELSE 0 END),0),COALESCE(sum(CASE WHEN state='pending' THEN reserved_micro_cny ELSE 0 END),0) FROM billable_usage WHERE period_id=?",[period],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).map_err(crate::allowance_admin::storage)?;
@@ -170,6 +177,7 @@ pub(crate) fn balance(
         "deficit":basis.percentage(if available < 0 { available.saturating_neg() } else { 0 })
     }));
     Ok(AllowanceBalance {
+        unlimited,
         granted_micro_cny: MicroCny(granted),
         debited_micro_cny: MicroCny(debit),
         active_reserved_micro_cny: MicroCny(active),

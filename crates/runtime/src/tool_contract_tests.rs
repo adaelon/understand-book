@@ -174,8 +174,8 @@ fn advertised_examples_survive_provider_projection_and_real_validation() {
             count += 1;
         }
     }
-    // Includes ranked searches and five examples for music reading/interaction.
-    assert_eq!(count, 74);
+    // Covers all currently advertised examples, including the assisted-expression invitation.
+    assert_eq!(count, 79);
 }
 
 #[test]
@@ -199,22 +199,22 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         context
     };
     let cases = [
-        ("active", json!({"status":"active"}), 13),
-        ("native_board_pending", json!({"status":"active","native_board_candidate_pending":true}), 13),
+        ("active", json!({"status":"active"}), 16),
+        ("native_board_pending", json!({"status":"active","native_board_candidate_pending":true}), 14),
         ("native_board_action", native_action, 11),
-        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 13),
+        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 16),
         ("observing", json!({"status":"observing"}), 2),
         ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 2),
         ("reference", json!({"status":"reference"}), 1),
-        ("explain_selection", action("explain_selection"), 10),
-        ("clarify_answer", action("clarify_answer"), 13),
-        ("continue_answer", action("continue_answer"), 13),
-        ("supplement", supplement, 13),
-        ("guided_default", guided, 13),
-        ("confirmed_preference", preferred, 13),
-        ("choice_explain", choice("explain"), 13),
-        ("choice_compare", choice("compare"), 13),
-        ("choice_observe", choice("observe"), 13),
+        ("explain_selection", action("explain_selection"), 12),
+        ("clarify_answer", action("clarify_answer"), 16),
+        ("continue_answer", action("continue_answer"), 16),
+        ("supplement", supplement, 16),
+        ("guided_default", guided, 16),
+        ("confirmed_preference", preferred, 16),
+        ("choice_explain", choice("explain"), 16),
+        ("choice_compare", choice("compare"), 16),
+        ("choice_observe", choice("observe"), 16),
     ];
     let mut snapshots = serde_json::Map::new();
     for (name, context, count) in cases {
@@ -680,6 +680,89 @@ fn goal_operations_never_silently_discard_plan_fields() {
         json!({"operation":"working","focus":"Read","next_move":"Explain","items":[]}),
         true,
     );
+}
+
+#[test]
+fn tutor_revision_contract_accepts_only_local_text_edits_and_evidence_resubmission() {
+    let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({"status":"active"})));
+    let registration=registry.registration("tutor.step").unwrap();
+    let evidence_only=json!({"operation":"revise","draft_ref":"draft:current","edits":[]});
+    registration.validate_arguments(&evidence_only.to_string()).unwrap();
+    let replacement=json!({"operation":"revise","draft_ref":"draft:current","edits":[
+        {"field":"delivery_text","paragraph":2,"new_text":""},
+        {"field":"public_prompt","paragraph":1,"new_text":"Can a later route select the retained B?"}
+    ]});
+    registration.validate_arguments(&replacement.to_string()).unwrap();
+    let mut invalid=vec![
+        json!({"operation":"revise"}),
+        json!({"operation":"revise","draft_ref":"draft:current"}),
+        json!({"operation":"revise","draft_ref":"","edits":[]}),
+        json!({"operation":"revise","draft_ref":"draft:current","edits":null}),
+    ];
+    for field in ["field","paragraph","new_text"] {
+        let mut request=replacement.clone();
+        request["edits"][0].as_object_mut().unwrap().remove(field);
+        invalid.push(request);
+    }
+    for (field,value) in [("field",json!("participation")),("paragraph",json!(0)),("paragraph",json!(-1)),
+        ("paragraph",json!(1.5)),("paragraph",json!("1")),("paragraph",Value::Null),
+        ("old_text",json!("Unsupported detail.")),("new_text",Value::Null),("path",json!("move.target"))] {
+        let mut request=replacement.clone();
+        request["edits"][0][field]=value;
+        invalid.push(request);
+    }
+    invalid.push(json!({"operation":"revise","draft_ref":"draft:current","edits":[
+        {"field":"delivery_text","old_text":"Unsupported detail.","new_text":"Corrected detail."}
+    ]}));
+    for (field,value) in [("finish",json!(true)),("move",json!({})),("delivery_move_refs",json!([]))] {
+        let mut request=evidence_only.clone();
+        request[field]=value;
+        invalid.push(request);
+    }
+    for request in invalid {
+        assert!(registration.validate_arguments(&request.to_string()).is_err(),"{request}");
+    }
+}
+
+#[test]
+fn tutor_revision_vocabulary_stays_stable_and_requires_active_text_mode() {
+    let plain=json!({"status":"active"});
+    let with_draft=json!({"status":"active","draft_ref":"draft:current","open_issues":[{"issue":"Missing source evidence"}]});
+    for model_facing in [false,true] {
+        let schema=|context:&Value| if model_facing {crate::tutor::model_spec_for_context(context)} else {crate::tutor::spec_for_context(context)};
+        let first=schema(&plain).unwrap();
+        let next=schema(&with_draft).unwrap();
+        assert_eq!(serde_json::to_value(first).unwrap(),serde_json::to_value(next).unwrap(),
+            "actual draft availability and refs belong in private state, not a changing tool vocabulary");
+        for context in [json!({"status":"observing"}),json!({"status":"reference"}),json!({"status":"active","native_board_candidate_pending":true})] {
+            let spec=schema(&context).unwrap();
+            assert!(!spec.parameters["properties"]["operation"]["enum"].as_array().unwrap().contains(&json!("revise")));
+            assert!(spec.parameters["properties"].get("draft_ref").is_none());
+            assert!(spec.parameters["properties"].get("edits").is_none());
+            assert!(validate_schema(&spec.parameters,&json!({"operation":"revise","draft_ref":"draft:current","edits":[]}),"$").is_err());
+        }
+    }
+    assert!(crate::tutor::execution_guidance(&plain)["text_revision"].is_object());
+    assert!(crate::tutor::execution_guidance(&json!({"status":"active","native_board_candidate_pending":true}))["text_revision"].is_null());
+}
+
+#[test]
+fn tutor_revision_edit_text_stays_private_in_public_arguments() {
+    let request=json!({"operation":"revise","draft_ref":"draft:current","edits":[
+        {"field":"delivery_text","paragraph":2,"new_text":"PRIVATE_REPLACEMENT"},
+        {"field":"public_prompt","paragraph":1,"new_text":"PRIVATE_NEW_INVITATION"}
+    ]});
+    let public:Value=serde_json::from_str(&crate::tutor::public_arguments(&request.to_string())).unwrap();
+    assert_eq!(public,json!({"operation":"revise","draft_ref":"draft:current","edits":[{"field":"delivery_text","paragraph":2},{"field":"public_prompt","paragraph":1}]}));
+    for malformed in [
+        json!({"operation":"revise","edits":"PRIVATE_MALFORMED_PATCH"}),
+        json!({"operation":"revise","edits":{"paragraph":2,"new_text":"PRIVATE_REPLACEMENT"}}),
+        json!({"operation":"revise","edits":[{"field":"PRIVATE_INVALID_FIELD","paragraph":2,"new_text":"PRIVATE_REPLACEMENT"}]}),
+        json!({"operation":"revise","edits":[{"field":"delivery_text","paragraph":"PRIVATE_INVALID_NUMBER","new_text":"PRIVATE_REPLACEMENT"}]}),
+        json!({"operation":"revise","edits":[{"field":"delivery_text","old_text":"PRIVATE_OLD_DRAFT","new_text":"PRIVATE_REPLACEMENT"}]}),
+    ] {
+        assert!(!crate::tutor::public_arguments(&malformed.to_string()).contains("PRIVATE_"));
+    }
 }
 
 #[test]

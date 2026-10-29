@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { t as uiText } from './i18n';
+import { useAccountPresence } from './account-presence';
 
 import LanguageSwitcher from './components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -29,14 +30,13 @@ import PersonalMaterials from './components/PersonalMaterials.vue';
 import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
 import { readBoardRoute } from './board-route';
 import AccountAccess from './components/AccountAccess.vue';
-import GuestAccess from './components/GuestAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
 import SourceExcerpt from './components/SourceExcerpt.vue';
 import { api, ApiError } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
 import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, savedWorkspace, saveWorkspace, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef, type LearningWorkspace } from './network-context';
-import { networkFetch, recoverWorkspaceBinding, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, openLibraryMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
+import { networkFetch, recoverWorkspaceBinding, requestWorkspaceRecovery, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, openLibraryMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
 import { savedLearningSelection, saveLearningSelection, learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
@@ -56,6 +56,7 @@ try { pendingSource = readMcpSource(location.search); } catch (failure) { source
 let mcpRequested = new URLSearchParams(location.search).get('account') === 'mcp';
 const accountLink = takeAccountLink();
 const accountView = ref<AccountView | null>(accountLink.view), resetToken = ref(accountLink.token);
+useAccountPresence(() => !checking.value && !accountView.value);
 accountLink.token = '';
 function showAccount(view: AccountView | null) {
   accountView.value = view; password.value = ''; resetToken.value = '';
@@ -339,6 +340,7 @@ async function followUp(message: string, receipt: import('./generated/Presentati
   catch (failure) { if (scope === sceneKey()) showFailure(failure); }
 }
 function pageHide() {
+  clearRecoveryRetry();
   invalidateLinkedWindows();
   suspended.value = true;
   const n = network.value, w = n.workspace;
@@ -357,6 +359,21 @@ watch(() => network.value.identity?.user_id, () => {
   selectedLearningId.value = savedLearningSelection(); sharedOpen.value = false;
 }, { flush: 'sync' });
 let identityCheck: Promise<void> | null = null;
+let recoveryRetryTimer: ReturnType<typeof setTimeout> | undefined;
+let recoveryRetryDelay = 1000;
+let disposed = false;
+function clearRecoveryRetry() { clearTimeout(recoveryRetryTimer); recoveryRetryTimer = undefined; }
+function scheduleRecoveryRetry() {
+  if (disposed || recoveryRetryTimer !== undefined || document.visibilityState === 'hidden' || navigator.onLine === false
+    || !network.value.identity || !network.value.workspace || network.value.linked || accountView.value || opening.value) return;
+  const owner = sceneKey();
+  recoveryRetryTimer = setTimeout(() => {
+    recoveryRetryTimer = undefined;
+    if (!disposed && owner === sceneKey() && document.visibilityState !== 'hidden' && navigator.onLine !== false) void checkIdentity();
+  }, recoveryRetryDelay);
+  recoveryRetryDelay = Math.min(recoveryRetryDelay * 2, 30_000);
+}
+watch(() => network.value.identity?.user_id, () => { clearRecoveryRetry(); recoveryRetryDelay = 1000; });
 let restoreOnLoad = true;
 const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('understand-book:authentication');
 network.value = { ...network.value, enabled: true };
@@ -407,7 +424,7 @@ async function checkIdentity() {
       window.dispatchEvent(new Event('workspace-recovered'));
       await openAccountDestination();
     } catch (failure) {
-      if (network.value.identity) showFailure(failure);
+      if (!disposed && network.value.identity) { showFailure(failure); requestWorkspaceRecovery(failure); }
     } finally { checking.value = false; identityCheck = null; }
   })();
   return identityCheck;
@@ -425,15 +442,6 @@ async function login() {
     await openAccountDestination();
   } catch { error.value = uiText('登录失败，请核对账号、密码或稍后重试。'); }
   finally { password.value = ''; busy.value = false; checking.value = false; }
-}
-async function enterGuest(identity: NetworkIdentity) {
-  showAccount(null); error.value = ''; checking.value = true;
-  installIdentity(identity); channel?.postMessage('changed');
-  try {
-    await catalog(); restoreOnLoad = false; await restoreLastVisit();
-    await openAccountDestination();
-  } catch (failure) { showFailure(failure); }
-  finally { checking.value = false; }
 }
 async function logout() {
   if (network.value.identity?.is_guest && !window.confirm(uiText('退出后，这枚内测码无法再次使用，也无法自行恢复游客记录。确定退出体验吗？'))) return;
@@ -499,7 +507,10 @@ function retryBookOpening() {
   else void runBookOpening(request);
 }
 function pendingChanged() { pendingItems.value = pendingSubmissions(); pending.value = pendingItems.value.length; }
-function onVisible() { if (document.visibilityState !== 'hidden' && !opening.value) void checkIdentity(); }
+function onVisible() {
+  clearRecoveryRetry();
+  if (document.visibilityState !== 'hidden' && !opening.value) { recoveryRetryDelay = 1000; void checkIdentity(); }
+}
 function onLearningGoalChanged(event: Event) {
   if ((event as CustomEvent<{ learning_workspace_id: string }>).detail?.learning_workspace_id === network.value.workspace?.learning_workspace_id) void loadLearningSpaces();
 }
@@ -513,6 +524,7 @@ async function onAccountChange(event: MessageEvent) {
 onMounted(() => {
   void checkIdentity();
   window.addEventListener('pagehide', pageHide);
+  window.addEventListener('workspace-recovery-needed', scheduleRecoveryRetry);
   window.addEventListener('message', receiveLinked);
   window.addEventListener('submission-pending-changed', pendingChanged);
   window.addEventListener('learning-workspace-goal-changed', onLearningGoalChanged);
@@ -521,8 +533,10 @@ onMounted(() => {
   window.addEventListener('pageshow', onVisible); window.addEventListener('online', onVisible); window.addEventListener('focus', onVisible);
 });
 onBeforeUnmount(() => {
+  disposed = true; clearRecoveryRetry();
   cancelBookOpening();
   window.removeEventListener('pagehide', pageHide);
+  window.removeEventListener('workspace-recovery-needed', scheduleRecoveryRetry);
   window.removeEventListener('message', receiveLinked);
   window.removeEventListener('submission-pending-changed', pendingChanged);
   window.removeEventListener('learning-workspace-goal-changed', onLearningGoalChanged);
@@ -532,8 +546,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <DesktopAuthorization />
-  <GuestAccess v-if="accountView === 'guest'" @entered="enterGuest" @login="accountLogin" />
-  <AccountAccess v-else-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
+  <AccountAccess v-if="accountView" :key="accountView" :view="accountView" :token="resetToken" @login="accountLogin" @reset="passwordChanged" @forgot="showAccount('forgot-password')" />
   <main v-else-if="checking && !network.workspace" class="network-loading"><LoadingAnimation /></main>
   <main v-else-if="!network.identity" class="network-login">
     <header class="login-heading"><a class="brand-signature" href="/home.html"><img :src="brandLogo" class="brand-logo" width="36" height="36" alt="" /><span>Understand Book</span></a><LanguageSwitcher /></header>
@@ -544,7 +557,7 @@ onBeforeUnmount(() => {
       <label>{{ uiText('密码') }}<input v-model="password" type="password" autocomplete="current-password" required></label>
       <button :disabled="busy">{{ uiText('登录') }}</button>
     </form>
-    <p v-if="!isTauri()"><button :disabled="busy" @click="showAccount('guest')">{{ uiText('内测码免注册体验') }}</button> <button :disabled="busy" @click="showAccount('register')">{{ uiText('注册账号') }}</button> <button :disabled="busy" @click="showAccount('forgot-password')">{{ uiText('忘记密码') }}</button></p>
+    <p v-if="!isTauri()"><button :disabled="busy" @click="showAccount('register')">{{ uiText('注册账号') }}</button> <button :disabled="busy" @click="showAccount('forgot-password')">{{ uiText('忘记密码') }}</button></p>
     <p role="status">{{ error }}</p>
   </main>
   <div v-else class="network-shell">
@@ -566,7 +579,7 @@ onBeforeUnmount(() => {
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
-    <main v-else-if="openingRecap" class="network-loading"><LoadingAnimation /></main>
+    <main v-else-if="openingRecap || (suspended && network.workspace && !network.linked)" class="network-loading"><LoadingAnimation /></main>
     <section v-if="!selectedVideo && !libraryOpen && network.workspace?.learning_workspace_id && currentLearningGoal" class="workspace-goal-bar" :aria-label="uiText('工作区大目标')">
       <div><span>{{ uiText('工作区大目标') }}</span><p>{{ currentLearningGoal.text }}</p></div>
       <button v-if="!network.linked" :disabled="busy" @click="manageCurrentLearning">{{ uiText('工作区与资料') }}</button>

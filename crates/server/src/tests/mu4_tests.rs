@@ -11,6 +11,30 @@ use crate::{
 const PASSWORD: &str = "fixture-only-password";
 const ORIGIN: &str = "https://reader.example";
 
+#[test]
+fn mu4_warm_context_refreshes_activity_and_revalidates_disabled_account() {
+    let mut f = Fixture::unseeded();
+    let token = f.login("A");
+    let now = multi_user_host::now();
+    let principal = f.access.auth.authenticate(&token, now).unwrap();
+    let context = f.access.context(principal.clone(), now).unwrap();
+    let handle = context.user.clone();
+    let before = std::time::Instant::now();
+    handle.lock().unwrap().last_access = before - crate::user_registry::USER_IDLE_TTL;
+    drop(context);
+
+    let context = f.access.context(principal.clone(), now).unwrap();
+    assert!(Arc::ptr_eq(&handle, &context.user));
+    assert!(handle.lock().unwrap().last_access >= before);
+    drop(context);
+    drop(handle);
+    assert_eq!(f.access.users.lock().unwrap().evict_idle(before).unwrap(), 0);
+
+    f.control.set_user_disabled("A", true).unwrap();
+    assert!(f.access.context(principal, now).is_err());
+    assert!(f.access.users.lock().unwrap().lookup("A", &now.to_string()).is_err());
+}
+
 fn persist_fixture_session(user: &mut crate::user_runtime::UserRuntime, mut session: AgentChatSession) {
     use crate::session_event::{EventBody, TurnFinished};
     assert_eq!(session.turns.len(), 1);
@@ -83,12 +107,90 @@ fn multi_user_review_consumes_idle_jobs_without_holding_user_lock() {
     assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_001_000), 0, "idle debounce");
     assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_061_000), 0);
     assert_eq!(user.lock().unwrap().store.review_state().review_jobs[0].status, memory::ReviewJobStatus::Retryable);
-    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_061_500), 0,"retry delay");
-    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_062_001), 1);
+    let retry_at = user.lock().unwrap().store.review_state().review_jobs[0]
+        .next_attempt_at.as_ref().unwrap().parse::<u64>().unwrap();
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, retry_at - 500), 0,"retry delay");
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, retry_at), 1);
     assert_eq!(user.lock().unwrap().store.review_state().review_jobs[0].status, memory::ReviewJobStatus::Completed);
     assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 1_100_000), 0, "no duplicate extraction");
     let other = f.access.users.lock().unwrap().get("B", "1100").unwrap();
     assert!(other.lock().unwrap().store.profile_facts().is_empty());
+}
+
+#[test]
+fn multi_user_review_delete_cancels_inflight_and_discards_output() {
+    struct DeleteWhileReviewing {
+        access: std::sync::Weak<Authorization>,
+        token: String,
+    }
+    impl ModelAdapter for DeleteWhileReviewing {
+        fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
+        fn chat(&self, _: &runtime::AgentRequestPlan) -> Result<runtime::AssistantTurn, AdapterError> { unreachable!() }
+        fn complete_structured(&self, _: CompletionRequest) -> Result<Value, AdapterError> {
+            let access = self.access.upgrade().unwrap();
+            let reply = multi_user_host::dispatch(
+                &access, &Site::new(ORIGIN).unwrap(), "DELETE", "/api/me/chats/chat-A",
+                &Headers(vec![
+                    ("Host".into(), "reader.example".into()), ("Origin".into(), ORIGIN.into()),
+                    ("Cookie".into(), format!("{COOKIE}={}", self.token)),
+                    ("X-CSRF-Token".into(), crate::auth::csrf(&self.token)),
+                ]), "{}", multi_user_host::now(),
+            );
+            assert_eq!(reply.status, 200, "{}", body(&reply));
+            Ok(json!({"candidate_facts":[],"intent_observations":[]}))
+        }
+    }
+    let f = Fixture::new();
+    let user = f.access.users.lock().unwrap().get("A", "1").unwrap();
+    {
+        let mut user = user.lock().unwrap();
+        let cursors = agent_history_review_cursors(&user.agent_history);
+        user.store.reconcile_review_jobs(&cursors, "1").unwrap();
+    }
+    let weak = Arc::downgrade(&f.access);
+    let token = f.login("A");
+    f.access.runs.configure_fake(move || Box::new(DeleteWhileReviewing { access: weak.clone(), token: token.clone() }));
+    let cancel = runtime::run_context::CancellationToken::default();
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 61_000), 0);
+    assert_eq!(crate::multi_user_review::tick(&f.access, &cancel, 200_000), 0);
+    let user = user.lock().unwrap();
+    let job = &user.store.review_state().review_jobs[0];
+    assert_eq!(job.status, memory::ReviewJobStatus::Cancelled);
+    assert_eq!(job.attempts, 1);
+    assert_eq!(job.last_error.as_ref().unwrap().error_code, "REVIEW_SOURCE_DELETED");
+    assert!(user.store.review_state().reviewed_through.is_empty());
+    assert!(user.store.profile_facts().is_empty());
+    assert!(!user.agent_history.sessions.iter().any(|s| s.id == "chat-A"));
+    drop(user);
+    let mut pending = std::collections::VecDeque::new();
+    crate::multi_user_review::remember_pending(&f.access, &mut pending);
+    assert!(pending.is_empty());
+    assert!(f.access.users.lock().unwrap().pending_review_owners().unwrap().is_empty());
+}
+
+#[test]
+fn multi_user_review_load_cancels_deleted_jsonl_source() {
+    let f = Fixture::new();
+    let user = f.access.users.lock().unwrap().get("A", "1").unwrap();
+    let path = {
+        let mut user = user.lock().unwrap();
+        let cursors = agent_history_review_cursors(&user.agent_history);
+        user.store.reconcile_review_jobs(&cursors, "1").unwrap();
+        user.session_store.as_ref().unwrap().paths.session("chat-A")
+    };
+    drop(user);
+    // Evict first so reloading uses the same authoritative JSONL inventory as startup.
+    assert!(f.access.users.lock().unwrap().evict_idle(
+        std::time::Instant::now() + crate::user_registry::USER_IDLE_TTL + Duration::from_secs(1),
+    ).unwrap() > 0);
+    std::fs::remove_file(path).unwrap();
+    let user = f.access.users.lock().unwrap().get("A", "2").unwrap();
+    let user = user.lock().unwrap();
+    let job = &user.store.review_state().review_jobs[0];
+    assert_eq!(job.status, memory::ReviewJobStatus::Cancelled);
+    assert_eq!(job.attempts, 0);
+    assert_eq!(job.last_error.as_ref().unwrap().error_code, "REVIEW_INPUT_MISSING");
+    assert!(user.store.review_state().reviewed_through.is_empty());
 }
 
 #[test]
@@ -1101,7 +1203,10 @@ fn mu4_pdf_real_host_is_bound_and_private_storage_failure_is_sanitized() {
 fn mu4_open_sse_closes_on_logout_disable_and_material_revocation() {
     use crate::agent_stream::{RunDescriptor, RunStream};
     use std::io::{BufRead, BufReader, Write};
-    for revoke in ["logout", "disable", "grant"] {
+    for (revoke, push_event) in [
+        ("logout", true), ("disable", true), ("grant", true),
+        ("logout", false), ("disable", false), ("grant", false),
+    ] {
         let mut f = Fixture::new();
         let token = f.login("A");
         let principal = f
@@ -1154,7 +1259,9 @@ fn mu4_open_sse_closes_on_logout_disable_and_material_revocation() {
                 .revoke("A", &f.reference)
                 .unwrap(),
         }
-        stream.reader_changed(json!({"sentinel":"must-not-be-pushed-after-revocation"}));
+        if push_event {
+            stream.reader_changed(json!({"sentinel":"must-not-be-pushed-after-revocation"}));
+        }
         let mut tail = String::new();
         std::io::Read::read_to_string(&mut reader, &mut tail).unwrap();
         assert!(!tail.contains("must-not-be-pushed-after-revocation"));

@@ -54,7 +54,7 @@ function observe(target: AutomaticBuildTarget, policies: ReturnType<typeof autom
   const root = path.join(target.workspace_dir, ".build", "automatic-build");
   const files: Observation["files"] = {};
   const artifacts: Observation["artifacts"] = {};
-  for (const file of [target.source_path, path.join(target.workspace_dir, "source_manifest.json"),
+  for (const file of [target.source_path, path.join(target.workspace_dir, "source.txt"), path.join(target.workspace_dir, "source_manifest.json"),
     ...["base.json", "profile_metadata.json", "discourse_index.json", "formula_semantics.json", "math_structure.json"]
       .map(file => path.join(target.workspace_dir, file))]) files[file] = stamp(file);
   for (const policy of policies) {

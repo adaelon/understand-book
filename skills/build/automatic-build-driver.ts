@@ -1,6 +1,12 @@
 import { readBuildExecutorModelRuntime, type BuildExecutorModelRuntimeV1 } from "../../packages/core/src/build-executor-model-runtime";
 import { readExternalBuildCostBinding, type ExternalBuildCostBinding } from "../../packages/core/src/external-build-cost";
 import { automaticBuildRefill, AutomaticBuildRefillRequestError } from "./automatic-build-refill";
+import {
+  assignAutomaticBuildWorker, automaticBuildWorkerNeedsContextRotation, finishAutomaticBuildWorker,
+  listAutomaticBuildWorkers, readAutomaticBuildWorker, readAutomaticBuildWorkerForAssignment,
+  registerAutomaticBuildWorker, saveAutomaticBuildWorker, withAutomaticBuildWorkerSchedulerLock,
+  type AutomaticBuildWorkerClaim,
+} from "../../packages/core/src/automatic-build-worker";
 import { createAutomaticBuildRefillTimingObserver } from "../../packages/core/src/automatic-build-dispatch-timing";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
 import { routeIncrementalAutomaticBuildSnapshot } from "../../packages/core/src/automatic-build-incremental";
@@ -46,6 +52,7 @@ import {
 import {
   adaptAutomaticBuildPrivateArtifactSelectionV3,
   issueAutomaticBuildOpaqueHandoff,
+  isAutomaticBuildExecutorRecoveryCurrent,
   recordAutomaticBuildExecutorBootstrapFailure,
   recordAutomaticBuildExecutorOpenCallCorrection,
   recoverAutomaticBuildExecutorTerminalSession,
@@ -56,6 +63,7 @@ import {
 } from "../../packages/core/src/automatic-build-executor-session";
 import {
   inspectAutomaticBuildDispatchRecoveryGeneration,
+  inspectAutomaticBuildDispatch,
   AutomaticBuildDispatchSettledError,
   readAutomaticBuildDispatch,
   type AutomaticBuildRecoveryGenerationIdentity,
@@ -2011,6 +2019,7 @@ function replayDispatchHandoffRefs(
   dispatchRunIdValue: unknown,
   now: string,
   target: AutomaticBuildTarget,
+  liveHandoffRefs: ReadonlySet<string> = new Set(),
 ): Array<{ opaque_handoff_ref: string; dispatch_slot_ref: string }> | undefined {
   if (!Array.isArray(activeDispatchIdsValue) || !activeDispatchIdsValue.length) return undefined;
   const stage = safeStage(stageValue);
@@ -2102,18 +2111,27 @@ function replayDispatchHandoffRefs(
     const current = currentByDispatch.get(value.dispatch_id);
     if (!current
       || value.dispatch_run_id !== dispatchRunId
-      || canonicalAutomaticBuildJson(value.recovery_identity)
-        !== canonicalAutomaticBuildJson(current.recovery_identity)) continue;
+      || !isAutomaticBuildExecutorRecoveryCurrent(value.opaque_handoff_ref, current.recovery_identity)) continue;
     if (value.dispatch_slot_ref !== current.dispatch_slot_ref) {
       throw new Error("automatic build dispatch projection slot identity changed");
     }
-    latest.set(value.dispatch_id, value as unknown as AutomaticBuildDriverDispatchProjectionV2);
+    const previous = latest.get(value.dispatch_id);
+    // A bounded child keeps its original handoff while advancing through its frozen units.
+    // Preserve that live owner if another projection covers the same current generation.
+    if (!previous || !liveHandoffRefs.has(previous.opaque_handoff_ref)
+      || liveHandoffRefs.has(value.opaque_handoff_ref)) {
+      latest.set(value.dispatch_id, value as unknown as AutomaticBuildDriverDispatchProjectionV2);
+    }
   }
-  if (activeDispatchIds.some((dispatchId) => !latest.has(dispatchId))) return undefined;
-  return activeDispatchIds.map((dispatchId) => ({
-    opaque_handoff_ref: latest.get(dispatchId)!.opaque_handoff_ref,
-    dispatch_slot_ref: latest.get(dispatchId)!.dispatch_slot_ref,
-  }));
+  const missingDispatchIds = activeDispatchIds.filter((dispatchId) => !latest.has(dispatchId));
+  const replacements = missingDispatchIds.length
+    ? reissueActiveDispatchHandoffRefs(invocation, stage, missingDispatchIds, dispatchRunId, now, target)
+    : [];
+  return activeDispatchIds.map((dispatchId) => {
+    const replay = latest.get(dispatchId);
+    if (replay) return { opaque_handoff_ref: replay.opaque_handoff_ref, dispatch_slot_ref: replay.dispatch_slot_ref };
+    return replacements.find(launch => launch.dispatch_slot_ref === currentByDispatch.get(dispatchId)!.dispatch_slot_ref)!;
+  });
 }
 
 function reissueActiveDispatchHandoffRefs(
@@ -2318,7 +2336,7 @@ interface DriverRetrievalPreparation {
 }
 
 /** The same control flow serves synchronous readers and asynchronous production hosts. */
-function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = []): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
+function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [], completedHandoffRefs: string[] = [], workerStage?: AutomaticBuildStage): Generator<DriverRetrievalPreparation, AutomaticBuildStepResponseV1, AutomaticBuildAsyncPreparationResult> {
   let input: AutomaticBuildStepRequestV1;
   try {
     input = validateStepRequest(inputValue);
@@ -2441,6 +2459,12 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     if (refreshState) current = loadDriverState(invocation, input.available_agent_slots, effect);
     refreshState = true;
     const planAction = current.plan_result.next_action;
+    // Workers refresh the current stage (including dynamically produced structure
+    // tasks), but leave stage closure and its quality gate to the controller.
+    if (workerStage && (("stage" in planAction && planAction.stage !== workerStage)
+      || planAction.kind === "close_stage" || planAction.kind === "done")) {
+      return finish({ version: "automatic_build_step.v1", action: { kind: "DONE", summary: { status: "complete", completed_stages: 0 } } });
+    }
     if (planAction.kind === "needs_user" && planAction.reason === "preparation_required" && current.plan.retrieval) {
       const prepared = yield { target: current.plan_result.snapshot.target, plan: current.plan, stage: planAction.stage as DriverRetrievalPreparation["stage"],
         quality_profile: invocation.input.quality_profile, execution_profile: invocationExecutionProfile(invocation.input) };
@@ -2499,6 +2523,10 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     );
     const action = next.action as unknown as Record<string, unknown>;
     if (action.kind === "needs_user") {
+      if (action.reason === "executor_unavailable" && liveRefs.size > 0) {
+        return finish({ version: "automatic_build_step.v1",
+          action: { kind: "WAIT", reason: "active_executors", retry_after_ms: 1_000 } });
+      }
       const boundary = boundaryFromAction(action, stateIdentity(current));
       const accepted = effectForAcceptedBoundary(invocation, boundary);
       if (accepted) {
@@ -2510,16 +2538,18 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       return finish(issueBoundary(invocation, boundary));
     }
     if (action.kind === "dispatch") {
-      const executors = dispatchHandoffRefs(invocation, action.dispatches);
       const selectedIds = new Set((action.dispatches as Array<{ manifest: { dispatch_id: string } }>)
         .map(dispatch => dispatch.manifest.dispatch_id));
+      const issuedAt = new Date().toISOString();
+      const executors = replayDispatchHandoffRefs(invocation, action.stage, [...selectedIds],
+        action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target, liveRefs)
+        ?? dispatchHandoffRefs(invocation, action.dispatches);
       const replayIds = Array.isArray(action.replay_dispatch_ids)
         ? action.replay_dispatch_ids.filter(id => !selectedIds.has(id)) : [];
       if (replayIds.length) {
         // Lease expiry is a live observation, independent of the stable publication clock.
-        const issuedAt = new Date().toISOString();
         executors.push(...(replayDispatchHandoffRefs(invocation, action.stage, replayIds,
-          action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target) ?? reissueActiveDispatchHandoffRefs(invocation,
+          action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target, liveRefs) ?? reissueActiveDispatchHandoffRefs(invocation,
           action.stage, replayIds, action.dispatch_run_id, issuedAt, current.plan_result.snapshot.target)));
       }
       if (recoverTerminalLaunches(executors)) continue;
@@ -2543,6 +2573,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
           action.dispatch_run_id,
           issuedAt,
           current.plan_result.snapshot.target,
+          liveRefs,
         );
         const executors = replayed ?? reissueActiveDispatchHandoffRefs(
           invocation,
@@ -2570,6 +2601,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
       });
     }
     if (action.kind === "close_stage") {
+      if (workerStage) return finish({ version: "automatic_build_step.v1", action: { kind: "DONE", summary: { status: "complete", completed_stages: 0 } } });
       const stage = safeStage(action.stage);
       if (!stage) throw new Error("automatic build close action stage is invalid");
       const outcome = runAutomaticBuildCloseStage(
@@ -2709,8 +2741,8 @@ export function automaticBuildStep(input: AutomaticBuildStepRequestV1, liveHando
 }
 
 export async function automaticBuildStepWithPreparation(input: AutomaticBuildStepRequestV1, liveHandoffRefs: string[] = [],
-  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}, completedHandoffRefs: string[] = []): Promise<AutomaticBuildStepResponseV1> {
-  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs);
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal; worker_stage?: AutomaticBuildStage } = {}, completedHandoffRefs: string[] = []): Promise<AutomaticBuildStepResponseV1> {
+  const steps = automaticBuildStepTransitions(input, liveHandoffRefs, completedHandoffRefs, options.worker_stage);
   let next = steps.next();
   while (!next.done) {
     const { target, plan, quality_profile, execution_profile, stage } = next.value;
@@ -2719,6 +2751,124 @@ export async function automaticBuildStepWithPreparation(input: AutomaticBuildSte
     next = steps.next(prepared);
   }
   return next.value;
+}
+
+/** Root-facing scheduling uses stable worker refs; task sessions keep raw refs. */
+export async function automaticBuildWorkerStep(input: AutomaticBuildStepRequestV1, liveRootRefs: string[] = [],
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}, completedRootRefs: string[] = []): Promise<AutomaticBuildStepResponseV1> {
+  const invocation = readInvocation(input.invocation_ref);
+  if (invocationExecutionProfile(invocation.input).harness_kind !== "codex") {
+    return automaticBuildStepWithPreparation(input, liveRootRefs, options, completedRootRefs);
+  }
+  return withAutomaticBuildWorkerSchedulerLock(input.invocation_ref, async () => {
+    const resolveRef = (ref: string) => readAutomaticBuildWorker(ref)?.current_handoff_ref ?? ref;
+    for (const ref of completedRootRefs) {
+      const worker = readAutomaticBuildWorker(ref);
+      if (worker && worker.invocation_ref !== input.invocation_ref) throw new Error("terminal worker invocation mismatch");
+      if (worker && worker.status !== "done" && !liveRootRefs.includes(ref)) finishAutomaticBuildWorker(worker, "child_exited");
+    }
+    const startupFailure = input.bootstrap_failure?.opaque_handoff_ref ?? input.executor_open_failure?.opaque_handoff_ref
+      ?? input.open_call_correction?.issued_handoff_ref;
+    if (startupFailure) {
+      const worker = readAutomaticBuildWorker(startupFailure);
+      if (worker && worker.invocation_ref !== input.invocation_ref) throw new Error("failed worker invocation mismatch");
+      if (worker && worker.status !== "done") finishAutomaticBuildWorker(worker, "failed");
+    }
+    const workers = listAutomaticBuildWorkers(input.invocation_ref).filter(worker => worker.status !== "done");
+    const rawLive = [...new Set([...workers.map(worker => worker.current_handoff_ref), ...liveRootRefs.map(resolveRef)])];
+    const rawCompleted = completedRootRefs.map(resolveRef);
+    const slots = Math.max(0, Math.min(input.available_agent_slots, invocation.input.max_parallel - workers.length)) as AutomaticBuildStepRequestV1["available_agent_slots"];
+    const response = await automaticBuildStepWithPreparation({ ...input, available_agent_slots: slots,
+      ...(input.bootstrap_failure ? { bootstrap_failure: { opaque_handoff_ref: resolveRef(input.bootstrap_failure.opaque_handoff_ref) } } : {}),
+      ...(input.executor_open_failure ? { executor_open_failure: { ...input.executor_open_failure, opaque_handoff_ref: resolveRef(input.executor_open_failure.opaque_handoff_ref) } } : {}),
+      ...(input.open_call_correction ? { open_call_correction: { ...input.open_call_correction, issued_handoff_ref: resolveRef(input.open_call_correction.issued_handoff_ref) } } : {}),
+    }, rawLive, options, rawCompleted);
+    if (response.action.kind !== "SPAWN_EXECUTORS") {
+      // A previous root response may have been lost before children were started.
+      // Return those already reserved workers without selecting more assignments.
+      const unstarted = workers.filter(worker => !liveRootRefs.includes(worker.root_handoff_ref));
+      if (response.action.kind === "WAIT" && unstarted.length) return { ...response, action: { kind: "SPAWN_EXECUTORS",
+        executors: unstarted.map(worker => ({ opaque_handoff_ref: worker.root_handoff_ref, dispatch_slot_ref: worker.dispatch_slot_ref })) } };
+      return response;
+    }
+    const selected = new Set<string>();
+    const executors = response.action.executors.map(executor => {
+      const projection = invocationDispatchProjection(invocation, executor.opaque_handoff_ref);
+      if (!projection) return executor; // Existing private-artifact execution retains its own lifecycle.
+      const worker = readAutomaticBuildWorkerForAssignment(executor.opaque_handoff_ref)
+        ?? registerAutomaticBuildWorker({ invocation_ref: input.invocation_ref, stage: projection.dispatch_identity.stage,
+          opaque_handoff_ref: executor.opaque_handoff_ref, dispatch_slot_ref: projection.dispatch_slot_ref });
+      return { opaque_handoff_ref: worker.root_handoff_ref, dispatch_slot_ref: worker.dispatch_slot_ref };
+    }).filter(executor => { if (selected.has(executor.opaque_handoff_ref)) return false; selected.add(executor.opaque_handoff_ref); return true; });
+    return { ...response, action: { kind: "SPAWN_EXECUTORS", executors } };
+  }, options.signal);
+}
+
+/** Called only after a committed raw assignment, or to poll its dependency wait. */
+export async function claimNextAutomaticBuildWorkerAssignment(rootRef: string, completedRawRef?: string,
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}): Promise<AutomaticBuildWorkerClaim> {
+  const initial = readAutomaticBuildWorker(rootRef);
+  if (!initial) throw new Error("automatic build worker is not registered");
+  return withAutomaticBuildWorkerSchedulerLock(initial.invocation_ref, async () => {
+    const worker = readAutomaticBuildWorker(rootRef)!;
+    if (worker.status === "done") return { kind: "DONE", reason: worker.terminal_reason! };
+    if (completedRawRef && !worker.assignments.includes(completedRawRef)) throw new Error("worker assignment mismatch");
+    if (completedRawRef && completedRawRef !== worker.current_handoff_ref) {
+      // Replaying an earlier completion observes the published assignment; it
+      // cannot consume or allocate another one.
+      return worker.status === "waiting" ? { kind: "WAIT", retry_after_ms: 1_000 }
+        : { kind: "ASSIGNMENT", opaque_handoff_ref: worker.current_handoff_ref };
+    }
+    if (!completedRawRef && worker.status === "active") return { kind: "ASSIGNMENT", opaque_handoff_ref: worker.current_handoff_ref };
+    if (completedRawRef && !worker.completed_assignments.includes(completedRawRef)) {
+      const invocation = readInvocation(worker.invocation_ref);
+      const projection = invocationDispatchProjection(invocation, completedRawRef);
+      if (!projection) throw new Error("worker assignment projection is missing");
+      const identity = projection.dispatch_identity;
+      const inspection = inspectAutomaticBuildDispatch(resolveInvocationTarget(invocation), identity.stage, identity.dispatch_id,
+        new Date().toISOString(), identity.dispatch_run_id);
+      if (inspection.state !== "finished" || inspection.receipt.terminal_reason !== "complete") {
+        // A bounded recovery prefix can end while its old dispatch still needs
+        // recovery. Never treat that terminal response as newly free work.
+        return finishAutomaticBuildWorker(worker, "failed");
+      }
+      worker.completed_assignments.push(completedRawRef);
+    }
+    worker.status = "waiting";
+    saveAutomaticBuildWorker(worker);
+    if (automaticBuildWorkerNeedsContextRotation(worker)) return finishAutomaticBuildWorker(worker, "context_rotation");
+    const peers = listAutomaticBuildWorkers(worker.invocation_ref).filter(peer => peer.status !== "done" && peer.root_handoff_ref !== rootRef);
+    const liveRefs = peers.map(peer => peer.current_handoff_ref);
+    let response: AutomaticBuildStepResponseV1;
+    try {
+      response = await automaticBuildStepWithPreparation({ version: "automatic_build_step_request.v1",
+        invocation_ref: worker.invocation_ref, available_agent_slots: 1 }, liveRefs, { ...options, worker_stage: worker.stage });
+    } catch (error) {
+      // A sibling can commit while this route publishes/replays a dispatch.
+      // Keep the worker alive and re-read durable state, just as root refill does.
+      if (error instanceof AutomaticBuildDispatchSettledError) return { kind: "WAIT", retry_after_ms: 50 };
+      throw error;
+    }
+    if (response.action.kind === "DONE") return finishAutomaticBuildWorker(worker, "stage_complete");
+    if (response.action.kind === "NEEDS_USER") return finishAutomaticBuildWorker(worker, "needs_user");
+    if (response.action.kind === "SPAWN_EXECUTORS") {
+      const invocation = readInvocation(worker.invocation_ref);
+      for (const executor of response.action.executors) {
+        const owner = readAutomaticBuildWorkerForAssignment(executor.opaque_handoff_ref);
+        if (owner || worker.completed_assignments.includes(executor.opaque_handoff_ref)) continue;
+        const projection = invocationDispatchProjection(invocation, executor.opaque_handoff_ref);
+        if (projection?.dispatch_identity.stage !== worker.stage) continue;
+        const identity = projection.dispatch_identity;
+        const dispatch = readAutomaticBuildDispatch(resolveInvocationTarget(invocation), identity.stage, identity.dispatch_id, identity.dispatch_run_id);
+        if (automaticBuildWorkerNeedsContextRotation(worker, dispatch.manifest.accounting.estimated_input_tokens * 4 + 32_768)) {
+          return finishAutomaticBuildWorker(worker, "context_rotation");
+        }
+        assignAutomaticBuildWorker(worker, executor.opaque_handoff_ref);
+        return { kind: "ASSIGNMENT", opaque_handoff_ref: executor.opaque_handoff_ref };
+      }
+    }
+    return { kind: "WAIT", retry_after_ms: response.action.kind === "WAIT" ? response.action.retry_after_ms : 1_000 };
+  }, options.signal);
 }
 
 function validateDshPreparation(value: Record<string, unknown>): { workers: number; pass2: "enabled" | "disabled"; target: string; root: string } {
@@ -2737,7 +2887,7 @@ export async function runAutomaticBuildDriverCommandWithPreparation(value: unkno
     const { prepareDocumentInput } = await import("../../packages/core/src/document-import");
     await prepareDocumentInput(input.target, input.root, { signal });
   }
-  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs, completedRefs) => automaticBuildStepWithPreparation(request, refs, { signal }, completedRefs)));
+  return Promise.resolve(runAutomaticBuildDriverCommand(value, (request, refs, completedRefs) => automaticBuildWorkerStep(request, refs, { signal }, completedRefs)));
 }
 
 export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep = automaticBuildStep): unknown {

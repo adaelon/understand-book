@@ -1613,6 +1613,103 @@ fn mu6a_real_provider_transport_and_request_key_lookup_survive_lost_accept_respo
 }
 
 #[test]
+fn mu6a_stalled_provider_stream_times_out_and_releases_run_resources() {
+    use std::io::{BufRead, Read, Write};
+
+    let (mut f, w, mut input, probe) = setup();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    super::adm5_tests::seed(&mut f, &url, 1_000_000);
+    let config = ProviderConfig::from_values("native", "fixture-key", &url, "fixture-model")
+        .unwrap();
+    f.access.runs.configure_fake(move || {
+        ProviderRegistry::adapter_from_config_with_timeout(
+            config.clone(),
+            Duration::from_millis(150),
+        )
+    });
+    let (release, released) = std::sync::mpsc::channel();
+    let provider = std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        let mut socket = loop {
+            match listener.accept() {
+                Ok((socket, _)) => break socket,
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::WouldBlock
+                        && std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("fixture accept failed: {error}"),
+            }
+        };
+        // Accepted sockets inherit nonblocking mode on Windows.
+        socket.set_nonblocking(false).unwrap();
+        socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+        let mut request = std::io::BufReader::new(&mut socket);
+        let mut length = 0;
+        loop {
+            let mut line = String::new();
+            assert!(request.read_line(&mut line).unwrap() > 0);
+            if line == "\r\n" {
+                break;
+            }
+            if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                length = value.trim().parse::<usize>().unwrap();
+            }
+        }
+        request.read_exact(&mut vec![0; length]).unwrap();
+        drop(request);
+        socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\"partial\"},\"finish_reason\":null}]}\n\n").unwrap();
+        socket.flush().unwrap();
+        // Keep the HTTP body open beyond the deadline, without a terminal frame.
+        let _ = released.recv_timeout(Duration::from_secs(2));
+    });
+
+    let (status, accepted) = admit(&f, &w, &input);
+    assert_eq!(status, 202, "{accepted}");
+    let started = std::time::Instant::now();
+    let executed = f.access.runs.run_one(&f.access);
+    let elapsed = started.elapsed();
+    let _ = release.send(());
+    provider.join().unwrap();
+    assert!(executed.unwrap());
+    assert!(elapsed < Duration::from_secs(1), "elapsed={elapsed:?}");
+    assert_eq!(row(&f, "key")["stage"], "settled");
+    let timed_out = context(&f, &f.a)
+        .turn(accepted["turn_id"].as_str().unwrap())
+        .unwrap();
+    // Recoverable provider errors are saved as completed delivery of an
+    // explicitly incomplete answer, rather than a failed persistence record.
+    assert_eq!(timed_out["turn"]["status"], "completed", "{timed_out}");
+    assert_eq!(timed_out["turn"]["outcome"]["incomplete"], true, "{timed_out}");
+    assert_eq!(timed_out["turn"]["outcome"]["warning"], "PROVIDER_ERROR", "{timed_out}");
+    assert_eq!(f.access.resources.measured_usage(), (0, 0, 0));
+    assert!(f.access.resources
+        .try_acquire(crate::service_limits::Resource::Model, "A")
+        .is_some());
+
+    configure(&f, &probe);
+    let current = f.get(&f.a, &w);
+    let stamp = Fixture::stamp(&current, "page");
+    for key in ["generation", "expected_revision", "attachment_id"] {
+        input[key] = stamp[key].clone();
+    }
+    input["client_request_id"] = json!("after-timeout");
+    let (status, next) = admit(&f, &current, &input);
+    assert_eq!(status, 202, "{next}");
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    assert_eq!(row(&f, "after-timeout")["stage"], "settled");
+    let recovered = context(&f, &f.a).turn(next["turn_id"].as_str().unwrap()).unwrap();
+    assert_eq!(recovered["turn"]["status"], "completed", "{recovered}");
+    assert_eq!(recovered["turn"]["outcome"]["incomplete"], false, "{recovered}");
+    assert!(recovered["turn"]["outcome"]["warning"].is_null(), "{recovered}");
+    assert_eq!(probe.calls.load(Ordering::SeqCst), 1);
+    assert_eq!(f.access.resources.measured_usage(), (0, 0, 0));
+}
+
+#[test]
 fn mu6a_provider_change_does_not_rebind_already_accepted_turn() {
     let (f, w, input, probe) = setup();
     assert_eq!(admit(&f, &w, &input).0, 202);

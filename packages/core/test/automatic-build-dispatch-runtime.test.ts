@@ -11,6 +11,7 @@ import {
   finishAutomaticBuildDispatch,
   finishAutomaticBuildDispatchIfTerminal,
   inspectAutomaticBuildDispatchRecoveryGeneration,
+  inspectAutomaticBuildDispatchRecoveryGenerations,
   recordAutomaticBuildDispatchBootstrapFailure,
   recordAutomaticBuildDispatchTerminalSession,
   inspectAutomaticBuildDispatch,
@@ -355,6 +356,111 @@ describe("automatic build executor dispatch runtime", () => {
       semantic_attempt: 1,
       lease_epoch: 2,
     });
+  });
+
+  it("snapshots three ordered recovery identities and removes committed work without writing state", () => {
+    const { target, descriptors, manifest, bindings } = fixture(3);
+    const persisted = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "bounded-recovery-snapshot", created_at: "2026-10-28T01:00:00.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    }).persisted;
+    const options = { now: "2026-10-28T01:00:00.100Z", dispatch_run_id: persisted.dispatch_run_id };
+    const project = () => {
+      const before = workspaceFileSnapshot(target.workspace_dir);
+      const projection = inspectAutomaticBuildDispatchRecoveryGenerations(target, "profile_sidecar", manifest.dispatch_id, options);
+      expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(before);
+      return projection;
+    };
+    const initial = project();
+    expect(initial.identities).toEqual(manifest.ordered_work_unit_ids.map(current_work_unit_id => ({
+      version: "automatic_build_recovery_generation_identity.v1", dispatch_id: manifest.dispatch_id,
+      dispatch_run_id: persisted.dispatch_run_id, current_work_unit_id, semantic_attempt: 1, lease_epoch: 1,
+    })));
+    expect(inspectAutomaticBuildDispatchRecoveryGeneration(target, "profile_sidecar", manifest.dispatch_id, options))
+      .toMatchObject({ dispatch_slot_ref: initial.dispatch_slot_ref, recovery_identity: initial.identities[0] });
+    expect(listAutomaticBuildStoredAttempts(target, "profile_sidecar")).toEqual([]);
+
+    const claimed = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+      ...options, descriptors, task_bindings: bindings,
+    });
+    if (claimed.status !== "leased") throw new Error("expected first snapshot lease");
+    commit(target, claimed, 0);
+    const remaining = project();
+    expect(remaining.dispatch_slot_ref).toBe(initial.dispatch_slot_ref);
+    expect(remaining.identities).toEqual(initial.identities.slice(1));
+    expect(initial.identities).toHaveLength(3);
+  });
+
+  it("snapshots bootstrap, running, expired and semantic retry identities without claiming the suffix", () => {
+    const { target, descriptors, manifest, bindings } = fixture(3);
+    seedSemanticFailure(target, manifest.ordered_work_unit_ids[1], "future-semantic-retry",
+      "2026-10-28T01:10:00.000Z", "2026-10-28T01:10:00.100Z");
+    const persisted = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "bounded-recovery-epochs", created_at: "2026-10-28T01:10:01.000Z",
+      reserve_ttl_ms: 1_000, run_ttl_ms: 1_000,
+    }).persisted;
+    const project = (now: string) => {
+      const before = workspaceFileSnapshot(target.workspace_dir);
+      const projection = inspectAutomaticBuildDispatchRecoveryGenerations(target, "profile_sidecar", manifest.dispatch_id,
+        { now, dispatch_run_id: persisted.dispatch_run_id });
+      expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(before);
+      expect(projection.identities[0]).toEqual(inspectAutomaticBuildDispatchRecoveryGeneration(
+        target, "profile_sidecar", manifest.dispatch_id, { now, dispatch_run_id: persisted.dispatch_run_id },
+      ).recovery_identity);
+      return projection;
+    };
+    const initial = project("2026-10-28T01:10:01.100Z");
+    expect(initial.identities[1]).toMatchObject({ semantic_attempt: 2, lease_epoch: 1 });
+    recordAutomaticBuildDispatchBootstrapFailure(target, "profile_sidecar", initial.identities[0],
+      "bounded-startup-failure", "2026-10-28T01:10:01.100Z");
+    const released = project("2026-10-28T01:10:01.200Z");
+    expect(released.identities[0]).toMatchObject({
+      version: "automatic_build_recovery_generation_identity.v2", bootstrap_epoch: 1,
+      semantic_attempt: 1, lease_epoch: 1,
+    });
+    expect(released.identities.slice(1)).toEqual(initial.identities.slice(1));
+    const claimed = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+      descriptors, task_bindings: bindings, dispatch_run_id: persisted.dispatch_run_id,
+      now: "2026-10-28T01:10:01.300Z",
+    });
+    if (claimed.status !== "leased") throw new Error("expected running snapshot lease");
+    startAutomaticBuildLease(target, claimed.claim.lease_ref, claimed.claim.lease.token, {
+      now: "2026-10-28T01:10:01.400Z", run_ttl_ms: 1_000,
+    });
+    expect(project("2026-10-28T01:10:01.500Z").identities).toEqual(released.identities);
+    const recovered = project("2026-10-28T01:10:02.500Z");
+    expect(recovered.identities[0]).toEqual({ ...initial.identities[0], lease_epoch: 2 });
+    expect(recovered.identities.slice(1)).toEqual(initial.identities.slice(1));
+    expect(listAutomaticBuildStoredAttempts(target, "profile_sidecar", manifest.ordered_work_unit_ids[2])).toEqual([]);
+  });
+
+  it("bounds the snapshot before an exhausted future task and retains the current-task error", () => {
+    const { target, descriptors, manifest, bindings } = fixture(3);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      seedSemanticFailure(target, manifest.ordered_work_unit_ids[1], `exhausted-future-${attempt}`,
+        `2026-10-28T01:20:0${attempt}.000Z`, `2026-10-28T01:20:0${attempt}.100Z`);
+    }
+    const persisted = persistAutomaticBuildDispatch(target, manifest, {
+      owner: "bounded-recovery-blocked-suffix", created_at: "2026-10-28T01:20:03.000Z",
+      reserve_ttl_ms: 60_000, run_ttl_ms: 1_800_000,
+    }).persisted;
+    const options = { now: "2026-10-28T01:20:03.100Z", dispatch_run_id: persisted.dispatch_run_id };
+    const before = workspaceFileSnapshot(target.workspace_dir);
+    const projection = inspectAutomaticBuildDispatchRecoveryGenerations(target, "profile_sidecar", manifest.dispatch_id, options);
+    expect(projection.identities).toEqual([
+      inspectAutomaticBuildDispatchRecoveryGeneration(target, "profile_sidecar", manifest.dispatch_id, options).recovery_identity,
+    ]);
+    expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(before);
+
+    const claimed = advanceAutomaticBuildDispatch(target, "profile_sidecar", manifest.dispatch_id, {
+      ...options, descriptors, task_bindings: bindings,
+    });
+    if (claimed.status !== "leased") throw new Error("expected claim before blocked suffix");
+    commit(target, claimed, 0);
+    const completed = workspaceFileSnapshot(target.workspace_dir);
+    expect(() => inspectAutomaticBuildDispatchRecoveryGenerations(target, "profile_sidecar", manifest.dispatch_id, options))
+      .toThrow("dispatch recovery generation is not launchable: retry_exhausted");
+    expect(workspaceFileSnapshot(target.workspace_dir)).toEqual(completed);
   });
 
   it.each(["terminal", "bootstrap"] as const)("reconciles %s-first startup release observations once per recovery generation", (firstKind) => {

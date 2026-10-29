@@ -172,7 +172,8 @@ onBeforeUnmount(()=>{alive=false;if(uploadSession.value)uploadSession.value.canc
         <button v-if="task.state==='ready'&&material.published_book_ref" @click="emit('open',material.published_book_ref)">{{ uiText('继续学习') }}</button>
       </template>
       <template v-if="task.allowance">
-        <p>{{ uiText('当前可用') }} {{allowancePercent(task.allowance.available)}} {{ uiText('· 有效至') }} {{allowanceTime(task.allowance.expires_at)}}</p>
+        <p v-if="task.allowance.unlimited">{{ uiText('内测期间 AI 使用不限额度') }}</p>
+        <p v-else>{{ uiText('当前可用') }} {{allowancePercent(task.allowance.available)}} {{ uiText('· 有效至') }} {{allowanceTime(task.allowance.expires_at)}}</p>
         <p v-if="task.allowance.remaining">{{ uiText('任务上限') }} {{allowancePercent(task.allowance.maximum)}} {{ uiText('· 剩余上限') }} {{allowancePercent(task.allowance.remaining)}}</p>
       </template>
       <p v-else>{{ uiText('当前没有可用的额度期。') }}</p>

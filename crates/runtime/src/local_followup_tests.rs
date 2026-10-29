@@ -127,6 +127,8 @@ fn local_followup_independent_reviews_both_gate_delivery_and_keep_factual_work()
         first["finish"] = serde_json::json!(true);
         let mut repaired = selected_body("repaired", "B remains in the catalog, so a later route can select B even when this route selects only A.");
         repaired["finish"] = serde_json::json!(true);
+        let mut factual_repair = selected_body("factual-repair", "B remains in the catalog.");
+        factual_repair["finish"] = serde_json::json!(true);
         let work = serde_json::json!({"understanding":[{"statement":"The observed passage contains X.",
             "sources":[{"source_id":b.base.book_id,"source_revision":b.source_fingerprint(),"lid":"1.1","quote":"XXXXXXXX"}]}],
             "open_questions":["Explain how a later route can select the retained item."]});
@@ -137,13 +139,20 @@ fn local_followup_independent_reviews_both_gate_delivery_and_keep_factual_work()
         let explanation = if explanation_rejects {
             serde_json::json!({"decision":"revise","revision":"EXPLANATION_GAP: follow B from the catalog into a later route.","learner_claims":[]})
         } else { accepted_review().unwrap() };
-        let adapter = ReviewedTeachingAdapter::new(vec![
+        let mut author_turns = vec![
             turn_calls(vec![call("source", "book.text", r#"{"lid":"1.1"}"#)]),
             turn_calls(vec![call("first", "tutor.step", &first.to_string())]),
-            turn_calls(vec![call("repaired", "tutor.step", &repaired.to_string())]),
-        ], vec![Ok(factual.clone()), accepted_review()]);
-        adapter.explanation_reviews.borrow_mut().extend([Ok(explanation), accepted_review()]);
-        let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(10), ..Default::default()}, adapter.model_runtime_profile());
+        ];
+        let mut factual_reviews = vec![Ok(factual.clone()), accepted_review()];
+        if factual_rejects && explanation_rejects {
+            author_turns.push(turn_calls(vec![call("factual-repair", "tutor.step", &factual_repair.to_string())]));
+            factual_reviews.push(accepted_review());
+        }
+        author_turns.push(turn_calls(vec![call("repaired", "tutor.step", &repaired.to_string())]));
+        let adapter = ReviewedTeachingAdapter::new(author_turns, factual_reviews);
+        if explanation_rejects { adapter.explanation_reviews.borrow_mut().push_back(Ok(explanation)); }
+        adapter.explanation_reviews.borrow_mut().push_back(accepted_review());
+        let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(12), ..Default::default()}, adapter.model_runtime_profile());
         context.tool_exposure_state.activate("book.text");
         context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
         let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
@@ -154,12 +163,16 @@ fn local_followup_independent_reviews_both_gate_delivery_and_keep_factual_work()
         assert_eq!(outcome.answer.as_deref(), repaired["move"]["delivery_text"].as_str());
         assert_eq!(port.accepted, ["select"]);
         assert!(!port.selections.contains_key("selected:first"));
-        assert_eq!(adapter.seen_reviews.borrow().len(), 2);
-        assert_eq!(adapter.seen_explanation_reviews.borrow().len(), 2,
-            "a valid factual revision must still receive the independent explanation judgment");
-        assert_eq!(outcome.turns, 7);
-        assert_eq!(outcome.tokens_spent, 3 * 10 + 4 * 171);
-        assert_eq!(port.reviews.len(), 2);
+        assert!(!port.selections.contains_key("selected:factual-repair"));
+        let factual_count = 2 + usize::from(factual_rejects && explanation_rejects);
+        let explanation_count = 1 + usize::from(explanation_rejects);
+        let author_count = factual_count + 1;
+        assert_eq!(adapter.seen_reviews.borrow().len(), factual_count);
+        assert_eq!(adapter.seen_explanation_reviews.borrow().len(), explanation_count,
+            "only factually accepted drafts receive an independent explanation judgment");
+        assert_eq!(outcome.turns, author_count + factual_count + explanation_count);
+        assert_eq!(outcome.tokens_spent, author_count as u32 * 10 + (factual_count + explanation_count) as u32 * 171);
+        assert_eq!(port.reviews.len(), factual_count);
         let rejected = &port.reviews[0];
         assert_eq!(rejected["review"]["decision"], "revise");
         assert_eq!(rejected["review"]["agent_work"], work,
@@ -167,16 +180,32 @@ fn local_followup_independent_reviews_both_gate_delivery_and_keep_factual_work()
         assert_eq!(rejected["independent_reviews"]["factual"]["raw"]["agent_work"], work);
         assert_eq!(rejected["independent_reviews"]["factual"]["review"]["decision"],
             if factual_rejects {"revise"} else {"accept"});
-        assert_eq!(rejected["independent_reviews"]["explanation"]["review"]["decision"],
-            if explanation_rejects {"revise"} else {"accept"});
-        if factual_rejects { assert!(rejected["review"].to_string().contains("FACTUAL_GAP")); }
-        if explanation_rejects { assert!(rejected["review"].to_string().contains("EXPLANATION_GAP")); }
+        if factual_rejects {
+            assert!(rejected["review"].to_string().contains("FACTUAL_GAP"));
+            assert_eq!(rejected["independent_reviews"]["explanation"],
+                serde_json::json!({"status":"skipped","reason":"factual_revision_required"}));
+            assert!(!rejected["review"].to_string().contains("EXPLANATION_GAP"),
+                "a skipped reviewer must contribute neither a verdict nor a fabricated finding");
+        }
+        if explanation_rejects {
+            let explanation_rejection = &port.reviews[usize::from(factual_rejects)];
+            assert_eq!(explanation_rejection["independent_reviews"]["factual"]["review"]["decision"], "accept");
+            assert_eq!(explanation_rejection["independent_reviews"]["explanation"]["review"]["decision"], "revise");
+            assert_eq!(explanation_rejection["review"]["decision"], "revise");
+            assert!(explanation_rejection["review"].to_string().contains("EXPLANATION_GAP"));
+        }
+        let accepted = port.reviews.last().unwrap();
+        assert_eq!(accepted["independent_reviews"]["factual"]["review"]["decision"], "accept");
+        assert_eq!(accepted["independent_reviews"]["explanation"]["review"]["decision"], "accept");
         let purpose = adapter.seen_purposes.borrow();
-        assert_eq!(purpose.iter().filter(|p|p.as_str()=="tutor_delivery_review").count(), 2);
-        assert_eq!(purpose.iter().filter(|p|p.as_str()=="tutor_explanation_review").count(), 2);
+        assert_eq!(purpose.iter().filter(|p|p.as_str()=="tutor_delivery_review").count(), factual_count);
+        assert_eq!(purpose.iter().filter(|p|p.as_str()=="tutor_explanation_review").count(), explanation_count);
         let explanation_input = &adapter.seen_explanation_reviews.borrow()[0];
         assert_eq!(explanation_input["current_request"], "Why can another route still select B?");
-        assert_eq!(explanation_input["current_delivery"], first["move"]["delivery_text"]);
+        let first_explained = if factual_rejects {
+            if explanation_rejects { &factual_repair } else { &repaired }
+        } else { &first };
+        assert_eq!(explanation_input["current_delivery"], first_explained["move"]["delivery_text"]);
         assert!(explanation_input.get("current_source_evidence").is_none());
         assert!(explanation_input.get("current_design").is_none());
         assert!(explanation_input.get("agent_working_state").is_none());

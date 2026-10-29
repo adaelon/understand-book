@@ -31,6 +31,21 @@ fn admission(call:&str)->Value{json!({"execution_id":"b2-execution","call_id":ca
 fn receipt(call:&str,tokens:u32)->Value{json!({"call_id":call,"status":"partial","usage":{"input_tokens":tokens,"output_tokens":0,"cached_input_tokens":0,"cache_creation_input_tokens":null,"total_tokens":tokens},"evidence":{"source":"controlled-provider"},"succeeded":true})}
 
 #[test]
+fn unlimited_allowance_starts_personal_preparation_without_a_registration_grant() {
+    let (f, workspace, period) = fixture();
+    uploaded(&f, &workspace, "unlimited-preparation");
+    planned(&f, &workspace, "unlimited-preparation");
+    f.control.connection.execute("DELETE FROM allowance_adjustments WHERE user_id='A'", []).unwrap();
+    f.control.connection.execute("UPDATE allowance_periods SET unlimited=1 WHERE period_id=?", [&period]).unwrap();
+    let started = action(&f, &workspace, "unlimited-preparation", "start", &period, 1000);
+    assert_eq!(started["state"], "queued");
+    assert_eq!(started["allowance"]["unlimited"], true);
+    f.ok(&f.b, "POST", "/api/admin/build-tasks/unlimited-preparation/metered-admit", admission("unlimited-preparation-call"));
+    let done = f.ok(&f.b, "POST", "/api/admin/build-tasks/unlimited-preparation/metered-receipts", receipt("unlimited-preparation-call", 200));
+    assert_eq!(done["charge"]["provider_cost_micro_cny"], 200);
+}
+
+#[test]
 fn b2_personal_upload_budget_cap_resume_import_and_reuse_stay_in_original_workspace(){
     let(f,w,p)=fixture(); uploaded(&f,&w,"b2-task"); planned(&f,&w,"b2-task");
     let planned=get(&f,&w,"b2-task");assert_eq!(planned["estimate"]["status"],"estimated");assert_eq!(planned["estimate"]["partial"],true);

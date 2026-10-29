@@ -39,6 +39,9 @@ Rules:
 - Assistant text may clarify context but is never evidence and must never create a candidate by itself.
 - user contains only authored words or the real supplement to input_action. Empty user means a UI-only request: keep its turn position, but infer no profile trait or permanent preference from that action, repeated choices, or assistant text.
 - Use user_stated only for a trait the cited user text directly states. Otherwise use agent_inferred.
+- Defaulting to beginner-friendly explanations is a teaching policy, never a reader-profile fact. Missing evidence leaves a capability unknown; it does not establish ignorance or low ability.
+- A term mention, the depth of a question, or broad educational/professional background alone does not establish understanding of a specific concept. Profile capabilities describe general capability background; object-level understanding or mastery tied to a LearningObjectRef belongs to LearningMemory, so do not emit it as a profile candidate in either book or global scope.
+- An explicit "I understand/know X" is a user-stated claim, not demonstrated mastery. Emit it as a profile candidate only when it describes general background or capability context rather than object-level learning state. A request to skip basics, use terminology, or go deeper for the current answer is a one-off instruction, not a capability or permanent preference; separate such a request from any explicit knowledge claim in the same turn.
 - A book-scoped candidate must cite turns from one book; split evidence from different books into separate candidates.
 - When review_input.turns contains multiple distinct book_id values, the input has no single content profile. Use applicability_kind "any", never a content_profile restriction.
 - Ambiguous reading-context traits use book scope. Global requires an explicit across-books/always statement.

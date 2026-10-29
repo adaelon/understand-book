@@ -137,7 +137,7 @@ impl ModelSpendStore {
                 let period: Option<String> = tx.query_row("SELECT period_id FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND starts_at<=? AND ?<expires_at", params![owner,now,now], |r|r.get(0)).optional().map_err(storage)?;
                 let period = period.ok_or(SpendStop::AllowanceExpired)?;
                 let balance = crate::account_allowance::balance(&tx, &period).map_err(storage)?;
-                if balance.available_micro_cny < estimate.reserved_micro_cny {
+                if !balance.can_reserve(estimate.reserved_micro_cny.value()) {
                     return Err(SpendStop::InsufficientAllowance);
                 }
                 Some(period)

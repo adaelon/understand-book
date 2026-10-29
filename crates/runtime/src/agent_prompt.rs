@@ -4,8 +4,14 @@ use std::collections::HashSet;
 pub const BASE_INSTRUCTIONS: &str = "You are the resident reading agent for the current book. Ground claims about the book in text supplied by the user and verified in-book evidence. Apply relevant user-stated reader profile preferences to explanation depth and presentation format unless the current request overrides them. Explain mechanisms in your own words rather than repeating source text; label hypothetical examples and their assumptions. Tool choice is auto: when a user-provided quotation is sufficient for the whole request, answer directly; otherwise call only the minimum tools needed to close the current evidence gap, perform an explicitly requested side effect, or discover a required capability. For why, design-choice and comparison questions, a passage saying what was chosen or what it does does not by itself explain the reasons, guarantees or alternatives. Before relying on an important mechanism, guarantee or tradeoff beyond the sources actually read, autonomously discover web_search/web_read and verify relevant primary evidence if available. Labeling a claim as supplementary engineering knowledge or general knowledge does not supply evidence. A sufficient definition or local explanation needs no search; unavailable retrieval requires an honest support boundary, never an invented lookup. When a specific knowledge gap benefits from another book, discover corpus source_read tools for supplementary material, if available; keep the original task and Reader position. Read the learner's existing understanding of that reference material before explaining, and use real user feedback to update it.";
 
 const POLICY_REVISION: &str = "v4";
+pub(crate) const LEARNER_STARTING_POINT: &str = include_str!("learner_starting_point.md");
+pub(crate) const EXPLANATION_PRINCIPLE: &str = include_str!("tutor_explanation_principle.md");
+pub(crate) const TEACHING_QUALITY_CONTRACT: &str = include_str!("teaching_quality_contract.md");
+const TEACHING_QUALITY_REVISION: &str = "teaching-quality.v2";
+const LEARNER_STARTING_POINT_REVISION: &str = "v2";
+const EXPLANATION_PRINCIPLE_REVISION: &str = "v3";
 const EVIDENCE_ROUTING_REVISION: &str = "v7";
-const SOURCE_DELIVERY_REVISION: &str = "v13";
+const SOURCE_DELIVERY_REVISION: &str = "v14";
 const FINISH_POLICY_REVISION: &str = "v8";
 const TOOL_DISCOVERY_REVISION: &str = "v9";
 pub mod presentation;
@@ -27,7 +33,7 @@ const EVIDENCE_ROUTING: &str = "Evidence routing:
 pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. For prepared music pass music_target copied from music.read sources[].target; it cites the exact score/analysis snapshot and never claims a live audio observation. For text pass quote; for a reference book also pass its exact published_book_ref returned by library.read; for video pass target (text, visual, audio, or joint) copied from actual reads, with each joint member's support_role. Media must have been successfully observed this turn; discrete frames never establish continuous coverage. For quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct the copy or read the missing source. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
 
 const SOURCE_DELIVERY: &str = "Source presentation:
-- source.present is an optional presentation step, not a requirement for every answer. Call it only on evidence already observed in this turn when you need to show an in-book location to the user.
+- source.present is an optional presentation step by default, not a requirement for every answer. Board replies are an exception: substantive book claims require clickable original-source citations under the board source-citation contract, including direct text replies, explanation blocks and committed parts. Call it only on evidence already observed in this turn, then attach its returned [[source:<source_ref_id>]] marker to the supported claim.
 - For text submit a verbatim continuous quote, without start_lid/end_lid; for media submit the observed target, preserving its original publication and actual positions. When no exact observed match is found, correct copying from available results before deciding whether more reading is needed. When multiple locations match, expand quote using distinctive observed context; never arbitrarily select the first match.
 - When the user requests original book sources, select the supporting observed book passages with source.present before delivering factual claims. External web evidence uses ordinary Markdown links to the actual supporting page, never source.present or invented book LIDs. Place [[source:<source_ref_id>]] after the relevant sentence, substituting the exact returned ID. Bare IDs and a separate list of IDs do not create source citations. If no observed passage supports a claim, state that limitation instead of inventing a binding. Never expose raw LIDs in an ordinary answer, and never invent a LID or source reference.";
 
@@ -117,7 +123,23 @@ pub fn policy_modules_for_tools_with_presentation(
     guidance: Option<&PresentationGuidance>,
 ) -> Vec<InstructionModule> {
     let names: HashSet<&str> = tools.iter().map(|tool| tool.name.as_str()).collect();
-    let mut modules = Vec::new();
+    let mut modules = vec![
+        InstructionModule::new(
+            "resident-agent.teaching.quality",
+            TEACHING_QUALITY_REVISION,
+            TEACHING_QUALITY_CONTRACT,
+        ),
+        InstructionModule::new(
+            "resident-agent.policy.learner-starting-point",
+            LEARNER_STARTING_POINT_REVISION,
+            LEARNER_STARTING_POINT,
+        ),
+        InstructionModule::new(
+            "resident-agent.teaching.explanation",
+            EXPLANATION_PRINCIPLE_REVISION,
+            EXPLANATION_PRINCIPLE,
+        ),
+    ];
 
     if names.contains("agent.progress") {
         modules.push(InstructionModule::new("resident-agent.policy.progress", "v1", crate::agent_progress::POLICY));
@@ -220,6 +242,7 @@ pub fn policy_modules_for_tools_with_presentation(
 #[cfg(test)]
 pub(crate) fn canonical_policy_text() -> String {
     [
+        LEARNER_STARTING_POINT,
         EVIDENCE_ROUTING,
         SOURCE_DELIVERY,
         SOURCE_PRESENT_CONTRACT,
@@ -245,6 +268,51 @@ mod tests {
             name: name.into(),
             description: name.into(),
             parameters: serde_json::json!({"type": "object"}),
+        }
+    }
+
+    #[test]
+    fn learner_starting_point_reaches_restored_plain_answers_without_tutor_or_tools() {
+        use crate::{AgentRequestPlan, Message, ModelRuntimeProfile, ProviderToolProtocol};
+
+        for protocol in [ProviderToolProtocol::Native, ProviderToolProtocol::ReAct] {
+            let plan = AgentRequestPlan::for_agent_turn_with_modules(
+                ModelRuntimeProfile::fallback("learner-starting-point-test", protocol),
+                &[Message::system("Saved session instructions."), Message::user("What does posterior mean?")],
+                &[],
+                &policy_modules_for_tools(&[]),
+            );
+            assert_eq!(plan.instructions.matches(LEARNER_STARTING_POINT).count(), 1);
+            assert_eq!(plan.instructions.matches(EXPLANATION_PRINCIPLE).count(), 1);
+            assert_eq!(plan.instruction_assets.iter().filter(|asset|
+                asset.asset_id == "resident-agent.policy.learner-starting-point"
+                    && asset.revision == LEARNER_STARTING_POINT_REVISION).count(), 1);
+        }
+    }
+
+    #[test]
+    fn teaching_quality_contract_reaches_first_draft_before_tools_or_review_feedback() {
+        use crate::{AgentRequestPlan, Message, ModelRuntimeProfile, ProviderToolProtocol};
+
+        for protocol in [ProviderToolProtocol::Native, ProviderToolProtocol::ReAct] {
+            for status in ["inactive", "observing", "active", "reference"] {
+                let messages = [Message::system("Saved session instructions."), Message::user("这本书讲什么？")];
+                let mut modules = policy_modules_for_tools(&[]);
+                modules.extend(crate::tutor::instruction_modules(
+                    &serde_json::json!({"status":status,"current_request":"这本书讲什么？"}), &messages, None));
+                let plan = AgentRequestPlan::for_agent_turn_with_modules(
+                    ModelRuntimeProfile::fallback("teaching-quality-test", protocol),
+                    &messages, &[], &modules,
+                );
+                assert_eq!(plan.instructions.matches(TEACHING_QUALITY_CONTRACT).count(), 1,
+                    "the author needs the same complete contract once before any draft or rejection: {status}");
+                assert_eq!(plan.instruction_assets.iter().filter(|asset|
+                    asset.asset_id == "resident-agent.teaching.quality"
+                        && asset.revision == TEACHING_QUALITY_REVISION).count(), 1);
+                assert!(!plan.instructions.contains("review_format_repair"));
+                assert!(!plan.instructions.contains("\"issue_updates\""),
+                    "sharing acceptance criteria must not inject the reviewer's output schema into author instructions");
+            }
         }
     }
 
@@ -359,7 +427,7 @@ mod tests {
                 .iter()
                 .find(|module| module.asset_id == "resident-agent.policy.source-delivery")
                 .map(|module| module.revision.as_str()),
-            Some("v13")
+            Some("v14")
         );
     }
 
@@ -392,6 +460,9 @@ mod tests {
         assert_eq!(
             initial_ids,
             [
+                "resident-agent.teaching.quality",
+                "resident-agent.policy.learner-starting-point",
+                "resident-agent.teaching.explanation",
                 "resident-agent.policy.evidence-routing",
                 "resident-agent.policy.source-delivery",
                 "resident-agent.policy.tool-discovery",
@@ -429,6 +500,9 @@ mod tests {
         );
         for module in &activated {
             let expected = match module.asset_id.as_str() {
+                "resident-agent.teaching.quality" => TEACHING_QUALITY_REVISION,
+                "resident-agent.policy.learner-starting-point" => LEARNER_STARTING_POINT_REVISION,
+                "resident-agent.teaching.explanation" => EXPLANATION_PRINCIPLE_REVISION,
                 "resident-agent.policy.navigation" => NAVIGATION_REVISION,
                 "resident-agent.policy.navigation-discovery" => "tc2a.v1",
                 "resident-agent.policy.finish" => FINISH_POLICY_REVISION,

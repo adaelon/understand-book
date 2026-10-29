@@ -197,7 +197,7 @@ impl ModelSpendStore {
             authorize(&tx,owner,workspace.unwrap())?;
             let period: Option<String> = tx.query_row("SELECT period_id FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND starts_at<=? AND ?<expires_at",params![owner,now,now],|r|r.get(0)).optional().map_err(api_storage)?;
             let period = period.ok_or_else(|| conflict("MODEL_ALLOWANCE_EXPIRED","No active allowance period"))?;
-            if crate::account_allowance::balance(&tx,&period)?.available_micro_cny.value() < input.reserved_micro_cny { return Err(conflict("MODEL_ALLOWANCE_INSUFFICIENT","Insufficient account allowance")); }
+            if !crate::account_allowance::balance(&tx,&period)?.can_reserve(input.reserved_micro_cny) { return Err(conflict("MODEL_ALLOWANCE_INSUFFICIENT","Insufficient account allowance")); }
             let confirmed: Option<String> = tx.query_row("SELECT json_extract(task_json,'$.confirmed_period_id') FROM operator_builds WHERE task_id=?", [task], |r| r.get(0)).optional().map_err(api_storage)?.flatten();
             if confirmed.as_ref().is_some_and(|expected| expected != &period) { return Err(conflict("BUILD_PERIOD_CONFIRMATION_REQUIRED", "Confirm the current allowance period before continuing")); }
             Some(period)

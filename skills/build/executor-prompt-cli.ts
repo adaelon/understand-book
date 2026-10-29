@@ -19,6 +19,7 @@ export const AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES = [
   "profile-sidecar-discourse-reducer.md",
   "pass2-longrange-linker.md",
   "book-structure-outline.md", "book-structure-chapter.md", "book-structure-chapter-selection.md", "book-structure-themes.md",
+  "book-structure-outline-chapters.md", "book-structure-outline-themes.md",
   "book-structure-extractor.md",
   "book-structure-v2-extractor.md",
   "book-structure-fragment-extractor.md",

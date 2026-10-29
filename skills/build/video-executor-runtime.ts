@@ -9,6 +9,8 @@ import type { ExternalBuildCostLedger } from '../../packages/core/src/external-b
 
 export interface VideoExecutorControl {
   signal?: AbortSignal;
+  /** Independent translation/discourse groups; graph and visual dependencies stay ordered. */
+  max_parallel?: 1 | 2;
   cost_ledger?: ExternalBuildCostLedger;
   model?: string;
   /** Reads accepted work, not a timer-derived estimate. */

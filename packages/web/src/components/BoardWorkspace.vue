@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, CornerDownRight, LayoutDashboard, LoaderCircle, MessageSquareText, Pause, Play, Plus, RefreshCw, Search, Shapes, SkipBack, SkipForward, Square, Trash2, X } from '@lucide/vue';
+import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, CornerDownRight, LayoutDashboard, LoaderCircle, MessageSquareText, Minimize, PanelRightClose, PanelRightOpen, Pause, Play, Plus, RefreshCw, Search, Shapes, SkipBack, SkipForward, Square, Trash2, X } from '@lucide/vue';
 import { api as sharedApi, type BoardCatalogItem, type BoardConversationSession, type BoardPrebuildCategory, type BoardDocument, type BoardImportSource, type BoardSummary, type BoardView } from '../api';
 import { bindSceneApi, readerKey } from '../network-context';
+import { requestWorkspaceRecovery } from '../network-client';
 import { t as uiText } from '../i18n';
 import { boardDeliveryKey, mergeBoardDeliveries, boardDate, boardKindDescriptions, boardKindLabels, boardKinds, boardTextPreview, boardVisualKey, projectBoardRoute, defaultBoardView, type BoardKind, type BoardSourceRequest, type BoardQuestionRequest, type BoardRunView, type BoardLocation } from '../board-workspace';
 import type { BoardSearchHit } from '../generated/BoardSearchHit';
@@ -49,6 +50,11 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let openingBoard: { id: string; promise: Promise<void> } | null = null;
 const mobileTab = ref<'canvas' | 'reading' | 'discussion'>('canvas');
 const railTab = ref<'reading' | 'discussion'>('discussion');
+const railCollapsed = ref(false), canvasFullscreen = ref(false), fullscreenQuestionOpen = ref(false);
+const fullscreenNotice = ref('');
+let previousLayout: { railCollapsed: boolean; railTab: 'reading' | 'discussion'; mobileTab: 'canvas' | 'reading' | 'discussion' } | null = null;
+let ownsBrowserFullscreen = false;
+let browserFullscreenActive = false;
 const conversationSessions = ref<BoardConversationSession[]>([]), conversationLoading = ref(false), conversationError = ref('');
 const retainedDiscussion = ref<Record<string, BoardDiscussionTurn[]>>({});
 let conversationSequence = 0;
@@ -131,14 +137,63 @@ function updateCanvasView(next: BoardView) {
 }
 function wholeBoard() { userControl(); manualHighlights.value = []; mappingChoices.value = []; updateView({ ...view.value, selected_item_id: null, selected_block_id: null }); }
 async function showPanel(tab: 'reading' | 'discussion') {
-  railTab.value = tab; mobileTab.value = tab;
+  railCollapsed.value = false; railTab.value = tab; mobileTab.value = tab;
   if (tab === 'reading' && highlightedBlock.value && readingItem.value) {
     // A route can advance while this stack is hidden; locate only after it has a layout again.
     await nextTick();
     await panes.get(readingItem.value.item_id)?.locate(highlightedBlock.value, undefined, { focus: false });
   }
 }
-async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; showPanel('discussion'); await nextTick(); root.value?.querySelector('textarea')?.focus(); }
+async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; fullscreenQuestionOpen.value = true; showPanel('discussion'); await nextTick(); root.value?.querySelector('textarea')?.focus(); }
+function collapseRail() { railCollapsed.value = true; mobileTab.value = 'canvas'; }
+async function toggleQuestion() {
+  fullscreenQuestionOpen.value = !fullscreenQuestionOpen.value;
+  if (fullscreenQuestionOpen.value) { await nextTick(); root.value?.querySelector('textarea')?.focus(); }
+}
+function restoreFullscreenLayout() {
+  canvasFullscreen.value = false; fullscreenNotice.value = ''; fullscreenQuestionOpen.value = false;
+  if (previousLayout) {
+    railCollapsed.value = previousLayout.railCollapsed; railTab.value = previousLayout.railTab; mobileTab.value = previousLayout.mobileTab;
+    previousLayout = null;
+  }
+  browserFullscreenActive = false;
+}
+async function exitCanvasFullscreen() {
+  restoreFullscreenLayout();
+  if (ownsBrowserFullscreen && document.fullscreenElement) {
+    try { await document.exitFullscreen(); } catch { /* The browser may already be exiting after Escape. */ }
+  }
+  ownsBrowserFullscreen = false;
+}
+async function toggleCanvasFullscreen() {
+  if (canvasFullscreen.value) { await exitCanvasFullscreen(); return; }
+  previousLayout = { railCollapsed: railCollapsed.value, railTab: railTab.value, mobileTab: mobileTab.value };
+  canvasFullscreen.value = true; collapseRail(); fullscreenQuestionOpen.value = false; fullscreenNotice.value = '';
+  if (document.fullscreenElement) { browserFullscreenActive = true; return; }
+  if (!document.documentElement.requestFullscreen) {
+    fullscreenNotice.value = uiText('当前环境不支持全屏，已展开到窗口。按 Esc 退出。'); return;
+  }
+  try {
+    // Keep the app-level original-source reader inside the fullscreen element.
+    await document.documentElement.requestFullscreen();
+    ownsBrowserFullscreen = document.fullscreenElement === document.documentElement;
+    browserFullscreenActive = !!document.fullscreenElement;
+    if (!canvasFullscreen.value && ownsBrowserFullscreen) await exitCanvasFullscreen();
+  } catch {
+    if (canvasFullscreen.value) fullscreenNotice.value = uiText('浏览器未允许全屏，已展开到窗口。按 Esc 退出。');
+  }
+}
+function fullscreenChanged() {
+  if (canvasFullscreen.value && browserFullscreenActive && !document.fullscreenElement) {
+    ownsBrowserFullscreen = false; restoreFullscreenLayout();
+  }
+  if (canvasFullscreen.value && document.fullscreenElement) browserFullscreenActive = true;
+}
+function fullscreenKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !canvasFullscreen.value || event.defaultPrevented || galleryOpen.value || addOpen.value || deleteOpen.value) return;
+  if (event.target instanceof Node && event.target !== document && event.target !== document.body && !root.value?.contains(event.target)) return;
+  event.preventDefault(); void exitCanvasFullscreen();
+}
 async function loadConversation() {
   const id = board.value?.board_id;
   if (!id) return;
@@ -147,7 +202,10 @@ async function loadConversation() {
     const result = await api.boardConversation(id);
     if (!disposed && sequence === conversationSequence && board.value?.board_id === id) conversationSessions.value = result.sessions;
   } catch (failure) {
-    if (!disposed && sequence === conversationSequence) conversationError.value = uiText('讨论暂时没有读到：{0}', [message(failure)]);
+    if (!disposed && sequence === conversationSequence) {
+      conversationError.value = uiText('讨论暂时没有读到：{0}', [message(failure)]);
+      requestWorkspaceRecovery(failure);
+    }
   } finally {
     if (sequence === conversationSequence) {
       conversationLoading.value = false;
@@ -320,9 +378,19 @@ async function flush(): Promise<boolean> {
   try { for (const pane of panes.values()) await pane.flush(); error.value = ''; return true; }
   catch (failure) { error.value = uiText('演示现场尚未保存：{0}', [message(failure)]); return false; }
 }
+let failedBoardId: string | null = null;
+let listLoadError: string | null = null;
 async function refreshList() {
-  try { boards.value = (await api.boardList()).items; }
-  catch (failure) { error.value = uiText('画板列表读取失败：{0}', [message(failure)]); }
+  try {
+    boards.value = (await api.boardList()).items;
+    if (error.value === listLoadError) error.value = '';
+    listLoadError = null;
+  }
+  catch (failure) {
+    if (disposed) return;
+    listLoadError = uiText('画板列表读取失败：{0}', [message(failure)]); error.value = listLoadError;
+    requestWorkspaceRecovery(failure);
+  }
 }
 function install(document: BoardDocument, state: BoardView) {
   if (board.value?.board_id !== document.board_id) {
@@ -354,6 +422,7 @@ async function openBoard(id: string) {
   try { await promise; } finally { if (openingBoard?.promise === promise) openingBoard = null; }
 }
 async function loadBoard(id: string) {
+  failedBoardId = null;
   if (board.value?.board_id === id) { galleryOpen.value = false; await importPending(); return; }
   pausePlayback();
   if (!await flush()) return;
@@ -363,7 +432,12 @@ async function loadBoard(id: string) {
     if (disposed || sequence !== loadSequence) return;
     install(result.document, result.view); emit('board-open', id);
     await importPending();
-  } catch (failure) { if (!disposed && sequence === loadSequence) error.value = uiText('画板没有打开：{0}', [message(failure)]); }
+  } catch (failure) {
+    if (!disposed && sequence === loadSequence) {
+      failedBoardId = id; error.value = uiText('画板没有打开：{0}', [message(failure)]);
+      requestWorkspaceRecovery(failure);
+    }
+  }
   finally { if (sequence === loadSequence) loading.value = false; }
 }
 async function createBoard() {
@@ -593,15 +667,27 @@ watch(() => `${props.run?.board_id}:${props.run?.turn_id}:${props.run?.pending}`
   if (props.run?.board_id === board.value?.board_id && props.run?.accepted) void loadConversation();
 });
 watch(() => `${discussionTurns.value.some(turn => turn.pending)}:${runOnBoard.value?.can_stop}`, scheduleConversationRefresh);
+async function recoverBoardReads() {
+  if (disposed || busy.value) return;
+  if (listLoadError) await refreshList();
+  if (disposed) return;
+  if (failedBoardId) { await openBoard(failedBoardId); if (failedBoardId) return; }
+  if (disposed) return;
+  if (props.pendingLocate && await locate(props.pendingLocate)) emit('located');
+  if (conversationError.value) await loadConversation();
+}
+window.addEventListener('workspace-recovered', recoverBoardReads);
 window.addEventListener('beforeunload', beforeUnload);
+document.addEventListener('fullscreenchange', fullscreenChanged);
+document.addEventListener('keydown', fullscreenKeydown);
 void refreshList();
-onBeforeUnmount(() => { disposed = true; pausePlayback(); loadSequence++; catalogSequence++; searchSequence++; conversationSequence++; clearTimeout(timer); clearTimeout(searchTimer); clearTimeout(conversationTimer); window.removeEventListener('beforeunload', beforeUnload); });
+onBeforeUnmount(() => { disposed = true; pausePlayback(); loadSequence++; catalogSequence++; searchSequence++; conversationSequence++; clearTimeout(timer); clearTimeout(searchTimer); clearTimeout(conversationTimer); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('workspace-recovered', recoverBoardReads); document.removeEventListener('fullscreenchange', fullscreenChanged); document.removeEventListener('keydown', fullscreenKeydown); void exitCanvasFullscreen(); });
 defineExpose({ flush });
 </script>
 
 <template>
-  <section ref="root" class="board-workspace" :aria-label="uiText('知识画板工作区')" :aria-busy="busy" @keydown="dialogKeydown">
-    <header class="board-topbar">
+  <section ref="root" class="board-workspace" :class="{ 'board-canvas-fullscreen': canvasFullscreen }" :aria-label="uiText('知识画板工作区')" :aria-busy="busy" @keydown="dialogKeydown">
+    <header v-show="!canvasFullscreen" class="board-topbar">
       <button class="board-back" type="button" :aria-label="uiText('关闭画板，回到阅读')" :disabled="busy" @click="close"><ArrowLeft :size="18" aria-hidden="true" /></button>
       <button class="board-library-trigger" type="button" @click="openGallery"><LayoutDashboard :size="17" aria-hidden="true" /><span>{{ uiText('知识画板') }}</span><ChevronDown :size="13" aria-hidden="true" /></button>
       <span v-if="board" class="board-top-divider"></span>
@@ -613,8 +699,15 @@ defineExpose({ flush });
     </header>
     <div v-if="error && !galleryOpen && !addOpen && !deleteOpen" class="board-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="busy || saving" @click="flush">{{ uiText('重试保存') }}</button><button v-if="dirty" type="button" :disabled="busy || saving" @click="discardAndReload">{{ uiText('放弃未保存修改并重新载入') }}</button><button type="button" :disabled="busy" @click="openGallery">{{ uiText('查看画板列表') }}</button></div>
     <div v-else-if="savedNotice" class="board-notice" role="status">{{ savedNotice }}</div>
-    <div v-if="board" class="board-mobile-switch" role="group" :aria-label="uiText('画板、讲解与讨论')"><button type="button" :class="{ active: mobileTab === 'canvas' }" @click="mobileTab = 'canvas'"><LayoutDashboard :size="15" aria-hidden="true" />{{ uiText('画板') }}</button><button type="button" :class="{ active: mobileTab === 'reading' }" @click="showPanel('reading')"><BookOpen :size="15" aria-hidden="true" />{{ uiText('讲解') }}</button><button type="button" :class="{ active: mobileTab === 'discussion' }" @click="showPanel('discussion')"><MessageSquareText :size="15" aria-hidden="true" />{{ uiText('讨论') }}</button></div>
-    <div v-if="routes.length" class="board-playback" role="group" :aria-label="uiText('板书讲解')" :data-route-id="currentRoute?.route_id" :data-step-id="view.playback?.step_id" :data-following="view.playback?.following ?? false" :data-playing="playing" :data-show-all="view.playback?.show_all ?? true">
+    <div v-if="board" v-show="!canvasFullscreen" class="board-mobile-switch" role="group" :aria-label="uiText('画板、讲解与讨论')"><button type="button" :class="{ active: mobileTab === 'canvas' }" @click="mobileTab = 'canvas'"><LayoutDashboard :size="15" aria-hidden="true" />{{ uiText('画板') }}</button><button type="button" :class="{ active: mobileTab === 'reading' }" @click="showPanel('reading')"><BookOpen :size="15" aria-hidden="true" />{{ uiText('讲解') }}</button><button type="button" :class="{ active: mobileTab === 'discussion' }" @click="showPanel('discussion')"><MessageSquareText :size="15" aria-hidden="true" />{{ uiText('讨论') }}</button></div>
+    <div v-if="canvasFullscreen" class="board-fullscreen-tools" role="group" :aria-label="uiText('画板、讲解与讨论')">
+      <button type="button" :aria-pressed="!railCollapsed && railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="16" aria-hidden="true" />{{ uiText('讲解') }}</button>
+      <button type="button" :aria-pressed="!railCollapsed && railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="16" aria-hidden="true" />{{ uiText('讨论') }}</button>
+      <button type="button" :aria-pressed="fullscreenQuestionOpen" @click="toggleQuestion"><Plus :size="16" aria-hidden="true" />{{ fullscreenQuestionOpen ? uiText('收起提问') : uiText('提问') }}</button>
+      <button type="button" :aria-label="uiText('退出全屏')" :title="uiText('退出全屏')" @click="exitCanvasFullscreen"><Minimize :size="16" aria-hidden="true" /><span>{{ uiText('退出全屏') }}</span></button>
+    </div>
+    <p v-if="canvasFullscreen && fullscreenNotice && railCollapsed" class="board-fullscreen-notice" role="status">{{ fullscreenNotice }}</p>
+    <div v-if="routes.length" v-show="!canvasFullscreen" class="board-playback" role="group" :aria-label="uiText('板书讲解')" :data-route-id="currentRoute?.route_id" :data-step-id="view.playback?.step_id" :data-following="view.playback?.following ?? false" :data-playing="playing" :data-show-all="view.playback?.show_all ?? true">
       <select :value="currentRoute?.route_id ?? ''" :aria-label="uiText('选择讲解路径')" @change="chooseRoute(($event.target as HTMLSelectElement).value)"><option value="" disabled>{{ uiText('选择讲解路径') }}</option><option v-for="route in routes" :key="route.route_id" :value="route.route_id">{{ route.title }}</option></select>
       <div class="board-playback-controls">
         <button type="button" :aria-label="uiText('上一步')" :disabled="!currentRoute || (routeProjection?.index ?? -1) <= 0" @click="seekStep((routeProjection?.index ?? 0) - 1)"><SkipBack :size="15" aria-hidden="true" /></button>
@@ -626,10 +719,11 @@ defineExpose({ flush });
       <button v-if="currentRoute && (!view.playback?.following || view.playback.show_all)" type="button" class="board-resume-following" @click="resumeFollowing">{{ uiText('继续跟随') }}</button>
     </div>
     <div v-if="mappingChoices.length" class="board-mapping-choices" role="group" :aria-label="uiText('这个图元的相关解释')"><span>{{ uiText('选择要阅读的解释') }}</span><button v-for="choice in mappingChoices" :key="`${choice.item_id}:${choice.block_id}`" type="button" @click="readContent(choice, true)">{{ contentTitle(choice) }}</button></div>
-    <div v-if="board" class="board-body" :class="[`mobile-${mobileTab}`, { 'has-selection': activeItem }]">
-      <BoardCanvas ref="canvas" :items="board.items" :links="board.links ?? []" :view="view" :disabled="busy" :visible-item-ids="routeProjection?.visibleItemIds" :visible-link-ids="routeProjection?.visibleLinkIds" :highlight-targets="highlightedTargets" :progress="graphicProgress" :transition="routeProjection?.step?.transition ?? 'instant'" @view="updateCanvasView" @move="move" @select="select" @activate-target="activateVisual" @user-control="userControl" @add="openAdd" @ask="suggestQuestion('')" />
-      <aside class="board-side-rail" :aria-label="uiText('讲解与讨论')">
-        <div class="board-rail-tabs" role="tablist" :aria-label="uiText('讲解与讨论')"><button type="button" role="tab" :aria-selected="railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="15" />{{ uiText('讲解') }}</button><button type="button" role="tab" :aria-selected="railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="15" />{{ uiText('讨论') }}<span v-if="discussionTurns.length">{{ discussionTurns.length }}</span><i v-if="runOnBoard?.pending" class="board-discussion-live-dot"></i></button></div>
+    <div v-if="board" class="board-body" :class="[`mobile-${mobileTab}`, { 'has-selection': activeItem, 'board-rail-collapsed': railCollapsed }]">
+      <BoardCanvas ref="canvas" :items="board.items" :links="board.links ?? []" :view="view" :disabled="busy" :fullscreen="canvasFullscreen" :visible-item-ids="routeProjection?.visibleItemIds" :visible-link-ids="routeProjection?.visibleLinkIds" :highlight-targets="highlightedTargets" :progress="graphicProgress" :transition="routeProjection?.step?.transition ?? 'instant'" @view="updateCanvasView" @move="move" @select="select" @activate-target="activateVisual" @user-control="userControl" @add="openAdd" @ask="suggestQuestion('')" @toggle-fullscreen="toggleCanvasFullscreen" />
+      <button v-if="railCollapsed && !canvasFullscreen" type="button" class="board-expand-rail" :aria-label="uiText('展开讲解与讨论')" @click="showPanel(railTab)"><PanelRightOpen :size="16" aria-hidden="true" /><span>{{ uiText('讲解与讨论') }}</span></button>
+      <aside v-show="!railCollapsed" class="board-side-rail" :aria-label="uiText('讲解与讨论')">
+        <div class="board-rail-header"><div class="board-rail-tabs" role="tablist" :aria-label="uiText('讲解与讨论')"><button type="button" role="tab" :aria-selected="railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="15" />{{ uiText('讲解') }}</button><button type="button" role="tab" :aria-selected="railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="15" />{{ uiText('讨论') }}<span v-if="discussionTurns.length">{{ discussionTurns.length }}</span><i v-if="runOnBoard?.pending" class="board-discussion-live-dot"></i></button></div><button type="button" class="board-collapse-rail" :aria-label="uiText('收起讲解与讨论')" :title="uiText('收起讲解与讨论')" @click="collapseRail"><PanelRightClose :size="17" aria-hidden="true" /></button></div>
       <div v-show="railTab === 'reading'" class="board-reader-stack" :class="{ 'has-region': focusedPresentationId && focusedPresentationId !== readingItem?.item_id }">
         <BoardReadingPane v-if="!readingItem" :board-id="board.board_id" :item="null" />
         <BoardReadingPane v-for="item in visitedItems" v-show="item.item_id === readingItem?.item_id || item.item_id === focusedPresentationId" :key="`${boardMount}:${board.board_id}:${item.item_id}`" :ref="instance => setPane(item.item_id, instance)" :board-id="board.board_id" :item="item" :items="board.items" :deliveries="board.deliveries" :busy="busy || protectedItem(item.item_id)" :mapped-block-ids="mappedBlocks(item.item_id)" :mapped-item="mappedItem(item.item_id)" :highlighted-block-id="item.item_id === readingItem?.item_id ? highlightedBlock : null" @source="(id, anchor) => source(item.item_id, id, anchor)" @remove="removeItem" @select-item="locateItem" @activate-block="activateBlock" @activate-target="activateVisual" @user-control="userControl" />
@@ -639,7 +733,7 @@ defineExpose({ flush });
     </div>
     <div v-else class="board-unopened"><Shapes :size="40" aria-hidden="true" /><p>{{ loading ? uiText('正在打开画板…') : uiText('打开一张画板，让学习接着发生。') }}</p><button v-if="!loading" type="button" @click="openGallery">{{ uiText('查看我的画板') }}</button></div>
 
-    <section v-if="board" class="board-conversation" :aria-label="uiText('在画板上继续提问')">
+    <section v-if="board" v-show="!canvasFullscreen || fullscreenQuestionOpen" class="board-conversation" :aria-label="uiText('在画板上继续提问')">
       <div v-if="boardCommits.length" class="board-saved-parts" :aria-label="uiText('已保存的讲解')">
         <button v-for="(part, index) in boardCommits" :key="boardDeliveryKey(part)" type="button" class="board-part-location" :data-board-part="index + 1" @click="locateDelivery(part)"><Check :size="13" aria-hidden="true" /><span>{{ uiText('已保存第{0}部分', [index + 1]) }}</span><span>{{ uiText('查看') }}</span></button>
         <p v-if="runOnBoard?.incomplete && !runOnBoard.pending" role="status">{{ uiText('讲解尚未全部完成，已保存的部分可以继续查看。') }}</p>
@@ -656,7 +750,7 @@ defineExpose({ flush });
       <p v-if="questionError" class="board-question-error" role="alert">{{ questionError }}</p>
       <form class="board-question-form" @submit.prevent="askQuestion">
         <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button><small>{{ uiText('讨论与图解都会留在这里') }}</small></div>
-        <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="2" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>
+        <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="1" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>
         <p v-if="preparingQuestion || awaitingAcceptance" class="board-question-hint" role="status">{{ preparingQuestion ? uiText('正在保留提问对象与演示现场…') : uiText('正在发送追问…') }}</p>
       </form>
     </section>
@@ -718,6 +812,42 @@ button{min-height:0;padding:0;border-radius:0}
 .board-catalog-more{display:block;width:100%;margin-top:12px;padding:11px;border:1px solid var(--hairline);border-radius:7px;background:var(--surface-soft);color:var(--steel);font-size:12px;cursor:pointer}.board-kind-tabs button[role=tab]{white-space:normal;line-height:1.5}
 .board-catalog-row{border-bottom:1px solid var(--hairline-soft);padding-bottom:10px}.board-catalog-row .board-catalog-item{border-bottom:0;padding-bottom:9px}.board-related-trigger{display:flex;gap:5px;align-items:center;border:0;background:transparent;color:var(--stone);font-size:10px;cursor:pointer}.board-related-results{margin-top:10px;padding:10px;border-radius:7px;background:var(--surface-soft)}.board-related-results>button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:8px 3px;border:0;background:transparent;color:var(--steel);font-size:12px;text-align:left;cursor:pointer}.board-related-results small{font-size:10px;white-space:nowrap;color:var(--brand-accent)}.board-related-results p{font-size:11px;line-height:1.8;color:var(--stone);margin:3px 0}.board-related-results p>button{margin-left:8px;border:0;background:transparent;color:var(--brand-accent);font-size:11px;cursor:pointer}
 .board-workspace{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;background:var(--reader-canvas);color:var(--ink);font-family:var(--sans);font-size:14px}.board-topbar{display:flex;align-items:center;gap:14px;flex-shrink:0;min-height:65px;padding:12px 22px;border-bottom:1px solid var(--hairline);background:var(--reader-card)}button,input{font:inherit}.board-back,.board-library-trigger{display:flex;align-items:center;justify-content:center;gap:8px;border:0;background:transparent;color:var(--steel);cursor:pointer}.board-back{height:34px;width:30px;flex-shrink:0}.board-library-trigger{white-space:nowrap;font-size:12px}.board-library-trigger>svg:first-child{color:var(--brand-accent)}.board-top-divider{height:22px;width:1px;background:var(--hairline)}.board-title-input{flex:1;min-width:50px;padding:6px 3px;border:1px solid transparent;background:transparent;color:var(--ink);font-size:14px;font-weight:550;text-overflow:ellipsis;border-radius:4px}.board-title-input:hover{border-color:var(--hairline)}.board-top-spacer{flex:1}.board-save-state{display:flex;gap:5px;align-items:center;white-space:nowrap;color:var(--stone);font-size:10px}.board-save-state.unsaved{color:#ae7a32}.board-add-button{display:flex;gap:5px;align-items:center;white-space:nowrap;border:0;background:var(--brand-accent);color:white;padding:9px 12px;border-radius:7px;font-size:12px;cursor:pointer}.board-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(350px,40%);flex:1;min-height:0;overflow:hidden}.board-reader-stack{display:grid;min-width:0;min-height:0;overflow:hidden}.board-reader-stack>*{grid-area:1/1}.board-mobile-switch{display:none}.board-error,.board-notice{display:flex;align-items:center;gap:12px;flex-shrink:0;padding:9px 22px;border-bottom:1px solid var(--hairline);font-size:12px;line-height:1.7}.board-error{background:color-mix(in srgb,var(--brand-error) 8%,var(--reader-card));color:var(--brand-error)}.board-error>span{flex:1}.board-error button{border:0;border-bottom:1px solid currentColor;background:transparent;color:inherit;padding:0;cursor:pointer;white-space:nowrap;font-size:11px}.board-notice{background:var(--surface-soft);color:var(--steel)}.board-unopened{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;flex:1;color:var(--stone)}.board-unopened p{font-size:14px}.board-unopened button{border:1px solid var(--hairline);border-radius:7px;padding:9px 14px;background:var(--reader-card);color:var(--steel);cursor:pointer}.board-dialog-scrim{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:#25232032;backdrop-filter:blur(3px)}.board-gallery,.board-add-dialog,.board-delete-dialog{display:flex;flex-direction:column;width:min(660px,100%);max-height:100%;min-height:0;background:var(--reader-card);border:1px solid var(--hairline);border-radius:16px;box-shadow:0 18px 70px #25232024;padding:28px}.board-gallery>header,.board-add-dialog>header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.board-dialog-kicker{font-size:10px;letter-spacing:.06em;color:var(--stone)}.board-gallery h2,.board-add-dialog h2{font-size:24px;font-weight:550;line-height:1.6;margin:6px 0 0}.board-gallery>header>button,.board-add-dialog>header>button{display:grid;place-items:center;width:29px;height:29px;border:0;background:transparent;color:var(--steel);cursor:pointer}.board-gallery-intro{font-size:12px;line-height:1.9;color:var(--steel);margin:14px 0 23px}.board-create-form{display:flex;gap:8px;margin-bottom:22px}.board-create-form input,.board-catalog-search{min-width:0;flex:1;background:var(--surface-soft);border:1px solid var(--hairline);border-radius:7px;padding:11px 12px;font-size:12px;color:var(--ink)}.board-create-form button{display:flex;align-items:center;justify-content:center;gap:5px;padding:10px 13px;border:0;background:var(--brand-accent);color:white;border-radius:7px;white-space:nowrap;font-size:12px;cursor:pointer}.board-gallery-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;overflow:auto;min-height:90px;padding:2px;overscroll-behavior:contain}.board-gallery-item{display:flex;gap:12px;align-items:center;padding:17px 15px;border:1px solid var(--hairline);border-radius:10px;background:transparent;text-align:left;color:var(--ink);cursor:pointer;min-width:0}.board-gallery-item:hover,.board-gallery-item.current{border-color:var(--brand-accent);background:color-mix(in srgb,var(--brand-accent) 4%,var(--reader-card))}.board-gallery-icon{display:grid;place-items:center;width:39px;height:45px;flex-shrink:0;border:1px solid var(--hairline);border-radius:7px;background:var(--surface-soft);color:var(--steel)}.board-gallery-item>span:nth-child(2){display:flex;min-width:0;flex:1;flex-direction:column;gap:8px}.board-gallery-item strong{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;font-weight:550}.board-gallery-item small{display:flex;align-items:center;gap:7px;color:var(--stone);font-size:10px}.board-gallery-arrow{font-size:15px;color:var(--stone)}.board-gallery-empty{grid-column:1/-1;color:var(--stone);font-size:12px;align-self:center;text-align:center;line-height:1.8}.board-gallery>footer{display:flex;justify-content:space-between;gap:20px;align-items:center;border-top:1px solid var(--hairline);padding-top:18px;margin-top:24px;color:var(--stone);font-size:10px}.board-delete-link{display:flex;align-items:center;gap:5px;border:0;background:transparent;padding:0;color:var(--stone);cursor:pointer;font-size:10px}.board-delete-link:hover{color:var(--brand-error)}.board-kind-tabs{display:flex;gap:4px;padding:4px;background:var(--surface-soft);border-radius:8px;margin-top:22px}.board-kind-tabs button{flex:1;padding:9px 5px;border:0;border-radius:6px;background:transparent;white-space:nowrap;color:var(--steel);font-size:11px;cursor:pointer}.board-kind-tabs button.active{background:var(--reader-card);color:var(--ink);box-shadow:0 1px 5px #25232012}.board-kind-description{font-size:12px;line-height:1.8;color:var(--steel);margin:15px 0}.board-catalog-search{flex:none;width:100%;margin-bottom:15px}.board-catalog-list{min-height:180px;overflow:auto;overscroll-behavior:contain}.board-catalog-item{display:flex;align-items:center;gap:20px;width:100%;padding:15px 2px;border:0;border-bottom:1px solid var(--hairline-soft);background:transparent;color:var(--ink);text-align:left;cursor:pointer}.board-catalog-item:hover{background:var(--surface-soft)}.board-catalog-item>span{display:flex;flex:1;min-width:0;flex-direction:column;gap:7px}.board-catalog-item strong{font-size:13px;font-weight:550;line-height:1.7}.board-catalog-item small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;line-height:1.8;color:var(--stone)}.board-catalog-item>svg{flex-shrink:0;color:var(--brand-accent)}.board-catalog-empty{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;min-height:120px;font-size:12px;color:var(--stone);line-height:1.9}.board-catalog-empty button{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:var(--brand-accent);cursor:pointer}.board-delete-dialog{width:min(440px,100%)}.board-delete-dialog h2{font-size:20px;font-weight:550;margin:0 0 14px;overflow-wrap:anywhere}.board-delete-dialog p{font-size:13px;line-height:1.9;color:var(--steel)}.board-delete-dialog>div{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.board-delete-dialog button{padding:9px 14px;border:1px solid var(--hairline);border-radius:7px;background:var(--reader-card);color:var(--steel);cursor:pointer}.board-delete-dialog button.destructive{background:var(--brand-error);border-color:var(--brand-error);color:white}button:disabled{opacity:.5;cursor:wait}button:focus-visible,input:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px}.board-spinner{animation:board-spin 1.2s linear infinite}@keyframes board-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.board-spinner{animation:none}}@media(max-width:900px){.board-body{grid-template-columns:minmax(0,1fr) minmax(320px,44%)}.board-topbar{gap:10px;padding:12px 16px}.board-save-state{display:none}}@media(max-width:700px){.board-topbar{min-height:58px;padding:10px 12px;gap:8px}.board-library-trigger>span{display:none}.board-top-divider{display:none}.board-title-input{font-size:13px}.board-add-button{padding:8px 10px}.board-add-button>span{font-size:11px}.board-mobile-switch{display:flex;flex-shrink:0;gap:4px;background:var(--reader-card);padding:0 16px 9px;border-bottom:1px solid var(--hairline)}.board-mobile-switch button{display:flex;align-items:center;justify-content:center;gap:6px;flex:1;border:0;border-radius:7px;background:transparent;padding:8px;color:var(--steel);font-size:12px;cursor:pointer}.board-mobile-switch button.active{background:var(--surface-soft);color:var(--ink)}.board-mobile-switch button>span{padding:0 4px;font-size:10px;color:var(--stone)}.board-body{display:flex;position:relative}.board-body>.board-canvas,.board-reader-stack{width:100%;height:100%}.board-body.mobile-canvas>.board-reader-stack{display:none}.board-body.mobile-reading>.board-canvas{display:none}.board-dialog-scrim{padding:16px}.board-gallery,.board-add-dialog{padding:22px 20px;border-radius:13px}.board-gallery h2,.board-add-dialog h2{font-size:22px}.board-gallery-list{grid-template-columns:1fr}.board-gallery-intro{margin-bottom:18px}.board-create-form{flex-wrap:wrap}.board-create-form input{min-width:130px}.board-gallery>footer>span{display:none}.board-kind-tabs{gap:0;margin-top:18px}.board-kind-tabs button{font-size:10px}.board-error{flex-wrap:wrap;padding:9px 15px;gap:8px}.board-error>span{flex-basis:100%}.board-notice{padding:8px 15px;font-size:11px}}
+</style>
+
+<style scoped>
+.board-workspace .board-body{position:relative;grid-template-columns:minmax(0,1fr) clamp(320px,32%,420px)}
+.board-body.board-rail-collapsed{grid-template-columns:minmax(0,1fr)}
+.board-topbar{min-height:58px;padding-top:9px;padding-bottom:9px}
+.board-conversation{padding-top:8px;padding-bottom:10px}
+.board-question-row{align-items:center;padding-top:6px;padding-bottom:6px}
+.board-question-row textarea{min-height:28px}
+.board-rail-header{display:flex;align-items:center;flex-shrink:0;border-bottom:1px solid var(--hairline)}
+.board-rail-header .board-rail-tabs{flex:1;min-width:0;border-bottom:0;padding:0 18px;gap:18px;height:44px}
+.board-collapse-rail,.board-expand-rail{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--hairline);border-radius:8px;background:var(--reader-card);color:var(--steel);cursor:pointer}
+.board-collapse-rail{width:32px;height:32px;padding:0;margin-right:10px;border-color:transparent}
+.board-expand-rail{position:absolute;z-index:4;right:16px;top:16px;padding:9px 11px;font-size:11px;box-shadow:0 3px 12px #25232009}
+.board-collapse-rail:hover,.board-expand-rail:hover{background:var(--surface-soft);color:var(--brand-accent)}
+.board-fullscreen-tools{position:absolute;top:16px;left:16px;z-index:10;display:flex;align-items:center;gap:3px;max-width:calc(100% - 32px);padding:5px;border:1px solid var(--hairline);border-radius:10px;background:var(--reader-card);box-shadow:0 3px 12px #25232009}
+.board-fullscreen-tools button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:34px;padding:5px 9px;border:0;border-radius:6px;background:transparent;color:var(--steel);font-size:12px;white-space:nowrap;cursor:pointer}
+.board-fullscreen-tools button:hover,.board-fullscreen-tools button[aria-pressed=true]{background:var(--surface-soft);color:var(--brand-accent)}
+.board-fullscreen-tools button:last-child{border-left:1px solid var(--hairline);border-radius:0;padding-left:12px}
+.board-fullscreen-notice{position:absolute;z-index:9;top:70px;left:16px;max-width:min(330px,calc(100% - 32px));margin:0;padding:9px 12px;border:1px solid var(--hairline);border-radius:8px;background:var(--reader-card);color:var(--steel);font-size:11px;line-height:1.7;box-shadow:0 3px 12px #25232009}
+.board-canvas-fullscreen{width:100%;height:100%;min-height:0}
+.board-canvas-fullscreen .board-body{flex:1}
+@media(max-width:700px){
+  .board-question-row textarea{min-height:32px}
+  .board-fullscreen-tools{top:12px;left:12px;max-width:calc(100% - 24px);gap:0}
+  .board-fullscreen-tools button{padding:5px 7px;font-size:11px;min-height:36px}
+  .board-fullscreen-tools button:last-child{padding-left:9px}
+  .board-fullscreen-tools button:last-child span{display:none}
+  .board-rail-header{display:none}
+  .board-canvas-fullscreen .board-side-rail{padding-top:66px}
+  .board-canvas-fullscreen .board-rail-header{display:flex}
+  .board-canvas-fullscreen .board-rail-header .board-rail-tabs{display:flex}
+  .board-canvas-fullscreen .board-body.mobile-canvas>.board-canvas{display:block}
+}
+@media(pointer:coarse){.board-fullscreen-tools button,.board-collapse-rail{min-height:44px}.board-collapse-rail{width:44px}}
+@media(pointer:coarse) and (max-width:700px){.board-canvas-fullscreen .board-side-rail{padding-top:76px}}
 </style>
 
 <style scoped>

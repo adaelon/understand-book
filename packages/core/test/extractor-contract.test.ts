@@ -48,6 +48,16 @@ function diagnosticOf(run: () => unknown) {
 }
 
 describe("automatic build extractor contracts", () => {
+  it("corrects a persisted outline batch pointer without rewriting the original diagnostic", () => {
+    const diagnostic = createAutomaticBuildFailureDiagnosticV3({ category: "schema", code: "schema_invalid",
+      phase: "artifact_writer", json_pointer: "/0/question/evidence_lids", expected: "Array must contain at least 1 element(s)" });
+    const original = structuredClone(diagnostic);
+    expect(automaticBuildCandidateCorrection(diagnostic)).toEqual({ code: "schema_invalid",
+      json_pointer: "/chapters/0/question/evidence_lids", expected: diagnostic.expected });
+    expect(diagnostic).toEqual(original);
+    const unrelated = createAutomaticBuildFailureDiagnosticV3({ ...diagnostic, json_pointer: "/0/other/evidence_lids" });
+    expect(automaticBuildCandidateCorrection(unrelated)?.json_pointer).toBe("/0/other/evidence_lids");
+  });
   it.each(["label", "unit", "domain"])("explains the required nullable formula parameter %s after a real schema rejection", field => {
     const parameter: Record<string, unknown> = {
       symbol: "E", label: null, meaning: "能量项", unit: null, domain: null, evidence_lids: ["3.2.4"],

@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Users, Moon, Sun, ChartColumn, Ticket, LogOut } from "lucide-react";
+import { BookOpen, Users, Moon, Sun, ChartColumn, Ticket, LogOut, Activity } from "lucide-react";
+import { useAdminPresence } from "./lib/presence";
 import { login, logout, session, startIdentitySync } from "./lib/api";
 import { useTheme } from "./context/theme-provider";
 import { Button } from "./components/ui/button";
@@ -21,6 +22,7 @@ import { Field, OperationsProvider } from "./components/operation";
 
 export function App() {
   const auth = useSyncExternalStore(session.subscribe, session.snapshot);
+  useAdminPresence(auth.identity?.csrf_token);
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname.replace(/^\/admin(?=\/|$)/, "") || "/";
@@ -144,6 +146,7 @@ export function App() {
         </SidebarHeader>
         <SidebarContent className="p-3">
           <SidebarMenu>
+            <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/monitor'}><Link to="/monitor"><Activity /><span>实时监控</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/users')}>
                 <Link to="/users">

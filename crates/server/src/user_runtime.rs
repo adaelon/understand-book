@@ -102,6 +102,8 @@ impl UserRuntime {
         let cursors = crate::agent_history_review_cursors(&user.agent_history);
         user.store
             .initialize_review_watermark_baseline(&cursors, now)?;
+        // The complete JSONL inventory also stops jobs whose source was deleted
+        // and jobs that exhausted their automatic attempts before this load.
         user.store.resume_review_jobs(&cursors, now)?;
         user.store
             .resume_interrupted_historical_backfill_jobs(now)?;

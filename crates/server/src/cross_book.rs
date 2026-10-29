@@ -187,6 +187,17 @@ pub(crate) fn record_delivery(user:&UserRuntime, session:&crate::AgentChatSessio
 }
 
 pub(crate) fn source_view(library: &Mutex<PublishedLibrary>, owner: &str, binding: &runtime::orchestrator::SourceBinding, open: bool) -> Result<Value, ToolError> {
+    source_view_at(library, owner, binding, open, None)
+}
+
+pub(crate) fn source_window(library: &Mutex<PublishedLibrary>, owner: &str, binding: &SourceBinding, input: &Value) -> Result<Value, ToolError> {
+    let reference = base_schema::PublishedBookRef { book_id: binding.book_id.clone(),
+        publication_id: binding.publication_id.clone().ok_or_else(crate::authorization::missing)? };
+    let publication = library.lock().unwrap().load(owner, &reference)?;
+    crate::board_api::source_window(&publication.book, binding, Some(&reference), input)
+}
+
+pub(crate) fn source_view_at(library: &Mutex<PublishedLibrary>, owner: &str, binding: &runtime::orchestrator::SourceBinding, open: bool, target_lid: Option<&str>) -> Result<Value, ToolError> {
     if let Some(music) = &binding.music {
         let reference = &music.target.publication;
         let loaded = library.lock().unwrap().load(owner, reference);
@@ -213,10 +224,19 @@ pub(crate) fn source_view(library: &Mutex<PublishedLibrary>, owner: &str, bindin
     let last = publication.book.base.lid_nodes.iter().find(|n| n.lid == range.end_lid).ok_or_else(crate::authorization::missing)?;
     let start = range.ranges.iter().find(|r|r.lid==range.start_lid).map_or(first.span.start, |r|first.span.start+r.range.start as usize);
     let end = range.ranges.iter().find(|r|r.lid==range.end_lid).map_or(last.span.end, |r|last.span.start+r.range.end as usize);
-    let query = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("book_id", &reference.book_id).append_pair("publication_id", &reference.publication_id)
-        .append_pair("start_lid", &range.start_lid).append_pair("end_lid", &range.end_lid)
-        .append_pair("start_utf16", &start.to_string()).append_pair("end_utf16", &end.to_string()).finish();
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query.append_pair("book_id", &reference.book_id).append_pair("publication_id", &reference.publication_id);
+    if open && target_lid.is_some() {
+        let lid = target_lid.unwrap();
+        let node = publication.book.base.lid_nodes.iter().find(|node| node.lid == lid).ok_or_else(crate::authorization::missing)?;
+        let leaf = publication.book.base.lid_nodes.iter().filter(|leaf| leaf.children.is_empty() && leaf.path.starts_with(&node.path))
+            .min_by(|a,b| a.span.start.cmp(&b.span.start).then_with(|| a.path.cmp(&b.path))).ok_or_else(crate::authorization::missing)?;
+        query.append_pair("start_lid", &leaf.lid).append_pair("end_lid", &leaf.lid);
+    } else {
+        query.append_pair("start_lid", &range.start_lid).append_pair("end_lid", &range.end_lid)
+            .append_pair("start_utf16", &start.to_string()).append_pair("end_utf16", &end.to_string());
+    }
+    let query = query.finish();
     let source_url = format!("/?{query}");
     if open { Ok(json!({"source_ref_id":binding.source_ref_id,"opened":false,"source_url":source_url})) }
     else { Ok(json!({"source_ref_id":binding.source_ref_id,"label":binding.label_snapshot,"material_title":title,

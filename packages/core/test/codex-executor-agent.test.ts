@@ -360,9 +360,11 @@ describe("Codex executor bootstrap publication", () => {
       .toBe(readText(ROOT_KNOWN_PREDECESSOR_AGENT_TEMPLATE));
 
     const knownPredecessor = readText(ROOT_KNOWN_PREDECESSOR_AGENT_TEMPLATE);
-    expect(knownPredecessor).toContain("automatic_build_executor_session.v2");
-    expect(knownPredecessor).toContain("the agent-only stdio MCP connection owns authorization");
-    expect(knownPredecessor).toMatch(/^\[mcp_servers\.understand_book_build_executor\]\s*$/mu);
+    expect(knownPredecessor).toContain("automatic_build_executor_session.v3");
+    expect(validateBuildExecutorRoleConfigV3(knownPredecessor)).toMatchObject({
+      status: "compatible", mcp_servers_in_role: 0, session_protocol: "automatic_build_executor_session.v3",
+    });
+    expect(knownPredecessor).not.toMatch(/^\[mcp_servers\./mu);
     expect(knownPredecessor).not.toBe(readText(ROOT_AGENT_TEMPLATE));
 
     const registrationSkill = readText(ROOT_REGISTER_SKILL);

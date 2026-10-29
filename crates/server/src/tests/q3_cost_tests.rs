@@ -28,6 +28,18 @@ fn status(f: &Fixture, task: &str) -> Value {
 }
 
 #[test]
+fn unlimited_allowance_allows_build_usage_beyond_balance_with_task_budget_intact() {
+    let f = fixture();
+    f.control.connection.execute("UPDATE allowance_periods SET unlimited=1 WHERE user_id='A'", []).unwrap();
+    budget(&f, "unlimited-build", 30_000_000);
+    admit(&f, "unlimited-build", "unlimited-build-first", 12_000_000);
+    let done = settle(&f, "unlimited-build", "unlimited-build-first", 12_000_000, true);
+    assert_eq!(done["charge"]["provider_cost_micro_cny"], 12_000_000);
+    admit(&f, "unlimited-build", "unlimited-build-next", 18_000_000);
+    assert_eq!(f.call(&f.b, "POST", "/api/admin/build-tasks/unlimited-build/admit", admission("over-task-budget", "execution", 1)).1["error_code"], "BUILD_BUDGET_EXHAUSTED");
+}
+
+#[test]
 fn q3_parallel_admission_and_late_costs_never_exceed_confirmed_account_ceiling() {
     let f = fixture();
     budget(&f,"parallel",100);

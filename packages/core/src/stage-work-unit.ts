@@ -49,7 +49,7 @@ export type WorkUnitKind =
   | "discourse_paragraph_group"
   | "formula_context_group"
   | "pass2_candidate_batch"
-  | "structure_outline" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"
+  | "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"
   | "structure_unit"
   | "structure_fragment"
   | "structure_reduce"

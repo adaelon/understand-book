@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AnchoredText } from "./book-structure";
 import { acceptStructureChapterSelection, structureAnchoredTextSchema,
   type AcceptedStructureChapterSelection, type StructureCandidateCatalog } from "./book-structure-candidates";
+import { ExtractorContractError } from "./extractor-contract";
 
 export interface StructureSourceExcerpt { unit_lid: string; lids: string[]; text: string }
 export interface StructureOutlineInput {
@@ -9,27 +10,34 @@ export interface StructureOutlineInput {
   chapters: Array<{ unit_lid: string; title: string; overview: AnchoredText; sections?: Array<{ lid: string; title: string }> }>;
   preface: StructureSourceExcerpt[];
 }
-const outlineSchema = z.object({
-  chapters: z.array(z.object({ unit_lid: z.string(), question: structureAnchoredTextSchema, progression: structureAnchoredTextSchema }).strict()),
-  themes: z.array(z.object({ question: structureAnchoredTextSchema, unit_lids: z.array(z.string()).min(1) }).strict()),
-}).strict();
+const outlineChapterSchema = z.object({ unit_lid: z.string(), question: structureAnchoredTextSchema, progression: structureAnchoredTextSchema }).strict();
+const outlineThemeSchema = z.object({ question: structureAnchoredTextSchema, unit_lids: z.array(z.string()).min(1) }).strict();
+const outlineSchema = z.object({ chapters: z.array(outlineChapterSchema), themes: z.array(outlineThemeSchema) }).strict();
+export const structureOutlineChapterBatchSchema = outlineSchema.omit({ themes: true });
 export type StructureOutline = z.infer<typeof outlineSchema>;
 
-export function acceptStructureOutline(value: unknown, input: StructureOutlineInput): StructureOutline {
-  const outline = outlineSchema.parse(value);
-  const order = input.chapters.map(c => c.unit_lid);
-  if (outline.chapters.length !== order.length || outline.chapters.some((c, i) => c.unit_lid !== order[i])) {
-    throw new Error("outline must preserve the canonical chapter order and identities");
-  }
+function outlineEvidence(input: StructureOutlineInput) {
   const evidence = new Map(input.chapters.map(c => [c.unit_lid, new Set(c.overview.evidence_lids)]));
   for (const excerpt of input.preface) if (excerpt.text.trim()) {
     const set = evidence.get(excerpt.unit_lid) ?? new Set<string>();
     excerpt.lids.forEach(lid => set.add(lid)); evidence.set(excerpt.unit_lid, set);
   }
-  for (const chapter of outline.chapters) for (const text of [chapter.question, chapter.progression]) {
+  return evidence;
+}
+export function acceptStructureOutlineChapters(value: unknown, input: StructureOutlineInput): StructureOutline["chapters"] {
+  const chapters = z.array(outlineChapterSchema).parse(value), order = input.chapters.map(c => c.unit_lid);
+  if (chapters.length !== order.length || chapters.some((c, i) => c.unit_lid !== order[i])) {
+    throw new Error("outline must preserve the canonical chapter order and identities");
+  }
+  const evidence = outlineEvidence(input);
+  for (const chapter of chapters) for (const text of [chapter.question, chapter.progression]) {
     if (text.evidence_lids.some(lid => !evidence.get(chapter.unit_lid)?.has(lid))) throw new Error("outline chapter cites undelivered evidence");
   }
-  for (const theme of outline.themes) {
+  return chapters;
+}
+function acceptStructureOutlineThemes(value: unknown, input: StructureOutlineInput): StructureOutline["themes"] {
+  const themes = z.array(outlineThemeSchema).parse(value), order = input.chapters.map(c => c.unit_lid), evidence = outlineEvidence(input);
+  for (const theme of themes) {
     if (theme.unit_lids.some(unit => !order.includes(unit))) throw new Error("outline theme references an unknown unit");
     const allowed = new Set(theme.unit_lids.flatMap(unit => [...evidence.get(unit)!]));
     if (theme.question.evidence_lids.some(lid => !allowed.has(lid))
@@ -37,7 +45,36 @@ export function acceptStructureOutline(value: unknown, input: StructureOutlineIn
       throw new Error("outline theme needs delivered evidence for each member");
     }
   }
-  return outline;
+  return themes;
+}
+export function acceptStructureOutline(value: unknown, input: StructureOutlineInput): StructureOutline {
+  const outline = outlineSchema.parse(value);
+  return { chapters: acceptStructureOutlineChapters(outline.chapters, input), themes: acceptStructureOutlineThemes(outline.themes, input) };
+}
+
+/** Provisional themes can span many source units; their member/evidence lists grow through bounded actions. */
+export interface StructureOutlineThemeWork { themes: StructureOutline["themes"]; complete: boolean }
+const outlineThemeActionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("append"), themes: z.array(outlineThemeSchema).min(1) }).strict(),
+  z.object({ kind: z.literal("extend"), theme_index: z.number().int().nonnegative(),
+    unit_lids: z.array(z.string()).min(1), evidence_lids: z.array(z.string()).min(1) }).strict(),
+  z.object({ kind: z.literal("finish") }).strict(),
+]);
+export function applyStructureOutlineThemeAction(work: StructureOutlineThemeWork, value: unknown,
+  input: StructureOutlineInput): StructureOutlineThemeWork {
+  if (work.complete) throw new Error("outline themes are already complete");
+  const action = outlineThemeActionSchema.parse(value);
+  if (action.kind === "finish") return { themes: work.themes, complete: true };
+  const themes = structuredClone(work.themes);
+  if (action.kind === "append") themes.push(...action.themes);
+  else {
+    const theme = themes[action.theme_index];
+    if (!theme) throw new Error("outline theme index is unknown");
+    if (action.unit_lids.some(lid => theme.unit_lids.includes(lid))) throw new Error("outline theme extension repeats a member");
+    theme.unit_lids.push(...action.unit_lids);
+    theme.question.evidence_lids = [...new Set([...theme.question.evidence_lids, ...action.evidence_lids])];
+  }
+  return { themes: acceptStructureOutlineThemes(themes, input), complete: false };
 }
 
 export const STRUCTURE_CHAPTER_PAGE_SIZE = 24;
@@ -181,7 +218,11 @@ export function applyStructureChapterAction(work: StructureChapterWork, value: u
       throw new Error("chapter source index offset outside catalog");
     next.source_offset = action.offset; next.inspecting = []; next.reading = [];
   } else if (action.kind === "inspect") {
-    if (action.refs.some(ref => !next.seen_refs.includes(ref))) throw new Error("inspect requires a browsed chapter candidate");
+    if (action.refs.some(ref => !next.seen_refs.includes(ref))) throw new ExtractorContractError({
+      version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid", json_pointer: "/refs",
+      expected: "inspect requires a browsed chapter candidate. Copy each exact canonical ref from seen_refs or the currently delivered index.items; browse the index before inspecting any unseen candidate. Do not infer or rewrite refs.",
+      actual: { type: "array", length: action.refs.length },
+    });
     next.inspecting = [...new Set(action.refs)]; next.reading = [];
   } else if (action.kind === "read") {
     if (action.indices.some(index => context.excerpts[index]?.unit_lid !== work.unit_lid)) throw new Error("read outside chapter source");

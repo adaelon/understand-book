@@ -28,6 +28,24 @@ fn settle(f: &Fixture, id: &str, ms: i64) -> Value {
 }
 
 #[test]
+fn unlimited_allowance_covers_processing_and_audio_review_with_cost_records() {
+    let (f, period) = fixture();
+    rates(&f, 10_000_000);
+    f.control.connection.execute("UPDATE allowance_periods SET unlimited=1 WHERE period_id=?", [&period]).unwrap();
+    f.control.connection.execute("UPDATE build_task_budgets SET max_micro_cny=30_000_000 WHERE task_ref='service-task'", []).unwrap();
+    admit(&f, "unlimited-processing", 2000);
+    assert_eq!(settle(&f, "unlimited-processing", 2000)["charge"]["service_charge_micro_cny"], 20_000_000);
+    let scene = f.create(&f.a, &f.x, "unlimited-audio");
+    let scene = f.action(&f.a, &scene, "unlimited-audio", "chat/new", json!({}));
+    let run = f.run(&scene, "unlimited-audio");
+    let now = crate::multi_user_host::now();
+    let id = f.access.spend.service_admit_run(&run.scope, 2500, now).unwrap();
+    let done = f.access.spend.service_receipt(&run.scope.turn_id, serde_json::from_value(receipt(&id, "completed", Some(2500))).unwrap(), now).unwrap();
+    assert_eq!(done["charge"]["service_charge_micro_cny"], 25_000_000);
+    assert_eq!(crate::account_allowance::balance(&f.control.connection, &period).unwrap().debited_micro_cny.value(), 45_000_000);
+}
+
+#[test]
 fn c4_service_missing_rate_stops_admission_and_shared_parent_caps_models_and_processing() {
     let (f,_) = fixture();
     assert_eq!(f.call(&f.b,"POST","/api/admin/build-tasks/service-task/service-admit",admission("svc-one",6000)).1["error_code"],"SERVICE_RATE_UNAVAILABLE");

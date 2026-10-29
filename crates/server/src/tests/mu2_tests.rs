@@ -23,6 +23,70 @@ fn note(id: &str, content: &str) -> SaveInput {
 }
 
 #[test]
+fn mu2_warm_lookup_does_not_wait_for_another_users_command() {
+    let root = tempfile::tempdir().unwrap();
+    let mut registry = UserRegistry::open(root.path()).unwrap();
+    registry.create_user("A").unwrap();
+    registry.create_user("B").unwrap();
+    let a = registry.get("A", "1").unwrap();
+    let b = registry.get("B", "1").unwrap();
+    let registry = Arc::new(Mutex::new(registry));
+    // Hold A throughout the lookup of both users. A warm lookup must only pin
+    // the runtime; the caller waits for the private lock after dropping registry.
+    let busy_a = a.lock().unwrap();
+    let (completed, result) = std::sync::mpsc::channel();
+    let shared = registry.clone();
+    let worker = std::thread::spawn(move || {
+        let a = shared.lock().unwrap().lookup("A", "2").unwrap();
+        let b = shared.lock().unwrap().lookup("B", "2").unwrap();
+        completed.send((a, b)).unwrap();
+    });
+    let lookups = result.recv_timeout(Duration::from_secs(10));
+    // Release before joining even on failure, so a locking regression fails
+    // this assertion instead of hanging the test process.
+    drop(busy_a);
+    worker.join().unwrap();
+    let (same_a, same_b) = lookups.expect("A's private lock blocked warm registry lookups");
+    assert!(Arc::ptr_eq(&a, &same_a));
+    assert!(Arc::ptr_eq(&b, &same_b));
+}
+
+#[test]
+fn mu2_review_recovery_does_not_reload_failed_or_cancelled_owners() {
+    let root = tempfile::tempdir().unwrap();
+    let mut registry = UserRegistry::open(root.path()).unwrap();
+    for owner in ["A", "B"] {
+        registry.create_user(owner).unwrap();
+        let handle = registry.get(owner, "1").unwrap();
+        handle.lock().unwrap().store.reconcile_review_jobs(&[memory::ReviewSessionCursor {
+            turns: Vec::new(),
+            learning_workspace_id: None,
+            session_id: "session".into(),
+            book_id: "book".into(),
+            latest_user_turn_ordinal: 1,
+        }], "1").unwrap();
+    }
+    assert_eq!(registry.pending_review_owners().unwrap(),
+        std::collections::VecDeque::from(["A".to_string(), "B".to_string()]));
+    for owner in ["A", "B"] {
+        let handle = registry.get(owner, "2").unwrap();
+        let mut user = handle.lock().unwrap();
+        let error = memory::ReviewErrorState {
+            error_code: "REVIEW_INPUT_MISSING".into(),
+            message: "The source chat was deleted".into(),
+            occurred_at: "2".into(),
+        };
+        if owner == "A" {
+            let job = user.store.review_state().review_jobs[0].job_id.clone();
+            user.store.fail_review_job(&job, error, "2").unwrap();
+        } else {
+            user.store.cancel_session_review_jobs("session", error, "2").unwrap();
+        }
+    }
+    assert!(registry.pending_review_owners().unwrap().is_empty());
+}
+
+#[test]
 fn mu2_same_ids_are_isolated_and_two_handles_keep_both_writes_after_reload() {
     let dir = tempfile::tempdir().unwrap();
     let mut registry = UserRegistry::open(dir.path()).unwrap();

@@ -508,14 +508,12 @@ fn serve_checked(
             }
             writer.write_all(b"\r\n")?;
             writer.flush()?;
+            let mut last_write = Instant::now();
             loop {
-                if !allowed() {
-                    break;
-                }
                 let (events, terminal) = stream.read_after(
                     after,
                     if authorization.is_some() {
-                        Duration::from_millis(250)
+                        Duration::from_secs(1)
                     } else {
                         Duration::from_secs(10)
                     },
@@ -523,7 +521,10 @@ fn serve_checked(
                 if !allowed() {
                     break;
                 }
-                if events.is_empty() {
+                // Check access once per batch, including idle ticks, while keeping
+                // network heartbeats independent of the revocation polling rate.
+                let wrote = !events.is_empty() || last_write.elapsed() >= Duration::from_secs(10);
+                if events.is_empty() && wrote {
                     write_observation(&mut writer, b": keepalive\n\n", chunked)?;
                 }
                 for event in events {
@@ -531,7 +532,10 @@ fn serve_checked(
                     write_observation(&mut writer, frame.as_bytes(), chunked)?;
                     after = Some(event.seq);
                 }
-                writer.flush()?;
+                if wrote {
+                    writer.flush()?;
+                    last_write = Instant::now();
+                }
                 if terminal {
                     break;
                 }

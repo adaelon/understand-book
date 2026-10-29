@@ -351,11 +351,24 @@ exactly; use the single refill operation below when a child finishes:
   The ref and the bounded open-correction feedback above are the only dynamic spawn data. Do not add a target path, prompt,
   task input, hash, command list, receipt, or candidate. Never pass `dispatch_slot_ref` to the child.
   Every new ref requires a newly spawned child with a fresh connection. Never use followup_task,
-  send_message, or resume to give a terminal child another ref; a dispatch slot is not a child pool.
+  send_message, or resume to give a terminal child another ref. A stable worker ref can span
+  multiple public dispatches in the same stage; the Engine records the current assignment and
+  preserves its task-specific recovery identity. After an accepted work unit or completed batch,
+  the Engine can route newly ready work and return DELIVER_INPUT on that same live connection.
+  This includes BookStructure tasks that do not exist until a preceding result is accepted.
+  Keep the original worker ref and child in live_by_slot through task changes and executor WAIT.
+  Release them only after the child returns DONE or a terminal error. Do not refill after each
+  commit or batch; the Engine owns normal next-task selection and context-budget rotation.
+  The executor reconstructs each generation separately and uses only its newly delivered evidence.
   If no provider is available, retain that ref in completed_refs and queue its bootstrap failure.
   While `live_by_slot` is non-empty, wait only
   until the first owned child becomes terminal; consume all other terminal observations already
-  delivered without waiting for unfinished children. Pass the owned records and terminal child
+  delivered without waiting for unfinished children. When unused executor slots remain, bound
+  that wait to 30 seconds and call build.refill even with no terminal children. A live worker can
+  create newly parallel ready tasks without exiting (for example, a completed structure outline).
+  This refill fills only free slots and retains all live workers; do not require a child terminal
+  event before filling newly available work. When all slots are occupied, no refill is needed
+  solely to poll per-task progress. Pass the owned records and terminal child
   identities to `build.refill` in the next control tool call, with one pending failure if any.
   Code matches each owned child identity, moves only its owned ref to `completed_refs`, releases
   only its own slot, computes current capacity, and calls `build.step` once.
@@ -443,9 +456,9 @@ Each subagent receives one `opaque_handoff_ref` and follows the
 
 ```text
 executor.open(ref)
-  -> DELIVER_INPUT: follow next_request through executor.input.next
+  -> DELIVER_INPUT: follow next_request through executor.input.next; continue the same theme or next work unit in this bounded batch
   -> INPUT_BATCH: retain ordered chunks only in the dedicated child; send non-final `last_ordinal` as `ack_through_ordinal` to input.next, or send the final `last_ordinal` as `confirmed_through_ordinal` to generation.start
-  -> GENERATE: produce one strict JSON value; send it through executor.submit_candidate; continue
+  -> GENERATE: produce one strict JSON value from this generation's input; submit it and continue on the returned action without waiting for Root
   -> WAIT: wait retry_after_ms; reopen the same ref
   -> DONE: return only committed | retryable_failure | interrupted
 ```

@@ -250,17 +250,20 @@ fn inv4_real_host_registration_receipt_and_account_defaults() {
         assert_eq!(f.count(table), 0);
     }
     assert_eq!(f.count("allowance_periods"), 1);
-    assert_eq!(f.count("allowance_adjustments"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 0);
     let period_id: String = f.control.connection.query_row(
         "SELECT period_id FROM allowance_periods WHERE user_id=?", [&owner], |r| r.get(0),
     ).unwrap();
     let allowance = crate::allowance_admin::period(&f.control.connection, &owner, &period_id).unwrap();
     assert_eq!(allowance["starts_at"], verified);
-    assert_eq!(allowance["expires_at"].as_i64().unwrap() - verified, 30 * 86400);
-    assert_eq!(allowance["balance"]["granted_micro_cny"], 10_000_000);
-    assert_eq!(allowance["balance"]["available_micro_cny"], 10_000_000);
-    assert_eq!(allowance["balance"]["percentages"]["available"]["value"], "100");
-    let operation = format!("registration-gift-{}", invite["invite_id"].as_str().unwrap());
+    assert_eq!(allowance["expires_at"], BETA_ALLOWANCE_END);
+    assert_eq!(allowance["balance"]["unlimited"], true);
+    assert_eq!(allowance["balance"]["granted_micro_cny"], 0);
+    assert!(crate::account_allowance::balance(&f.control.connection, &period_id).unwrap().can_reserve(20_000_000));
+    let future = f.access.spend.allowance(&owner, verified + 90 * 86400).unwrap();
+    assert_eq!(future["status"], "active");
+    assert_eq!(future["current_allowance"]["balance"]["unlimited"], true);
+    let operation = format!("registration-beta-{}", invite["invite_id"].as_str().unwrap());
     let recorded = f.access.admin.operation("admin", &operation).unwrap();
     assert_eq!(recorded["allowance_period"], allowance);
     assert_eq!(recorded["user_id"], owner);
@@ -285,7 +288,7 @@ fn inv4_real_host_registration_receipt_and_account_defaults() {
         receipt
     );
     assert_eq!(f.count("allowance_periods"), 1);
-    assert_eq!(f.count("allowance_adjustments"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 0);
     assert_eq!(crate::allowance_admin::period(&f.control.connection, &owner, &period_id).unwrap(), allowance);
     // The generated stable identity remains usable alongside INV5 email login.
     assert!(f
@@ -567,7 +570,7 @@ fn inv4_write_failures_roll_back_every_completion_stage() {
         "BEFORE INSERT ON allowance_bases",
         "BEFORE INSERT ON allowance_period_bases",
         "BEFORE INSERT ON admin_operations",
-        "BEFORE INSERT ON allowance_adjustments",
+        "BEFORE UPDATE OF unlimited ON allowance_periods",
         "BEFORE UPDATE ON admin_operations",
         "BEFORE UPDATE ON beta_invites",
         "BEFORE UPDATE OF completed_user_id ON registration_requests",
@@ -596,7 +599,7 @@ fn inv4_write_failures_roll_back_every_completion_stage() {
     }
     assert_eq!(f.finish(&pending, &code).0, 200);
     assert_eq!(f.count("allowance_periods"), 1);
-    assert_eq!(f.count("allowance_adjustments"), 1);
+    assert_eq!(f.count("allowance_adjustments"), 0);
 }
 
 #[test]

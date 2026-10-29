@@ -705,6 +705,62 @@ describe("workspace startup", () => {
     expect(wrapper.get(".banner").text()).toContain("material load failed");
   });
 
+  it.each(['videoPlayback', 'manifest', 'assetManifest'])('automatically recovers a failed %s read without reopening or submitting a question', async failedRead => {
+    installIdentity({ user_id: 'A', csrf_token: 'csrf' });
+    installWorkspace({ workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'startup-chat',
+      published_book_ref: { book_id: book, publication_id: 'p' }, reader: await api.state() });
+    api[failedRead].mockRejectedValueOnce(new TypeError('temporary connection failure'));
+    api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
+      turn_id: 'saved', user: '之前的问题', status: 'completed', effect_labels: [], outcome: { answer: '已保存的回答', effects: [] },
+    }] } });
+    const requestRecovery = vi.fn();
+    window.addEventListener('workspace-recovery-needed', requestRecovery);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const wrapper = start(); await flushPromises();
+      const rail = wrapper.getComponent({ name: 'RightRail' });
+      expect(rail.props('historyLoading')).toBe(false);
+      expect(rail.props('historyError')).toContain('temporary connection failure');
+      expect(requestRecovery).toHaveBeenCalledTimes(1);
+      window.dispatchEvent(new Event('workspace-recovered'));
+      await vi.advanceTimersByTimeAsync(1); await flushPromises();
+      const restoredRail = wrapper.getComponent({ name: 'RightRail' });
+      expect(restoredRail.props('historyLoading')).toBe(false);
+      expect(restoredRail.props('historyError')).toBeNull();
+      expect(restoredRail.props('chat')).toMatchObject([{ user: '之前的问题' }]);
+      expect(wrapper.getComponent({ name: 'ReaderPane' }).props('segments')).toMatchObject([{ text: '可立即阅读的正文' }]);
+      expect(wrapper.find('.banner').exists()).toBe(false);
+      expect(api.agentRunCreate).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('workspace-recovery-needed', requestRecovery);
+      vi.useRealTimers();
+    }
+  });
+
+  it('requests automatic recovery when loading saved chat history fails transiently', async () => {
+    installIdentity({ user_id: 'A', csrf_token: 'csrf' });
+    installWorkspace({ workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'startup-chat',
+      published_book_ref: { book_id: book, publication_id: 'p' }, reader: await api.state() });
+    api.agentHistory.mockRejectedValueOnce(new TypeError('history unavailable'));
+    const requestRecovery = vi.fn();
+    window.addEventListener('workspace-recovery-needed', requestRecovery);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const wrapper = start(); await flushPromises();
+      expect(requestRecovery).toHaveBeenCalledTimes(1);
+      expect(wrapper.getComponent({ name: 'ReaderPane' }).props('segments')).toHaveLength(1);
+      window.dispatchEvent(new Event('workspace-recovered'));
+      await vi.advanceTimersByTimeAsync(1); await flushPromises();
+      expect(wrapper.getComponent({ name: 'RightRail' }).props('historyError')).toBeNull();
+      expect(api.agentHistory).toHaveBeenCalledTimes(2);
+      expect(api.manifest).toHaveBeenCalledTimes(1);
+      expect(api.agentRunCreate).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('workspace-recovery-needed', requestRecovery);
+      vi.useRealTimers();
+    }
+  });
+
   it('ADM8 keeps a submitted draft when first-chat admission remounts App before returning', async () => {
     const admission = deferred<unknown>();
     api.agentRunCreate.mockReturnValue(admission.promise);

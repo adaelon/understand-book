@@ -1,11 +1,12 @@
 import { network } from './network-context';
+import type { PublishedBookRef } from './network-context';
 import { getLocale, errorMessage } from './i18n';
 import { networkFetch, networkRequest, publishedUrl } from './network-client';
 import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
 // 端点名 = 命令名;book.*→GET、reader.*/memory.*/book.query→POST;错误透传 §4.4 信封。
-import type { Manifest } from "./generated/Manifest";
+import type { ReaderManifest as Manifest } from './reader-outline';
 import type { NoteData } from "./generated/NoteData";
 import type { NoteCreateRequest } from "./generated/NoteCreateRequest";
 export type { NoteData, NoteCreateRequest };
@@ -20,6 +21,22 @@ export type { BoardDocument, BoardView, BoardSummary, BoardImportSource, BoardFo
 export type BoardPrebuildCategory = 'all' | 'pass1' | 'discourse' | 'book_structure' | 'teaching';
 export interface BoardCatalogItem { kind: BoardImportSource['kind']; category?: Exclude<BoardPrebuildCategory, 'all'>; title: string; summary: string; source: BoardImportSource }
 export interface BoardSourceRequest { board_id: string; item_id: string; source_ref_id: string }
+export interface BoardSourceReadRequest extends BoardSourceRequest {
+  anchor_lid?: string;
+  direction?: 'around' | 'before' | 'after';
+  include_outline?: boolean;
+}
+export interface BoardSourceReadResponse {
+  source_ref_id: string;
+  published_book_ref?: PublishedBookRef;
+  source_lid: string;
+  focus_lid: string;
+  segments: { lid: string; kind: string; text: string; highlights: { start: number; end: number }[] }[];
+  // Cursors identify the included edge leaf; before/after exclude that anchor.
+  previous_lid: string | null;
+  next_lid: string | null;
+  outline?: { lid: string; title: string; depth: number }[];
+}
 export interface BoardUpdateRequest {
   board_id: string; expected_revision: number; title?: string;
   positions?: { item_id: string; position: { x: number; y: number }; size?: { width: number; height: number } }[];
@@ -1643,7 +1660,8 @@ export const api = {
   boardPresentationObserve: (board_id: string, item_id: string, text: string, source_ref_ids: string[]) =>
     http<{ accepted: boolean }>('POST', '/boards/presentation.observe', { board_id, item_id, text, source_ref_ids }),
   boardSourceResolve: (request: BoardSourceRequest) => http<SourcePopupView>('POST', '/boards/source.resolve', request),
-  boardSourceOpen: (request: BoardSourceRequest) => http<SourceOpenView>('POST', '/boards/source.open', request),
+  boardSourceRead: (request: BoardSourceReadRequest) => http<BoardSourceReadResponse>('POST', '/boards/source.read', request),
+  boardSourceOpen: (request: BoardSourceRequest & { lid?: string }) => http<SourceOpenView>('POST', '/boards/source.open', request),
   notePresentationRead: (mem_id: string, restore = false) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/memory/presentation.read", { mem_id, restore }),
   notePresentationObserve: (mem_id: string, text: string, source_ref_ids: string[]) =>

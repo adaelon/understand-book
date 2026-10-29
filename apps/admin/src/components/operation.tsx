@@ -256,7 +256,7 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
           {receipt.allowance_period != null && (
             <p>
               提交后可用额度：
-              {percentage((receipt.allowance_period as Period).balance.percentages?.available)}
+              {(receipt.allowance_period as Period).balance.unlimited ? '内测不限额度' : percentage((receipt.allowance_period as Period).balance.percentages?.available)}
 
             </p>
           )}

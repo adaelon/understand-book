@@ -221,8 +221,22 @@ fn flush_updates(messages: &mut Vec<Value>, updates: &mut Vec<Value>) -> Result<
             "Messages system/tool update needs a preceding user or tool-result turn",
         ));
     }
-    // Keep each full system snapshot separate: the latest one supersedes prior
-    // snapshots; tool additions are independent protocol updates.
+    // No assistant has consumed these pending updates yet. In-history system
+    // text replaces the complete effective prompt, so only the last snapshot
+    // in this batch can take effect. Preserve every tool update in place and
+    // leave snapshots already flushed before historical assistants untouched.
+    // https://api-docs.deepseek.com/api/list-models/
+    if let Some(last_snapshot) = updates
+        .iter()
+        .rposition(|update| update["content"][0]["type"] == "text")
+    {
+        let mut index = 0;
+        updates.retain(|update| {
+            let keep = index == last_snapshot || update["content"][0]["type"] != "text";
+            index += 1;
+            keep
+        });
+    }
     messages.append(updates);
     Ok(())
 }
@@ -823,6 +837,280 @@ mod tests {
     }
 
     #[test]
+    fn messages_pending_system_snapshots_keep_tool_order_and_native_continuation() {
+        let native = vec![
+            json!({"type":"thinking","thinking":"reasoning kept verbatim","signature":"opaque-signature"}),
+            json!({"type":"text","text":"reading"}),
+            json!({"type":"tool_use","id":"call-1","name":"write","input":{"value":"paragraph"}}),
+        ];
+        let mut request = plan(
+            &[
+                Message::system("base"),
+                Message::system("stable"),
+                Message::user("question"),
+                Message::system("source facts"),
+                Message::system("runtime phase"),
+                Message {
+                    role: Role::Assistant,
+                    content: Some("reading".into()),
+                    tool_calls: vec![ToolCall {
+                        id: "call-1".into(),
+                        name: "write".into(),
+                        arguments: r#"{"value":"paragraph"}"#.into(),
+                    }],
+                    tool_call_id: None,
+                    provider_continuation: Some(ProviderContinuation {
+                        model: "fixture".into(),
+                        reasoning_content: "reasoning kept verbatim".into(),
+                        messages_content: continuation_blocks(&native),
+                    }),
+                },
+                Message {
+                    role: Role::Tool,
+                    content: Some("full source result".into()),
+                    tool_call_id: Some("call-1".into()),
+                    tool_calls: vec![],
+                    provider_continuation: None,
+                },
+                Message::system("latest source facts"),
+                Message::system("latest runtime phase"),
+            ],
+            &[tool("read")],
+        );
+        // plan extracts only the first system into its leading instructions.
+        // The other leading system remains input[0].
+        request.tool_history = Some(ToolHistoryProjection {
+            declarations: vec![
+                ToolDeclaration {
+                    spec: tool("read"),
+                    defer_loading: false,
+                },
+                ToolDeclaration {
+                    spec: tool("write"),
+                    defer_loading: true,
+                },
+            ],
+            updates: vec![
+                ToolUpdate {
+                    message_index: 3,
+                    added: vec!["write".into()],
+                    removed: vec![],
+                },
+                ToolUpdate {
+                    message_index: 4,
+                    added: vec![],
+                    removed: vec!["read".into()],
+                },
+                ToolUpdate {
+                    message_index: 7,
+                    added: vec!["read".into()],
+                    removed: vec!["write".into()],
+                },
+            ],
+        });
+        let original = request.clone();
+        let (body, executable) =
+            request_projection("fixture", &request, capabilities(ToolUpdateMode::InHistory))
+                .unwrap();
+        assert_eq!(request.input, original.input);
+        assert_eq!(request.tool_history, original.tool_history);
+        assert_eq!(body["system"], "base\n\nstable");
+        let messages = body["messages"].as_array().unwrap();
+        assert_eq!(messages.len(), 8);
+        assert_eq!(messages[1]["content"][0]["type"], "tool_addition");
+        assert_eq!(messages[1]["content"][0]["tool"]["name"], "write");
+        assert_eq!(
+            messages[2]["content"][0]["text"],
+            "base\n\nstable\n\nsource facts\n\nruntime phase"
+        );
+        assert_eq!(messages[3]["content"][0]["type"], "tool_removal");
+        assert_eq!(messages[3]["content"][0]["tool"]["name"], "read");
+        assert_eq!(messages[4], json!({"role":"assistant","content":native}));
+        assert_eq!(
+            messages[5],
+            json!({"role":"user","content":[{"type":"tool_result","tool_use_id":"call-1","content":"full source result"}]})
+        );
+        assert_eq!(
+            messages[6]["content"],
+            json!([
+                {"type":"tool_addition","tool":{"type":"tool_reference","name":"read"}},
+                {"type":"tool_removal","tool":{"type":"tool_reference","name":"write"}}
+            ])
+        );
+        assert_eq!(messages[7]["content"][0]["text"], "base\n\nstable\n\nsource facts\n\nruntime phase\n\nlatest source facts\n\nlatest runtime phase");
+        assert_eq!(executable, BTreeMap::from([("read".into(), "read".into())]));
+        assert!(uses_tool_updates(&body));
+        assert_eq!(
+            context_projection("fixture", &request, capabilities(ToolUpdateMode::InHistory))
+                .unwrap(),
+            body
+        );
+    }
+
+    #[test]
+    fn messages_snapshot_coalescing_preserves_sampled_prefix_and_historical_state() {
+        for mode in [ToolUpdateMode::AdditionOnly, ToolUpdateMode::InHistory] {
+            let first = plan(
+                &[
+                    Message::system("base"),
+                    Message::user("first question"),
+                    Message::system("first evidence"),
+                    Message::system("first state"),
+                ],
+                &[],
+            );
+            let (before, _) = request_projection("fixture", &first, capabilities(mode)).unwrap();
+            let mut next = first.clone();
+            next.input.push(Message {
+                role: Role::Assistant,
+                content: Some("first answer".into()),
+                tool_calls: vec![],
+                tool_call_id: None,
+                provider_continuation: None,
+            });
+            next.input.push(Message::user("follow-up"));
+            next.input.push(Message::system("second evidence"));
+            next.input.push(Message::system("second state"));
+            let (after, _) = request_projection("fixture", &next, capabilities(mode)).unwrap();
+            let prefix = before["messages"].as_array().unwrap();
+            let messages = after["messages"].as_array().unwrap();
+            assert_eq!(&messages[..prefix.len()], prefix.as_slice());
+            assert_eq!(after["system"], before["system"]);
+            let snapshots: Vec<_> = messages
+                .iter()
+                .filter(|message| message["role"] == "system")
+                .collect();
+            assert_eq!(snapshots.len(), 2);
+            assert_eq!(
+                snapshots[0]["content"][0]["text"],
+                "base\n\nfirst evidence\n\nfirst state"
+            );
+            assert_eq!(
+                snapshots[1]["content"][0]["text"],
+                "base\n\nfirst evidence\n\nfirst state\n\nsecond evidence\n\nsecond state"
+            );
+        }
+    }
+
+    #[test]
+    fn messages_leading_only_system_projection_keeps_all_context() {
+        let request = plan(
+            &[
+                Message::system("base"),
+                Message::user("question"),
+                Message::system("source evidence"),
+                Message::system("current state"),
+            ],
+            &[],
+        );
+        let (body, _) = request_projection(
+            "fixture",
+            &request,
+            MessagesCapabilities {
+                tool_update: ToolUpdateMode::AdditionOnly,
+                system_in_history: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(body["system"], "base\n\nsource evidence\n\ncurrent state");
+        assert_eq!(
+            body["messages"],
+            json!([{"role":"user","content":[{"type":"text","text":"question"}]}])
+        );
+    }
+
+    /// Replays an explicitly supplied saved request through the actual pending
+    /// update flush. It writes counts only, never prompt or continuation text.
+    #[test]
+    #[ignore = "requires DEEPSEEK_SYSTEM_SNAPSHOT_REQUEST pointing to a saved private Messages request"]
+    fn messages_saved_request_system_snapshot_measurement() {
+        let path = std::env::var("DEEPSEEK_SYSTEM_SNAPSHOT_REQUEST").unwrap();
+        let before: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        let mut messages = Vec::new();
+        let mut updates = Vec::new();
+        for message in before["messages"].as_array().unwrap() {
+            if message["role"] == "system" {
+                updates.push(message.clone());
+            } else {
+                if message["role"] == "assistant" {
+                    flush_updates(&mut messages, &mut updates).unwrap();
+                }
+                messages.push(message.clone());
+            }
+        }
+        flush_updates(&mut messages, &mut updates).unwrap();
+        let mut after = before.clone();
+        after["messages"] = json!(messages);
+        let preserved_messages = |body: &Value| -> Vec<Value> {
+            body["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|message| {
+                    message["role"] != "system" || message["content"][0]["type"] != "text"
+                })
+                .cloned()
+                .collect()
+        };
+        assert!(preserved_messages(&before) == preserved_messages(&after),
+            "saved non-snapshot messages changed");
+        let effective_systems = |body: &Value| -> Vec<Value> {
+            let mut current = body["system"].clone();
+            let mut snapshots = Vec::new();
+            for message in body["messages"].as_array().unwrap() {
+                if message["role"] == "system" && message["content"][0]["type"] == "text" {
+                    current = message["content"][0]["text"].clone();
+                } else if message["role"] == "assistant" {
+                    snapshots.push(current.clone());
+                }
+            }
+            snapshots.push(current);
+            snapshots
+        };
+        assert!(effective_systems(&before) == effective_systems(&after),
+            "saved effective system changed at an assistant boundary or the tail");
+        let system_size = |body: &Value| -> (usize, usize) {
+            let mut count = 0;
+            let mut bytes = body["system"].as_str().unwrap_or("").len();
+            for message in body["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["role"] == "system")
+            {
+                for block in message["content"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|block| block["type"] == "text")
+                {
+                    count += 1;
+                    bytes += block["text"].as_str().unwrap().len();
+                }
+            }
+            (count, bytes)
+        };
+        let (before_count, before_bytes) = system_size(&before);
+        let (after_count, after_bytes) = system_size(&after);
+        assert!(after_count < before_count);
+        assert!(after_bytes < before_bytes);
+        let report = json!({
+            "history_system_snapshots_before":before_count,
+            "history_system_snapshots_after":after_count,
+            "system_text_utf8_bytes_before":before_bytes,
+            "system_text_utf8_bytes_after":after_bytes,
+            "system_text_utf8_bytes_removed":before_bytes - after_bytes,
+            "non_snapshot_messages_exact":true,
+            "effective_system_at_every_assistant_and_tail_exact":true,
+            "leading_system_and_request_settings_exact":true,
+        });
+        if let Ok(output) = std::env::var("DEEPSEEK_SYSTEM_SNAPSHOT_MEASUREMENT") {
+            std::fs::write(output, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+        }
+        println!("{report}");
+    }
+
+    #[test]
     fn messages_meter_can_project_completed_tool_response_but_send_requires_results() {
         let request = plan(
             &[
@@ -970,10 +1258,12 @@ mod tests {
                 }
             })
             .unwrap();
-        assert_eq!(
-            wire.as_deref(),
-            adapter.context_request_projection(&request).as_ref()
-        );
+        // Context projection deliberately omits send-time normalization so an
+        // oversized input remains measurable. Transport adds streaming; every
+        // other field in this explicitly bounded request must still match.
+        let mut expected_wire = adapter.context_request_projection(&request).unwrap();
+        expected_wire["stream"] = json!(true);
+        assert_eq!(wire.as_deref(), Some(&expected_wire));
         assert_eq!(first.usage_total_tokens, Some(34));
         request.input.push(Message {
             provider_continuation: first.provider_continuation,

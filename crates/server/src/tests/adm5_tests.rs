@@ -107,6 +107,27 @@ fn reconcile(f: &Fixture, call: &str, op: &str, cost: Option<i64>, waive: bool) 
 }
 
 #[test]
+fn unlimited_allowance_keeps_model_costs_and_pending_usage_without_balance_stops() {
+    let (f, period) = fixture();
+    f.control.connection.execute("UPDATE allowance_periods SET unlimited=1 WHERE period_id=?", [&period]).unwrap();
+    let port = port(&f);
+    let first = id("unlimited-first");
+    port.before_send(&first, &request(2_000_000)).unwrap();
+    port.after_send(&first, &outcome(12_000_000)).unwrap();
+    assert_eq!(charge(&f, &first.call_id)["provider_cost_micro_cny"], 12_000_000);
+    assert_eq!(balance(&f)["debited_micro_cny"], 12_000_000);
+    assert_eq!(balance(&f)["unlimited"], true);
+    let pending = id("unlimited-pending");
+    port.before_send(&pending, &request(20_000_000)).unwrap();
+    port.after_send(&pending, &unknown()).unwrap();
+    assert!(balance(&f)["pending_micro_cny"].as_i64().unwrap() >= 20_000_000);
+    port.before_send(&id("unlimited-next"), &request(2_000_000)).unwrap();
+    // Ending eligibility still stops future sends.
+    f.control.connection.execute("UPDATE allowance_periods SET closed_at=1 WHERE period_id=?", [&period]).unwrap();
+    assert_eq!(port.before_send(&id("unlimited-closed"), &request(1)), Err(SpendStop::AllowanceExpired));
+}
+
+#[test]
 fn adm5_two_connections_cannot_reserve_the_same_balance_and_overrun_is_not_capped() {
     let (f, _) = fixture();
     let store = Arc::new(ModelSpendStore::new(

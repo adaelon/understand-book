@@ -71,11 +71,26 @@ fn assert_tool_argument_recovery(case: &str) {
     assert_eq!(rejected["error_code"], "TOOL_ARGUMENTS_INVALID");
     assert!(rejected["message"].as_str().unwrap().contains("$.move.participation"));
     let plans = adapter.inner.0.seen_plans.borrow();
+    for index in [1,2] {
+        let sampled=plans[index].ordered_messages();
+        let current=sampled.iter().filter_map(|message|message.content.as_deref())
+            .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+        assert!(current.contains("agent.teaching_revision") && current.contains(answer),
+            "host preflight rejection must keep the original draft available for the next author call");
+    }
     if case != "budget" {
-        let feedback = serde_json::to_string(&plans[3].ordered_messages()).unwrap();
+        let sampled=plans[3].ordered_messages();
+        let feedback = serde_json::to_string(&sampled).unwrap();
         assert!(feedback.contains("TOOL_ARGUMENTS_INVALID") && feedback.contains("$.move.participation"),
             "the next sampling must consume the actual schema feedback before deciding how to retry");
+        let current=sampled.iter().filter_map(|message|message.content.as_deref())
+            .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+        assert!(current.contains("agent.teaching_revision") && current.contains(answer),
+            "schema rejection must preserve the actual draft so the author can fill the missing field");
+        assert!(current.contains("missing-participation"));
     }
+    let public_calls=serde_json::to_string(&context.messages.iter().flat_map(|message|message.tool_calls.iter()).collect::<Vec<_>>()).unwrap();
+    assert!(!public_calls.contains(answer),"private revision recovery must not publish candidate text in tool history");
     if case == "success" {
         let outcome = outcome.unwrap();
         assert!(!outcome.incomplete);
@@ -84,6 +99,10 @@ fn assert_tool_argument_recovery(case: &str) {
         assert_eq!(port.inner.accepted, ["select"]);
         assert_eq!(port.inner.reviews.len(), 1, "only the corrected complete move may reach review");
         assert_eq!(plans.len(), 5);
+        let sampled=plans[4].ordered_messages();
+        let current=sampled.iter().filter_map(|message|message.content.as_deref())
+            .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
+        assert!(!current.contains("agent.teaching_revision"),"acceptance clears the private repair state");
     } else {
         let error = outcome.unwrap_err();
         assert_eq!(error.error_code, "TOOL_ARGUMENTS_INVALID");

@@ -68,6 +68,15 @@ it('shows fixed percentages and sends signed exact percentage gifts without loca
   expect(text()).toContain('提交后可用额度：130%'); expect(text()).toContain('50.025%');
 });
 
+it('shows unlimited beta access and actual costs without a low-balance warning', async () => {
+  await mount(<AllowancePanel userId="A" current={{ ...period, expires_at: 253402300799, balance: {
+    ...period.balance, unlimited: true, granted_micro_cny: 0, available_micro_cny: -12000000, debited_micro_cny: 12000000,
+  } }} />);
+  expect(text()).toContain('当前可用不限额度'); expect(text()).toContain('累计已用12.00 元');
+  expect(text()).not.toContain('当前可用额度不足'); expect(text()).not.toContain('9999');
+  expect(writes()).toHaveLength(0);
+});
+
 it('requires an explicit basis for new or legacy periods and never guesses commercial values', async () => {
   await mount(<AllowancePanel userId="A" current={{ ...period, balance: { ...period.balance, allowance_basis: null, percentages: null } }} />);
   expect(text()).toContain('此额度期尚未设置百分比基准，当前按金额展示'); expect(text()).toContain('当前可用¥ 13.00'); expect([...document.querySelector('section > div')!.querySelectorAll('button')].find(b => b.textContent === '登记收款')).toBeUndefined();

@@ -386,11 +386,16 @@ pub struct RunContext {
     /// A revision explicitly accepted by the host during this run.
     pub accepted_workspace_goal: Option<base_schema::WorkspaceGoal>,
     pub current_user_message: Option<String>,
+    /// Frozen, host-accepted board selection. Kept distinct from author proposals.
+    pub board_request_context: Option<serde_json::Value>,
     pub response_language: Option<crate::response_language::ResponseLanguage>,
     pub(crate) presentation_authoring: Option<crate::presentation_author::PresentationAuthoringContext>,
     /// Current-request coach handoff, including unavailable attempts. Changing
     /// layout/technical needs during this run must not buy another coach call.
     pub(crate) presentation_coach: Option<serde_json::Value>,
+    /// Native-board planning has different expression capabilities from HTML.
+    /// Mixed authoring requests reuse one handoff per surface, never across them.
+    pub(crate) native_board_coach: Option<serde_json::Value>,
     pub(crate) presentation_authoring_finished: bool,
     pub(crate) presentation_method_reads: std::collections::HashSet<String>,
     pub(crate) presentation_method_observations: crate::presentation::PresentationMethodObservations,
@@ -516,9 +521,11 @@ impl RunContext {
             workspace_goal: None,
             accepted_workspace_goal: None,
             current_user_message: None,
+            board_request_context: None,
             response_language: None,
             presentation_authoring: None,
             presentation_coach: None,
+            native_board_coach: None,
             presentation_authoring_finished: false,
             presentation_method_reads: Default::default(),
             presentation_method_observations: Default::default(),

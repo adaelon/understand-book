@@ -3,6 +3,15 @@ use serde_json::Value;
 
 /// Display metadata only; a title never changes a book's identity or publication.
 pub(crate) fn read(directory: &Path, display_title: Option<&str>) -> Option<String> {
+    // Catalog corrections live beside the sealed publication, preserving its
+    // content, profile, identity, and existing Reader references.
+    if let Some(title) = std::fs::read(directory.with_extension("display.json")).ok()
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+        .and_then(|value| value["title"].as_str().map(str::trim)
+            .filter(|title| !title.is_empty()).map(str::to_owned))
+    {
+        return Some(title);
+    }
     let metadata = std::fs::read(directory.join("paper_metadata.json")).ok()
         .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok());
     metadata.as_ref().and_then(|value| value["title"]["value"].as_str())
@@ -40,6 +49,21 @@ pub(crate) fn read(directory: &Path, display_title: Option<&str>) -> Option<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn catalog_title_overrides_without_changing_publication_files() {
+        let root = tempfile::tempdir().unwrap();
+        let publication = root.path().join("publication-id");
+        std::fs::create_dir(&publication).unwrap();
+        std::fs::write(publication.join("source.txt"), "# Original title\nBody").unwrap();
+        std::fs::write(publication.with_extension("display.json"),
+            r#"{"title":"失败的逻辑：事情因何出错，世间有无妙策"}"#).unwrap();
+        assert_eq!(read(&publication, Some("Imported title")).as_deref(),
+            Some("失败的逻辑：事情因何出错，世间有无妙策"));
+        assert_eq!(std::fs::read_to_string(publication.join("source.txt")).unwrap(), "# Original title\nBody");
+        std::fs::write(publication.with_extension("display.json"), r#"{"title":" "}"#).unwrap();
+        assert_eq!(read(&publication, None).as_deref(), Some("Original title"));
+    }
 
     #[test]
     fn book_title_uses_metadata_then_import_title_then_source_heading() {

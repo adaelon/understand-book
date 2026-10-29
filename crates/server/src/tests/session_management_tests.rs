@@ -2,6 +2,38 @@ use super::*;
 use crate::session_store::{SessionPaths, SessionStore};
 
 #[test]
+fn session_management_delete_cancels_running_review_for_both_storage_modes() {
+    for jsonl in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let mut state = state_named(if jsonl { "capacity-delete-jsonl" } else { "capacity-delete-memory" });
+        if jsonl {
+            let history_path = dir.path().join("agent-history.json");
+            let paths = SessionPaths::from_history(&history_path);
+            std::fs::create_dir_all(&paths.root).unwrap();
+            let (store, history) = SessionStore::open(paths).unwrap();
+            state.user.history_path = Some(history_path);
+            state.user.session_store = Some(store);
+            state.user.agent_history = history;
+        }
+        assert_eq!(route_agent_new(&mut state, "1").status, 200);
+        let id = state.workspace.selected_chat.clone().unwrap();
+        state.user.store.reconcile_review_jobs(&[memory::ReviewSessionCursor {
+            learning_workspace_id: None, turns: vec![], session_id: id.clone(),
+            book_id: state.workspace.book.base.book_id.clone(), latest_user_turn_ordinal: 1,
+        }], "2").unwrap();
+        let job = state.user.store.review_state().review_jobs[0].clone();
+        state.user.store.claim_review_job(&job.job_id, "3").unwrap();
+        let reply = route_agent_history_delete(&mut state, &json!({"session_id":id}).to_string(), "4");
+        assert_eq!(reply.status, 200, "{}", reply.body);
+        let review = state.user.store.review_state();
+        assert_eq!(review.review_jobs[0].status, ReviewJobStatus::Cancelled);
+        assert_eq!(review.review_jobs[0].attempts, 1);
+        assert!(!review.reviewed_through.contains_key(&id));
+        assert!(state.user.store.commit_review_result(&job.job_id, &["turn".into()], &[], &[], "5").is_err());
+    }
+}
+
+#[test]
 fn session_management_routes_reopen_preserve_transcript_and_existing_presentation() {
     let dir = tempfile::tempdir().unwrap();
     let mut state = state_named("jl2-management");

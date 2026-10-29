@@ -7,7 +7,7 @@ import { posix as pathPosix } from "node:path";
 import type { AssetKind, SourceBlock, SourceImageRef } from "./segment";
 
 const HEADING = new Set(["h1", "h2", "h3", "h4", "h5", "h6"]);
-const LEAF = new Set(["p", "li", "blockquote"]);
+const LEAF = new Set(["p", "li", "blockquote", "td", "th", "caption"]);
 const SKIP = new Set(["script", "style", "head", "title"]);
 
 interface RawBlock {
@@ -67,28 +67,35 @@ function leafBlocks(e: HTMLElement, xhtmlPath?: string): RawBlock[] {
     text = "";
   };
 
-  for (const child of e.childNodes) {
-    if (child.nodeType !== 1) {
-      text += child.text;
-      continue;
+  const appendChildren = (container: HTMLElement): void => {
+    for (const child of container.childNodes) {
+      if (child.nodeType !== 1) {
+        text += child.text;
+        continue;
+      }
+      const el = child as HTMLElement;
+      const tag = (el.rawTagName ?? "").toLowerCase();
+      if (SKIP.has(tag)) continue;
+      if (tag === "math") {
+        flushText();
+        const formula = mathSource(el);
+        if (formula) blocks.push({ kind: "leaf", assetKind: "formula", text: formula });
+      } else if (tag === "img") {
+        flushText();
+        const image = imageMarkdown(el, xhtmlPath);
+        if (image) blocks.push({ kind: "leaf", assetKind: "image", text: image.text, image: image.image });
+      } else if (tag === "br") {
+        text += "\n";
+      } else if (LEAF.has(tag)) {
+        flushText();
+        appendChildren(el);
+        flushText();
+      } else {
+        appendChildren(el);
+      }
     }
-    const el = child as HTMLElement;
-    const tag = (el.rawTagName ?? "").toLowerCase();
-    if (SKIP.has(tag)) continue;
-    if (tag === "math") {
-      flushText();
-      const formula = mathSource(el);
-      if (formula) blocks.push({ kind: "leaf", assetKind: "formula", text: formula });
-    } else if (tag === "img") {
-      flushText();
-      const image = imageMarkdown(el, xhtmlPath);
-      if (image) blocks.push({ kind: "leaf", assetKind: "image", text: image.text, image: image.image });
-    } else if (tag === "br") {
-      text += "\n";
-    } else {
-      text += el.text;
-    }
-  }
+  };
+  appendChildren(e);
   flushText();
   return blocks;
 }
@@ -107,8 +114,13 @@ function walk(el: HTMLElement, acc: RawBlock[], xhtmlPath?: string): void {
       const text = rawText(e);
       if (text) acc.push({ kind: "leaf", assetKind: "code", text });
     } else if (tag === "table") {
-      const text = tableText(e);
-      if (text) acc.push({ kind: "leaf", assetKind: "table", text });
+      if (e.querySelector("img")) {
+        // Image layout tables need separate image leaves and adjacent cell labels.
+        walk(e, acc, xhtmlPath);
+      } else {
+        const text = tableText(e);
+        if (text) acc.push({ kind: "leaf", assetKind: "table", text });
+      }
     } else if (tag === "img") {
       const image = imageMarkdown(e, xhtmlPath);
       if (image) acc.push({ kind: "leaf", assetKind: "image", text: image.text, image: image.image });

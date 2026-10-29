@@ -204,7 +204,7 @@ import {
   type AutomaticBuildExecutorPromptMode,
 } from "./executor-prompt";
 import { resolveContentProfile } from "../../packages/core/src/content-profile";
-import { epubToSource } from "../../packages/core/src/epub-adapter";
+import { loadBookSource } from "../../packages/core/src/book-source";
 import {
   AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES,
   isAutomaticBuildExtractorPromptName,
@@ -816,10 +816,7 @@ export function runAutomaticBuildStageWriter(
         task,
         candidate_path: candidatePathForExecution,
       });
-      const sourceBytes = readFileSync(target.source_path);
-      const source = /\.epub$/iu.test(target.source_path)
-        ? epubToSource(new Uint8Array(sourceBytes)).source
-        : sourceBytes.toString("utf8");
+      const { source } = loadBookSource(target.source_path);
       const candidate = JSON.parse(readFileSync(candidatePath, "utf8").replace(/^\uFEFF/, "")) as unknown;
       return writePass1ShadowCandidate({
         target,
@@ -839,9 +836,7 @@ export function runAutomaticBuildStageWriter(
     const privateCandidatePath = assertProfileSidecarProductionCandidatePath({
       target, task, candidate_path: candidatePathForExecution,
     });
-    const sourceBytes = readFileSync(target.source_path);
-    const source = /\.epub$/iu.test(target.source_path)
-      ? epubToSource(new Uint8Array(sourceBytes)).source : sourceBytes.toString("utf8");
+    const { source } = loadBookSource(target.source_path);
     const input = {
       target, source,
       candidate: JSON.parse(readFileSync(privateCandidatePath, "utf8").replace(/^\uFEFF/, "")) as unknown,
@@ -902,9 +897,7 @@ export function renderAutomaticBuildTaskInput(
         || (task.version === "profile_sidecar_discourse_shadow_task.v1" && task.route.role === "fragment")) {
         // The selected task is already frozen. Replay the same source/policy/budget checks
         // in this engine instead of starting another input process for each new executor.
-        const sourceBytes = readFileSync(target.source_path);
-        const source = /\.epub$/iu.test(target.source_path)
-          ? epubToSource(new Uint8Array(sourceBytes)).source : sourceBytes.toString("utf8");
+        const { source } = loadBookSource(target.source_path);
         const input = task.version === "profile_sidecar_semantic_fast_path_task.v1"
           ? replayProfileSidecarSemanticFastPathInput({ target, source, task })
           : replayProfileSidecarDiscourseShadowInput({ target, source, task });
@@ -2426,7 +2419,7 @@ export function runAutomaticBuildCloseStage(
 
   const script = STAGE_COMMANDS[stage].close;
   if (!script) throw new Error(`stage ${stage} does not support close`);
-  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile,
+  const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, reuse: options.build_plan?.reuse,
     ...(stage === "book_structure" ? { stage: "book_structure" as const } : {}) });
   const stageState = snapshot.stages.find((candidate) => candidate.stage === stage);
   if (!stageState) throw new Error(`quality stage is not reachable in the current snapshot: ${stage}`);
@@ -2452,6 +2445,7 @@ export function runAutomaticBuildCloseStage(
     target,
     stage,
     quality_profile: qualityProfile,
+    reuse: options.build_plan?.reuse,
     run_batch: () => forwardStageScript(target, script, args, true),
   });
 }

@@ -40,6 +40,21 @@ it('shows >100% and tiny usage, fixed original-period pages and payment offers w
   await button(w, '返回阅读与对话').trigger('click'); expect(w.emitted('close')).toHaveLength(1);
 });
 
+it('shows unlimited beta access after usage exceeds the former grant, without balance or expiry prompts', async () => {
+  const current = { ...period, expires_at: 253402300799, balance: { ...period.balance, unlimited: true,
+    granted_micro_cny: 0, debited_micro_cny: 12000000, available_micro_cny: -12000000,
+    percentages: { ...period.balance.percentages!, available: percent('0'), deficit: percent('120') } } };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/allowance') ? summary(current) : empty)));
+  const w = start(); await flushPromises();
+  expect(w.get('.available dd').text()).toBe('不限额度');
+  expect(w.text()).toContain('内测期间 AI Token 免费使用，不限额度。');
+  expect(w.text()).not.toContain('已用尽'); expect(w.text()).not.toContain('超出剩余额度');
+  expect(w.text()).not.toContain('9999'); expect(w.text()).not.toContain('0%');
+  expect(w.findAll('button').some(b => b.text() === '补充额度')).toBe(false);
+  await button(w, '刷新额度与明细').trigger('click'); await flushPromises();
+  expect(w.get('.available dd').text()).toBe('不限额度');
+});
+
 it.each(['no_period', 'expired', 'scheduled', 'closed'] as const)('explains %s without blocking reading or inventing an offer', async status => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/allowance') ? { ...summary(null, status), replenishment: { offers: [] } } : empty)));
   const w = start(); await flushPromises();

@@ -18,7 +18,7 @@ pub(crate) struct BatchTextInput {
 pub(crate) fn spec() -> ToolSpec {
     ToolSpec {
         name: "book.text_batch".into(),
-        description: "Read several known source locations together, preserving each range separately. Prefer one batch for multiple locations; use book.text for a single range. Only delivered text is evidence; unread continuations are not.".into(),
+        description: "Read several known source ranges together, preserving each range separately. For a continuous argument, sequence or case, use its known lid and end_lid to read the complete relevant relationship, not just isolated matching sentences or titles. Locate only missing endpoints with context or search before reading; never guess LIDs. Prefer one batch for independent ranges; use book.text for a single range. Only delivered text is evidence; follow next_start_utf16 when the needed scope continues beyond the returned text.".into(),
         parameters: json!({
             "type": "object",
             "properties": {

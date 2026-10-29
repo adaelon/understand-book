@@ -235,7 +235,9 @@ test('WB2 freezes the selected object, retains the complete reply and finds it a
   }, seed.session_id);
   await page.goto(boardUrl(seed, answer.item_id));
   await expect(pane).toContainText(seed.answer_marker);
+  await pane.locator('.board-reading-sources summary').click();
   await pane.locator('.board-reading-sources button').first().click();
+  await page.getByRole('dialog', { name: '画板原文', exact: true }).getByRole('button', { name: '在阅读器中打开', exact: true }).click();
   await expect(board).not.toBeVisible();
   await page.getByRole('button', { name: '返回画板', exact: true }).filter({ visible: true }).first().click();
   await expect(board).toBeVisible();

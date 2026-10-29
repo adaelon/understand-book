@@ -52,7 +52,9 @@ test('WB1 four retained types survive source navigation, editing, reopen and ori
   await page.mouse.move(position!.x + 60, position!.y + 8); await page.mouse.down();
   await page.mouse.move(position!.x + 25, position!.y + 45, { steps: 5 }); await page.mouse.up();
   await expect.poll(async () => (await read()).document.items.find((item: any) => item.item_id === answer.item_id).position.x).not.toBe(answer.position.x);
+  await board.locator('.board-reading-pane:visible .board-reading-sources summary').click();
   await board.locator('.board-reading-pane:visible .board-reading-sources button').first().click();
+  await page.getByRole('dialog', { name: '画板原文', exact: true }).getByRole('button', { name: '在阅读器中打开', exact: true }).click();
   await expect(board).not.toBeVisible();
   await page.getByRole('button', { name: '返回画板', exact: true }).filter({ visible: true }).first().click();
   await expect(board).toBeVisible();
@@ -78,7 +80,9 @@ test('WB1 four retained types survive source navigation, editing, reopen and ori
   await expect(frame.locator('#conclusion')).toBeVisible();
   await board.locator(`[data-item-id="${answer.item_id}"] .board-card-open`).click();
   await expect(board.locator('.board-reading-pane:visible')).toContainText('慢的路段占用了更多时间');
+  await board.locator('.board-reading-pane:visible .board-reading-sources summary').click();
   await board.locator('.board-reading-pane:visible .board-reading-sources button').first().click();
+  await page.getByRole('dialog', { name: '画板原文', exact: true }).getByRole('button', { name: '在阅读器中打开', exact: true }).click();
   await expect(board).not.toBeVisible();
   await page.getByRole('button', { name: '返回画板', exact: true }).filter({ visible: true }).first().click();
   saved = await read();
@@ -131,6 +135,7 @@ test('cross-material media sources preview in place without losing the board', a
   await page.goto(`/?board_id=${encodeURIComponent(created.board_id)}`);
   const board = page.getByRole('region', { name: '知识画板工作区', exact: true });
   await board.locator(`[data-item-id="${item.item_id}"] .board-card-open`).click();
+  await board.locator('.board-reading-pane:visible .board-reading-sources summary').click();
   const origin = board.locator('.board-reading-pane:visible .board-reading-sources button').first();
   await origin.click();
   const preview = page.getByRole('dialog', { name: '画板原文', exact: true });

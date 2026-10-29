@@ -2,8 +2,10 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent, onMounted } from 'vue';
 import { afterEach, expect, it, vi } from 'vitest';
-import { api } from './api';
+import { api, ApiError } from './api';
+import { requestWorkspaceRecovery } from './network-client';
 import { installIdentity, installWorkspace, network, type NetworkWorkspace } from './network-context';
+vi.mock('./account-presence', () => ({ useAccountPresence: vi.fn() }));
 const observation = vi.hoisted(() => ({ errors: [] as unknown[], mounts: 0 }));
 vi.mock('./App.vue', () => ({ default: defineComponent({
   name: 'App', props: ['chatDraft'], emits: ['update:chatDraft'],
@@ -44,10 +46,80 @@ it('INV5 displays email after login while preferences and workspace storage reta
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals(); vi.restoreAllMocks(); sessionStorage.clear(); localStorage.clear();
   history.replaceState({}, '', '/');
   network.value = { ...network.value, enabled: false, identity: null, workspace: null };
   observation.errors = []; observation.mounts = 0;
+});
+
+it.each(['identity', 'attachment'])('automatically retries a failed %s recovery after returning to a suspended page', async failurePoint => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const identity = { user_id: 'A', csrf_token: 'csrf' };
+  const workspace = { workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'chat',
+    published_book_ref: { book_id: 'b', publication_id: 'p' }, reader: {} } as NetworkWorkspace;
+  installIdentity(identity); installWorkspace(workspace);
+  let failNext = false;
+  const calls: string[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+    calls.push(`${init.method} ${url}`);
+    if (failNext && (failurePoint === 'identity' ? url === '/api/auth/me' : url.endsWith('/attach'))) {
+      failNext = false; throw new TypeError('temporary connection failure');
+    }
+    if (url === '/api/auth/me') return Response.json(identity);
+    if (url === '/api/workspaces/w' || url.endsWith('/attach')) return Response.json(workspace);
+    if (url.endsWith('/detach')) return Response.json({ ok: true });
+    if (url.endsWith('/chat/history')) return Response.json({ result: { active_session_id: 'chat', sessions: [], current: { id: 'chat', book_id: 'b', turns: [] } } });
+    throw new Error(url);
+  }));
+  const wrapper = mount(NetworkApp);
+  try {
+    await flushPromises();
+    await wrapper.get('textarea').setValue('切回来仍然保留的草稿');
+    window.dispatchEvent(new Event('pagehide')); await flushPromises();
+    failNext = true;
+    window.dispatchEvent(new Event('pageshow')); await flushPromises();
+    expect(wrapper.find('textarea').exists()).toBe(false);
+    expect(wrapper.find('.network-loading').exists()).toBe(true);
+    await vi.advanceTimersByTimeAsync(1100); await flushPromises();
+    expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('切回来仍然保留的草稿');
+    expect(wrapper.text()).not.toContain('temporary connection failure');
+    expect(calls.some(call => /\/runs|\/chat\/new/.test(call))).toBe(false);
+  } finally { wrapper.unmount(); }
+});
+
+it('coalesces recovery requests, pauses retries while hidden and cancels them when the reader closes', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const identity = { user_id: 'A', csrf_token: 'csrf' };
+  const workspace = { workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'chat',
+    published_book_ref: { book_id: 'b', publication_id: 'p' }, reader: {} } as NetworkWorkspace;
+  installIdentity(identity); installWorkspace(workspace);
+  let checks = 0;
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/auth/me') { checks++; return Response.json(identity); }
+    if (url === '/api/workspaces/w' || url.endsWith('/attach')) return Response.json(workspace);
+    if (url.endsWith('/chat/history')) return Response.json({ result: { active_session_id: 'chat', sessions: [], current: { id: 'chat', book_id: 'b', turns: [] } } });
+    throw new Error(url);
+  }));
+  const wrapper = mount(NetworkApp);
+  await flushPromises();
+  try {
+    requestWorkspaceRecovery(new ApiError(403, 'FORBIDDEN', 'authorization', 'permission denied'));
+    requestWorkspaceRecovery(new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', 'another book'));
+    await vi.advanceTimersByTimeAsync(30_000); expect(checks).toBe(1);
+    requestWorkspaceRecovery(new TypeError('temporary connection failure'));
+    requestWorkspaceRecovery(new TypeError('another read also failed'));
+    await vi.advanceTimersByTimeAsync(1000); await flushPromises(); expect(checks).toBe(2);
+    requestWorkspaceRecovery(new TypeError('temporary connection failure'));
+    visibility.mockReturnValue('hidden'); document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(30_000); expect(checks).toBe(2);
+    visibility.mockReturnValue('visible'); document.dispatchEvent(new Event('visibilitychange'));
+    await flushPromises(); expect(checks).toBe(3);
+    requestWorkspaceRecovery(new TypeError('temporary connection failure'));
+  } finally { wrapper.unmount(); }
+  await vi.advanceTimersByTimeAsync(30_000); expect(checks).toBe(3);
 });
 
 it('INV8 opens a reset deep link over an existing identity, strips the token and clears identity on success', async () => {
@@ -153,6 +225,7 @@ it('recovers a hidden idle page before remounting history, preserves its draft, 
   let attachment: string | null = network.value.attachment;
   const calls: string[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+    if (url === '/api/account/presence') return Response.json({ ok: true });
     calls.push(`${init.method} ${url}`);
     const input = init.body ? JSON.parse(String(init.body)) : {};
     if (url === '/api/auth/me') return Response.json(identity);

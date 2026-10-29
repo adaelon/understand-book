@@ -223,6 +223,44 @@ fn cross_book_source_preview_and_open_resolve_exact_authorized_publication() {
 }
 
 #[test]
+fn board_source_window_cross_book_retains_publication_and_opens_the_browsed_position() {
+    let f = Fixture::new();
+    let publication = f.library.lock().unwrap().load("alice", &f.a).unwrap();
+    let range = read_tools::EvidenceRange { start_lid: "1.2".into(), end_lid: "1.2".into(), ranges: vec![] };
+    let resolved = publication.book.resolve_source(&range, "zh-CN", None).unwrap();
+    let binding = runtime::orchestrator::SourceBinding { music: None, media: None, source_ref_id: "window-exact".into(),
+        book_id: f.a.book_id.clone(), publication_id: Some(f.a.publication_id.clone()),
+        source_revision: Some(publication.book.source_fingerprint().into()), evidence_range: Some(range),
+        evidence_text_digest: resolved.evidence_text_digest, label_snapshot: resolved.label, preview_snapshot: resolved.preview };
+    let metadata_path = f.input.path().join("a/paper_metadata.json");
+    let mut metadata: Value = serde_json::from_slice(&fs::read(&metadata_path).unwrap()).unwrap();
+    metadata["title"]["value"] = json!("New edition");
+    fs::write(metadata_path, metadata.to_string()).unwrap();
+    let newer = {
+        let mut library = f.library.lock().unwrap();
+        let newer = library.publish(&f.input.path().join("a")).unwrap().reference;
+        library.grant("alice", &newer).unwrap();
+        newer
+    };
+    assert_ne!(newer, f.a);
+    let read = crate::cross_book::source_window(&f.library, "alice", &binding, &json!({"anchor_lid":"1.40"})).unwrap();
+    assert_eq!(read["published_book_ref"], json!(f.a));
+    assert_eq!(read["focus_lid"], "1.40");
+    assert!(read["segments"].as_array().unwrap().iter().any(|segment| segment["text"].as_str().unwrap().contains("needle 40")));
+    let open = crate::cross_book::source_view_at(&f.library, "alice", &binding, true, Some("1.40")).unwrap();
+    let url = url::Url::parse(&format!("https://reader.example{}", open["source_url"].as_str().unwrap())).unwrap();
+    let query: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+    assert_eq!(query["publication_id"], f.a.publication_id);
+    assert_eq!(query["start_lid"], "1.40");
+    assert_eq!(query["end_lid"], "1.40");
+    assert!(!query.contains_key("start_utf16"));
+    assert!(!query.contains_key("end_utf16"));
+    assert!(crate::cross_book::source_window(&f.library, "bob", &binding, &json!({})).is_err());
+    f.library.lock().unwrap().revoke("alice", &f.a).unwrap();
+    assert!(crate::cross_book::source_window(&f.library, "alice", &binding, &json!({})).is_err(), "newer authorized edition must not replace the citation's unavailable edition");
+}
+
+#[test]
 fn cross_book_learning_survives_reopen_and_updates_only_from_real_user_feedback() {
     cross_book_learning_scenario(None);
 }

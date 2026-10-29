@@ -636,21 +636,7 @@ impl ToolRegistration {
             | ToolValidatorId::ProfileUsage
             | ToolValidatorId::JsonSchema => {
                 validate_schema(&self.spec.parameters, &value, "$").map_err(|mut error| {
-                    if self.handler == ToolHandlerId::PresentationAuthor {
-                        if let Some(branch) = self.spec.parameters["anyOf"].as_array().and_then(|branches| {
-                            branches.iter().find(|branch| {
-                                branch["properties"]["operation"]["enum"].as_array()
-                                    .is_some_and(|operations| operations.contains(&value["operation"]))
-                            })
-                        }) {
-                            error.message.push_str(&format!(
-                                "\nCorrect the complete call using only this operation's fields; omit unrelated fields even when null. Selected operation schema: {branch}"
-                            ));
-                            if matches!(value["operation"].as_str(), Some("read" | "search" | "patch")) {
-                                error.message.push_str(" Use exactly one target: candidate_id as the string returned by write/patch, or reference as {\"presentation_id\":\"...\",\"revision\":1} from deliver. Omit the unused target field.");
-                            }
-                        }
-                    }
+                    self.append_argument_recovery(&value, &mut error.message);
                     error
                 })?;
                 if self.handler == ToolHandlerId::BookTextBatch {
@@ -674,6 +660,58 @@ impl ToolRegistration {
             }
         }
         Ok(())
+    }
+
+    fn append_argument_recovery(&self, value: &Value, message: &mut String) {
+        if !matches!(self.handler, ToolHandlerId::TutorStep | ToolHandlerId::BoardAuthor | ToolHandlerId::PresentationAuthor) {
+            return;
+        }
+        let schema = &self.spec.parameters;
+        let branches: Vec<_> = schema["anyOf"].as_array().into_iter().flatten().filter(|branch| {
+            branch["properties"]["operation"]["enum"].as_array()
+                .is_some_and(|operations| operations.contains(&value["operation"]))
+        }).collect();
+        if branches.is_empty() {
+            message.push_str(&format!(
+                "\nSet $.operation to one of {} and resend the complete call using that operation's fields.",
+                schema["properties"]["operation"]["enum"]
+            ));
+            return;
+        }
+        if self.handler == ToolHandlerId::TutorStep && value["operation"] == "select" {
+            // Use the current registration: native-board and host-resolved fields
+            // differ from the general Tutor contract and must not be reintroduced.
+            let movement = &schema["properties"]["move"];
+            if let Some(properties) = movement["properties"].as_object() {
+                if let Some(arguments) = value.as_object() {
+                    for field in arguments.keys().filter(|field| {
+                        properties.contains_key(*field)
+                            && branches.iter().all(|branch| branch["properties"].get(*field).is_none())
+                    }) {
+                        message.push_str(&format!(
+                            "\nPlace $.{field} at $.move.{field}; remove $.{field} from the root."
+                        ));
+                    }
+                }
+                let allowed: Vec<_> = properties.keys().map(String::as_str).collect();
+                message.push_str(&format!(
+                    "\nResubmit a complete move. Current $.move allowed fields: {}; required fields: {}. Omit fields absent from this current contract, even when null.",
+                    json!(allowed), movement["required"]
+                ));
+            }
+        }
+        // These operation branches contain only the closed root fields and their
+        // required constraints, not the large nested authoring/Tutor schemas.
+        // Some operations (evidence) legitimately have more than one variant.
+        let selected = if branches.len() == 1 { branches[0].clone() } else { json!({"anyOf": branches}) };
+        message.push_str(&format!(
+            "\nCorrect the complete call using only this operation's fields; omit unrelated fields even when null. Selected operation schema: {selected}"
+        ));
+        if self.handler == ToolHandlerId::PresentationAuthor
+            && matches!(value["operation"].as_str(), Some("read" | "search" | "patch"))
+        {
+            message.push_str(" Use exactly one target: candidate_id as the string returned by write/patch, or reference as {\"presentation_id\":\"...\",\"revision\":1} from deliver. Omit the unused target field.");
+        }
     }
 }
 
@@ -2514,5 +2552,86 @@ mod tests {
         assert!(registration.validate_arguments(r#"{"count": 1}"#).is_ok());
         assert!(registration.validate_arguments(r#"{"count": -1}"#).is_err());
         assert!(registration.validate_arguments(r#"{"other": 1}"#).is_err());
+    }
+
+    #[test]
+    fn tutor_argument_recovery_points_misplaced_fields_to_the_current_move() {
+        let registry = resident_tool_registry().with_tutor_context(Some(&json!({
+            "status":"active", "native_board_candidate_pending":true
+        })));
+        let registration = registry.registration("tutor.step").unwrap();
+        for (field, payload) in [
+            ("responds_to", json!({"fact_refs":["expression-1"],"disposition":"addressed"})),
+            ("participation", json!({"choice":"conclude","reason":"The requested explanation is complete."})),
+            ("response_expectation", json!({"public_prompt":"How does the stop affect elapsed time?"})),
+            ("board_candidate_revision", json!(3)),
+        ] {
+            let mut input = json!({"operation":"select","move":{
+                "board_candidate_revision":3,"interaction_intent":"neutral"
+            }});
+            input["move"].as_object_mut().unwrap().remove(field);
+            input[field] = payload;
+            let original = validate_schema(&registration.spec.parameters, &input, "$").unwrap_err();
+            let error = registration.validate_arguments(&input.to_string()).unwrap_err();
+            assert!(error.message.starts_with(&original.message));
+            assert!(error.message.contains(&format!("Place $.{field} at $.move.{field}")), "{error:?}");
+            assert!(error.message.contains("Resubmit a complete move"));
+            assert!(error.message.len() < 3_000, "recovery should not dump the full Tutor schema");
+
+            // Following the given path fixes the actual rejected call without
+            // normalizing or silently accepting the malformed original.
+            input["move"][field] = input.as_object_mut().unwrap().remove(field).unwrap();
+            registration.validate_arguments(&input.to_string()).unwrap();
+        }
+    }
+
+    #[test]
+    fn tutor_argument_recovery_does_not_reintroduce_host_owned_fields() {
+        let registry = resident_tool_registry().with_tutor_context(Some(&json!({
+            "status":"active", "native_board_candidate_pending":true,
+            "native_selection_intent_resolved":true
+        })));
+        let registration = registry.registration("tutor.step").unwrap();
+        let input = json!({"operation":"select","kind":"explain","delivery_text":"A second body.",
+            "move":{"board_candidate_revision":3}});
+        let error = registration.validate_arguments(&input.to_string()).unwrap_err();
+        let allowed = error.message.split("Current $.move allowed fields: ").nth(1).unwrap()
+            .split("; required fields:").next().unwrap();
+        let allowed: Vec<String> = serde_json::from_str(allowed).unwrap();
+        for field in ["kind", "move_id", "delivery_text", "target", "intent_origin", "interaction_intent", "preference_ref"] {
+            assert!(!allowed.iter().any(|allowed| allowed == field), "{field} must remain host owned");
+            assert!(!error.message.contains(&format!("at $.move.{field}")));
+        }
+        assert!(error.message.contains("required fields: [\"board_candidate_revision\"]"));
+        registration.validate_arguments(r#"{"operation":"select","move":{"board_candidate_revision":3}}"#).unwrap();
+    }
+
+    #[test]
+    fn board_argument_recovery_keeps_only_the_selected_operations_fields() {
+        let registry = resident_tool_registry();
+        let registration = registry.registration("board.author").unwrap();
+        let input = json!({"operation":"preview","candidate_revision":3,"blocks":[]});
+        let original = validate_schema(&registration.spec.parameters, &input, "$").unwrap_err();
+        let error = registration.validate_arguments(&input.to_string()).unwrap_err();
+        assert!(error.message.starts_with(&original.message));
+        assert!(error.message.contains("omit unrelated fields even when null"));
+        let selected: Value = serde_json::from_str(error.message.split("Selected operation schema: ").nth(1).unwrap()).unwrap();
+        assert_eq!(selected["properties"]["operation"]["enum"], json!(["preview"]));
+        assert_eq!(selected["required"], json!(["operation","candidate_revision"]));
+        assert!(selected["properties"].get("viewport").is_some());
+        assert!(selected["properties"].get("blocks").is_none());
+        registration.validate_arguments(r#"{"operation":"preview","candidate_revision":3}"#).unwrap();
+    }
+
+    #[test]
+    fn argument_recovery_lists_only_operations_available_in_the_current_context() {
+        let registry = resident_tool_registry().with_tutor_context(Some(&json!({"status":"reference"})));
+        let registration = registry.registration("tutor.step").unwrap();
+        for input in [json!({}), json!({"operation":"select"})] {
+            let error = registration.validate_arguments(&input.to_string()).unwrap_err();
+            assert!(error.message.contains("Set $.operation to one of [\"trace\"]"));
+            assert!(!error.message.contains("Selected operation schema:"));
+            assert!(!error.message.contains("Current $.move allowed fields:"));
+        }
     }
 }

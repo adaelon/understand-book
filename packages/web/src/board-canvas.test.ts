@@ -29,22 +29,62 @@ function setup(props: Partial<InstanceType<typeof BoardCanvas>['$props']> = {}, 
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); });
 
 describe('native board graphics in the shared canvas', () => {
+  it('keeps fit-to-content separate from fullscreen and leaves preview canvases without a fullscreen action', async () => {
+    const wrapper = setup();
+    expect(wrapper.find('[aria-label="全屏画板"]').exists()).toBe(false);
+    await wrapper.setProps({ fullscreen: false });
+    expect(wrapper.get('[aria-label="全屏画板"]').text()).toBe('全屏画板');
+    await wrapper.get('[aria-label="全屏画板"]').trigger('click');
+    expect(wrapper.emitted('toggle-fullscreen')).toEqual([[]]);
+    expect(wrapper.emitted('view')).toBeUndefined();
+    await wrapper.get('[aria-label="显示全部内容"]').trigger('click');
+    expect(wrapper.emitted('view')).toHaveLength(1);
+    expect(wrapper.emitted('toggle-fullscreen')).toHaveLength(1);
+    await wrapper.setProps({ fullscreen: true });
+    expect(wrapper.get('[aria-label="退出全屏"]').attributes('aria-pressed')).toBe('true');
+  });
+  it('connects reply cards without turning drawing provenance into a fan of automatic arrows', async () => {
+    const answer = (id: string, y: number): BoardItem => ({ ...drawing(id, { kind: 'text', text: id }, 0, y),
+      target: { kind: 'answer', session_id: 'session', turn_id: id, question: '没懂', answer_parts: [] } });
+    const original = answer('original-answer', 0);
+    const reply = { ...answer('reply-answer', 180), reply_to_item_id: original.item_id };
+    const drawings = Array.from({ length: 10 }, (_, index) => ({
+      ...drawing(`example-${index}`, { kind: 'shape', shape: 'rectangle', text: String(index), color: '#769780' }, 330 + index % 5 * 260, Math.floor(index / 5) * 180),
+      reply_to_item_id: original.item_id,
+    }));
+    const explicit = { ...link, from: { kind: 'item' as const, item_id: drawings[0].item_id }, to: { kind: 'item' as const, item_id: drawings[1].item_id } };
+    const items = [original, reply, ...drawings];
+    const retained = JSON.stringify(items);
+    const wrapper = setup({ items, links: [explicit] });
+    expect(wrapper.findAll('[data-board-reply-link]').map(edge => edge.attributes('data-board-reply-link'))).toEqual([reply.item_id]);
+    expect(wrapper.findAll('[data-board-link]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-board-graphic]')).toHaveLength(10);
+    expect(JSON.stringify(items)).toBe(retained);
+
+    // A follow-up to one primitive still retains that origin, but a visual
+    // relation must be drawn explicitly rather than inferred from provenance.
+    await wrapper.setProps({ items: [original, { ...reply, reply_to_item_id: drawings[0].item_id }, ...drawings] });
+    expect(wrapper.findAll('[data-board-reply-link]')).toHaveLength(0);
+    expect(wrapper.findAll('[data-board-link]')).toHaveLength(1);
+  });
   it('renders native SVG text, both shapes and the retained local path rather than generic content cards', () => {
     const wrapper = setup();
     expect(wrapper.findAll('.board-card')).toHaveLength(0);
     expect(wrapper.findAll('[data-board-graphic]')).toHaveLength(4);
     expect(wrapper.get('[data-item-id="text"] [data-board-drawing-text]').text()).toBe('ABCD');
-    expect(wrapper.find('[data-item-id="shape"] rect[rx="9"]').exists()).toBe(true);
-    expect(wrapper.find('[data-item-id="ellipse"] ellipse').exists()).toBe(true);
+    expect(wrapper.find('[data-item-id="shape"] [data-board-shape="rectangle"]').exists()).toBe(true);
+    expect(wrapper.find('[data-item-id="ellipse"] [data-board-shape="ellipse"]').exists()).toBe(true);
     expect(wrapper.get('.board-native-path').attributes('d')).toBe('M 4 60 L 35 20 L 220 80');
     expect(wrapper.get('.board-native-path').attributes('stroke')).toBe('#788baa');
     expect(wrapper.get('[data-board-link="cause"]').attributes('aria-label')).toBe('更新');
   });
   it('changes visibility, highlights, stroke progress and text reveal only through controlled props', async () => {
     const items = makeItems(), original = JSON.stringify(items);
-    const wrapper = setup({ items, transition: 'draw', progress: { path: .25, cause: .4 }, highlightTargets: [{ kind: 'item', item_id: 'shape' }, { kind: 'link', link_id: 'cause' }] });
+    const wrapper = setup({ items, transition: 'draw', progress: { path: .25, cause: .4, shape: .3 }, highlightTargets: [{ kind: 'item', item_id: 'shape' }, { kind: 'link', link_id: 'cause' }] });
     expect(wrapper.get('.board-native-path').attributes('stroke-dashoffset')).toBe('0.75');
     expect(wrapper.get('.board-link-stroke').attributes('stroke-dashoffset')).toBe('0.6');
+    expect(wrapper.get('[data-item-id="shape"] .board-shape-outline').attributes()).toMatchObject({ 'stroke-dashoffset': '0.7', 'fill-opacity': '0.3' });
+    expect(wrapper.get('[data-item-id="shape"] .board-shape-echo').attributes('stroke-dashoffset')).toBe('0.7');
     expect(wrapper.get('[data-item-id="shape"]').classes()).toContain('board-highlighted-item');
     expect(wrapper.get('[data-board-link="cause"]').classes()).toContain('board-highlighted-link');
     await wrapper.setProps({ transition: 'reveal_text', progress: { text: .5 } });
@@ -56,6 +96,40 @@ describe('native board graphics in the shared canvas', () => {
     await wrapper.setProps({ visibleItemIds: ['shape'], visibleLinkIds: [] });
     expect(wrapper.findAll('[data-item-id]')).toHaveLength(1); expect(wrapper.findAll('[data-board-link]')).toHaveLength(0);
     expect(JSON.stringify(items)).toBe(original); expect(wrapper.emitted('move')).toBeUndefined(); expect(wrapper.emitted('view')).toBeUndefined();
+  });
+  it('keeps title and wrapped body positions stable throughout text reveal without losing source content', async () => {
+    const item = drawing('state', { kind: 'shape', shape: 'rectangle', text: '① 固定池\n把新信息放进固定大小的状态\n每一步都保留更新后的结果', color: '#269b92' });
+    item.title = '固定池'; item.size = { width: 240, height: 170 };
+    const wrapper = setup({ items: [item], links: [] });
+    const lines = () => wrapper.findAll('[data-board-drawing-text] tspan');
+    const positions = lines().map(line => ({ x: line.attributes('x'), y: line.attributes('y'), fontSize: line.attributes('font-size') }));
+    expect(lines()[0].attributes('font-weight')).toBe('620');
+    expect(lines().slice(1).every(line => line.attributes('font-weight') === '400')).toBe(true);
+    expect(wrapper.get('[data-board-drawing-text]').text()).toBe('① 固定池把新信息放进固定大小的状态每一步都保留更新后的结果');
+    await wrapper.setProps({ transition: 'reveal_text', progress: { state: .45 } });
+    expect(lines().map(line => ({ x: line.attributes('x'), y: line.attributes('y'), fontSize: line.attributes('font-size') }))).toEqual(positions);
+    expect(wrapper.get('[data-board-drawing-text]').text()).toBe('① 固定池把新信息放进固定大');
+    await wrapper.setProps({ progress: { state: 1 } });
+    expect(wrapper.get('[data-board-drawing-text]').text()).toBe('① 固定池把新信息放进固定大小的状态每一步都保留更新后的结果');
+  });
+  it('renders mathematical notation as intact formulas and reveals them without replacing their measured markup', async () => {
+    const item = drawing('update', { kind: 'shape', shape: 'rectangle', text: '状态更新\n写入 $S_t = S_{t-1} + k_t v_t^T$\n保持固定尺寸', color: '#3c928b' });
+    item.title = '状态更新'; item.size = { width: 300, height: 160 };
+    const wrapper = setup({ items: [item], links: [], transition: 'reveal_text', progress: { update: 0 } });
+    expect(wrapper.find('foreignObject[data-board-drawing-text]').exists()).toBe(true);
+    expect(wrapper.find('[data-board-rich-text] .katex').exists()).toBe(true);
+    expect(wrapper.find('.katex-error').exists()).toBe(false);
+    const formula = wrapper.get('[data-board-math]');
+    const element = formula.element, html = formula.html();
+    expect(formula.attributes('style')).toContain('visibility: hidden');
+    expect(wrapper.findAll('.board-rich-character').every(character => character.attributes('style')?.includes('visibility: hidden'))).toBe(true);
+    await wrapper.setProps({ progress: { update: .5 } });
+    expect(wrapper.get('[data-board-math]').element).toBe(element);
+    expect(wrapper.get('[data-board-math]').attributes('style')).toContain('visibility: visible');
+    expect(wrapper.get('[data-board-math]').html().replace('visibility: visible', 'visibility: hidden')).toBe(html);
+    await wrapper.get('[data-item-id="update"] [role="button"]').trigger('keydown', { key: 'ArrowRight' });
+    expect(wrapper.emitted('move')).toEqual([['update', { x: 12, y: 0 }]]);
+    expect(item.target.kind === 'drawing' && item.target.graphic.kind === 'shape' && item.target.graphic.text).toBe('状态更新\n写入 $S_t = S_{t-1} + k_t v_t^T$\n保持固定尺寸');
   });
   it('activates explicit links by mouse and keyboard and selects drawings without conflating the two targets', async () => {
     const wrapper = setup();

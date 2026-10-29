@@ -43,6 +43,7 @@ struct RunProvider {
     binding: ProviderBinding,
     make: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
     make_task: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
+    make_review: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
 }
 
 /// Only the necessary request/scene/provider metadata; credentials and temporary candidates are absent.
@@ -263,11 +264,27 @@ impl RunAdmissions {
             profile,
         };
         let task_config = config.clone();
+        let review_config = config.clone();
+        let timeouts = runtime::ProviderRequestTimeouts {
+            request: std::time::Duration::from_secs(self.limits.model_request_timeout_seconds),
+            connect: std::time::Duration::from_secs(self.limits.model_connect_timeout_seconds),
+        };
+        let review_timeouts = runtime::ProviderRequestTimeouts {
+            request: std::time::Duration::from_secs(self.limits.background_model_request_timeout_seconds),
+            ..timeouts
+        };
+        let task_timeouts = runtime::ProviderRequestTimeouts {
+            request: crate::SELECTION_TRANSLATION_TIMEOUT,
+            ..timeouts
+        };
         *self.provider.lock().unwrap() = Some(RunProvider {
             binding,
-            make: Arc::new(move || ProviderRegistry::adapter_from_config(config.clone())),
-            make_task: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeout(
-                task_config.clone(), crate::SELECTION_TRANSLATION_TIMEOUT,
+            make: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(config.clone(), timeouts)),
+            make_task: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(
+                task_config.clone(), task_timeouts,
+            )),
+            make_review: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(
+                review_config.clone(), review_timeouts,
             )),
         });
         Ok(())
@@ -276,6 +293,12 @@ impl RunAdmissions {
         let make = self.provider.lock().unwrap().as_ref()
             .map(|provider| provider.make_task.clone())
             .ok_or_else(|| fault("TRANSLATION_PROVIDER_UNCONFIGURED", "provider"))?;
+        Ok(make())
+    }
+    pub(crate) fn review_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>, ToolError> {
+        let make = self.provider.lock().unwrap().as_ref()
+            .map(|provider| provider.make_review.clone())
+            .ok_or_else(|| fault("REVIEW_PROVIDER_UNCONFIGURED", "provider"))?;
         Ok(make())
     }
     pub(crate) fn coach_provider_binding(&self) -> Result<Value, ToolError> {
@@ -297,7 +320,8 @@ impl RunAdmissions {
                 profile,
             },
             make: make.clone(),
-            make_task: make,
+            make_task: make.clone(),
+            make_review: make,
         });
     }
     fn point(&self, _point: &'static str) -> Result<(), ToolError> {
@@ -1625,13 +1649,9 @@ impl RunAdmissions {
         {
             return Err(busy());
         }
-        if user.session_store.is_some() {
+        let deletion = if user.session_store.is_some() {
             let user = &mut *user;
-            let result = user.session_store.as_mut().unwrap().delete(&mut user.agent_history, chat);
-            if result.is_err() && !user.agent_history.sessions.iter().any(|s| s.id == chat) {
-                access.workspaces.lock().unwrap().clear_chat(context.user_id(), chat)?;
-            }
-            result?;
+            user.session_store.as_mut().unwrap().delete(&mut user.agent_history, chat)
         } else {
             let mut candidate = user.agent_history.clone();
             candidate.sessions.retain(|s| s.id != chat);
@@ -1641,7 +1661,22 @@ impl RunAdmissions {
             candidate.pending_governance_mutations.remove(chat);
             save_agent_history_path(&user.history_path, &candidate)?;
             user.agent_history = candidate;
+            Ok(())
+        };
+        // The JSONL deletion is authoritative even if its selection save failed.
+        // Keep the user lock through cancellation so a late review cannot commit.
+        if !user.agent_history.sessions.iter().any(|s| s.id == chat) {
+            let now = crate::multi_user_host::now().to_string();
+            user.store.cancel_session_review_jobs(chat, memory::ReviewErrorState {
+                error_code: "REVIEW_SOURCE_DELETED".into(),
+                message: "Review cancelled because its source chat was deleted".into(),
+                occurred_at: now.clone(),
+            }, &now)?;
+            if deletion.is_err() {
+                access.workspaces.lock().unwrap().clear_chat(context.user_id(), chat)?;
+            }
         }
+        deletion?;
         // Presentation versions embed their resources and remain in private storage.
         // Memory note associations and committed follow-ups retain their exact receipts;
         // removing this chat never removes another live object's presentation relation.

@@ -103,10 +103,10 @@ mod selection_translation;
 mod pdf_bytes;
 mod charge_admin;
 mod admin_api;
+mod server_monitor;
 mod beta_invites;
 mod account_mail;
 mod account_registration;
-mod guest_trial;
 mod account_email;
 mod account_password;
 mod admin_store;
@@ -121,6 +121,7 @@ pub mod published_library;
 pub mod online_publication;
 mod book_cover;
 mod book_title;
+mod reader_outline;
 pub mod auth;
 pub mod video_media;
 mod music_media;
@@ -3070,9 +3071,11 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
             let binding = match board_api::source_binding(&state.user, &state.workspace, &value) {
                 Ok(binding) => binding, Err(error) => return err_reply(&error),
             };
+            if let Err(error) = board_api::validate_source_publication(&state.workspace.book, &binding, state.workspace.publication.as_ref().map(|p| &p.reference)) { return err_reply(&error); }
             let Some(range) = binding.evidence_range.as_ref() else { return validation("MEDIA_SOURCE_NAVIGATION", "Use the saved media position"); };
             if let Err(error) = state.workspace.book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest)) { return err_reply(&error); }
-            if let Err(error) = state.workspace.reader.goto_lid(&state.workspace.book, &mut state.user.store, &range.start_lid, req.now) { return err_reply(&error); }
+            let lid = match board_api::optional_source_lid(&value, "lid") { Ok(lid) => lid.unwrap_or(&range.start_lid), Err(error) => return err_reply(&error) };
+            if let Err(error) = state.workspace.reader.goto_lid(&state.workspace.book, &mut state.user.store, lid, req.now) { return err_reply(&error); }
             save_session(state, None);
             return ok_json(&SourceOpenView { source_ref_id: binding.source_ref_id, opened: true });
         }
@@ -3695,6 +3698,11 @@ fn route_book(
                 Ok(input) => input,
                 Err(reply) => return reply,
             };
+            if id == BookToolId::Manifest {
+                let mut manifest = json!(book.manifest());
+                reader_outline::attach(book_dir, &mut manifest);
+                return ok_json(&manifest);
+            }
             return route_canonical_readonly_book_tool(book, id, input);
         }
     }
@@ -12719,7 +12727,9 @@ fn user_profile_snapshot_request(
     let unresolved = review_state
         .review_jobs
         .iter()
-        .any(|job| job.learning_workspace_id.as_deref() == learning_workspace_id && job.book_id == book_id && job.status != ReviewJobStatus::Completed);
+        .any(|job| job.learning_workspace_id.as_deref() == learning_workspace_id && job.book_id == book_id
+            && (job.status.is_pending() || (job.status == ReviewJobStatus::Failed
+                && job.to_turn_inclusive > review_state.reviewed_through.get(&job.session_id).copied().unwrap_or(0))));
     let review_stale = unresolved && review_state.last_error.is_some();
     let stale = user.store.private_storage_diagnostic().is_some() || review_stale;
     let context = SnapshotContext {
@@ -12968,6 +12978,13 @@ fn route_agent_history_delete(state: &mut AppState, body: &str, now: &str) -> Re
         return err_reply(&e);
     }
     state.workspace.select_chat(selected, messages);
+    if let Err(e) = state.user.store.cancel_session_review_jobs(session_id, memory::ReviewErrorState {
+        error_code: "REVIEW_SOURCE_DELETED".into(),
+        message: "Review cancelled because its source chat was deleted".into(),
+        occurred_at: now.into(),
+    }, now) {
+        return err_reply(&e);
+    }
     ok_json(&response)
 }
 
@@ -13350,6 +13367,7 @@ mod tests {
     mod adm6_tests;
     mod adm7_tests;
     mod adm9_tests;
+    mod monitor_tests;
     mod mu2_tests;
     mod mu3_tests;
     mod online_publication_tests;

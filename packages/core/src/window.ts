@@ -1,7 +1,7 @@
 // S2 窗口切分 [ADR-0009]。消费 S1 段级 LidNode[],按 LID 章/节子树切成喂给 Pass1 的窗口。
 // 双约束预算:输入硬闸(近似 token 上限)+ 输出软闸(单窗口叶子段数软上限)。
 // 超限子树内按叶子(段)贪心细分,切点吸附 LID 边界、绝不腰斩(段是切片0 最小单位);
-// 过小单元由贪心累加自然合并;不跨卷(顶层容器之间绝不合并)。
+// 过小单元由贪心累加自然合并;无结构容器的根叶也按预算合窗,顶层容器之间绝不合并。
 // token = 确定性近似估算(中文 1 / 其他 0.25),零依赖、跨 provider 稳定;
 // 误差由安全系数吸收,数字(硬闸/软闸/并发)留切片0实测回填 [ADR-0009]「何时回头」。
 import type { LidNode } from "./generated/LidNode";
@@ -121,7 +121,22 @@ export function splitWindows(
     curTok += tok;
   };
 
+  const emitLeaf = (lid: string) => {
+    const tok = tokenOf(lid);
+    if (tok > budget.maxInputTokens) {
+      closeCur(); // 单叶超硬闸:段不可再切,自成一窗、诚实标记,不腰斩
+      windows.push(makeWindow(nextId++, [lid], tok, byLid, true));
+    } else {
+      addUnit([lid], tok);
+    }
+  };
+
   const emitSubtree = (lid: string) => {
+    const n = byLid.get(lid)!;
+    if (isLeaf(n)) {
+      emitLeaf(lid);
+      return;
+    }
     const leaves = subtreeLeaves(lid);
     const tok = subtreeTokens(lid);
     if (tok <= budget.maxInputTokens && leaves.length <= budget.maxLeavesSoft) {
@@ -129,17 +144,10 @@ export function splitWindows(
       return;
     }
     // 子树超限 → 子树内细分(吸附 LID 边界)
-    const n = byLid.get(lid)!;
     for (const c of n.children) {
       const cn = byLid.get(c)!;
       if (isLeaf(cn)) {
-        const ct = tokenOf(c);
-        if (ct > budget.maxInputTokens) {
-          closeCur(); // 单叶超硬闸:段不可再切,自成一窗、诚实标记,不腰斩
-          windows.push(makeWindow(nextId++, [c], ct, byLid, true));
-        } else {
-          addUnit([c], ct);
-        }
+        emitLeaf(c);
       } else {
         const ctok = subtreeTokens(c);
         const cleaves = subtreeLeaves(c);
@@ -154,11 +162,14 @@ export function splitWindows(
     }
   };
 
-  // 顶层 = path.length === 1;逐顶层处理并封口 ⇒ 顶层(卷)之间绝不合并(不跨卷)。
+  // 只有顶层章/节或带子节点的容器才构成边界;无标题源中的顶层段落仍可相邻合窗。
   for (const t of nodes) {
     if (t.path.length !== 1) continue;
+    const isContainer = t.kind === "chapter" || t.kind === "section" || !isLeaf(t);
+    if (isContainer) closeCur();
     emitSubtree(t.lid);
-    closeCur();
+    if (isContainer) closeCur();
   }
+  closeCur();
   return windows;
 }

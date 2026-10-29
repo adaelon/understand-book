@@ -12,10 +12,10 @@ import type { BuildRetrievalSelection } from "./build-intent";
 import { retrievalScopeIncludes } from "./build-intent";
 import { automaticBuildGenerationArtifactPath } from "./semantic-artifact";
 import { createBookStructureGenerationTask, readBookStructureOrganizationState, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
-import { acceptStructureOutline, newStructureChapterWork, structureChapterInput, applyStructureChapterAction,
+import { acceptStructureOutline, acceptStructureOutlineChapters, structureOutlineChapterBatchSchema, applyStructureOutlineThemeAction, newStructureChapterWork, structureChapterInput, applyStructureChapterAction,
   reviseStructureChapterWork, structureChapterRevisionRequestSchema, type StructureChapterRevisionRequest,
   continueStructureChapterSelection, structureChapterSelectionContinuationSchema, type StructureChapterSelectionContinuation,
-  type StructureOutlineInput, type StructureOutline, type StructureChapterWork, type StructureChapterContext } from "./book-structure-planning";
+  type StructureOutlineInput, type StructureOutline, type StructureOutlineThemeWork, type StructureChapterWork, type StructureChapterContext } from "./book-structure-planning";
 import { planStructureThemes, structureThemePlanningInput, structureThemeInput, applyStructureThemeAction,
   reconcileStructureThemes, materializeStructureThemes, reopenStructureTheme, type StructureThemeDirectory, type StructureThemeContext } from "./book-structure-themes";
 import { materializeStructureChapterSelections } from "./book-structure-materialization";
@@ -29,9 +29,10 @@ import { estimateTokens } from "./window";
 import { throwExtractorSchemaError } from "./extractor-contract";
 
 const STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS = 20000;
+const STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE = 4;
 
-export type StructureOrganizationKind = "structure_outline" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
-export type StructureOrganizationState = StructureOutline | StructureChapterWork | StructureThemeDirectory;
+export type StructureOrganizationKind = "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
+export type StructureOrganizationState = StructureOutline | StructureOutlineThemeWork | StructureChapterWork | StructureThemeDirectory;
 /** Only body is delivered. context/work are the current Core ledger, never a model-authored snapshot. */
 export type StructureOrganizationInput = {
   version: "book_structure_organization_input.v1";
@@ -40,6 +41,8 @@ export type StructureOrganizationInput = {
   reference_scope: BookStructureReferenceScope;
 } & (
   | { phase: "outline"; context: StructureOutlineInput }
+  | { phase: "outline_chapters"; context: StructureOutlineInput }
+  | { phase: "outline_themes"; context: StructureOutlineInput; work: StructureOutlineThemeWork }
   | { phase: "chapter"; context: StructureChapterContext; work: StructureChapterWork }
   | { phase: "plan"; context: StructureThemeContext }
   | { phase: "theme"; context: StructureThemeContext; directory: StructureThemeDirectory; ref: string; revision_request?: StructureThemeRevisionRequest }
@@ -77,6 +80,8 @@ export function fitStructureOrganizationExecution(input: Omit<Parameters<typeof 
 export function applyStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationState {
   switch (input.phase) {
     case "outline": return acceptStructureOutline(action, input.context);
+    case "outline_chapters": return { chapters: acceptStructureOutlineChapters(structureOutlineChapterBatchSchema.parse(action).chapters, input.context), themes: [] };
+    case "outline_themes": return applyStructureOutlineThemeAction(input.work, action, input.context);
     case "chapter": return applyStructureChapterAction(input.work, action, input.context);
     case "plan": return planStructureThemes(action, input.context);
     case "theme": return applyStructureThemeAction(input.directory, input.ref, action, input.context);
@@ -176,7 +181,7 @@ export function routeStructureOrganization(input: {
   const step = (kind: StructureOrganizationKind, id: string, packet: StructureOrganizationInput,
     options: { probe?: boolean; whole_theme?: boolean } = {}) => {
     const contract = input.contracts[kind];
-    const reserve = kind === "structure_outline" ? 5000 : kind === "structure_chapter" || kind === "structure_chapter_selection" ? 3500 : 6500;
+    const reserve = kind.startsWith("structure_outline") ? 5000 : kind === "structure_chapter" || kind === "structure_chapter_selection" ? 3500 : 6500;
     const fitted = fitStructureOrganizationExecution({ packet, contract,
       transport_profile: input.execution_profile.transport_profile,
       budget: { stage_body_limit_tokens: STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS, executor_context_floor_tokens: 32768,
@@ -208,7 +213,35 @@ export function routeStructureOrganization(input: {
   };
   const packet = { version: "book_structure_organization_input.v1" as const, reference_scope: scope, retrieval_selection: selection };
   try {
-    const outline = step("structure_outline", "structure:outline", { ...packet, phase: "outline", context: input.outline, body: input.outline }) as StructureOutline | undefined;
+    const boundedOutline = input.outline.chapters.length > STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE;
+    // Keep an already accepted whole-book outline. New large outlines use separately accepted parts.
+    let outline = step("structure_outline", "structure:outline", { ...packet, phase: "outline", context: input.outline, body: input.outline },
+      { probe: boundedOutline }) as StructureOutline | undefined;
+    if (!outline && boundedOutline) {
+      const chapters: StructureOutline["chapters"] = [];
+      for (let start = 0; start < input.outline.chapters.length; start += STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE) {
+        const batch = input.outline.chapters.slice(start, start + STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE);
+        const part = step("structure_outline_chapters", `structure:outline:chapters:${start}`, {
+          ...packet, phase: "outline_chapters", context: { ...input.outline, chapters: batch },
+          body: { book: input.outline, requested_unit_lids: batch.map(chapter => chapter.unit_lid) },
+        }) as StructureOutline | undefined;
+        if (part) chapters.push(...part.chapters);
+      }
+      if (pending.length) return { tasks, pending, progress };
+      let work: StructureOutlineThemeWork = { themes: [], complete: false };
+      for (let ordinal = 0; !work.complete; ordinal++) {
+        if (ordinal >= 128) throw new StructureOrganizationBlocked("Outline theme action budget exhausted; accepted work retained");
+        const next = step("structure_outline_themes", `structure:outline:themes:${ordinal}`, {
+          ...packet, phase: "outline_themes", context: input.outline, work,
+          body: { book: input.outline, accepted_themes: work.themes.map((theme, theme_index) => ({
+            theme_index, question: theme.question.text, unit_lids: theme.unit_lids,
+          })) },
+        }) as StructureOutlineThemeWork | undefined;
+        if (!next) return { tasks, pending, progress };
+        work = next;
+      }
+      outline = acceptStructureOutline({ chapters, themes: work.themes }, input.outline);
+    }
     if (!outline) return { tasks, pending, progress };
     progress.outline.done = 1;
     if (input.stop_after_outline) return { tasks, pending, progress, outline_result: outline };

@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, unlinkSync, writeFile
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { setImmediate as yieldToRunner } from "node:timers/promises";
 import * as fs from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   nextAutomaticBuildAction,
   buildAutomaticBuildSnapshot,
@@ -61,7 +62,57 @@ import { zipSync, strToU8 } from "fflate";
 import { claimAutomaticBuildTask, readAutomaticBuildLease } from "../src/automatic-build-lease";
 import { structureProductionResponse } from "./helpers/book-structure-production";
 import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
-import { readAcceptedBookStructureClose } from "../src/automatic-build-close";
+import { readAcceptedBookStructureClose, readAcceptedPass1Close } from "../src/automatic-build-close";
+
+// These fixtures run synchronous batch processes. Let the test worker deliver
+// its pending completion messages between cases instead of starving RPC replies.
+afterEach(async () => { await yieldToRunner(); });
+
+it("keeps a confirmed reused Pass1 publication after its producer generation changes", () => {
+  const root = tempDir();
+  const { workspace } = writeTechnicalLearningWorkspace(root, "published-pass1");
+  const target = resolveAutomaticBuildTarget(workspace, root);
+  closeV3Pass1(target);
+  const closed = runAutomaticBuildCloseStage(workspace, root, "pass1");
+  if (!("status" in closed) || closed.status !== "closed") throw new Error("expected accepted Pass1 publication");
+  const options = { reuse: [{ artifact: "public.pass1", freshness_digest: closed.postcondition.freshness_digest }] };
+  const source = readFileSync(path.join(workspace, "source.txt"), "utf8");
+  const base = readFileSync(path.join(workspace, "base.json"), "utf8");
+  // A new producer no longer routes the accepted generation's artifacts.
+  const artifacts = path.join(workspace, ".build/automatic-build/v3/artifacts/pass1");
+  fs.renameSync(artifacts, artifacts + "-previous");
+  expect(buildAutomaticBuildSnapshot(target).stages[0].pending_tasks.length).toBeGreaterThan(0);
+  const resumed = buildAutomaticBuildSnapshot(target, options);
+  expect(resumed.stages[0]).toMatchObject({ stage: "pass1", closed: true, pending_tasks: [],
+    published_freshness_digest: closed.postcondition.freshness_digest });
+  expect(resumed.stages[1]?.stage).toBe("profile_sidecar");
+  expect(readFileSync(path.join(workspace, "base.json"), "utf8")).toBe(base);
+  // Reuse remains bound to the accepted public bytes and the requested quality.
+  expect(buildAutomaticBuildSnapshot(target, { ...options, quality_profile: "balanced" }).stages[0].closed).toBe(false);
+  writeFileSync(path.join(workspace, "base.json"), base + "\n");
+  expect(buildAutomaticBuildSnapshot(target, options).stages[0].closed).toBe(false);
+  writeFileSync(path.join(workspace, "base.json"), base);
+  writeFileSync(path.join(workspace, "source.txt"), source + "\nChanged source.\n");
+  const changedTarget = resolveAutomaticBuildTarget(workspace, root);
+  expect(readAcceptedPass1Close(changedTarget)).toBeUndefined();
+  expect(() => buildAutomaticBuildSnapshot(changedTarget, options)).toThrow("policy_generation_conflict");
+}, 60_000);
+
+it("closes profile sidecars under the plan's accepted Pass1 reuse after its producer changes", () => {
+  const root = tempDir();
+  const { workspace } = writeTechnicalLearningWorkspace(root, "reused-pass1-close");
+  const target = resolveAutomaticBuildTarget(workspace, root);
+  closeV3Pass1(target);
+  expect(runAutomaticBuildCloseStage(workspace, root, "pass1")).toMatchObject({ status: "closed" });
+  const prepared = prepareExplicitLegacyBuildPlan(workspace, root, { pass2: "disabled" });
+  expect(prepared.plan.reuse.map(item => item.artifact)).toContain("public.pass1");
+  closeV3ProfileSidecar(target);
+  const artifacts = path.join(workspace, ".build/automatic-build/v3/artifacts/pass1");
+  fs.renameSync(artifacts, artifacts + "-previous");
+  expect(buildAutomaticBuildSnapshot(target).stages.some(stage => stage.stage === "profile_sidecar")).toBe(false);
+  expect(runAutomaticBuildCloseStage(workspace, root, "profile_sidecar", { build_plan: prepared.plan }))
+    .toMatchObject({ status: "closed", stage: "profile_sidecar", next: "replan" });
+}, 60_000);
 
 it("reuses an accepted BookStructure publication for Tutor after its generation route changes", () => {
   const root = tempDir();

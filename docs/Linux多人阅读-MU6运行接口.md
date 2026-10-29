@@ -69,6 +69,8 @@ POST /api/workspaces/WORKSPACE/agent/runs
 
 `GET /api/agent/runs/TURN/events` 使用同一授权 SSE。排队、执行、模型槽等待及最终保存共用一条流；重连只 GET，不重新 POST。每批推送前复核确切登录会话和原材料授权；退出登录关闭该会话观察，取消只影响指定 turn。观察数默认每用户 4、全局 40，超额返回 `429 OBSERVATION_CAPACITY`，断线退出后释放名额。
 
+授权流空闲时每秒复核一次权限；有新事件立即唤醒，并在推送该批事件前复核。网络保活在连续 10 秒无数据发送后写出，避免把权限复核轮询变成高频保活。
+
 多人事件 ID 是不透明的 `observation_epoch:sequence`；通过 `Last-Event-ID` 或 `after` 原样传回。收到 `run.snapshot` 时用它替换当前实时投影，并采用该事件 ID。快照具有 `live_buffer_reset: true`，所有事件带 `observation_epoch`。当前流游标仍被有限缓冲覆盖时只补后续事件；游标过期、数字旧游标、服务重启或已释放的终态流重建时返回快照，不拼接旧序号。客户端按流维护游标；本地单用户的数字游标保持原格式。
 
 ```text
@@ -86,9 +88,13 @@ GET events -> queued snapshot -> run.started -> run.resource / activity / answer
 
 | 字段 | 默认值 | 含义 |
 | --- | --- | --- |
+| `http_workers` | 4 | 普通 HTTP 请求处理线程；SSE 与同步 chat 等待使用既有独立观察线程 |
 | `active_runs / user_active_runs` | 4 / 1 | 全局/单用户活动份额；领取准备也占份额 |
 | `queued_runs / user_queued_runs` | 20 / 4 | 全局/单用户未结接单，含 preparing、queued、claimed、unsaved |
 | `model_slots / user_model_slots` | 2 / 1 | 实际 Provider 调用并发，等待者按用户轮转 |
+| `model_request_timeout_seconds` | 600 | 前台单次模型请求总时限，覆盖响应体；不是整个 Agent 回合时限 |
+| `background_model_request_timeout_seconds` | 180 | 后台记忆复核单次模型请求总时限；翻译等既有专用任务时限保持不变 |
+| `model_connect_timeout_seconds` | 15 | 建立模型连接时限，实际不超过该次请求总时限 |
 | `preview_slots / plot_slots / animation_slots` | 1 / 1 / 1 | 三个独立制作资源池，每用户各最多 1；网络制作需通过 MU7 执行器探针 |
 | `presentation_bytes / presentation_files` | 536870912 / 4096 | MU7 每用户候选、版本和状态的累计落盘字节/文件上限，详见 [MU7 接口](Linux多人阅读-MU7受限制作.md) |
 | `sync_waiters / user_sync_waiters` | 20 / 4 | 同步 chat 等待响应 |
@@ -99,6 +105,8 @@ GET events -> queued snapshot -> run.started -> run.resource / activity / answer
 | `books / book_bytes` | 20 / 2147483648 | 所有存活 Book 的数量和既有保守计费字节 |
 
 例如 Linux 冻结容量验收负载可设 `{"user_queued_runs":2}`，沿 MU0 的每用户 2 未结接单、2 个全局模型槽运行。闲置回收沿原用户 30 分钟、现场 15 分钟，现场维护周期 60 秒。
+
+面向 200 名同时在线读者的待验证配置见 [`service-limits.200-users.json.example`](../scripts/linux/service-limits.200-users.json.example)。它需要包含上述新字段的新版本服务，适用于扩容后的单实例；保存示例不会改变线上配置。适用负载、实施状态与限制见 [200 人配置准备记录](performance/capacity-200-20261027/implementation.md)。
 
 运行领取按用户轮转，同用户内部按接单顺序。模型许可只覆盖一次实际调用，调用退出后才释放；工具、画像判断、教学评估、嵌套查询、压缩和修复使用相同受限 adapter，不在整个 Run 期间占住模型槽。暂停/取消不会提前释放仍在网络调用中的槽。每次真正发起新调用前复验原用户与原材料授权。
 

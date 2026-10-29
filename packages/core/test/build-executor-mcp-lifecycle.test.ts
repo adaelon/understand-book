@@ -1,4 +1,5 @@
 import { PassThrough, Writable } from "node:stream";
+import { once } from "node:events";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createBuildExecutorMcpSession, serveBuildExecutorMcpSession } from "../../../skills/build/build-executor-mcp";
@@ -16,11 +17,14 @@ describe("executor MCP transport lifecycle", () => {
       const input = new PassThrough();
       let bytes = "";
       let flush: (() => void) | undefined;
-      const output = new Writable({ write(chunk, _encoding, callback) { bytes += chunk.toString(); flush = callback; } });
+      let notifyWrite: () => void;
+      const written = new Promise<void>(resolve => { notifyWrite = resolve; });
+      const output = new Writable({ write(chunk, _encoding, callback) { bytes += chunk.toString(); flush = callback; notifyWrite(); } });
       serveBuildExecutorMcpSession(session, input, output);
       input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/call", params: {
         name: "executor.open", arguments: { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: `abhandoff1_${"1".repeat(64)}` },
       } })}\n`);
+      await written;
       expect(input.destroyed).toBe(true);
       expect(output.writableFinished).toBe(false);
       const finished = new Promise<void>(resolve => output.once("finish", resolve));
@@ -31,7 +35,7 @@ describe("executor MCP transport lifecycle", () => {
       expect(JSON.parse(response.result.content[0].text).action).toEqual({ kind: "DONE", status });
     });
 
-  it("keeps a WAIT connection open for a later call", () => {
+  it("keeps a WAIT connection open for a later call", async () => {
     const session = createBuildExecutorMcpSession({
       bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
       protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
@@ -41,15 +45,18 @@ describe("executor MCP transport lifecycle", () => {
     const input = new PassThrough();
     const output = new PassThrough();
     serveBuildExecutorMcpSession(session, input, output);
+    const responded = once(output, "readable");
     input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
       name: "executor.open", arguments: { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: `abhandoff1_${"2".repeat(64)}` },
     } })}\n`);
+    await responded;
+    expect(JSON.parse(JSON.parse(output.read().toString()).result.content[0].text).action).toEqual({ kind: "WAIT", retry_after_ms: 1 });
     expect(input.destroyed).toBe(false);
     expect(output.writableEnded).toBe(false);
     input.destroy(); output.destroy();
   });
 
-  it("closes after a terminal MCP error without losing its diagnostic", () => {
+  it("closes after a terminal MCP error without losing its diagnostic", async () => {
     const session = createBuildExecutorMcpSession({
       bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
       protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
@@ -59,9 +66,11 @@ describe("executor MCP transport lifecycle", () => {
     const input = new PassThrough();
     const output = new PassThrough();
     serveBuildExecutorMcpSession(session, input, output);
+    const finished = once(output, "finish");
     input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
       name: "executor.open", arguments: { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: `abhandoff1_${"2".repeat(64)}` },
     } })}\n`);
+    await finished;
     expect(input.destroyed).toBe(true);
     expect(output.writableEnded).toBe(true);
     const response = JSON.parse(output.read().toString());
@@ -70,7 +79,7 @@ describe("executor MCP transport lifecycle", () => {
     });
   });
 
-  it("allows the supported unbound ref correction before closing on DONE", () => {
+  it("allows the supported unbound ref correction before closing on DONE", async () => {
     const session = createBuildExecutorMcpSession({
       bootstrap_version: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,
       protocol_generation: BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,
@@ -83,13 +92,17 @@ describe("executor MCP transport lifecycle", () => {
     const send = (ref: string) => input.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
       name: "executor.open", arguments: { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: ref },
     } })}\n`);
+    const corrected = once(output, "readable");
     send("abhandoff1_mistyped");
+    await corrected;
     expect(input.destroyed).toBe(false);
     expect(output.writableEnded).toBe(false);
     expect(JSON.parse(JSON.parse(output.read().toString()).result.content[0].text)).toMatchObject({
       diagnostic_code: "invalid_arguments", field: "opaque_handoff_ref",
     });
+    const finished = once(output, "finish");
     send(`abhandoff1_${"3".repeat(64)}`);
+    await finished;
     expect(input.destroyed).toBe(true);
     expect(output.writableEnded).toBe(true);
     expect(JSON.parse(JSON.parse(output.read().toString()).result.content[0].text).action.status).toBe("committed");

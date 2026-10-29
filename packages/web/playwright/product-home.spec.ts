@@ -65,7 +65,7 @@ for (const width of [320, 390, 768, 1000, 1024, 1440]) {
     await expect(page.getByRole('radio', { name: '把一边拉得越长越好', exact: true })).toBeInViewport();
     await page.locator('.home-hero-actions').getByRole('link', { name: '参与内测', exact: false }).click();
     await expect(page).toHaveURL(/#begin$/);
-    await expect(page.getByRole('link', { name: '输入内测码，开始体验', exact: false })).toBeInViewport();
+    await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toBeInViewport();
     await expect(page.getByRole('link', { name: '已经有账号？继续阅读', exact: false })).toHaveAttribute('href', './?account=login');
     expect(errors).toEqual([]);
   });
@@ -256,6 +256,6 @@ test('homepage and experiment fit small and large screens', async ({ page }, inf
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
     await page.screenshot({ path: info.outputPath(`home-${width}.png`) });
   }
-  await expect(page.getByRole('link', { name: '输入内测码，开始体验', exact: false })).toHaveAttribute('href', './?account=guest');
+  await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toHaveAttribute('href', './?account=register');
   expect(errors).toEqual([]);
 });

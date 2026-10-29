@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { acceptStructureOutline, applyStructureChapterAction, newStructureChapterWork, structureChapterInput, reviseStructureChapterWork, continueStructureChapterSelection,
+import { acceptStructureOutline, applyStructureOutlineThemeAction, applyStructureChapterAction, newStructureChapterWork, structureChapterInput, reviseStructureChapterWork, continueStructureChapterSelection,
   type StructureOutlineInput, type StructureChapterContext } from "../src/book-structure-planning";
 import { collectStructureCandidates } from "../src/book-structure-candidates";
 import { renderStructurePlanningInput } from "../src/model-input-renderer";
@@ -26,6 +26,42 @@ function fixture(count = 9): { context: StructureChapterContext; outlineInput: S
     excerpts: chapter.evidence.map((e: any) => ({ unit_lid: "10", lids: e.lids, text: e.text })) } };
 }
 describe("BSR2 outline and chapter selection", () => {
+  it.each(["question", "progression"] as const)("reports the complete chapter batch path for missing %s evidence", field => {
+    const { outlineInput, context } = fixture();
+    const packet = { version: "book_structure_organization_input.v1" as const, phase: "outline_chapters" as const,
+      context: outlineInput, body: { book: outlineInput, requested_unit_lids: ["10"] },
+      reference_scope: { unit_lids: ["10"], dependency_target_lids: [], evidence_by_unit: {} } };
+    const candidate = { chapters: structuredClone(context.outline.chapters) };
+    candidate.chapters[0][field].evidence_lids = [];
+    let caught: unknown;
+    try { acceptStructureOrganizationAction(packet, candidate); } catch (error) { caught = error; }
+    expect(caught).toBeInstanceOf(ExtractorContractError);
+    const diagnostic = automaticBuildFailureDiagnosticFromWriterError(caught, { writer_started: true });
+    expect(diagnostic).toMatchObject({ code: "schema_invalid", phase: "artifact_writer",
+      json_pointer: `/chapters/0/${field}/evidence_lids` });
+    expect(diagnostic.expected).toContain("at least 1");
+    candidate.chapters[0][field].evidence_lids = context.outline.chapters[0][field].evidence_lids;
+    expect(acceptStructureOrganizationAction(packet, candidate).version).toBe("book_structure_action.v1");
+  });
+  it("retains provisional theme evidence across parts and rejects ungrounded member extensions", () => {
+    const input: StructureOutlineInput = { version: "book_structure_outline_input.v1", preface: [],
+      chapters: ["1", "2"].map(unit_lid => ({ unit_lid, title: unit_lid,
+        overview: { text: "Grounded overview.", evidence_lids: [unit_lid + ".1"] } })) };
+    const work = applyStructureOutlineThemeAction({ themes: [], complete: false }, { kind: "append", themes: [{
+      question: { text: "How do the mechanisms develop?", evidence_lids: ["1.1"] }, unit_lids: ["1"],
+    }] }, input);
+    expect(() => applyStructureOutlineThemeAction(work, { kind: "extend", theme_index: 0,
+      unit_lids: ["2"], evidence_lids: ["1.1"] }, input)).toThrow(/each member/);
+    expect(() => applyStructureOutlineThemeAction(work, { kind: "extend", theme_index: 0,
+      unit_lids: ["1"], evidence_lids: ["1.1"] }, input)).toThrow(/repeats/);
+    expect(() => applyStructureOutlineThemeAction(work, { kind: "extend", theme_index: 1,
+      unit_lids: ["2"], evidence_lids: ["2.1"] }, input)).toThrow(/unknown/);
+    const extended = applyStructureOutlineThemeAction(work, { kind: "extend", theme_index: 0,
+      unit_lids: ["2"], evidence_lids: ["2.1"] }, input);
+    expect(work.themes[0].unit_lids).toEqual(["1"]);
+    expect(extended.themes[0]).toEqual({ question: { text: "How do the mechanisms develop?", evidence_lids: ["1.1", "2.1"] }, unit_lids: ["1", "2"] });
+    expect(applyStructureOutlineThemeAction(extended, { kind: "finish" }, input)).toEqual({ ...extended, complete: true });
+  });
   it("classifies an overlong chapter note as a correctable candidate schema failure", () => {
     const { context } = fixture();
     const work = newStructureChapterWork("10");
@@ -43,6 +79,31 @@ describe("BSR2 outline and chapter selection", () => {
     expect(failure.expected).toContain("4000");
     expect(isAutomaticBuildCorrectableCandidateFailure(failure)).toBe(true);
     expect(work.notes).toBe("");
+  });
+  it("reports unseen chapter inspection refs as a correctable failure without granting evidence", () => {
+    const { context } = fixture(25);
+    const work = newStructureChapterWork("10"), original = structuredClone(work);
+    const packet = { version: "book_structure_organization_input.v1" as const, phase: "chapter" as const,
+      work, context, body: structureChapterInput(work, context),
+      reference_scope: { unit_lids: ["10"], dependency_target_lids: [], evidence_by_unit: {} } };
+    for (const ref of [context.catalog.candidates[24].ref, "unknown-candidate-ref"]) {
+      let caught: unknown;
+      try { acceptStructureOrganizationAction(packet, { kind: "inspect", refs: [ref] }); }
+      catch (error) { caught = error; }
+      expect(caught).toBeInstanceOf(ExtractorContractError);
+      const failure = automaticBuildFailureDiagnosticFromWriterError(caught, { writer_started: true });
+      expect(failure).toMatchObject({ category: "schema", code: "schema_invalid", phase: "artifact_writer", json_pointer: "/refs" });
+      expect(failure.expected).toContain("exact");
+      expect(failure.expected).toContain("seen_refs");
+      expect(isAutomaticBuildCorrectableCandidateFailure(failure)).toBe(true);
+      expect(work).toEqual(original);
+    }
+    const ref = context.catalog.candidates[0].ref;
+    expect(acceptStructureOrganizationAction(packet, { kind: "inspect", refs: [ref] }).version).toBe("book_structure_action.v1");
+    const next = applyStructureChapterAction(work, { kind: "inspect", refs: [ref] }, context);
+    expect(next.inspecting).toEqual([ref]);
+    expect(next.evidence_lids).toEqual([]);
+    expect(structureChapterInput(next, context).inspected[0].ref).toBe(ref);
   });
   it("shrinks only an oversized chapter preview while retaining its complete browsing ledger", () => {
     const { context } = fixture(1024);

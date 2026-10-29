@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ExternalBuildCostLedger, type ExternalBuildCostBinding } from '../src/external-build-cost';
 import { runVideoCodex } from '../../../skills/build/video-executor-runtime';
+import { runVideoExecutorPool } from '../../../skills/build/video-executor-coordinator';
 import { OPERATOR_VIDEO_REQUIRED_CAPABILITIES, readOperatorVideoProgress, runOperatorVideoBuild } from '../../../skills/build/video-operator-build';
 import { runVideoSemanticSeries } from '../../../skills/build/video-semantic-series';
 
@@ -55,6 +56,39 @@ it('records actual Codex usage as partial, including a failed execution with ret
     source: 'codex_cli_stream_observations', monetary_cost_available: false, billing_granularity: 'execution_total' } });
   expect(receipts.every(r => !('provider_cost_micro_cny' in r))).toBe(true);
   expect(readFileSync(path.join(f.root, 'external-build-cost/parent', readdirSync(path.join(f.root, 'external-build-cost/parent'))[0]), 'utf8')).not.toContain('SECRET');
+});
+
+it('settles both parallel launches before returning a failure and never refills the third slot', async () => {
+  const f = fixture(), ledger = f.ledger(), started: number[] = [];
+  const task = runVideoExecutorPool([0, 1, 2], 2, { cost_ledger: ledger }, async (index, control) => {
+    started.push(index);
+    const script = index === 0
+      ? "console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:13,output_tokens:7}}));process.exit(2)"
+      : "console.log(JSON.stringify({type:'turn.started'}));setInterval(()=>{},1000)";
+    await runVideoCodex(f.run(`parallel-${index}`, script, false), control);
+  });
+  await expect(task).rejects.toThrow('incomplete');
+  expect(started).toEqual([0, 1]);
+  expect(f.requests.filter(r => r.suffix === '/admit')).toHaveLength(2);
+  const receipts = f.requests.filter(r => r.suffix === '/receipts').map(r => r.body);
+  expect(receipts).toHaveLength(2);
+  expect(receipts).toEqual(expect.arrayContaining([
+    expect.objectContaining({ status: 'partial', succeeded: false, evidence: expect.objectContaining({ outcome: 'failed' }) }),
+    expect.objectContaining({ status: 'unknown', succeeded: false, evidence: expect.objectContaining({ outcome: 'cancelled' }) }),
+  ]));
+}, 15000);
+
+it('stops the parallel queue when budget admission is denied without starting a child', async () => {
+  const f = fixture(), ledger = f.ledger(), started: number[] = []; f.block();
+  const marker = path.join(f.root, 'launched');
+  await expect(runVideoExecutorPool([0, 1, 2], 2, { cost_ledger: ledger }, async (index, control) => {
+    started.push(index);
+    await runVideoCodex(f.run(`denied-${index}`, `require('fs').writeFileSync(${JSON.stringify(marker)},'bad')`), control);
+  })).rejects.toThrow('http_409');
+  expect(started).toEqual([0, 1]);
+  expect(existsSync(marker)).toBe(false);
+  expect(f.requests.filter(r => r.suffix === '/admit')).toHaveLength(2);
+  expect(f.requests.filter(r => r.suffix === '/receipts')).toEqual([]);
 });
 
 it('distinguishes an unobserved spawned failure from a process that was never started', async () => {

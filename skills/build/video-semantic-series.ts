@@ -9,6 +9,7 @@ import type {AutomaticBuildExecutorSessionResponse as Response} from '../../pack
 import {BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 as bootstrap} from '../../packages/core/src/build-executor-connection-capability';
 import {createBuildExecutorMcpSession} from './build-executor-mcp';
 import {videoExecutorArgs,videoExecutorPrompt,videoExecutorStorageArgs,runVideoCodex,type VideoExecutorControl} from './video-executor-runtime';
+import {createVideoExecutorCoordinator,proxyVideoExecutor,runVideoExecutorPool} from './video-executor-coordinator';
 
 type Session=(request:unknown)=>Response;
 export type VideoSemanticStage='graph'|'discourse';
@@ -43,48 +44,86 @@ export function sequenceVideoSemanticSessions(handoff:string,factories:Array<()=
 
 export async function runVideoSemanticSeries(workspace:string,stage:VideoSemanticStage,jobs:VideoSemanticJob[],executable:string,
   control:VideoExecutorControl={}) {
+  workspace=path.resolve(workspace);
   const accepted=(job:VideoSemanticJob)=>existsSync(path.join(workspace,`video-enrichments/${job.batch_id}/${stage}.json`));
+  const groups:Array<{index:number;jobs:VideoSemanticJob[]}>=[];
   for(let start=0;start<jobs.length;start+=3){
-      control.signal?.throwIfAborted();
-      const group=jobs.slice(start,start+3).filter(job=>!accepted(job));
-      if(!group.length)continue;
-      const started=Date.now(),handoff='abhandoff1_'+randomBytes(32).toString('hex');
-      const run=path.join(workspace,'.build/video-semantic-series',stage,'runs',String(started));mkdirSync(run,{recursive:true});
-      const groupFile=path.join(run,'jobs.json');writeFileSync(groupFile,JSON.stringify(group));
+    const group=jobs.slice(start,start+3).filter(job=>!accepted(job));
+    if(group.length)groups.push({index:start/3,jobs:group});
+  }
+  if(!groups.length)return;
+  const privateRoot=path.join(workspace,'.build/video-semantic-series',stage);
+  const launch=async(group:typeof groups[number],runControl:VideoExecutorControl,
+    coordinator?:Awaited<ReturnType<typeof createVideoExecutorCoordinator>>)=>{
+      runControl.signal?.throwIfAborted();
+      const handoff='abhandoff1_'+randomBytes(32).toString('hex');
+      const run=path.join(privateRoot,'runs',`${Date.now()}-${group.index}-${randomBytes(4).toString('hex')}`);mkdirSync(run,{recursive:true});
+      const groupFile=path.join(run,'jobs.json');writeFileSync(groupFile,JSON.stringify(group.jobs));
+      const endpoint=coordinator?.register(handoff,semanticSeriesSession(workspace,stage,group.jobs,handoff),
+        (request,response)=>logExchange(path.join(run,'mcp-events.jsonl'),request,response));
       const args=['exec','--ignore-user-config','--skip-git-repo-check','--ephemeral','-C',run,...videoExecutorStorageArgs(workspace),
         '-c','model_reasoning_effort="low"','-c','features.shell_tool=false','-c','features.apps=false',
         '-c','developer_instructions='+JSON.stringify(videoExecutorPrompt()),
         '-c','mcp_servers.understand_book_build_executor.command='+JSON.stringify(process.execPath),
-        '-c','mcp_servers.understand_book_build_executor.args='+JSON.stringify(videoExecutorArgs('video-semantic-series',script,['serve',workspace,stage,groupFile,handoff])),
+        '-c','mcp_servers.understand_book_build_executor.args='+JSON.stringify(videoExecutorArgs('video-semantic-series',script,
+          ['serve',workspace,stage,groupFile,handoff,...(endpoint?[endpoint]:[])])),
         '-c','mcp_servers.understand_book_build_executor.required=true','-c','mcp_servers.understand_book_build_executor.default_tools_approval_mode="approve"',
         '--json','-o',path.join(run,'lifecycle.txt'),handoff];
-      await runVideoCodex({executable,args,run_dir:run,
-        logical_call_id:`video:${path.resolve(workspace)}:${stage}:${start/3}`,complete:()=>group.every(accepted)},control);
-      await control.onProgress?.();
+      try {
+        await runVideoCodex({executable,args,run_dir:run,
+          logical_call_id:`video:${path.resolve(workspace)}:${stage}:${group.index}`,complete:()=>group.jobs.every(accepted)},runControl);
+      } finally { coordinator?.unregister(handoff); }
+      await runControl.onProgress?.();
       console.log(JSON.stringify({stage,accepted:jobs.filter(accepted).length,total:jobs.length}));
+  };
+  if(stage==='graph'){
+    // Identity matching reads preceding graph contributions, including within a group.
+    for(const group of groups)await launch(group,control);
+    return;
   }
+  // Discourse only needs local source evidence. Freeze all pending inputs from
+  // this publication before either executor can admit a contribution.
+  for(const group of groups)for(const job of group.jobs){
+    control.signal?.throwIfAborted();
+    prepareVideoDiscourse(workspace,job.batch_id,job.selection);
+  }
+  const coordinator=await createVideoExecutorCoordinator(privateRoot);
+  try { await runVideoExecutorPool(groups,control.max_parallel??2,control,(group,runControl)=>launch(group,runControl,coordinator)); }
+  finally { await coordinator.close(); }
+}
+
+function semanticSeriesSession(workspace:string,stage:VideoSemanticStage,jobs:VideoSemanticJob[],handoff:string):Session {
+  return sequenceVideoSemanticSessions(handoff,jobs.map(job=>()=>{
+    if(stage==='graph'){prepareVideoGraph(workspace,job.batch_id,job.selection);return createVideoGraphSession(workspace,job.batch_id,handoff);}
+    return createVideoDiscourseSession(workspace,job.batch_id,handoff);
+  }));
+}
+
+function logExchange(file:string,request:unknown,response:unknown) {
+  const r=request as any,s=response as any;
+  if(s===undefined)return;
+  appendFileSync(file,JSON.stringify({at:new Date().toISOString(),method:r.method,
+    tool:r.params?.name,isError:s.result?.isError??false,bytes:Buffer.byteLength(JSON.stringify(s)),
+    images:s.result?.content?.filter((c:any)=>c.type==='image').length??0,
+    ...(s.result?.isError?{diagnostic:s.result.content?.[0]?.text}:{})})+'\n');
 }
 
 export async function runVideoSemanticSeriesCli(argv:string[]) {
-  const [mode,workspaceArg,stageArg,jobsFile,argument]=argv,workspace=path.resolve(workspaceArg);
+  const [mode,workspaceArg,stageArg,jobsFile,argument,endpoint]=argv,workspace=path.resolve(workspaceArg);
   if(stageArg!=='graph'&&stageArg!=='discourse')throw new Error('Expected graph or discourse stage');
+  if(mode==='serve'&&endpoint)return proxyVideoExecutor(endpoint);
   const stage:VideoSemanticStage=stageArg,jobs:VideoSemanticJob[]=JSON.parse(readFileSync(jobsFile,'utf8'));
   if(mode==='serve'){
     if(jobs.length>3)throw new Error('Semantic series supports at most three tasks per session');
-    const handler=sequenceVideoSemanticSessions(argument,jobs.map(job=>()=>{
-      if(stage==='graph'){prepareVideoGraph(workspace,job.batch_id,job.selection);return createVideoGraphSession(workspace,job.batch_id,argument);}
-      prepareVideoDiscourse(workspace,job.batch_id,job.selection);return createVideoDiscourseSession(workspace,job.batch_id,argument);
-    }));
+    if(stage==='discourse')for(const job of jobs)prepareVideoDiscourse(workspace,job.batch_id,job.selection);
+    const handler=semanticSeriesSession(workspace,stage,jobs,argument);
     const privateRoot=path.join(workspace,'.build/video-semantic-series',stage);mkdirSync(privateRoot,{recursive:true});
     const session=createBuildExecutorMcpSession({bootstrap_version:bootstrap.version,protocol_generation:bootstrap.session_protocol,
       session_private_root:privateRoot,execute_request:handler});
     for await(const line of createInterface({input:process.stdin})){
-      const request=JSON.parse(line),response=session.handle_message(request) as any;
+      const request=JSON.parse(line),response=await session.handle_message(request);
       if(response!==undefined){
-        appendFileSync(path.join(privateRoot,'mcp-events.jsonl'),JSON.stringify({at:new Date().toISOString(),method:request.method,
-          tool:request.params?.name,isError:response.result?.isError??false,bytes:Buffer.byteLength(JSON.stringify(response)),
-          images:response.result?.content?.filter((c:any)=>c.type==='image').length??0,
-          ...(response.result?.isError?{diagnostic:response.result.content?.[0]?.text}:{})})+'\n');
+        logExchange(path.join(privateRoot,'mcp-events.jsonl'),request,response);
         process.stdout.write(JSON.stringify(response)+'\n');
       }
     }

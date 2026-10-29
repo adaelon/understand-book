@@ -35,6 +35,7 @@ export interface BookRef {
   publication_id: string;
 }
 export interface Balance {
+  unlimited?: boolean;
   granted_micro_cny: number;
   debited_micro_cny: number;
   active_reserved_micro_cny: number;

@@ -16,7 +16,17 @@ pub enum ReviewJobStatus {
     Running,
     Retryable,
     Completed,
+    Failed,
+    Cancelled,
 }
+
+impl ReviewJobStatus {
+    pub fn is_pending(self) -> bool {
+        matches!(self, Self::Queued | Self::Running | Self::Retryable)
+    }
+}
+
+const MAX_REVIEW_ATTEMPTS: u32 = 5;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReviewJob {
@@ -35,6 +45,8 @@ pub struct ReviewJob {
     pub attempts: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub next_attempt_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<ReviewErrorState>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -147,7 +159,7 @@ impl ReviewState {
                         job.job_id, watermark
                     ));
                 }
-            } else {
+            } else if job.status.is_pending() {
                 active_by_session
                     .entry(&job.session_id)
                     .or_default()
@@ -263,6 +275,12 @@ impl MemoryStore {
     pub fn claim_review_job(&mut self, job_id: &str, now: &str) -> Result<ReviewJob, ToolError> {
         validate_required("review transition timestamp", now)?;
         let mut state = self.document.review_state.clone();
+        let current = state.review_jobs.iter().find(|job| job.job_id == job_id)
+            .ok_or_else(|| review_job_not_found(job_id))?;
+        let watermark = state.reviewed_through.get(&current.session_id).copied().unwrap_or(0);
+        if current.from_turn_exclusive != watermark {
+            return Err(review_state_conflict("previous review range has not completed".into()));
+        }
         let job = find_job_mut(&mut state, job_id)?;
         if !matches!(
             job.status,
@@ -305,11 +323,54 @@ impl MemoryStore {
         }
         job.status = ReviewJobStatus::Retryable;
         job.next_attempt_at = Some(next_attempt_at.into());
+        job.last_error = Some(error.clone());
         job.updated_at = now.into();
+        if job.attempts >= MAX_REVIEW_ATTEMPTS {
+            let session_id = job.session_id.clone();
+            stop_session_jobs(&mut state, &session_id, ReviewJobStatus::Failed, &error, now);
+        }
+        let job = find_job_mut(&mut state, job_id)?;
         let retryable = job.clone();
         state.last_error = Some(error);
         self.commit_review_state(state)?;
         Ok(retryable)
+    }
+
+    /// Stop the whole unfinished chain without pretending its evidence was reviewed.
+    pub fn fail_review_job(
+        &mut self,
+        job_id: &str,
+        error: ReviewErrorState,
+        now: &str,
+    ) -> Result<(), ToolError> {
+        validate_required("review transition timestamp", now)?;
+        error.validate().map_err(invalid_review_state)?;
+        let mut state = self.document.review_state.clone();
+        let job = find_job_mut(&mut state, job_id)?;
+        if !job.status.is_pending() {
+            return Ok(());
+        }
+        let session_id = job.session_id.clone();
+        stop_session_jobs(&mut state, &session_id, ReviewJobStatus::Failed, &error, now);
+        state.last_error = Some(error);
+        self.commit_review_state(state)
+    }
+
+    pub fn cancel_session_review_jobs(
+        &mut self,
+        session_id: &str,
+        error: ReviewErrorState,
+        now: &str,
+    ) -> Result<(), ToolError> {
+        validate_required("review transition timestamp", now)?;
+        error.validate().map_err(invalid_review_state)?;
+        let mut state = self.document.review_state.clone();
+        if !stop_session_jobs(&mut state, session_id, ReviewJobStatus::Cancelled, &error, now) {
+            return Ok(());
+        }
+        state.last_error = Some(error);
+        clear_last_error_if_drained(&mut state);
+        self.commit_review_state(state)
     }
 
     pub fn complete_review_job(&mut self, job_id: &str, now: &str) -> Result<ReviewJob, ToolError> {
@@ -355,6 +416,7 @@ impl MemoryStore {
         let job = &mut state.review_jobs[index];
         job.status = ReviewJobStatus::Completed;
         job.next_attempt_at = None;
+        job.last_error = None;
         job.updated_at = now.into();
         let completed = job.clone();
         state
@@ -536,6 +598,7 @@ impl MemoryStore {
         let job = &mut candidate.review_state.review_jobs[index];
         job.status = ReviewJobStatus::Completed;
         job.next_attempt_at = None;
+        job.last_error = None;
         job.updated_at = now.into();
         let completed_job = job.clone();
         candidate
@@ -570,6 +633,48 @@ impl MemoryStore {
         let mut outcome = ReviewReconciliation::default();
 
         if recover_running {
+            // resume receives the complete, successfully loaded chat inventory.
+            // A deleted JSONL must not resurrect an orphan on every server start.
+            let orphans: BTreeSet<_> = state.review_jobs.iter()
+                .filter(|job| (job.status.is_pending() || job.status == ReviewJobStatus::Failed)
+                    && !sessions.contains_key(&job.session_id))
+                .map(|job| job.session_id.clone()).collect();
+            for session_id in orphans {
+                let error = ReviewErrorState {
+                    error_code: "REVIEW_INPUT_MISSING".into(),
+                    message: "Review source session no longer exists".into(),
+                    occurred_at: now.into(),
+                };
+                stop_session_jobs(&mut state, &session_id, ReviewJobStatus::Cancelled, &error, now);
+                state.last_error = Some(error);
+            }
+            let mismatched: BTreeSet<_> = state.review_jobs.iter()
+                .filter(|job| job.status.is_pending() && sessions.get(&job.session_id).is_some_and(|cursor|
+                    cursor.book_id != job.book_id
+                        || cursor.learning_workspace_id != job.learning_workspace_id
+                        || cursor.latest_user_turn_ordinal < job.to_turn_inclusive))
+                .map(|job| job.session_id.clone()).collect();
+            for session_id in mismatched {
+                let error = ReviewErrorState {
+                    error_code: "REVIEW_INPUT_MISMATCH".into(),
+                    message: "Review source no longer matches the saved job range or ownership".into(),
+                    occurred_at: now.into(),
+                };
+                stop_session_jobs(&mut state, &session_id, ReviewJobStatus::Failed, &error, now);
+                state.last_error = Some(error);
+            }
+            let exhausted: BTreeSet<_> = state.review_jobs.iter()
+                .filter(|job| job.status.is_pending() && job.attempts >= MAX_REVIEW_ATTEMPTS)
+                .map(|job| job.session_id.clone()).collect();
+            for session_id in exhausted {
+                let error = ReviewErrorState {
+                    error_code: "REVIEW_RETRY_EXHAUSTED".into(),
+                    message: "Automatic review attempt limit reached; source evidence remains unreviewed".into(),
+                    occurred_at: now.into(),
+                };
+                stop_session_jobs(&mut state, &session_id, ReviewJobStatus::Failed, &error, now);
+                state.last_error = Some(error);
+            }
             for job in &mut state.review_jobs {
                 if job.status == ReviewJobStatus::Running {
                     job.status = ReviewJobStatus::Queued;
@@ -583,6 +688,7 @@ impl MemoryStore {
         for cursor in sessions.values() {
             reconcile_session(&mut state, cursor, now, &mut outcome)?;
         }
+        clear_last_error_if_drained(&mut state);
         sort_review_jobs(&mut state.review_jobs);
         state.validate().map_err(invalid_review_state)?;
         outcome.created_job_ids.sort();
@@ -679,6 +785,9 @@ impl ReviewJob {
                     self.job_id
                 ));
             }
+        }
+        if let Some(error) = &self.last_error {
+            error.validate()?;
         }
         Ok(())
     }
@@ -890,6 +999,29 @@ fn reconcile_session(
     now: &str,
     outcome: &mut ReviewReconciliation,
 ) -> Result<(), ToolError> {
+    if state.review_jobs.iter().any(|job| job.session_id == cursor.session_id
+        && job.status == ReviewJobStatus::Cancelled) {
+        return Ok(());
+    }
+    // New source evidence may recover a failed batch, but an unchanged or still
+    // invalid input must never restart it merely because reconciliation ran.
+    let failed_through = state.review_jobs.iter()
+        .filter(|job| job.session_id == cursor.session_id && job.status == ReviewJobStatus::Failed)
+        .map(|job| job.to_turn_inclusive).max();
+    if let Some(failed_through) = failed_through {
+        if cursor.latest_user_turn_ordinal <= failed_through
+            || state.review_jobs.iter().any(|job| job.session_id == cursor.session_id
+                && (job.book_id != cursor.book_id || job.learning_workspace_id != cursor.learning_workspace_id)) {
+            return Ok(());
+        }
+        let watermark = state.reviewed_through.get(&cursor.session_id).copied().unwrap_or(0);
+        let turns: Vec<_> = cursor.turns.iter().filter(|turn|
+            turn.user_turn_ordinal > watermark && turn.user_turn_ordinal <= cursor.latest_user_turn_ordinal).collect();
+        if turns.len() as u64 != cursor.latest_user_turn_ordinal.saturating_sub(watermark)
+            || turns.iter().enumerate().any(|(index, turn)| turn.user_turn_ordinal != watermark + index as u64 + 1) {
+            return Ok(());
+        }
+    }
     if let Some(job) = state
         .review_jobs
         .iter()
@@ -914,7 +1046,7 @@ fn reconcile_session(
         .iter()
         .enumerate()
         .filter(|(_, job)| {
-            job.session_id == cursor.session_id && job.status != ReviewJobStatus::Completed
+            job.session_id == cursor.session_id && job.status.is_pending()
         })
         .map(|(index, _)| index)
         .collect();
@@ -992,9 +1124,36 @@ fn new_review_job(
         status: ReviewJobStatus::Queued,
         attempts,
         next_attempt_at: None,
+        last_error: None,
         created_at: created_at.into(),
         updated_at: updated_at.into(),
     }
+}
+
+fn stop_session_jobs(
+    state: &mut ReviewState,
+    session_id: &str,
+    status: ReviewJobStatus,
+    error: &ReviewErrorState,
+    now: &str,
+) -> bool {
+    let mut changed = false;
+    for job in &mut state.review_jobs {
+        let cancelling_failed = status == ReviewJobStatus::Cancelled
+            && job.status == ReviewJobStatus::Failed;
+        if job.session_id == session_id && (job.status.is_pending() || cancelling_failed) {
+            job.status = status;
+            job.next_attempt_at = None;
+            // Deleting a failed source resolves its outstanding status; the
+            // original failure remains useful diagnostic evidence on its receipt.
+            if !cancelling_failed || job.last_error.is_none() {
+                job.last_error = Some(error.clone());
+            }
+            job.updated_at = now.into();
+            changed = true;
+        }
+    }
+    changed
 }
 
 fn find_job_mut<'a>(
@@ -1022,7 +1181,8 @@ fn clear_last_error_if_drained(state: &mut ReviewState) {
     if state
         .review_jobs
         .iter()
-        .all(|job| job.status == ReviewJobStatus::Completed)
+        .all(|job| !job.status.is_pending() && (job.status != ReviewJobStatus::Failed
+            || job.to_turn_inclusive <= state.reviewed_through.get(&job.session_id).copied().unwrap_or(0)))
     {
         state.last_error = None;
     }
@@ -1253,6 +1413,182 @@ mod tests {
             valid_until: None,
         })
         .unwrap()
+    }
+
+    #[test]
+    fn deleted_failed_review_is_cancelled_without_erasing_its_diagnostic() {
+        for deletion in ["explicit", "startup"] {
+            let (path, mut store) = store(&format!("deleted-failed-review-{deletion}"));
+            store.reconcile_review_jobs(&[cursor(1)], "1").unwrap();
+            let job = only_job(&store);
+            store.claim_review_job(&job.job_id, "2").unwrap();
+            let failure = ReviewErrorState {
+                error_code: "REVIEW_INPUT_GAP".into(),
+                message: "source range was incomplete".into(), occurred_at: "3".into(),
+            };
+            store.fail_review_job(&job.job_id, failure.clone(), "3").unwrap();
+            assert!(store.review_state().last_error.is_some());
+            drop(store);
+            let mut store = MemoryStore::open(&path).unwrap();
+            if deletion == "explicit" {
+                store.cancel_session_review_jobs(&job.session_id, ReviewErrorState {
+                    error_code: "REVIEW_SOURCE_DELETED".into(),
+                    message: "source chat deleted".into(), occurred_at: "4".into(),
+                }, "4").unwrap();
+            } else {
+                store.resume_review_jobs(&[], "4").unwrap();
+            }
+            let cancelled = only_job(&store);
+            assert_eq!(cancelled.status, ReviewJobStatus::Cancelled);
+            assert_eq!(cancelled.attempts, 1);
+            assert_eq!(cancelled.last_error.as_ref(), Some(&failure));
+            assert_eq!(cancelled.updated_at, "4");
+            assert!(store.review_state().last_error.is_none());
+            assert!(store.review_state().reviewed_through.is_empty());
+
+            let mut healthy = cursor(1);
+            healthy.session_id = "healthy-session".into();
+            store.reconcile_review_jobs(&[healthy.clone()], "5").unwrap();
+            let healthy_job = store.review_state().review_jobs.iter()
+                .find(|job| job.session_id == healthy.session_id).unwrap().clone();
+            store.claim_review_job(&healthy_job.job_id, "6").unwrap();
+            store.complete_review_job(&healthy_job.job_id, "7").unwrap();
+            assert!(store.review_state().last_error.is_none());
+            assert_eq!(store.review_state().reviewed_through["healthy-session"], 1);
+            assert!(!store.review_state().reviewed_through.contains_key("session-a"));
+            let expected = store.review_state().clone();
+            drop(store);
+            let mut reopened = MemoryStore::open(&path).unwrap();
+            reopened.resume_review_jobs(&[healthy], "8").unwrap();
+            assert_eq!(reopened.review_state(), &expected);
+        }
+    }
+
+    #[test]
+    fn missing_review_source_is_cancelled_on_resume_without_losing_attempts() {
+        let (path, mut store) = store("orphan-review-resume");
+        store.reconcile_review_jobs(&[cursor(1)], "1").unwrap();
+        let mut state = store.review_state().clone();
+        state.review_jobs[0].status = ReviewJobStatus::Retryable;
+        state.review_jobs[0].attempts = 24_008;
+        state.review_jobs[0].next_attempt_at = Some("2".into());
+        store.commit_review_state(state).unwrap();
+
+        store.resume_review_jobs(&[], "3").unwrap();
+        let orphan = only_job(&store);
+        assert_eq!(orphan.status, ReviewJobStatus::Cancelled);
+        assert_eq!(orphan.attempts, 24_008);
+        assert_eq!(orphan.next_attempt_at, None);
+        assert_eq!(orphan.last_error.as_ref().unwrap().error_code, "REVIEW_INPUT_MISSING");
+        assert!(store.review_state().reviewed_through.is_empty());
+        let revision = store.document_revision();
+        store.resume_review_jobs(&[], "4").unwrap();
+        assert_eq!(store.document_revision(), revision);
+        assert_eq!(MemoryStore::open(path).unwrap().review_state(), store.review_state());
+    }
+
+    #[test]
+    fn review_retry_limit_stops_its_chain_but_other_sessions_can_complete() {
+        let (_path, mut store) = store("bounded-review-retry");
+        store.reconcile_review_jobs(&[cursor(1)], "1").unwrap();
+        let first = only_job(&store);
+        store.claim_review_job(&first.job_id, "2").unwrap();
+        store.reconcile_review_jobs(&[cursor(2)], "3").unwrap();
+        let tail = store.review_state().review_jobs[1].clone();
+        assert!(store.claim_review_job(&tail.job_id, "3").is_err(),
+            "a later range must not spend model capacity before its predecessor completes");
+        let error = ReviewErrorState {
+            error_code: "REVIEW_EXECUTOR_FAILED".into(),
+            message: "temporary upstream failure".into(), occurred_at: "4".into(),
+        };
+        for attempt in 1..=MAX_REVIEW_ATTEMPTS {
+            if attempt > 1 { store.claim_review_job(&first.job_id, "4").unwrap(); }
+            store.mark_review_job_retryable(&first.job_id, "5", error.clone(), "4").unwrap();
+        }
+        assert!(store.review_state().review_jobs.iter().all(|job| job.status == ReviewJobStatus::Failed));
+        assert_eq!(store.review_state().review_jobs[0].attempts, MAX_REVIEW_ATTEMPTS);
+        assert_eq!(store.review_state().review_jobs[1].attempts, 0);
+        assert_eq!(store.review_state().review_jobs[0].last_error.as_ref(), Some(&error));
+        assert!(store.claim_review_job(&first.job_id, "6").is_err());
+        assert!(store.review_state().reviewed_through.is_empty());
+
+        let mut healthy = cursor(1);
+        healthy.session_id = "healthy-session".into();
+        store.resume_review_jobs(&[cursor(2), healthy], "7").unwrap();
+        let healthy = store.review_state().review_jobs.iter()
+            .find(|job| job.session_id == "healthy-session").unwrap().clone();
+        store.claim_review_job(&healthy.job_id, "8").unwrap();
+        store.complete_review_job(&healthy.job_id, "9").unwrap();
+        assert_eq!(store.review_state().reviewed_through["healthy-session"], 1);
+        assert!(!store.review_state().reviewed_through.contains_key("session-a"));
+        assert_eq!(store.review_state().review_jobs.iter().filter(|job| job.session_id == "session-a").count(), 2);
+
+        let mut new_input = cursor(3);
+        new_input.turns = (1..=3).map(|ordinal| ReviewTurnOrigin {
+            turn_id: format!("turn-{ordinal}"), user_turn_ordinal: ordinal,
+            book_id: "book-a".into(), goal_revision: None,
+        }).collect();
+        store.reconcile_review_jobs(&[new_input], "10").unwrap();
+        let resumed = store.review_state().review_jobs.iter()
+            .find(|job| job.session_id == "session-a" && job.status == ReviewJobStatus::Queued)
+            .unwrap().clone();
+        assert_eq!((resumed.from_turn_exclusive, resumed.to_turn_inclusive), (0, 3));
+        assert_eq!(resumed.attempts, 0);
+        store.claim_review_job(&resumed.job_id, "11").unwrap();
+        store.complete_review_job(&resumed.job_id, "12").unwrap();
+        assert_eq!(store.review_state().reviewed_through["session-a"], 3);
+        assert_eq!(store.review_state().review_jobs.iter().filter(|job| job.status == ReviewJobStatus::Failed).count(), 2);
+        assert!(store.review_state().last_error.is_none());
+    }
+
+    #[test]
+    fn cancelled_review_rejects_late_results_and_is_not_resumed() {
+        let (_path, mut store) = store("cancel-inflight-review");
+        store.reconcile_review_jobs(&[cursor(1)], "1").unwrap();
+        let job = only_job(&store);
+        store.claim_review_job(&job.job_id, "2").unwrap();
+        store.cancel_session_review_jobs(&job.session_id, ReviewErrorState {
+            error_code: "REVIEW_SOURCE_DELETED".into(), message: "chat deleted".into(),
+            occurred_at: "3".into(),
+        }, "3").unwrap();
+        let revision = store.document_revision();
+        let error = store.commit_review_result(&job.job_id, &["turn-1".into()], &[], &[], "4").unwrap_err();
+        assert_eq!(error.error_code, "REVIEW_JOB_STATE_CONFLICT");
+        store.resume_review_jobs(&[], "5").unwrap();
+        assert_eq!(store.document_revision(), revision);
+        assert_eq!(only_job(&store).status, ReviewJobStatus::Cancelled);
+        assert!(store.review_state().reviewed_through.is_empty());
+    }
+
+    #[test]
+    fn resume_stops_exhausted_or_mismatched_review_inputs() {
+        let (_path, mut store) = store("resume-invalid-review");
+        store.reconcile_review_jobs(&[cursor(2)], "1").unwrap();
+        store.resume_review_jobs(&[cursor(1)], "2").unwrap();
+        assert_eq!(only_job(&store).status, ReviewJobStatus::Failed);
+        assert_eq!(only_job(&store).last_error.unwrap().error_code, "REVIEW_INPUT_MISMATCH");
+
+        let mut changed = cursor(3);
+        changed.book_id = "different-book".into();
+        store.reconcile_review_jobs(&[changed], "3").unwrap();
+        let mut gapped = cursor(3);
+        gapped.turns = vec![ReviewTurnOrigin {
+            turn_id: "turn-3".into(), user_turn_ordinal: 3, book_id: "book-a".into(), goal_revision: None,
+        }];
+        store.reconcile_review_jobs(&[gapped], "3").unwrap();
+        assert_eq!(store.review_state().review_jobs.len(), 1, "new input must not revive mismatched or incomplete evidence");
+        assert_eq!(only_job(&store).status, ReviewJobStatus::Failed);
+
+        let (_path, mut store) = self::store("resume-exhausted-review");
+        store.reconcile_review_jobs(&[cursor(1)], "1").unwrap();
+        let mut state = store.review_state().clone();
+        state.review_jobs[0].status = ReviewJobStatus::Running;
+        state.review_jobs[0].attempts = 73;
+        store.commit_review_state(state).unwrap();
+        store.resume_review_jobs(&[cursor(1)], "2").unwrap();
+        assert_eq!(only_job(&store).status, ReviewJobStatus::Failed);
+        assert_eq!(only_job(&store).attempts, 73);
+        assert_eq!(only_job(&store).last_error.unwrap().error_code, "REVIEW_RETRY_EXHAUSTED");
     }
 
     #[test]

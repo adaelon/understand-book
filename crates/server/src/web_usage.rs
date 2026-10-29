@@ -209,11 +209,7 @@ fn admit(
     }
     let period:Option<String> = tx.query_row("SELECT period_id FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND starts_at<=? AND ?<expires_at",params![owner,now,now],|r|r.get(0)).optional().map_err(api_storage)?;
     let period = period.ok_or_else(|| conflict("ALLOWANCE_EXPIRED", "当前没有有效服务额度期"))?;
-    if crate::account_allowance::balance(&tx, &period)?
-        .available_micro_cny
-        .value()
-        < reserved
-    {
+    if !crate::account_allowance::balance(&tx, &period)?.can_reserve(reserved) {
         return Err(conflict(
             "ALLOWANCE_INSUFFICIENT",
             "当前服务额度不足以开始联网请求",

@@ -3,11 +3,28 @@ import { boardFixture, boardFixtureCatalog, boardFixtureItems, boardFixturePrese
 import type { PresentationState } from '../src/generated/PresentationState';
 import type { BoardQuestionRequest } from '../src/board-workspace';
 
+const sourceChapterTitles = ['第一章 · 概率与观察', '第二章 · 条件概率与贝叶斯定理', '第三章 · 用证据更新判断'];
+const sourceReaderSegments = sourceChapterTitles.flatMap((title, chapter) =>
+  Array.from({ length: 41 }, (_, paragraph) => {
+    const lid = `${chapter + 1}.${paragraph + 1}`;
+    const quote = boardFixtureItems[0].source_bindings[0].preview_snapshot;
+    const prefix = '新证据会改变我们对事件的判断。\n\n';
+    return {
+      lid, kind: paragraph === 0 ? 'heading' : 'paragraph',
+      text: paragraph === 0 ? `## ${title}` : lid === '2.3'
+        ? `${prefix}${quote}\n\n因此，解释检测结果时，要同时考虑患病人群与健康人群。`
+        : `第 ${chapter + 1} 章第 ${paragraph + 1} 段。观察一个检测结果之前，先考虑人群中事件原本发生的比例；得到新的证据之后，再比较两种解释产生这个结果的可能性。这样可以把抽象的概率，放回实际问题的条件之中。\n\n阅读时可以停下来想一想：这里的分母代表哪一群人？同一份证据是否会因为起点不同而带来不同的判断？`,
+      highlights: lid === '2.3' ? [{ start: prefix.length, end: prefix.length + quote.length }] : [],
+    };
+  }));
+
 async function serveBoard(page: Page) {
   const saved = boardFixture();
   let state: PresentationState | null = null;
   let stateRevision = 1;
   const requests: string[] = [];
+  const sourceReads: { anchor_lid?: string; direction?: string; include_outline?: boolean }[] = [];
+  const sourceOpens: { source_ref_id: string; lid?: string }[] = [];
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const body = route.request().postDataJSON() ?? {};
@@ -15,6 +32,24 @@ async function serveBoard(page: Page) {
     let response: unknown = {};
     if (path.endsWith('/boards/list')) response = { items: [{ ...saved.document, item_count: saved.document.items.length }] };
     else if (path.endsWith('/boards/read')) response = saved;
+    else if (path.endsWith('/boards/conversation')) response = { sessions: [] };
+    else if (path.endsWith('/boards/source.resolve')) response = { source_ref_id: body.source_ref_id, label: '第二章 · 条件概率与贝叶斯定理', material_title: '概率学习材料', heading_path: ['第二章', '条件概率与贝叶斯定理'], highlighted_quote: boardFixtureItems[0].source_bindings[0].preview_snapshot, context_before: '新证据会改变我们对事件的判断。\n\n', context_after: '\n\n因此，解释检测结果时，要同时考虑患病人群与健康人群。', stale: false, can_open_in_reader: true };
+    else if (path.endsWith('/boards/source.read')) {
+      sourceReads.push(body);
+      const requestedLid = body.anchor_lid ?? '2.3';
+      const anchor = sourceReaderSegments.findIndex(segment => segment.lid === requestedLid || segment.lid.startsWith(`${requestedLid}.`));
+      if (anchor < 0) { await route.fulfill({ status: 400, json: { message: '原文位置不存在' } }); return; }
+      const start = body.direction === 'before' ? Math.max(0, anchor - 20) : body.direction === 'after' ? anchor + 1 : Math.max(0, anchor - 6);
+      const end = body.direction === 'before' ? anchor : Math.min(sourceReaderSegments.length, start + 20);
+      const segments = sourceReaderSegments.slice(start, end);
+      response = {
+        source_ref_id: body.source_ref_id, source_lid: '2.3', focus_lid: sourceReaderSegments[anchor].lid, segments,
+        previous_lid: start > 0 ? segments[0]?.lid ?? null : null,
+        next_lid: end < sourceReaderSegments.length ? segments.at(-1)?.lid ?? null : null,
+        ...(body.include_outline === false ? {} : { outline: sourceChapterTitles.map((title, chapter) => ({ lid: String(chapter + 1), title, depth: 1 })) }),
+      };
+    }
+    else if (path.endsWith('/boards/source.open')) { sourceOpens.push(body); response = { source_ref_id: body.source_ref_id, opened: true }; }
     else if (path.endsWith('/boards/search')) response = { items: saved.document.items.filter(item => `${item.title}\n${item.readable_content}`.includes(body.query)).map(item => ({ board_id: saved.document.board_id, board_revision: saved.document.revision, board_title: saved.document.title, item_id: item.item_id, block_id: item.block_id ?? null, kind: item.target.kind, title: item.title, snippet: item.readable_content })) };
     else if (path.endsWith('/boards/related')) response = { items: [{ board_id: saved.document.board_id, board_revision: saved.document.revision, board_title: saved.document.title, item_id: 'item-prebuild', block_id: null, kind: 'prebuild', title: boardFixtureItems[0].title, snippet: '' }] };
     else if (path.endsWith('/boards/update')) {
@@ -37,8 +72,193 @@ async function serveBoard(page: Page) {
     else { await route.fulfill({ status: 404, json: { message: path } }); return; }
     await route.fulfill({ json: response });
   });
-  return { saved, requests, state: () => state };
+  return { saved, requests, sourceReads, sourceOpens, state: () => state };
 }
+
+test('canvas fullscreen fills the viewport and source previews preserve the board and draft', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  const fixture = await serveBoard(page);
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/board-workspace-visual.html');
+  await expect(page.locator('.board-card')).toHaveCount(4);
+  await page.getByRole('textbox', { name: '在画板上提问', exact: true }).fill('先保留这个问题，读完原文再继续');
+  const normal = (await page.locator('.board-canvas').boundingBox())!;
+  await page.screenshot({ path: info.outputPath('board-sources-desktop.png') });
+  await page.getByRole('button', { name: '全屏画板', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+  await expect(page.locator('.board-topbar')).toBeHidden();
+  await expect(page.locator('.board-side-rail')).toBeHidden();
+  await expect(page.locator('.board-conversation')).toBeHidden();
+  const full = await page.locator('.board-canvas').evaluate(node => ({ width: node.clientWidth, height: node.clientHeight, viewportWidth: innerWidth, viewportHeight: innerHeight }));
+  expect(full.width).toBe(full.viewportWidth); expect(full.height).toBe(full.viewportHeight);
+  expect(full.width).toBeGreaterThan(normal.width); expect(full.height).toBeGreaterThan(normal.height);
+  await page.getByRole('button', { name: '显示全部内容', exact: true }).click();
+  await page.screenshot({ path: info.outputPath('board-fullscreen.png') });
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: '讲解', exact: true }).click();
+  const sources = page.locator('.board-reading-pane:visible .board-reading-sources');
+  await expect(sources.locator('summary')).toContainText('原文引用 · 1 处');
+  await sources.locator('summary').click(); await sources.locator('button').click();
+  await expect(page.getByRole('dialog', { name: '画板原文' })).toBeVisible();
+  await expect(page.locator('.board-source-content mark')).toContainText('后验概率');
+  await expect(page.locator('.board-source-content')).toContainText('新证据会改变');
+  expect(fixture.requests.filter(path => path.endsWith('/boards/source.open'))).toHaveLength(0);
+  await page.screenshot({ path: info.outputPath('board-fullscreen-source-preview.png') });
+  await page.getByRole('button', { name: '关闭来源预览，返回画板', exact: true }).click();
+  await page.evaluate(() => document.exitFullscreen());
+  await expect(page.locator('.board-workspace')).not.toHaveClass(/board-canvas-fullscreen/);
+  await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('先保留这个问题，读完原文再继续');
+  await sources.locator('button').click();
+  await page.getByRole('button', { name: '在阅读器中打开', exact: true }).click();
+  await expect(page.getByTestId('board-returned-source')).toContainText('已定位原文：source-bayes');
+  await page.getByRole('button', { name: '返回画板', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('先保留这个问题，读完原文再继续');
+  await expect(page.locator('[data-item-id="item-answer"] .board-card-open')).toHaveAttribute('aria-pressed', 'true');
+  expect(errors).toEqual([]);
+});
+
+test('mobile fullscreen fallback, source reading and missing citations stay usable', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { Element.prototype.requestFullscreen = async () => { throw new Error('Fullscreen unavailable'); }; });
+  const fixture = await serveBoard(page);
+  await page.goto('/board-workspace-visual.html');
+  await expect(page.locator('.board-card')).toHaveCount(4);
+  await page.getByRole('textbox', { name: '在画板上提问', exact: true }).fill('留在画板的草稿');
+  await page.getByRole('button', { name: '全屏画板', exact: true }).click();
+  await expect(page.locator('.board-fullscreen-notice')).toContainText('浏览器未允许全屏');
+  const full = await page.locator('.board-canvas').boundingBox();
+  expect(full?.width).toBe(390); expect(full?.height).toBe(844);
+  await page.getByRole('button', { name: '显示全部内容', exact: true }).click();
+  await page.screenshot({ path: info.outputPath('board-fullscreen-mobile.png') });
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: '讲解', exact: true }).click();
+  const sources = page.locator('.board-reading-pane:visible .board-reading-sources');
+  await sources.locator('summary').click(); await sources.locator('button').click();
+  await expect(page.getByRole('dialog', { name: '画板原文' })).toBeVisible();
+  const dialog = (await page.locator('.board-source-dialog').boundingBox())!;
+  expect(dialog.x).toBeGreaterThanOrEqual(0); expect(dialog.x + dialog.width).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: info.outputPath('board-source-mobile.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: '画板原文' })).toBeHidden();
+  await expect(page.locator('.board-workspace')).toHaveClass(/board-canvas-fullscreen/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.board-workspace')).not.toHaveClass(/board-canvas-fullscreen/);
+  await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('留在画板的草稿');
+  fixture.saved.document.items[1].source_bindings = [];
+  await page.reload();
+  await page.locator('.board-mobile-switch').getByRole('button', { name: '讲解', exact: true }).click();
+  await expect(page.locator('.board-reading-pane:visible .board-source-missing')).toContainText('本条讲解未附原文引用');
+  await expect(page.locator('.board-reading-pane:visible .board-reading-sources')).toHaveCount(0);
+  await page.goto('/board-workspace-visual.html?lang=en');
+  await page.getByRole('button', { name: 'Full screen board', exact: true }).click();
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: 'Ask', exact: true }).click();
+  const toolbarFits = await page.locator('.board-fullscreen-tools').evaluate(node => [...node.querySelectorAll('button')].every(button => button.getBoundingClientRect().right <= innerWidth));
+  expect(toolbarFits).toBe(true);
+  expect(await page.locator('.board-canvas-tools').evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('board-fullscreen-mobile-english.png') });
+});
+
+test('temporary source reader scrolls through the book, preserves its anchor and opens the current reading position', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  const fixture = await serveBoard(page);
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/board-workspace-visual.html');
+  await page.getByRole('textbox', { name: '在画板上提问', exact: true }).fill('读完这一章，再继续这个问题');
+  const sources = page.locator('.board-reading-pane:visible .board-reading-sources');
+  await sources.locator('summary').click(); await sources.locator('button').click();
+  const reader = page.locator('.board-source-reader');
+  const scroll = reader.locator('[data-source-reader-scroll]');
+  const paragraphs = reader.locator('article[data-source-lid]');
+  await expect(reader.locator('article[data-source-lid="2.3"]')).toBeVisible();
+  await expect(reader.locator('mark')).toContainText('后验概率');
+  await expect(reader.locator('mark')).toBeInViewport();
+  const dialog = (await page.locator('.board-source-dialog').boundingBox())!;
+  expect(dialog.width).toBeGreaterThan(1200); expect(dialog.height).toBeGreaterThan(800);
+  await expect(reader.locator('[data-outline-lid]')).toHaveCount(3);
+  expect(fixture.sourceReads[0].include_outline).toBe(true);
+  const initialCount = await paragraphs.count();
+  const initialFirst = await paragraphs.first().getAttribute('data-source-lid');
+  const initialLast = await paragraphs.last().getAttribute('data-source-lid');
+  await scroll.hover(); await page.mouse.wheel(0, -100000);
+  await expect.poll(() => fixture.sourceReads.some(request => request.direction === 'before')).toBe(true);
+  await expect.poll(() => paragraphs.count()).toBeGreaterThan(initialCount);
+  // Loading preceding text must keep the paragraph the reader reached in view.
+  await expect.poll(async () => {
+    const viewport = (await scroll.boundingBox())!;
+    const anchor = (await reader.locator(`[data-source-lid="${initialFirst}"]`).boundingBox())!;
+    return Math.abs(anchor.y - viewport.y);
+  }).toBeLessThan(180);
+  const precedingCount = await paragraphs.count();
+  await scroll.hover(); await page.mouse.wheel(0, 100000);
+  await expect.poll(() => fixture.sourceReads.some(request => request.direction === 'after')).toBe(true);
+  await expect.poll(() => paragraphs.count()).toBeGreaterThan(precedingCount);
+  expect(await paragraphs.last().getAttribute('data-source-lid')).not.toBe(initialLast);
+  const lids = await paragraphs.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-source-lid')));
+  expect(new Set(lids).size).toBe(lids.length);
+  await reader.locator('[data-outline-lid="3"]').click();
+  await expect(reader.locator('article[data-source-lid="3.1"]')).toBeInViewport();
+  await expect.poll(() => fixture.sourceReads.some(request => request.direction === 'around' && request.anchor_lid === '3')).toBe(true);
+  await reader.getByRole('button', { name: '回到引用处', exact: true }).click();
+  await expect(reader.locator('mark')).toBeInViewport();
+  expect(fixture.sourceOpens).toHaveLength(0);
+  expect(fixture.requests.filter(path => /\/(?:reader\/|reader\.|navigate|goto)/.test(path))).toEqual([]);
+  await page.screenshot({ path: info.outputPath('board-source-reader-desktop.png') });
+  await page.getByRole('button', { name: '关闭来源预览，返回画板', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('读完这一章，再继续这个问题');
+  await expect(page.locator('[data-item-id="item-answer"] .board-card-open')).toHaveAttribute('aria-pressed', 'true');
+  await sources.locator('button').click();
+  await expect(reader.locator('article[data-source-lid="2.3"]')).toBeVisible();
+  await expect(reader.locator('mark')).toBeInViewport();
+  await reader.locator('[data-outline-lid="3"]').click();
+  await expect(reader.locator('article[data-source-lid="3.1"]')).toBeInViewport();
+  await page.getByRole('button', { name: '在阅读器中打开', exact: true }).click();
+  await expect.poll(() => fixture.sourceOpens.at(-1)?.lid).toBe('3.1');
+  await expect(page.getByTestId('board-returned-source')).toContainText('已定位原文：source-bayes');
+  await page.getByRole('button', { name: '返回画板', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('读完这一章，再继续这个问题');
+  expect(errors).toEqual([]);
+});
+
+test('mobile temporary source reader has a usable chapter drawer and continuous text without horizontal overflow', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fixture = await serveBoard(page);
+  await page.goto('/board-workspace-visual.html');
+  await page.locator('.board-mobile-switch').getByRole('button', { name: '讲解', exact: true }).click();
+  const sources = page.locator('.board-reading-pane:visible .board-reading-sources');
+  await sources.locator('summary').click(); await sources.locator('button').click();
+  const reader = page.locator('.board-source-reader');
+  const scroll = reader.locator('[data-source-reader-scroll]');
+  await expect(reader.locator('article[data-source-lid="2.3"]')).toBeVisible();
+  await expect(reader.locator('mark')).toBeInViewport();
+  const directory = reader.getByRole('button', { name: '目录', exact: true });
+  await expect(directory).toHaveAttribute('aria-expanded', 'false');
+  await directory.click();
+  await expect(directory).toHaveAttribute('aria-expanded', 'true');
+  await expect(reader.getByRole('navigation', { name: '原文目录' })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('board-source-reader-mobile-outline.png') });
+  await reader.locator('[data-outline-lid="3"]').click();
+  await expect(directory).toHaveAttribute('aria-expanded', 'false');
+  await expect(reader.locator('article[data-source-lid="3.1"]')).toBeInViewport();
+  const before = fixture.sourceReads.length;
+  await scroll.hover(); await page.mouse.wheel(0, 100000);
+  await expect.poll(() => fixture.sourceReads.slice(before).some(request => request.direction === 'after')).toBe(true);
+  await reader.getByRole('button', { name: '回到引用处', exact: true }).click();
+  await expect(reader.locator('mark')).toBeInViewport();
+  expect(await page.locator('.board-source-dialog').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await scroll.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  const bounds = (await page.locator('.board-source-dialog').boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
+  expect(bounds.height).toBeGreaterThan(740);
+  await page.screenshot({ path: info.outputPath('board-source-reader-mobile.png') });
+  await page.keyboard.press('Escape');
+  await expect(reader).toBeHidden();
+  expect(fixture.sourceOpens).toHaveLength(0);
+  await page.goto('/board-workspace-visual.html?lang=en');
+  await page.locator('.board-mobile-switch').getByRole('button', { name: 'Explanation', exact: true }).click();
+  await sources.locator('summary').click(); await sources.locator('button').click();
+  await expect(reader.locator('article[data-source-lid="2.3"]')).toBeVisible();
+  expect(await page.locator('.board-source-dialog').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  expect(await page.locator('.board-source-dialog footer').evaluate(node => [...node.querySelectorAll('button')].every(button => button.getBoundingClientRect().right <= innerWidth))).toBe(true);
+  await page.screenshot({ path: info.outputPath('board-source-reader-mobile-english.png') });
+});
 
 test('WB1 saves four content types, layout, full answer and live presentation; reopening and source return preserve the workspace', async ({ page }, info) => {
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -66,7 +286,9 @@ test('WB1 saves four content types, layout, full answer and live presentation; r
   await expect(frame.locator('#prior')).toHaveValue('50');
   await expect(page.locator('iframe')).toHaveAttribute('data-load-count', '1');
   await page.locator('[data-item-id="item-understanding"] .board-card-open').click();
+  await page.locator('.board-reading-pane:visible .board-reading-sources summary').click();
   await page.locator('.board-reading-pane:visible .board-reading-sources button').click();
+  await page.getByRole('button', { name: '在阅读器中打开', exact: true }).click();
   await expect(page.getByTestId('board-returned-source')).toContainText('已定位原文：source-bayes');
   await page.getByRole('button', { name: '返回画板', exact: true }).click();
   await page.locator('[data-item-id="item-presentation"] .board-card-open').click();

@@ -48,6 +48,8 @@ export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuil
   formula_context_group: { max_units: 1, max_input_tokens: OTHER_KIND_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   pass2_candidate_batch: { max_units: 1, max_input_tokens: OTHER_KIND_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_outline: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_outline_chapters: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_outline_themes: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_chapter: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_chapter_selection: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_theme_plan: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },

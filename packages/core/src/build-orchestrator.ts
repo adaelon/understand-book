@@ -9,7 +9,7 @@ import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "
 import { BookStructureContributionCoverageError, materializeBookStructureContributions } from "./book-structure-materialization";
 import { buildReproducibleProfileArtifactHeader } from "./profile-artifact";
 import { hasCommittedAutomaticBuildPublication } from "./automatic-build-publication";
-import { readAcceptedBookStructureClose } from "./automatic-build-close";
+import { readAcceptedBookStructureClose, readAcceptedPass1Close } from "./automatic-build-close";
 import { applyBookStructureRelationDeltas, type AcceptedBookStructureRelationDelta, type BookStructureRelationDelta } from "./book-structure-relations";
 import { bookStructureRelationContracts, routeBookStructureRelationSelections, bookStructureSelectedPairs, bookStructureRelationPredecessors, routeBookStructureRelationDelta,
   type BookStructureRelationRoutedWorkUnit, type BookStructureRelationSelection } from "./book-structure-relation-routing";
@@ -233,7 +233,7 @@ export type SemanticExtractor =
   | "profile-sidecar-discourse-reducer"
   | "profile-sidecar-extractor"
   | "pass2-longrange-linker"
-  | "book-structure-outline" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
+  | "book-structure-outline" | "book-structure-outline-chapters" | "book-structure-outline-themes" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
   | "book-structure-extractor"
   | "book-structure-v2-extractor"
   | "book-structure-fragment-extractor"
@@ -795,9 +795,9 @@ export function automaticBuildExtractorForWorkUnitKind(
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
     return "book-structure-stitch-reducer";
   }
-  if (["structure_outline", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
+  if (["structure_outline", "structure_outline_chapters", "structure_outline_themes", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
-    return kind === "structure_outline" ? "book-structure-outline" : kind === "structure_chapter" ? "book-structure-chapter" : kind === "structure_chapter_selection" ? "book-structure-chapter-selection" : "book-structure-themes";
+    return kind === "structure_outline_chapters" ? "book-structure-outline-chapters" : kind === "structure_outline_themes" ? "book-structure-outline-themes" : kind === "structure_outline" ? "book-structure-outline" : kind === "structure_chapter" ? "book-structure-chapter" : kind === "structure_chapter_selection" ? "book-structure-chapter-selection" : "book-structure-themes";
   }
   if (kind === "structure_relation_select" || kind === "structure_relation_delta") {
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
@@ -3023,13 +3023,8 @@ function technicalLearningTargetFromWorkspace(workspaceInput: string): Automatic
     ? path.resolve(workspaceDir, sourceManifest.canonical_source.snapshot_path ?? "source.epub")
     : undefined;
   const sourcePath = epubSnapshot && existsSync(epubSnapshot) ? epubSnapshot : sourceTxtPath;
-  if (sourcePath !== sourceTxtPath) {
-    const declaredCanonicalSource = loadAutomaticBook(sourcePath).source;
-    const trustedCanonicalSource = readFileSync(sourceTxtPath, "utf8");
-    if (declaredCanonicalSource !== trustedCanonicalSource) {
-      throw new Error(`technical_learning workspace 内部快照与规范正文不一致: ${sourcePath}`);
-    }
-  }
+  // The package identifies the imported input; source.txt and base.json retain
+  // its published canonical text/LIDs across parser upgrades (ADR-0146).
 
   return {
     kind: "source_file",
@@ -3190,7 +3185,13 @@ function buildAutomaticBuildSnapshotInternal(
   const buildRoot = path.join(target.workspace_dir, ".build");
 
   if (!focus || focus.stage === "pass1") {
-    const pass1State = routePass1ProductionStage({
+    const selectedPass1 = !focus ? options.reuse?.find(item => item.artifact === "public.pass1") : undefined;
+    const acceptedPass1 = selectedPass1 ? readAcceptedPass1Close(target, qualityProfile) : undefined;
+    const pass1State: AutomaticBuildStageState = acceptedPass1
+      && acceptedPass1.postcondition.freshness_digest === selectedPass1!.freshness_digest
+      ? { stage: "pass1", closed: true, pending_tasks: [],
+          published_freshness_digest: acceptedPass1.postcondition.freshness_digest }
+      : routePass1ProductionStage({
       prepare: prepareStage === "pass1",
       target,
       loaded,

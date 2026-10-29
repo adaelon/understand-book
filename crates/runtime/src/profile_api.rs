@@ -341,7 +341,7 @@ pub fn build_profile_memory_state(
                     .review_state()
                     .review_jobs
                     .iter()
-                    .filter(|job| job.status != memory::ReviewJobStatus::Completed)
+                    .filter(|job| job.status.is_pending())
                     .count(),
             )
             .unwrap_or(u32::MAX),

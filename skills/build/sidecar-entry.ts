@@ -10,6 +10,8 @@ import bookStructureReducerPrompt from "../../agents/book-structure-reducer.md";
 import bookStructureStitchFragmentPrompt from "../../agents/book-structure-stitch-fragment-extractor.md";
 import bookStructureStitchReducerPrompt from "../../agents/book-structure-stitch-reducer.md";
 import bookStructureOutlinePrompt from "../../agents/book-structure-outline.md";
+import bookStructureOutlineChaptersPrompt from "../../agents/book-structure-outline-chapters.md";
+import bookStructureOutlineThemesPrompt from "../../agents/book-structure-outline-themes.md";
 import bookStructureChapterPrompt from "../../agents/book-structure-chapter.md";
 import bookStructureChapterSelectionPrompt from "../../agents/book-structure-chapter-selection.md";
 import bookStructureThemesPrompt from "../../agents/book-structure-themes.md";
@@ -57,6 +59,8 @@ const PROMPTS: Record<string, string> = {
   "book-structure-stitch-fragment-extractor.md": bookStructureStitchFragmentPrompt,
   "book-structure-stitch-reducer.md": bookStructureStitchReducerPrompt,
   "book-structure-outline.md": bookStructureOutlinePrompt,
+  "book-structure-outline-chapters.md": bookStructureOutlineChaptersPrompt,
+  "book-structure-outline-themes.md": bookStructureOutlineThemesPrompt,
   "book-structure-chapter.md": bookStructureChapterPrompt,
   "book-structure-chapter-selection.md": bookStructureChapterSelectionPrompt,
   "book-structure-themes.md": bookStructureThemesPrompt,

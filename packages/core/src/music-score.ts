@@ -13,6 +13,11 @@ const number = (node: XmlElement, tag: string, fallback = 0) => Number(value(nod
 
 export interface ParsedMusicNote extends Omit<MusicScoreObject, 'page_id' | 'svg_element_id'> { measure_index: number; score_beat: number; grace: boolean }
 export const MUSIC_SCORE_MARKS_PROVENANCE_ID = 'musicxml-score-marks';
+// Update these versions when parsing, mapping or the packaged Verovio changes.
+export const MUSIC_SCORE_PARSER_VERSION = 'musicxml-score-parser.v1';
+export const MUSIC_SCORE_RENDER_PARAMETERS = { processor: 'music-score-render.v1', verovio: '6.3.0',
+  options: { inputFrom: 'xml', font: 'Leipzig', pageWidth: 1800, pageHeight: 2200, scale: 45, adjustPageHeight: true,
+    breaks: 'auto', svgViewBox: true, svgRemoveXlink: true, xmlIdSeed: 1 } } as const;
 export interface ParsedMusicScore { musicxml: string; render_xml: string; parts: MusicPart[]; notes: ParsedMusicNote[]; marks: MusicScoreMark[]; measure_durations: number[] }
 
 /** Preserve the source bytes separately: inserted IDs belong to the render input. */
@@ -142,7 +147,7 @@ export async function renderMusicScore(parsed: ParsedMusicScore): Promise<Render
   const { VerovioToolkit } = await import(moduleUrl('esm'));
   const toolkit = new VerovioToolkit(await createModule());
   try {
-    toolkit.setOptions({ inputFrom: 'xml', font: 'Leipzig', pageWidth: 1800, pageHeight: 2200, scale: 45, adjustPageHeight: true, breaks: 'auto', svgViewBox: true, svgRemoveXlink: true, xmlIdSeed: 1 });
+    toolkit.setOptions({ ...MUSIC_SCORE_RENDER_PARAMETERS.options });
     if (!toolkit.loadData(parsed.render_xml)) throw new Error(`Verovio could not load the score: ${toolkit.getLog()}`);
     const pages: MusicScorePage[] = [], svg = new Map<string, string>(), mappings = new Map<string, string>();
     for (let page = 1; page <= toolkit.getPageCount(); page++) {

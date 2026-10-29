@@ -55,7 +55,7 @@ async function submit(action: 'start' | 'resend' | 'complete' | 'forgot' | 'rese
     if (!active) return;
     if (action === 'reset') emit('reset');
     else if (action === 'forgot') { resendAt.value = Date.now() + 60_000; notice.value = uiText('如该邮箱对应可用账号，将收到重置邮件。链接 30 分钟内有效；重新申请后请使用最新邮件。'); }
-    else if (result.completed) { pending.value = null; code.value = ''; emit('login', email.value, uiText('注册成功，已赠送 10 元 AI 使用额度，有效期 30 天。请登录。')); }
+    else if (result.completed) { pending.value = null; code.value = ''; emit('login', email.value, uiText('注册成功，内测期间 AI Token 免费使用，不限额度。请登录。')); }
     else { remember(result); notice.value = uiText('验证码已发送，15 分钟内有效。'); }
   } catch (failure) {
     if (!active) return;
@@ -131,8 +131,8 @@ onBeforeUnmount(() => { active = false; clearInterval(timer); password.value = '
           <p v-else-if="token" class="account-intro">{{ uiText('提交新密码后，账号所有旧登录会话将退出。') }}</p>
 
           <div v-if="view === 'register' && !pending" class="welcome-credit">
-            <strong><small>¥</small>10</strong>
-            <div><b>{{ uiText('注册即赠 AI 使用额度') }}</b><span>{{ uiText('有效期 30 天，注册成功后到账。') }}</span></div>
+            <strong aria-hidden="true">∞</strong>
+            <div><b>{{ uiText('内测期间 AI Token 免费使用') }}</b><span>{{ uiText('完成邮箱注册，Token 不限额度。') }}</span></div>
           </div>
 
           <template v-if="view === 'register' && pending">

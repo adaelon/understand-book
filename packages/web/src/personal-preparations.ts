@@ -4,7 +4,7 @@ import type { AllowancePercentage } from './account-allowance';
 import type { PublishedBookRef } from './network-context';
 export interface Preparation {
   task_id:string; name:string; learning_workspace_id:string; state:string; revision:number; error:string|null; pause_requested:boolean;
-  allowance:null|{period_id:string;expires_at:number;available:AllowancePercentage;maximum:AllowancePercentage;remaining:AllowancePercentage|null;};
+  allowance:null|{period_id:string;expires_at:number;unlimited?:boolean;available:AllowancePercentage;maximum:AllowancePercentage;remaining:AllowancePercentage|null;};
   usage_periods:{period_id:string;expires_at:number;used:AllowancePercentage|null;pending:AllowancePercentage|null;reserved:AllowancePercentage|null}[];
   estimate:{status:string;message:string;lower?:AllowancePercentage;upper?:AllowancePercentage;partial?:boolean;per_call_maximum?:AllowancePercentage};
   materials:{label:string;kind:'book'|'video';state:string;published_book_ref:PublishedBookRef|null;plan_ready:boolean;progress:null|{message:string;completed:number;total:number;unit:string;status:string}}[];

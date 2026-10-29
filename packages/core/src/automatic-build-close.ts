@@ -7,6 +7,7 @@ import {
   inspectAutomaticBuildStageFreshness,
   routeAutomaticBuildSnapshot,
   type AutomaticBuildStageState,
+  type AutomaticBuildSnapshotOptions,
   type AutomaticBuildTarget,
 } from "./build-orchestrator";
 import {
@@ -325,7 +326,23 @@ export function readAcceptedBookStructureClose(
   target: AutomaticBuildTarget,
   qualityProfile: ExtractionQualityProfile = "full",
 ): AutomaticBuildStageCloseResultV2 | undefined {
-  const directory = path.join(target.workspace_dir, ".build/automatic-build/v2/close/book_structure");
+  return readAcceptedSourcePublication(target, "book_structure", qualityProfile);
+}
+
+/** A confirmed reuse of Pass1 keeps its accepted producer generation and public source. */
+export function readAcceptedPass1Close(
+  target: AutomaticBuildTarget,
+  qualityProfile: ExtractionQualityProfile = "full",
+): AutomaticBuildStageCloseResultV2 | undefined {
+  return readAcceptedSourcePublication(target, "pass1", qualityProfile);
+}
+
+function readAcceptedSourcePublication(
+  target: AutomaticBuildTarget,
+  stage: "pass1" | "book_structure",
+  qualityProfile: ExtractionQualityProfile,
+): AutomaticBuildStageCloseResultV2 | undefined {
+  const directory = path.join(target.workspace_dir, ".build/automatic-build/v2/close", stage);
   if (!existsSync(directory)) return undefined;
   const files = readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const file = path.join(directory, entry.name);
@@ -336,14 +353,17 @@ export function readAcceptedBookStructureClose(
   for (const file of files.sort()) {
     try {
       const closed = parseAutomaticBuildStageCloseResult(JSON.parse(readFileSync(file, "utf8")));
-      if (closed.stage !== "book_structure" || closed.target.book_id !== target.book_id
+      if (closed.stage !== stage || closed.target.book_id !== target.book_id
         || closed.target.profile_id !== target.profile_id
         || closed.target.input_fingerprint !== target.target_ref.input_fingerprint
         || !closed.postcondition.policy_contracts.length
         || closed.postcondition.policy_contracts.some(contract => contract.semantic_contract.quality_profile !== qualityProfile)) continue;
-      const receipt = readAutomaticBuildPublicationReceipt(target.workspace_dir, "book_structure", closed.publication.transaction_id);
-      if (receipt.artifacts.length !== 1 || receipt.artifacts[0].path !== "book_structure.json"
-        || publicationReceiptDigest(receipt) !== closed.publication.receipt_digest
+      const receipt = readAutomaticBuildPublicationReceipt(target.workspace_dir, stage, closed.publication.transaction_id);
+      validatePublicationPaths(receipt, stage);
+      const paths = new Set(receipt.artifacts.map(artifact => artifact.path));
+      if (stage === "book_structure" && (paths.size !== 1 || !paths.has("book_structure.json"))) continue;
+      if (stage === "pass1" && !["source.txt", "base.json", "profile_metadata.json"].every(file => paths.has(file))) continue;
+      if (publicationReceiptDigest(receipt) !== closed.publication.receipt_digest
         || !publicArtifactsMatchReceipt(target, receipt)) continue;
       return closed;
     } catch { /* A historical or interrupted publication is not an accepted dependency. */ }
@@ -406,9 +426,10 @@ export function closeAutomaticBuildStage(input: {
   target: AutomaticBuildTarget;
   stage: AutomaticBuildPublicationStage;
   quality_profile: ExtractionQualityProfile;
+  reuse?: AutomaticBuildSnapshotOptions["reuse"];
   run_batch: () => AutomaticBuildStageBatchExecutionV1;
 }): AutomaticBuildStageCloseOutcomeV1 {
-  const snapshotOptions = { quality_profile: input.quality_profile,
+  const snapshotOptions = { quality_profile: input.quality_profile, reuse: input.reuse,
     ...(input.stage === "book_structure" ? { stage: "book_structure" as const } : {}) };
   const preSnapshot = buildAutomaticBuildSnapshot(input.target, snapshotOptions);
   const preStage = stageState(preSnapshot.stages, input.stage);

@@ -7,13 +7,30 @@ import BoardCanvas from './components/BoardCanvas.vue';
 import { boardFixture, boardFixtureCatalog, boardFixtureItems, boardFixtureReceipt } from './fixtures/board-workspace';
 import { boardDate, fitBoard, zoomBoardAt, projectBoardRoute, type BoardQuestionRequest, type BoardRunView } from './board-workspace';
 import BoardReadingPane from './components/BoardReadingPane.vue';
+import { requestWorkspaceRecovery } from './network-client';
 
 const mocks = vi.hoisted(() => ({ api: { boardConversation: vi.fn(), boardList: vi.fn(), boardCreate: vi.fn(), boardRead: vi.fn(), boardUpdate: vi.fn(), boardImport: vi.fn(), boardDelete: vi.fn(), boardCatalog: vi.fn(), boardViewSave: vi.fn(), boardSearch: vi.fn() }, flushScene: vi.fn(), mounts: 0 }));
 vi.mock('./api', () => ({ api: mocks.api }));
+vi.mock('./network-client', () => ({ requestWorkspaceRecovery: vi.fn() }));
 vi.mock('./network-context', () => ({ bindSceneApi: (api: unknown) => api, readerKey: () => 'reader-fixture' }));
 vi.mock('./components/AgentPresentation.vue', () => ({ default: defineComponent({ setup(_, { expose }) { mocks.mounts++; expose({ flushBoardState: mocks.flushScene, locateRegion: () => true }); return () => h('div', { class: 'retained-presentation-fixture' }, '可操作的留存演示'); } }) }));
 let stored = boardFixture();
 let wrappers: ReturnType<typeof mount>[] = [];
+let restoreFullscreen = () => {};
+function mockBrowserFullscreen() {
+  let element: Element | null = null;
+  const request = vi.fn(async () => { element = document.documentElement; document.dispatchEvent(new Event('fullscreenchange')); });
+  const exit = vi.fn(async () => { element = null; document.dispatchEvent(new Event('fullscreenchange')); });
+  const properties: [object, string, PropertyDescriptor][] = [
+    [document, 'fullscreenElement', { get: () => element }],
+    [document.documentElement, 'requestFullscreen', { value: request }],
+    [document, 'exitFullscreen', { value: exit }],
+  ];
+  const originals = properties.map(([target, key]) => Object.getOwnPropertyDescriptor(target, key));
+  for (const [target, key, descriptor] of properties) Object.defineProperty(target, key, { ...descriptor, configurable: true });
+  restoreFullscreen = () => { properties.forEach(([target, key], index) => { if (originals[index]) Object.defineProperty(target, key, originals[index]!); else Reflect.deleteProperty(target, key); }); };
+  return { request, exit, escape: () => { element = null; document.dispatchEvent(new Event('fullscreenchange')); } };
+}
 beforeEach(() => {
   vi.clearAllMocks(); mocks.mounts = 0; stored = boardFixture();
   mocks.flushScene.mockResolvedValue(undefined);
@@ -38,9 +55,83 @@ beforeEach(() => {
     return structuredClone(stored.document);
   });
 });
-afterEach(() => { for (const wrapper of wrappers) wrapper.unmount(); wrappers = []; vi.useRealTimers(); });
+afterEach(() => { for (const wrapper of wrappers) wrapper.unmount(); wrappers = []; vi.useRealTimers(); restoreFullscreen(); restoreFullscreen = () => {}; });
 async function setup() { const wrapper = mount(BoardWorkspace, { props: { boardId: stored.document.board_id } }); wrappers.push(wrapper); await flushPromises(); return wrapper; }
 describe('knowledge board saved workspace', () => {
+  it('opens true browser fullscreen, reveals reading and questions on demand, and restores the prior layout without remounting content', async () => {
+    const fullscreen = mockBrowserFullscreen();
+    const wrapper = await setup();
+    const canvas = wrapper.getComponent(BoardCanvas).element;
+    const pane = wrapper.get('.board-reading-pane').element;
+    const selected = wrapper.getComponent(BoardCanvas).props('view').selected_item_id;
+    await wrapper.findAll('.board-rail-tabs [role="tab"]').find(tab => tab.text() === '讨论')!.trigger('click');
+    await wrapper.get('textarea').setValue('没有发送的理解');
+    await wrapper.get('[aria-label="全屏画板"]').trigger('click'); await flushPromises();
+    expect(fullscreen.request).toHaveBeenCalledOnce();
+    expect(wrapper.classes()).toContain('board-canvas-fullscreen');
+    expect((wrapper.get('.board-topbar').element as HTMLElement).style.display).toBe('none');
+    expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).toBe('none');
+    expect((wrapper.get('.board-conversation').element as HTMLElement).style.display).toBe('none');
+    await wrapper.findAll('.board-fullscreen-tools button').find(button => button.text() === '讲解')!.trigger('click');
+    expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).not.toBe('none');
+    await wrapper.findAll('.board-fullscreen-tools button').find(button => button.text() === '提问')!.trigger('click');
+    expect((wrapper.get('.board-conversation').element as HTMLElement).style.display).not.toBe('none');
+    expect(wrapper.get('textarea').element).toHaveProperty('value', '没有发送的理解');
+    await wrapper.get('.board-fullscreen-tools [aria-label="退出全屏"]').trigger('click'); await flushPromises();
+    expect(fullscreen.exit).toHaveBeenCalledOnce();
+    expect(wrapper.classes()).not.toContain('board-canvas-fullscreen');
+    expect((wrapper.get('.board-topbar').element as HTMLElement).style.display).not.toBe('none');
+    expect(wrapper.get('[role="tab"][aria-selected="true"]').text()).toBe('讨论');
+    expect(wrapper.getComponent(BoardCanvas).element).toBe(canvas);
+    expect(wrapper.get('.board-reading-pane').element).toBe(pane);
+    expect(wrapper.getComponent(BoardCanvas).props('view').selected_item_id).toBe(selected);
+    expect(wrapper.get('textarea').element).toHaveProperty('value', '没有发送的理解');
+  });
+
+  it('restores collapsed rails on native Escape and identifies denied fullscreen as window mode', async () => {
+    const fullscreen = mockBrowserFullscreen();
+    const wrapper = await setup();
+    await wrapper.get('[aria-label="收起讲解与讨论"]').trigger('click');
+    await wrapper.get('[aria-label="全屏画板"]').trigger('click'); await flushPromises();
+    fullscreen.escape(); await flushPromises();
+    expect(wrapper.classes()).not.toContain('board-canvas-fullscreen');
+    expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).toBe('none');
+    expect(wrapper.get('[aria-label="展开讲解与讨论"]').isVisible()).toBe(true);
+    fullscreen.request.mockRejectedValueOnce(new Error('fullscreen blocked'));
+    await wrapper.get('[aria-label="全屏画板"]').trigger('click'); await flushPromises();
+    expect(wrapper.get('.board-fullscreen-notice').text()).toContain('浏览器未允许全屏');
+    expect(wrapper.classes()).toContain('board-canvas-fullscreen');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); await flushPromises();
+    expect(wrapper.classes()).not.toContain('board-canvas-fullscreen');
+    expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).toBe('none');
+  });
+  it('automatically retries a failed board read on recovery without writing or losing the selected board', async () => {
+    mocks.api.boardRead.mockRejectedValueOnce(new TypeError('temporary connection failure'));
+    const wrapper = await setup();
+    expect(wrapper.text()).toContain('画板没有打开');
+    expect(requestWorkspaceRecovery).toHaveBeenCalled();
+    window.dispatchEvent(new Event('workspace-recovered')); await flushPromises();
+    expect(wrapper.get('[aria-label="画板名称"]').element).toHaveProperty('value', stored.document.title);
+    expect(mocks.api.boardRead).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).not.toContain('temporary connection failure');
+    expect(mocks.api.boardUpdate).not.toHaveBeenCalled();
+    expect(mocks.api.boardCreate).not.toHaveBeenCalled();
+  });
+
+  it('retries failed discussion reads while retaining the mounted board and unsent question', async () => {
+    mocks.api.boardConversation.mockRejectedValueOnce(new TypeError('temporary discussion failure'));
+    const wrapper = await setup();
+    const canvas = wrapper.getComponent(BoardCanvas).element;
+    const textarea = wrapper.find('textarea');
+    await textarea.setValue('尚未发送的白板问题');
+    window.dispatchEvent(new Event('workspace-recovered')); await flushPromises();
+    expect(mocks.api.boardConversation).toHaveBeenCalledTimes(2);
+    expect(wrapper.getComponent(BoardCanvas).element).toBe(canvas);
+    expect(wrapper.find('textarea').element).toHaveProperty('value', '尚未发送的白板问题');
+    expect(mocks.api.boardRead).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('follow-up')).toBeUndefined();
+  });
+
   it('searches the full prebuilt catalog and sends category and pagination with the exact artifact locator', async () => {
     const artifact = { kind: 'artifact', artifact: 'discourse', entry_id: '14.9.3', source_revision: 'published-source' } as const;
     mocks.api.boardCatalog.mockImplementation(async (kind, after, options) => ({
@@ -365,6 +456,67 @@ describe('WB3 linked explanations and narration', () => {
     expect(projectBoardRoute(stored.document, route, 'step-prior').visibleItemIds).toEqual(['item-prebuild']);
     expect(projectBoardRoute(stored.document, route, 'step-prior').visibleLinkIds).toEqual([]);
     expect(projectBoardRoute(stored.document, route, 'step-total', true).visibleItemIds).toBeUndefined();
+  });
+  it('reveals unscheduled narration connections when both endpoints are shown, including after a backward seek', () => {
+    narrated(); const route = stored.document.routes[0];
+    route.steps[1].reveal_targets = [{ kind: 'item', item_id: 'item-understanding' }];
+    stored.document.links.unshift({ link_id: 'comparison-to-answer', from: { kind: 'link', link_id: 'prior-to-total' },
+      to: { kind: 'item', item_id: 'item-answer' }, label: '解释这个关系', based_on: [] });
+    expect(projectBoardRoute(stored.document, route, 'step-prior').visibleLinkIds).toEqual([]);
+    expect(projectBoardRoute(stored.document, route, 'step-total').visibleLinkIds).toEqual(['prior-to-total']);
+    expect(projectBoardRoute(stored.document, route, 'step-conclusion').visibleLinkIds?.sort()).toEqual(['comparison-to-answer', 'prior-to-total']);
+    expect(projectBoardRoute(stored.document, route, 'step-total').visibleLinkIds).toEqual(['prior-to-total']);
+    expect(projectBoardRoute(stored.document, route, 'step-prior').visibleLinkIds).toEqual([]);
+    const reopened = structuredClone(stored.document);
+    expect(projectBoardRoute(reopened, reopened.routes[0], 'step-total').visibleLinkIds).toEqual(['prior-to-total']);
+  });
+  it('keeps explicitly scheduled narration connections hidden until their reveal step even when both endpoints are visible', () => {
+    narrated(); const route = stored.document.routes[0];
+    route.steps[0].reveal_targets.push({ kind: 'item', item_id: 'item-understanding' });
+    expect(projectBoardRoute(stored.document, route, 'step-prior').visibleItemIds).toEqual(['item-prebuild', 'item-understanding']);
+    expect(projectBoardRoute(stored.document, route, 'step-prior').visibleLinkIds).toEqual([]);
+    expect(projectBoardRoute(stored.document, route, 'step-total').visibleLinkIds).toEqual(['prior-to-total']);
+  });
+  it('brings the endpoints of focused narration connections and their link dependencies into view', () => {
+    narrated(); const route = stored.document.routes[0];
+    stored.document.links.push({ link_id: 'comparison-to-answer', from: { kind: 'link', link_id: 'prior-to-total' },
+      to: { kind: 'item', item_id: 'item-answer' }, label: '解释这个关系', based_on: [] });
+    route.steps[0].reveal_targets = [{ kind: 'item', item_id: 'item-understanding' }];
+    route.steps[0].focus_targets = [{ kind: 'link', link_id: 'comparison-to-answer' }];
+    const projection = projectBoardRoute(stored.document, route, 'step-prior');
+    expect(projection.visibleItemIds?.sort()).toEqual(['item-answer', 'item-prebuild', 'item-understanding']);
+    expect(projection.visibleLinkIds?.sort()).toEqual(['comparison-to-answer', 'prior-to-total']);
+  });
+  it('preserves narration connections through playback completion, pause, reopening, backward seek and full-board view', async () => {
+    vi.useFakeTimers(); narrated();
+    stored.document.routes[0].steps[1].reveal_targets = [{ kind: 'item', item_id: 'item-understanding' }];
+    const wrapper = await setup();
+    expect(wrapper.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await wrapper.get('[aria-label="播放讲解"]').trigger('click'); await flushPromises();
+    expect(wrapper.find('[data-board-link="prior-to-total"]').exists()).toBe(false);
+    await vi.advanceTimersByTimeAsync(550); await flushPromises();
+    expect(wrapper.get('.board-playback').attributes('data-step-id')).toBe('step-total');
+    expect(wrapper.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await wrapper.get('[aria-label="暂停讲解"]').trigger('click');
+    await vi.advanceTimersByTimeAsync(800); await flushPromises();
+    expect(wrapper.get('.board-playback').attributes()).toMatchObject({ 'data-playing': 'false', 'data-step-id': 'step-total' });
+    expect(wrapper.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await wrapper.get('[aria-label="播放讲解"]').trigger('click'); await flushPromises();
+    await vi.advanceTimersByTimeAsync(1100); await flushPromises();
+    expect(wrapper.get('.board-playback').attributes()).toMatchObject({ 'data-playing': 'false', 'data-step-id': 'step-conclusion' });
+    expect(wrapper.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await (wrapper.vm as unknown as { flush(): Promise<boolean> }).flush();
+    wrapper.unmount(); wrappers = [];
+    const reopened = await setup();
+    expect(reopened.get('.board-playback').attributes()).toMatchObject({ 'data-playing': 'false', 'data-step-id': 'step-conclusion' });
+    expect(reopened.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await reopened.get('[aria-label="上一步"]').trigger('click'); await flushPromises();
+    expect(reopened.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    await reopened.get('[aria-label="上一步"]').trigger('click'); await flushPromises();
+    expect(reopened.find('[data-board-link="prior-to-total"]').exists()).toBe(false);
+    await reopened.get('.board-show-all').trigger('click'); await flushPromises();
+    expect(reopened.find('[data-board-link="prior-to-total"]').exists()).toBe(true);
+    expect(mocks.api.boardUpdate).not.toHaveBeenCalled();
   });
   it('scrolls to the saved explanation block on mount without focusing the heading', async () => {
     narrated(); stored.view.selected_block_id = 'explain-total';

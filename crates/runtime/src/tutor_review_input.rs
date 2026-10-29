@@ -84,7 +84,7 @@ pub fn project_explanation(packet: &Value) -> Value {
     let committed_deliveries: Vec<_> = packet["committed_deliveries"].as_array().into_iter().flatten()
         .map(|delivery| explanation_fields(delivery, &["delivery_id", "text", "answer_parts"]))
         .collect();
-    json!({
+    let mut projected = json!({
         "current_request":packet["original_request"],
         "delivery_scope":packet["delivery_scope"],
         "committed_deliveries":committed_deliveries,
@@ -94,8 +94,19 @@ pub fn project_explanation(packet: &Value) -> Value {
         "reader_expressions":reader_expressions,
         "confirmed_background":packet["learner_view"]["confirmed_background"],
         "confirmed_preferences":frozen["confirmed_preferences"],
-        "current_delivery":packet["proposed_delivery"]["text"]
-    })
+        "current_delivery":packet["proposed_delivery"]["text"],
+        "open_issues":crate::teaching_review_issues::branch_issues(&packet["open_issues"], "explanation")
+    });
+    // This is the host's first unaccepted draft, never an author summary or
+    // source packet. It exposes lost explanatory work without witnessing the
+    // current delivery or establishing the old draft's factual correctness.
+    if let Some(text) = packet["revision_reference"]["text"].as_str().filter(|text| !text.trim().is_empty()) {
+        projected["revision_reference"] = json!({"text":text,
+            "purpose":"Preserve the relevant explanatory work of the first unaccepted draft while correcting it. This is neither verified source evidence nor delivered help; it cannot supply current answer_quotes.",
+            "changes_from_reference":crate::orchestrator::teaching_review_changes(
+                &json!({"text":text}), &json!({"text":packet["proposed_delivery"]["text"]}))});
+    }
+    projected
 }
 
 fn explanation_fields(value: &Value, fields: &[&str]) -> Value {
@@ -109,8 +120,12 @@ fn explanation_fields(value: &Value, fields: &[&str]) -> Value {
 /// review to the author's preferred target.
 /// The caller retains the unprojected packet for validation and durable audit.
 pub fn project_text(mut packet: Value) -> Value {
+    packet["open_issues"] = crate::teaching_review_issues::branch_issues(&packet["open_issues"], "factual");
+    if let Some(context) = packet.get_mut("review_context").and_then(Value::as_object_mut) {
+        context.remove("open_issues");
+    }
     if let Some(fields) = packet.as_object_mut() {
-        for field in ["current_design", "local_design", "coach_context", "agent_working_state"] {
+        for field in ["current_design", "local_design", "coach_context", "agent_working_state", "revision_reference"] {
             fields.remove(field);
         }
     }
@@ -138,6 +153,7 @@ pub fn project_text(mut packet: Value) -> Value {
                 fields.remove("reading_path");
                 fields.remove("improvements");
                 fields.remove("changes_since_previous_review");
+                fields.remove("open_issues");
             }
         }
     }
@@ -303,6 +319,57 @@ mod tests {
         assert_eq!(projected["confirmed_background"], packet["learner_view"]["confirmed_background"]);
         assert_eq!(projected["confirmed_preferences"], packet["frozen_input"]["confirmed_preferences"]);
         assert!(!projected.to_string().contains("PRIVATE_"));
+    }
+
+    #[test]
+    fn unresolved_issues_remain_with_their_own_review_branch() {
+        let factual = json!({"issue_ref":"factual:1:0","branch":"factual","kind":"finding",
+            "finding":{"evidence":"FACTUAL_SOURCE_GAP"}});
+        let explanation = json!({"issue_ref":"explanation:2:request","branch":"explanation","kind":"request",
+            "request_resolution":{"reason":"EXPLANATION_CONNECTION_GAP"}});
+        let packet = json!({"original_request":"Explain the delay.","proposed_delivery":{"text":"The delay matters."},
+            "open_issues":[factual.clone(),explanation.clone()],
+            "review_context":{"open_issues":[factual.clone(),explanation.clone()],
+                "prior_reviews":[{"open_issues":[factual.clone(),explanation.clone()]}]},
+            "current_source_evidence":[{"text":"ACTUAL_SOURCE"}]});
+        let text = project_text(packet.clone());
+        assert_eq!(text["open_issues"], json!([factual]));
+        assert!(text["review_context"].get("open_issues").is_none());
+        assert!(text["review_context"]["prior_reviews"][0].get("open_issues").is_none());
+        assert!(!text.to_string().contains("EXPLANATION_CONNECTION_GAP"));
+        let independent = project_explanation(&packet);
+        assert_eq!(independent["open_issues"], json!([explanation]));
+        assert!(!independent.to_string().contains("FACTUAL_SOURCE_GAP"));
+        assert!(!independent.to_string().contains("ACTUAL_SOURCE"));
+    }
+
+    #[test]
+    fn revision_reference_preserves_only_the_actual_draft_without_becoming_delivery_evidence() {
+        let mut input = json!({"original_request":"Explain why B remains.",
+            "proposed_delivery":{"text":"B remains."},"open_issues":[]});
+        assert!(project_explanation(&input).get("revision_reference").is_none());
+        input["revision_reference"] = json!({
+            "text":"The update replaces only A. B is not named, so B retains its earlier value.",
+            "purpose":"PRIVATE_AUTHOR_INSTRUCTION","source_evidence":"PRIVATE_SOURCE",
+            "review":"PRIVATE_FACTUAL_REVIEW","changes_from_reference":"PRIVATE_AUTHOR_DIFF"});
+        let projected = project_explanation(&input);
+        assert_eq!(projected["revision_reference"]["text"], input["revision_reference"]["text"]);
+        assert!(projected["revision_reference"]["purpose"].as_str().unwrap().contains("first unaccepted draft"));
+        assert_eq!(projected["revision_reference"]["changes_from_reference"], json!(
+            crate::orchestrator::teaching_review_changes(
+                &json!({"text":input["revision_reference"]["text"]}), &input["proposed_delivery"])));
+        assert!(projected["revision_reference"]["changes_from_reference"].to_string().contains("The update replaces only A."));
+        assert!(!projected.to_string().contains("PRIVATE_"));
+        assert!(project_text(input.clone()).get("revision_reference").is_none());
+
+        let mut review = json!({"decision":"accept","revision":null,"findings":[],"learner_claims":[],
+            "request_resolution":{"status":"answered","question_quote":"Explain why B remains.",
+                "requested_relation":"Why B is retained.","delivered_relation":"The answer states B remains.",
+                "answer_quotes":["B remains."],"reason":"Current explanation judgment."}});
+        crate::tutor::normalize_delivery_review(&mut review, &input).unwrap();
+        review["request_resolution"]["answer_quotes"] = json!(["The update replaces only A."]);
+        assert!(crate::tutor::normalize_delivery_review(&mut review, &input).is_err(),
+            "the original draft must not fill a connection missing from the current delivery");
     }
 
     #[test]

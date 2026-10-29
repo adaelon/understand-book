@@ -14,12 +14,16 @@ use std::{
 #[derive(Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct ServiceLimits {
+    pub http_workers: usize,
     pub active_runs: usize,
     pub user_active_runs: usize,
     pub queued_runs: usize,
     pub user_queued_runs: usize,
     pub model_slots: usize,
     pub user_model_slots: usize,
+    pub model_request_timeout_seconds: u64,
+    pub background_model_request_timeout_seconds: u64,
+    pub model_connect_timeout_seconds: u64,
     pub preview_slots: usize,
     pub plot_slots: usize,
     pub animation_slots: usize,
@@ -40,12 +44,16 @@ pub struct ServiceLimits {
 impl Default for ServiceLimits {
     fn default() -> Self {
         Self {
+            http_workers: 4,
             active_runs: 4,
             user_active_runs: 1,
             queued_runs: 20,
             user_queued_runs: 4,
             model_slots: 2,
             user_model_slots: 1,
+            model_request_timeout_seconds: 600,
+            background_model_request_timeout_seconds: 180,
+            model_connect_timeout_seconds: 15,
             preview_slots: 1,
             plot_slots: 1,
             animation_slots: 1,
@@ -80,6 +88,7 @@ impl ServiceLimits {
             Err(_) => return Err(invalid()),
         };
         if [
+            limits.http_workers,
             limits.active_runs,
             limits.user_active_runs,
             limits.queued_runs,
@@ -104,6 +113,9 @@ impl ServiceLimits {
         .contains(&0)
             || limits.book_bytes == 0
             || limits.presentation_bytes == 0
+            || limits.model_request_timeout_seconds == 0
+            || limits.background_model_request_timeout_seconds == 0
+            || limits.model_connect_timeout_seconds == 0
         {
             return Err(invalid());
         }
@@ -427,6 +439,40 @@ impl ModelAdapter for LimitedAdapter<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capacity_200_candidate_loads_without_changing_existing_defaults() {
+        let root = tempfile::tempdir().unwrap();
+        let defaults = ServiceLimits::load(root.path()).unwrap();
+        assert_eq!(defaults.http_workers, 4);
+        assert_eq!(defaults.active_runs, 4);
+        assert_eq!(defaults.resident_users, 10);
+        assert_eq!(defaults.model_request_timeout_seconds, 600);
+        std::fs::write(root.path().join("service-limits.json"), include_str!(
+            "../../../scripts/linux/service-limits.200-users.json.example"
+        )).unwrap();
+        let candidate = ServiceLimits::load(root.path()).unwrap();
+        assert_eq!(candidate.http_workers, 8);
+        assert_eq!(candidate.active_runs, 64);
+        assert_eq!(candidate.model_slots, 16);
+        assert_eq!(candidate.resident_users, 300);
+        assert_eq!(candidate.sse_connections, 256);
+        assert_eq!(candidate.background_model_request_timeout_seconds, 180);
+        assert_eq!(candidate.model_connect_timeout_seconds, 15);
+    }
+
+    #[test]
+    fn capacity_limits_reject_zero_workers_timeouts_and_unknown_keys() {
+        let root = tempfile::tempdir().unwrap();
+        for key in ["http_workers", "model_request_timeout_seconds",
+            "background_model_request_timeout_seconds", "model_connect_timeout_seconds",
+            "unknown_capacity_option"] {
+            std::fs::write(root.path().join("service-limits.json"),
+                serde_json::json!({key: 0}).to_string()).unwrap();
+            assert_eq!(ServiceLimits::load(root.path()).err().unwrap().error_code,
+                "SERVICE_LIMITS_INVALID", "{key}");
+        }
+    }
     struct RecordingProvider {
         total_tokens: Option<u32>,
         output_limits: Mutex<Vec<Option<u32>>>,

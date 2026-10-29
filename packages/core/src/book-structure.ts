@@ -913,6 +913,9 @@ export function bookStructureCanonicalTitle(unit: LidNode, byLid: ReadonlyMap<st
   // The canonical tree stores Markdown headings as paragraph leaves.
   const heading = unit.children.map(lid => byLid.get(lid)).find(node => node && !node.children.length
     && /^#{1,6}\s/u.test(source.slice(node.span.start, node.span.end).trim()));
+  // An anonymous source range may begin with a cover or another asset, not a heading.
+  const firstChild = byLid.get(unit.children[0]) ?? unit;
+  if (!heading && ["code", "table", "image", "formula"].includes(firstChild.kind)) return "未命名单元";
   const firstLine = source.slice((heading ?? unit).span.start, (heading ?? unit).span.end).split(/\r?\n/u)[0].trim();
   return firstLine.replace(/^#{1,6}\s+/u, "").replace(/\s+#+\s*$/u, "").trim() || "未命名单元";
 }

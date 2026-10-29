@@ -19,7 +19,7 @@ import {
   automaticBuildExecutorMcpErrorFromSessionError,
   createAutomaticBuildExecutorProtocolMcpErrorV2,
   resolveAutomaticBuildExecutorRegistryRoot,
-  runAutomaticBuildExecutorSessionCommand,
+  runAutomaticBuildWorkerExecutorSessionCommand,
   type AutomaticBuildExecutorServerPhaseBoundaryV1,
   type AutomaticBuildExecutorServerTimingObserverV1,
   type AutomaticBuildExecutorMcpErrorPhaseV2,
@@ -94,7 +94,7 @@ interface BuildExecutorMcpSessionOptions {
   execute_request?: (
     request: unknown,
     timing: AutomaticBuildExecutorServerTimingObserverV1,
-  ) => AutomaticBuildExecutorSessionResponse;
+  ) => AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse>;
   now_ms?: () => number;
   timing_sample_sink?: (sample: ExecutorMcpServerTimingV2) => void;
 }
@@ -165,16 +165,18 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       const observer = { complete_phase: (phase: AutomaticBuildExecutorServerPhaseBoundaryV1) => {
         if (!completed.has(phase)) { timing.complete_phase(phase); completed.add(phase); }
       } };
+      const failed = (error: unknown): AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse> => {
+        if (error instanceof StructureThemeRetrievalRequired) {
+          return prepareStructureThemeRetrieval(error).then(execute).catch(error => { throw new BuildExecutorSessionCommandError(error); });
+        }
+        throw new BuildExecutorSessionCommandError(error);
+      };
       const execute = (): AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse> => {
         try {
-          return options.execute_request ? options.execute_request(request, observer)
-            : runAutomaticBuildExecutorSessionCommand(request, { timing: observer, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse;
-        } catch (error) {
-          if (error instanceof StructureThemeRetrievalRequired) {
-            return prepareStructureThemeRetrieval(error).then(execute).catch(error => { throw new BuildExecutorSessionCommandError(error); });
-          }
-          throw new BuildExecutorSessionCommandError(error);
-        }
+          const response = options.execute_request ? options.execute_request(request, observer)
+            : runAutomaticBuildWorkerExecutorSessionCommand(request, { timing: observer, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse>;
+          return response instanceof Promise ? response.catch(failed) : response;
+        } catch (error) { return failed(error); }
       };
       return execute();
     },

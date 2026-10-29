@@ -23,10 +23,12 @@ export function boardPreviewAssets() {
         rollupOptions: { output: { inlineDynamicImports: true } },
       },
     })).then(async () => {
-      // BoardCanvas uses Reader's --sans system stack. The full Reader stylesheet
-      // also imports book fonts, which this isolated canvas never uses.
+      // Keep the math faces used by BoardCanvas; they are inlined above so the
+      // isolated browser renders the same equations without external requests.
+      // Book reading fonts are not used by this canvas preview.
       const stylesheet = path.join(output, 'renderer.css');
-      await writeFile(stylesheet, (await readFile(stylesheet, 'utf8')).replace(/@font-face\s*\{[^}]*\}/g, ''));
+      await writeFile(stylesheet, (await readFile(stylesheet, 'utf8')).replace(/@font-face\s*\{[^}]*\}/g,
+        face => /font-family:\s*["']?KaTeX_/i.test(face) ? face : ''));
     });
     return building;
   };
@@ -39,7 +41,7 @@ export function boardPreviewAssets() {
     async configureServer(server) {
       await render();
       server.watcher.on('change', file => {
-        if (/[/\\](BoardCanvas\.vue|board-canvas[^/\\]*|board-preview\.ts|board-workspace\.ts|style\.css|brand\.css)$/.test(file)
+        if (/[/\\](BoardCanvas\.vue|BoardDrawingText\.vue|board-(?:canvas|math)[^/\\]*|board-preview\.ts|board-workspace\.ts|style\.css|brand\.css)$/.test(file)
           || file.includes(`${path.sep}i18n${path.sep}src${path.sep}`)) {
           void render().catch(error => server.config.logger.error(String(error)));
         }

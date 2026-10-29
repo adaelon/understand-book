@@ -12,6 +12,7 @@ export interface AllowancePeriod {
   basis_status: 'bound' | 'unbound';
   validity_state: 'active' | 'scheduled' | 'expired' | 'closed';
   balance: {
+    unlimited?: boolean;
     granted_micro_cny: number;
     debited_micro_cny: number;
     active_reserved_micro_cny: number;

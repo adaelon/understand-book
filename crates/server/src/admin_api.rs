@@ -118,6 +118,10 @@ pub(crate) fn dispatch(
     now: i64,
 ) -> Result<Value, ToolError> {
     let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if parts.as_slice() == ["admin", "monitor"] {
+        if method != "GET" || !query.is_empty() { return Err(admin_store::invalid()); }
+        return access.monitor.snapshot(&access.admin, access.runs.limits.active_runs, now);
+    }
     if matches!(parts.as_slice(),["admin","operator-builds",..]) {
         return crate::operator_builds::dispatch(access,principal.user_id(),method,&parts[2..],query,input,now);
     }

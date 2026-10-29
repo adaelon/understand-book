@@ -3,6 +3,7 @@ import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { OutlineItem } from "../App.vue";
+import { activeOutline } from '../reader-outline';
 import type {
   PaperMinimapBase,
   PaperMinimapLensProjection,
@@ -15,6 +16,7 @@ const props = defineProps<{
   outlineItems: OutlineItem[];
   progressPct: number;
   anchorLid: string | null;
+  anchorOffset?: number;
   selectedLid: string | null;
   pendingLid?: string | null;
   leafCount: number;
@@ -53,13 +55,7 @@ const filteredOutline = computed(() => {
     return item.title.toLowerCase().includes(q) || item.lid.toLowerCase().includes(q);
   });
 });
-const activeOutlineLid = computed(() => {
-  const anchor = props.anchorLid;
-  if (!anchor) return null;
-  return props.outlineItems
-    .filter((item) => anchor === item.lid || anchor.startsWith(`${item.lid}.`))
-    .sort((a, b) => b.lid.length - a.lid.length)[0]?.lid ?? null;
-});
+const activeOutlineLid = computed(() => activeOutline(props.outlineItems, props.anchorLid, props.anchorOffset)?.lid ?? null);
 const nodeKindLabels: Record<string, string> = {
   chapter: uiText('章'),
   section: uiText('节'),

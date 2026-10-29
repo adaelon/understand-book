@@ -72,16 +72,33 @@ export function projectBoardRoute(document: BoardDocument, route: BoardRoute | n
     highlightTargets: [] as BoardVisualTarget[], previousTargets: new Set<string>() };
   const targets = route.steps.slice(0, index + 1).flatMap(entry => entry.reveal_targets);
   const items = new Set<string>(), links = new Set<string>();
-  for (const target of targets) {
-    if (target.kind === 'link') links.add(target.link_id); else items.add(target.item_id);
+  const linksById = new Map((document.links ?? []).map(link => [link.link_id, link]));
+  // Revealed and focused connections need their endpoints, including other links.
+  function reveal(target: BoardVisualTarget) {
+    if (target.kind !== 'link') { items.add(target.item_id); return; }
+    if (links.has(target.link_id)) return;
+    links.add(target.link_id);
+    const link = linksById.get(target.link_id);
+    if (link) { reveal(link.from); reveal(link.to); }
   }
-  // A revealed connection brings its endpoints into view; a highlighted item is readable at this step.
-  for (const link of document.links ?? []) if (links.has(link.link_id)) {
-    for (const end of [link.from, link.to]) if (end.kind !== 'link') items.add(end.item_id);
+  for (const target of [...targets, ...(step?.focus_targets ?? [])]) reveal(target);
+
+  // Node-only routes still show relationships between visible nodes. A link with
+  // its own reveal step keeps that timing instead of appearing ahead of the step.
+  const scheduledLinks = new Set(route.steps.flatMap(entry => entry.reveal_targets
+    .flatMap(target => target.kind === 'link' ? [target.link_id] : [])));
+  const visited = new Set<string>();
+  function visible(target: BoardVisualTarget): boolean {
+    if (target.kind !== 'link') return items.has(target.item_id);
+    if (links.has(target.link_id)) return true;
+    if (scheduledLinks.has(target.link_id) || visited.has(target.link_id)) return false;
+    visited.add(target.link_id);
+    const link = linksById.get(target.link_id);
+    if (!link || !visible(link.from) || !visible(link.to)) return false;
+    links.add(target.link_id);
+    return true;
   }
-  for (const target of step?.focus_targets ?? []) {
-    if (target.kind === 'link') links.add(target.link_id); else items.add(target.item_id);
-  }
+  for (const link of document.links ?? []) visible({ kind: 'link', link_id: link.link_id });
   return { index, step, visibleItemIds: [...items], visibleLinkIds: [...links], highlightTargets: step?.focus_targets ?? [],
     previousTargets: new Set(route.steps.slice(0, Math.max(0, index)).flatMap(entry => entry.reveal_targets.map(boardVisualKey))) };
 }

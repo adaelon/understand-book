@@ -113,6 +113,7 @@ if (shadowGeneration && shadowFinal) {
     }
     const snapshot = buildAutomaticBuildSnapshot(target, {
       quality_profile: productionQualityProfile as ExtractionQualityProfile,
+      stage: "profile_sidecar",
     });
     const stage = snapshot.stages.find((candidate) => candidate.stage === "profile_sidecar");
     const expectedPolicyContracts = JSON.parse(productionPolicyContractsJson) as unknown;

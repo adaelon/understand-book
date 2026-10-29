@@ -31,6 +31,7 @@ pub(crate) fn deferred() -> ToolError {
 
 pub(crate) enum Capability {
     Me,
+    Presence,
     Logout,
     Allowance,
     CloudPlans,
@@ -87,6 +88,7 @@ pub(crate) fn canonical(url: &str) -> Result<(&str, &str), ToolError> {
 pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
     Ok(match path {
         "/auth/me" => Capability::Me,
+        "/account/presence" => Capability::Presence,
         "/auth/logout" => Capability::Logout,
         "/account/password" => Capability::Password,
         "/account/mcp" => Capability::McpList,
@@ -209,6 +211,7 @@ pub struct AuthorizedContext {
     pub(crate) user: UserHandle,
 }
 pub struct Authorization {
+    pub(crate) monitor: crate::server_monitor::ServerMonitor,
     pub(crate) mcp_usage: crate::mcp_usage::McpUsage,
     pub(crate) mcp_access: crate::mcp_access::McpAccess,
     pub(crate) email_binding: crate::account_email::EmailBinding,
@@ -316,6 +319,7 @@ impl Authorization {
         users.presentation_limits = (limits.presentation_bytes, limits.presentation_files);
         let sandbox = crate::presentation_sandbox::Sandbox::load(writer.root());
         Ok(Self {
+            monitor: crate::server_monitor::ServerMonitor::new(writer.root()),
             mcp_access: crate::mcp_access::McpAccess::new(ControlStore::open(writer.clone())?),
             mcp_usage: crate::mcp_usage::McpUsage::new(ControlStore::open(writer.clone())?),
             registration: crate::account_registration::Registration::new(ControlStore::open(writer.clone())?),
@@ -345,12 +349,14 @@ impl Authorization {
     }
     pub fn context(&self, principal: Principal, now: i64) -> Result<AuthorizedContext, ToolError> {
         self.auth.validate(&principal, now)?;
-        let user = self
-            .users
-            .lock()
-            .unwrap()
-            .get(principal.user_id(), &now.to_string())?;
+        let user = self.reader_user(principal.user_id(), now)?;
         Ok(AuthorizedContext { principal, user })
+    }
+    fn reader_user(&self, owner: &str, now: i64) -> Result<UserHandle, ToolError> {
+        let user = self.users.lock().unwrap().lookup(owner, &now.to_string())?;
+        // Waiting for one user's command must not hold up every other reader.
+        user.lock().unwrap_or_else(|e| e.into_inner()).last_access = std::time::Instant::now();
+        Ok(user)
     }
     pub(crate) fn learning_workspace_active(&self, owner: &str, id: &str) -> Result<bool, ToolError> {
         Ok(!self.control.lock().unwrap().learning_workspace(owner, id)?.archived)
@@ -440,7 +446,7 @@ impl Authorization {
                 let result = control.revise_exam_sprint(owner, id, input, now)?;
                 let revision = control.learning_workspace(owner, id)?.goal.revision;
                 drop(control);
-                let user = self.users.lock().unwrap().get(owner, &now.to_string())?;
+                let user = self.reader_user(owner, now)?;
                 user.lock().unwrap().learning_store_for_workspace(Some(id))?
                     .sync_workspace_goal(revision, &now.to_string())?;
                 Ok(result)
@@ -449,7 +455,7 @@ impl Authorization {
                 let input: Goal = serde_json::from_value(input).map_err(|_| invalid())?;
                 let updated = control.revise_learning_workspace_goal(owner, id, input.goal, now)?;
                 drop(control);
-                let user = self.users.lock().unwrap().get(owner, &now.to_string())?;
+                let user = self.reader_user(owner, now)?;
                 user.lock().unwrap().learning_store_for_workspace(Some(id))?
                     .sync_workspace_goal(updated.goal.revision, &now.to_string())?;
                 Ok(json!(updated))
