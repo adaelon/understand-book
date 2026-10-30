@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const ESTIMATOR_VERSION: &str = "learner.conditions.v3";
+pub const ESTIMATOR_VERSION: &str = "learner.conditions.v4";
 
 // Interpretations may be written by a later background job. Their position in
 // learning history comes from the last actual expression they interpret, never
@@ -620,11 +620,19 @@ impl LearningStore {
             .iter()
             .filter_map(|(_, e)| e.supersedes.as_ref())
             .collect();
+        // A practice problem found unsound after delivery graded against a
+        // possibly wrong key; its results stay in history but not in the view.
+        let questionable: BTreeSet<String> = {
+            let mut q = tx.prepare("SELECT json_extract(event,'$.payload.delivery_ref') FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.kind')='practice_checked' AND json_extract(event,'$.payload.verdict')='questionable'").map_err(storage)?;
+            let rows = q.query_map(params![self.workspace_scope], |r| r.get::<_, String>(0)).map_err(storage)?;
+            rows.collect::<Result<_, _>>().map_err(storage)?
+        };
         let mut rows = BTreeMap::<(String, u64, String, String), KnowledgeRow>::new();
         let mut paths = BTreeMap::<String, Value>::new();
         for (_, e) in all
             .iter()
             .filter(|(_, e)| !superseded.contains(&e.evidence_id))
+            .filter(|(_, e)| !e.delivery_ref.as_ref().is_some_and(|d| questionable.contains(d)))
         {
             if e.nature == EvidenceNature::Hypothesis { continue; }
             let (Some(object_id), Some(object_revision)) = (&e.object_id, e.object_revision) else { continue; };

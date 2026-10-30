@@ -25,7 +25,7 @@ it('shows source readiness independently and ignores a previous book response', 
 it.each(['failure', 'success'])('ignores a previous chat state read after the current read completes (%s)', async outcome => {
   let finish!: (value: Awaited<ReturnType<typeof api.tutorState>>) => void;
   let reject!: (failure: Error) => void;
-  const oldState = { workspace_goal_revision: null, control: { enabled: false, revision: 1, current_tutor_session_id: null }, sessions: {} };
+  const oldState = { workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: false, revision: 1, current_tutor_session_id: null }, sessions: {} };
   const currentState = { ...oldState, control: { ...oldState.control, enabled: true, revision: 2 } };
   vi.spyOn(api, 'tutorState').mockReturnValueOnce(new Promise((yes, no) => { finish = yes; reject = no; }))
     .mockResolvedValue(currentState);
@@ -40,9 +40,9 @@ it.each(['failure', 'success'])('ignores a previous chat state read after the cu
 });
 
 it('retains an unconfirmed setting operation when its response belongs to a previous chat', async () => {
-  vi.spyOn(api, 'tutorState').mockResolvedValue({ workspace_goal_revision: null, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  vi.spyOn(api, 'tutorState').mockResolvedValue({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
   const mutate = vi.spyOn(api, 'tutorMutate').mockRejectedValueOnce(new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', '阅读现场已切换'))
-    .mockResolvedValue({ workspace_goal_revision: null, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
+    .mockResolvedValue({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
   const tutor = useTutorControl(); await tutor.load();
   await tutor.act({ kind: 'set_enabled', enabled: true });
   expect(tutor.error.value).toBe('学习设置的保存结果待确认，请重试。');
@@ -53,15 +53,15 @@ it('retains an unconfirmed setting operation when its response belongs to a prev
 });
 
 it('keeps the durable state on write failure and retries the exact operation', async () => {
-  vi.spyOn(api, 'tutorState').mockResolvedValue({ workspace_goal_revision: null, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
-  const mutate = vi.spyOn(api, 'tutorMutate').mockRejectedValueOnce(new Error('disk full')).mockResolvedValue({ workspace_goal_revision: null, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
+  vi.spyOn(api, 'tutorState').mockResolvedValue({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
+  const mutate = vi.spyOn(api, 'tutorMutate').mockRejectedValueOnce(new Error('disk full')).mockResolvedValue({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
   const tutor = useTutorControl();
   await tutor.load();
   await tutor.act({ kind: 'set_enabled', enabled: true });
   expect(tutor.state.value?.control.enabled).toBe(false);
   expect(tutor.error.value).toContain('未确认保存');
   expect(tutor.pending.value).not.toBeNull();
-  vi.mocked(api.tutorState).mockResolvedValue({ workspace_goal_revision: null, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
+  vi.mocked(api.tutorState).mockResolvedValue({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
   await tutor.retry();
   expect(mutate.mock.calls[1][0]).toEqual(mutate.mock.calls[0][0]);
   expect(tutor.pending.value).toBeNull();
@@ -80,7 +80,7 @@ it('does not invent disabled state when the persisted control cannot be read', a
 });
 
 it('does not apply a previous book save after the local reader changes books', async () => {
-  const empty = { workspace_goal_revision: null, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} };
+  const empty = { workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} };
   vi.spyOn(api, 'tutorState').mockResolvedValue(empty);
   let finish!: (value: typeof empty) => void;
   vi.spyOn(api, 'tutorMutate').mockReturnValue(new Promise(resolve => { finish = resolve; }));
@@ -95,7 +95,7 @@ it('does not apply a previous book save after the local reader changes books', a
 });
 
 it('restores the server-selected source goal independently of teaching readiness', async () => {
-  const state = { workspace_goal_revision: null, control: { enabled: true, revision: 2, current_tutor_session_id: 'learn' }, sessions: {
+  const state = { workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 2, current_tutor_session_id: 'learn' }, sessions: {
     learn: { id: 'learn', revision: 1, workspace_goal_revision: null, status: 'active' as const, user_intent: '理解速度', explicit_constraints: [],
       current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
       material_scope: [{ source_id: 'book', scope_refs: [], role: 'primary' as const }], default_teaching_intent: null, path_instance_ref: null, progress_ref: null },

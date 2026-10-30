@@ -3,4 +3,8 @@ import type { NoteAuthorship } from "./NoteAuthorship";
 import type { NoteContext } from "./NoteContext";
 import type { NoteRef } from "./NoteRef";
 
-export type NoteSearchHit = { reference: NoteRef, title: string | null, excerpt: string, authorship: NoteAuthorship, context: NoteContext, lexical_rank: number | null, semantic_rank: number | null, score: number, };
+export type NoteSearchHit = { reference: NoteRef, title: string | null, excerpt: string, authorship: NoteAuthorship, context: NoteContext, lexical_rank: number | null, semantic_rank: number | null, 
+/**
+ * Learning-map recall (ADR-0178 M2); present only when a caller asked for it.
+ */
+structural_rank?: number, score: number, };

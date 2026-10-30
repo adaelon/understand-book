@@ -34,6 +34,7 @@ pub mod assessment;
 pub mod learning_evidence;
 pub mod learning_records;
 pub mod boards;
+pub mod learning_map;
 
 pub use backfill::{
     HistoricalBackfillClearOutcome, HistoricalBackfillCommitOutcome, HistoricalBackfillJob,

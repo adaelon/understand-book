@@ -3,4 +3,4 @@
 /**
  * The reader's purpose for this stage, independent of its teaching method.
  */
-export type LearningPurpose = "discover" | "understand" | "exam" | "explore";
+export type LearningPurpose = "discover" | "understand" | "exam" | "explore" | "practice";

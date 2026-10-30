@@ -12,7 +12,7 @@ const session = (id = 'learn', patch: Partial<TutorSession> = {}): TutorSession 
   default_teaching_intent: null, path_instance_ref: null, progress_ref: null, ...patch,
 });
 const state = (sessions: TutorState['sessions'] = { learn: session() }, current: string | null = 'learn'): TutorState =>
-  ({ control: { enabled: true, revision: 2, current_tutor_session_id: current }, sessions, workspace_goal_revision: null });
+  ({ control: { enabled: true, revision: 2, current_tutor_session_id: current }, sessions, workspace_goal_revision: null, learning_map_enabled: false });
 const wrappers: VueWrapper[] = [];
 function setup(value: TutorState | null = state(), initialView?: 'current' | 'understanding' | 'history') {
   const w = mount(TutorPanel, { attachTo: document.body, props: { state: value, busy: false, error: '', pending: false, sourceId: 'book', label: 'Tutor 已开启',

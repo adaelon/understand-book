@@ -113,6 +113,81 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../api', () => ({ api, ApiError: class extends Error {} }));
 vi.mock('../network-context', () => ({ bindSceneApi: (value: unknown) => value }));
+const notes = vi.hoisted(() => ({ openPersonalNotes: vi.fn() }));
+vi.mock('../personal-notes', () => notes);
+
+it('shows the released solution after a correct answer, still replies, and flags a questionable problem', async () => {
+  const practice = { delivery_ref: 'practice', status: 'active', attempted: false, help_seen: [], practice_check: 'questionable',
+    move: { move_id: 'practice', prompt: 'A cyclist rests…', actions: ['submit', 'request_hint', 'reveal', 'skip'],
+      practice: { entry: 'warmup', mode: 'recall', hint_count: 2 } } };
+  api.tutorActivities.mockResolvedValue({ activities: [practice] });
+  api.tutorAction.mockResolvedValueOnce({ event_id: 'a1', assessment: 'correct',
+    help: { event_id: 'h1', text: 'All 60 minutes count.', reason: 'concluded' } });
+  const replies: string[] = [];
+  const listener = (event: Event) => replies.push((event as CustomEvent<{ text: string }>).detail.text);
+  window.addEventListener('tutor-response', listener);
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' }, attachTo: document.body });
+  try {
+    await flushPromises();
+    reveal(wrapper.get('article').element); await flushPromises();
+    expect(wrapper.get('.practice-check').text()).toContain('可能有误');
+    await wrapper.get('textarea').setValue('["A","B"]');
+    await wrapper.get('button.primary').trigger('click'); await flushPromises();
+    expect(wrapper.get('.hint-place').text()).toBe('完整解答');
+    expect(wrapper.get('.help').text()).toContain('All 60 minutes count.');
+    expect(replies).toEqual(['["A","B"]']);
+  } finally { wrapper.unmount(); window.removeEventListener('tutor-response', listener); }
+});
+
+it('assembles an answer from card picks instead of free text', async () => {
+  api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'cards', status: 'active', attempted: false, help_seen: [],
+    move: { move_id: 'cards', prompt: 'Pick the cards…', actions: ['submit', 'request_hint', 'reveal', 'skip'],
+      practice: { entry: 'board', mode: 'compose', hint_count: 1, cards: [{ id: 'A', text: '20 km' }, { id: 'B', text: '60 min' }, { id: 'C', text: '50 min' }] } } }] });
+  api.tutorAction.mockResolvedValueOnce({ event_id: 'a1', assessment: 'correct', help: null });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' }, attachTo: document.body });
+  try {
+    await flushPromises();
+    reveal(wrapper.get('article').element); await flushPromises();
+    expect(wrapper.find('textarea').exists()).toBe(false);
+    const cards = wrapper.findAll('.practice-card');
+    await cards[1].trigger('click'); await cards[0].trigger('click'); await cards[2].trigger('click'); await cards[2].trigger('click');
+    expect(cards[2].attributes('aria-pressed')).toBe('false');
+    await wrapper.get('button.primary').trigger('click'); await flushPromises();
+    expect(api.tutorAction.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'submit', response: '["B","A"]' });
+  } finally { wrapper.unmount(); }
+});
+
+it('labels practice hints by where they point and opens the exact note or passage', async () => {
+  const practice = { delivery_ref: 'practice', status: 'active', attempted: false,
+    help_seen: [{ action: 'request_hint', hint_kind: 'in_problem', hint_index: 0, text: 'Look at the rest.' }],
+    move: { move_id: 'practice', prompt: 'A cyclist rests ten minutes…', actions: ['submit', 'request_hint', 'reveal'],
+      practice: { entry: 'warmup', mode: 'recall', hint_count: 3 } } };
+  api.tutorActivities.mockResolvedValue({ activities: [practice] });
+  const note = { note_id: 'n1', revision: 2 };
+  api.tutorAction
+    .mockResolvedValueOnce({ event_id: 'a1', assessment: 'unassessed', help: { event_id: 'h1', text: 'Your earlier idea.', hint_kind: 'own_note', hint_index: 1, note_ref: note } })
+    .mockResolvedValueOnce({ event_id: 'a2', assessment: 'unassessed', help: { event_id: 'h2', text: 'Read the passage.', hint_kind: 'source', hint_index: 2, source_lids: ['1.2'] } });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
+  try {
+    await flushPromises();
+    reveal(wrapper.get('article').element); await flushPromises();
+    expect(wrapper.get('.activity-heading').text()).toContain('练一练');
+    expect(wrapper.get('[data-help-action="reveal"]').text()).toBe('看解答');
+    // One hint was already displayed before the reload.
+    const hint = () => wrapper.get('[data-help-action="request_hint"]');
+    expect(hint().text()).toBe('提示（还有 2 条）');
+    await hint().trigger('click'); await flushPromises();
+    expect(wrapper.get('.hint-place').text()).toBe('你自己的想法');
+    await wrapper.get('.hint-link').trigger('click');
+    expect(notes.openPersonalNotes).toHaveBeenCalledWith(note);
+    await hint().trigger('click'); await flushPromises();
+    expect(wrapper.get('.hint-place').text()).toBe('回到原文');
+    await wrapper.get('.hint-link').trigger('click');
+    expect(wrapper.emitted('goto')?.[0]).toEqual(['1.2']);
+    expect(hint().text()).toBe('提示（还有 0 条）');
+    expect(hint().attributes('disabled')).toBeDefined();
+  } finally { wrapper.unmount(); }
+});
 let intersection: IntersectionObserverCallback;
 let displayed: boolean;
 function reveal(target: Element) {

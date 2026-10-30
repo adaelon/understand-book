@@ -2,4 +2,8 @@
 import type { TutorControl } from "./TutorControl";
 import type { TutorSession } from "./TutorSession";
 
-export type TutorState = { control: TutorControl, sessions: { [key in string]?: TutorSession }, workspace_goal_revision: number | null, };
+export type TutorState = { control: TutorControl, sessions: { [key in string]?: TutorSession }, workspace_goal_revision: number | null, 
+/**
+ * Opt-in private learning map (ADR-0178 §7); turning it off deletes the derived map.
+ */
+learning_map_enabled: boolean, };

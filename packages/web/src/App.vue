@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { pendingNoteSource, noteSourceError, editThought, keepNoteDraft, notesPanel, openPersonalNotes, personalNotes, registerThoughtContext, startThought } from './personal-notes';
+import { notesOwner, pendingNoteSource, noteSourceError, editThought, keepNoteDraft, notesPanel, openPersonalNotes, personalNotes, registerThoughtContext, startThought } from './personal-notes';
+import { claimWarmupOffer, examDailyCount, MarginTracker, marginEnabled, marginQuietToday, recordMarginIgnored, setMarginEnabled, today, WARMUP_LIMIT } from './practice-pacing';
 import { t as uiText, getLocale } from './i18n';
 
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toRaw, watch } from "vue";
@@ -254,6 +255,7 @@ import {
 } from "./surface-selection";
 import TopBar from "./components/TopBar.vue";
 import TutorControl from './components/TutorControl.vue';
+import PracticeOffer from './components/PracticeOffer.vue';
 import ConversationLearningGoal from './components/ConversationLearningGoal.vue';
 import { learningPurposeLabel, type LearningScopeKind, type LearningScopeOption } from './learning-purpose';
 import type { LearningPurpose } from './generated/LearningPurpose';
@@ -1399,7 +1401,7 @@ async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
   noteTransition.value = null;
   pending.resolve(action !== 'continue');
 }
-defineExpose({ beforeNoteLeave, prepareExamQuestion });
+defineExpose({ beforeNoteLeave, prepareExamQuestion, startExamPractice: (days: number) => startExamPractice(days) });
 function prepareExamQuestion(message: string) {
   askDraft.value = null;
   targetGoalId.value = null;
@@ -4673,6 +4675,109 @@ async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: Learni
     if (!disposed) banner.value = uiText('学习未开始：{0}', [errorMessage(failure)]);
   } finally { guidingChapter.value = false; }
 }
+/** Practice one exact saved idea against the open material (ADR-0178). */
+async function startNoteRevisit(noteRef: import('./generated/NoteRef').NoteRef) {
+  if (!learningPurposeAvailable.value || guidingChapter.value || sending.value || hasUnconfirmedReadingRequest()
+    || !learningPurposeReady.value) return;
+  const request = { sourceId: buildWorkbenchSnapshot.value!.book_id, sourceRevision: noteSourceFingerprint.value!,
+    sessionId: activeChatSessionId.value, scene: chatSceneKey.value, head: actionHead() };
+  guidingChapter.value = true;
+  try {
+    if (!tutor.state.value?.control.enabled) {
+      await tutorAction({ kind: 'set_enabled', enabled: true });
+      if (tutor.error.value || tutor.pending.value || !tutor.state.value?.control.enabled) return;
+    }
+    if (disposed || request.scene !== chatSceneKey.value || request.sessionId !== activeChatSessionId.value
+      || request.sourceRevision !== noteSourceFingerprint.value) return;
+    tutorPanelOpen.value = false;
+    workspaceRef.value?.showAssistant('agent');
+    await submitAgentMessage('', uiText('用我这条想法练一练'), null, undefined, {
+      entry_action: 'revisit_note', note_ref: noteRef,
+      source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
+      client_request_id: crypto.randomUUID(), expected_chat_head: request.head,
+    });
+    await tutor.load();
+    window.dispatchEvent(new Event('tutor-state-changed'));
+  } catch (failure) {
+    if (!disposed) banner.value = uiText('练习未开始：{0}', [errorMessage(failure)]);
+  } finally { guidingChapter.value = false; }
+}
+// The notes panel is app-wide; only an open material can ground the problem.
+function onPracticeNote(event: Event) {
+  if (!buildWorkbenchSnapshot.value || !noteSourceFingerprint.value || !learningPurposeAvailable.value) return;
+  event.preventDefault();
+  void startNoteRevisit((event as CustomEvent<import('./generated/NoteRef').NoteRef>).detail);
+}
+onMounted(() => window.addEventListener('practice-note', onPracticeNote));
+onBeforeUnmount(() => window.removeEventListener('practice-note', onPracticeNote));
+// Practice offers (ADR-0178 P3). An offer spends nothing; only accepting starts a turn.
+// The margin setting is a per-device preference and stays off unless turned on.
+function practiceStorage(): Storage | null { try { return window.localStorage; } catch { return null; } }
+const practiceOwner = computed(() => notesOwner() ?? 'local');
+const practiceMarginOn = ref(false);
+watch(practiceOwner, owner => { practiceMarginOn.value = marginEnabled(practiceStorage(), owner); }, { immediate: true });
+function setLearningMap(event: Event) {
+  const input = event.target as HTMLInputElement;
+  // Off deletes the derived map; it can be rebuilt by turning it on again.
+  if (!input.checked && !window.confirm(uiText('关闭后将删除已整理的学习脉络（笔记与学习记录不受影响），确定吗？'))) { input.checked = true; return; }
+  void tutorAction({ kind: 'set_learning_map', enabled: input.checked });
+}
+function setPracticeMargin(on: boolean) { practiceMarginOn.value = on; setMarginEnabled(practiceStorage(), practiceOwner.value, on); }
+const practiceOffer = ref<{ kind: 'margin' | 'warmup' | 'warmup-next' | 'exam-next'; step?: number } | null>(null);
+/** Problems started in the current warm-up or exam sequence; 0 when none is active. */
+const warmupStarted = ref(0);
+const sequence = ref<{ kind: 'warmup' | 'exam'; total: number }>({ kind: 'warmup', total: WARMUP_LIMIT });
+const practiceAvailable = computed(() => learningPurposeAvailable.value && learningPurposeReady.value
+  && !!tutor.state.value?.control.enabled && !sending.value && !guidingChapter.value);
+const marginTracker = new MarginTracker();
+let practiceTimer: number | undefined;
+onMounted(() => { practiceTimer = window.setInterval(() => {
+  const due = marginTracker.observe(guideChapter.value?.lid ?? null, document.visibilityState === 'visible', Date.now());
+  if (due && practiceMarginOn.value && !practiceOffer.value && practiceAvailable.value
+    && !marginQuietToday(practiceStorage(), practiceOwner.value, today())) practiceOffer.value = { kind: 'margin' };
+}, 15_000); });
+onBeforeUnmount(() => window.clearInterval(practiceTimer));
+// One warm-up offer per material and day, once this material already has a learning stage.
+watch(() => [practiceAvailable.value, buildWorkbenchSnapshot.value?.book_id, !!tutor.current.value] as const, ([available, book, stage]) => {
+  if (!available || !book || !stage || practiceOffer.value || warmupStarted.value) return;
+  if (claimWarmupOffer(practiceStorage(), practiceOwner.value, `${book}:${chatSceneKey.value}`, today())) practiceOffer.value = { kind: 'warmup' };
+});
+function onPracticeConcluded() {
+  if (warmupStarted.value > 0 && warmupStarted.value < sequence.value.total && !practiceOffer.value) {
+    practiceOffer.value = { kind: sequence.value.kind === 'exam' ? 'exam-next' : 'warmup-next', step: warmupStarted.value + 1 };
+  } else if (warmupStarted.value >= sequence.value.total) warmupStarted.value = 0;
+}
+function sequenceLabel() {
+  const [step, total] = [String(warmupStarted.value), String(sequence.value.total)];
+  return sequence.value.kind === 'exam' ? uiText('考试冲刺 · 今日练习（第 {0} / {1} 题）', [step, total])
+    : uiText('热身练习（第 {0} / {1} 题）', [step, total]);
+}
+/** Today's exam-sprint practice: a short sequence within the sprint's scope. */
+async function startExamPractice(remainingDays: number) {
+  sequence.value = { kind: 'exam', total: examDailyCount(remainingDays) };
+  warmupStarted.value = 1;
+  practiceOffer.value = null;
+  await startLearningPurpose('practice', 'material', sequenceLabel());
+}
+onMounted(() => window.addEventListener('practice-concluded', onPracticeConcluded));
+onBeforeUnmount(() => window.removeEventListener('practice-concluded', onPracticeConcluded));
+async function acceptPracticeOffer() {
+  const offer = practiceOffer.value;
+  practiceOffer.value = null;
+  if (!offer) return;
+  if (offer.kind === 'margin') {
+    await startLearningPurpose('practice', guideChapter.value ? 'chapter' : 'material', uiText('边读边练一题'));
+    return;
+  }
+  if (offer.kind === 'warmup') sequence.value = { kind: 'warmup', total: WARMUP_LIMIT };
+  warmupStarted.value = offer.kind === 'warmup' ? 1 : warmupStarted.value + 1;
+  await startLearningPurpose('practice', 'material', sequenceLabel());
+}
+function dismissPracticeOffer() {
+  if (practiceOffer.value?.kind === 'margin') recordMarginIgnored(practiceStorage(), practiceOwner.value, today());
+  practiceOffer.value = null;
+  warmupStarted.value = 0;
+}
 async function setConversationLearningGoal(intent: string) {
   const sourceId = tutor.readiness.value?.source_id;
   if (!sourceId || sending.value) return;
@@ -6052,6 +6157,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         </template>
         <template #tutor-control>
           <TutorControl :enabled="!!tutor.state.value?.control.enabled" :label="tutor.label.value" :busy="tutor.busy.value" :unavailable="!tutor.state.value || !!tutor.pending.value" :error="tutor.error.value" @toggle="tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled })" @retry="tutor.retry" />
+          <label class="practice-margin-setting"><input type="checkbox" :checked="practiceMarginOn" @change="setPracticeMargin(($event.target as HTMLInputElement).checked)" /> {{ uiText('阅读时提议练习') }}</label>
+          <label class="practice-margin-setting" :title="uiText('从已讲过的内容中整理跨书的私人学习脉络，在后台进行并计入额度；关闭会删除已整理的脉络。')"><input type="checkbox" :checked="!!tutor.state.value?.learning_map_enabled" :disabled="tutor.busy.value || !tutor.state.value" @change="setLearningMap($event)" /> {{ uiText('整理我的学习脉络') }}</label>
+          <PracticeOffer v-if="practiceOffer" :kind="practiceOffer.kind" :step="practiceOffer.step" :total="sequence.total" :busy="sending || guidingChapter" @accept="acceptPracticeOffer" @dismiss="dismissPracticeOffer" />
         </template>
       </RightRail>
     </ReaderWorkspace>
@@ -7208,4 +7316,5 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 .note-placement-status button {
   flex: 0 0 auto;
 }
+.practice-margin-setting { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--steel); font-size: .73rem; cursor: pointer; }
 </style>

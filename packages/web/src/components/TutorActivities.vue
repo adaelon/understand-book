@@ -3,7 +3,8 @@ import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { MessageCircle } from '@lucide/vue';
-import { api as sharedApi, ApiError, type TutorActivity, type TeachingResponseOrigin } from '../api';
+import { api as sharedApi, ApiError, type TutorActivity, type TutorHelp, type TeachingResponseOrigin } from '../api';
+import { openPersonalNotes } from '../personal-notes';
 import { answerDisplayParts, sourceMarkedParts } from '../answer-markdown';
 import type { AgentAnswerSource } from '../generated/AgentAnswerSource';
 import { bindSceneApi } from '../network-context';
@@ -16,7 +17,7 @@ const props = withDefaults(defineProps<{ sessionId: string; turnId: string; refe
   presentationTarget?: () => HTMLElement | undefined;
   hostedPresentations?: PresentationRef[]; busy?: boolean; beforeResponse?: () => Promise<void> }>(), { ready: true, sources: () => [], hostedPresentations: () => [] });
 const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void; (e: 'editing-response', editing: boolean): void;
-  (e: 'locate-presentation', reference: PresentationRef): void }>();
+  (e: 'locate-presentation', reference: PresentationRef): void; (e: 'goto', lid: string): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
 // Actionless moves are delivered through this turn's final answer. The saved
@@ -84,7 +85,34 @@ function endResponseEditing() {
   if (root.value?.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
   editingDelivery.value = null; emit('editing-response', false);
 }
-const helps = ref<Record<string, { event_id: string; text: string }>>({});
+const helps = ref<Record<string, TutorHelp>>({});
+// Practice hints point back to sources; the label says where, without a level number.
+const hintPlaces: Record<NonNullable<TutorHelp['hint_kind']>, string> = { in_problem: uiText('再看看题目'), structure: uiText('换个角度看题'), own_note: uiText('你自己的想法'),
+  source: uiText('回到原文'), worked_step: uiText('关键一步') };
+function hintsLeft(activity: TutorActivity) {
+  const practice = activity.move.practice;
+  if (!practice) return null;
+  // Saved displays survive a reload; the current help may not be acknowledged yet.
+  const seen = (activity.help_seen as Partial<TutorHelp>[]).map(help => help.hint_index ?? -1);
+  const released = Math.max(-1, helps.value[activity.delivery_ref]?.hint_index ?? -1, ...seen) + 1;
+  return Math.max(0, practice.hint_count - released);
+}
+// Card assembly answers with the chosen card ids, in the order they were picked.
+const pickedCards = ref<Record<string, string[]>>({});
+function toggleCard(activity: TutorActivity, id: string) {
+  const picked = [...(pickedCards.value[activity.delivery_ref] ?? [])];
+  const at = picked.indexOf(id);
+  if (at >= 0) picked.splice(at, 1); else picked.push(id);
+  pickedCards.value[activity.delivery_ref] = picked;
+  responses.value[activity.delivery_ref] = picked.length ? JSON.stringify(picked) : '';
+  responseOrigins.value[activity.delivery_ref] = { kind: 'user_text' };
+}
+function actionLabel(activity: TutorActivity, action: string) {
+  if (!activity.move.practice) return labels[action];
+  if (action === 'reveal') return uiText('看解答');
+  if (action === 'request_hint') return uiText('提示（还有 {0} 条）', [String(hintsLeft(activity))]);
+  return labels[action];
+}
 const error = ref(''); const busy = ref(false);
 const visible = new Set<string>();
 const visibleHelp = new Set<string>();
@@ -204,11 +232,18 @@ async function send() {
   const request = pending;
   const result = await api.tutorAction(request);
   pending = null;
+  // A concluded practice problem lets an active warm-up offer its next problem.
+  if (activities.value.some(a => a.delivery_ref === request.delivery_ref && a.move.practice)
+    && (result.assessment === 'correct' || ['skip', 'reveal'].includes(request.action))) {
+    window.dispatchEvent(new CustomEvent('practice-concluded', { detail: { delivery_ref: request.delivery_ref } }));
+  }
   if (result.help) {
     helps.value[request.delivery_ref] = result.help;
     await observeVisibleContent();
     await acknowledgeHelp(request.delivery_ref);
-  } else {
+  }
+  // A correct practice answer also releases its solution; the answer still gets a reply.
+  if (!result.help || ['submit', 'revise'].includes(request.action)) {
     endResponseEditing();
     continueLearning(result.event_id, request.response || uiText('我跳过了这个活动，请调整接下来的讲法。'), request.scene, request.response_origin);
   }
@@ -308,20 +343,35 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
         <small v-else-if="activity.response_invitation_status === 'deferred'">{{ uiText('这个问题先留在这里。') }}</small>
       </template>
       <template v-else>
-      <header v-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? uiText('继续完善你的回答') : uiText('轮到你了') }}</span><small>{{ uiText('用自己的话试一试') }}</small></header>
+      <header v-if="activity.move.practice" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? uiText('继续完善你的回答') : uiText('练一练') }}</span><small>{{ uiText('想不起来时，提示会一步步指回你的想法和原文') }}</small></header>
+      <header v-else-if="activity.move.actions.length" class="activity-heading"><MessageCircle :size="17" aria-hidden="true" /><span>{{ activity.attempted ? uiText('继续完善你的回答') : uiText('轮到你了') }}</span><small>{{ uiText('用自己的话试一试') }}</small></header>
       <div class="activity-text md" v-html="renderText(activity.move.prompt)" @click="openSource(activity.move.prompt, $event)"></div>
       <p v-if="activity.status !== 'active'" role="status">{{ activity.status === 'paused' ? uiText('学习已暂停，可查看已交付内容和帮助。') : uiText('原教学来源不可用，暂不能提交。') }}</p>
-      <textarea v-if="activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('活动回答')" :placeholder="uiText('写下你的理解，或还不确定的地方…')" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
+      <p v-if="activity.practice_check === 'questionable'" class="practice-check" role="status">{{ uiText('这道题的解答可能有误，本题结果不计入学习记录。') }}</p>
+      <div v-if="activity.move.practice?.cards?.length" class="practice-cards" role="group" :aria-label="uiText('选出能一起推出结论的卡片')">
+        <button v-for="card in activity.move.practice.cards" :key="card.id" type="button" class="practice-card"
+          :aria-pressed="(pickedCards[activity.delivery_ref] ?? []).includes(card.id)" :disabled="busy || activity.status !== 'active'"
+          @click="toggleCard(activity, card.id)">{{ card.text }}</button>
+      </div>
+      <textarea v-if="!activity.move.practice?.cards?.length && activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('活动回答')" :placeholder="uiText('写下你的理解，或还不确定的地方…')" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
       <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
       <div v-if="activity.move.actions.length" class="activity-actions">
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
           :class="{ primary: ['submit', 'revise', 'self_report'].includes(action) }"
-          :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined" :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action))" @click="act(activity, action)">{{ labels[action] }}</button>
+          :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined"
+          :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action)) || (action === 'request_hint' && hintsLeft(activity) === 0)"
+          @click="act(activity, action)">{{ actionLabel(activity, action) }}</button>
       </template>
       </div>
       </Teleport>
-      <div v-if="helps[activity.delivery_ref]" class="help activity-text md" :data-help-for="activity.delivery_ref" role="status" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
+      <div v-if="helps[activity.delivery_ref]" class="help" :data-help-for="activity.delivery_ref" role="status">
+        <small v-if="helps[activity.delivery_ref].hint_kind" class="hint-place">{{ hintPlaces[helps[activity.delivery_ref].hint_kind!] }}</small>
+        <small v-else-if="helps[activity.delivery_ref].reason === 'concluded'" class="hint-place">{{ uiText('完整解答') }}</small>
+        <div class="activity-text md" v-html="renderText(helps[activity.delivery_ref].text)" @click="openSource(helps[activity.delivery_ref].text, $event)"></div>
+        <button v-if="helps[activity.delivery_ref].note_ref" class="hint-link" @click="openPersonalNotes(helps[activity.delivery_ref].note_ref!)">{{ uiText('打开这条想法') }}</button>
+        <button v-for="lid in helps[activity.delivery_ref].source_lids ?? []" :key="lid" class="hint-link" @click="emit('goto', lid)">{{ uiText('打开原文') }}</button>
+      </div>
       <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">{{ uiText('当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。') }}</small>
       <small v-if="activity.help_seen.length">{{ uiText('此活动已展示过帮助；重开页面会保留这项记录。') }}</small>
       <small v-if="activity.attempted" role="status">{{ assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
@@ -356,7 +406,13 @@ button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--brand
 button:disabled { opacity: .5; cursor: default; }
 small { display: block; margin-top: 10px; color: var(--steel); font-size: .75rem; line-height: 1.6; }
 .activity-text { line-height: 1.85; overflow-wrap: anywhere; }
-.help { margin-top: 18px; padding: 14px; border-left: 2px solid var(--brand-green); background: var(--canvas); border-radius: 0 8px 8px 0; }
+.help { margin-top: 18px; padding: 14px; border-left: 2px solid var(--brand-green); background: var(--canvas); border-radius: 0 8px 8px 0; line-height: 1.85; overflow-wrap: anywhere; }
+.practice-cards { display: flex; flex-direction: column; gap: 8px; margin: 18px 0 12px; }
+.practice-card { min-height: 42px; padding: 10px 12px; text-align: left; line-height: 1.6; }
+.practice-card[aria-pressed=true] { border-color: var(--brand-green-deep); background: color-mix(in srgb, var(--brand-green) 12%, var(--canvas)); color: var(--ink); }
+.practice-check { margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--canvas); color: var(--reader-coral); font-size: .82rem; }
+.help .hint-place { margin: 0 0 6px; color: var(--brand-green-deep); font-weight: 600; }
+.help .hint-link { margin: 10px 8px 0 0; min-height: 34px; }
 @media (max-width: 600px) { article.interactive { padding: 16px; border-radius: 12px; } .activity-heading small { flex-basis: 100%; margin-left: 25px; } }
 .activity-text :deep(.agent-source-button) { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 100%; margin: 0 0.2rem; padding: 0.18rem 0.42rem; border: 1px solid var(--line); border-radius: 6px; color: var(--accent); background: var(--canvas); font: inherit; font-size: 0.8em; cursor: pointer; }
 </style>

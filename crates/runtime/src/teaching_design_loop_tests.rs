@@ -1008,7 +1008,7 @@ fn teaching_design_loop_help_and_continuation_do_not_lock_a_teaching_method() {
     use crate::tutor_continuation::*;
     for action in [InteractionAction::UiEntry { entry_action: EntryAction::ClarifyAnswer },
         InteractionAction::UiChoice { teaching_choice: TeachingChoice { delivery_ref:"delivery".into(), option_id:"help".into() }, move_kind:ContinuationMoveKind::Explain }] {
-        let resolved = ResolvedInteraction { action, learning_purpose:None, user_supplement:String::new(), accepted_request:"这一步没跟上".into(), answer_ref:None, answer_text:None, source_excerpt:None, source_bindings:Vec::new(), target:None, expected_chat_head:None, presentation_follow_up:None };
+        let resolved = ResolvedInteraction { action, learning_purpose:None, user_supplement:String::new(), accepted_request:"这一步没跟上".into(), answer_ref:None, answer_text:None, source_excerpt:None, source_bindings:Vec::new(), target:None, expected_chat_head:None, presentation_follow_up:None, note_ref:None };
         let context = serde_json::json!({"current_action":resolved});
         assert_eq!(crate::tutor::action_intent(&context), None);
         assert!(resolved.validates_current_action("guided_inquiry", "compare"));

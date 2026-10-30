@@ -1249,9 +1249,25 @@ export interface TutorActivity {
     presentation?: import('./generated/PresentationRef').PresentationRef | null;
     response_expectation?: { public_prompt: string; block_refs: string[] } | null;
     block_refs?: string[];
+    /** Public practice view: hint texts stay private until requested. */
+    practice?: { entry: string; mode: string; distance?: string | null; hint_count: number; revisit_note?: import('./generated/NoteRef').NoteRef | null;
+      /** Board assembly: card texts only; which are premises stays private. */
+      cards?: { id: string; text: string }[] } | null;
   }; status: string; attempted: boolean; help_seen: unknown[];
+  /** After-delivery soundness verdict for a practice problem; null while unchecked. */
+  practice_check?: 'sound' | 'questionable' | null;
   response_invitation_status?: 'open' | 'addressed' | 'deferred' | null;
   assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
+}
+/** Released activity help. Practice hints point back to an exact note or source passage. */
+export interface TutorHelp {
+  event_id: string; text: string;
+  hint_kind?: 'in_problem' | 'structure' | 'own_note' | 'source' | 'worked_step';
+  hint_index?: number;
+  /** 'concluded': the committed solution released by a correct practice answer. */
+  reason?: string;
+  note_ref?: import('./generated/NoteRef').NoteRef | null;
+  source_lids?: string[];
 }
 export interface TeachingResponseOrigin {
   kind: 'user_text' | 'interface_request' | 'presentation_prefill';
@@ -1287,6 +1303,8 @@ export interface LearningEvidenceView {
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
   note_refs?: import('./generated/NoteRef').NoteRef[];
+  /** entry_action=revisit_note: the exact saved idea to practice from. */
+  note_ref?: import('./generated/NoteRef').NoteRef;
   note_reply_to?: string;
   personal_chat_ref?: {session_id:string;turn_id:string};
   board_follow_up?: BoardFollowUp;
@@ -1636,7 +1654,7 @@ export const api = {
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
   tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
-  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: { event_id: string; text: string } | null }>("POST", "/tutor/action", request),
+  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: TutorHelp | null }>("POST", "/tutor/action", request),
   tutorPageHelp: (request: { delivery_ref: string; kind: 'hint' | 'explanation'; text: string; presentation_follow_up: import('./generated/PresentationFollowUp').PresentationFollowUp }) => http<{ event_id: string }>('POST', '/tutor/page-help', request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;

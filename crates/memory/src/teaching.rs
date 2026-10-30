@@ -140,6 +140,8 @@ pub enum TeachingFact {
     UsageObserved,
     ContinuationDisplayed,
     ContinuationChosen,
+    /// An after-delivery soundness verdict on a practice problem; never learner evidence.
+    PracticeChecked,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
@@ -417,6 +419,45 @@ impl LearningStore {
         rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
             .collect()
     }
+    /// Delivered practice problems still without a final soundness verdict, oldest
+    /// first. Failed attempts are their own facts; `max_failures` bounds retries.
+    pub fn unchecked_practice_deliveries(&self, max_failures: u32, limit: u32) -> Result<Vec<TeachingEvent>, ToolError> {
+        let mut query = self.connection.prepare("SELECT d.event FROM teaching_trace d WHERE d.learning_workspace_id=?1
+            AND json_extract(d.event,'$.kind')='message_delivered' AND json_type(d.event,'$.payload.move.practice')='object'
+            AND NOT EXISTS (SELECT 1 FROM teaching_trace c WHERE c.learning_workspace_id=?1 AND c.event_id='practice-check:'||d.event_id)
+            AND (SELECT count(*) FROM teaching_trace f WHERE f.learning_workspace_id=?1 AND json_extract(f.event,'$.kind')='practice_checked'
+                AND json_extract(f.event,'$.payload.delivery_ref')=d.event_id AND json_extract(f.event,'$.payload.verdict')='failed')<?2
+            ORDER BY d.seq LIMIT ?3").map_err(storage)?;
+        let rows = query
+            .query_map(params![self.workspace_scope, max_failures, limit], |r| r.get::<_, String>(0))
+            .map_err(storage)?;
+        rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
+            .collect()
+    }
+
+    /// Delivered practice problems on one source, newest first.
+    pub fn practice_deliveries(&self, source: &str, limit: u32) -> Result<Vec<TeachingEvent>, ToolError> {
+        let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.kind')='message_delivered'
+            AND json_type(event,'$.payload.move.practice')='object' AND json_extract(event,'$.binding.source_id')=? ORDER BY seq DESC LIMIT ?").map_err(storage)?;
+        let rows = query
+            .query_map(params![self.workspace_scope, source, limit], |r| r.get::<_, String>(0))
+            .map_err(storage)?;
+        rows.map(|row| serde_json::from_str(&row.map_err(storage)?).map_err(storage))
+            .collect()
+    }
+
+    /// Failed check attempts already recorded for a delivered practice problem.
+    pub fn practice_check_failures(&self, delivery: &str) -> Result<u32, ToolError> {
+        self.connection.query_row("SELECT count(*) FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.kind')='practice_checked' AND json_extract(event,'$.payload.delivery_ref')=? AND json_extract(event,'$.payload.verdict')='failed'",
+            params![self.workspace_scope, delivery], |r| r.get(0)).map_err(storage)
+    }
+
+    /// The final verdict on a delivered practice problem: `sound` or `questionable`.
+    pub fn practice_check_verdict(&self, delivery: &str) -> Result<Option<String>, ToolError> {
+        self.connection.query_row("SELECT json_extract(event,'$.payload.verdict') FROM teaching_trace WHERE learning_workspace_id=? AND event_id='practice-check:'||?",
+            params![self.workspace_scope, delivery], |r| r.get(0)).optional().map_err(storage)
+    }
+
     pub fn teaching_event(&self, id: &str) -> Result<TeachingEvent, ToolError> {
         let json: Option<String> = self
             .connection

@@ -106,7 +106,10 @@ pub(crate) fn dispatch(
         "chats" => {
             json!({"sessions":user.agent_history.sessions.iter().filter(|s|s.book_id.is_empty()&&s.learning_workspace_id.is_none()).map(|s|json!({"session_id":s.id,"title":s.title,"updated_at":s.updated_at})).collect::<Vec<_>>()})
         }
-        "search" => crate::personal_note_retrieval::search(&user.store, &input)?,
+        "search" => crate::personal_note_retrieval::search(user, &input)?,
+        "learning_map_relationships" => crate::learning_map_recall::note_relationships(user, &input)?,
+        "learning_map_suggestions" => crate::learning_map_recall::suggestions(user, &input)?,
+        "learning_map_remove" => crate::learning_map_recall::remove_touch(user, &input)?,
         "attach_board" => crate::board_api::attach_personal_note(user, &input, now)?,
         "board_locations" => crate::board_api::personal_note_locations(user, string(&input,"note_id")?)?,
         "unattach_board" => crate::board_api::remove_personal_note_location(user, &input, now)?,

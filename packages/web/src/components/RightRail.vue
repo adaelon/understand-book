@@ -1500,7 +1500,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :answer-text="turn.outcome.answer ?? undefined" :answer-target="() => answerRoots.get(turn.turnId!)" :sources="turn.outcome.answer_view?.sources ?? []"
               :hosted-presentations="hostedTeachingPresentations(turn)" :busy="sending || historyLoading || !!historyError" @locate-presentation="selectPresentation(turn.turnId!, $event)"
               :response-actions-target="mobileConversation ? responseEditingHost : null" @editing-response="responseEditing(turn.turnId!, $event)"
-              @response-available="responseAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })" />
+              @response-available="responseAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })"
+              @goto="emit('goto', $event)" />
             <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />{{ uiText('这一步没跟上') }}</button>
             <TutorContinuation v-if="turn.turnId && deliveredAnswerText(turn) && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')) && !workspaceVisible"
               :session-id="activeChatSessionId" :turn-id="turn.turnId" :head="chatHead" :enabled="!!continuationEnabled" :busy="sending || historyLoading || !!historyError"

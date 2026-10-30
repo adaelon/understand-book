@@ -223,6 +223,14 @@ async function discuss() {
   if (!selected.value) return;
   await openPersonalChat([{ note_id: selected.value.note_id, revision: selected.value.current_revision }]);
 }
+// The open reader grounds the problem in its material and claims the event.
+async function practice() {
+  if (draft.value && !(await save())) return;
+  if (!selected.value) return;
+  const event = new CustomEvent('practice-note', { cancelable: true,
+    detail: { note_id: selected.value.note_id, revision: selected.value.current_revision } });
+  if (window.dispatchEvent(event)) notice.value = '打开一份材料后，就能用这条想法练一练。';
+}
 async function suggestLink() {
   if(!selected.value || !linkTarget.value)return;
   try {const other=await personalNotes.read({note_id:linkTarget.value});await openPersonalChat([{note_id:selected.value.note_id,revision:selected.value.current_revision},{note_id:other.note_id,revision:other.current_revision}],'link');}
@@ -285,7 +293,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
                 <button v-if="draft" class="discard-draft" aria-label="放弃这份草稿" title="放弃这份草稿" :disabled="saving || !!draft.pending" @click="discard"><Trash2 :size="15" /></button><button v-else @click="edit">继续写</button>
                 <div class="thought-placement"><button class="placement-toggle" :title="draft?.destination?.label" :aria-expanded="placementMenuOpen" :disabled="saving || placing || (!!draft?.pending && !draft?.saved_note)" @click="togglePlacementMenu"><MapPin :size="13" /><span>{{ draft?.destination ? '已选位置' : '放到…' }}</span><ChevronDown :size="12" /></button>
                   <div v-if="placementMenuOpen" class="placement-options" aria-label="选择想法放置位置"><p>让想法留在相关内容旁</p><button v-if="draft" @click="onlySave"><span>只保存想法<small>默认 · 不放到页面里</small></span><Check v-if="!draft.destination" :size="14" /></button><button v-for="choice in placementChoices" :key="choice.key" :disabled="placing" @click="choosePlacement(choice)"><span>{{ choice.label }}<small>{{ choice.detail }}</small></span></button><p v-if="!placementChoices.length">打开画布、点选一条消息或打开演示，就能选择放置位置。</p><p v-if="placing" role="status">正在记录位置…</p><p v-if="draft?.destination" class="chosen-location">已选：{{ draft.destination.label }}</p></div>
-                </div><span class="action-spacer" /><button v-if="selected" :disabled="saving" @click="discuss">一起推敲 <ArrowUpRight :size="15" /></button><button v-if="draft" class="primary" title="Ctrl / ⌘ + Enter 保存" :disabled="saving || placing || capturingSource || (!draft.value.content.trim() && !draft.value.source?.retained_excerpt)" @click="save">{{ saving ? '正在保存…' : capturingSource ? '正在记录现场…' : draft.saved_note ? '重试放置' : draft.pending ? '重试这次保存' : draft.destination ? '保存并放置' : '保存想法' }}<Check :size="15" /></button>
+                </div><span class="action-spacer" /><button v-if="selected" :disabled="saving" @click="discuss">一起推敲 <ArrowUpRight :size="15" /></button><button v-if="selected" :disabled="saving" @click="practice">练一练</button><button v-if="draft" class="primary" title="Ctrl / ⌘ + Enter 保存" :disabled="saving || placing || capturingSource || (!draft.value.content.trim() && !draft.value.source?.retained_excerpt)" @click="save">{{ saving ? '正在保存…' : capturingSource ? '正在记录现场…' : draft.saved_note ? '重试放置' : draft.pending ? '重试这次保存' : draft.destination ? '保存并放置' : '保存想法' }}<Check :size="15" /></button>
               </footer>
               <details v-if="selected && (placements.length || boardPlacements.length)" class="thought-locations"><summary>放在 {{ placements.length + boardPlacements.length }} 个位置</summary><div v-for="item in placements" :key="item.attachment.attachment_id"><button @click="pendingNotePlacementLocation={kind:'attachment',target:item.attachment.target,label:item.attachment.label}">{{ item.attachment.label }} ↗</button><button aria-label="移除这个放置位置" @click="removePlacement(item.attachment.attachment_id)">×</button></div><div v-for="location in boardPlacements" :key="location.board_id+location.item_id"><button @click="openBoardPlacement(location)">画布 · {{ location.label }} ↗</button><button aria-label="从这个画布移除" @click="removeBoardPlacement(location)">×</button></div></details>
             </template>

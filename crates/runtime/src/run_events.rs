@@ -321,6 +321,8 @@ impl RunEvents {
             "tutor_assessment" => "核对学习证据",
             "tutor_delivery_review" | "tutor_explanation_review" => "检查讲解内容",
             "tutor_coach" => "安排下一步学习",
+            "practice_check" => "核对练习题",
+            "learning_map_extract" | "learning_map_identity" => "整理学习脉络",
             _ => "生成回答",
         };
         // Publish the configured identity with the start event, so an interrupted

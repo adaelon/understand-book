@@ -70,7 +70,7 @@ impl TeachingContinuation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
-pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter, LearnWithPurpose }
+pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter, LearnWithPurpose, RevisitNote }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
@@ -118,10 +118,25 @@ pub struct ResolvedInteraction {
     /// Choice uses the offering head; answer actions use the head at click time.
     pub expected_chat_head: Option<String>,
     pub presentation_follow_up: Option<crate::presentation::PresentationFollowUp>,
+    /// The exact saved idea a note revisit practices from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub note_ref: Option<memory::NoteRef>,
 }
 
 impl ResolvedInteraction {
+    /// Practice entries ask for a problem, never a lecture or a fixed-mode explanation.
+    pub fn requests_practice(&self) -> bool {
+        matches!(self.action, InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote })
+            || self.learning_purpose == Some(memory::learning::LearningPurpose::Practice)
+    }
+
     pub fn validates_current_action(&self, intent: &str, kind: &str) -> bool {
+        // A problem when something has been met; ordinary help when nothing has.
+        // The host requires a `question` here to carry the practice contract.
+        if self.requests_practice() {
+            return intent == "neutral";
+        }
         match self.action {
             InteractionAction::Typed => false,
             InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection } =>
@@ -137,6 +152,7 @@ impl ResolvedInteraction {
                     matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral")
                 },
             InteractionAction::UiChoice { .. } => matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
+            InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote } => false,
         }
     }
 }

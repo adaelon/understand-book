@@ -136,6 +136,13 @@ async function beginExamLearning(message: string) {
     await nextTick(); readerApp.value?.prepareExamQuestion(message);
   }
 }
+async function beginExamPractice(remainingDays: number) {
+  const space = selectedLearning.value; if (!space) return;
+  await enterLearning(space);
+  if (network.value.workspace?.learning_workspace_id === space.learning_workspace_id && !libraryOpen.value) {
+    await nextTick(); await readerApp.value?.startExamPractice(remainingDays);
+  }
+}
 async function updateSharedLearning(space: LearningWorkspace) {
   updateLearning(space);
   const current = network.value.workspace;
@@ -673,7 +680,7 @@ onBeforeUnmount(() => {
         </details>
         </div>
         <SharedWorkspaceInstance :workspace="selectedLearning" :books="materialBooks" @updated="updateSharedLearning" />
-        <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" />
+        <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" @practice="beginExamPractice" />
         <details class="workspace-settings"><summary><Settings2 :size="16" />{{ uiText('工作区管理与学习记录') }}<ChevronDown :size="14" /></summary><div class="workspace-settings-body">
         <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? uiText('收起已有学习记录') : uiText('带入已有学习记录') }}</button>
         <LearningRecordsPanel v-if="recordsOpen" :target="selectedLearning" :key="selectedLearning.learning_workspace_id" @refresh-goal="loadLearningSpaces" />

@@ -144,6 +144,9 @@ pub mod authorization;
 pub mod multi_user_host;
 mod multi_user_review;
 mod teaching_coach;
+mod practice_check;
+mod learning_map_build;
+mod learning_map_recall;
 mod pending_confirmation;
 pub mod agent_run;
 mod run_admission;
@@ -12322,6 +12325,8 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     }
     let mut note_input=v.clone();
     if let Some(board)=&board_context {if board.follow_up.note_refs.is_some(){note_input["note_refs"]=json!(board.follow_up.note_refs);}}
+    // A note revisit reads the exact saved idea like any explicitly brought-in note.
+    if let Some(reference)=interaction.as_ref().and_then(|a|a.note_ref.as_ref()) {note_input["note_refs"]=json!([reference]);}
     let personal_notes=personal_note_context::freeze(user,&note_input,workspace.selected_chat.as_deref()).map_err(|e|err_reply(&e))?;
     Ok(ValidatedAgentInput { personal_notes, board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
@@ -13430,6 +13435,8 @@ mod tests {
     mod presentation_store_tests;
     mod tutor_tests;
     pub(crate) mod tutor_loop_tests;
+    mod practice_tests;
+    mod learning_map_tests;
     mod tutor_continuation_tests;
     mod tutor_building_blocks_tests;
     mod tutor_adaptation_tests;

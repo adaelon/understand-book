@@ -2,7 +2,7 @@ pub fn safe_purpose(value: &str) -> String {
     match value {
         "outer" | "query" | "synthesize" | "selection" | "profile" | "compaction" | "repair"
         | "available_answer" | "tutor_assessment" | "tutor_coach" | "tutor_presentation_plan"
-        | "tutor_delivery_review" | "tutor_explanation_review" => {
+        | "tutor_delivery_review" | "tutor_explanation_review" | "practice_check" | "learning_map_extract" | "learning_map_identity" => {
             value.to_owned()
         }
         _ => "unknown".into(),
@@ -50,7 +50,8 @@ mod tests {
     fn teaching_and_fallback_calls_keep_their_distinct_purposes() {
         for purpose in [
             "available_answer", "tutor_assessment", "tutor_coach", "tutor_presentation_plan",
-            "tutor_delivery_review", "tutor_explanation_review",
+            "tutor_delivery_review", "tutor_explanation_review", "practice_check",
+            "learning_map_extract", "learning_map_identity",
         ] {
             assert_eq!(safe_purpose(purpose), purpose);
         }

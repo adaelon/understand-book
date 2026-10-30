@@ -439,6 +439,7 @@ mod presentation_coach_prepare {
             }),
             expected_chat_head: Some("turn:offered-comparison".into()),
             presentation_follow_up: None,
+            note_ref: None,
         };
         let action = serde_json::to_value(&resolved).unwrap();
         let prior_design = json!({"design_ref":"design:prior", "design":{

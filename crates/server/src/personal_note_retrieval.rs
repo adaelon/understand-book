@@ -17,9 +17,12 @@ pub(crate) fn schedule(store: &MemoryStore) {
     });
 }
 
-pub(crate) fn search(store: &MemoryStore, input: &Value) -> Result<Value, ToolError> {
-    search_with(store, input, crate::semantic_retrieval::personal_notes)
+pub(crate) fn search(user: &crate::user_runtime::UserRuntime, input: &Value) -> Result<Value, ToolError> {
+    let prepared = prepare_user(user, input)?;
+    let vectors = infer(&prepared);
+    finish(&user.store, prepared, vectors)
 }
+#[cfg(test)]
 fn search_with(
     store: &MemoryStore,
     input: &Value,
@@ -36,6 +39,8 @@ pub(crate) struct SearchSnapshot {
     lexical: Vec<NoteSearchHit>,
     limit: usize,
     book_id: Option<String>,
+    /// Third ranker, only on request: (ranked notes, status).
+    structural: Option<(Vec<NoteRef>, Value)>,
 }
 
 pub(crate) fn prepare(store: &MemoryStore, input: &Value) -> Result<SearchSnapshot, ToolError> {
@@ -50,7 +55,17 @@ pub(crate) fn prepare(store: &MemoryStore, input: &Value) -> Result<SearchSnapsh
         lexical,
         limit,
         book_id: book_id.map(str::to_owned),
+        structural: None,
     })
+}
+
+/// `structural: true` adds learning-map recall as a third RRF ranker (M0 evaluation).
+pub(crate) fn prepare_user(user: &crate::user_runtime::UserRuntime, input: &Value) -> Result<SearchSnapshot, ToolError> {
+    let mut prepared = prepare(&user.store, input)?;
+    if input["structural"] == true {
+        prepared.structural = Some(crate::learning_map_recall::structural(user, input)?);
+    }
+    Ok(prepared)
 }
 
 /// Inference and vector-cache I/O run after the host releases its user state lock.
@@ -69,6 +84,7 @@ pub(crate) fn finish(
         lexical,
         limit,
         book_id,
+        structural,
     } = prepared;
     let book_id = book_id.as_deref();
     let mut candidates: BTreeMap<String, NoteSearchHit> = lexical
@@ -129,9 +145,24 @@ pub(crate) fn finish(
                 context: current.value.context.clone(),
                 lexical_rank: None,
                 semantic_rank: None,
+                structural_rank: None,
                 score: 0.0,
             });
         candidate.semantic_rank = Some(rank + 1);
+        candidate.score += 1.0 / (61.0 + rank as f64);
+    }
+    let structural_status = structural.as_ref().map(|(_, status)| status.clone());
+    for (rank, reference) in structural.map(|(ranked, _)| ranked).unwrap_or_default().into_iter().enumerate() {
+        let Ok(current) = store.personal_note(&NoteRef { note_id: reference.note_id.clone(), revision: None }) else { continue; };
+        if reference.revision != Some(current.current_revision)
+            || book_id.is_some_and(|id| current.value.context.book_id.as_deref() != Some(id)) {
+            continue;
+        }
+        let candidate = candidates.entry(reference.note_id.clone()).or_insert_with(|| NoteSearchHit {
+            reference: reference.clone(), title: current.value.title.clone(),
+            excerpt: current.value.record.content.chars().take(600).collect(), authorship: current.value.authorship,
+            context: current.value.context.clone(), lexical_rank: None, semantic_rank: None, structural_rank: None, score: 0.0 });
+        candidate.structural_rank = Some(rank + 1);
         candidate.score += 1.0 / (61.0 + rank as f64);
     }
     let mut hits: Vec<_> = candidates.into_values().collect();
@@ -143,7 +174,8 @@ pub(crate) fn finish(
     hits.truncate(limit);
     Ok(
         json!({"hits":hits,"semantic":{"status":vectors["status"],"reason":vectors["reason"],"indexed_notes":vectors["indexed_notes"],"pending_notes":vectors["pending_notes"],
-        "embedded_chunks":vectors["embedded_chunks"],"cache_hits":vectors["cache_hits"],"query_tokens":vectors["query_tokens"],"document_tokens":vectors["document_tokens"]}}),
+        "embedded_chunks":vectors["embedded_chunks"],"cache_hits":vectors["cache_hits"],"query_tokens":vectors["query_tokens"],"document_tokens":vectors["document_tokens"]},
+        "structural":structural_status}),
     )
 }
 
@@ -165,7 +197,7 @@ fn search_user_with(
             .user_id()
             .ok_or_else(crate::authorization::missing)?
             .to_string();
-        Ok::<_, ToolError>((owner, prepare(&user.store, input)?))
+        Ok::<_, ToolError>((owner, prepare_user(user, input)?))
     })?;
     let vectors = infer(&prepared);
     port.check_access()?;

@@ -54,7 +54,7 @@ it('restores each book and workspace goal in both entry and details without star
     expect(init.method).toBe('GET'); expect(parsed.pathname).toBe('/api/tutor/state');
     const scope = `${parsed.searchParams.get('learning_workspace_id') ?? ''}:${parsed.searchParams.get('source_id')}`;
     expect(scope in currentByScope).toBe(true);
-    return json({ workspace_goal_revision: null, control: { enabled: true, revision: 5, current_tutor_session_id: currentByScope[scope] }, sessions } satisfies TutorState);
+    return json({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 5, current_tutor_session_id: currentByScope[scope] }, sessions } satisfies TutorState);
   });
   vi.stubGlobal('fetch', fetch);
   const Reader = defineComponent({ setup() {
@@ -99,7 +99,7 @@ it('restores each book and workspace goal in both entry and details without star
 
 it('sends goal saves to the same source and workspace as reads', async () => {
   open('书籍 a', '工作区 a');
-  const fetch = vi.fn(async () => json({ workspace_goal_revision: null, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} }));
+  const fetch = vi.fn(async () => json({ workspace_goal_revision: null, learning_map_enabled: false, control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} }));
   vi.stubGlobal('fetch', fetch);
   const mutation = { operation_id: 'save-goal', expected_revision: 0, action: { kind: 'start' as const, user_intent: '理解架构',
     explicit_constraints: [], material_scope: [{ source_id: '书籍 a', scope_refs: [], role: 'primary' as const }], default_teaching_intent: null } };

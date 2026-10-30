@@ -40,6 +40,8 @@ pub enum LearningPurpose {
     Understand,
     Exam,
     Explore,
+    /// Retrieval practice on what was already learned in this material.
+    Practice,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -93,6 +95,9 @@ pub struct TutorState {
     pub sessions: BTreeMap<String, TutorSession>,
     #[serde(default)]
     pub workspace_goal_revision: Option<u32>,
+    /// Opt-in private learning map (ADR-0178 §7); turning it off deletes the derived map.
+    #[serde(default)]
+    pub learning_map_enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -125,6 +130,9 @@ pub enum TutorAction {
     SetMode {
         session_id: String,
         mode: Option<TutorSessionMode>,
+    },
+    SetLearningMap {
+        enabled: bool,
     },
 }
 
@@ -282,6 +290,7 @@ impl TutorState {
                 session.default_teaching_intent = mode.clone();
                 session.revision += 1;
             }
+            TutorAction::SetLearningMap { enabled } => self.learning_map_enabled = *enabled,
         }
         self.control.revision += 1;
         Ok(())
@@ -352,8 +361,8 @@ impl LearningStore {
         let mut connection = Connection::open(path).map_err(storage)?;
         let version: i64 = connection.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(storage)?;
         let application: i64 = connection.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(storage)?;
-        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records','teaching_coach_jobs','teaching_coach_turns')", [], |r| r.get(0)).map_err(storage)?;
-        if !(0..=4).contains(&version) || unknown_tables != 0
+        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records','teaching_coach_jobs','teaching_coach_turns','learning_map_nodes','learning_map_sources','learning_map_chains','learning_map_coverage','learning_map_note_removals')", [], |r| r.get(0)).map_err(storage)?;
+        if !(0..=5).contains(&version) || unknown_tables != 0
             || (version == 0 && application != 0) || (version > 0 && application != 0x55424c4e) {
             return Err(failure("LEARNING_SCHEMA_INCOMPATIBLE", "conflict", "Learning schema requires a compatible binary"));
         }
@@ -386,6 +395,12 @@ impl LearningStore {
             let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
             tx.execute_batch(crate::tutor_coach::SCHEMA).map_err(storage)?;
             tx.pragma_update(None, "user_version", 4).map_err(storage)?;
+            tx.commit().map_err(storage)?;
+        }
+        if version < 5 {
+            let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+            tx.execute_batch(crate::learning_map::SCHEMA).map_err(storage)?;
+            tx.pragma_update(None, "user_version", 5).map_err(storage)?;
             tx.commit().map_err(storage)?;
         }
         Ok(Self { connection, writer_lease: None, workspace_scope: String::new(), source_scope: None })
@@ -458,6 +473,9 @@ impl LearningStore {
         }
         let mut state = replay_workspace(&transaction, &self.workspace_scope, None)?;
         state.apply(request)?;
+        if matches!(request.action, TutorAction::SetLearningMap { enabled: false }) {
+            crate::learning_map::clear(&transaction, &self.workspace_scope)?;
+        }
         let event_revision: u32 = transaction.query_row(
             "SELECT coalesce(max(revision),0)+1 FROM tutor_events", [], |row|row.get(0)).map_err(storage)?;
         transaction.execute(
@@ -805,7 +823,7 @@ mod tests {
             let store=LearningStore::open(&path,false).unwrap();
             assert!(store.state().unwrap().control.enabled);
             assert_eq!(store.state().unwrap(),store.replay(None).unwrap());
-            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),4);
+            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),5);
             assert_eq!(store.connection.pragma_query_value(None,"journal_mode",|r|r.get::<_,String>(0)).unwrap(),"delete");
             store.connection.pragma_update(None,"application_id",12345).unwrap();
             drop(store);

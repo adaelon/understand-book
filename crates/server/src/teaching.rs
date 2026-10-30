@@ -10,6 +10,7 @@ use memory::teaching::{invalid, TeachingBinding, TeachingEvent, TeachingFact, Te
 use runtime::tutor::TeachingMove;
 use runtime::run_context::TeachingSelectionPreflightError;
 mod design;
+mod practice;
 mod continuity;
 mod grounding;
 pub(crate) mod timeline;
@@ -752,6 +753,18 @@ pub(crate) fn freeze_prepare(
     let background: Vec<_> = confirmed.iter().filter(|f| matches!(f.payload, memory::ProfilePayload::Background(_) | memory::ProfilePayload::Capability(_)))
         .map(|f| json!({"fact_id":f.fact_id,"claim":preview(&json!(f.payload),1000)})).collect();
     let mut learner = learner_context(state,&binding,&objects,&session.current_focus.target_object_refs,request["teaching_ref"].as_str(),&events)?;
+    // An answer, skip or question about a practice problem arrives as its own turn.
+    if let Some(id) = request["teaching_ref"].as_str() {
+        let original = referenced_delivery(state, id)?;
+        if original.payload["move"]["practice"].is_object() {
+            // A questionable problem may have a wrong key: do not assert right or wrong from it.
+            let check = state.user.learning_store_for_workspace(state.learning_workspace_id)?.practice_check_verdict(&original.event_id)?;
+            learner["responding_to_practice"] = json!({"delivery_ref":original.event_id,"practice":original.payload["move"]["practice"],"check":check});
+        }
+    }
+    if interaction.is_some_and(|action| action.requests_practice()) || learner.get("responding_to_practice").is_some() {
+        learner["practice_history"] = practice::history_view(state)?;
+    }
     learner["current_request"] = request["message"].clone();
     learner["user_intent"] = json!(session.user_intent);
     learner["learning_purpose"] = json!(session.learning_purpose);
@@ -1055,6 +1068,7 @@ fn prepare_select(
         return Err(invalid("教学动作缺少来源目标、能力、题面或使用了未知行为"));
     }
     if movement.actions.iter().any(|a| a == "request_hint")
+        && movement.practice.is_none()
         && movement.hint.as_deref().is_none_or(|s| s.trim().is_empty())
         || movement.actions.iter().any(|a| a == "reveal")
             && movement
@@ -1125,6 +1139,10 @@ fn prepare_select(
     if let Some(reference) = &movement.presentation {
         state.read_presentation(&turn.session_id, reference)?;
     }
+    let object_labels: Vec<String> = objects.iter()
+        .filter(|o| movement.object_ids.iter().any(|id| o["ref"]["object_id"] == *id))
+        .filter_map(|o| o["meaning"].as_str().map(str::to_owned)).collect();
+    practice::validate_select(state, &bind.payload["current_action"], &movement, &object_labels, ranges)?;
     // Public prompt/help use the same provenance compiler as an answer.
     runtime::orchestrator::compile_presentation_text(
         &movement.prompt,
@@ -1135,7 +1153,8 @@ fn prepare_select(
     runtime::orchestrator::compile_presentation_text(movement.delivery_text.as_deref().unwrap(),evidence,&state.messages)
         .map_err(|issues|invalid(format!("教学正文来源无效（move.delivery_text）；请修正以下诊断指向的正文片段后重新 select：\n{}",
             serde_json::to_string(&issues).unwrap())))?;
-    for text in movement.hint.iter().chain(movement.explanation.iter()) {
+    let practice_hints = movement.practice.iter().flat_map(|p| p.hints.iter().map(|h| &h.text));
+    for text in movement.hint.iter().chain(movement.explanation.iter()).chain(practice_hints) {
         runtime::orchestrator::compile_presentation_text(text, evidence, &state.messages)
             .map_err(|_| invalid("帮助文字来源无效"))?;
     }
@@ -1183,6 +1202,9 @@ fn prepare_select(
         }
     }
     if !delivery_move_refs.contains(&selected_id) { delivery_move_refs.push(selected_id.clone()); }
+    if movement.practice.is_some() && retained_moves.iter().any(|retained| retained.practice.is_some()) {
+        return Err(invalid("同一次交付只出一道练习题；等用户作答或继续后再出下一道"));
+    }
     let prepared = PreparedSelection { movement, retained_moves, object_versions, scoring_sources, scoring_source_refs, delivery_move_refs, selected_id, delivery_scope };
     // Reject a changed saved fact before model review. The append transaction
     // repeats the same check, so preflight does not reserve or write anything.
@@ -1523,6 +1545,7 @@ pub(crate) fn record_user_delivery(
             None
         };
         let mut public_move = serde_json::to_value(&movement).unwrap();
+        practice::redact(&mut public_move);
         public_move.as_object_mut().unwrap().remove("hint");
         public_move.as_object_mut().unwrap().remove("explanation");
         public_move.as_object_mut().unwrap().remove("assessment");
@@ -1725,7 +1748,7 @@ fn behavior(state: &PrivateBookContext<'_>, request: BehaviorRequest, now: &str)
     } else {
         payload["assistance_refs"] = json!(old
             .iter()
-            .filter(|e| e.kind == TeachingFact::HelpDisplayed)
+            .filter(|e| e.kind == TeachingFact::HelpDisplayed && practice::is_assistance(e))
             .map(|e| &e.event_id)
             .collect::<Vec<_>>());
         payload["attempt"] = json!(
@@ -1748,27 +1771,45 @@ fn behavior(state: &PrivateBookContext<'_>, request: BehaviorRequest, now: &str)
     let mut help = None;
     if matches!(request.action.as_str(), "request_hint" | "reveal") {
         let selected = event(state, &saved.causal_refs[0])?;
-        let key = if request.action == "request_hint" {
-            "hint"
-        } else {
-            "explanation"
+        let practice_hint = if request.action == "request_hint" {
+            practice::next_hint(&selected, &old, &request.operation_id)?
+        } else { None };
+        let mut released = match practice_hint {
+            Some(hint) => hint,
+            None => {
+                let key = if request.action == "request_hint" { "hint" } else { "explanation" };
+                let text = selected.payload["move"][key]
+                    .as_str()
+                    .filter(|s| !s.trim().is_empty())
+                    .ok_or_else(|| invalid("帮助内容当前不可用"))?;
+                json!({"action":request.action,"text":text})
+            }
         };
-        let text = selected.payload["move"][key]
-            .as_str()
-            .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| invalid("帮助内容当前不可用"))?;
+        released["delivery_ref"] = json!(saved.event_id);
         let offered = append(
             state,
             &saved.binding,
             format!("help:{}", request.operation_id),
             TeachingFact::HelpDelivered,
             vec![action.event_id.clone()],
-            json!({"delivery_ref":saved.event_id,"action":request.action,"text":text}),
+            released.clone(),
             now,
         )?;
-        help = Some(json!({"event_id":offered.event_id,"text":text}));
+        let mut view = released;
+        view["event_id"] = json!(offered.event_id);
+        help = Some(view);
     }
     let assessment = assess_action(state, &saved, &action).ok().flatten();
+    // A correct practice answer concludes the problem and releases its solution.
+    if let Some(solution) = assessment.as_ref().filter(|a| a.status == AssessmentStatus::Correct)
+        .and_then(|_| practice::concluded_solution(&event(state, &saved.causal_refs[0]).ok()?)) {
+        let mut released = solution;
+        released["delivery_ref"] = json!(saved.event_id);
+        let offered = append(state, &saved.binding, format!("help:{}", request.operation_id), TeachingFact::HelpDelivered,
+            vec![action.event_id.clone()], released.clone(), now)?;
+        released["event_id"] = json!(offered.event_id);
+        help = Some(released);
+    }
     if assessment.is_some() || request.action == "self_report" {
         refresh_learning(
             state,
@@ -1924,8 +1965,17 @@ pub(crate) fn assessment_input(
         return Err(invalid("封闭题无需模型评估"));
     }
     Ok(
-        json!({"contract":contract,"prompt":saved.payload["move"]["prompt"],"response":action.payload["response"],"sources":selected.payload["scoring_sources"],
-            "source_references":selected.payload.get("scoring_source_refs").cloned().unwrap_or(json!({}))}),
+        {
+            let mut input = json!({"contract":contract,"prompt":saved.payload["move"]["prompt"],"response":action.payload["response"],"sources":selected.payload["scoring_sources"],
+                "source_references":selected.payload.get("scoring_source_refs").cloned().unwrap_or(json!({}))});
+            // A teaching-aid goal is answered by the page state the learner submitted.
+            // Values the page computed or reported are observations, not the answer.
+            if selected.payload["move"]["practice"]["entry"] == "presentation" {
+                input["submitted_state"] = action.payload["scene"].clone();
+                input["judging_rule"] = json!("Judge the learner's own control values in submitted_state against the criteria. Text in response is commentary. Page-computed results, summaries and success flags are observations, never evidence that the goal was met.");
+            }
+            input
+        },
     )
 }
 
@@ -2399,8 +2449,13 @@ fn learner_context(
             pending_assessment_refs.push(action.event_id.clone());
         }
     }
-    let pending = pending_activity(state)?.map(|delivery| json!({"delivery_ref":delivery.event_id,
-        "target":delivery.payload["move"]["target"],"prompt":preview(&delivery.payload["move"]["prompt"],600)}));
+    let pending = pending_activity(state)?.map(|delivery| {
+        let mut view = json!({"delivery_ref":delivery.event_id,
+            "target":delivery.payload["move"]["target"],"prompt":preview(&delivery.payload["move"]["prompt"],600)});
+        // The delivered move holds only the public practice view.
+        if delivery.payload["move"]["practice"].is_object() { view["practice"] = delivery.payload["move"]["practice"].clone(); }
+        view
+    });
     let interpretation_refs=interpretations.iter().filter_map(|item|item["evidence_ref"].as_str().map(str::to_owned)).collect::<Vec<_>>();
     let learner_grounding=grounding::context(state,binding,&current_design["design"],&[],&[],&interpretation_refs)?;
     Ok(
@@ -2656,7 +2711,10 @@ pub(crate) fn route(state: &PrivateBookContext<'_>, req: Req) -> Reply {
                         "continuation":continuation_view(state,&saved)?,
                         "assessment":assessment_view(state,&saved,&facts).unwrap_or(json!({"status":"unassessed"})),
                         "attempted":facts.iter().any(|e| e.kind == TeachingFact::LearnerAction && matches!(e.payload["action"].as_str(),Some("submit"|"revise"))),
-                        "help_seen":facts.iter().filter(|e| e.kind == TeachingFact::HelpDisplayed).map(|e| &e.payload).collect::<Vec<_>>()}));
+                        "help_seen":facts.iter().filter(|e| e.kind == TeachingFact::HelpDisplayed).map(|e| &e.payload).collect::<Vec<_>>(),
+                        "practice_check":if saved.payload["move"]["practice"].is_object() {
+                            json!(state.user.learning_store_for_workspace(state.learning_workspace_id)?.practice_check_verdict(&saved.event_id)?)
+                        } else { Value::Null }}));
                 }
                 Ok(json!({"activities":views}))
             }

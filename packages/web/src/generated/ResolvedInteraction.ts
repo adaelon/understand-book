@@ -2,6 +2,7 @@
 import type { AnswerRef } from "./AnswerRef";
 import type { InteractionAction } from "./InteractionAction";
 import type { LearningPurpose } from "./LearningPurpose";
+import type { NoteRef } from "./NoteRef";
 import type { PresentationFollowUp } from "./PresentationFollowUp";
 import type { TeachingSourceBinding } from "./TeachingSourceBinding";
 import type { TeachingTarget } from "./TeachingTarget";
@@ -17,4 +18,8 @@ answer_text: string | null, source_excerpt: string | null, source_bindings: Arra
 /**
  * Choice uses the offering head; answer actions use the head at click time.
  */
-expected_chat_head: string | null, presentation_follow_up: PresentationFollowUp | null, };
+expected_chat_head: string | null, presentation_follow_up: PresentationFollowUp | null, 
+/**
+ * The exact saved idea a note revisit practices from.
+ */
+note_ref?: NoteRef, };

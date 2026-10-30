@@ -13,6 +13,10 @@ pub struct NoteSearchHit {
     pub context: NoteContext,
     pub lexical_rank: Option<usize>,
     pub semantic_rank: Option<usize>,
+    /// Learning-map recall (ADR-0178 M2); present only when a caller asked for it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub structural_rank: Option<usize>,
     pub score: f64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +179,7 @@ impl MemoryStore {
                 context: note.current().context.clone(),
                 lexical_rank: Some(hits.len() + 1),
                 semantic_rank: None,
+                structural_rank: None,
                 score,
             });
             if hits.len() == limit {

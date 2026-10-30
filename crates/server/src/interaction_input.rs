@@ -12,6 +12,8 @@ pub(crate) enum InteractionInput {
     LearnWithPurpose { purpose: LearningPurpose, chapter_lid: Option<String> },
     Answer { action: EntryAction, reference: AnswerRef },
     Choice(TeachingChoice),
+    /// Practice from one exact saved idea against the current material.
+    RevisitNote { note_ref: memory::NoteRef },
 }
 
 pub(crate) fn invalid(message: &str) -> ToolError {
@@ -152,10 +154,17 @@ impl InteractionInput {
             expected_chat_head: input["expected_chat_head"].as_str().map(str::to_owned),
             presentation_follow_up: None,
             learning_purpose: None,
+            note_ref: None,
         };
+        if matches!(self, Self::LearnWithPurpose { purpose: LearningPurpose::Practice, .. } | Self::RevisitNote { .. }) {
+            let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
+            if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
+                return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
+            }
+        }
         if let Self::LearnWithPurpose { purpose, .. } = self {
             resolved.learning_purpose = Some(*purpose);
-            if *purpose != LearningPurpose::Discover {
+            if !matches!(*purpose, LearningPurpose::Discover | LearningPurpose::Practice) {
                 let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
                 if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
                     return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
@@ -313,6 +322,23 @@ impl InteractionInput {
                     }
                 }
             },
+            Self::RevisitNote { note_ref } => {
+                if input["source_id"] != workspace.book.base.book_id
+                    || input["source_revision"] != workspace.book.source_fingerprint() {
+                    return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新打开材料"));
+                }
+                // The saved idea is the learner's own words; the material scope
+                // supplies the source the problem and its solution are grounded in.
+                user.store.personal_note(note_ref).map_err(|_| invalid("这条想法的版本不存在或已删除"))?;
+                let first = workspace.book.base.lid_nodes.iter().min_by_key(|node|node.span.start)
+                    .ok_or_else(||invalid("当前材料尚无可定位的正文"))?;
+                let last = workspace.book.base.lid_nodes.iter().max_by_key(|node|node.span.end).unwrap();
+                resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote };
+                resolved.accepted_request = "用我这条想法练一练".into();
+                resolved.note_ref = Some(note_ref.clone());
+                resolved.source_bindings = vec![TeachingSourceBinding { source_id:workspace.book.base.book_id.clone(),
+                    source_revision:workspace.book.source_fingerprint().into(), start_lid:first.lid.clone(),end_lid:last.lid.clone() }];
+            },
             _ => unreachable!(),
         }
         if resolved.source_bindings.iter().any(|s| s.source_id != workspace.book.base.book_id
@@ -324,7 +350,7 @@ impl InteractionInput {
             messages:&workspace.messages, selected_chat:workspace.selected_chat.as_deref() };
         // A chapter is a navigation scope, not a claim that the user selected
         // every pending activity inside it for more help.
-        let helps = if matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. }) { vec![] }
+        let helps = if matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. } | Self::RevisitNote { .. }) { vec![] }
             else { teaching::pending_activity_help(&private, &resolved)? };
         if !helps.is_empty() && resolved.user_supplement.trim().is_empty() {
             return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
@@ -370,6 +396,9 @@ impl InteractionInput {
         if present("chapter_lid") && !matches!(action, Some(EntryAction::GuideChapter | EntryAction::LearnWithPurpose)) {
             return Err(invalid("章节定位只用于章节导读操作"));
         }
+        if present("note_ref") != (action == Some(EntryAction::RevisitNote)) {
+            return Err(invalid("想法回访需要且只接受一个确切笔记版本"));
+        }
         let result = match (action, answer, choice) {
             (Some(EntryAction::LearnWithPurpose), None, None) => {
                 let purpose = purpose.ok_or_else(||invalid("请选择本次学习目的"))?;
@@ -387,6 +416,15 @@ impl InteractionInput {
                     let chapter_lid = input["chapter_lid"].as_str().filter(|s| !s.trim().is_empty())
                         .ok_or_else(|| invalid("章节导读需要规范章节标识"))?;
                     Self::GuideChapter { chapter_lid: chapter_lid.into() }
+                },
+            (Some(EntryAction::RevisitNote), None, None)
+                if !present("question_quote") && !present("question_anchor_lid") => {
+                    let note_ref: memory::NoteRef = serde_json::from_value(parse("note_ref"))
+                        .map_err(|_| invalid("笔记引用格式无效"))?;
+                    if note_ref.note_id.trim().is_empty() || !note_ref.revision.is_some_and(|n| n > 0) {
+                        return Err(invalid("想法回访需要确切笔记版本"));
+                    }
+                    Self::RevisitNote { note_ref }
                 },
             (None, None, None) => Self::Typed,
             (Some(EntryAction::ExplainSelection), None, None) if input["question_quote"].is_object() => Self::Selection,
@@ -474,6 +512,7 @@ fn purpose_request(purpose: LearningPurpose, scope: &str) -> String {
         LearningPurpose::Understand => format!("带我读懂{scope}"),
         LearningPurpose::Exam => format!("围绕{scope}复习备考"),
         LearningPurpose::Explore => format!("围绕{scope}探索一个问题"),
+        LearningPurpose::Practice => format!("用{scope}里学过的内容练一练"),
     }
 }
 

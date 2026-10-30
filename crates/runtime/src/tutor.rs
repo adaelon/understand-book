@@ -26,6 +26,7 @@ pub fn public_arguments(arguments: &str) -> String {
     }
     if let Some(movement) = value.get_mut("move").and_then(Value::as_object_mut) {
         movement.remove("assessment");
+        movement.remove("practice");
         movement.remove("hint");
         movement.remove("explanation");
         movement.remove("participation");
@@ -119,6 +120,9 @@ pub struct TeachingMove {
     pub explanation: Option<String>,
     #[serde(default)]
     pub assessment: Option<memory::assessment::AssessmentContract>,
+    /// Retrieval practice; its hints replace the single `hint`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub practice: Option<crate::practice::PracticeSpec>,
     #[serde(default)]
     pub interpretation_refs: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -252,6 +256,7 @@ pub fn spec() -> crate::ToolSpec {
         },"required":["operation"]}) };
     let properties = &mut tool.parameters["properties"];
     properties["move"]["properties"]["note_refs"]=json!({"type":"array","items":{"type":"object","required":["note_id","revision"],"properties":{"note_id":{"type":"string"},"revision":{"type":"integer","minimum":1}}},"description":"Exact personally saved versions actually read and adopted in this support. Explain the concrete effect in participation.reason. Separate from learner fact_refs; recall or saving never proves mastery."});
+    properties["move"]["properties"]["practice"] = crate::practice::schema();
     properties["draft_ref"] = json!({"type":"string","minLength":1,"description":"revise: copy the exact current draft_ref from the private unaccepted text draft. It identifies this run's latest editable version and expires when replaced, accepted or cleared by a new design/outside decision. A review_ref or accepted move reference is not a draft_ref."});
     properties["edits"] = json!({"type":"array","description":"revise: atomically replace the selected whole paragraphs using the host's editable_paragraphs for this draft_ref, then submit the complete preserved select for host source, version and delivery checks. Every paragraph number refers to the same original draft, not the result of earlier edits. Use [] after reading missing evidence when the current wording is supported. Untouched paragraphs, all other move fields and the original finish value remain unchanged; do not resend the full body.","items":{
         "type":"object","additionalProperties":false,"required":["field","paragraph","new_text"],"properties":{
@@ -408,7 +413,7 @@ pub fn action_intent(context: &Value) -> Option<(&'static str, &'static str)> {
         InteractionAction::UiEntry { entry_action: EntryAction::ExplainSelection } =>
             Some(("direct_explanation", "current_action")),
         InteractionAction::UiEntry { entry_action: EntryAction::ClarifyAnswer } => None,
-        InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter } =>
+        InteractionAction::UiEntry { entry_action: EntryAction::GuideChapter | EntryAction::RevisitNote } =>
             Some(("neutral", "current_action")),
         InteractionAction::UiEntry { entry_action: EntryAction::LearnWithPurpose } =>
             Some((if action.learning_purpose == Some(memory::learning::LearningPurpose::Discover) {
@@ -810,6 +815,21 @@ For a claim of local progress, connect the earlier expression, the actual help d
 Use supersedes when current words or the read source show the earlier interpretation itself was unsupported; preserve original learner facts and help conditions. Make teaching_implication a concrete next step justified for this task, not a fixed teaching template or an instruction to reproduce source wording. On a later turn or reopened session, compare earlier and later expressions under their own help conditions before adopting an interpretation; a historically accurate difficulty need not describe the learner now. Use applicable evidence_ref values in move.interpretation_refs and change the support accordingly; revise conflicting old targets as well as interpretations. If nothing relevant changes, reuse without duplicating the hypothesis. No scoring activity is required.
 For an existing ungraded source-discrimination activity with capability=evaluation, evidence with action_ref, object_id, operation_id, response_quote, sources and interpretation records a correctable observation, not a score.";
 
+const PRACTICE: &str = "Retrieval practice (this request asks to practice, not to be taught):
+Practice makes a relationship the learner has already met come to mind and run in a situation unlike the one where it was taught. Choose a target from relationships in the read material that this learner has met in delivered help, learner expressions, or the saved idea of a note revisit; prefer one with less independent evidence or one that later relationships depend on. If nothing has been met yet, say so briefly and offer ordinary help instead of testing unseen material.
+Select one move with kind=question, interaction_intent=neutral, intent_origin=current_action, actions including submit, request_hint, reveal and skip, a frozen assessment, private explanation as your committed worked solution, and move.practice. The prompt poses a new concrete situation and never names, defines or quotes the practiced relationship; only the situation's features should bring it to mind. mode=recall uses one or two decision points from a fresh cue; discriminate puts the relationship against a close look-alike so the separating feature carries the signal; compose needs a held chain under some load. No independent review runs before the learner sees the problem: the host checks only the contract, sources and that public text does not state the relationship's label. So before select, solve it yourself, look for any route that skips the target, and confirm the material read this turn suffices; fix or discard an unsound problem. A wrong committed solution grades the learner against an error.
+Choosing the next problem: learner_context.practice_history lists recent problems on this material, newest first, with each outcome (clean, held, helped, missed, open) and level. Prefer relationships with less independent evidence (learner_context.entries and practice_history), ones that later relationships depend on, or ones least recently practiced. The host enforces these rules: never practice the relationship of the most recent problem again (interleave; a note revisit is exempt); after two consecutive misses on a relationship choose another; on the same relationship raise difficulty after clean, hold it after held and lower it after helped or missed, where difficulty is mode first (recall < discriminate < compose) and then practice.distance (near < adjacent < far); a retry always uses a new situation. Always record practice.distance.
+For entry=board, give 3–6 short cards in practice.cards, each a premise or a distractor; the learner picks the cards that together establish the stated conclusion, and the assessment is a choice_set over all card ids whose correct set is exactly the premises. For entry=presentation, the goal is reached by operating an already delivered page: reference it in move.presentation and freeze an open rubric over the submitted control values, never the page's own computed result.
+In an exam sprint (workspace goal constraints with an exam date and scope), use entry=exam_daily, stay within the confirmed exam scope, and prefer relationships the scope weights most; a course's prepared exercises may be adapted only with their original source.
+Record practice.entry from the accepted scope: note_revisit for a saved idea, reading_margin when the practice request is scoped to the chapter being read, warmup for the whole material.
+For a note revisit, quote the exact saved idea in the prompt as the learner's own words and ask whether and why it holds in the new situation. The saved idea may be rough, a question or wrong; do not correct it before the attempt.
+Order hints from least to most revealing: in_problem points at a given already in the prompt; structure re-describes what kind of situation this is without naming or defining the relationship, keeping one retrieval chance; own_note opens an exact saved idea of this learner that bears on the problem; source opens the book passage (LIDs read this turn); worked_step shows one decisive step, not the whole solution. Include only useful levels. Clarifying what the problem asks is free and is not a hint.
+Pose exactly one problem and stop at the learner's attempt; no lecture before it, no continuation menu, no second problem. Never convert a result into a level, score or mastery claim.";
+
+const PRACTICE_RESPONSE: &str = "Responding within retrieval practice (learner_context.responding_to_practice or a pending practice activity):
+The practiced relationship stays unnamed while the problem is open. Read the learner's actual response and any frozen assessment of it. For a correct answer, confirm it and name the decisive move in one or two sentences; do not re-teach what they just did. For a wrong or partial answer, say plainly which conclusion does not hold and locate the first break in their reasoning without stating the correction; they can revise or request the next hint in the activity. Do not write hint content, the committed solution or the relationship into this reply while the problem is open: the activity releases hints and the solution and records them as assistance.
+If responding_to_practice.check is questionable, an independent check found the problem or its key unreliable: say so plainly, do not assert right or wrong from the frozen key, and reason from the sources instead. If they skip, reveal the solution, ask for an explanation or change direction, follow that request fully; the problem is then concluded. When the learner's own words show what kind of miss occurred, you may record one correctable hypothesis with tutor.step evidence (nature=hypothesis): no cue came to mind, a close look-alike was chosen, the right relationship was misapplied, a careless slip, or the relied-on relationship conflicts with the source. For a conflict, when a saved note holds that idea, cite it in note_refs and offer one repair. Never label the learner. Do not pose another problem in this delivery; the next one comes only when the learner asks to continue. An assessment records this attempt under its help conditions, never a level, score or mastery claim.";
+
 const ASSESSMENT: &str = "Formal response assessment workflow:
 If a formal open response is pending, use tutor.step assess with its original submit/revise action_ref before adapting. The evaluator runs privately once within this run's budget against the frozen original contract. Failures remain unassessed; do not grade the response yourself or invent a replacement submission. Preserve original assistance and attempt conditions.";
 
@@ -856,6 +876,17 @@ pub(crate) fn instruction_modules(
     if status == "active" && context["learner_context"]["pending_assessment_refs"].as_array().is_some_and(|v| !v.is_empty())
     {
         modules.push(module("assessment", ASSESSMENT));
+    }
+    if status == "active" {
+        // Posing follows the accepted entry; an answer arrives as a later turn
+        // that references the delivered problem, so it needs its own rules.
+        if serde_json::from_value::<crate::tutor_continuation::ResolvedInteraction>(context["current_action"].clone())
+            .is_ok_and(|action| action.requests_practice()) {
+            modules.push(module("practice", PRACTICE));
+        } else if context["learner_context"]["responding_to_practice"].is_object()
+            || context["learner_context"]["pending_activity"]["practice"].is_object() {
+            modules.push(module("practice-response", PRACTICE_RESPONSE));
+        }
     }
     if status == "active" {
         if let Some(guidance) = presentation {

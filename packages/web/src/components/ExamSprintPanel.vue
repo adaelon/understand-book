@@ -7,7 +7,7 @@ import { network, type LearningWorkspace } from '../network-context';
 import { daysUntilExam, examSprints, sprintRequest, type ExamSprint, type ExamSprintInput } from '../exam-sprints';
 
 const props = defineProps<{ workspace: LearningWorkspace }>();
-const emit = defineEmits<{ updated: [workspace: LearningWorkspace]; begin: [message: string] }>();
+const emit = defineEmits<{ updated: [workspace: LearningWorkspace]; begin: [message: string]; practice: [remainingDays: number] }>();
 const sprint = ref<ExamSprint | null>(null), editing = ref(false), busy = ref(false), error = ref('');
 const examDate = ref(''), syllabus = ref(''), goalText = ref(''), minutes = ref<number | null>(null), mode = ref<'diagnostic' | 'question'>('diagnostic');
 const question = ref(''), clock = ref(Date.now());
@@ -60,6 +60,7 @@ onBeforeUnmount(() => { ticket++; clearInterval(timer); });
       <fieldset :disabled="busy || workspace.archived"><legend>{{ uiText('今天从哪里开始') }}</legend><label><input v-model="mode" type="radio" value="diagnostic" />{{ uiText('先做短诊断') }}</label><label><input v-model="mode" type="radio" value="question" />{{ uiText('直接讲这题') }}</label></fieldset>
       <label v-if="mode === 'question'">{{ uiText('你的问题') }}<textarea v-model="question" :placeholder="uiText('输入不会的题目或步骤，也可以进入阅读后选中原文提问。')" /></label>
       <button :disabled="workspace.archived || !workspace.members.some(member => member.readable) || (mode === 'question' && !question.trim())" @click="begin">{{ mode === 'diagnostic' ? uiText('打开今日诊断') : uiText('打开这道题') }}</button>
+      <button :disabled="workspace.archived || !workspace.members.some(member => member.readable)" @click="emit('practice', daysUntilExam(sprint.settings))">{{ uiText('今日练习') }}</button>
     </template>
     <form v-if="editing" @submit.prevent="save">
       <label>{{ uiText('考试日期') }}<input v-model="examDate" type="date" required /></label>

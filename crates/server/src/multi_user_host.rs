@@ -280,6 +280,14 @@ pub(crate) fn start_with_access(
                         Ok(changed) => progressed |= changed,
                         Err(error) => eprintln!("Teaching coach: {}",error.error_code),
                     }
+                    match crate::practice_check::tick_network(&access,&handle,&cancellation) {
+                        Ok(changed) => progressed |= changed,
+                        Err(error) => eprintln!("Practice check: {}",error.error_code),
+                    }
+                    match crate::learning_map_build::tick_network(&access,&handle,&cancellation) {
+                        Ok(changed) => progressed |= changed,
+                        Err(error) => eprintln!("Learning map: {}",error.error_code),
+                    }
                     // Keep pending work discoverable if this idle user is evicted.
                     if handle.lock().unwrap().learning_store().and_then(|store|store.coach_job_workspaces()).is_ok_and(|scopes|!scopes.is_empty())
                         && !backlog.contains(&owner) {backlog.push_back(owner);}

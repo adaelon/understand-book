@@ -115,6 +115,21 @@ fn spawn_teaching_coach_worker(
                 ),
                 Err(_) => break,
             }
+            // Practice soundness checks share this worker; they never block a turn.
+            match crate::practice_check::tick_local(&state, coordinator.provider_config_snapshot(), &cancellation) {
+                Ok(true) => continue,
+                Ok(false) => {}
+                Err(error) if !cancellation.is_cancelled() => eprintln!(
+                    "practice check background task failed [{}]: {}", error.error_code, error.message),
+                Err(_) => break,
+            }
+            match crate::learning_map_build::tick_local(&state, coordinator.provider_config_snapshot(), &cancellation) {
+                Ok(true) => continue,
+                Ok(false) => {}
+                Err(error) if !cancellation.is_cancelled() => eprintln!(
+                    "learning map background task failed [{}]: {}", error.error_code, error.message),
+                Err(_) => break,
+            }
             thread::sleep(Duration::from_millis(TEACHING_COACH_POLL_MS));
         }
     })

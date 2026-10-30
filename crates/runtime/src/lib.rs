@@ -34,6 +34,8 @@ pub mod goal;
 pub mod workspace_goal;
 pub mod workspace_records;
 pub mod tutor;
+pub mod practice;
+pub mod learning_map;
 mod teaching_revision;
 mod teaching_review_issues;
 mod tutor_assessment;
