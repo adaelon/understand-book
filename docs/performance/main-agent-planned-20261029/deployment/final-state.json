@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "release": "/opt/understand-book/releases/main-agent-planned-20261029",
+  "pid": "475325",
+  "restart_count": 0,
+  "worker_matches_release": true,
+  "state": {
+    "schema": 21,
+    "active": 0,
+    "model_inflight": 0,
+    "service_inflight": 0,
+    "web_inflight": 0,
+    "background_inflight": 0,
+    "admission_count": 149
+  },
+  "temporary_swap_removed": true
+}

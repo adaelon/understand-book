@@ -419,10 +419,55 @@ fn term_frequencies(text: &str) -> HashMap<String, usize> {
     frequencies
 }
 
+/// BM25 over caller-owned text fragments. It shares the source search tokenizer,
+/// without inventing a Book/LID for private expressions.
+pub struct LexicalTextIndex {
+    lengths: Vec<usize>,
+    postings: HashMap<String, Vec<(usize, usize)>>,
+    average_length: f64,
+}
+impl LexicalTextIndex {
+    pub fn new<'a>(texts: impl IntoIterator<Item=&'a str>) -> Self {
+        let mut lengths=Vec::new();let mut postings:HashMap<String,Vec<(usize,usize)>>=HashMap::new();
+        for text in texts {
+            let frequencies=term_frequencies(text);let index=lengths.len();lengths.push(frequencies.values().sum());
+            for (term,count) in frequencies {postings.entry(term).or_default().push((index,count));}
+        }
+        let average_length=lengths.iter().sum::<usize>() as f64 / lengths.len().max(1) as f64;
+        Self{lengths,postings,average_length}
+    }
+    pub fn search(&self,query:&str,limit:usize,allowed:impl Fn(usize)->bool)->Vec<(usize,f64)> {
+        let mut scores:HashMap<usize,f64>=HashMap::new();
+        for term in term_frequencies(query).keys() {
+            // Personal expressions should not be recalled just because a long
+            // Chinese question and an unrelated note share isolated characters.
+            if query.trim().chars().count() > 1 && term.chars().count() == 1 && term.chars().next().is_some_and(is_cjk) { continue; }
+            if matches!(term.as_str(), "我的" | "你的" | "自己" | "一个" | "一些" | "这个" | "那个" | "可以" | "什么" | "怎么" | "一下" | "请问") { continue; }
+            let Some(postings)=self.postings.get(term) else {continue;};
+            let idf=(1.0+(self.lengths.len() as f64-postings.len() as f64+0.5)/(postings.len() as f64+0.5)).ln();
+            let weight=if term.chars().count()==1 && term.chars().next().is_some_and(is_cjk){0.15}else{1.0};
+            for &(index,frequency) in postings {
+                if !allowed(index){continue;}
+                let tf=frequency as f64;let norm=1.2*(0.25+0.75*self.lengths[index] as f64/self.average_length.max(1.0));
+                *scores.entry(index).or_default()+=weight*idf*tf*2.2/(tf+norm);
+            }
+        }
+        let mut ranked:Vec<_>=scores.into_iter().collect();ranked.sort_by(|a,b|b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));ranked.truncate(limit);ranked
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use base_schema::{LidNode, NodeKind, ReadOnlyBase};
+
+    #[test]
+    fn personal_text_query_does_not_match_unrelated_isolated_characters() {
+        let index = LexicalTextIndex::new(["我的番茄炖牛腩要先煎香，再加入番茄慢慢炖。", "同一个词向量固定，为什么上下文不同向量却变了？"]);
+        let hits = index.search("同一个词在不同句子里的向量为什么不同？请根据我已有的表达选择起点，用纯文字解释，不生成演示也先不要出题。", 6, |_| true);
+        assert_eq!(hits.iter().map(|hit|hit.0).collect::<Vec<_>>(), vec![1]);
+        assert_eq!(index.search("牛腩", 2, |_| true)[0].0, 0);
+    }
 
     fn book(parts: &[&str]) -> Book {
         let mut start = 0;

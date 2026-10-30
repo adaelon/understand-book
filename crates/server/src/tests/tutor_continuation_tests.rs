@@ -709,11 +709,11 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     assert_eq!(answer["incomplete"],false,"{answer}");
     let accepted = state.user.agent_history.sessions[0].turns[1].turn_id.clone();
     assert_eq!(post_ok(&mut state,"/agent/chat",input.clone())["turn_id"],accepted);
-    assert_eq!(samples.lock().unwrap().len(),6,"four chat samplings plus independent fact and explanation reviews");
+    assert_eq!(samples.lock().unwrap().len(),4,"four author samplings; no teacher-content reviewer");
     let chosen = state.user.learning_store().unwrap().teaching_event(&format!("chosen:{accepted}")).unwrap();
     assert_eq!(state.user.learning_store().unwrap().teaching_deliveries(state.workspace.selected_chat.as_deref().unwrap(),&accepted).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"local","action":"choice","request":input,"accepted_turn":accepted,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":6,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":4,"terminal":"completed","incomplete":false}));
 
     let (f,w,input,_) = tc4_network_offer();
     let handle=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
@@ -728,7 +728,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     assert!(f.access.runs.run_one(&f.access).unwrap());
     assert!(!f.access.runs.run_one(&f.access).unwrap());
     assert_eq!(admit(&f,&w,input.clone()).1["turn_id"],accepted["turn_id"]);
-    assert_eq!(samples.lock().unwrap().len(),6,"four chat samplings plus independent fact and explanation reviews");
+    assert_eq!(samples.lock().unwrap().len(),4,"four author samplings; no teacher-content reviewer");
     let handle = f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap(); let user = handle.lock().unwrap();
     let turn = &user.agent_history.sessions[0].turns[1];
     assert_eq!(turn.status,AgentAssistantStatus::Completed,"{:?}",turn.error);
@@ -736,7 +736,7 @@ fn continuation_tc4_both_hosts_execute_chosen_action_to_delivery() {
     let chosen = user.learning_store().unwrap().teaching_event(&format!("chosen:{}",turn.turn_id)).unwrap();
     assert_eq!(user.learning_store().unwrap().teaching_deliveries(w["selected_chat"].as_str().unwrap(),&turn.turn_id).unwrap().len(),1);
     println!("TC4_EVIDENCE {}",json!({"host":"network","action":"choice","request":input,"accepted_turn":turn.turn_id,
-        "chosen_event":chosen,"execution_starts":1,"provider_calls":6,"terminal":"completed","incomplete":false}));
+        "chosen_event":chosen,"execution_starts":1,"provider_calls":4,"terminal":"completed","incomplete":false}));
 }
 
 impl ModelAdapter for Tc4CrashProbe {
@@ -1404,7 +1404,8 @@ impl ModelAdapter for ActionToolContract {
         if active {
             assert!(movement["properties"].get("continuation").is_some());
             for field in ["interaction_intent","intent_origin","intent_quote","preference_ref","capability"] {
-                assert!(movement["properties"].get(field).is_none(), "program-owned or unavailable: {field}");
+                assert!(super::tutor_loop_tests::tool_examples::sampled_execution_guidance(request)["move_forbidden"].as_array().unwrap()
+                    .contains(&json!(field)), "the current action forbids duplicate input: {field}");
             }
         } else if let Some(tool) = tool {
             assert_eq!(tool.parameters["properties"]["operation"]["enum"], json!(["trace","understanding","evidence"]));
@@ -1569,7 +1570,7 @@ fn continuation_tc2a_continue_omits_assessment_workflow() {
     let samples = action_contract_samples();
     let continued = samples[2].to_string();
     assert!(!continued.contains("If a formal open response is pending"), "continuation without a formal response carries the assessment workflow");
-    assert!(continued.contains("Select prepares the actual final delivery"));
+    assert!(continued.contains("Select validates and saves the exact delivery through the host"));
     for workflow in ["assessment", "understanding", "presentation"] {
         assert!(!continued.contains(&format!("resident-agent.tutor.{workflow}")));
     }

@@ -242,6 +242,7 @@ pub(crate) fn start_with_access(
     );
     let stop = Arc::new(AtomicBool::new(false));
     let mut handles = Vec::new();
+    if let Some(warmup) = crate::semantic_retrieval::preload() { handles.push(warmup); }
     #[cfg(unix)]
     handles.push(crate::online_publication::start(
         access.users.lock().unwrap().writer(), stop.clone(),
@@ -934,6 +935,16 @@ pub(crate) fn dispatch(
                 if !input.is_null() { return Err(invalid()); }
                 crate::learning_record_api::read(access, &context, id.as_deref(), &query, now).map(HttpReply::json)
             }
+            Capability::PersonalNotes(action) => {
+                expect_method(method,"POST")?;
+                if !query.is_empty(){return Err(invalid());}
+                if action=="search" {
+                    let port=crate::agent_run::NetworkUserPort{user:context.user.clone(),access:access.clone(),owner:context.principal.user_id().into(),publication:None};
+                    return crate::personal_note_retrieval::search_user(&port,&input).map(HttpReply::json);
+                }
+                let mut user=context.user.lock().unwrap();
+                crate::personal_note_api::dispatch(&mut user,&action,input,&now.to_string()).map(HttpReply::json)
+            }
             Capability::Chat(id) => {
                 if method == "DELETE" {
                     return Ok(HttpReply::json(
@@ -952,7 +963,7 @@ pub(crate) fn dispatch(
                     )?)?));
                 }
                 expect_method(method, "POST")?;
-                let workspace = input["workspace_id"].as_str().ok_or_else(invalid)?;
+                let workspace = if input["scope"]=="personal" {""} else {input["workspace_id"].as_str().ok_or_else(invalid)?};
                 admit_reply(access, &context, workspace, &input, &now.to_string(), wait)
             }
             Capability::Workspace(id) => {
@@ -1228,9 +1239,8 @@ fn reader_run_view(
             .flat_map(|session| &session.turns)
             .find(|turn| turn.turn_id == id)
             .ok_or_else(authorization::missing)?;
-        let reference = turn.published_book_ref.as_ref().ok_or_else(authorization::missing)?;
-        let publication = access.library.lock().unwrap().load(context.user_id(), reference)?;
-        let view = json!(crate::turn_view(&publication.book, turn));
+        let publication = turn.published_book_ref.as_ref().map(|reference|access.library.lock().unwrap().load(context.user_id(),reference)).transpose()?;
+        let view = json!(crate::scoped_turn_view(publication.as_ref().map(|p|p.book.as_ref()), turn));
         value["turn"].as_object_mut().unwrap().extend(view.as_object().unwrap().clone());
     }
     Ok(value)

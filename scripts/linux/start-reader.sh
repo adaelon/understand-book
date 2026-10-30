@@ -15,6 +15,11 @@ case "${UNDERSTAND_BOOK_MODE:-single-user}" in
   multi-user)
     : "${UNDERSTAND_BOOK_SERVICE_ROOT:?Set UNDERSTAND_BOOK_SERVICE_ROOT to the independent multi-user root}"
     : "${UNDERSTAND_BOOK_ORIGIN:?Set UNDERSTAND_BOOK_ORIGIN to the public HTTPS origin}"
+    export UNDERSTAND_BOOK_EMBEDDING_CONFIG="${UNDERSTAND_BOOK_EMBEDDING_CONFIG:-/opt/understand-book/models/local-embedding.json}"
+    if [[ ! -r "$UNDERSTAND_BOOK_EMBEDDING_CONFIG" ]]; then
+      echo 'Semantic retrieval is not installed. Run scripts/linux/build-multi-reader.sh before publishing.' >&2
+      exit 1
+    fi
     export UNDERSTAND_BOOK_WEB_DIST="${UNDERSTAND_BOOK_WEB_DIST:-$source_root/packages/web/dist-multi}"
     exec "$source_root/target/release/server" --multi-user "$UNDERSTAND_BOOK_SERVICE_ROOT" \
       --origin "$UNDERSTAND_BOOK_ORIGIN" --addr "${UNDERSTAND_BOOK_ADDR:-127.0.0.1:8788}"

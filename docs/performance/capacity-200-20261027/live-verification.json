@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-27T15:08:46.516948+00:00",
+  "service_pid": "339783",
+  "restart_count": 0,
+  "schema": 21,
+  "state": {
+    "schema": 21,
+    "active": 0,
+    "model_inflight": 0,
+    "service_inflight": 0,
+    "web_inflight": 0,
+    "background_inflight": 0,
+    "admission_count": 132
+  },
+  "review_counts": {
+    "completed": 138,
+    "cancelled": 2
+  },
+  "effective_capacity": {
+    "http_workers": 4,
+    "resident_users": 10,
+    "workspaces": 20,
+    "active_runs": 4,
+    "queued_runs": 20,
+    "model_slots": 2,
+    "sse_connections": 40
+  },
+  "request_timeouts": {
+    "model_request_timeout_seconds": 600,
+    "background_model_request_timeout_seconds": 180,
+    "model_connect_timeout_seconds": 15
+  },
+  "capacity_200_enabled": false,
+  "public_reader_admin_login_library_body_history_allowance": true,
+  "post_restart_error_counts": {
+    "rust_panics": 0,
+    "review_errors": 0,
+    "review_recovery_errors": 0
+  },
+  "load_tests": false,
+  "verification_model_requests": 0,
+  "temporary_build_resources_restored": true,
+  "memory": "total        used        free      shared  buff/cache   available\nMem:            3712        1986         171          72        1927        1726\nSwap:              0           0           0"
+}

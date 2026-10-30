@@ -214,3 +214,19 @@ fn q2_workspace_attribution_checks_owner_and_waiver_keeps_actual_cost_and_task()
     assert_eq!(after["reconciliations"]["total"], 1);
     assert_eq!(balance(&f)["debited_micro_cny"], 0);
 }
+
+#[test]
+fn personal_notes_without_material_use_account_charge_and_cancellation() {
+    let mut f=Fixture::new();adm5_tests::seed(&mut f,"fixture",1000);
+    let scope=ChargeScope::ReaderRun{user_id:"A".into(),run_ref:"personal-run".into()};
+    let cancellation=runtime::run_context::CancellationToken::default();
+    let port=f.access.spend.port_with_optional_publication(scope.clone(),None,ChargeAttribution::for_scope(&scope),cancellation.clone());
+    let call=identity("personal-transport",scope.clone());port.before_send(&call,&request()).unwrap();
+    port.after_send(&call,&usage(17,true)).unwrap();port.after_send(&call,&usage(17,true)).unwrap();
+    let saved=charge(&f,&call.call_id);assert_eq!(saved["user_id"],"A");assert_eq!(saved["cost_owner"],"account");assert_eq!(saved["provider_cost_micro_cny"],17);assert_eq!(saved["reports"]["total"],1);
+    cancellation.cancel();assert!(port.before_send(&identity("personal-cancelled",scope.clone()),&request()).is_err());
+    assert_eq!(f.ok(&f.a,"GET","/api/account/usage",json!({}))["total"],1);
+    f.control.connection.execute("UPDATE users SET disabled=1 WHERE user_id='A'",[]).unwrap();
+    let port=f.access.spend.port_with_optional_publication(scope.clone(),None,ChargeAttribution::for_scope(&scope),Default::default());
+    assert_eq!(port.before_send(&identity("personal-disabled",scope),&request()),Err(SpendStop::PermissionRevoked));
+}

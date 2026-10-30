@@ -2,5 +2,6 @@
 import type { BoardArtifactKind } from "./BoardArtifactKind";
 import type { NotePresentationReceipt } from "./NotePresentationReceipt";
 import type { NotePresentationRef } from "./NotePresentationRef";
+import type { NoteRef } from "./NoteRef";
 
-export type BoardImportSource = { "kind": "artifact", artifact: BoardArtifactKind, entry_id: string, source_revision: string, } | { "kind": "answer", session_id: string, turn_id: string, } | { "kind": "presentation", session_id: string, turn_id: string, reference: NotePresentationRef, receipt?: NotePresentationReceipt, } | { "kind": "prebuild", object_id: string, object_revision: number, map_revision: string, } | { "kind": "understanding", evidence_id: string, };
+export type BoardImportSource = { "kind": "personal_note", reference: NoteRef, } | { "kind": "artifact", artifact: BoardArtifactKind, entry_id: string, source_revision: string, } | { "kind": "answer", session_id: string, turn_id: string, } | { "kind": "presentation", session_id: string, turn_id: string, reference: NotePresentationRef, receipt?: NotePresentationReceipt, } | { "kind": "prebuild", object_id: string, object_revision: number, map_revision: string, } | { "kind": "understanding", evidence_id: string, };

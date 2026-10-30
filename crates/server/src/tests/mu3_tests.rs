@@ -329,7 +329,7 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
     assert!(prepared.scope.check_workspace(&state).is_err());
     assert!(prepared.scope.check_owner(&state).is_ok());
     assert_eq!(
-        prepared.scope.book.text("1.1", None).unwrap(),
+        prepared.scope.reading_book().text("1.1", None).unwrap(),
         "X".repeat(100)
     );
     let history = load_agent_history(&state.user.history_path).unwrap();
@@ -337,7 +337,7 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
         history.sessions[0].turns[0].published_book_ref.as_ref(),
         Some(&first.reference)
     );
-    let view = turn_view(&prepared.scope.book, &history.sessions[0].turns[0]);
+    let view = turn_view(&prepared.scope.reading_book(), &history.sessions[0].turns[0]);
     assert_eq!(view.published_book_ref, Some(first.reference.clone()));
     let adapter = ChatStubAdapter::scripted(vec![AssistantTurn {
         provider_continuation: None,

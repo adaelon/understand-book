@@ -374,11 +374,8 @@ fn om3_open_plan_analysis_keeps_multiple_options_without_a_scoring_contract() {
     assert_eq!(movement["participation"]["choice"], "support");
     assert!(movement["assessment"].is_null());
     assert!(movement["response_expectation"].is_null());
-    assert_eq!(report["review_input"]["learner_grounding"]["expressions"][0]["text"], request);
-    assert_eq!(report["review_audit"]["payload"]["current_design"]["design"]["basis_refs"], json!([fact]));
-    assert!(report["review_input"]["learner_grounding"]["expressions"].as_array().unwrap().iter()
-        .any(|expression| expression["fact_ref"] == fact && expression["text"] == request),
-        "the compact review must retain the real expression behind the design basis");
+    assert!(report["main_input"].to_string().contains(request));
+    assert_eq!(report["accepted_design"]["payload"]["design"]["basis_refs"], json!([fact]));
     assert!(report["delivery"]["payload"]["answer"].as_str().unwrap().contains("Both changes may be combined"));
 }
 
@@ -413,7 +410,7 @@ fn om3_current_depth_request_overrides_history_without_rewriting_preference() {
     selection["move"]["participation"] = json!({"choice":"conclude","reason":"当前要求直接推导；给出完整关系与条件后收束。"});
     selection["move"]["delivery_text"] = json!("把平均速度 v 定义为在同一总时间 T 内走完同一总路程 d 的恒定速度。恒定速度下路程是 vT，因此 vT = d。当 T > 0 时，两边除以 T 得 v = d/T。T 为零时不能作这个除法；总时间包括出发至到达之间的停留。");
     let report = super::tutor_building_blocks_tests::om3_replay(&mut state, run, design, selection, "current-depth");
-    assert_eq!(report["review_input"]["frozen_input"]["confirmed_preferences"], preferences);
+    assert_eq!(report["prepare"]["confirmed_preferences"], preferences);
     assert_eq!(report["delivery"]["payload"]["move"]["intent_origin"], "current_request");
     assert_eq!(report["delivery"]["payload"]["move"]["intent_quote"], request);
     assert!(report["delivery"]["payload"]["move"]["response_expectation"].is_null());

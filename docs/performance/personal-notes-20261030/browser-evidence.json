@@ -1,0 +1,210 @@
+{
+  "viewport": [
+    1440,
+    390
+  ],
+  "boards": {
+    "current": {
+      "document": {
+        "board_id": "board-01a18a8b-7cbd-70a2-b3f4-bf8b0df14d92",
+        "book_id": "mu5-x",
+        "created_at": "1793325759",
+        "deliveries": [],
+        "items": [
+          {
+            "created_at": "1793325759",
+            "explanation_blocks": [],
+            "item_id": "item-01a18a8b-7d49-7140-ab1c-2e1533798c55",
+            "position": {
+              "x": 0,
+              "y": 0
+            },
+            "readable_content": "规则固定，输入变化；输出可以变化。这个类比不意味着每个不同输入都有不同输出。",
+            "size": {
+              "height": 220,
+              "width": 320
+            },
+            "source_bindings": [],
+            "target": {
+              "kind": "note",
+              "reference": {
+                "note_id": "note-01a18a8b-633a-7002-ab7a-6833c440488f",
+                "revision": 2
+              }
+            },
+            "title": "规则固定，输入变化；输出可以变化。这个类比不意味着每个不同输入都有不同输出。"
+          },
+          {
+            "created_at": "1793325759",
+            "explanation_blocks": [],
+            "item_id": "item-01a18a8b-7d74-77c1-8afe-ca1256c70cf4",
+            "position": {
+              "x": 360,
+              "y": 0
+            },
+            "readable_content": "同一套模型权重处理不同句子，会有不同激活。",
+            "size": {
+              "height": 220,
+              "width": 320
+            },
+            "source_bindings": [],
+            "target": {
+              "kind": "note",
+              "reference": {
+                "note_id": "note-01a18a8b-63a1-7862-a71b-e87b91a401bf",
+                "revision": 1
+              }
+            },
+            "title": "同一套模型权重处理不同句子，会有不同激活。"
+          }
+        ],
+        "learning_workspace_id": "01a18a8b-7c55-7122-b785-41fa562016df",
+        "links": [],
+        "mappings": [],
+        "publication_id": "01a18a8a-5fb8-7f60-b8b3-72b27561f3c4",
+        "revision": 3,
+        "routes": [],
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "title": "参数为什么不需要改变",
+        "updated_at": "1793325759"
+      },
+      "view": {
+        "playback": null,
+        "presentation_states": {},
+        "reading_item_id": null,
+        "selected_block_id": null,
+        "selected_item_id": null,
+        "x": 0,
+        "y": 0,
+        "zoom": 1
+      }
+    },
+    "other": {
+      "document": {
+        "board_id": "board-01a18a8b-7d15-7422-b7f9-16ee4589b635",
+        "book_id": "mu5-x",
+        "created_at": "1793325759",
+        "deliveries": [],
+        "items": [
+          {
+            "created_at": "1793325759",
+            "explanation_blocks": [],
+            "item_id": "item-01a18a8b-7d9e-7060-a6eb-bd00e7e62972",
+            "position": {
+              "x": 0,
+              "y": 0
+            },
+            "readable_content": "规则固定，输入变化；输出可以变化。这个类比不意味着每个不同输入都有不同输出。",
+            "size": {
+              "height": 220,
+              "width": 320
+            },
+            "source_bindings": [],
+            "target": {
+              "kind": "note",
+              "reference": {
+                "note_id": "note-01a18a8b-633a-7002-ab7a-6833c440488f",
+                "revision": 2
+              }
+            },
+            "title": "规则固定，输入变化；输出可以变化。这个类比不意味着每个不同输入都有不同输出。"
+          }
+        ],
+        "learning_workspace_id": "01a18a8b-7c55-7122-b785-41fa562016df",
+        "links": [],
+        "mappings": [],
+        "publication_id": "01a18a8a-5fb8-7f60-b8b3-72b27561f3c4",
+        "revision": 2,
+        "routes": [],
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "title": "我的函数类比",
+        "updated_at": "1793325759"
+      },
+      "view": {
+        "playback": null,
+        "presentation_states": {},
+        "reading_item_id": null,
+        "selected_block_id": null,
+        "selected_item_id": null,
+        "x": 0,
+        "y": 0,
+        "zoom": 1
+      }
+    },
+    "history": {
+      "document": {
+        "board_id": "board-01a18a8b-7cbd-70a2-b3f4-bf8b0df14d92",
+        "book_id": "mu5-x",
+        "created_at": "1793325759",
+        "deliveries": [],
+        "items": [
+          {
+            "created_at": "1793325759",
+            "explanation_blocks": [],
+            "item_id": "item-01a18a8b-7d49-7140-ab1c-2e1533798c55",
+            "position": {
+              "x": 0,
+              "y": 0
+            },
+            "readable_content": "固定函数也能产生不同输出，输入改变了。",
+            "size": {
+              "height": 220,
+              "width": 320
+            },
+            "source_bindings": [],
+            "target": {
+              "kind": "note",
+              "reference": {
+                "note_id": "note-01a18a8b-633a-7002-ab7a-6833c440488f",
+                "revision": 1
+              }
+            },
+            "title": "固定函数也能产生不同输出，输入改变了。"
+          },
+          {
+            "created_at": "1793325759",
+            "explanation_blocks": [],
+            "item_id": "item-01a18a8b-7d74-77c1-8afe-ca1256c70cf4",
+            "position": {
+              "x": 360,
+              "y": 0
+            },
+            "readable_content": "同一套模型权重处理不同句子，会有不同激活。",
+            "size": {
+              "height": 220,
+              "width": 320
+            },
+            "source_bindings": [],
+            "target": {
+              "kind": "note",
+              "reference": {
+                "note_id": "note-01a18a8b-63a1-7862-a71b-e87b91a401bf",
+                "revision": 1
+              }
+            },
+            "title": "同一套模型权重处理不同句子，会有不同激活。"
+          }
+        ],
+        "learning_workspace_id": "01a18a8b-7c55-7122-b785-41fa562016df",
+        "links": [],
+        "mappings": [],
+        "publication_id": "01a18a8a-5fb8-7f60-b8b3-72b27561f3c4",
+        "revision": 3,
+        "routes": [],
+        "source_revision": "bbd2c3dd0750e45ddcfb5e96775912c67678c3f73c5e7ad4439c5efe14f586c7",
+        "title": "参数为什么不需要改变",
+        "updated_at": "1793325759"
+      },
+      "view": {
+        "playback": null,
+        "presentation_states": {},
+        "reading_item_id": null,
+        "selected_block_id": null,
+        "selected_item_id": null,
+        "x": 0,
+        "y": 0,
+        "zoom": 1
+      }
+    }
+  }
+}

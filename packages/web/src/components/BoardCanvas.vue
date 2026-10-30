@@ -31,7 +31,7 @@ const dragging = ref<string | null>(null);
 const dragPosition = ref<{ x: number; y: number } | null>(null);
 const panning = ref(false);
 const arrowId = `board-arrow-${useId()}`;
-const icons = { prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound };
+const icons = { personal_note: UserRound, prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound };
 const worldStyle = computed(() => ({ transform: `translate(${props.view.x}px, ${props.view.y}px) scale(${props.view.zoom})` }));
 const targetSize = computed(() => 44 / props.view.zoom);
 const shownItems = computed(() => props.visibleItemIds === undefined ? props.items : props.items.filter(item => props.visibleItemIds!.includes(item.item_id)));
@@ -182,7 +182,7 @@ defineExpose({ fit, locate, focusTargets });
     <div v-if="!items.length" class="board-canvas-empty">
       <span class="board-empty-symbol"><Sparkles :size="26" aria-hidden="true" /></span>
       <h3>{{ uiText('想理解什么？从这里开始') }}</h3>
-      <p>{{ uiText('在下方说出一个主题或问题。我们会一边讨论，一边把概念、关系和你的理解画在这里。') }}</p>
+      <p>{{ uiText('说出一个主题或问题。我们会一边讨论，一边把概念、关系和你的理解画在这里。') }}</p>
       <button v-if="!readonly" type="button" @click="emit('ask')"><MessageSquareText :size="17" aria-hidden="true" />{{ uiText('开始讨论') }}</button>
     </div>
     <div class="board-canvas-tools" role="group" :aria-label="uiText('画板视图')" @pointerdown.stop>

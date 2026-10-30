@@ -5,7 +5,7 @@ include!("teaching_review_usage_tests.rs");
 include!("local_followup_tests.rs");
 
 #[test]
-fn math_structure_source_reading_reaches_active_tutor_review_and_delivery() {
+fn math_structure_source_reading_reaches_author_and_delivery() {
     let b=optimization_math_book();
     let mut store=MemoryStore::open(tmp("math-source-teaching")).unwrap();
     let mut reader=Reader::new(&b,DEFAULT_RADIUS);
@@ -44,15 +44,11 @@ fn math_structure_source_reading_reaches_active_tutor_review_and_delivery() {
     assert!(!outcome.incomplete);
     assert_eq!(outcome.answer.as_deref(),Some(answer));
     assert_eq!(port.accepted,["select"]);
-    let reviews=adapter.seen_reviews.borrow();
-    assert_eq!(reviews.len(),1);
-    let math=reviews[0]["current_source_evidence"][0]["math_context"].as_array().unwrap();
-    let exercise=math.iter().find(|i|i["label"]=="习题 6.3").unwrap();
-    assert_eq!(exercise["references"][0]["relation"],"uses");
-    assert_eq!(exercise["references"][1]["relation"],"asks_to_prove");
-    assert!(math.iter().any(|i|i["label"]=="定理 6.5"), "{}",serde_json::to_string(&outcome.trace).unwrap());
-    assert!(adapter.seen_review_instructions.borrow()[0].contains("不能把题目要求当成已给出的证明"));
-    assert_eq!(port.reviews[0]["source_evidence"],reviews[0]["current_source_evidence"]);
+    assert!(adapter.seen_reviews.borrow().is_empty() && port.reviews.is_empty());
+    let reads=serde_json::to_string(&adapter.inner.0.seen_plans.borrow().last().unwrap().ordered_messages()).unwrap();
+    for relation in ["uses", "asks_to_prove", "定理 6.5"] {
+        assert!(reads.contains(relation), "the author must receive actual math relationships: {relation}");
+    }
 }
 
 fn traced_learning_support() -> serde_json::Value {
@@ -396,8 +392,8 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
                     "candidate":{"board_id":"board","candidate_id":candidate_id,"candidate_revision":self.revision,"base_board_revision":1,"previewed":true,
                         "delivery_text":self.text,"items":[{"item_id":"catalog","readable_content":"B remains in the catalog.","target":{"kind":"drawing","graphic":{"kind":"text","text":"Catalog → B"}}}],"links":[],"routes":[]}}))),
                 AuthorRequest::Deliver { .. } => {
-                    assert_eq!(self.inner.accepted, ["select"], "review must precede the actual save");
-                    if self.fail_staging { return Err(crate::board_author::error("BOARD_REVISION_CONFLICT", "The board changed while teaching was reviewed.")); }
+                    assert_eq!(self.inner.accepted, ["select"], "selection must precede the actual save");
+                    if self.fail_staging { return Err(crate::board_author::error("BOARD_REVISION_CONFLICT", "The board changed after teaching was selected.")); }
                     self.deliveries += 1;
                     let mut result = AuthorResult::value(serde_json::json!({"status":"delivery_staged"}));
                     result.delivery_text = Some(self.text.clone()); Ok(result)
@@ -459,7 +455,7 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     }
     // The real incident first omitted the body, then selected a different body;
     // its subsequent prepare was rejected as no progress. Recover that sequence.
-    for mode in ["reference", "resolved_reference", "guided_request", "repair", "review_revision", "explicit", "conflict", "invitation_revision", "changed_after_selection", "failed_after_selection", "unreviewed_part_commit", "misplaced_responds_to", "misplaced_invitation", "grace_accept", "grace_revise", "grace_wrong_call"] {
+    for mode in ["presentation_reference", "reference", "resolved_reference", "guided_request", "repair", "explicit", "conflict", "invitation_revision", "changed_after_selection", "failed_after_selection", "unselected_part_commit", "misplaced_responds_to", "misplaced_invitation", "grace_accept", "grace_wrong_call"] {
     let b = book(); let mut store = MemoryStore::open(tmp(&format!("native-board-teaching-review-{mode}"))).unwrap();
     let mut reader = Reader::new(&b, DEFAULT_RADIUS); let snapshot = default_profile_snapshot(&b, &store, "t0");
     let plain_text = "The catalog retains B even when this route does not select B.";
@@ -473,11 +469,11 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
             "support":"The board supplies catalog retention.","learner_inference":"Judge whether another route can use B."});
         if mode == "guided_request" { selection["move"]["interaction_intent"] = serde_json::json!("guided_inquiry"); }
     }
-    if mode == "unreviewed_part_commit" {
+    if mode == "unselected_part_commit" {
         selection["delivery_scope"] = serde_json::json!({"kind":"board_part","relation":"The catalog retains B.","remaining_request":"Explain how a different route selects it."});
     }
     let mut chats = vec![turn_calls(vec![call("preview", "board.author", r#"{"operation":"preview","candidate_revision":1}"#)])];
-    let revision = if matches!(mode, "repair" | "review_revision" | "invitation_revision") {
+    let revision = if matches!(mode, "repair" | "invitation_revision") {
         if mode == "repair" {
             let mut missing = selection.clone(); missing["move"].as_object_mut().unwrap().remove("delivery_text");
             chats.push(turn_calls(vec![call("missing-body", "tutor.step", &missing.to_string())]));
@@ -494,7 +490,7 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     if mode == "explicit" {
         chats.push(turn_calls(vec![call("forbidden-text", "tutor.step", &selection.to_string())]));
     }
-    if matches!(mode, "reference" | "review_revision" | "conflict" | "grace_accept" | "grace_revise") { selection["finish"] = serde_json::json!(true); }
+    if matches!(mode, "presentation_reference" | "reference" | "conflict" | "grace_accept") { selection["finish"] = serde_json::json!(true); }
     selection = compact_board_selection(&selection, revision);
     if mode == "resolved_reference" { selection["move"].as_object_mut().unwrap().remove("interaction_intent"); }
     if matches!(mode, "misplaced_responds_to" | "misplaced_invitation") {
@@ -515,49 +511,42 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
     }
     if matches!(mode, "changed_after_selection" | "failed_after_selection") {
         chats.push(turn_calls(vec![call("changed-board", "board.author", &serde_json::json!({"operation":"revise","candidate_revision":if mode == "failed_after_selection" {999} else {1},
-            "blocks":[{"block_id":"retained-card","markdown":"A replacement which has not been reviewed."}]}).to_string())]));
+            "blocks":[{"block_id":"retained-card","markdown":"A replacement which has not been selected."}]}).to_string())]));
     }
-    if mode == "unreviewed_part_commit" {
+    if mode == "unselected_part_commit" {
         chats.push(turn_calls(vec![call("change-diagram-only", "board.author", &serde_json::json!({"operation":"revise","candidate_revision":1,
             "drawings":[{"item_id":"catalog","title":"Revised catalog diagram","position":{"x":0,"y":0},"size":{"width":200,"height":100},"graphic":{"kind":"text","text":"Changed relation"}}]}).to_string())]));
         chats.push(turn_calls(vec![call("preview-changed-diagram", "board.author", r#"{"operation":"preview","candidate_revision":2}"#)]));
-        chats.push(turn_calls(vec![call("commit-unreviewed-diagram", "board.author", r#"{"operation":"commit","candidate_revision":2}"#)]));
+        chats.push(turn_calls(vec![call("commit-unselected-diagram", "board.author", r#"{"operation":"commit","candidate_revision":2}"#)]));
     }
     chats.push(turn_final(&text));
     if mode == "conflict" { chats.push(turn_final(&text)); }
-    let mut reviews = vec![];
-    if matches!(mode, "review_revision" | "grace_revise") { reviews.push(Ok(serde_json::json!({"decision":"revise",
-        "revision":"Explain that omission from this route does not remove a catalog entry.","learner_claims":[]}))); }
-    if mode == "unreviewed_part_commit" {
-        reviews.push(Ok(serde_json::json!({"decision":"accept","revision":null,"learner_claims":[],
-            "request_resolution":{"status":"part_answered","question_quote":"Explain why B remains available and draw it on the board.",
-                "reason":"This complete local support explains retention; the route-selection part of the original request remains."}})));
-    } else { reviews.push(accepted_review()); }
-    let adapter = ReviewedTeachingAdapter::new(chats, reviews);
+    let adapter = ReviewedTeachingAdapter::new(chats, vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig {
         max_turns: mode.starts_with("grace_").then_some(1), ..Default::default()
     }, adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    let mut current_design = design();
+    if mode == "presentation_reference" {
+        current_design["representation"] = serde_json::json!({"kind":"presentation",
+            "reason":"Keep the catalog and route visible together.","observation":"B stays in the catalog while the route changes."});
+    }
+    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":current_design},"learner_context":{}}));
     if mode == "resolved_reference" {
         context.tutor.as_mut().unwrap()["current_action"] = serde_json::json!({"action":{"origin":"ui_entry","entry_action":"explain_selection"},
             "user_supplement":"","accepted_request":"Explain this selection.","answer_ref":null,"answer_text":null,"source_excerpt":null,
             "source_bindings":[],"target":null,"expected_chat_head":null,"presentation_follow_up":null});
     }
     let mut port = BoardTeachingPort {inner:TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
-        accepted:vec![],selections:Default::default(),reviews:vec![]},text:if mode == "review_revision" { "B is available.".into() } else if mode == "invitation_revision" {plain_text.into()} else { text.clone() },deliveries:0,revision:1,fail_staging:mode == "conflict",resolved_intent:if mode == "resolved_reference" {Some("direct_explanation")} else {None},actual_request};
+        accepted:vec![],selections:Default::default(),reviews:vec![]},text:if mode == "invitation_revision" {plain_text.into()} else { text.clone() },deliveries:0,revision:1,fail_staging:mode == "conflict",resolved_intent:if mode == "resolved_reference" {Some("direct_explanation")} else {None},actual_request};
     let outcome = run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
         &mut EphemeralCompactionCheckpointSink::default(),actual_request,"t0");
-    if matches!(mode, "grace_revise" | "grace_wrong_call") {
+    if matches!(mode, "grace_wrong_call") {
         let outcome = outcome.unwrap();
         assert!(outcome.incomplete, "The existing text fallback cannot complete a rejected board");
-        assert_eq!(outcome.warning.as_deref(), Some(if mode == "grace_revise" {"TEACHING_INVALID"} else {"BOARD_DELIVERY_GRACE_REQUIRED"}));
-        if mode == "grace_revise" {
-            let error = outcome.delivery_diagnostics.as_ref().unwrap().initial.issues[0].trigger_value.as_ref().unwrap();
-            assert!(error.contains("Explain that omission") && error.contains("未完成"));
-        }
+        assert_eq!(outcome.warning.as_deref(), Some("BOARD_DELIVERY_GRACE_REQUIRED"));
         assert_eq!(port.deliveries, 0, "Reserved delivery must not publish an unaccepted candidate");
         assert!(port.inner.accepted.is_empty() && context.board_delivery_draft.is_none());
-        assert_eq!(adapter.seen_reviews.borrow().len(), usize::from(mode == "grace_revise"));
+        assert!(adapter.seen_reviews.borrow().is_empty());
         let plans = adapter.inner.0.seen_plans.borrow();
         assert_eq!(plans.len(), 3, "The failed reserved selection permits only the existing tool-free final fallback");
         assert!(plans[2].tools.is_empty(), "Fallback must not renew the authoring budget");
@@ -581,20 +570,20 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
         assert_eq!(port.deliveries, 1, "An earlier stage must not hide a failed required revision");
         continue;
     }
-    if mode == "unreviewed_part_commit" {
+    if mode == "unselected_part_commit" {
         assert_eq!(outcome.unwrap_err().error_code, "BOARD_TEACHING_SELECTION_REQUIRED");
-        assert_eq!(port.deliveries, 0, "A changed diagram must not reuse an older part's reviewed text");
+        assert_eq!(port.deliveries, 0, "A changed diagram must not reuse an older part's selected text");
         assert_eq!(port.text, text, "This regression changes only the diagram, keeping the accepted body identical");
         continue;
     }
     let outcome = outcome.unwrap();
     assert!(!outcome.incomplete, "{:?}", outcome.warning);
     assert_eq!(port.deliveries, 1);
-    assert_eq!(adapter.seen_reviews.borrow().len(), if mode == "review_revision" { 2 } else { 1 });
+    assert!(adapter.seen_reviews.borrow().is_empty() && port.inner.reviews.is_empty());
     if mode == "grace_accept" {
         assert_eq!(adapter.inner.0.seen_plans.borrow().len(), 2, "Preview gets exactly one reserved selection");
         assert_eq!(port.inner.accepted, ["select"]);
-        assert!(outcome.turns > 1, "The reserved selection includes its normal teaching review");
+        assert_eq!(outcome.turns, 2, "one preview sampling and one reserved selection");
     }
     if matches!(mode, "misplaced_responds_to" | "misplaced_invitation") {
         let feedback = tool_result(&context.messages, "misplaced-fields");
@@ -610,29 +599,22 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
         assert!(correction.contains("$.move.responds_to"), "The model must consume the correction before retrying");
         assert_eq!(port.inner.accepted, ["select"], "The invalid call must never execute or save");
         assert_eq!(port.revision, 1, "Correcting metadata must reuse the inspected candidate");
-        assert_eq!(port.inner.reviews[0]["proposed_delivery"]["moves"][0]["responds_to"], selection["move"]["responds_to"]);
+        assert_eq!(port.inner.selections[&outcome.teaching_delivery_move_refs[0]]["responds_to"], selection["move"]["responds_to"]);
     }
-    if mode == "review_revision" {
-        let feedback = context.messages.iter().find(|message| message.tool_call_id.as_deref() == Some("review-first-board"))
-            .and_then(|message| message.content.as_deref()).unwrap();
-        assert!(feedback.contains("board.author revise") && feedback.contains("board.author preview") && feedback.contains("move.board_candidate_revision"),
-            "Native review feedback must route content changes through a new inspected board: {feedback}");
-    }
-    let packets = adapter.seen_reviews.borrow(); let packet = packets.last().unwrap();
-    assert_eq!(packet["proposed_board"]["status"], "inspected_candidate");
-    assert_eq!(packet["proposed_board"]["items"][0]["reading_text"], "B remains in the catalog.");
-    assert_eq!(adapter.seen_review_images.borrow()[0][0].png_base64, "board-png");
-    assert!(adapter.seen_explanation_reviews.borrow().is_empty(), "the text-only reviewer must not drop the diagram");
-    assert_eq!(port.inner.reviews.last().unwrap()["proposed_board"], packet["proposed_board"]);
-    assert_eq!(packet["proposed_delivery"]["text"], text);
-    assert_eq!(packet["proposed_board"]["delivery_text"], text);
-    assert_eq!(packet["proposed_board"]["candidate_revision"], revision);
-    assert_eq!(packet["proposed_delivery"]["moves"][0]["block_refs"], design()["focus_block_refs"], "Canvas block IDs are never teaching focus IDs");
-    assert_eq!(packet["proposed_delivery"]["moves"][0]["prompt"], design()["target"]["learning_focus"], "The teaching label is not appended to or required in the candidate body");
-    if mode == "guided_request" {
-        assert_eq!(packet["proposed_delivery"]["moves"][0]["interaction_intent"], "guided_inquiry");
-        assert_eq!(packet["proposed_delivery"]["moves"][0]["participation"]["choice"], "invite");
-        assert_eq!(packet["proposed_delivery"]["moves"][0]["intent_quote"], actual_request);
+    let inspected=&context.board_review_preview.as_ref().unwrap().report;
+    assert_eq!(inspected["candidate_revision"],revision);
+    assert_eq!(inspected["observations"][0]["dom"]["text"],"B remains in the catalog.");
+    assert!(adapter.inner.0.seen_plans.borrow().iter().any(|plan|
+        plan.preview_images.iter().any(|image|image.png_base64=="board-png")),"author must actually observe the board");
+    assert!(adapter.seen_explanation_reviews.borrow().is_empty());
+    let selected=&port.inner.selections[&outcome.teaching_delivery_move_refs[0]];
+    assert_eq!(selected["delivery_text"],text);
+    assert_eq!(selected["block_refs"],design()["focus_block_refs"]);
+    assert_eq!(selected["prompt"],design()["target"]["learning_focus"]);
+    if mode=="guided_request" {
+        assert_eq!(selected["interaction_intent"],"guided_inquiry");
+        assert_eq!(selected["participation"]["choice"],"invite");
+        assert_eq!(selected["intent_quote"],actual_request);
     }
     assert_eq!(outcome.answer.as_deref(), Some(text.as_str()));
     }
@@ -645,126 +627,6 @@ fn exam_workspace(calendar_revision: u32) -> crate::workspace_goal::WorkspaceGoa
             constraints:vec!["Only route selection is on this exam; catalog maintenance is excluded.".into()],created_at:0},
         exam_calendar:Some(serde_json::json!({"workspace_goal_revision":calendar_revision,"current_local_date":"2026-10-21",
             "exam_date":"2026-10-22","remaining_days":1})),
-    }
-}
-
-#[test]
-fn exam_observing_answer_is_revised_and_reviewed_without_a_teaching_selection_or_stream_leak() {
-    let b = book();
-    let mut store = MemoryStore::open(tmp("exam-observing-review")).unwrap();
-    let mut reader = Reader::new(&b,DEFAULT_RADIUS);
-    let snapshot = default_profile_snapshot(&b,&store,"t0");
-    let question = "Explain this route directly, without a diagnostic.";
-    let bad = "UNREVIEWED_EXAM_DRAFT";
-    let good = "This route selects some retained cards; an omitted card can still be in the catalog.";
-    let adapter = ReviewedTeachingAdapter::new(vec![
-        turn_calls(vec![call("read","book.text",r#"{"lid":"1.1"}"#)]),
-        turn_final(bad),turn_final(good),
-    ],vec![Ok(serde_json::json!({"decision":"revise","revision":"Explain the requested distinction within the current exam scope.","learner_claims":[]})),accepted_review()]);
-    let sink = std::sync::Arc::new(TeachingStreamSink::default());
-    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
-    context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.workspace_goal = Some(exam_workspace(3));
-    let grounding = serde_json::json!({"expressions":[{"fact_ref":"user:question","text":question}],"interpretations":[],"delivered_support":[]});
-    context.tutor = Some(serde_json::json!({"status":"observing","learner_context":{"current_request":question,"learner_grounding":grounding}}));
-    let observed = crate::run_events::ObservedAdapter {inner:&adapter,events:context.events.clone(),
-        cancellation:context.cancellation.clone(),runtime_profile:context.runtime_profile.clone()};
-    let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
-    let outcome = run_context(&b,&mut port,&observed,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),question,"t0").unwrap();
-    assert!(!outcome.incomplete);
-    assert_eq!(outcome.answer.as_deref(),Some(good));
-    assert_eq!(outcome.turns,5,"three main samplings and two reviews share the turn budget");
-    assert!(outcome.tokens_spent>=342);
-    assert!(port.accepted.is_empty() && port.selections.is_empty());
-    assert!(context.teaching_delivery_draft.is_none() && outcome.teaching_delivery_move_refs.is_empty());
-    assert_eq!(port.reviews.len(),2);
-    let packets = adapter.seen_reviews.borrow();
-    assert_eq!(packets[0]["proposed_delivery"]["text"],bad);
-    assert_eq!(packets[1]["proposed_delivery"]["text"],good);
-    assert!(packets[0]["current_design"].is_null());
-    assert_eq!(packets[0]["proposed_presentations"],serde_json::json!([]));
-    assert_eq!(packets[0]["learner_grounding"],grounding);
-    assert_eq!(packets[0]["frozen_input"]["workspace_goal"]["revision"],3);
-    assert_eq!(packets[0]["frozen_input"]["exam_calendar"]["remaining_days"],1);
-    assert_eq!(packets[0]["frozen_input"]["constraints"],serde_json::json!(exam_workspace(3).goal.constraints));
-    assert!(!packets[0]["current_source_evidence"].as_array().unwrap().is_empty());
-    assert_eq!(packets[1]["review_context"]["prior_reviews"][0]["decision"],"revise");
-    let plans = adapter.inner.0.seen_plans.borrow();
-    assert!(plans[2].ordered_messages().iter().filter_map(|m|m.content.as_deref()).any(|text|
-        text.contains("agent.exam_answer_revision") && text.contains(bad) && text.contains("current exam scope")));
-    assert!(!serde_json::to_string(&context.messages).unwrap().contains(bad),"private rejected draft must not become delivered conversation history");
-    let patches = serde_json::to_string(&*sink.0.lock().unwrap()).unwrap();
-    assert!(patches.contains(good));
-    assert!(!patches.contains(bad),"even the first streamed delta must wait for review");
-}
-
-#[test]
-fn exam_review_does_not_change_non_exam_or_stale_calendar_answers_or_double_review_active_teaching() {
-    for case in ["no_exam","stale_calendar","changed_goal","active"] {
-        let b = book();
-        let mut store = MemoryStore::open(tmp(&format!("exam-review-{case}"))).unwrap();
-        let mut reader = Reader::new(&b,DEFAULT_RADIUS);
-        let snapshot = default_profile_snapshot(&b,&store,"t0");
-        let active = case=="active";
-        let chats = if active {vec![turn_calls(vec![call("select","tutor.step",&select_args())]),turn_final("FREE_FINAL_NOT_SELECTED")]}
-            else {vec![turn_final("Ordinary answer remains unchanged.")]};
-        let adapter = ReviewedTeachingAdapter::new(chats,if active {vec![accepted_review()]} else {vec![]});
-        let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(6),..Default::default()},adapter.model_runtime_profile());
-        let mut workspace = exam_workspace(if case=="stale_calendar" {2} else {3});
-        if case=="no_exam" { workspace.exam_calendar=None; }
-        if case=="changed_goal" { context.accepted_workspace_goal=Some(base_schema::WorkspaceGoal {revision:4,..workspace.goal.clone()}); }
-        context.workspace_goal=Some(workspace);
-        context.tutor=Some(if active {serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}})}
-            else {serde_json::json!({"status":"observing","learner_context":{}})});
-        let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
-        let outcome = run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"Explain this relation.","t0").unwrap();
-        assert!(!outcome.incomplete);
-        assert_eq!(adapter.seen_reviews.borrow().len(),usize::from(active));
-        assert_eq!(port.accepted,if active {vec!["select"]} else {vec![]});
-        if active {
-            assert_ne!(outcome.answer.as_deref(),Some("FREE_FINAL_NOT_SELECTED"));
-            assert_eq!(adapter.seen_reviews.borrow()[0]["frozen_input"]["exam_calendar"]["workspace_goal_revision"],3);
-        } else { assert_eq!(outcome.answer.as_deref(),Some("Ordinary answer remains unchanged.")); }
-    }
-}
-
-#[test]
-fn exam_failed_review_and_exhausted_budget_cannot_generate_or_stream_an_unreviewed_fallback() {
-    for case in ["review_failure","no_review_budget","revision_budget","tool_budget","invalid_citation"] {
-        let b = book();
-        let mut store = MemoryStore::open(tmp(&format!("exam-review-stop-{case}"))).unwrap();
-        let mut reader = Reader::new(&b,DEFAULT_RADIUS);
-        let snapshot = default_profile_snapshot(&b,&store,"t0");
-        let bad = if case=="invalid_citation" {"UNREVIEWED_CITATION [[source:invented]]"} else {"UNREVIEWED_EXAM_FAILURE"};
-        let mut chats = if case=="tool_budget" {vec![turn_calls(vec![call("read","book.text",r#"{"lid":"1.1"}"#)])]} else {vec![turn_final(bad)]};
-        chats.push(turn_final("FALLBACK_GENERATION_MUST_NOT_RUN"));
-        let reviews = match case {
-            "review_failure"=>vec![Err(AdapterError {spend_stop:None,message:"Review provider unavailable".into()})],
-            "revision_budget"=>vec![Ok(serde_json::json!({"decision":"revise","revision":"Explain the missing relationship.","learner_claims":[]}))],
-            "invalid_citation"=>vec![accepted_review()],
-            _=>vec![],
-        };
-        let adapter = ReviewedTeachingAdapter::new(chats,reviews);
-        let limit = if matches!(case,"no_review_budget"|"tool_budget") {1} else if case=="revision_budget" {2} else {6};
-        let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(limit),..Default::default()},adapter.model_runtime_profile());
-        let sink = std::sync::Arc::new(TeachingStreamSink::default());
-        context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-        context.workspace_goal=Some(exam_workspace(3));
-        context.tutor=Some(serde_json::json!({"status":"observing","learner_context":{}}));
-        let observed = crate::run_events::ObservedAdapter {inner:&adapter,events:context.events.clone(),
-            cancellation:context.cancellation.clone(),runtime_profile:context.runtime_profile.clone()};
-        let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
-        let outcome = run_context(&b,&mut port,&observed,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"Explain 1.1 directly.","t0").unwrap();
-        assert!(outcome.incomplete,"{case}");
-        assert_eq!(adapter.inner.0.seen_plans.borrow().len(),1,"{case}: no extra finalization, repair, or fallback generation");
-        assert!(!outcome.answer.as_deref().unwrap().contains("UNREVIEWED"));
-        assert!(port.accepted.is_empty());
-        let patches = serde_json::to_string(&*sink.0.lock().unwrap()).unwrap();
-        assert!(!patches.contains("UNREVIEWED") && !patches.contains("FALLBACK_GENERATION"),"{case}");
-        if case=="tool_budget" { assert!(!outcome.source_bindings.is_empty(),"observed original text remains available"); }
     }
 }
 
@@ -1024,48 +886,6 @@ fn teaching_review_fixture_fills_only_missing_relation_fields() {
     assert_eq!(filled["request_resolution"]["answer_quotes"],serde_json::json!([packet["proposed_delivery"]["text"]]));
     assert_eq!(filled["request_resolution"]["question_quote"],packet["original_request"]);
     assert!(filled["request_resolution"]["requested_relation"].as_str().unwrap().contains("Explain the interval."));
-}
-
-#[test]
-fn teaching_grounding_rejects_review_citations_to_delivery_or_invented_words_before_selection() {
-    for failure in ["delivery", "invented_quote", "missing_basis", "missing_claims"] {
-        let b = book();
-        let mut store = MemoryStore::open(tmp(&format!("teaching-grounding-{failure}"))).unwrap();
-        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
-        let snapshot = default_profile_snapshot(&b, &store, "t0");
-        let bad = selected_body("unsupported", "You already understand that vectors only order candidates.");
-        let good = selected_body("explanation", "A document's short retrieval text is converted to a vector. The query is converted too, and their comparison helps retrieve candidate documents.");
-        let mut claim = serde_json::json!({"claim":"The learner already understands the role of vectors.",
-            "basis":[{"fact_ref":"user:question","quote":"How is Embedding used?"}]});
-        match failure {
-            "delivery" => claim["basis"][0]["fact_ref"] = serde_json::json!("delivery:page"),
-            "invented_quote" => claim["basis"][0]["quote"] = serde_json::json!("I understand vectors now."),
-            "missing_basis" => claim["basis"] = serde_json::json!([]),
-            _ => {},
-        }
-        let mut verdict = serde_json::json!({"decision":"accept","revision":null,"learner_claims":[claim]});
-        if failure == "missing_claims" { verdict.as_object_mut().unwrap().remove("learner_claims"); }
-        let adapter = ReviewedTeachingAdapter::new(vec![
-            turn_calls(vec![call("bad", "tutor.step", &bad.to_string())]),
-            turn_calls(vec![call("good", "tutor.step", &good.to_string())]),
-            turn_final("Use the accepted explanation."),
-        ], vec![Ok(verdict), accepted_review()]);
-        let grounding = serde_json::json!({"expressions":[{"fact_ref":"user:question","text":"How is Embedding used?"}],
-            "interpretations":[],"delivered_support":[{"delivery_ref":"delivery:page","answer":"Vectors only order candidates."}]});
-        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-        context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},
-            "learner_context":{"learner_grounding":grounding}}));
-        let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
-        let outcome = run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"How is Embedding used?","t0").unwrap();
-        assert_eq!(port.accepted,["select"],"a reviewer cannot authorize a learner claim using a delivery or fabricated words");
-        assert!(!port.selections.contains_key("selected:unsupported"));
-        assert_eq!(outcome.answer.as_deref(),good["move"]["delivery_text"].as_str());
-        let mut factual_grounding = grounding.clone();
-        factual_grounding.as_object_mut().unwrap().remove("interpretations");
-        assert_eq!(adapter.seen_reviews.borrow()[0]["learner_grounding"],factual_grounding);
-        assert!(tool_result(&context.messages,"bad").contains("TEACHING_INVALID"));
-    }
 }
 
 #[test]
@@ -1410,7 +1230,7 @@ fn teaching_delivery_budget_finalization_delivers_the_accepted_body() {
         turn_final("BUDGET_FREE_EXPANSION_MUST_NOT_REPLACE_SUPPORT"),
     ], vec![]));
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
-    let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(3), ..Default::default() }, adapter.model_runtime_profile());
+    let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(1), ..Default::default() }, adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
     context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = TeachingPort { inner: BorrowedResidentState { store:&mut store, reader:&mut reader }, accepted:Vec::new(), selections:Default::default(),reviews:Vec::new() };
@@ -1428,370 +1248,7 @@ fn teaching_delivery_budget_finalization_delivers_the_accepted_body() {
 }
 
 #[test]
-fn teaching_review_editorial_advice_reaches_author_without_forcing_another_review() {
-    for adopt in [false, true] {
-        let b=book();
-        let mut store=MemoryStore::open(tmp(if adopt {"teaching-advice-adopt"} else {"teaching-advice-keep"})).unwrap();
-        let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-        let snapshot=default_profile_snapshot(&b,&store,"t0");
-        let first=selected_body("first","The catalog keeps A and B. This route uses A.");
-        let improved=selected_body("improved","This route uses A; B remains in the catalog for another route.");
-        let advice=serde_json::json!({"location":"opening comparison","evidence":"The catalog keeps A and B. This route uses A.",
-            "learning_impact":"Keeping B in the same sentence reduces the need to remember the earlier list.",
-            "suggested_change":"Place the route's selection and B's retained status together."});
-        let mut reviews=vec![Ok(serde_json::json!({"decision":"accept","revision":null,"learner_claims":[],
-            "reading_path":{"actual_sequence":"Read the catalog, then compare this route.",
-                "understanding_gap":"The comparison requires remembering the earlier list.",
-                "proposed_adjustment":"Show the two statuses together."},"improvements":[advice]}))];
-        let mut turns=vec![turn_calls(vec![call("first","tutor.step",&first.to_string())])];
-        if adopt {
-            turns.push(turn_calls(vec![call("improved","tutor.step",&improved.to_string())]));
-            reviews.push(accepted_review());
-        }
-        turns.push(turn_final("FINAL_MUST_USE_SELECTED_BODY"));
-        let adapter=ReviewedTeachingAdapter::new(turns,reviews);
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-        let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
-        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"Does B remain available when this route uses only A?","t0").unwrap();
-        assert_eq!(port.reviews.len(),if adopt {2} else {1},"advice cannot force a review loop");
-        assert_eq!(port.reviews[0]["review"]["decision"],"accept");
-        assert!(port.reviews[0]["review"]["revision"].is_null());
-        let plans=adapter.inner.0.seen_plans.borrow();
-        let receipt:serde_json::Value=serde_json::from_str(plans[1].input.iter()
-            .find(|message|message.tool_call_id.as_deref()==Some("first")).unwrap().content.as_deref().unwrap()).unwrap();
-        assert_eq!(receipt["model_body"]["editorial_feedback"]["improvements"][0],advice);
-        assert!(receipt["model_body"].get("delivery_draft").is_none());
-        assert!(receipt["model_body"]["editorial_feedback"].get("agent_work").is_none());
-        assert_eq!(outcome.answer.as_deref(),if adopt {improved["move"]["delivery_text"].as_str()} else {first["move"]["delivery_text"].as_str()});
-        if adopt {
-            assert!(adapter.seen_reviews.borrow()[1]["review_context"]["prior_reviews"][0].get("improvements").is_none(),
-                "optional editorial advice must not become another text-review task after acceptance");
-        }
-    }
-}
-
-#[test]
-fn teaching_review_rejects_before_host_selection_and_delivers_only_the_revision() {
-    let b = book();
-    let mut store = MemoryStore::open(tmp("teaching-review-revision")).unwrap();
-    let mut reader = Reader::new(&b, DEFAULT_RADIUS);
-    let snapshot = default_profile_snapshot(&b, &store, "t0");
-    let rejected_text=format!("{}UNACCEPTED_TAIL_BEYOND_SUMMARY", "UNACCEPTED_BRANCHES_AND_COUNTERFACTUALS ".repeat(40));
-    let mut rejected = selected_body("broad", &rejected_text);
-    rejected["move"]["participation"]["reason"]=serde_json::json!("PRIVATE_REJECTED_REASONING_ALLOCATION");
-    let revised = selected_body("focused", "The route leaves B out, while the retained catalog still has B.");
-    let adapter = ReviewedTeachingAdapter::new(vec![
-        turn_calls(vec![call("broad", "tutor.step", &rejected.to_string())]),
-        turn_calls(vec![call("focused", "tutor.step", &revised.to_string())]),
-        turn_final("FREE_FINAL_MUST_NOT_ADD_THE_COUNTERFACTUAL"),
-    ], vec![Ok(serde_json::json!({"decision":"accept","revision":null,
-        "request_resolution":{"status":"unresolved","question_quote":"I can follow B in only one list.",
-            "reason":"Keep the catalog and this route fixed; the answer has not supplied the requested distinction, so omit the later changed-condition case."},
-        "findings":[{"rule_id":"R1","location":"opening comparison",
-            "evidence":"One list alone does not show the difference between storage and this route's selection.",
-            "required_change":"Keep the catalog and this route fixed, and explain B's status in each."}],
-        "agent_work":{"understanding":[{"statement":"This draft's private memory has an invalid citation.",
-            "sources":[{"source_id":b.base.book_id,"source_revision":b.source_fingerprint(),"lid":"1.9","quote":"Not read at this position."}]}],"open_questions":[]}})), accepted_review()]);
-    let sink = std::sync::Arc::new(TeachingStreamSink::default());
-    let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(8), ..Default::default()}, adapter.model_runtime_profile());
-    context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    let mut chapter_design = design();
-    chapter_design["organizing_model"] = serde_json::json!("Why retain a card that this route leaves out? The learner currently sees only one list.");
-    let support_move = serde_json::json!({"move_id":"help","design_ref":"design:current","block_refs":["keep-select"],
-        "object_ids":["catalog"],"kind":"explain","interaction_intent":"direct_explanation",
-        "intent_origin":"current_request","intent_quote":"I can follow B in only one list.","preference_ref":null,
-        "responds_to":{"fact_refs":["usage:before"]},"interpretation_refs":[],"presentation":null});
-    let mut historical_move = support_move.clone();
-    historical_move["prompt"] = serde_json::json!("UNDELIVERED_OLD_PLAN");
-    historical_move["target"] = serde_json::json!({"expected_performance":"ALREADY_MASTERED_PLAN"});
-    historical_move["explanation"] = serde_json::json!("PRIVATE_WORKED_SOLUTION");
-    let grounding = serde_json::json!({"expressions":[
-        {"fact_ref":"usage:before","text":"B is gone when omitted.","support_delivery_refs":[]},
-        {"fact_ref":"usage:after","text":"I can follow B in only one list.","support_delivery_refs":["delivered:help"],
-            "assistance_refs":["help:before-input"],"scene":{"visible_step":"Only route A"},"presentations":[{"presentation_id":"old-page"}]}],
-        "interpretations":[{"evidence_ref":"reading:before","fact_refs":["usage:before"],"interpretation":"A revisable reading."}],
-        "delivered_support":[{"delivery_ref":"delivered:help","kind":"message_delivered","move":historical_move,
-            "answer":"The catalog preserves the cards.","text":"The route selects some cards.",
-            "scene":{"observed_result":"B remains in the catalog."},"presentation":{"presentation_id":"old-page"},
-            "presentations":[{"readable_content":"Catalog: A, B. Route: A."}],"feedback":{"text":"This was assisted."}}],
-        "unknown_when_absent":true,"unavailable_basis_refs":[]});
-    let workflow = serde_json::json!({"pending_response_invitation":{"event_id":"invitation:prior"},
-        "pending_activity":{"activity_ref":"activity:prior"},"pending_assessment_refs":["assessment:prior"],
-        "confirmed_background":[{"key":"notation","value":"Needs a concrete walkthrough before symbolic notation."}],
-        "learning_opportunity":{"design_ref":"design:current","focus_block_refs":["keep-select"],
-            "return_context":{"open_question_refs":["usage:before"],"scene":{"visible_step":"Earlier catalog"}}}});
-    let mut learner = workflow.clone();
-    learner["current_request"] = serde_json::json!("I can follow B in only one list.");
-    learner["recent_facts"] = serde_json::json!([{"text":"OLD_TRACE_COPY"}]);
-    learner["current_target"] = serde_json::json!({"expected_performance":"OLD_TARGET_COPY"});
-    learner["learner_grounding"] = grounding.clone();
-    learner["learning_opportunity"]["delivered_support"] = serde_json::json!([traced_learning_support()]);
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":chapter_design},
-        "learning_purpose":"understand",
-        "chapter_scope":{"source_id":"source","chapter_lid":"1","title":"Retained cards and routes"},
-        "material_scope":[{"source_id":"source","scope_refs":["1"],"role":"primary"}],
-        "learner_context":learner}));
-    let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader}, accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()};
-    let outcome = run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),"I can follow B in only one list.","t0").unwrap();
-    assert_eq!(port.accepted,["select"],"the rejected selection must never reach the host");
-    assert!(!port.selections.contains_key("selected:broad"));
-    assert_eq!(port.reviews.len(),2);
-    assert_eq!(port.reviews[0]["review"]["reported_decision"],"accept");
-    assert_eq!(port.reviews[0]["agent_work_warnings"].as_array().unwrap().len(),1);
-    assert!(port.reviews[0]["review"]["agent_work"]["understanding"].as_array().unwrap().is_empty());
-    assert_eq!(port.reviews[0]["review"]["decision"],"revise",
-        "an admitted unresolved request must be persisted and routed as a revision before host selection");
-    assert_eq!(port.reviews[1]["review"]["decision"],"accept");
-    assert_eq!(outcome.answer.as_deref(),revised["move"]["delivery_text"].as_str());
-    assert_eq!(outcome.teaching_delivery_move_refs,["selected:focused"]);
-    assert_eq!(outcome.turns,6,"the factual rejection returns to the author without an explanation call");
-    assert_eq!(outcome.tokens_spent,3 * 10 + 3 * 171,"the skipped explanation consumes neither tokens nor a model turn");
-    assert_eq!(adapter.seen_explanation_reviews.borrow().len(),1);
-    assert_eq!(adapter.seen_explanation_reviews.borrow()[0]["current_delivery"],revised["move"]["delivery_text"]);
-    let requests = adapter.seen_reviews.borrow();
-    assert_eq!(requests.len(),2);
-    assert_eq!(requests[0]["original_request"],"I can follow B in only one list.");
-    assert_eq!(requests[0]["frozen_input"]["learning_purpose"],"understand");
-    assert_eq!(requests[0]["learner_view"],workflow,"review keeps workflow context without another learner/help history");
-    let mut expected_grounding = grounding.clone();
-    expected_grounding.as_object_mut().unwrap().remove("interpretations");
-    expected_grounding["delivered_support"][0].as_object_mut().unwrap().remove("move");
-    assert_eq!(requests[0]["learner_grounding"],expected_grounding,
-        "one canonical projection preserves original words, input-time help, scenes and associations verbatim");
-    assert!(requests[0]["frozen_input"].get("recent_facts").is_none());
-    for omitted in ["UNDELIVERED_OLD_PLAN","ALREADY_MASTERED_PLAN","PRIVATE_WORKED_SOLUTION","OLD_TRACE_COPY","OLD_TARGET_COPY"] {
-        assert!(!requests[0].to_string().contains(omitted),"{omitted}");
-    }
-    assert_eq!(context.tutor.as_ref().unwrap()["learner_context"]["learner_grounding"],grounding,
-        "review projection must not rewrite stored or working learner data");
-    assert_eq!(requests[0]["frozen_input"]["chapter_scope"]["chapter_lid"],"1");
-    assert_eq!(requests[0]["frozen_input"]["material_scope"][0]["scope_refs"],serde_json::json!(["1"]));
-    assert!(requests[0].get("current_design").is_none(), "text review must not inherit the whole lesson's scope");
-    assert!(requests[0].get("local_design").is_none(), "factual review is independent of the author's teaching plan");
-    let review_context = &requests[1]["review_context"];
-    assert_eq!(review_context["round"],2);
-    assert!(review_context["prior_reviews"][0]["revision"].as_str().unwrap().contains("Keep the catalog and this route fixed"));
-    assert_eq!(review_context["prior_reviews"][0]["findings"],port.reviews[0]["review"]["findings"]);
-    assert_eq!(review_context["prior_reviews"][0]["request_resolution"],port.reviews[0]["review"]["request_resolution"]);
-    let change = &review_context["changes_since_previous_review"][0];
-    assert_eq!(change["path"],"delivery.text");
-    assert_eq!(change["before"],rejected["move"]["delivery_text"]);
-    assert_eq!(change["after"],revised["move"]["delivery_text"]);
-    assert!(review_context["prior_reviews"][0].get("proposed_delivery").is_none(),"prior packets must not be repeated");
-    let public = serde_json::to_string(&context.messages).unwrap();
-    assert!(!public.contains("UNACCEPTED_BRANCHES_AND_COUNTERFACTUALS"));
-    assert!(!public.contains("PRIVATE_REJECTED_REASONING_ALLOCATION"));
-    let plans=adapter.inner.0.seen_plans.borrow();
-    let retry_messages=plans[1].ordered_messages();
-    let private=active_teaching_revision_draft(&retry_messages);
-    let feedback=&private["review_feedback"];
-    assert!(feedback["open_issues"].as_array().unwrap().iter().any(|issue|
-        issue["finding"]["required_change"].as_str().is_some_and(|change|change.contains("Keep the catalog and this route fixed"))),
-        "the next author request must receive the complete concrete action through its stable issue");
-    assert_eq!(feedback["open_issues"],port.reviews[0]["review"]["open_issues"]);
-    assert!(feedback.get("revision").is_none() && feedback.get("request_resolution").is_none());
-    assert_eq!(feedback["guidance"],TEACHING_REVISION_GUIDANCE);
-    assert!(retry_messages.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains(&rejected_text))),
-        "the next author sampling needs the complete rejected draft, including its tail beyond the working-memory excerpt");
-    assert!(retry_messages.iter().any(|message|message.content.as_deref().is_some_and(|text|text.contains("PRIVATE_REJECTED_REASONING_ALLOCATION"))),
-        "repairing a claim must not make the author reconstruct the original participation fields");
-    let retry_snapshot=retry_messages.iter().filter_map(|message|message.content.as_deref())
-        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
-    assert!(retry_snapshot.contains("agent.teaching_revision"));
-    let accepted_messages=plans[2].ordered_messages();
-    let accepted_snapshot=accepted_messages.iter().filter_map(|message|message.content.as_deref())
-        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
-    assert!(!accepted_snapshot.contains("agent.teaching_revision"),"acceptance expires the private revision draft");
-    let receipt:serde_json::Value=serde_json::from_str(plans[1].input.iter()
-        .find(|message|message.tool_call_id.as_deref()==Some("broad")).unwrap().content.as_deref().unwrap()).unwrap();
-    assert_eq!(receipt["model_body"]["error_code"],"TEACHING_INVALID");
-    assert_eq!(receipt["model_body"]["draft_ref"],private["draft_ref"]);
-    assert!(receipt["model_body"]["message"].as_str().unwrap().contains("review_feedback"));
-    assert!(receipt["model_body"].get("review_feedback").is_none(),"the brief receipt must not duplicate the private full feedback");
-    let patches = serde_json::to_string(&*sink.0.lock().unwrap()).unwrap();
-    assert!(patches.contains("retained catalog still has B"));
-    assert!(!patches.contains("UNACCEPTED_BRANCHES") && !patches.contains("FREE_FINAL_MUST_NOT"));
-}
-
-#[test]
-fn teaching_revision_draft_expires_after_redesign_or_outside() {
-    for change in ["design","outside"] {
-        let b=book();
-        let mut store=MemoryStore::open(tmp(&format!("teaching-revision-clear-{change}"))).unwrap();
-        let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-        let snapshot=default_profile_snapshot(&b,&store,"t0");
-        let rejected=selected_body("rejected","PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE");
-        let replacement=selected_body("replacement","The retained catalog keeps B available for a later route.");
-        let mut turns=vec![turn_calls(vec![call("rejected","tutor.step",&rejected.to_string())])];
-        let mut reviews=vec![Ok(serde_json::json!({"decision":"revise","revision":"The current request still needs its requested connection."}))];
-        if change=="design" {
-            let mut revised=design();
-            revised["previous_ref"]=serde_json::json!("design:current");
-            turns.push(turn_calls(vec![call("redesign","tutor.step",&serde_json::json!({"operation":"design","operation_id":"revised","design":revised}).to_string())]));
-            turns.push(turn_calls(vec![call("replacement","tutor.step",&replacement.to_string())]));
-            reviews.push(accepted_review());
-        } else {
-            turns.push(turn_calls(vec![call("outside","tutor.step",r#"{"operation":"outside"}"#)]));
-        }
-        turns.push(turn_final("ORDINARY_FINAL_TEXT"));
-        let adapter=ReviewedTeachingAdapter::new(turns,reviews);
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(10),..Default::default()},adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-        let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
-        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"Explain the requested relation.","t0").unwrap();
-        assert!(!outcome.incomplete);
-        let plans=adapter.inner.0.seen_plans.borrow();
-        let current_snapshot=|index:usize| plans[index].ordered_messages().into_iter()
-            .filter_map(|message|message.content).rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
-        assert!(current_snapshot(1).contains("agent.teaching_revision"));
-        let cleared=current_snapshot(2);
-        assert!(!cleared.contains("agent.teaching_revision"),"{change} must expire the previous design's rejected draft");
-        assert!(!cleared.contains("PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE"));
-        assert!(!serde_json::to_string(&context.messages).unwrap().contains("PRIVATE_REJECTED_DRAFT_BEFORE_SCOPE_CHANGE"));
-        assert!(!port.selections.contains_key("selected:rejected"));
-    }
-}
-
-#[test]
-fn teaching_review_real_revisions_after_bad_arguments_keep_making_progress() {
-    let b=book();
-    let mut store=MemoryStore::open(tmp("teaching-review-real-progress")).unwrap();
-    let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-    let snapshot=default_profile_snapshot(&b,&store,"t0");
-    let texts = ["The page includes B at setting 3, and keeps nine cards.",
-        "The page includes B at setting 2, and keeps nine cards.",
-        "The page includes B at setting 2, and keeps ten cards.",
-        "At setting 2 the route includes B; the catalog keeps all ten cards."];
-    let mut chats=vec![turn_calls(vec![call("missing-operation","tutor.step",r#"{}"#)])];
-    for (index,text) in texts.iter().enumerate() {
-        chats.push(turn_calls(vec![call(&format!("draft-{index}"),"tutor.step",&selected_body("same-move",text).to_string())]));
-    }
-    chats.push(turn_final("Use the revised delivery."));
-    let revisions=["1. Setting 2 already includes B. 2. The catalog has ten cards, not nine.",
-        "The setting is fixed. The catalog count remains nine; correct it to ten.",
-        "The new phrase mixes the selected route with the retained catalog. Name them separately."];
-    let mut reviews=revisions.iter().map(|revision|Ok(serde_json::json!({"decision":"revise","revision":revision}))).collect::<Vec<_>>();
-    reviews.push(accepted_review());
-    let adapter=ReviewedTeachingAdapter::new(chats,reviews);
-    let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(16),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-    let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
-    let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),"Explain the page's actual settings.","t0").unwrap();
-    assert!(!outcome.incomplete);
-    assert_eq!(outcome.answer.as_deref(),Some(texts[3]));
-    assert_eq!(port.accepted,["select"]);
-    assert!(tool_result(&context.messages,"missing-operation").contains("TOOL_ARGUMENTS_INVALID"));
-    let reviewed=adapter.seen_reviews.borrow();
-    assert_eq!(reviewed.len(),4,"each actual revision must reach review after the argument error");
-    assert_eq!(reviewed[3]["review_context"]["prior_reviews"].as_array().unwrap().len(),3);
-    assert_eq!(reviewed[1]["review_context"]["changes_since_previous_review"][0]["before"],"3");
-    assert_eq!(reviewed[1]["review_context"]["changes_since_previous_review"][0]["after"],"2");
-    assert!(reviewed[1]["review_context"]["changes_since_previous_review"][0]["context_before"].as_str().unwrap().contains("setting"));
-}
-
-#[test]
-fn teaching_review_renamed_and_cycled_drafts_do_not_restart_progress() {
-    let b=book();
-    let mut store=MemoryStore::open(tmp("teaching-review-repeated-content")).unwrap();
-    let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-    let snapshot=default_profile_snapshot(&b,&store,"t0");
-    let mut chats=Vec::new();
-    for (index,text) in ["Original incorrect page claim.","Revised but still incorrect page claim.",
-        "Original incorrect page claim.","Original incorrect page claim.","Original incorrect page claim."].iter().enumerate() {
-        let mut selection=selected_body(&format!("new-id-{index}"),text);
-        selection["move"]["prompt"]=serde_json::json!(format!("Different private explanation {index}"));
-        chats.push(turn_calls(vec![call(&format!("draft-{index}"),"tutor.step",&selection.to_string())]));
-    }
-    let adapter=ReviewedTeachingAdapter::new(chats,vec![
-        Ok(serde_json::json!({"decision":"revise","revision":"Correct the original page claim."})),
-        Ok(serde_json::json!({"decision":"revise","revision":"The revised claim still contradicts the inspected state."})),
-        Ok(serde_json::json!({"decision":"revise","revision":"The original claim still contradicts the inspected state."})),
-        Ok(serde_json::json!({"decision":"revise","revision":"The original claim is unchanged."})),
-        Ok(serde_json::json!({"decision":"revise","revision":"The original claim is still unchanged."})),
-    ]);
-    let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(20),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-    let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
-    let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),"Explain the actual page.","t0").unwrap();
-    assert!(outcome.incomplete);
-    assert!(port.accepted.is_empty());
-    assert_eq!(adapter.seen_reviews.borrow().len(),5,"revision history must reach the reviewer until the no-progress guard stops unchanged work");
-    assert_eq!(port.reviews.len(),5);
-    assert!(port.reviews.last().unwrap()["review"]["revision"].as_str().unwrap().contains("still unchanged"),
-        "the final real review retains the concrete reason even when the progress guard prevents another author request");
-    let receipt=tool_result(&context.messages,"draft-4");
-    assert!(receipt.contains("TEACHING_INVALID") && receipt.contains("review_feedback") && receipt.contains("draft_ref"));
-    assert!(outcome.turns<20,"unchanged drafts must terminate before exhausting the model budget");
-}
-
-#[test]
-fn teaching_review_same_draft_after_source_read_receives_the_new_evidence() {
-    let b=book_leaves(2);
-    let mut store=MemoryStore::open(tmp("teaching-review-new-source-evidence")).unwrap();
-    let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-    let snapshot=default_profile_snapshot(&b,&store,"t0");
-    let selection=selected_body("same-draft","The retained catalog contains the card omitted from this route.");
-    let adapter=ReviewedTeachingAdapter::new(vec![
-        turn_calls(vec![call("initial-read","book.text",r#"{"lid":"1.1"}"#)]),
-        turn_calls(vec![call("before-read","tutor.step",&selection.to_string())]),
-        turn_calls(vec![call("read","book.text",r#"{"lid":"1.2"}"#)]),
-        turn_calls(vec![call("after-read","tutor.step",&selection.to_string())]),
-        turn_final("Use the supported delivery."),
-    ],vec![Ok(serde_json::json!({"decision":"revise","revision":"Supply the actual source evidence for the retained card before accepting this claim.",
-        "findings":[{"rule_id":"R2","location":"the retained catalog claim","evidence":"Only the first source passage has been read.",
-            "required_change":"Read the second source passage to establish the retained card's status."}]})),accepted_review()]);
-    let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(12),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-    let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
-    let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-        &mut EphemeralCompactionCheckpointSink::default(),"Read 1.1 and 1.2 and explain the retained card.","t0").unwrap();
-    assert!(!outcome.incomplete,"{outcome:?}");
-    assert_eq!(port.accepted,["select"]);
-    let reviews=adapter.seen_reviews.borrow();
-    assert_eq!(reviews.len(),2);
-    assert_eq!(reviews[0]["proposed_delivery"],reviews[1]["proposed_delivery"]);
-    let segments = |review: &serde_json::Value| review["current_source_evidence"].as_array().unwrap().iter()
-        .flat_map(|range|range["segments"].as_array().unwrap().iter()).cloned().collect::<Vec<_>>();
-    let before=segments(&reviews[0]);
-    let after=segments(&reviews[1]);
-    assert_eq!(before.len(),1);
-    assert_eq!(before[0]["lid"],"1.1");
-    assert_eq!(after.len(),2);
-    assert!(after.contains(&before[0]),"the next review keeps the previously read evidence, not just new passages");
-    assert!(after.iter().any(|segment|segment["lid"]=="1.2" && segment["text"]=="X".repeat(10)));
-    assert!(reviews[1]["presented_source_references"].as_array().unwrap().is_empty(),"reading alone must supply the review, without a citation-card operation");
-    assert_eq!(reviews[1]["review_context"]["changes_since_previous_review"],serde_json::json!([]));
-    assert!(reviews[1]["review_context"]["prior_reviews"][0]["revision"].as_str().unwrap().contains("source evidence"));
-    assert_eq!(reviews[1]["review_context"]["prior_reviews"][0]["findings"],port.reviews[0]["review"]["findings"]);
-    assert_eq!(reviews[1]["review_context"]["prior_reviews"][0]["request_resolution"],port.reviews[0]["review"]["request_resolution"]);
-    assert_eq!(outcome.answer.as_deref(),selection["move"]["delivery_text"].as_str(),"supplementing evidence need not rewrite a supported explanation");
-    assert_eq!(adapter.seen_explanation_reviews.borrow().len(),1);
-    assert_eq!(port.reviews[1]["independent_reviews"]["factual"]["review"]["decision"],"accept");
-    assert_eq!(port.reviews[1]["independent_reviews"]["explanation"]["review"]["decision"],"accept");
-    let plans=adapter.inner.0.seen_plans.borrow();
-    for index in [2,3] {
-        let sampled=plans[index].ordered_messages();
-        assert!(sampled.iter().any(|message|message.content.as_deref().is_some_and(|text|
-            text.contains(selection["move"]["delivery_text"].as_str().unwrap()))),
-            "the complete draft must remain available before and after a source-only read");
-        let current=sampled.iter().filter_map(|message|message.content.as_deref())
-            .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
-        assert!(current.contains("agent.teaching_revision"),"source reading does not expire the draft under repair");
-    }
-    let sampled=plans[4].ordered_messages();
-    let current=sampled.iter().filter_map(|message|message.content.as_deref())
-        .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
-    assert!(!current.contains("agent.teaching_revision"));
-}
-
-#[test]
-fn teaching_review_checks_the_explicit_retained_set_even_after_a_replacement() {
+fn teaching_selection_preserves_the_explicit_retained_set_even_after_a_replacement() {
     let b = book();
     let mut store = MemoryStore::open(tmp("teaching-review-retained-set")).unwrap();
     let mut reader = Reader::new(&b, DEFAULT_RADIUS);
@@ -1811,17 +1268,14 @@ fn teaching_review_checks_the_explicit_retained_set_even_after_a_replacement() {
     let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()};
     let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
         &mut EphemeralCompactionCheckpointSink::default(),"I can follow only the first premise.","t0").unwrap();
-    let reviews=adapter.seen_reviews.borrow();
-    assert_eq!(reviews[1]["proposed_delivery"]["text"],"SUPERSEDED_SECOND_SCOPE");
-    assert_eq!(reviews[2]["proposed_delivery"]["text"],"FIRST_PREMISE\n\nTHIRD_SMALL_CONNECTION");
-    assert_eq!(reviews[2]["proposed_delivery"]["delivery_move_refs"],serde_json::json!(["selected:first"]));
-    assert_eq!(reviews[2]["proposed_delivery"]["moves"].as_array().unwrap().len(),2);
+    assert!(adapter.seen_reviews.borrow().is_empty() && port.reviews.is_empty());
+    assert_eq!(context.teaching_delivery_draft.as_ref().unwrap()["moves"].as_array().unwrap().len(),2);
     assert_eq!(outcome.answer.as_deref(),Some("FIRST_PREMISE\n\nTHIRD_SMALL_CONNECTION"));
     assert_eq!(outcome.teaching_delivery_move_refs,["selected:first","selected:third"]);
 }
 
 #[test]
-fn teaching_preflight_missing_read_recovers_before_one_review_of_the_normalized_move() {
+fn teaching_preflight_missing_read_recovers_before_saving_the_normalized_move() {
     let b=book();
     let mut store=MemoryStore::open(tmp("teaching-preflight-read-recovery")).unwrap();
     let mut reader=Reader::new(&b,DEFAULT_RADIUS);
@@ -1855,23 +1309,12 @@ fn teaching_preflight_missing_read_recovers_before_one_review_of_the_normalized_
     assert_eq!(missing["missing_source_read"],serde_json::json!({"start_lid":"1.1","end_lid":"1.1"}));
     assert!(tool_result_error_code(&tool_result(&context.messages,"read-source")).is_none(),"the host-reported missing range must authorize book.text");
     assert!(context.locator_ledger.origins("1.1").unwrap().contains(&LocatorOrigin::TeachingValidation));
-    let reviews=adapter.seen_reviews.borrow();
-    assert_eq!(reviews.len(),1,"deterministic rejection must precede the model review");
-    let reviewed=&reviews[0]["proposed_delivery"]["moves"][0];
-    assert_eq!(reviewed["interaction_intent"],"direct_explanation");
-    assert_eq!(reviewed["intent_origin"],"current_action");
-    assert_eq!(reviewed["target"]["source_bindings"],design()["target"]["source_bindings"]);
-    assert!(reviewed["target"].get("expected_performance").is_none(), "author intentions cannot certify the actual explanation");
+    assert!(adapter.seen_reviews.borrow().is_empty() && port.inner.reviews.is_empty());
     let accepted=&port.inner.selections["selected:source-repaired"];
-    for field in ["interaction_intent","intent_origin"] {
-        assert_eq!(accepted[field],reviewed[field],"review and commit must consume the same normalized {field}");
-    }
+    assert_eq!(accepted["interaction_intent"],"direct_explanation");
+    assert_eq!(accepted["intent_origin"],"current_action");
     assert_eq!(accepted["target"],design()["target"]);
-    assert_eq!(accepted["delivery_text"],reviews[0]["proposed_delivery"]["text"],
-        "the normalized public body is reviewed once at proposed_delivery.text");
-    assert_eq!(port.inner.reviews.len(),1,"the preflight fixture forwards the actual original review packet");
-    assert_eq!(accepted["delivery_text"],port.inner.reviews[0]["proposed_delivery"]["moves"][0]["delivery_text"],
-        "the unprojected audit must retain the same normalized move that was committed");
+    assert_eq!(accepted["delivery_text"],selection["move"]["delivery_text"]);
 }
 
 #[test]
@@ -1905,31 +1348,26 @@ fn teaching_design_missing_read_after_early_authoring_is_real_locator_progress()
     assert!(tool_result_error_code(&tool_result(&context.messages,"read-source")).is_none());
     assert_eq!(port.inner.accepted,["design","select"]);
     assert!(!outcome.incomplete,"{outcome:?}");
-    assert_eq!(adapter.seen_reviews.borrow().len(),1);
+    assert!(adapter.seen_reviews.borrow().is_empty());
 }
 
 #[test]
-fn teaching_review_failure_unknown_reference_and_missing_budget_never_select_the_candidate() {
-    for failure in ["provider","malformed","budget","unknown_reference"] {
+fn teaching_unknown_reference_never_select_the_candidate() {
+    for failure in ["unknown_reference"] {
         let b=book();
         let mut store=MemoryStore::open(tmp(&format!("teaching-review-{failure}"))).unwrap();
         let mut reader=Reader::new(&b,DEFAULT_RADIUS);
         let snapshot=default_profile_snapshot(&b,&store,"t0");
         let mut selection=selected_body("unreviewed","UNREVIEWED_CANDIDATE_MUST_STAY_PRIVATE");
         if failure=="unknown_reference" { selection["delivery_move_refs"]=serde_json::json!(["move:not-accepted"]); }
-        let reviews=match failure {
-            "provider"=>vec![Err(AdapterError {spend_stop:None,message:"review provider unavailable".into()})],
-            "malformed"=>vec![Ok(serde_json::json!({"decision":"revise","revision":""})),
-                Ok(serde_json::json!({"decision":"revise","revision":""}))],
-            _=>vec![],
-        };
+        let reviews=vec![];
         let adapter=ReviewedTeachingAdapter::new(vec![
             turn_calls(vec![call("candidate","tutor.step",&selection.to_string())]),
             turn_calls(vec![call("outside","tutor.step",r#"{"operation":"outside"}"#)]),
             turn_final("Ordinary response after leaving this teaching attempt."),
         ],reviews);
         let sink=std::sync::Arc::new(TeachingStreamSink::default());
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(if failure=="budget" {1} else {8}),..Default::default()},adapter.model_runtime_profile());
+        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
         context.events=crate::run_events::RunEvents::new(Some(sink.clone()));
         context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()};
@@ -1937,17 +1375,11 @@ fn teaching_review_failure_unknown_reference_and_missing_budget_never_select_the
             &mut EphemeralCompactionCheckpointSink::default(),"Only this fragment is clear.","t0");
         let outcome=result.unwrap();
         assert!(outcome.teaching_delivery_move_refs.is_empty());
-        if failure=="budget" {
-            assert!(outcome.incomplete);
-            assert_eq!(outcome.warning.as_deref(),Some("TEACHING_INVALID"));
-            assert!(outcome.answer.as_deref().is_some_and(|answer|!answer.trim().is_empty()));
-        }
-        if failure=="malformed" { assert!(outcome.tokens_spent>=171,"malformed verdict usage is still counted"); }
         assert!(!outcome.answer.as_deref().unwrap_or_default().contains("UNREVIEWED_CANDIDATE"));
         assert!(!port.accepted.iter().any(|operation|operation=="select"),"{failure}");
         assert!(port.selections.is_empty() && context.accepted_teaching_moves.is_empty());
         assert!(context.teaching_delivery_draft.is_none());
-        assert_eq!(adapter.seen_reviews.borrow().len(),if failure == "malformed" {2} else {usize::from(failure == "provider")});
+        assert!(adapter.seen_reviews.borrow().is_empty());
         assert!(!serde_json::to_string(&*sink.0.lock().unwrap()).unwrap().contains("UNREVIEWED_CANDIDATE"));
     }
 }
@@ -2012,13 +1444,13 @@ fn teaching_presentation_requirement_uses_actual_prior_delivery_not_saved_versio
         let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"I think B stays, but I'm unsure why.","t0").unwrap();
         assert_eq!(port.accepted.iter().any(|operation|operation=="select"),delivered);
-        assert_eq!(adapter.seen_reviews.borrow().len(),usize::from(delivered));
+        assert!(adapter.seen_reviews.borrow().is_empty());
         if delivered { assert!(!outcome.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})),"feedback need not repeat or regenerate the page"); }
     }
 }
 
 #[test]
-fn teaching_page_review_reads_saved_semantics_and_only_accepted_revision_is_attached() {
+fn teaching_page_observation_and_exact_selected_revision_survive_both_finish_paths() {
     for budget in [false,true] {
         let b=book();
         let mut store=MemoryStore::open(tmp(if budget {"teaching-page-budget"} else {"teaching-page-final"})).unwrap();
@@ -2033,49 +1465,36 @@ fn teaching_page_review_reads_saved_semantics_and_only_accepted_revision_is_atta
             turns.push(turn_calls(vec![call(&format!("preview-{revision}"),"presentation.author",&serde_json::json!({"operation":"preview","candidate_id":candidate}).to_string())]));
             turns.push(turn_calls(vec![call(&format!("save-{revision}"),"presentation.author",&serde_json::json!({"operation":"deliver","candidate_id":candidate}).to_string())]));
             let mut selection=selected_body(&format!("page-{revision}"),"The page keeps B in place while one route changes.");
+            if !budget && revision==2 { selection["finish"]=serde_json::json!(true); }
             selection["move"]["presentation"]=serde_json::json!({"presentation_id":"cards","revision":revision});
             turns.push(turn_calls(vec![call(&format!("select-{revision}"),"tutor.step",&selection.to_string())]));
         }
         turns.push(turn_final("FREE_FINAL_MUST_NOT_REINTRODUCE_THE_OLD_PAGE"));
         let adapter=ReviewedTeachingAdapter::new(turns,vec![Ok(serde_json::json!({"decision":"revise","revision":"The page changes two conditions at once. Keep one route fixed and revise the page."})),accepted_review()]);
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(if budget {10} else {16}),..Default::default()},adapter.model_runtime_profile());
+        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(if budget {8} else {16}),..Default::default()},adapter.model_runtime_profile());
         context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":presentation_design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
         let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"B seems gone from this route, but I can't follow where it went.","t0").unwrap();
-        assert_eq!(port.accepted,["select"]);
+        assert_eq!(port.accepted,["select","select"]);
         let page_refs:Vec<_>=outcome.answer_view.unwrap().parts.into_iter().filter_map(|part|match part {AgentAnswerPart::Presentation {presentation_id,revision}=>Some((presentation_id,revision)),_=>None}).collect();
-        assert_eq!(page_refs,[("cards".into(),2)],"a saved but rejected page must not appear in either finalization path");
+        assert_eq!(page_refs,[("cards".into(),2)],"a superseded page must not appear in either finalization path");
         assert!(!outcome.incomplete);
         assert_eq!(context.delivered_presentations.len(),2,"both versions really were saved before selection");
         let plans=adapter.inner.0.seen_plans.borrow();
         let saved=tool_result(&plans[3].input,"save-1");
         assert!(saved.contains("tutor.step") && saved.contains("operation select") && saved.contains("cards"),
             "the delivered-page receipt must direct the next sampling to teaching selection: {saved}");
-        let rejected=tool_result(&plans[4].input,"select-1");
-        assert!(rejected.contains("Keep one route fixed") && rejected.contains("index.html") && rejected.contains("cards"),
-            "the concrete review must be preserved with an exact source-read handoff: {rejected}");
-        let reviews=adapter.seen_reviews.borrow();
-        let review_images=adapter.seen_review_images.borrow();
-        assert!(plans[3].preview_images.is_empty(), "the author already consumed its image queue before select");
-        for (index,revision) in [(0,1),(1,2)] {
-            let page=&reviews[index]["proposed_presentations"][0];
-            assert_eq!(page["reference"]["revision"],revision);
-            assert_eq!(page["author_claims"]["readable_content"],format!("SAVED_PAGE_BODY_{revision}"));
-            assert_eq!(page["author_claims"]["initial_state"]["route_selected"],true);
-            assert_eq!(page["teaching_binding"]["regions"][0]["region_id"],"catalog");
-            assert_eq!(page["author_preview_observations"][0]["observations"][0]["dom"]["text"],format!("ACTUAL_PREVIEW_c{revision}"));
-            assert_eq!(review_images[index].len(),1);
-            let image=&review_images[index][0];
-            assert_eq!(image.png_base64,format!("png-c{revision}"));
-            assert_eq!(image.candidate_id.as_deref(),Some(format!("c{revision}").as_str()));
-            assert!(image.caption.contains(&format!("\"revision\":{revision}")) && image.caption.contains("cards"));
-            assert!(image.caption.contains("after switching this route off"));
+        assert!(adapter.seen_reviews.borrow().is_empty() && port.reviews.is_empty());
+        assert!(adapter.seen_explanation_reviews.borrow().is_empty());
+        for revision in [1,2] {
+            assert!(plans.iter().any(|plan|plan.preview_images.iter().any(|image|
+                image.png_base64==format!("png-c{revision}"))),"the author must observe each actual version");
+            let reference=crate::presentation::PresentationRef {presentation_id:"cards".into(),revision};
+            let observations=&context.presentation_delivery_observations[&serde_json::to_string(&reference).unwrap()];
+            assert_eq!(observations[0]["observations"][0]["dom"]["text"],format!("ACTUAL_PREVIEW_c{revision}"));
         }
-        let changes=reviews[1]["review_context"]["changes_since_previous_review"].as_array().unwrap();
-        assert!(changes.iter().any(|change|change["path"]=="delivery.presentations[0].readable_content"
-            && change["before"]=="1" && change["after"]=="2"),"page changes must come from the saved page, not the teacher's description");
-        assert!(!changes.iter().any(|change|change["path"].as_str().unwrap().contains("reference")),"a version ID alone is not a content revision");
+        if !budget { assert_eq!(plans.len(),8,"page finish needs no copy-only author sampling"); }
         if budget { assert!(adapter.inner.0.seen_plans.borrow().last().unwrap().tools.is_empty()); }
     }
 }
@@ -2086,50 +1505,6 @@ fn historical_design_requires_a_live_representation_choice_before_generation() {
     let tutor=serde_json::json!({"status":"active","current_design":{"design_ref":"old","design":old}});
     let error=require_sampled_teaching_design(Some(&tutor),Some("old"),Some("old")).unwrap_err();
     assert!(error.message.contains("representation"));
-}
-
-#[test]
-fn teaching_review_provider_retry_keeps_the_draft_and_real_failure() {
-    for recover in [false, true] {
-        let b=book();
-        let mut store=MemoryStore::open(tmp(&format!("teaching-review-provider-retry-{recover}"))).unwrap();
-        let mut reader=Reader::new(&b,DEFAULT_RADIUS);
-        let snapshot=default_profile_snapshot(&b,&store,"t0");
-        let select=selected_body("embedding","UNREVIEWED_EMBEDDING_TEXT");
-        let mut chats=vec![turn_calls(vec![call("first","tutor.step",&select.to_string())]),
-            turn_calls(vec![call("retry","tutor.step",&select.to_string())])];
-        if recover { chats.push(turn_final("Use the accepted draft.")); }
-        let failed=|| Err(AdapterError {spend_stop:None,message:"模型达到单次输出上限（finish_reason=length，completion_tokens=4096，reasoning_tokens=4096）".into()});
-        let adapter=ReviewedTeachingAdapter::new(chats,vec![failed(),if recover {accepted_review()} else {failed()}]);
-        let sink=std::sync::Arc::new(TeachingStreamSink::default());
-        let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
-        context.events=crate::run_events::RunEvents::new(Some(sink.clone()));
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
-        let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
-        let result=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
-            &mut EphemeralCompactionCheckpointSink::default(),"Embedding具体会被怎么用呢，给我一个演示页看看","t0");
-        assert_eq!(adapter.seen_reviews.borrow().len(),2);
-        assert_eq!(adapter.seen_reviews.borrow()[0]["proposed_delivery"],adapter.seen_reviews.borrow()[1]["proposed_delivery"]);
-        if recover {
-            assert_eq!(result.unwrap().answer.as_deref(),Some("UNREVIEWED_EMBEDDING_TEXT"));
-            assert_eq!(port.accepted,["select"]);
-        } else {
-            let outcome=result.unwrap();
-            assert!(outcome.incomplete);
-            assert_eq!(outcome.warning.as_deref(),Some("TEACHING_REVIEW_FAILED"));
-            assert!(outcome.teaching_delivery_move_refs.is_empty());
-            assert!(outcome.answer.as_deref().is_some_and(|answer|!answer.trim().is_empty() && !answer.contains("UNREVIEWED_EMBEDDING_TEXT")));
-            let failure=tool_result(&context.messages,"first");
-            assert!(failure.contains("PROVIDER_ERROR") && failure.contains("finish_reason=length"));
-            assert!(port.accepted.is_empty());
-            assert!(!serde_json::to_string(&*sink.0.lock().unwrap()).unwrap().contains("UNREVIEWED_EMBEDDING_TEXT"));
-            let plans=adapter.inner.0.seen_plans.borrow();
-            let fallback=plans.last().unwrap();
-            assert!(fallback.tools.is_empty());
-            assert!(!serde_json::to_string(&fallback.ordered_messages()).unwrap().contains("UNREVIEWED_EMBEDDING_TEXT"),
-                "an unaccepted private draft must not become fallback input");
-        }
-    }
 }
 
 #[test]
@@ -2312,3 +1687,35 @@ fn explanation_probe_instructions(tutor: Option<&serde_json::Value>) -> String {
 }
 
 include!("teaching_patch_tests.rs");
+
+#[test]
+fn exam_explanations_use_the_same_author_loop_without_teacher_content_review() {
+    for status in ["active", "observing"] {
+        for calendar_revision in [2, 3] {
+            let b=book();
+            let mut store=MemoryStore::open(tmp(&format!("exam-author-{status}-{calendar_revision}"))).unwrap();
+            let mut reader=Reader::new(&b,DEFAULT_RADIUS);
+            let snapshot=default_profile_snapshot(&b,&store,"t0");
+            let answer="The route selects retained cards; an omitted card can remain in the catalog.";
+            let mut selection=selected_body("exam",answer);
+            selection["finish"]=serde_json::json!(true);
+            let turns=if status=="active" {
+                vec![turn_calls(vec![call("select","tutor.step",&selection.to_string())])]
+            } else { vec![turn_final(answer)] };
+            let adapter=ReviewedTeachingAdapter::new(turns,vec![]);
+            let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+            context.workspace_goal=Some(exam_workspace(calendar_revision));
+            context.tutor=Some(serde_json::json!({"status":status,
+                "current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+            let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
+                accepted:vec![],selections:Default::default(),reviews:vec![]};
+            let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+                &mut EphemeralCompactionCheckpointSink::default(),"Explain this relationship for my exam.","t0").unwrap();
+            assert!(!outcome.incomplete);
+            assert_eq!(outcome.answer.as_deref(),Some(answer));
+            assert_eq!(outcome.turns,1);
+            assert!(port.reviews.is_empty() && adapter.seen_reviews.borrow().is_empty());
+            assert!(adapter.seen_explanation_reviews.borrow().is_empty());
+        }
+    }
+}

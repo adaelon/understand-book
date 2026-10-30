@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -109,7 +110,7 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="applicationOverlayTarget()">
     <div class="tutor-backdrop" @click.self="emit('close')">
       <section role="dialog" aria-modal="true" :aria-label="uiText('学习详情')" class="tutor-panel" @keydown.esc.stop.prevent="emit('close')" @keydown="trapFocus">
         <header class="tutor-header">
@@ -173,7 +174,7 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
 
 <style scoped>
 .tutor-backdrop { position: fixed; inset: 0; z-index: 220; background: #24221d66; display: grid; place-items: center; padding: 24px; }
-.tutor-panel { --tutor-muted: #77786e; --tutor-green: #56725a; --tutor-green-soft: #edf2e9; width: min(746px, 100%); max-height: min(850px, calc(100dvh - 48px)); min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 22px; background: var(--reader-canvas, var(--canvas)); color: var(--reader-ink, var(--ink)); box-shadow: 0 24px 80px #241b1929, 0 2px 8px #241b1912; font: 14px/1.6 var(--sans); overflow: hidden; }
+.tutor-panel { --tutor-muted: #77786e; --tutor-green: #56725a; --tutor-green-soft: #edf2e9; width: min(746px, 100%); max-height: min(850px, calc(var(--app-content-height, 100dvh) - 48px)); min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 22px; background: var(--reader-canvas, var(--canvas)); color: var(--reader-ink, var(--ink)); box-shadow: 0 24px 80px #241b1929, 0 2px 8px #241b1912; font: 14px/1.6 var(--sans); overflow: hidden; }
 h2, h3, p { margin: 0; } svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.7; }
 button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: inherit; border: 0; border-radius: 8px; background: transparent; padding: 0; min-height: 36px; font: inherit; cursor: pointer; }
 button:disabled { opacity: .48; cursor: default; } button:focus-visible, textarea:focus-visible { outline: 2px solid var(--reader-coral); outline-offset: 3px; }
@@ -199,7 +200,7 @@ form label { display: block; font-size: 13px; font-weight: 600; }textarea { disp
 .tutor-empty { text-align: center; padding: 36px 8px; }.tutor-empty > svg { width: 32px; height: 32px; color: var(--brand-green-deep); margin-bottom: 12px; }.tutor-empty h3 { font-size: 19px; font-weight: 600; margin-bottom: 8px; }.tutor-empty p { font-size: 13px; color: var(--tutor-muted); }.tutor-empty button { margin-top: 20px; }
 .tutor-header h2, .new-heading h3, .tutor-empty h3 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; letter-spacing: 0; }
 @media (max-width: 600px) {
-  .tutor-backdrop { padding: 10px; }.tutor-panel { max-height: calc(100dvh - 20px); border-radius: 18px; }.tutor-header { padding: 20px 20px 16px; gap: 10px; }.tutor-brand { width: 38px; height: 40px; }h2 { font-size: 21px; }.tutor-header p { font-size: 11px; }.tutor-status { max-width: 76px; font-size: 11px; }.tutor-header-tools { gap: 0; }.tutor-navigation { margin: 0 20px; gap: 5px; }.tutor-tabs { gap: 18px; }.new-learning { padding: 5px; gap: 3px; }.tutor-content { padding: 22px 20px 25px; }.tutor-notices { margin: 16px 20px 0; }.session-goal h3 { font-size: 27px; }.teaching-mode { padding: 13px 10px 11px; }.tutor-footer { padding: 17px 20px; flex-wrap: wrap; gap: 12px; }.primary-action { padding: 10px 17px; }.end-confirmation { margin-inline: 20px; }textarea { font-size: 16px; }
+  .tutor-backdrop { padding: 10px; }.tutor-panel { max-height: calc(var(--app-content-height, 100dvh) - 20px); border-radius: 18px; }.tutor-header { padding: 20px 20px 16px; gap: 10px; }.tutor-brand { width: 38px; height: 40px; }h2 { font-size: 21px; }.tutor-header p { font-size: 11px; }.tutor-status { max-width: 76px; font-size: 11px; }.tutor-header-tools { gap: 0; }.tutor-navigation { margin: 0 20px; gap: 5px; }.tutor-tabs { gap: 18px; }.new-learning { padding: 5px; gap: 3px; }.tutor-content { padding: 22px 20px 25px; }.tutor-notices { margin: 16px 20px 0; }.session-goal h3 { font-size: 27px; }.teaching-mode { padding: 13px 10px 11px; }.tutor-footer { padding: 17px 20px; flex-wrap: wrap; gap: 12px; }.primary-action { padding: 10px 17px; }.end-confirmation { margin-inline: 20px; }textarea { font-size: 16px; }
 }
 @media (max-width: 420px) {
   .tutor-header { flex-wrap: wrap; }.tutor-header-tools { margin-left: auto; }.tutor-status { display: none; }.tutor-header:has(.tutor-status:not(.is-ready)) .tutor-status { display: inline-flex; }.tutor-header:has(.tutor-status:not(.is-ready)) .tutor-header-tools { width: 100%; }.tutor-header:has(.tutor-status:not(.is-ready)) .tutor-status { max-width: none; margin-right: auto; }.tutor-header:has(.tutor-status:not(.is-ready)) .refresh-button { margin-left: auto; }.tutor-tabs { gap: 15px; }.tutor-tab { font-size: 12px; }.new-learning { font-size: 11px; }.tutor-content { padding-inline: 16px; }.tutor-navigation { margin-inline: 16px; }.tutor-footer { padding-inline: 16px; }.tutor-notices { margin-inline: 16px; }.teaching-modes { grid-template-columns: 1fr; }.teaching-mode { display: grid; grid-template-columns: 23px 1fr auto; align-items: center; gap: 8px; padding: 13px 12px; }.teaching-mode .mode-icon { margin: 0; }.mode-check { display: none; }.footer-actions { margin-left: auto; }.tutor-footer .footer-copy { width: 100%; }.tutor-footer .footer-actions { width: 100%; }.footer-actions .primary-action { flex: 1; }.end-session { min-height: 30px; }.section-label span { display: none; }

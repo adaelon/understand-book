@@ -1,0 +1,81 @@
+{
+  "recorded_at": "2026-10-28T08:06:29.937Z",
+  "environment": {
+    "platform": "win32 10.0.19044",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "logical_cpus": 16,
+    "chromium": "149.0.7827.55",
+    "viewport": "1440×1000",
+    "device_scale_factor": 1
+  },
+  "scenario": "Local Rust chapter text (500 distinct short labels), repeatable five-child hierarchy; source text not published in this report",
+  "font_load_ms": 252.7999999821186,
+  "measurements": [
+    {
+      "topics": 500,
+      "measured_nodes": 500,
+      "first_layout_ms": 270.7000000178814,
+      "warm_samples_ms": [
+        10.199999988079071,
+        14.599999994039536,
+        10.199999988079071,
+        10,
+        12.599999994039536,
+        8.200000017881393,
+        9.299999982118607,
+        12.200000017881393,
+        7.299999982118607,
+        10.5
+      ],
+      "median_ms": 10.199999988079071,
+      "max_ms": 14.599999994039536,
+      "bounds": {
+        "x": -1108,
+        "y": -13454,
+        "width": 3081,
+        "height": 27294
+      }
+    },
+    {
+      "topics": 1000,
+      "measured_nodes": 1000,
+      "first_layout_ms": 29.5,
+      "warm_samples_ms": [
+        18.400000005960464,
+        18.80000001192093,
+        16.599999994039536,
+        16.099999994039536,
+        20.69999998807907,
+        24.700000017881393,
+        15.900000005960464,
+        27.799999982118607,
+        18.599999994039536,
+        15.900000005960464
+      ],
+      "median_ms": 18.5,
+      "max_ms": 27.799999982118607,
+      "bounds": {
+        "x": -1108,
+        "y": -31130,
+        "width": 3223,
+        "height": 62646
+      }
+    }
+  ],
+  "png": [
+    {
+      "name": "rust-full.png",
+      "width": 3378,
+      "height": 2360,
+      "bytes": 720451,
+      "elapsed_ms": 267.5
+    },
+    {
+      "name": "rust-branch.png",
+      "width": 1536,
+      "height": 872,
+      "bytes": 132771,
+      "elapsed_ms": 38.30000001192093
+    }
+  ]
+}

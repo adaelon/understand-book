@@ -1,0 +1,42 @@
+{
+  "restored_at_utc": "2026-10-30T08:38:03.439114+00:00",
+  "release": "/opt/understand-book/releases/all-pending-20261030",
+  "source": "/opt/understand-book/releases/board-source-publication-20261030/packages/web/dist-multi/admin",
+  "restored_files": 12,
+  "origin_routes": [
+    {
+      "path": "/admin/",
+      "status": 200
+    },
+    {
+      "path": "/admin/invites",
+      "status": 200
+    },
+    {
+      "path": "/admin/users",
+      "status": 200
+    },
+    {
+      "path": "/admin/usage",
+      "status": 200
+    },
+    {
+      "path": "/admin/monitor",
+      "status": 200
+    },
+    {
+      "path": "/admin/workspace-releases",
+      "status": 200
+    },
+    {
+      "path": "/admin/operator-builds",
+      "status": 200
+    },
+    {
+      "path": "/admin/index.html",
+      "status": 200
+    }
+  ],
+  "service_restarted": false,
+  "data_modified": false
+}

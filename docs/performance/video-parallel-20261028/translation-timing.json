@@ -1,0 +1,37 @@
+{
+  "scenario": "360 transcript segments; 3 groups; 12 tasks; 120ms simulated model latency per candidate",
+  "real_model": false,
+  "outputs_equal": true,
+  "samples": [
+    {
+      "slots": 1,
+      "elapsed_ms": 3180.5871000000006,
+      "peak": 1
+    },
+    {
+      "slots": 2,
+      "elapsed_ms": 2457.5250000000015,
+      "peak": 2
+    },
+    {
+      "slots": 1,
+      "elapsed_ms": 3366.477899999998,
+      "peak": 1
+    },
+    {
+      "slots": 2,
+      "elapsed_ms": 2605.640299999999,
+      "peak": 2
+    },
+    {
+      "slots": 1,
+      "elapsed_ms": 3074.247199999998,
+      "peak": 1
+    },
+    {
+      "slots": 2,
+      "elapsed_ms": 2571.655700000003,
+      "peak": 2
+    }
+  ]
+}

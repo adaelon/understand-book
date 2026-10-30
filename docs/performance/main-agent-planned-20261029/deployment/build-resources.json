@@ -1,0 +1,18 @@
+{
+  "unit": "ub-main-agent-planned-20261029-build",
+  "original_swappiness": 0,
+  "temporary_swap": "/opt/understand-book/acceptance/main-agent-planned-20261029/build.swap",
+  "release": "/opt/understand-book/releases/main-agent-planned-20261029",
+  "previous_release": "/opt/understand-book/releases/reader-outline-20261029",
+  "binaries": [
+    "server",
+    "manage_reader",
+    "publish_book",
+    "reader_maintenance",
+    "presentation_worker",
+    "video_audio_review"
+  ],
+  "cpu_quota": "150%",
+  "memory_high": "1100M",
+  "memory_max": "1400M"
+}

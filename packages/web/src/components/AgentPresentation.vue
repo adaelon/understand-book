@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
+import { activeNoteMessage, registerNoteDestinations, startThoughtHere, thoughtSurfaceVisible, useNoteAttachments, type NoteDestination } from '../note-placements';
+import { keepNoteDraft, registerThoughtContext } from '../personal-notes';
+import AttachedThought from './AttachedThought.vue';
 import { t as uiText } from '../i18n';
 
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
@@ -87,6 +91,30 @@ const documentText = ref("");
 const error = ref("");
 const expanded = ref(false);
 const ready = ref(false);
+const thoughtState = ref<PresentationState | null>(null), thoughtReceipt = ref<PresentationFollowUp | null>(null);
+const thoughtAttachments = useNoteAttachments(() => props.sessionId);
+const presentationThoughts = computed(() => thoughtAttachments.items.value.filter(item => {
+  const target = item.attachment.target;
+  return target.kind === 'presentation' && target.receipt.turn_id === props.turnId && target.receipt.reference.presentation_id === props.reference.presentation_id && target.receipt.reference.revision === props.reference.revision;
+}));
+const pageThoughts = computed(() => presentationThoughts.value.filter(item => {
+  const target = item.attachment.target;
+  return target.kind === 'presentation' && (target.visible_step != null ? target.visible_step === thoughtState.value?.visible_step
+    : target.receipt.state_revision === (thoughtReceipt.value?.state_revision ?? view.value?.restored_state_revision));
+}));
+watch(() => view.value, value => { thoughtState.value = value?.restored_state ?? null; thoughtReceipt.value = null; });
+function visibleForThought() { return ready.value && !props.noteMemId && thoughtSurfaceVisible(root.value); }
+async function currentThoughtDestination(): Promise<NoteDestination> {
+  const {receipt,state} = await snapshotScene();
+  return {kind:'attachment',target:{kind:'presentation',receipt,visible_step:state.visible_step},label:`${view.value?.title ?? '演示'} · ${state.visible_step || '当前状态'}`};
+}
+const unregisterThoughtDestinations = registerNoteDestinations(() => visibleForThought()
+  ? [{key:`presentation:${props.reference.presentation_id}:${props.reference.revision}`,label:'当前演示页',detail:view.value?.title ?? '记录当前画面',resolve:currentThoughtDestination}] : []);
+const unregisterThoughtContext = registerThoughtContext(() => visibleForThought() ? {
+  session_id:props.sessionId,turn_id:props.turnId,label:`${view.value?.title ?? '演示'} · ${thoughtState.value?.visible_step || '当前状态'}`,
+  ...(thoughtReceipt.value ? {origin:{kind:'presentation' as const,receipt:thoughtReceipt.value,visible_step:thoughtState.value?.visible_step ?? null}} : {}),
+} : null, 30);
+onBeforeUnmount(() => { unregisterThoughtDestinations(); unregisterThoughtContext(); });
 watch([ready, error, () => props.teaching, boardContext], () => emit('teaching-host-available', ready.value && !error.value && !!props.teaching && !boardContext.value));
 const zoomPercent = ref(100);
 const readableOpen = ref(false);
@@ -390,6 +418,8 @@ async function receive(event: MessageEvent) {
     return;
   }
   if (message.kind === "state") {
+    thoughtState.value = message.state;
+    if (document.activeElement === frame.value && visibleForThought()) activeNoteMessage.value = '';
     if (message.request_id !== undefined) {
       if (pendingSnapshot && pendingSnapshot.id === message.request_id) { pendingSnapshot.resolve(message.state); pendingSnapshot = undefined; }
     } else if (!props.noteMemId) { void saveState(message.state).catch(() => {}); }
@@ -476,6 +506,7 @@ function saveState(state: PresentationState, teacherInteraction?: Record<string,
   return operation.then(receipt => {
     if (current === generation) {
       saveNotice.value = uiText('演示状态已保存');
+      thoughtState.value = state; thoughtReceipt.value = receipt;
       if (board) emit('board-state-saved', receipt);
     }
     return receipt;
@@ -521,7 +552,12 @@ async function recordNote() {
   const current = generation;
   try {
     const { receipt, state } = await snapshotScene();
-    if (current === generation) emit("record-note", receipt, view.value?.title ?? uiText('演示'), [state.visible_step, state.observed_result].filter(Boolean).join(" · ").slice(0, 240));
+    const label = `${view.value?.title ?? uiText('演示')} · ${state.visible_step || '当前状态'}`;
+    const value = await api.prepareNote({content:'',note:{association:{kind:'presentation',receipt}},label});
+    if (current === generation) {
+      const destination: NoteDestination = {kind:'attachment',target:{kind:'presentation',receipt,visible_step:state.visible_step},label};
+      const draft = startThoughtHere(destination, value.context); value.context.origin = destination.target; draft.value = value; keepNoteDraft(draft);
+    }
   } catch (failure) { if (current === generation) saveNotice.value = uiText('记录未开始：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
   finally { saving.value = false; }
 }
@@ -669,6 +705,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
   <section
     ref="root"
     class="agent-presentation"
+    @pointerdown="activeNoteMessage=''"
     :class="{ expanded, linked: network.linked }"
     :aria-label="view?.title || uiText('富回答')"
     :aria-modal="expanded && !workspace || undefined"
@@ -682,7 +719,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
         <button v-if="view && !noteMemId && !boardContext && !network.linked" class="presentation-note" type="button" :disabled="!ready || saving" @click="recordNote"><StickyNote :size="16" aria-hidden="true" /><span>{{ uiText('记一下') }}</span></button>
         <button v-if="view && boardContext" class="presentation-board-save" type="button" :disabled="!ready || saving" @click="saveBoardScene"><Save :size="16" aria-hidden="true" /><span>{{ uiText('保存画板状态') }}</span></button>
         <button v-if="view" ref="toolsButton" class="presentation-tools-toggle" type="button" :aria-label="uiText('演示工具')" :aria-expanded="toolsOpen" :aria-controls="toolsId" @click="toolsOpen = !toolsOpen"><Ellipsis :size="21" aria-hidden="true" /></button>
-        <Teleport to="body" :disabled="!toolsOpen">
+        <Teleport :to="applicationOverlayTarget()" :disabled="!toolsOpen">
         <div v-if="toolsOpen" class="presentation-tools-backdrop" aria-hidden="true" @pointerdown="toolsOpen = false"></div>
         <div v-if="view" :id="toolsId" ref="toolsPanel" class="presentation-tools" :class="{ 'is-open': toolsOpen }" :style="toolsOpen ? { top: `${toolsTop}px`, maxHeight: `calc(100dvh - ${toolsTop}px - 12px)` } : undefined">
         <div class="presentation-tools-heading"><span>{{ uiText('演示工具') }}</span><button type="button" :aria-label="uiText('关闭演示工具')" @click="closeTools"><X :size="18" aria-hidden="true" /></button></div>
@@ -734,7 +771,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
         <button v-if="view && !network.linked" ref="expandButton" type="button" class="presentation-expand" @click="toolsOpen = false; toggleExpanded()" :aria-label="expanded ? uiText('收起') : uiText('展开')" :title="expanded ? uiText('收起演示') : uiText('展开演示')" :aria-expanded="expanded"><component :is="expanded ? Minimize2 : Maximize2" :size="17" aria-hidden="true" /><span>{{ expanded ? uiText('收起') : uiText('展开') }}</span></button>
       </header>
     </Teleport>
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <div v-if="prominentNotice" class="presentation-notice" role="status">
         <span>{{ saveNotice }}</span><button type="button" :aria-label="uiText('关闭演示提示')" @click="saveNotice = ''"><X :size="16" aria-hidden="true" /></button>
       </div>
@@ -752,6 +789,8 @@ onMounted(() => window.addEventListener('resize', resizeTools));
         referrerpolicy="no-referrer"
         @load="onFrameLoad"
       />
+      <div v-if="pageThoughts.length" class="presentation-thoughts"><AttachedThought v-for="item in pageThoughts" :key="item.attachment.attachment_id" :item="item" /></div>
+      <details v-if="presentationThoughts.length > pageThoughts.length" class="presentation-other-thoughts"><summary>其他演示页的想法 · {{ presentationThoughts.length - pageThoughts.length }}</summary><template v-for="item in presentationThoughts" :key="item.attachment.attachment_id"><button v-if="!pageThoughts.includes(item) && item.attachment.target.kind === 'presentation'" @click="restore(item.attachment.target.receipt)">{{ item.attachment.label }} ↗</button></template></details>
       <Teleport :to="teachingTarget || 'body'" :disabled="!teachingTarget">
         <nav v-if="view?.teaching_binding?.regions.length" class="teaching-regions" :aria-label="uiText('回到相关画面')">
           <button v-for="region in view.teaching_binding.regions" :key="region.region_id" :disabled="!ready" @click="locateRegion(region.region_id)">{{ region.observation }}</button>
@@ -781,6 +820,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
 
 <style scoped>
 .agent-presentation { position: relative; container-type: inline-size; border: 1px solid var(--line, #e6dfd8); border-radius: 24px; background: var(--canvas, #faf9f5); color: var(--ink, #252523); overflow: hidden; margin: 12px 0; min-width: 0; }
+.presentation-thoughts{flex:none;padding:0 16px;max-height:28vh;overflow:auto}.presentation-other-thoughts{flex:none;margin:6px 16px;font-size:11px;color:#93764e}.presentation-other-thoughts summary{cursor:pointer}.presentation-other-thoughts button{display:block;background:none;border:0;color:inherit;text-align:left;font:inherit;padding:6px;cursor:pointer}
 .presentation-toolbar { position: relative; flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; min-width: 0; color: var(--ink); font-size: 13px; }
 .presentation-title { flex: 1 1 140px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; letter-spacing: .01em; }
 button { min-height: 30px; font: inherit; color: var(--accent, #a9583e); border: 1px solid var(--line, #e6dfd8); border-radius: 6px; background: var(--surface, #efe9de); padding: 3px 7px; cursor: pointer; }
@@ -793,7 +833,7 @@ button { min-height: 30px; font: inherit; color: var(--accent, #a9583e); border:
 .presentation-zoom { display: inline-flex; flex: none; align-items: center; gap: 0; border-radius: 9px; background: var(--surface-soft, #f5f0e8); }
 .presentation-zoom button { min-width: 30px; padding-inline: 6px; font-variant-numeric: tabular-nums; }
 .presentation-save-notice { color: var(--steel); font-size: 11px; max-width: 180px; overflow-wrap: anywhere; }
-.presentation-notice { position: fixed; z-index: 1210; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: min(520px, calc(100vw - 24px)); padding: 10px 12px 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--canvas); color: var(--ink); box-shadow: 0 6px 28px #25232026; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.presentation-notice { position: fixed; z-index: 1210; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: min(520px, calc(var(--app-content-width, 100vw) - 24px)); padding: 10px 12px 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--canvas); color: var(--ink); box-shadow: 0 6px 28px #25232026; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .presentation-notice button { display: grid; place-items: center; flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: var(--surface-soft); color: var(--steel); }
 .teaching-regions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
 .teaching-regions button { text-align: left; }
@@ -809,12 +849,12 @@ button { min-height: 30px; font: inherit; color: var(--accent, #a9583e); border:
 .feedback-details .feedback-comment { display: flex; flex-direction: column; align-items: stretch; padding: 6px 0; }
 .feedback-comment textarea { box-sizing: border-box; width: 100%; resize: vertical; padding: 8px; border: 1px solid var(--line, #e6dfd8); border-radius: 6px; background: var(--surface, #efe9de); color: inherit; font: inherit; }
 .feedback-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-iframe { display: block; width: 100%; height: clamp(180px, calc(100dvh - 220px), 420px); min-height: 180px; border: 0; background: var(--canvas, #faf9f5); }
+iframe { display: block; width: 100%; height: clamp(180px, calc(var(--app-content-height, 100dvh) - 220px), 420px); min-height: 180px; border: 0; background: var(--canvas, #faf9f5); }
 .presentation-follow-up { position: relative; flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 10px max(6px, env(safe-area-inset-bottom)); }
 .presentation-follow-up input { flex: 1; min-width: 120px; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
 .presentation-follow-up small { flex: 1 0 100%; overflow-wrap: anywhere; }
 button:disabled { opacity: .55; cursor: default; }
-.expanded { position: fixed; inset: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); z-index: 90; margin: 0; display: flex; flex-direction: column; max-height: calc(100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); box-shadow: 0 16px 80px #0005; }
+.expanded { position: fixed; inset: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); z-index: 90; margin: 0; display: flex; flex-direction: column; max-height: calc(var(--app-content-height, 100dvh) - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); box-shadow: 0 16px 80px #0005; }
 .expanded { overflow-y: auto; }
 .expanded iframe { flex: 1 0 160px; height: auto !important; min-height: 160px; }
 .expanded > .presentation-toolbar, .linked > .presentation-toolbar { flex: 0 0 auto; }
@@ -838,7 +878,7 @@ button:disabled { opacity: .55; cursor: default; }
   .presentation-toolbar button { min-height: 40px; min-width: 36px; }
 }
 @media (max-width: 600px) {
-  .expanded { inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); max-height: calc(100dvh - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); }
+  .expanded { inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); max-height: calc(var(--app-content-height, 100dvh) - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); }
 }
 @media (max-width: 700px) {
   .presentation-toolbar { flex-wrap: nowrap; gap: 4px; padding: 6px 10px; }
@@ -849,7 +889,7 @@ button:disabled { opacity: .55; cursor: default; }
   .presentation-expand > span { display: none; }
   .presentation-tools { display: none; }
   .presentation-tools-backdrop { display: block !important; position: fixed; z-index: 1190; inset: 0; background: #2523200a; }
-  .presentation-tools.is-open { position: fixed; z-index: 1200; right: max(12px, env(safe-area-inset-right)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); color: var(--ink); font-size: 13px; box-shadow: 0 12px 40px #25232026, 0 2px 8px #2523200a; }
+  .presentation-tools.is-open { position: fixed; z-index: 1200; right: max(12px, env(safe-area-inset-right)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: min(340px, calc(var(--app-content-width, 100vw) - 24px)); max-height: calc(var(--app-content-height, 100dvh) - 24px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); color: var(--ink); font-size: 13px; box-shadow: 0 12px 40px #25232026, 0 2px 8px #2523200a; }
   .presentation-tools-heading { display: flex !important; flex: 1 0 100%; align-items: center; justify-content: space-between; color: var(--ink); font-size: 14px; font-weight: 600; }
   .presentation-tools-heading button { min-width: 36px; min-height: 36px; margin: -6px -6px -6px 0; }
   .presentation-zoom { flex: 1 0 100%; padding: 4px; border-radius: 12px; }

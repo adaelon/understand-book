@@ -1,0 +1,538 @@
+{
+  "protocol": "teaching-fixed-draft-revision-comparison.v1",
+  "measurement": "Revision after an identical rejected first draft; not complete new-question latency. First feedback is frozen; subsequent author and acceptance review calls are real.",
+  "fixed_inputs_verified": {
+    "draft": true,
+    "source_evidence": true,
+    "first_factual_review": true,
+    "confirmed_preferences": true,
+    "original_native_continuation": true
+  },
+  "execution_order": [
+    "baseline-02",
+    "candidate-02",
+    "candidate-03",
+    "baseline-03",
+    "baseline-04",
+    "candidate-04"
+  ],
+  "runs": [
+    {
+      "name": "baseline-02",
+      "status": "completed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 7724.1865,
+        "total_ms": 79670.3082,
+        "first_answer_ms": 79113.6291,
+        "real_model_calls": 5,
+        "model_purposes": {
+          "outer": 3,
+          "tutor_delivery_review": 1,
+          "tutor_explanation_review": 1
+        },
+        "model_seconds": {
+          "outer": 35.00022660000001,
+          "tutor_delivery_review": 36.7174725,
+          "tutor_explanation_review": 5.31204310000001
+        },
+        "real_provider_requests": 5,
+        "provider_wait_seconds": 76.325992,
+        "author_submission_attempts": 1,
+        "full_select_attempts": 1,
+        "body_patch_attempts": 0,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 0,
+        "errors_by_code": {},
+        "teaching_revision_rejections": 0,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 1134,
+        "total_tokens": 923033,
+        "revised_draft_reviews": 1,
+        "actual_body_revision_rounds": 1,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "pending_independent_content_review"
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1134,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 14,
+        "unchanged_paragraph_blocks": 4
+      }
+    },
+    {
+      "name": "candidate-02",
+      "status": "completed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 6237.8545,
+        "total_ms": 75273.791,
+        "first_answer_ms": 74809.03469999999,
+        "real_model_calls": 5,
+        "model_purposes": {
+          "outer": 3,
+          "tutor_delivery_review": 1,
+          "tutor_explanation_review": 1
+        },
+        "model_seconds": {
+          "outer": 27.391099900000004,
+          "tutor_delivery_review": 39.4072235,
+          "tutor_explanation_review": 6.144483300000007
+        },
+        "real_provider_requests": 5,
+        "provider_wait_seconds": 72.3355397,
+        "author_submission_attempts": 1,
+        "full_select_attempts": 0,
+        "body_patch_attempts": 1,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 0,
+        "errors_by_code": {},
+        "teaching_revision_rejections": 0,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 1246,
+        "total_tokens": 940147,
+        "revised_draft_reviews": 1,
+        "actual_body_revision_rounds": 1,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "failed",
+        "reason": "Independent content review found that the revision removed a correct chapter route instead of verifying and preserving the depth."
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1246,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 15,
+        "unchanged_paragraph_blocks": 11
+      }
+    },
+    {
+      "name": "candidate-03",
+      "status": "failed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 6392.216,
+        "total_ms": 42796.098,
+        "first_answer_ms": 42461.7841,
+        "real_model_calls": 5,
+        "model_purposes": {
+          "outer": 4,
+          "available_answer": 1
+        },
+        "model_seconds": {
+          "outer": 34.336448700000005,
+          "available_answer": 5.398615900000005
+        },
+        "real_provider_requests": 5,
+        "provider_wait_seconds": 38.795828,
+        "author_submission_attempts": 2,
+        "full_select_attempts": 0,
+        "body_patch_attempts": 2,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 2,
+        "errors_by_code": {
+          "TEACHING_REVISION_INVALID": 2
+        },
+        "teaching_revision_rejections": 0,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 315,
+        "total_tokens": 1262058,
+        "revised_draft_reviews": 0,
+        "actual_body_revision_rounds": 0,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "failed",
+        "reason": "Both edit submissions failed exact matching and the run delivered only an incomplete fallback answer."
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1193,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 15,
+        "unchanged_paragraph_blocks": 15
+      }
+    },
+    {
+      "name": "baseline-03",
+      "status": "completed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 5789.7399,
+        "total_ms": 167531.49260000003,
+        "first_answer_ms": 167167.76340000003,
+        "real_model_calls": 7,
+        "model_purposes": {
+          "outer": 4,
+          "tutor_delivery_review": 2,
+          "tutor_explanation_review": 1
+        },
+        "model_seconds": {
+          "outer": 45.232972800000006,
+          "tutor_delivery_review": 114.34191570000002,
+          "tutor_explanation_review": 5.256179999999993
+        },
+        "real_provider_requests": 7,
+        "provider_wait_seconds": 164.01661470000002,
+        "author_submission_attempts": 2,
+        "full_select_attempts": 2,
+        "body_patch_attempts": 0,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 1,
+        "errors_by_code": {
+          "TEACHING_INVALID": 1
+        },
+        "teaching_revision_rejections": 1,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 1285,
+        "total_tokens": 1324620,
+        "revised_draft_reviews": 2,
+        "actual_body_revision_rounds": 2,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "pending_independent_content_review"
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1285,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 15,
+        "unchanged_paragraph_blocks": 7
+      }
+    },
+    {
+      "name": "baseline-04",
+      "status": "completed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 7078.963299999999,
+        "total_ms": 161036.6156,
+        "first_answer_ms": 160670.00089999998,
+        "real_model_calls": 8,
+        "model_purposes": {
+          "outer": 5,
+          "tutor_delivery_review": 2,
+          "tutor_explanation_review": 1
+        },
+        "model_seconds": {
+          "outer": 43.5837059,
+          "tutor_delivery_review": 107.98661150000001,
+          "tutor_explanation_review": 6.385907000000007
+        },
+        "real_provider_requests": 8,
+        "provider_wait_seconds": 156.99049279999997,
+        "author_submission_attempts": 2,
+        "full_select_attempts": 2,
+        "body_patch_attempts": 0,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 1,
+        "errors_by_code": {
+          "TEACHING_INVALID": 1
+        },
+        "teaching_revision_rejections": 1,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 1072,
+        "total_tokens": 1726634,
+        "revised_draft_reviews": 2,
+        "actual_body_revision_rounds": 2,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "core_explanation_usable_with_depth_loss",
+        "reviewed_by": "independent_content_review",
+        "core_explanation": "usable",
+        "depth_findings": [
+          "The chapter route was lost.",
+          "The connection between system characteristics and thinking limitations was weakened."
+        ],
+        "measured_answer_preserved": true
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1072,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 14,
+        "unchanged_paragraph_blocks": 2
+      }
+    },
+    {
+      "name": "candidate-04",
+      "status": "completed",
+      "metrics": {
+        "start_step_id": 29,
+        "start_elapsed_ms": 5158.4412,
+        "total_ms": 118470.6029,
+        "first_answer_ms": 118058.0086,
+        "real_model_calls": 9,
+        "model_purposes": {
+          "outer": 6,
+          "tutor_delivery_review": 2,
+          "tutor_explanation_review": 1
+        },
+        "model_seconds": {
+          "outer": 39.368483000000005,
+          "tutor_delivery_review": 68.1793866,
+          "tutor_explanation_review": 7.079128300000011
+        },
+        "real_provider_requests": 9,
+        "provider_wait_seconds": 113.3519752,
+        "author_submission_attempts": 2,
+        "full_select_attempts": 0,
+        "body_patch_attempts": 2,
+        "invitation_only_patch_attempts": 0,
+        "evidence_only_resubmission_attempts": 0,
+        "tool_capture_complete": true,
+        "failed_or_rejected_tools": 1,
+        "errors_by_code": {
+          "TEACHING_INVALID": 1
+        },
+        "teaching_revision_rejections": 1,
+        "tutor_argument_failures": 0,
+        "final_answer_chars": 1240,
+        "total_tokens": 2221044,
+        "revised_draft_reviews": 2,
+        "actual_body_revision_rounds": 2,
+        "unchanged_body_review_rounds": 0
+      },
+      "quality_review": {
+        "status": "core_depth_passed_with_minor_source_issue",
+        "reviewed_by": "independent_content_review",
+        "core_depth": "preserved",
+        "validated_content": [
+          "computer simulation method",
+          "city traffic intervention and adverse effects",
+          "complexity and worry feedback",
+          "economy-of-thought mechanism",
+          "complete chapter route"
+        ],
+        "source_detail_findings": [
+          {
+            "severity": "minor",
+            "location": "L3",
+            "quote": "新开",
+            "reason": "The original source provides no opening-time evidence for the shopping mall."
+          }
+        ],
+        "measured_answer_preserved": true,
+        "delivery_copy_policy": "A separate delivery copy may remove only 新开. That manual correction must not alter the measured answer or count toward the automatic result."
+      },
+      "text_change": {
+        "before_chars": 1193,
+        "after_chars": 1240,
+        "before_paragraph_blocks": 15,
+        "after_paragraph_blocks": 15,
+        "unchanged_paragraph_blocks": 11
+      }
+    }
+  ],
+  "attempts": [
+    {
+      "name": "baseline-01",
+      "status": "failed",
+      "prepare_only": false,
+      "forwarded_requests": 2,
+      "successful_provider_generations": 1,
+      "classification": "fixture_transport_failure",
+      "cause": "The first fixture omitted original native thinking continuation; DeepSeek rejected the author request with HTTP 400. The fallback completed, but this is not a product regression or eligible performance sample."
+    },
+    {
+      "name": "baseline-02",
+      "status": "completed",
+      "prepare_only": false,
+      "forwarded_requests": 5,
+      "successful_provider_generations": 5,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "baseline-03",
+      "status": "completed",
+      "prepare_only": false,
+      "forwarded_requests": 7,
+      "successful_provider_generations": 7,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "baseline-04",
+      "status": "completed",
+      "prepare_only": false,
+      "forwarded_requests": 8,
+      "successful_provider_generations": 8,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "candidate-02",
+      "status": "completed",
+      "prepare_only": false,
+      "forwarded_requests": 5,
+      "successful_provider_generations": 5,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "candidate-03",
+      "status": "failed",
+      "prepare_only": false,
+      "forwarded_requests": 5,
+      "successful_provider_generations": 5,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "candidate-04",
+      "status": "completed",
+      "prepare_only": false,
+      "forwarded_requests": 9,
+      "successful_provider_generations": 9,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-baseline-01",
+      "status": "failed",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-baseline-02",
+      "status": "failed",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-baseline-03",
+      "status": "prepared_without_paid_model_calls",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-candidate-01",
+      "status": "prepared_without_paid_model_calls",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-candidate-02",
+      "status": "failed",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-candidate-03",
+      "status": "prepared_without_paid_model_calls",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    },
+    {
+      "name": "prepare-candidate-04",
+      "status": "prepared_without_paid_model_calls",
+      "prepare_only": true,
+      "forwarded_requests": 0,
+      "successful_provider_generations": 0,
+      "classification": null,
+      "cause": null
+    }
+  ],
+  "v1_conclusion": "The patch operation preserved more untouched paragraphs in the first pair, but the second v1 candidate failed and quality was not preserved in the first v1 candidate. The frozen v1 candidate does not meet the performance-and-quality acceptance goal.",
+  "v2_pair": {
+    "execution_order": [
+      "baseline-04",
+      "candidate-04"
+    ],
+    "baseline_ms": 161036.6156,
+    "candidate_ms": 118470.6029,
+    "candidate_delta_ms": -42566.01269999999,
+    "candidate_delta_percent": -26.432505763614667,
+    "baseline_quality_review": {
+      "status": "core_explanation_usable_with_depth_loss",
+      "reviewed_by": "independent_content_review",
+      "core_explanation": "usable",
+      "depth_findings": [
+        "The chapter route was lost.",
+        "The connection between system characteristics and thinking limitations was weakened."
+      ],
+      "measured_answer_preserved": true
+    },
+    "candidate_quality_review": {
+      "status": "core_depth_passed_with_minor_source_issue",
+      "reviewed_by": "independent_content_review",
+      "core_depth": "preserved",
+      "validated_content": [
+        "computer simulation method",
+        "city traffic intervention and adverse effects",
+        "complexity and worry feedback",
+        "economy-of-thought mechanism",
+        "complete chapter route"
+      ],
+      "source_detail_findings": [
+        {
+          "severity": "minor",
+          "location": "L3",
+          "quote": "新开",
+          "reason": "The original source provides no opening-time evidence for the shopping mall."
+        }
+      ],
+      "measured_answer_preserved": true,
+      "delivery_copy_policy": "A separate delivery copy may remove only 新开. That manual correction must not alter the measured answer or count toward the automatic result."
+    },
+    "acceptance_status": "mechanism_and_core_depth_verified_minor_source_detail_remaining_stable_performance_unproven",
+    "interpretation": "The v2 mechanism and core depth were verified, with one minor unsupported modifier (新开) retained in the measured candidate answer. This single pair reduced elapsed revision time by 26.4%, but revision rounds remained 2, calls increased from 8 to 9, and normalized total tokens increased. Most elapsed-time difference came from factual-review waiting time; stable performance improvement is not established.",
+    "mechanism_validation": {
+      "numbered_paragraph_edits_executed": true,
+      "untouched_paragraphs_preserved": true,
+      "unresolved_issue_carried_across_reviews": true,
+      "chapter_route_preserved_after_real_source_reads": true
+    },
+    "performance": {
+      "baseline_revision_rounds": 2,
+      "candidate_revision_rounds": 2,
+      "baseline_real_model_calls": 8,
+      "candidate_real_model_calls": 9,
+      "baseline_total_tokens": 1726634,
+      "candidate_total_tokens": 2221044,
+      "stable_performance_improvement_proven": false
+    }
+  },
+  "conclusion": "The frozen v1 candidate failed its quality-and-reliability goal. The v2 pair verified numbered paragraph revision, preservation of untouched content, unresolved-issue continuity, and core depth including the complete chapter route. Independent review found one minor unsupported modifier (新开), retained in the measured answer. The one-pair elapsed-time reduction does not demonstrate stable performance improvement: revision rounds did not fall, while calls and normalized token totals increased.",
+  "reviewed_answer_correction": {
+    "raw_file": "candidate-04-raw.md",
+    "reviewed_file": "candidate-04-reviewed.md",
+    "change": "Delete only 新开 from 郊外新开的大商城; the book gives no opening date.",
+    "included_in_automatic_metrics": false
+  }
+}

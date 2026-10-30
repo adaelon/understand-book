@@ -2061,14 +2061,14 @@ fn mu1c_tutor_material_keeps_original_binding_after_workspace_replacement() {
     use runtime::run_context::ResidentStatePort;
     let (_root, mut state) = fixture();
     let prepared = prepare(&mut state);
-    let original_anchor = prepared.scope.reader_input.state.viewport.anchor_lid.clone();
+    let original_anchor = prepared.scope.reader_input.as_ref().unwrap().state.viewport.anchor_lid.clone();
     let other = write_multi_leaf_book("mu1c-tutor-other", "mu1c-tutor-other", 4);
     assert_eq!(route_open_book(&mut state, &json!({"dir":other}).to_string(), "later").status, 200);
     let app = BorrowedAppPort(RefCell::new(&mut state));
     let mut port = RuntimeStatePort { port:&app, turn_ref:&prepared.turn_ref, scope:&prepared.scope,
         previewed:Default::default(), animations:Default::default(), plots:Default::default() };
     assert_eq!(port.read_live_reader(|r| r.state()).unwrap_err().error_code, "WORKSPACE_STALE");
-    assert_eq!(port.reader_input(&prepared.scope.book, "ignored").state.viewport.anchor_lid, original_anchor);
+    assert_eq!(port.reader_input(&prepared.scope.reading_book(), "ignored").state.viewport.anchor_lid, original_anchor);
     let material = port.tutor_step(json!({"operation":"material","object_id":"speed"}), &[], &[]).unwrap();
     assert!(material.to_string().contains("total distance"), "{material}");
     app.with_app(|state| {

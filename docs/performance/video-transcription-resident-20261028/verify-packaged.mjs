@@ -1,0 +1,31 @@
+import {copyFileSync,existsSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+const [engine,workspaceArg]=process.argv.slice(2);
+if(!engine||!workspaceArg)throw new Error('Expected ENGINE NEW_WORKSPACE');
+const evidence=JSON.parse(readFileSync(new URL('./resident.json',import.meta.url),'utf8'));
+const expected=evidence.results[0],source=expected.workspace,workspace=path.resolve(workspaceArg);
+if(existsSync(workspace))throw new Error('Use a fresh packaged transcript directory');
+mkdirSync(workspace,{recursive:true});
+const imported=JSON.parse(readFileSync(path.join(source,'video_import.json'),'utf8'));
+const media=path.join(workspace,imported.source.imported_path);
+mkdirSync(path.dirname(media),{recursive:true});
+copyFileSync(path.join(source,imported.source.imported_path),media);
+writeFileSync(path.join(workspace,'video_import.json'),JSON.stringify(imported));
+const build=JSON.parse(readFileSync(path.join(source,'video_build.json'),'utf8'));
+build.stage='transcribing';build.failure=null;
+for(const chunk of build.chunks){chunk.status='pending';chunk.attempts=0;chunk.failure=null;}
+writeFileSync(path.join(workspace,'video_build.json'),JSON.stringify(build));
+const started=performance.now();
+const result=await promisify(execFile)(engine,['video-transcribe','--workspace',workspace,'--python',evidence.python,'--model-dir',evidence.modelDir],{windowsHide:true,maxBuffer:8*1024*1024});
+assert.equal(JSON.parse(result.stdout).stage,'ready');
+const raw=build.chunks.map(chunk=>JSON.parse(readFileSync(path.join(workspace,`transcript/raw/${chunk.id}.json`),'utf8')));
+assert.deepEqual(raw.map(r=>r.segments),expected.segments);
+assert.equal(readFileSync(path.join(workspace,'source.txt'),'utf8'),expected.text);
+assert.ok(raw[0].load_ms>0);assert.equal(raw[1].load_ms,0);
+const receipt={status:'passed',engine,workspace,elapsed_ms:performance.now()-started,chunks:raw.length,model_load_ms:raw.map(r=>r.load_ms),
+ full_segments_equal:true,canonical_text_equal:true,api_calls:0,packaged_whisper_used:true};
+writeFileSync(new URL('./packaged-verification.json',import.meta.url),JSON.stringify(receipt,null,2)+'\n');
+console.log(JSON.stringify(receipt));

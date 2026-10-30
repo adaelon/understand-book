@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "entries": [
+    {
+      "lid": "1.114",
+      "title": "引言 为什么会发生这种情况？",
+      "source_heading": "引言 为什么会发生这种情况?",
+      "start": 4506
+    },
+    {
+      "lid": "1.170",
+      "title": "第一章 若干事例",
+      "source_heading": "第 一 章 若干事例",
+      "start": 11929
+    },
+    {
+      "lid": "1.347",
+      "title": "第二章 要求",
+      "source_heading": "第二章 要 求",
+      "start": 26363
+    },
+    {
+      "lid": "1.428",
+      "title": "第三章 确定目标",
+      "source_heading": "第三章 确定目标",
+      "start": 33239
+    },
+    {
+      "lid": "1.572",
+      "title": "第四章 信息和模型",
+      "source_heading": "第四章 信息和模型",
+      "start": 48658
+    },
+    {
+      "lid": "1.892",
+      "title": "第五章 时间序列",
+      "source_heading": "第五章 时间序列",
+      "start": 71092
+    },
+    {
+      "lid": "1.1408",
+      "title": "第六章 规划",
+      "source_heading": "第六章 规 划",
+      "start": 101521
+    },
+    {
+      "lid": "1.1650",
+      "title": "第七章 那么现在我们怎么办？",
+      "source_heading": "第七章 那么现在我们怎么办?",
+      "start": 123393
+    }
+  ],
+  "source_and_base_modified": false
+}

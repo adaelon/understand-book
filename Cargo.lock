@@ -1863,6 +1863,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "ts-rs",
+ "uuid",
  "windows-sys 0.61.2",
 ]
 

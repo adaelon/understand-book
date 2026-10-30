@@ -1,0 +1,106 @@
+{
+  "browser": "149.0.7827.55",
+  "candidate_topics": 11,
+  "inspection": {
+    "ready": true,
+    "board_id": "mind-map-preview-smoke",
+    "revision": 2,
+    "native": [
+      {
+        "item_id": "topic-0",
+        "x": 633,
+        "y": 490.546875,
+        "width": 180,
+        "height": 66,
+        "text": "数组切片的借用−"
+      },
+      {
+        "item_id": "topic-1",
+        "x": 869,
+        "y": 377.546875,
+        "width": 120,
+        "height": 52,
+        "text": "数据在哪里−"
+      },
+      {
+        "item_id": "topic-2",
+        "x": 457,
+        "y": 497.546875,
+        "width": 120,
+        "height": 52,
+        "text": "你能做什么−"
+      },
+      {
+        "item_id": "topic-3",
+        "x": 869,
+        "y": 577.546875,
+        "width": 136,
+        "height": 52,
+        "text": "运行一个例子−"
+      },
+      {
+        "item_id": "topic-4",
+        "x": 1045,
+        "y": 337.546875,
+        "width": 149,
+        "height": 52,
+        "text": "a 拥有四个元素"
+      },
+      {
+        "item_id": "topic-5",
+        "x": 1045,
+        "y": 417.546875,
+        "width": 180,
+        "height": 52,
+        "text": "s 借用中间两个元素"
+      },
+      {
+        "item_id": "topic-6",
+        "x": 239,
+        "y": 457.546875,
+        "width": 162,
+        "height": 52,
+        "text": "&[u8]：只能读取"
+      },
+      {
+        "item_id": "topic-7",
+        "x": 204,
+        "y": 537.546875,
+        "width": 197,
+        "height": 52,
+        "text": "&mut [u8]：允许修改"
+      },
+      {
+        "item_id": "topic-8",
+        "x": 1061,
+        "y": 497.546875,
+        "width": 175,
+        "height": 52,
+        "text": "a = [10, 20, 30, 40]"
+      },
+      {
+        "item_id": "topic-9",
+        "x": 1061,
+        "y": 577.546875,
+        "width": 124,
+        "height": 52,
+        "text": "s = &a[1..3]"
+      },
+      {
+        "item_id": "topic-10",
+        "x": 1061,
+        "y": 657.546875,
+        "width": 126,
+        "height": 52,
+        "text": "s[0] 得到 20"
+      }
+    ],
+    "issues": []
+  },
+  "fonts": {
+    "topic": "\"Noto Sans SC Variable\", \"Noto Sans SC\", system-ui, sans-serif",
+    "body": "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+    "loaded": true
+  },
+  "errors": []
+}

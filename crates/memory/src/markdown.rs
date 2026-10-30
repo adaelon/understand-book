@@ -277,6 +277,7 @@ impl MemoryStore {
                 None
             }
         }));
+        ids.extend(self.document.notes.iter().filter(|note|!note.location.detached).filter_map(|note|note.current().context.book_id.clone()));
         ids.into_iter().collect()
     }
 

@@ -45,6 +45,8 @@ pub enum TeachingRepresentation {
 #[serde(deny_unknown_fields)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct TeachingDesign {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub note_refs: Vec<crate::NoteRef>,
     pub target: TeachingTarget,
     pub organizing_model: String,
     pub blocks: Vec<TeachingBlock>,

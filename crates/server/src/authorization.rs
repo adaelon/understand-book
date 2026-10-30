@@ -56,6 +56,7 @@ pub(crate) enum Capability {
     Recap,
     ReadingResumption,
     LearningRecords(Option<String>),
+    PersonalNotes(String),
     Chat(String),
     Run(String, String),
     Workspace(String),
@@ -141,6 +142,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
                 }
                 ["me", "chats", id] => Capability::Chat((*id).into()),
                 ["me", "learning-records", id] => Capability::LearningRecords(Some((*id).into())),
+                ["me", "notes", action] => Capability::PersonalNotes((*action).into()),
                 ["learning-workspaces", id] => Capability::LearningWorkspace(Some((*id).into()), ""),
                 ["workspace-releases", id, "versions", version] => Capability::WorkspaceRelease(Some(((*id).into(), version.parse().map_err(|_|missing())?)), false),
                 ["workspace-releases", id, "versions", version, "export"] => Capability::WorkspaceRelease(Some(((*id).into(), version.parse().map_err(|_|missing())?)), true),
@@ -235,7 +237,7 @@ pub struct AuthorizedObservation {
     _capacity: crate::service_limits::Permit,
     access: std::sync::Weak<Authorization>,
     principal: Principal,
-    reference: PublishedBookRef,
+    reference: Option<PublishedBookRef>,
     descriptor: crate::agent_stream::RunDescriptor,
 }
 impl AuthorizedObservation {
@@ -251,12 +253,7 @@ impl AuthorizedObservation {
                 .auth
                 .validate(&self.principal, crate::multi_user_host::now())
                 .is_ok()
-            && access
-                .library
-                .lock()
-                .unwrap()
-                .authorize(self.principal.user_id(), &self.reference)
-                .is_ok()
+            && self.reference.as_ref().is_none_or(|reference|access.library.lock().unwrap().authorize(self.principal.user_id(),reference).is_ok())
     }
 }
 impl Authorization {
@@ -279,12 +276,9 @@ impl Authorization {
                     .map(|t| (s, t))
             })
             .ok_or_else(missing)?;
-        let reference = turn.published_book_ref.clone().ok_or_else(missing)?;
-        self.library
-            .lock()
-            .unwrap()
-            .authorize(context.user_id(), &reference)
-            .map_err(|_| missing())?;
+        let reference = turn.published_book_ref.clone();
+        if let Some(reference)=&reference {self.library.lock().unwrap().authorize(context.user_id(),reference).map_err(|_|missing())?;}
+        else if !session.book_id.is_empty() {return Err(missing());}
         let capacity = self
             .resources
             .try_acquire(
@@ -304,7 +298,7 @@ impl Authorization {
             principal: context.principal.clone(),
             reference: reference.clone(),
             descriptor: crate::agent_stream::RunDescriptor {
-                book_id: reference.book_id,
+                book_id: reference.as_ref().map(|r|r.book_id.clone()).unwrap_or_default(),
                 session_id: session.id.clone(),
                 turn_id: turn_id.into(),
             },

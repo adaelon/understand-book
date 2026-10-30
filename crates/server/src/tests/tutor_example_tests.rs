@@ -48,6 +48,13 @@ fn sampled_learner_view(plan: &AgentRequestPlan) -> Value {
         .expect("the sampled request must carry the actual current learner view")
 }
 
+pub(crate) fn sampled_execution_guidance(plan: &AgentRequestPlan) -> Value {
+    plan.input.iter().rev().filter_map(|message| message.content.as_deref())
+        .flat_map(str::lines).find_map(|line| line.starts_with("Current Tutor execution constraints.")
+            .then(|| serde_json::from_str(&line[line.find('{').unwrap()..]).unwrap()))
+        .expect("the sampled request carries current execution constraints")
+}
+
 pub(crate) struct PublishedExample {
     pub(crate) example: Value,
     pub(crate) previous_design_ref: Option<String>,
@@ -86,6 +93,10 @@ impl ModelAdapter for PublishedExample {
                         .filter_map(|message|message.content.as_deref().and_then(|text|serde_json::from_str::<Value>(text).ok()))
                         .find_map(|value|value["model_body"]["design_ref"].as_str().map(str::to_owned)).expect("use the actually accepted design result");
                     input["move"]["design_ref"]=json!(reference);
+                    // The stable example vocabulary does not override current action constraints.
+                    for field in sampled_execution_guidance(plan)["move_forbidden"].as_array().unwrap() {
+                        input["move"].as_object_mut().unwrap().remove(field.as_str().unwrap());
+                    }
                 }
                 resolve_example_references(plan, &mut input);
                 self.observed.lock().unwrap().push(input.clone());
@@ -104,7 +115,8 @@ fn tutor_to3_published_examples_execute_through_resident_dispatch() {
     let canonical = runtime::tutor::spec();
     let examples = canonical.parameters["examples"].as_array().unwrap();
     let mut executed = 0;
-    for example in examples.iter().filter(|e| e["operation"] != "assess") {
+    // revise requires a real unaccepted draft; host-failure recovery is covered by Runtime teaching_patch_tests.
+    for example in examples.iter().filter(|e| !["assess", "revise"].contains(&e["operation"].as_str().unwrap())) {
         let (_root, mut state) = fixture();
         if example["operation"] == "evidence" { discrimination(&mut state); }
         let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -140,7 +152,7 @@ fn tutor_to3_published_examples_execute_through_resident_dispatch() {
         }
         executed += 1;
     }
-    assert_eq!(executed, examples.iter().filter(|e|e["operation"]!="assess").count());
+    assert_eq!(executed, examples.iter().filter(|e|!["assess", "revise"].contains(&e["operation"].as_str().unwrap())).count());
 }
 
 #[test]

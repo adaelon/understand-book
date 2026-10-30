@@ -81,10 +81,13 @@ impl ModelSpendStore {
         attribution: ChargeAttribution,
         cancellation: runtime::run_context::CancellationToken,
     ) -> Arc<dyn ModelSpendPort> {
+        self.port_with_optional_publication(scope,Some(publication),attribution,cancellation)
+    }
+    pub(crate) fn port_with_optional_publication(self:&Arc<Self>,scope:ChargeScope,publication:Option<PublishedBookRef>,attribution:ChargeAttribution,cancellation:runtime::run_context::CancellationToken)->Arc<dyn ModelSpendPort>{
         Arc::new(RunSpendPort {
             store: self.clone(),
             scope,
-            publication: Some(publication),
+            publication,
             attribution,
             cancellation,
         })
@@ -278,13 +281,15 @@ fn authorize(
             Err(SpendStop::MissingScope)
         };
     };
-    let publication = publication.ok_or(SpendStop::MissingScope)?;
+    let active:bool=db.query_row("SELECT EXISTS(SELECT 1 FROM users WHERE user_id=? AND disabled=0)",[owner],|r|r.get(0)).map_err(storage)?;
+    if !active {return Err(SpendStop::PermissionRevoked);}
     for workspace in context.learning_workspace_id.iter().chain(context.related_learning_workspace_ids.iter()) {
         let owned: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM learning_workspaces WHERE owner_user_id=? AND learning_workspace_id=? AND archived=0)",params![owner,workspace],|r|r.get(0)).map_err(storage)?;
         if !owned {
             return Err(SpendStop::PermissionRevoked);
         }
     }
+    let Some(publication)=publication else {return if context.learning_workspace_id.is_none() && context.related_learning_workspace_ids.is_empty(){Ok(())}else{Err(SpendStop::MissingScope)};};
     let allowed = crate::course_access::material_allowed(db,owner,publication,crate::multi_user_host::now()).map_err(|_| SpendStop::StorageUnavailable)?;
     if allowed {
         Ok(())

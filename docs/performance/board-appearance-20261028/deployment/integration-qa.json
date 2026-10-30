@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-28T02:34:32.746859+00:00",
+  "schema": 21,
+  "checks": {
+    "existing_accounts_books_history_notes_and_boards_readable": true,
+    "historical_chat_files_preserved": 46,
+    "board_files_preserved": 85,
+    "boards_opened": 8,
+    "allowance_rows_preserved": 12,
+    "accounts_checked": 3,
+    "disabled_board_owners_preserved_without_login": 2
+  },
+  "binary_stat": {
+    "size": 56631560,
+    "mtime_ns": 1793154647375826126
+  },
+  "production_mutated": false,
+  "model_requests": 0
+}

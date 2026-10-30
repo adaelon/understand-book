@@ -18,6 +18,7 @@ export function boardFixture(): { document: BoardDocument; view: BoardView } {
 }
 export const boardFixtureCatalog: BoardCatalogItem[] = boardFixtureItems.flatMap<BoardCatalogItem>(item => {
   if (item.target.kind === 'drawing') return [];
+  if (item.target.kind === 'personal_note') return [{kind:'personal_note',title:item.title,summary:item.readable_content,source:{kind:'personal_note',reference:item.target.reference}}];
   if (item.target.kind === 'artifact') return [{ kind: 'prebuild', category: item.target.artifact, title: item.title, summary: item.readable_content,
     source: { kind: 'artifact', artifact: item.target.artifact, entry_id: item.target.entry_id, source_revision: item.target.source_revision } }];
   return [{ kind: item.target.kind, title: item.title, summary: item.readable_content,

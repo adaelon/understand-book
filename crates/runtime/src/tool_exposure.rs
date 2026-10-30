@@ -536,7 +536,8 @@ impl ToolExposurePlan {
         let workspace_goal_slot = usize::from(registry.registration("workspace.goal.update").is_some());
         let workspace_records_slot = usize::from(registry.registration("workspace.records.read").is_some());
         let progress_slot = usize::from(registry.registration("agent.progress").is_some());
-        let direct_limit = progress_slot + workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + ranked_search_slot + source_slot + if registry.registration("goal.update").is_some() {
+        let board_slot = usize::from(registry.registration("board.author").is_some());
+        let direct_limit = board_slot + progress_slot + workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + ranked_search_slot + source_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -1561,13 +1562,13 @@ fn classify(
         }
         Handler::ProfileManifest => (Disposition::Hidden, Reason::PermissionDenied),
         Handler::ProfileMarkUsed => (Disposition::Deferred, Reason::RuntimeOwned),
-        Handler::MemoryRecall if context.permissions.allow_memory_read => {
+        Handler::MemoryRecall | Handler::PersonalNoteSearch | Handler::PersonalNoteRead if context.permissions.allow_memory_read => {
             (Disposition::Deferred, Reason::CapabilityDeferred)
         }
         Handler::MemorySave if context.permissions.allow_memory_write => {
             (Disposition::Deferred, Reason::CapabilityDeferred)
         }
-        Handler::MemoryRecall | Handler::MemorySave => {
+        Handler::MemoryRecall | Handler::PersonalNoteSearch | Handler::PersonalNoteRead | Handler::MemorySave => {
             (Disposition::Hidden, Reason::PermissionDenied)
         }
         Handler::ReaderState if context.permissions.allow_reader_read => {
@@ -1992,6 +1993,7 @@ mod tests {
         let runtime_profile = model();
         let exposure_context = context(ContentProfileId::TechnicalLearning);
         let expected = vec![
+            "board.author",
             "book.query",
             "book.synthesize",
             "book.search_text",
@@ -2034,6 +2036,7 @@ mod tests {
         assert_eq!(
             visible_names(&technical),
             vec![
+                "board.author",
                 "book.query",
                 "book.synthesize",
                 "book.search_text",
@@ -2048,7 +2051,7 @@ mod tests {
             ]
         );
         assert!(technical.visible_tools.len() <= technical.direct_limit);
-        assert_eq!(technical.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 2);
+        assert_eq!(technical.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 3);
         assert_eq!(
             technical.entry("book.text_batch").unwrap().disposition,
             ToolExposureDisposition::Hidden
@@ -2729,7 +2732,7 @@ mod tests {
                 let source_available = allowed
                     && matches!(evidence_state, EvidenceState::KnownLids | EvidenceState::UserProvided);
 
-                assert_eq!(without.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 2);
+                assert_eq!(without.direct_limit, DEFAULT_DIRECT_TOOL_LIMIT + 3);
                 assert_eq!(with.direct_limit, without.direct_limit + usize::from(source_available));
                 assert_eq!(with.is_visible("source.present"), source_available);
                 for name in visible_names(&without) {

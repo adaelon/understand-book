@@ -1,5 +1,7 @@
 # ADR-0155 Goal 工作计划与演示修订上下文
 
+2026-10-29 接续：[ADR-0176](0176-main-agent-planned-teaching-and-coach-guidance.md) 直接复用本 ADR 的 Goal 工作计划及持久化机制，不新增另一套计划对象。主 Agent 计划执行与交付流程的调整已接受、待实施。
+
 状态：设计已接受，2026-10-02；EX13.0 [离线基线](../performance/presentation-context-ex13/README.md)、EX13.1 [指导追加](../performance/presentation-context-ex13/ex13-1/README.md)、EX13.2 [源码投影](../performance/presentation-context-ex13/ex13-2/README.md)、EX13.3 [Goal 工作计划](../performance/presentation-context-ex13/ex13-3/README.md)、EX13.4 [确切版本修订](../performance/presentation-context-ex13/ex13-4/README.md)、EX13.5 [摘要修复前缀](../performance/presentation-context-ex13/ex13-5/README.md)已完成，[EX13.6 原生接续](../performance/presentation-context-ex13/ex13-6/README.md)也已完成。实施合同见 [EX13 切片方案](../切片方案-EX13-Goal工作计划与演示修订上下文.md)。
 
 承接 [ADR-0136](0136-resident-goal-lifecycle-and-delivery-completion.md) 的用户要求与工作判断分离、[ADR-0154](0154-presentation-global-framework-and-staged-authoring.md) 的复杂解释制作方法，以及[调用成本计划](../计划-调用成本与DeepSeek适配.md)的动态状态追加原则。

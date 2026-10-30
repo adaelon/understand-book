@@ -6,6 +6,7 @@ import type { BoardSourceRequest } from '../board-workspace';
 import { bindSceneApi } from '../network-context';
 import { t as uiText } from '../i18n';
 import { renderSourceMarkdown } from '../md';
+import { isReaderFlowSegment, shouldJoinReaderFlow } from '../reader-flow';
 import BoardSourceSegment from './BoardSourceSegment.vue';
 import SourceExcerpt from './SourceExcerpt.vue';
 
@@ -26,6 +27,31 @@ let publication: BoardSourceReadResponse['published_book_ref'];
 let assetsRequested = false, adjustingScroll = false, lastScrollTop = 0, scrollFrame = 0;
 let touchY: number | null = null;
 const maxSegments = 96;
+
+// The source store splits inline formulas into separate LIDs. Rejoin their
+// sentence as the main Reader does, keeping each LID for highlights and paging.
+type SourceSegment = BoardSourceReadResponse['segments'][number];
+type ReadingItem = { type: 'flow'; parts: SourceSegment[] } | { type: 'block'; segment: SourceSegment };
+const readingItems = computed(() => {
+  const items: ReadingItem[] = [];
+  let flow: SourceSegment[] = [];
+  const flush = () => {
+    if (flow.length === 1 && flow[0].kind === 'paragraph') items.push({ type: 'block', segment: flow[0] });
+    else if (flow.length) items.push({ type: 'flow', parts: flow });
+    flow = [];
+  };
+  for (const segment of segments.value) {
+    if (isReaderFlowSegment(segment)) {
+      if (flow.length && !shouldJoinReaderFlow(flow[flow.length - 1], segment)) flush();
+      flow.push(segment);
+    } else {
+      flush();
+      items.push({ type: 'block', segment });
+    }
+  }
+  flush();
+  return items;
+});
 
 // Outline lids are canonical tree paths. A heading remains current while reading
 // its descendants, including chapters outside the source's original excerpt.
@@ -227,7 +253,10 @@ onBeforeUnmount(() => { disposed = true; ++sequence; ++assetSequence; if (scroll
               <button v-if="previous" type="button" :disabled="initialLoading || !!pageLoading" @click="loadEdge('before')"><LoaderCircle v-if="pageLoading === 'before'" :size="14" aria-hidden="true" /><ArrowUp v-else :size="14" aria-hidden="true" />{{ pageLoading === 'before' ? uiText('正在加载前文…') : uiText('阅读前文') }}</button>
               <span v-else>{{ uiText('已到材料开头') }}</span>
             </div>
-            <BoardSourceSegment v-for="segment in segments" :key="segment.lid" :segment="segment" :assets="assets" :loading-images="loadingImages" />
+            <template v-for="item in readingItems" :key="item.type === 'flow' ? item.parts[0].lid : item.segment.lid">
+              <p v-if="item.type === 'flow'" class="source-reader-flow" :class="{ 'has-citation': item.parts.some(part => part.highlights.length > 0) }"><BoardSourceSegment v-for="part in item.parts" :key="part.lid" :segment="part" :assets="assets" :loading-images="loadingImages" inline /></p>
+              <BoardSourceSegment v-else :segment="item.segment" :assets="assets" :loading-images="loadingImages" />
+            </template>
             <div class="source-reader-edge source-reader-edge-after">
               <button v-if="next" type="button" :disabled="initialLoading || !!pageLoading" @click="loadEdge('after')"><LoaderCircle v-if="pageLoading === 'after'" :size="14" aria-hidden="true" /><ArrowDown v-else :size="14" aria-hidden="true" />{{ pageLoading === 'after' ? uiText('正在加载后文…') : uiText('继续阅读') }}</button>
               <span v-else>{{ uiText('已到材料末尾') }}</span>
@@ -255,6 +284,9 @@ onBeforeUnmount(() => { disposed = true; ++sequence; ++assetSequence; if (scroll
 .source-reader-outline-scrim{display:none;padding:0;border-radius:0}
 .source-reader-scroll{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:var(--hairline) transparent;outline:none}
 .source-reader-page{max-width:900px;margin:0 auto;padding:18px 56px 32px}
+.source-reader-flow{margin:0 0 1.1em;color:var(--ink);font-family:var(--reader-font,var(--serif,serif));font-size:18px;line-height:1.95;overflow-wrap:anywhere}
+.source-reader-flow.has-citation{padding-left:20px;margin-left:-22px;border-left:2px solid color-mix(in srgb,var(--brand-accent) 65%,transparent)}
+@media(max-width:700px){.source-reader-flow{font-size:17px;line-height:1.9}.source-reader-flow.has-citation{padding-left:12px;margin-left:-14px}}
 .source-reader-loading{display:flex;align-items:center;justify-content:center;gap:10px;min-height:60px;color:var(--stone);font:13px var(--sans)}
 .source-reader-loading svg,.source-reader-edge button svg.lucide-loader-circle{animation:source-reader-spin 1s linear infinite}
 .source-reader-error{display:flex;align-items:center;gap:15px;padding:12px 15px;margin-bottom:20px;border:1px solid color-mix(in srgb,var(--brand-error) 25%,var(--hairline));border-radius:8px;background:var(--surface-soft);color:var(--brand-error);font:12px/1.8 var(--sans)}.source-reader-error p{flex:1;margin:0}.source-reader-error button{padding:5px 10px;flex-shrink:0;border:1px solid currentColor;border-radius:5px;background:transparent;color:inherit;cursor:pointer}

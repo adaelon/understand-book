@@ -28,7 +28,7 @@ export function answerNoteExcerpt(range: Range, sources: string[], root: Node): 
   });
   if (!part) return null;
   const clone = range.cloneContents();
-  clone.querySelectorAll('.agent-source-button').forEach(node => node.remove());
+  clone.querySelectorAll('.agent-source-button,[data-reader-selection-ignore]').forEach(node => node.remove());
   const clean = document.createRange(); clean.selectNodeContents(clone);
   const selected = rangeToMarkdown(clean);
   if (!selected) return null;

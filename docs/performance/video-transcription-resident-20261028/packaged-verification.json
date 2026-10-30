@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "engine": "E:/allwork/Understand Book/operator-builds/20261028-prebuild-reuse/understand-book-build-x86_64-pc-windows-msvc.exe",
+  "workspace": "E:\\allwork\\download\\agent\\understand-book\\tmp\\video-transcription-resident-20261028\\packaged",
+  "elapsed_ms": 17462.6227,
+  "chunks": 2,
+  "model_load_ms": [
+    2203,
+    0
+  ],
+  "full_segments_equal": true,
+  "canonical_text_equal": true,
+  "api_calls": 0,
+  "packaged_whisper_used": true
+}

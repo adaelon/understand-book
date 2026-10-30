@@ -35,7 +35,7 @@ impl SessionProjection {
         }
         match &event.body {
             EventBody::SessionCreated(c) => {
-                if c.session_id.is_empty() || c.book_id.is_empty() {
+                if c.session_id.is_empty() || (c.book_id.is_empty() && c.learning_workspace_id.is_some()) {
                     return Err(invalid("empty session identity"));
                 }
             }

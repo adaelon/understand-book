@@ -1,0 +1,40 @@
+{
+  "status": "published",
+  "started_at_utc": "2026-10-27T15:06:19.462474+00:00",
+  "finished_at_utc": "2026-10-27T15:06:31.613947+00:00",
+  "maintenance_seconds": 12.15,
+  "release": "/opt/understand-book/releases/capacity-fixes-20261027",
+  "previous_release": "/opt/understand-book/releases/notes-unlimited-20261027",
+  "service_pid": "339783",
+  "schema": 21,
+  "before_state": {
+    "schema": 21,
+    "active": 0,
+    "model_inflight": 0,
+    "service_inflight": 0,
+    "web_inflight": 0,
+    "background_inflight": 0,
+    "admission_count": 132,
+    "review_running": 0
+  },
+  "after_state": {
+    "schema": 21,
+    "active": 0,
+    "model_inflight": 0,
+    "service_inflight": 0,
+    "web_inflight": 0,
+    "background_inflight": 0,
+    "admission_count": 132,
+    "review_running": 0
+  },
+  "existing_allowance_rows_preserved": 10,
+  "historical_chat_files_preserved": 44,
+  "orphan_tasks_cancelled": 2,
+  "existing_reader_and_admin_health_preserved": true,
+  "backup": "/opt/understand-book/backups/capacity-fixes-20261027",
+  "mutable_backup_bytes": 29487024,
+  "capacity_200_enabled": false,
+  "capacity_file_present": false,
+  "load_tests": false,
+  "verification_model_requests": 0
+}

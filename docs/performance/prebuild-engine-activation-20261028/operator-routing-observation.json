@@ -1,0 +1,216 @@
+{
+  "observed_at": "2026-10-28T21:45:33.2972925+08:00",
+  "engine_processes": [
+    {
+      "pid": 34212,
+      "parent_pid": 49236,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-27T22:06:14.3177510+08:00"
+    },
+    {
+      "pid": 49268,
+      "parent_pid": 37392,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T11:16:08.6507150+08:00"
+    },
+    {
+      "pid": 50656,
+      "parent_pid": 38540,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T15:03:12.8811840+08:00"
+    },
+    {
+      "pid": 42380,
+      "parent_pid": 33876,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T16:03:43.0152670+08:00"
+    },
+    {
+      "pid": 46900,
+      "parent_pid": 31520,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T16:03:45.5494520+08:00"
+    },
+    {
+      "pid": 37420,
+      "parent_pid": 51344,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T16:34:31.6421110+08:00"
+    },
+    {
+      "pid": 9476,
+      "parent_pid": 32600,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T17:05:22.0463740+08:00"
+    },
+    {
+      "pid": 29824,
+      "parent_pid": 34164,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T17:35:24.7906360+08:00"
+    },
+    {
+      "pid": 47924,
+      "parent_pid": 37576,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T18:05:40.2474630+08:00"
+    },
+    {
+      "pid": 33880,
+      "parent_pid": 50120,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T18:17:03.1868150+08:00"
+    },
+    {
+      "pid": 50632,
+      "parent_pid": 21708,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T18:48:47.0120710+08:00"
+    },
+    {
+      "pid": 38292,
+      "parent_pid": 40924,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T18:59:39.2205920+08:00"
+    },
+    {
+      "pid": 23372,
+      "parent_pid": 35988,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T19:06:04.1652960+08:00"
+    },
+    {
+      "pid": 47688,
+      "parent_pid": 29792,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T19:17:00.0048170+08:00"
+    },
+    {
+      "pid": 49048,
+      "parent_pid": 55828,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T19:44:11.8309970+08:00"
+    },
+    {
+      "pid": 38300,
+      "parent_pid": 56776,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T19:57:26.3961310+08:00"
+    },
+    {
+      "pid": 55584,
+      "parent_pid": 28800,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T20:01:49.5773000+08:00"
+    },
+    {
+      "pid": 35304,
+      "parent_pid": 44128,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T20:48:25.9134720+08:00"
+    },
+    {
+      "pid": 49900,
+      "parent_pid": 56272,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T21:21:48.6165770+08:00"
+    },
+    {
+      "pid": 5288,
+      "parent_pid": 22652,
+      "path": "E:\\allwork\\Understand Book\\understand-book-build.exe",
+      "kind": "executor.mcp",
+      "started_at": "2026-10-28T21:34:17.0290870+08:00"
+    }
+  ],
+  "matching_operator_or_dsh_processes": [],
+  "named_environment": [
+    {
+      "name": "UNDERSTAND_BOOK_DSH_ENGINE",
+      "scope": "Process",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_DSH_ENGINE",
+      "scope": "User",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_DSH_ENGINE",
+      "scope": "Machine",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_OPERATOR_BUILD_CONFIG",
+      "scope": "Process",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_OPERATOR_BUILD_CONFIG",
+      "scope": "User",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_OPERATOR_BUILD_CONFIG",
+      "scope": "Machine",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_SIDECAR",
+      "scope": "Process",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_SIDECAR",
+      "scope": "User",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_SIDECAR",
+      "scope": "Machine",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_EXE",
+      "scope": "Process",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_EXE",
+      "scope": "User",
+      "value": null
+    },
+    {
+      "name": "UNDERSTAND_BOOK_BUILD_EXE",
+      "scope": "Machine",
+      "value": null
+    }
+  ],
+  "registry_default_engine": "E:/allwork/Understand Book/understand-book-build.exe",
+  "final_engine": "E:/allwork/Understand Book/operator-builds/20261028-prebuild-reuse/understand-book-build-x86_64-pc-windows-msvc.exe",
+  "dsh_standard_profiles": {
+    "desktop_understand_book_package_present": false,
+    "understand_book_config_entries_found": false,
+    "web_understand_book_package_present": false
+  },
+  "operator_conclusion": "No running local operator/DSH host was observed. New Codex plugin settings do not configure DSH operator host. No live operator engine path can be asserted; default discovery would select the old registered install."
+}

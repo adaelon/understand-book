@@ -390,12 +390,12 @@ pub enum AuthorRequest {
         candidate_revision: u32,
         /// Supplied only by the runtime after checking the accepted teaching text.
         #[serde(skip)]
-        reviewed_delivery: Option<ReviewedDelivery>,
+        selected_delivery: Option<SelectedDelivery>,
     },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ReviewedDelivery {
+pub struct SelectedDelivery {
     pub teaching_delivery_move_refs: Vec<String>,
     pub delivery_scope: Option<Value>,
 }
@@ -410,11 +410,9 @@ pub struct AuthorResult {
 }
 
 /// Keep the actual preview after its image has been consumed by the author.
-/// Teaching selection runs before board delivery, so reviewers need this
-/// proposed surface rather than a receipt that can only exist after review.
+/// Selection binds the exact inspected surface before staging its delivery.
 pub(crate) struct ReviewPreview {
     pub report: Value,
-    pub images: Vec<crate::presentation_author::PreviewImage>,
 }
 
 impl ReviewPreview {
@@ -470,7 +468,7 @@ impl ReviewPreview {
             "delivery_text":candidate["delivery_text"],"items":items("items"),"update_items":items("update_items"),
             "links":candidate["links"],"mappings":candidate["mappings"],"routes":candidate["routes"],
             "author_preview_observations":[self.report],
-            "delivery_boundary":"Proposed native board, actually previewed and inspected; not yet committed. Review this exact diagram and explanation before allowing its save. The runtime requires the selected text and previewed revision to match at delivery."}))
+            "delivery_boundary":"Proposed native board, actually previewed and inspected; not yet committed. The author has observed this exact diagram and explanation. The runtime requires the selected text and previewed revision to match at delivery."}))
     }
 }
 
@@ -514,13 +512,13 @@ pub(crate) fn validate_teaching_delivery(
         return Ok(());
     }
     if !resolved {
-        return Err(error("BOARD_TEACHING_SELECTION_REQUIRED", "Complete tutor.step select for this teaching explanation before staging the native board. Keep the exact reviewed delivery_text in the prepared blocks."));
+        return Err(error("BOARD_TEACHING_SELECTION_REQUIRED", "Complete tutor.step select for this teaching explanation before staging the native board. Keep the exact selected delivery_text in the prepared blocks."));
     }
     if accepted.is_some_and(|draft| draft["delivery_scope"]["kind"] == "board_part") {
         return Err(error("BOARD_PART_NOT_FINAL", "The selected teaching expression is one board part. Commit it and continue the original request; it cannot finish the whole answer."));
     }
     if accepted.and_then(|draft| draft["text"].as_str()) != Some(candidate_text) {
-        return Err(error("BOARD_TEACHING_TEXT_MISMATCH", "The native board text differs from the accepted teaching delivery. Prepare and preview the exact reviewed delivery_text, or review the revised teaching expression with tutor.step select before delivering."));
+        return Err(error("BOARD_TEACHING_TEXT_MISMATCH", "The native board text differs from the accepted teaching delivery. Prepare and preview the exact selected delivery_text, or select the revised teaching expression with tutor.step select before delivering."));
     }
     Ok(())
 }
@@ -538,7 +536,7 @@ pub(crate) fn validate_teaching_commit(
     }
     if accepted.is_some_and(|draft| draft["delivery_scope"]["kind"] == "board_part") {
         if accepted.and_then(|draft| draft["text"].as_str()) != Some(candidate_text) {
-            return Err(error("BOARD_TEACHING_TEXT_MISMATCH", "The board part differs from the exact reviewed local teaching expression. Prepare and preview the accepted text before committing."));
+            return Err(error("BOARD_TEACHING_TEXT_MISMATCH", "The board part differs from the exact selected local teaching expression. Prepare and preview the accepted text before committing."));
         }
         return Ok(());
     }
@@ -563,6 +561,7 @@ pub fn spec() -> crate::ToolSpec {
     let presentation_ref = json!({"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer","minimum":1}},"required":["presentation_id","revision"],"additionalProperties":false});
     let scene_receipt = json!({"type":"object","properties":{"session_id":{"type":"string"},"turn_id":{"type":"string"},"reference":presentation_ref,"state_revision":{"type":"integer","minimum":1},"saved_state_ref":{"type":"string"}},"required":["session_id","turn_id","reference","state_revision","saved_state_ref"],"additionalProperties":false});
     let source = json!({"description":"Copy the exact source object from catalog. Historical answers and presentations resolve their original publication automatically.","oneOf":[
+        json!({"type":"object","properties":{"kind":{"enum":["personal_note"]},"reference":{"type":"object","properties":{"note_id":{"type":"string","minLength":1},"revision":{"type":"integer","minimum":1}},"required":["note_id"],"additionalProperties":false}},"required":["kind","reference"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["artifact"]},"artifact":{"enum":["pass1","discourse","book_structure"]},"entry_id":{"type":"string"},"source_revision":{"type":"string"}},"required":["kind","artifact","entry_id","source_revision"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["answer"]},"session_id":{"type":"string"},"turn_id":{"type":"string"}},"required":["kind","session_id","turn_id"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["presentation"]},"session_id":{"type":"string"},"turn_id":{"type":"string"},"reference":presentation_ref,"receipt":scene_receipt},"required":["kind","session_id","turn_id","reference"],"additionalProperties":false}),
@@ -571,7 +570,7 @@ pub fn spec() -> crate::ToolSpec {
     ]});
     let drawing = json!({"type":"object","properties":{"item_id":{"type":"string"},"title":{"type":"string"},"position":point,"size":size,"graphic":graphic,"based_on":{"type":"array","items":content}},"required":["item_id","title","position","size","graphic"],"additionalProperties":false});
     let extra = json!({
-            "kind":{"enum":["answer","presentation","prebuild","understanding"]},
+            "kind":{"enum":["personal_note","answer","presentation","prebuild","understanding"]},
             "query":{"type":"string","description":"Search the full permitted source contents before pagination, including answers beyond the first page."},
             "after":{"type":"integer","minimum":0},
             "limit":{"type":"integer","minimum":1,"maximum":50},
@@ -581,7 +580,7 @@ pub fn spec() -> crate::ToolSpec {
             "update_drawings":{"type":"array","items":drawing,"description":"Explicitly replace native graphic/text/geometry of existing drawings using their exact item_id, including visual refinements to an existing board. Preserve source meaning and provenance; prior revisions stay readable."},
             "layout":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"position":point,"size":size},"required":["item_id","position","size"],"additionalProperties":false},"description":"Move or resize retained items without changing their saved content. Use aligned groups and generous gaps so relationships and labels stay readable."}
     });
-    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this accepted board when a visual relationship helps the current request. A short explanation, correction or clarification can be answered directly without authoring a diagram. Prioritize the host-selected explanation block over the rest of a long previous answer. When drawing is useful, read the relevant board layout and exact sources. Call plan with the concrete relationship before preparing new visuals or changing the explanation strategy; consume its coach handoff in the next sampling before drawing. Plan is run-local and reused by later prepare/revise/preview calls. Layout, font or position-only adjustments do not need a new plan. Search catalog or workspace.records.read only when relevant existing material or original conversations are needed. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. State the current learning workspace scope and never fabricate history or understanding. Build native mind maps with text/shapes and labelled links; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
+    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this accepted board when a visual relationship helps the current request. A short explanation, correction or clarification can be answered directly without authoring a diagram. Prioritize the host-selected explanation block over the rest of a long previous answer. When drawing is useful, read the relevant board layout and exact sources. Call plan with the concrete relationship before preparing new visuals or changing the explanation strategy; consume its coach handoff in the next sampling before drawing. Plan is run-local and reused by later prepare/revise/preview calls. Layout, font or position-only adjustments do not need a new plan. Search catalog or workspace.records.read only when relevant existing material or original conversations are needed. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. State the current learning workspace scope and never fabricate history or understanding. Choose the visual structure that explains the requested relationship. Use native drawings with text, shapes, paths and labelled links for flowcharts, causal networks, comparisons, spatial groupings and other freeform diagrams; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
         "type":"object","properties":{
             "operation":{"enum":["read","catalog","source_read","plan","prepare","revise","preview","deliver","commit"]},
             "focus":{"type":"string","minLength":1,"description":"The concrete relationship the reader should understand, especially the selected explanation's unresolved point. Call plan before designing new visuals or changing the explanation strategy."},
@@ -635,6 +634,21 @@ mod tests {
     }
 
     #[test]
+    fn personal_note_catalog_and_source_pass_the_actual_tool_contract() {
+        let registry = crate::orchestrator::resident_tool_registry();
+        let registration = registry.registration("board.author").unwrap();
+        for request in [
+            json!({"operation":"catalog","kind":"personal_note"}),
+            json!({"operation":"source_read","source":{"kind":"personal_note","reference":{"note_id":"thought-1","revision":2}}}),
+            json!({"operation":"prepare","base_board_revision":1,"blocks":[{"block_id":"idea","markdown":"A saved personal expression"}],"drawings":[],"links":[],
+                "imports":[{"source":{"kind":"personal_note","reference":{"note_id":"thought-1","revision":2}},"item_id":"saved-thought","position":{"x":0,"y":0},"size":{"width":320,"height":200}}]})
+        ] {
+            registration.validate_arguments(&request.to_string()).unwrap();
+            serde_json::from_value::<AuthorRequest>(request).unwrap();
+        }
+    }
+
+    #[test]
     fn native_plan_and_links_without_evidence_pass_the_actual_tool_contract() {
         let registry = crate::orchestrator::resident_tool_registry();
         let registration = registry.registration("board.author").unwrap();
@@ -650,7 +664,7 @@ mod tests {
 
     #[test]
     fn board_selection_requires_a_reference_and_never_accepts_a_second_body() {
-        let preview = ReviewPreview { report:json!({"status":"preview_ready_for_inspection","candidate_id":"board:turn:1","candidate_revision":1}), images:vec![] };
+        let preview = ReviewPreview { report:json!({"status":"preview_ready_for_inspection","candidate_id":"board:turn:1","candidate_revision":1}) };
         let current = json!({"board":{"revision":1},"committed":[],"candidate":{
             "board_id":"board","candidate_id":"board:turn:1","candidate_revision":1,"base_board_revision":1,
             "previewed":true,"delivery_text":"The exact explanation.","items":[],"update_items":[],"links":[],"mappings":[],"routes":[]}});
@@ -667,7 +681,7 @@ mod tests {
     #[test]
     fn review_preview_uses_only_the_current_inspected_candidate_and_public_board_content() {
         let preview = ReviewPreview { report:json!({"status":"preview_ready_for_inspection","candidate_id":"board:turn:2","candidate_revision":2,
-            "observations":[{"dom":{"text":"History → State","board":{"ready":true}}}]}), images:vec![] };
+            "observations":[{"dom":{"text":"History → State","board":{"ready":true}}}]}) };
         let current = json!({"board":{"revision":3},"committed":[],"candidate":{
             "board_id":"board","candidate_id":"board:turn:2","candidate_revision":2,"base_board_revision":3,"previewed":true,
             "delivery_text":"Explain the state.","items":[{"item_id":"state","title":"State","readable_content":"A fixed-size table accumulates each token.",

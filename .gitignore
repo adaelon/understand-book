@@ -46,6 +46,9 @@ Thumbs.db
 
 # Local execution state, scratch workspaces and generated caches
 /tmp/
+/.tmp/
+/packages/core/tmp/
+/browser-release/
 /output/
 .tmp-*/
 .tmp-*.log
@@ -84,6 +87,10 @@ playwright-report/
 
 # Raw model requests and private browser/deployment state stay local
 /docs/performance/**/requests/
+# Raw verification logs and release snapshots stay local; reports and screenshots are versioned.
+/docs/performance/**/*.log
+/docs/performance/**/*.patch
+/docs/performance/**/*.tar.gz
 *.private.json
 *.private.env
 *.private.log

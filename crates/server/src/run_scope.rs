@@ -15,16 +15,18 @@ pub(crate) struct RunScope {
     pub chat_session_id: String,
     pub turn_id: String,
     pub confirmation_id: Option<String>,
-    pub book: std::sync::Arc<Book>,
+    pub book: Option<std::sync::Arc<Book>>,
     pub book_dir: PathBuf,
     pub provider_binding: runtime::ModelRuntimeProfile,
-    pub reader_input: ReaderInputSnapshot,
+    pub reader_input: Option<ReaderInputSnapshot>,
     pub question_quote: Option<AskQuote>,
     pub music_question: Option<base_schema::MusicQuestionContext>,
     pub presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
 }
 
 impl RunScope {
+    pub fn reading_book(&self)->&std::sync::Arc<Book>{self.book.as_ref().expect("material-scoped operation")}
+    pub fn book_id(&self)->&str {self.book.as_ref().map(|b|b.base.book_id.as_str()).unwrap_or_default()}
     pub fn capture(
         state: &AppState,
         turn: &AgentTurnRef,
@@ -48,14 +50,14 @@ impl RunScope {
             chat_session_id: turn.session_id.clone(),
             turn_id: turn.turn_id.clone(),
             confirmation_id: state.user.agent_history.confirmation_id(&turn.session_id).map(str::to_string),
-            book: state.workspace.book.clone(),
+            book: Some(state.workspace.book.clone()),
             book_dir: state.workspace.book_dir.clone(),
             provider_binding: state.services.adapter.model_runtime_profile(),
-            reader_input: ReaderInputSnapshot::capture(
+            reader_input: Some(ReaderInputSnapshot::capture(
                 &state.workspace.book,
                 &state.workspace.reader,
                 message,
-            ),
+            )),
             question_quote,
             music_question: None,
             presentation_follow_up,
@@ -76,7 +78,7 @@ impl RunScope {
         }
         if !user.agent_history.sessions.iter().any(|s| {
             s.id == self.chat_session_id
-                && s.matches_scope(self.learning_workspace_id.as_deref(), &self.book.base.book_id)
+                && s.matches_scope(self.learning_workspace_id.as_deref(), self.book_id())
                 && s.turns.iter().any(|t| t.turn_id == self.turn_id)
         }) {
             return Err(agent_history_internal("Run chat or turn is unavailable"));
@@ -90,7 +92,7 @@ impl RunScope {
     }
 
     pub fn check_scene(&self, w: &crate::reader_workspace::ReaderWorkspace) -> Result<(), ToolError> {
-        if w.id != self.workspace_id
+        if self.book.is_none() || w.id != self.workspace_id
             || w.learning_workspace_id != self.learning_workspace_id
             || w.generation != self.workspace_generation
             || w.publication.as_ref().map(|p| &p.reference) != self.publication.as_ref().map(|p| &p.reference)
@@ -114,13 +116,13 @@ impl RunScope {
             .agent_history
             .sessions
             .iter()
-            .find(|s| s.id == self.chat_session_id && s.matches_scope(self.learning_workspace_id.as_deref(), &self.book.base.book_id))
+            .find(|s| s.id == self.chat_session_id && s.matches_scope(self.learning_workspace_id.as_deref(), self.book_id()))
             .map(|s| s.messages.as_slice())
             .unwrap_or(&[]);
         PrivateBookContext {
             learning_workspace_id: self.learning_workspace_id.as_deref(),
             user,
-            book: &self.book,
+            book: self.reading_book(),
             book_dir: &self.book_dir,
             messages,
             selected_chat: Some(&self.chat_session_id),

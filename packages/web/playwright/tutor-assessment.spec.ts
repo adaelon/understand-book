@@ -51,8 +51,8 @@ test('frozen grading, assistance and corrected understanding survive reopening',
   await space.getByText('依据与解释历史', { exact: true }).click();
   await space.getByRole('button',{ name:'查看依据 1',exact:true }).click();
   await expect(space).toContainText('你的纠正：我照着刚才的讲解复述，还不能独立解释。');
-  expect(await page.locator('[role="dialog"]').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-  await page.getByRole('dialog').getByRole('button',{ name:'关闭',exact:true }).click();
+  expect(await page.getByRole('dialog', { name:'学习详情', exact:true }).evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await page.getByRole('dialog', { name:'学习详情', exact:true }).getByRole('button',{ name:'关闭',exact:true }).click();
   const openActivity = page.locator('.agent-presentation .tutor-activities article').filter({ hasText:'Observe two:' });
   await openActivity.getByRole('textbox').fill('all distance over all time');
   await openActivity.getByRole('button',{ name:'提交回答',exact:true }).click();

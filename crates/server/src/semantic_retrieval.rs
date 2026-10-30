@@ -68,6 +68,24 @@ struct Worker {
     output: BufReader<ChildStdout>,
     config: OsString,
 }
+static WORKER: OnceLock<Mutex<Option<Worker>>> = OnceLock::new();
+
+/// Warm the shared server model before the first reader needs semantic recall.
+pub(crate) fn preload() -> Option<std::thread::JoinHandle<()>> {
+    let config = std::env::var_os("UNDERSTAND_BOOK_EMBEDDING_CONFIG").filter(|v| !v.is_empty())?;
+    Some(std::thread::spawn(move || {
+        let result = (|| -> Result<serde_json::Value, String> {
+            let mut worker = WORKER.get_or_init(|| Mutex::new(None)).lock()
+                .map_err(|_| "semantic worker lock poisoned".to_string())?;
+            if worker.is_none() { *worker = Some(Worker::start(config)?); }
+            worker.as_mut().expect("started worker").search(&serde_json::json!({"kind":"warmup"}))
+        })();
+        match result {
+            Ok(value) if value["status"] == "ready" => eprintln!("Semantic retrieval ready: {}", value["model"]),
+            other => eprintln!("Semantic retrieval warmup failed; lexical recall remains available: {other:?}"),
+        }
+    }))
+}
 
 impl Worker {
     fn start(config: OsString) -> Result<Self, String> {
@@ -117,7 +135,7 @@ impl Worker {
         })
     }
 
-    fn search(&mut self, request: &SemanticSearchRequest) -> Result<SemanticSearchResult, String> {
+    fn search<T:Serialize,R:serde::de::DeserializeOwned>(&mut self, request: &T) -> Result<R, String> {
         serde_json::to_writer(&mut self.input, request).map_err(|error| error.to_string())?;
         self.input
             .write_all(b"\n")
@@ -153,7 +171,6 @@ pub(crate) fn search(request: &SemanticSearchRequest) -> Result<SemanticSearchRe
             "local embedding model is not configured",
         ));
     };
-    static WORKER: OnceLock<Mutex<Option<Worker>>> = OnceLock::new();
     let mut worker = WORKER
         .get_or_init(|| Mutex::new(None))
         .lock()
@@ -177,6 +194,22 @@ pub(crate) fn search(request: &SemanticSearchRequest) -> Result<SemanticSearchRe
     if result.is_err() {
         *worker = None;
     }
+    result
+}
+
+/// A busy material retrieval never makes a personal save or lexical search wait.
+pub(crate) fn personal_notes(request:&serde_json::Value)->Result<serde_json::Value,String>{
+    let Some(config)=std::env::var_os("UNDERSTAND_BOOK_EMBEDDING_CONFIG").filter(|v|!v.is_empty()) else {
+        return Ok(serde_json::json!({"status":"unavailable","reason":"local embedding model is not configured","hits":[]}));
+    };
+    let Ok(mut worker)=WORKER.get_or_init(||Mutex::new(None)).try_lock() else {
+        return Ok(serde_json::json!({"status":"partial","reason":"local model is serving another request","hits":[]}));
+    };
+    if worker.as_mut().is_none_or(|worker|worker.config!=config || worker.child.try_wait().ok().flatten().is_some()){
+        *worker=Some(Worker::start(config)?);
+    }
+    let result=worker.as_mut().expect("started worker").search(request);
+    if result.is_err(){*worker=None;}
     result
 }
 

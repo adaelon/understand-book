@@ -1,0 +1,9 @@
+{
+  "status": "cleaned",
+  "isolated_data_copies_removed": [
+    "candidate-data-4",
+    "candidate-data-5"
+  ],
+  "production_data_removed": false,
+  "free_bytes": 7129669632
+}

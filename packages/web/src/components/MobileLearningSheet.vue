@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { nextTick, ref, watch } from 'vue';
@@ -34,7 +35,7 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="applicationOverlayTarget()">
     <div v-show="open" class="learning-sheet-backdrop" @click.self="emit('close')">
       <section ref="panel" class="learning-sheet" role="dialog" aria-modal="true" :aria-label="title" @keydown="onKeydown">
         <header><div><span class="sheet-handle" aria-hidden="true" /><h2>{{ title }}</h2></div><button class="sheet-close" type="button" :aria-label="uiText('关闭{0}', [title])" @click="emit('close')"><X :size="20" aria-hidden="true" /></button></header>
@@ -45,7 +46,7 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style scoped>
-.learning-sheet-backdrop { position: fixed; z-index: 110; inset: var(--app-input-viewport-top, 0px) 0 auto; height: var(--app-input-viewport-height, 100dvh); display: flex; align-items: flex-end; background: #24211e40; }
+.learning-sheet-backdrop { position: fixed; z-index: 110; inset: var(--app-input-viewport-top, 0px) 0 auto; height: var(--app-input-viewport-height, var(--app-content-height, 100dvh)); display: flex; align-items: flex-end; background: #24211e40; }
 .learning-sheet { position: relative; display: flex; flex-direction: column; width: 100%; max-height: 88%; border-radius: 22px 22px 0 0; background: var(--canvas); box-shadow: 0 -12px 48px #24211e14; overflow: hidden; }
 header { position: relative; display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; padding: 22px 16px 10px 20px; }
 .sheet-handle { position: absolute; width: 32px; height: 4px; top: 8px; left: calc(50% - 16px); border-radius: 8px; background: var(--line); }

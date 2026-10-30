@@ -1,0 +1,12 @@
+{
+  "status": "built",
+  "release": "/opt/understand-book/releases/editable-mind-map-20261028",
+  "source_files_match": true,
+  "binary_stat": {
+    "size": 59173576,
+    "mtime_ns": 1793190272475765241
+  },
+  "temporary_swap_removed": true,
+  "original_swappiness_restored": true,
+  "last_build_line": "    Finished `release` profile [optimized] target(s) in 14m 02s"
+}

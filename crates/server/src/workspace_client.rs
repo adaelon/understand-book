@@ -31,6 +31,7 @@ pub(crate) fn history_with_library(user: &user_runtime::UserRuntime, workspace: 
 pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, action: &str, input: &Value, now: &str) -> Option<Result<Value, ToolError>> {
     let private = PrivateBookContext { user, learning_workspace_id: workspace.learning_workspace_id.as_deref(), book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() };
     Some(match action {
+        "memory/prepare_note" => crate::personal_note_api::prepare(user,workspace,input).map(|value|json!(value)),
         "profile/manifest" => reply(route_profile_manifest(&workspace.book, &HashMap::new())),
         "chat/history" => {
             if let Some(selected) = &workspace.selected_chat {

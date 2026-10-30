@@ -57,14 +57,14 @@ fn video_learning_purpose_admission_freezes_scope_and_continues_original_materia
         assert_eq!(stage.material_scope[0].source_id, "vi6", "the old book must be replaced by an explicit media purpose");
         assert_eq!(!stage.material_scope[0].scope_refs.is_empty(), selected);
         assert_eq!(stage.learning_purpose, Some(memory::learning::LearningPurpose::Understand));
-        assert_eq!(first.scope.reader_input.video_question.is_some(), selected);
+        assert_eq!(first.scope.reader_input.as_ref().unwrap().video_question.is_some(), selected);
         let saved = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == first.turn_ref.turn_id).unwrap();
         assert!(saved.domain.interaction.as_ref().unwrap().source_bindings.is_empty(), "a video learning scope must not fabricate observed text evidence");
         assert!(saved.domain.interaction.as_ref().unwrap().accepted_request.contains(if selected {"视频片段"} else {"当前视频"}));
         let store = state.user.learning_store().unwrap();
         let dependency = store.coach_turn_dependency(&first.turn_ref.session_id, &first.turn_ref.turn_id).unwrap().unwrap();
         let bootstrap = store.coach_job(&dependency.job_ref.unwrap()).unwrap().unwrap();
-        let mut coach_question = json!(first.scope.reader_input.video_question);
+        let mut coach_question = json!(first.scope.reader_input.as_ref().unwrap().video_question);
         if let Some(image) = coach_question.get_mut("image").and_then(Value::as_object_mut) { image.remove("png_base64"); }
         assert_eq!(bootstrap.input.context["video_question"], coach_question);
         drop(store);
@@ -75,14 +75,14 @@ fn video_learning_purpose_admission_freezes_scope_and_continues_original_materia
         let next_input = media_continue_input(&state, &first.turn_ref);
         let next = prepare_agent_chat(&mut state, &next_input.to_string(), "next").unwrap_or_else(|r| panic!("{}",r.body));
         assert_eq!(next.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id);
-        assert_eq!(json!(next.scope.reader_input.video_question), json!(first.scope.reader_input.video_question));
+        assert_eq!(json!(next.scope.reader_input.as_ref().unwrap().video_question), json!(first.scope.reader_input.as_ref().unwrap().video_question));
         let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().unwrap();
         assert_eq!(dependency.job_ref, Some(after.input.job_ref), "the next teaching turn must consume guidance from the actual previous delivery");
         super::tutor_loop_tests::finish(&mut state, &next.turn_ref, &super::tutor_loop_tests::outcome(None));
         let again_input = media_continue_input(&state, &next.turn_ref);
         let again = prepare_agent_chat(&mut state, &again_input.to_string(), "again").unwrap_or_else(|r| panic!("{}",r.body));
         assert_eq!(again.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id);
-        assert_eq!(json!(again.scope.reader_input.video_question), json!(first.scope.reader_input.video_question));
+        assert_eq!(json!(again.scope.reader_input.as_ref().unwrap().video_question), json!(first.scope.reader_input.as_ref().unwrap().video_question));
         if selected {
             super::tutor_loop_tests::finish(&mut state, &again.turn_ref, &super::tutor_loop_tests::outcome(None));
             let whole_input = media_purpose_input(&state, "video-whole-after-clip");
@@ -164,14 +164,14 @@ fn video_draft_local_failure_restore_handoff_and_history() {
     assert!(prepare_agent_chat(&mut state,&invalid.to_string(),"t1").is_err());
     assert_eq!(state.workspace.video_drafts["a"].context.frame.actual_pts_ms,492000.0);
     let prepared = prepare_agent_chat(&mut state,&input.to_string(),"t2").unwrap_or_else(|r|panic!("{}",r.body));
-    assert_eq!(prepared.scope.reader_input.video_question.as_ref().unwrap().frame.actual_pts_ms,492000.0);
-    assert_eq!(prepared.scope.reader_input.video_question.as_ref().unwrap().publication.publication_id,"original");
-    assert_eq!(serde_json::to_value(prepared.scope.reader_input.video_question.as_ref().unwrap().image.as_ref().unwrap()).unwrap(),question_image());
+    assert_eq!(prepared.scope.reader_input.as_ref().unwrap().video_question.as_ref().unwrap().frame.actual_pts_ms,492000.0);
+    assert_eq!(prepared.scope.reader_input.as_ref().unwrap().video_question.as_ref().unwrap().publication.publication_id,"original");
+    assert_eq!(serde_json::to_value(prepared.scope.reader_input.as_ref().unwrap().video_question.as_ref().unwrap().image.as_ref().unwrap()).unwrap(),question_image());
     let session = state.user.agent_history.sessions.iter().find(|s|s.id==prepared.turn_ref.session_id).unwrap();
     let restored: AgentChatSession = serde_json::from_str(&serde_json::to_string(session).unwrap()).unwrap();
-    assert_eq!(turn_view(&prepared.scope.book,&restored.turns[0]).video_question.as_ref().unwrap().frame.actual_pts_ms,492000.0);
+    assert_eq!(turn_view(&prepared.scope.reading_book(),&restored.turns[0]).video_question.as_ref().unwrap().frame.actual_pts_ms,492000.0);
     assert_eq!(restored.turns[0].published_book_ref.as_ref().unwrap().publication_id,"original");
-    assert_eq!(serde_json::to_value(turn_view(&prepared.scope.book,&restored.turns[0]).video_question.unwrap().image.unwrap()).unwrap(),question_image());
+    assert_eq!(serde_json::to_value(turn_view(&prepared.scope.reading_book(),&restored.turns[0]).video_question.unwrap().image.unwrap()).unwrap(),question_image());
     assert!(video_draft::command(&mut state.workspace,&state.user,&json!({"window_id":"a","action":"get"})).unwrap()["draft"].is_null());
     assert!(!video_draft::load(&state.workspace.session_path).contains_key("a"));
     assert_eq!(state.workspace.video_drafts["b"].context.frame.actual_pts_ms,507000.0);
@@ -280,7 +280,7 @@ fn video_draft_range_edits_restore_and_handoff_independent_region() {
     assert_eq!(serde_json::to_value(&restored["a"].context.region).unwrap(), region);
     let input = json!({"message":"Explain process","video_window_id":"a","video_draft_id":"range"});
     let prepared = prepare_agent_chat(&mut state, &input.to_string(), "t1").unwrap_or_else(|r| panic!("{}", r.body));
-    let context = prepared.scope.reader_input.video_question.as_ref().unwrap();
+    let context = prepared.scope.reader_input.as_ref().unwrap().video_question.as_ref().unwrap();
     assert_eq!(context.range, restored["a"].context.range); assert_eq!(context.frame.actual_pts_ms, 492000.0);
     assert!(video_draft::load(&state.workspace.session_path).is_empty());
 }
@@ -328,6 +328,6 @@ fn video_draft_region_edit_preserves_binding_and_handoff() {
     assert_ne!(save(&mut state, &changed).status, 200);
     let input = json!({"message":"Explain selected code","video_window_id":"a","video_draft_id":"selected"});
     let prepared = prepare_agent_chat(&mut state, &input.to_string(), "t1").unwrap_or_else(|r| panic!("{}", r.body));
-    assert_eq!(serde_json::to_value(&prepared.scope.reader_input.video_question.as_ref().unwrap().region).unwrap(), region);
+    assert_eq!(serde_json::to_value(&prepared.scope.reader_input.as_ref().unwrap().video_question.as_ref().unwrap().region).unwrap(), region);
     assert!(video_draft::load(&state.workspace.session_path).is_empty());
 }

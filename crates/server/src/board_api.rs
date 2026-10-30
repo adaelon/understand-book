@@ -17,6 +17,7 @@ use ts_rs::TS;
 #[serde(deny_unknown_fields)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardImportSource {
+    PersonalNote { reference: memory::NoteRef },
     Artifact {
         artifact: BoardArtifactKind,
         entry_id: String,
@@ -142,12 +143,12 @@ fn check_document(
     workspace: &reader_workspace::ReaderWorkspace,
 ) -> Result<(), ToolError> {
     if document.learning_workspace_id != workspace.learning_workspace_id
-        || document.book_id != workspace.book.base.book_id
+        || (workspace.learning_workspace_id.is_none() && (document.book_id != workspace.book.base.book_id
         || document.publication_id.as_deref()
             != workspace
                 .publication
                 .as_ref()
-                .map(|p| p.reference.publication_id.as_str())
+                .map(|p| p.reference.publication_id.as_str())))
     {
         return Err(authorization::missing());
     }
@@ -162,6 +163,54 @@ fn document(
     let document = store.read(id)?;
     check_document(&document, workspace)?;
     Ok((store, document))
+}
+
+/// A saved thought can be placed after the reader has moved to another page.
+/// The private board scope, rather than the current reader, owns this operation.
+pub(crate) fn attach_personal_note(user: &user_runtime::UserRuntime, input: &Value, now: &str) -> Result<Value, ToolError> {
+    let boards = scoped_store(user, input["workspace_id"].as_str())?;
+    let note = user.store.personal_note(&memory::NoteRef { note_id: string(input, "note_id")?.into(), revision: None })?;
+    let board=boards.place_personal_note(string(input,"board_id")?,memory::NoteRef{note_id:note.note_id.clone(),revision:Some(note.value.revision)},input["item_id"].as_str(),now)?;
+    let item_id=board.items.iter().find(|i|matches!(&i.target,BoardTarget::PersonalNote{reference} if reference.note_id==note.note_id)).map(|i|&i.item_id).expect("placed note");
+    Ok(json!({"board_id":input["board_id"],"item_id":item_id}))
+}
+
+pub(crate) fn personal_note_locations(user: &user_runtime::UserRuntime, note_id: &str) -> Result<Value, ToolError> {
+    if user.user_id().is_none() { return Ok(json!({"items":[]})); }
+    let root = user.history_path.as_ref().and_then(|p|p.parent()).ok_or_else(|| invalid("Private persistent storage is required"))?;
+    let mut scopes = vec![None];
+    let directory = root.join("boards").join("workspaces");
+    match std::fs::read_dir(directory) {
+        Ok(entries) => for entry in entries {
+            let entry = entry.map_err(|e|invalid(e.to_string()))?;
+            if entry.file_type().map_err(|e|invalid(e.to_string()))?.is_dir() { scopes.push(Some(entry.file_name().to_string_lossy().into_owned())); }
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+        Err(error) => return Err(invalid(error.to_string())),
+    }
+    let mut locations = vec![];
+    for scope in scopes {
+        let boards = scoped_store(user, scope.as_deref())?;
+        for summary in boards.list()? {
+            let board = boards.read(&summary.board_id)?;
+            for item in &board.items {
+                if matches!(&item.target, BoardTarget::PersonalNote {reference} if reference.note_id == note_id) {
+                    locations.push(json!({"kind":"board","board_id":board.board_id,"workspace_id":scope,"item_id":item.item_id,"label":board.title,"book_id":board.book_id,"publication_id":board.publication_id}));
+                }
+            }
+        }
+    }
+    Ok(json!({"items":locations}))
+}
+
+pub(crate) fn remove_personal_note_location(user: &user_runtime::UserRuntime, input: &Value, now: &str) -> Result<Value, ToolError> {
+    let boards = scoped_store(user,input["workspace_id"].as_str())?;
+    let mut board = boards.read(string(input,"board_id")?)?;
+    let item_id = string(input,"item_id")?; let note_id = string(input,"note_id")?;
+    if board.items.iter().any(|item|item.item_id==item_id && matches!(&item.target,BoardTarget::PersonalNote{reference} if reference.note_id==note_id)) {
+        let expected = board.revision; board.items.retain(|item|item.item_id!=item_id); boards.update(board,expected,now)?;
+    }
+    Ok(json!({"removed":true}))
 }
 fn bound_turn(
     user: &user_runtime::UserRuntime,
@@ -360,6 +409,11 @@ pub(crate) fn import_item(
         },
     };
     match source {
+        BoardImportSource::PersonalNote { reference } => {
+            let note=user.store.personal_note(&reference)?;
+            item.title="我的想法".into();
+            item.target=BoardTarget::PersonalNote{reference:memory::NoteRef{note_id:note.note_id,revision:Some(note.value.revision)}};
+        },
         BoardImportSource::Artifact { artifact, entry_id, source_revision } => {
             if source_revision != workspace.book.source_fingerprint() {
                 return Err(invalid("材料版本已变化，请重新选择预构建内容。"));
@@ -586,6 +640,15 @@ pub(crate) fn catalog(
     let kind = string(input, "kind")?;
     let mut items = vec![];
     match kind {
+        "personal_note" => {
+            let query=input["query"].as_str().unwrap_or_default();
+            let after=input["after"].as_u64().unwrap_or(0) as usize;
+            let limit=input["limit"].as_u64().unwrap_or(20).clamp(1,50) as usize;
+            let (notes,total)=user.store.personal_note_catalog(query,after,limit);
+            for note in notes {items.push(json!({"kind":"personal_note","title":note.value.title.unwrap_or_else(||note.value.record.content.chars().take(60).collect()),
+                "summary":note.value.record.content.chars().take(220).collect::<String>(),"source":BoardImportSource::PersonalNote{reference:memory::NoteRef{note_id:note.note_id,revision:Some(note.value.revision)}}}));}
+            return Ok(json!({"items":items,"total":total,"next":(after+items.len()<total).then_some(after+items.len())}));
+        },
         "answer" | "presentation" => {
             let query = input["query"].as_str().unwrap_or_default().trim().to_lowercase();
             let after = input["after"].as_u64().unwrap_or(0) as usize;
@@ -680,13 +743,36 @@ pub(crate) fn catalog(
     }
 }
 
+pub(crate) fn resolve_note_items(user:&user_runtime::UserRuntime,document:&mut BoardDocument,current:bool){
+    for item in &mut document.items {
+        if let BoardTarget::PersonalNote{reference}=&mut item.target {
+            let request=memory::NoteRef{note_id:reference.note_id.clone(),revision:if current{None}else{reference.revision}};
+            match user.store.personal_note(&request){
+                Ok(note)=>{reference.revision=Some(note.value.revision);item.title=note.value.title.unwrap_or_else(||note.value.record.content.chars().take(60).collect());
+                    item.readable_content=note.value.record.content;if let Some(excerpt)=note.value.record.note.and_then(|n|n.retained_excerpt){item.readable_content.push_str(&format!("\n\n保留的素材：\n{}",excerpt.text()));}},
+                Err(_)=>{item.title="想法已删除或不可用".into();item.readable_content.clear();}
+            }
+        }
+    }
+}
 pub(crate) fn freeze_follow_up(
     user: &user_runtime::UserRuntime,
     workspace: &reader_workspace::ReaderWorkspace,
     follow_up: &BoardFollowUp,
 ) -> Result<FrozenBoardFollowUp, ToolError> {
     let (boards, current) = document(user, workspace, &follow_up.board_id)?;
-    let snapshot = boards.read_revision(&follow_up.board_id, follow_up.board_revision)?;
+    let mut snapshot = boards.read_revision(&follow_up.board_id, follow_up.board_revision)?;
+    for item in &mut snapshot.items {
+        if let BoardTarget::PersonalNote{reference}= &mut item.target {
+            let required=follow_up.item_id.as_ref().is_none_or(|id|id==&item.item_id);
+            if required {
+                let exact=follow_up.note_refs.iter().flatten().find(|r|r.note_id==reference.note_id && r.revision.is_some())
+                    .ok_or_else(||invalid("请重新打开想法卡片，确认本次讨论的版本"))?;
+                user.store.personal_note(exact)?;*reference=exact.clone();
+            }
+        }
+    }
+    resolve_note_items(user,&mut snapshot,false);
     let selected_item = follow_up.item_id.as_ref().map(|id| {
         snapshot.items.iter().find(|item| &item.item_id == id)
             .filter(|item| follow_up.block_id.as_ref().is_none_or(|block|
@@ -894,6 +980,7 @@ fn related(
     input: &Value,
 ) -> Result<Value, ToolError> {
     let target = match convert::<BoardImportSource>(input["source"].clone())? {
+        BoardImportSource::PersonalNote{reference}=>BoardLookupTarget::PersonalNote{note_id:reference.note_id},
         BoardImportSource::Artifact { artifact, entry_id, source_revision } => BoardLookupTarget::Artifact {
             source_id: workspace.book.base.book_id.clone(), artifact, entry_id, source_revision,
         },
@@ -1088,7 +1175,31 @@ pub(crate) fn source_binding(
         .iter()
         .find(|s| s.source_ref_id == input["source_ref_id"])
         .ok_or_else(authorization::missing)?;
-    convert(json!(binding))
+    let mut binding: SourceBinding = convert(json!(binding))?;
+    if binding.publication_id.is_none() {
+        // Retained citations used to omit the implicit current publication.
+        // Recover from their saved origin, never the Reader's current/default book.
+        let origin = match &item.target {
+            BoardTarget::Answer { session_id, turn_id, .. }
+            | BoardTarget::Drawing { session_id, turn_id, .. } => Some((session_id, turn_id)),
+            BoardTarget::Presentation { receipt, .. } => Some((&receipt.session_id, &receipt.turn_id)),
+            _ => document.deliveries.iter().rev()
+                .find(|delivery| delivery.item_ids.contains(&item.item_id))
+                .map(|delivery| (&delivery.origin_session_id, &delivery.origin_turn_id)),
+        };
+        let original = origin.and_then(|(session_id, turn_id)| user.agent_history.sessions.iter()
+            .find(|session| &session.id == session_id)
+            .and_then(|session| session.turns.iter().find(|turn| &turn.turn_id == turn_id))
+            .and_then(|turn| turn.published_book_ref.as_ref()))
+            .filter(|reference| reference.book_id == binding.book_id);
+        binding.publication_id = original.map(|reference| reference.publication_id.clone())
+            .or_else(|| (binding.book_id == document.book_id).then(|| document.publication_id.clone()).flatten());
+        if binding.source_revision.is_none() && binding.book_id == document.book_id
+            && binding.publication_id == document.publication_id {
+            binding.source_revision = document.source_revision;
+        }
+    }
+    Ok(binding)
 }
 
 pub(crate) fn resolve_source(
@@ -1286,20 +1397,31 @@ pub(crate) fn route(
             Ok(json!(store(user, workspace)?.create(document)?))
         }
         "list" => Ok(
-            json!({"items":store(user,workspace)?.list()?.into_iter().filter(|b|b.book_id==workspace.book.base.book_id && b.publication_id.as_deref()==workspace.publication.as_ref().map(|p|p.reference.publication_id.as_str())).collect::<Vec<_>>()}),
+            json!({"items":store(user,workspace)?.list()?.into_iter().filter(|b|workspace.learning_workspace_id.is_some() || (b.book_id==workspace.book.base.book_id && b.publication_id.as_deref()==workspace.publication.as_ref().map(|p|p.reference.publication_id.as_str()))).collect::<Vec<_>>()}),
         ),
         "catalog" => catalog(user, workspace, input),
         "conversation" => { let (_, board) = document(user, workspace, string(input, "board_id")?)?; crate::board_conversation::read(user, &board) },
-        "search" => Ok(json!({"items":store(user, workspace)?.search(
-            &workspace.book.base.book_id,
-            workspace.publication.as_ref().map(|p| p.reference.publication_id.as_str()),
-            input["query"].as_str().unwrap_or_default(),
-            input["limit"].as_u64().unwrap_or(50).min(100) as usize,
-        )?})),
+        "search" => {
+            let boards=store(user,workspace)?;
+            let query=input["query"].as_str().unwrap_or_default();
+            let limit=input["limit"].as_u64().unwrap_or(50).min(100) as usize;
+            let publication=workspace.publication.as_ref().map(|p|p.reference.publication_id.as_str());
+            let mut hits=boards.search(&workspace.book.base.book_id,publication,query,limit)?;
+            // Note card bodies are resolved from the canonical notes, never indexed as copies.
+            hits.retain(|hit|hit.kind!=memory::boards::BoardSearchKind::PersonalNote);
+            for note in user.store.search_personal_notes(query,None,100)? {
+                for mut hit in boards.find_related(&workspace.book.base.book_id,publication,&BoardLookupTarget::PersonalNote{note_id:note.reference.note_id.clone()})? {
+                    hit.title=note.title.clone().unwrap_or_else(||note.excerpt.chars().take(60).collect());hit.snippet=note.excerpt.clone();
+                    if !hits.iter().any(|old|old.board_id==hit.board_id&&old.item_id==hit.item_id){hits.push(hit);}
+                }
+                if hits.len()>=limit{break;}
+            }
+            hits.truncate(limit);Ok(json!({"items":hits}))
+        },
         "related" => related(user, workspace, input),
         "read" => {
             let (store, document) = document(user, workspace, string(input, "board_id")?)?;
-            let document = if let Some(revision) = input["revision"].as_u64() {
+            let mut document = if let Some(revision) = input["revision"].as_u64() {
                 store.read_revision(
                     &document.board_id,
                     revision
@@ -1309,6 +1431,7 @@ pub(crate) fn route(
             } else {
                 document
             };
+            resolve_note_items(user,&mut document,input["revision"].is_null());
             Ok(json!({"view":store.view(&document.board_id)?,"document":document}))
         }
         "update" | "import" => {
@@ -1364,7 +1487,15 @@ pub(crate) fn route(
                     }
                 }
             }
-            Ok(json!(store.update(document, expected, now)?))
+            if let Some(refs)=input.get("note_refs") {
+                let refs:Vec<memory::NoteRef>=convert(refs.clone())?;
+                for item in &mut document.items {if let BoardTarget::PersonalNote{reference}=&mut item.target {
+                    if let Some(seen)=refs.iter().find(|r|r.note_id==reference.note_id && r.revision.is_some()){user.store.personal_note(seen)?;*reference=seen.clone();}
+                }}
+            }
+            let mut saved=store.update(document, expected, now)?;
+            resolve_note_items(user,&mut saved,true);
+            Ok(json!(saved))
         }
         "delete" => {
             let (store, document) = document(user, workspace, string(input, "board_id")?)?;
@@ -1440,6 +1571,10 @@ pub(crate) fn route(
         _ => Err(invalid("Unknown board operation")),
     }
 }
+
+#[cfg(test)]
+#[path = "board_source_publication_tests.rs"]
+mod source_publication_tests;
 
 #[cfg(test)]
 mod tests {
@@ -1840,7 +1975,7 @@ mod tests {
         let revision = board.revision;
         let board = boards.update(board, revision, NOW).unwrap();
         let whole_block = board.items[0].block_id.clone();
-        let follow_up = BoardFollowUp { board_id:board.board_id.clone(), board_revision:board.revision,
+        let follow_up = BoardFollowUp { note_refs:None, board_id:board.board_id.clone(), board_revision:board.revision,
             item_id:Some(item_id.clone()), block_id:Some("map-mut".into()), presentation:None };
         let frozen = freeze_follow_up(&state.user, &state.workspace, &follow_up).unwrap();
         let packet: Value = serde_json::from_str(frozen.context_text.rsplit_once('\n').unwrap().1).unwrap();
@@ -2031,4 +2166,36 @@ mod tests {
         assert_eq!(deliver_follow_up(&state.user,&frozen,session_id,turn_id,NOW).unwrap_err().error_code,"BOARD_NOT_FOUND");
         assert!(call(&state,"list",json!({}))["items"].as_array().unwrap().is_empty());
     }
+    #[test]
+    fn personal_notes_board_cards_share_current_text_but_freeze_each_history_version(){
+        let mut state=crate::tests::state_named(&format!("pn-board-{}",uuid::Uuid::now_v7()));
+        let root = tempfile::tempdir().unwrap();
+        state.user.history_path = Some(root.path().join("history.json"));
+        state.workspace.learning_workspace_id=Some("personal-notes-workspace".into());
+        let value=|text:&str|serde_json::from_value::<memory::NoteContent>(json!({"content":text,"authorship":"user","context":{},"source_refs":[]})).unwrap();
+        let note=state.user.store.create_personal_note(value("总路程除以总时间，包含停留。"),"board-note-1",NOW).unwrap();
+        let make=|title:&str|call(&state,"create",json!({"title":title}));
+        let first=make("平均速度问题" );let second=make("时间的权重");
+        let source=json!({"kind":"personal_note","reference":{"note_id":note.note_id,"revision":1}});
+        let first=add(&state,&first,source.clone());let second=add(&state,&second,source);
+        let revision=first["revision"].as_u64().unwrap();let item_id=first["items"][0]["item_id"].as_str().unwrap().to_string();
+        assert_eq!(first["items"][0]["readable_content"],"总路程除以总时间，包含停留。");
+        let persisted=store(&state.user,&state.workspace).unwrap().read(first["board_id"].as_str().unwrap()).unwrap();
+        assert!(persisted.items[0].readable_content.is_empty());
+        state.user.store.revise_personal_note(&note.note_id,1,value("总时间取决于题目定义，若统计全程就包含停留。"),"board-note-2",NOW).unwrap();
+        for board in [&first,&second]{let current=call(&state,"read",json!({"board_id":board["board_id"]}));assert_eq!(current["document"]["items"][0]["target"]["reference"]["revision"],2);assert_eq!(current["document"]["revision"],revision);}
+        let old=call(&state,"read",json!({"board_id":first["board_id"],"revision":revision}));assert_eq!(old["document"]["items"][0]["readable_content"],"总路程除以总时间，包含停留。");
+        let follow:BoardFollowUp=convert(json!({"board_id":first["board_id"],"board_revision":revision,"item_id":item_id,"note_refs":[{"note_id":note.note_id,"revision":1}]})).unwrap();
+        let frozen=freeze_follow_up(&state.user,&state.workspace,&follow).unwrap();assert!(frozen.context_text.contains("总路程除以总时间，包含停留"));
+        // The same workspace board remains visible after switching actual materials.
+        let mut base=state.workspace.book.base.clone();let end=base.lid_nodes.iter().map(|node|node.span.end).max().unwrap();let source=state.workspace.book.text_in_source_range(&base_schema::Span{start:0,end}).unwrap();base.book_id="another-material".into();state.workspace.book=std::sync::Arc::new(Book::new(base,&source));
+        let listed=call(&state,"list",json!({}));assert_eq!(listed["items"].as_array().unwrap().len(),2);
+        assert_eq!(call(&state,"read",json!({"board_id":first["board_id"]}))["document"]["items"][0]["target"]["reference"]["revision"],2);
+        let hits=call(&state,"search",json!({"query":"题目定义"}));assert_eq!(hits["items"].as_array().unwrap().len(),2);
+        state.user.store.delete(&note.note_id).unwrap();
+        assert_eq!(call(&state,"search",json!({"query":"题目定义"}))["items"],json!([]));
+        assert_eq!(call(&state,"read",json!({"board_id":first["board_id"]}))["document"]["items"][0]["title"],"想法已删除或不可用");
+        assert!(frozen.context_text.contains("总路程除以总时间，包含停留"));
+    }
+
 }

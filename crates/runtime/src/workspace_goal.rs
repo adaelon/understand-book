@@ -18,7 +18,7 @@ impl WorkspaceGoalContext {
     }
 }
 
-pub(crate) fn exam_review_required(workspace: Option<&WorkspaceGoalContext>, accepted_update: Option<&WorkspaceGoal>) -> bool {
+pub(crate) fn exam_goal_active(workspace: Option<&WorkspaceGoalContext>, accepted_update: Option<&WorkspaceGoal>) -> bool {
     workspace.is_some_and(|workspace| workspace.effective_exam_calendar(accepted_update).is_some())
 }
 

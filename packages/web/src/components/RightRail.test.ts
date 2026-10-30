@@ -1233,13 +1233,13 @@ describe("RightRail AskQuote", () => {
   it("exposes every auxiliary surface as a labelled keyboard-operable tab", async () => {
     const wrapper = mount(RightRail, { attachTo: document.body, props: baseProps });
     const tabs = wrapper.findAll('.context-tabs [role="tab"]');
-    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "成果", "画像", "公式", "笔记"]);
+    expect(tabs.map((tab) => tab.text().trim())).toEqual(["问答", "画像", "公式", "笔记"]);
     expect(tabs[0].attributes("aria-selected")).toBe("true");
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(false);
     await wrapper.get('[aria-label="阅读工具"]').trigger('click');
     expect(wrapper.get('.secondary-tabs').isVisible()).toBe(true);
-    await tabs[3].trigger("click");
-    expect(tabs[3].attributes("aria-selected")).toBe("true");
+    await tabs[2].trigger("click");
+    expect(tabs[2].attributes("aria-selected")).toBe("true");
     expect(wrapper.get("#reader-panel-formula").attributes("role")).toBe("tabpanel");
     wrapper.unmount();
   });
@@ -1455,43 +1455,20 @@ describe("RightRail AskQuote", () => {
     } finally { wrapper.unmount(); }
   });
 
-  it("opens the active target artifacts without coupling their refresh or evidence navigation to chat", async () => {
-    const wrapper = mount(RightRail, {
-      props: {
-        ...baseProps,
-        askDraft: null,
-        intentArtifacts: {
-          version: "intent_artifact_overlay.v1" as const,
-          book_id: "book-private",
-          intent_id: "intent-private",
-          plan_id: "plan-private",
-          plan_digest: "f".repeat(64),
-          artifacts: [{
-            artifact_id: "timeline-1",
-            artifact_type: "timeline" as const,
-            state: "accepted" as const,
-            payload_digest: "e".repeat(64),
-            accepted_at: "2026-07-26T02:00:00.000Z",
-            payload: {
-              items: [{ id: "event-1", label: "First event", evidence_lids: ["4.2"] }],
-            },
-          }],
-        },
-      },
-    });
-
-    const artifactsTab = wrapper.findAll(".tab").find((tab) => tab.text().includes("成果"));
-    expect(artifactsTab?.text()).toContain("1");
-    await artifactsTab!.trigger("click");
-
-    expect(wrapper.emitted("open-artifacts")).toHaveLength(1);
-    expect(wrapper.emitted("refresh-artifacts")).toBeUndefined();
-    expect(wrapper.get(".intent-artifact-panel").isVisible()).toBe(true);
-    await wrapper.get('button[data-lid="4.2"]').trigger("click");
-    expect(wrapper.emitted("goto")?.at(-1)).toEqual(["4.2"]);
-    expect(wrapper.emitted("artifact-cited")?.at(-1)).toEqual(["timeline-1"]);
-    expect(wrapper.get(".artifact-panel").text()).not.toContain("book-private");
-    expect(wrapper.get(".artifact-panel").text()).not.toContain("plan-private");
+  it("opens the profile directly beside chat and keeps tools limited to formula and notes", async () => {
+    const wrapper = mount(RightRail, { attachTo: document.body, props: baseProps });
+    expect(wrapper.findAll('.context-tabs > .tab').map(tab => tab.text().trim())).toEqual(['问答', '画像']);
+    expect(wrapper.find('#reader-tab-artifacts').exists()).toBe(false);
+    expect(wrapper.find('#reader-panel-artifacts').exists()).toBe(false);
+    await wrapper.get('#reader-tab-profile').trigger('click');
+    expect(wrapper.emitted('refresh-profile')).toHaveLength(1);
+    expect(wrapper.get('#reader-panel-profile').isVisible()).toBe(true);
+    expect(wrapper.get('[aria-label="阅读工具"]').classes()).not.toContain('active');
+    expect(wrapper.get('[aria-label="阅读工具"]').text()).toBe('工具');
+    await wrapper.get('[aria-label="阅读工具"]').trigger('click');
+    expect(wrapper.findAll('.secondary-tabs .tab').map(tab => tab.text().trim())).toEqual(['公式', '笔记']);
+    await wrapper.get('#reader-tab-agent').trigger('click');
+    expect(wrapper.get('#reader-panel-agent').isVisible()).toBe(true);
   });
 });
 

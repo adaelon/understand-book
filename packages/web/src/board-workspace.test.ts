@@ -56,11 +56,11 @@ beforeEach(() => {
   });
 });
 afterEach(() => { for (const wrapper of wrappers) wrapper.unmount(); wrappers = []; vi.useRealTimers(); restoreFullscreen(); restoreFullscreen = () => {}; });
-async function setup() { const wrapper = mount(BoardWorkspace, { props: { boardId: stored.document.board_id } }); wrappers.push(wrapper); await flushPromises(); return wrapper; }
+async function setup(attached = false) { const wrapper = mount(BoardWorkspace, { props: { boardId: stored.document.board_id }, ...(attached ? { attachTo: document.body } : {}) }); wrappers.push(wrapper); await flushPromises(); return wrapper; }
 describe('knowledge board saved workspace', () => {
   it('opens true browser fullscreen, reveals reading and questions on demand, and restores the prior layout without remounting content', async () => {
     const fullscreen = mockBrowserFullscreen();
-    const wrapper = await setup();
+    const wrapper = await setup(true);
     const canvas = wrapper.getComponent(BoardCanvas).element;
     const pane = wrapper.get('.board-reading-pane').element;
     const selected = wrapper.getComponent(BoardCanvas).props('view').selected_item_id;
@@ -71,11 +71,11 @@ describe('knowledge board saved workspace', () => {
     expect(wrapper.classes()).toContain('board-canvas-fullscreen');
     expect((wrapper.get('.board-topbar').element as HTMLElement).style.display).toBe('none');
     expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).toBe('none');
-    expect((wrapper.get('.board-conversation').element as HTMLElement).style.display).toBe('none');
+    expect(wrapper.get('.board-conversation').isVisible()).toBe(false);
     await wrapper.findAll('.board-fullscreen-tools button').find(button => button.text() === '讲解')!.trigger('click');
     expect((wrapper.get('.board-side-rail').element as HTMLElement).style.display).not.toBe('none');
     await wrapper.findAll('.board-fullscreen-tools button').find(button => button.text() === '提问')!.trigger('click');
-    expect((wrapper.get('.board-conversation').element as HTMLElement).style.display).not.toBe('none');
+    expect(wrapper.get('.board-side-rail .board-conversation').isVisible()).toBe(true);
     expect(wrapper.get('textarea').element).toHaveProperty('value', '没有发送的理解');
     await wrapper.get('.board-fullscreen-tools [aria-label="退出全屏"]').trigger('click'); await flushPromises();
     expect(fullscreen.exit).toHaveBeenCalledOnce();
@@ -86,6 +86,23 @@ describe('knowledge board saved workspace', () => {
     expect(wrapper.get('.board-reading-pane').element).toBe(pane);
     expect(wrapper.getComponent(BoardCanvas).props('view').selected_item_id).toBe(selected);
     expect(wrapper.get('textarea').element).toHaveProperty('value', '没有发送的理解');
+  });
+
+  it('keeps the composer and its draft with the reading/discussion rail when it is collapsed and reopened', async () => {
+    const wrapper = await setup(true);
+    const input = wrapper.get('.board-side-rail .board-question-row textarea');
+    await input.setValue('请画出这个过程的分支和回路');
+    await wrapper.get('[aria-label="收起讲解与讨论"]').trigger('click');
+    expect(input.isVisible()).toBe(false);
+    await wrapper.get('[aria-label="展开讲解与讨论"]').trigger('click');
+    expect(input.isVisible()).toBe(true);
+    await wrapper.findAll('.board-rail-tabs [role="tab"]').find(tab => tab.text() === '讨论')!.trigger('click');
+    expect(wrapper.findAll('.board-question-row textarea')).toHaveLength(1);
+    expect(input.element).toHaveProperty('value', '请画出这个过程的分支和回路');
+    await wrapper.get('.board-question-form').trigger('submit'); await flushPromises();
+    const request = wrapper.emitted('follow-up')?.[0]?.[0] as BoardQuestionRequest;
+    expect(request.message).toBe('请画出这个过程的分支和回路');
+    expect(request.context.item_id).toBe('item-answer');
   });
 
   it('restores collapsed rails on native Escape and identifies denied fullscreen as window mode', async () => {
@@ -666,6 +683,25 @@ describe('WB3 linked explanations and narration', () => {
 });
 
 describe('board camera', () => {
+  it('fits a wide retained diagram on a 390px canvas and keeps zoom-out from zooming back in', () => {
+    const items = [
+      { ...boardFixtureItems[0], position: { x: 60, y: 400 }, size: { width: 250, height: 160 } },
+      { ...boardFixtureItems[1], position: { x: 1260, y: 830 }, size: { width: 400, height: 220 } },
+    ];
+    const fitted = fitBoard(items, 390, 540, boardFixture().view);
+    expect(fitted.zoom).toBeLessThan(.25);
+    for (const item of items) {
+      expect(item.position.x * fitted.zoom + fitted.x).toBeGreaterThanOrEqual(0);
+      expect((item.position.x + item.size.width) * fitted.zoom + fitted.x).toBeLessThanOrEqual(390);
+      expect(item.position.y * fitted.zoom + fitted.y).toBeGreaterThanOrEqual(0);
+      expect((item.position.y + item.size.height) * fitted.zoom + fitted.y).toBeLessThanOrEqual(540);
+    }
+    const smaller = zoomBoardAt(fitted, fitted.zoom - .01, { x: 195, y: 270 });
+    expect(smaller.zoom).toBe(fitted.zoom);
+    expect(smaller.x).toBeCloseTo(fitted.x);
+    expect(smaller.y).toBeCloseTo(fitted.y);
+    expect(zoomBoardAt(fitted, fitted.zoom + .01, { x: 195, y: 270 }).zoom).toBeCloseTo(fitted.zoom + .01);
+  });
   it('shows saved dates from the server epoch-second strings as well as ISO timestamps', () => {
     const timestamp = Date.parse('2026-10-25T08:30:00Z');
     expect(boardDate(String(timestamp / 1000))).toBe(boardDate('2026-10-25T08:30:00Z'));

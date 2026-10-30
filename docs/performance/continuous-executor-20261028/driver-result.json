@@ -1,0 +1,18 @@
+{
+  "suite": "packages/core/test/automatic-build-driver.test.ts",
+  "status": "passed",
+  "passed": 85,
+  "failed": 0,
+  "test_files_passed": 1,
+  "exit_code": 0,
+  "started_at_local": "2026-10-28T20:43:12+08:00",
+  "duration_seconds": 609.49,
+  "test_duration_seconds": 599.96,
+  "command": "node node_modules/vitest/vitest.mjs run --dir packages/core/test packages/core/test/automatic-build-driver.test.ts --maxWorkers 1 --no-file-parallelism --reporter=dot",
+  "working_directory": "E:/allwork/download/agent/understand-book",
+  "environment": {
+    "TEMP": "E:/allwork/download/agent/understand-book/tmp/continuous-executor-20261028/temp",
+    "TMP": "E:/allwork/download/agent/understand-book/tmp/continuous-executor-20261028/temp",
+    "UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT": "E:/allwork/download/agent/understand-book/tmp/continuous-executor-20261028/driver-registry"
+  }
+}

@@ -1,5 +1,21 @@
 # Linux 多人阅读现网运行说明
 
+2026-10-30 17:49 HKT 已上线用户确认的“记一下”浮动入口：移除底部整行占位，自动避开可见输入区和手机导航，可拖动、记住位置，一点击入正文并继续草稿。基于当前线上 `all-pending-20261030`，仅替换 Reader 前端入口和相关资源；PID 524591 保持。17:50 HKT 公网资源字节与读者登录读取通过，17:52 HKT 公网桌面／手机交互及截图验收通过，刷新页面生效；[发布与恢复记录](performance/note-launcher-20261030/README.md)。
+
+2026-10-30 16:57 HKT 已上线发送按钮避让与画像导航：随手记入口独立占位，发送不再被“继续写／我的想法”遮挡；主导航改为“问答 · 画像 · 工具”。沿用 `all-pending-20261030`，仅更新前端，PID 524591 保持。17:01 HKT 公网桌面/手机验收通过，刷新页面生效；[验证与恢复记录](performance/send-button-20261030/README.md)。
+
+2026-10-30 16:38 HKT 已恢复合并发布漏掉的 12 个后台静态文件，`/admin/invites` 等后台入口恢复正常。沿用 `all-pending-20261030`，服务 PID 524591 未变；未重启服务或改写业务数据。发布包已补齐，并增加安装前、切换前及公网网页资源检查。10 个公网页面、13 个入口引用资源和 9 个后台读取接口通过；详情及浏览器验收限制见[后台 404 修复记录](performance/admin-static-repair-20261030/README.md)。
+
+2026-10-30 15:16:36 HKT 已合并上线随手记浮窗与消息／画布／演示关联、自由图解与右侧提问区、来源行内公式排版。当前 release `all-pending-20261030`、PID 524591，control schema 22；Memory 按账号加载升级至 6。60 份聊天、106 份画布文件、23 份记忆原内容、1 个空间笔记本和 18 条额度记录保留。候选真实数据写入、桌面／手机与公网验收通过。首次历史 schema 门禁误判已自动恢复后修正，最终切换维护 9.8 秒。已开放后的恢复不能直接使用旧 schema 5 程序或覆盖新数据，详见[发布与恢复记录](performance/all-pending-release-20261030/README.md)。后续继续以实际线上源码为基线，以下保留历史。
+
+2026-10-30 13:03:37 HKT 已上线画板来源版本绑定修复，当前 release `board-source-publication-20261030`，PID 514831、schema 22，维护 13.92 秒。从实际线上 `personal-notes-20261030` 仅合入来源保存与读取修复，现有可编辑导图、笔记和阅读功能保留；新画板在保存候选前记录确切出版版本，旧画板按原回合或画板中的版本恢复来源。60 份聊天、106 份图板文件和 18 条额度记录保持，无数据迁移。最新《上下文状态》导图的数据副本中，14 个来源从全部 404 恢复为全部可读，原文弹窗、高亮、滚动和返回画板已实际验收。见[修复、验证与恢复记录](performance/board-source-publication-20261030/README.md)。以下日期段落保留历史。
+
+2026-10-30 12:34:24 HKT 已发布《为什么钢铁做成的军舰不会沉入海底》并按用户指定设为仅 `adaelon` 可读，无未来账号默认授权。默认发布 `steel-warship-buoyancy / 01a18b15-50e0-76b1-8266-5586050ec579`，标准深读六阶段完成、Pass2 禁用，Tutor 与正式教学素材均 ready；12:36:41 HKT 公网其他账号拒绝访问及后台授权验证通过。服务仍为 `personal-notes-20261030`，发布和访问调整无程序升级或数据迁移。见[发布与验证记录](performance/steel-warship-publication-20261030/README.md)。
+
+2026-10-30 11:50:34 HKT 已将 PN1–PN6、服务端统一供应的 MiniLM 语义召回与隐藏首页 Windows 下载入口合并上线。当前 release `personal-notes-20261030`，PID 506143，control schema 22、MemoryDocument schema 5，维护 10.57 秒。58 份聊天文件、100 份图板文件、1 个空间笔记本及 18 条额度记录保留；读者和管理员的公网能力检查、桌面/手机界面验收通过。MiniLM 由服务器安装、检查与预热，用户无须配置模型。真实版本、合并基线、模型供应、数据副本验证和恢复边界见[发布记录](performance/personal-notes-20261030/deployment/README.md)。后续发布仍从实际 release 合并，以下日期段落保留历史。
+
+2026-10-29 23:55:12 HKT 已上线 MA0–MA5：主 Agent 按需计划并完成取证、制作与交付，默认教师成稿审核退出等待路径，两类教练及正式学生评分保留。当前 release `main-agent-planned-20261029`，从实际线上 `reader-outline-20261029` 合并，PID 475325、schema 21；维护 11.72 秒，无数据迁移，57 份聊天、100 份图板文件和 17 条额度记录保持。2026-10-30 00:09 公网资源与账号能力、00:10 桌面／手机实际阅读验收通过；详见[发布记录与恢复点](performance/main-agent-planned-20261029/deployment/README.md)。主工作树仍未包含全部既有线上功能，后续发布以实际 release 为基线。以下日期段落保留历史。
+
 2026-10-29 10:26:13 HKT 已上线独立书架显示名称，当前 release `catalog-title-20261029`，在 `board-source-window-20261028` 基础上仅修改标题读取。10:27:10 公网管理员与普通读者验证《失败的逻辑：事情因何出错，世间有无妙策》中文书名及原书阅读通过；出版包、账号授权与资料类型保持。维护 7.06 秒，无数据迁移，详见[书架名称修正](performance/catalog-title-20261029/README.md)。
 
 2026-10-29 00:09:26 HKT 已上线画板全屏、书内主张引用规则与可连续滚动的临时原文阅读窗口。当前 release `board-source-window-20261028`，源码 `ce641fdd`、PID 422201、schema 21；维护 10.31 秒，无数据迁移，54 份聊天文件、100 份画板文件及 17 条额度记录保持。生产副本与公网验证通过，旧来源中 8 个缺失出版版本的问题经旧程序对照确认保持。刷新云端页面后生效，详见[发布记录](performance/board-source-window-20261028/README.md)。
@@ -105,9 +121,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/editable-mind-map-20261028`；服务、沙箱 worker、Reader、Admin 同版。数据根和 schema 21 保持。见[思维导图与近期改动合并发布](performance/combined-release-20261028/README.md)。
+- release：`/opt/understand-book/releases/all-pending-20261030`；后台静态文件已补齐。服务、沙箱 worker 与阅读器沿用本次合并发布，后台源码与前版一致。见[合并发布](performance/all-pending-release-20261030/README.md)及[后台修复](performance/admin-static-repair-20261030/README.md)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，schema21；旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，control schema 22；Memory 按账号加载升级至 6，未加载的旧文件保留原版本。旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 

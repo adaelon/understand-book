@@ -2,6 +2,7 @@
 import { t as uiText } from '../i18n';
 
 import { inject } from 'vue';
+import { openPersonalNotes } from '../personal-notes';
 import { shareNoteKey } from '../reading-share';
 import type { MemoryRecord } from '../api';
 import { renderMarkdown } from '../md';
@@ -20,6 +21,7 @@ const shareNote = inject(shareNoteKey, null);
     </template>
     <p v-if="note.note?.association.kind === 'answer'">{{ uiText('助手回答') }} <button @click="emit('answer')">{{ uiText('返回原回答') }}</button></p>
     <button v-if="shareNote" data-share-note @click="shareNote(note)">{{ uiText('生成分享图') }}</button>
+    <button @click="openPersonalNotes({note_id:note.mem_id})">查看想法与思考过程</button>
     <footer v-if="!embedded"><button @click="emit('edit')">{{ uiText('编辑') }}</button><button @click="emit('delete')">{{ uiText('删除') }}</button></footer>
   </section>
 </template>

@@ -1,0 +1,52 @@
+{
+  "recorded_on": "2026-10-28",
+  "timezone": "Asia/Hong_Kong",
+  "status": "passed",
+  "execution_mode": "installed_dsh_host_with_controlled_scripted_model",
+  "provider": "probe",
+  "model": "scripted",
+  "real_provider_calls": 0,
+  "node_version": "v24.9.0",
+  "dsh_package_version": "0.1.7-rc.2",
+  "replay_command": "node --import tsx docs/performance/prebuild-feasibility-20261028/dsh-reuse-probe.mjs",
+  "execution_note": "The successful experiment was executed as an inline PowerShell here-string piped to node --import tsx --input-type=module -. This saved script preserves that experiment, with its harness import adjusted for the saved file location and formatting expanded. The saved script has not been rerun.",
+  "successful_execution": {
+    "exit_code": 0,
+    "stdout": "{\"same_child_for_two_turns\":true,\"calls\":2,\"scoped_tool_persists\":true,\"context_accumulates\":true,\"disposed_cleanly\":true}",
+    "observations": {
+      "same_child_for_two_turns": true,
+      "calls": 2,
+      "scoped_tool_persists": true,
+      "context_accumulates": true,
+      "disposed_cleanly": true
+    }
+  },
+  "initial_attempt": {
+    "exit_code": 1,
+    "failure": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: 0 !== 2",
+    "actual_scripted_model_calls": 0,
+    "configuration_gap": "The initial probe used the harness default both tool presentation rather than the production executor's explicit native presentation; it also omitted the explicit maxTokens setting.",
+    "correction": "The follow-up diagnostic and successful two-turn probe set ctx.tools.presentAs('native') and maxTokens: 1000, matching the relevant production executor configuration.",
+    "interpretation": "The initial failure was a probe setup failure, not evidence that child reuse is unsupported. The initial host error event was not captured, so this record does not claim a separately isolated single-cause diagnosis."
+  },
+  "diagnostic_attempt": {
+    "exit_code": 0,
+    "scripted_model_calls": 1,
+    "turn_end_reason": "completed",
+    "purpose": "Confirm that the corrected host configuration reaches the scripted model before repeating the original two-turn probe."
+  },
+  "scope": {
+    "proves": [
+      "A caller-owned AgentHandle from the installed DSH agents.create API can drive two sequential followup turns on the same live child.",
+      "Agent-scoped tool registration remains available across those turns.",
+      "The second model request includes both task prompts, so context accumulates.",
+      "Disposal removes the child from the live Agent registry."
+    ],
+    "does_not_prove": [
+      "Real provider latency, throughput, cost, or output quality improvements.",
+      "End-to-end book build executor connection reuse or new-handoff acceptance.",
+      "An in-place history reset API or automatic context compaction.",
+      "Execution of the registered probe tool by the model; this probe checks registration lifetime."
+    ]
+  }
+}

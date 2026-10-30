@@ -47,8 +47,13 @@ fn revise_one_block_preserves_full_graph_sources_and_durable_candidate_then_comm
         let mut candidate = selected_candidate(user, &prepared.turn_ref, 1)?;
         candidate.previewed = true;
         candidate.staged = true;
-        candidate.commit_review = Some(runtime::board_author::ReviewedDelivery { teaching_delivery_move_refs:vec!["old-review".into()], delivery_scope:None });
+        candidate.commit_selection = Some(runtime::board_author::SelectedDelivery { teaching_delivery_move_refs:vec!["old-review".into()], delivery_scope:None });
         candidate.commit_requested_at = Some(NOW.into());
+        // Existing durable board parts used this key for selection references.
+        let mut legacy = serde_json::to_value(&candidate).unwrap();
+        legacy["commit_review"] = legacy.as_object_mut().unwrap().remove("commit_selection").unwrap();
+        candidate = serde_json::from_value(legacy).unwrap();
+        assert_eq!(candidate.commit_selection.as_ref().unwrap().teaching_delivery_move_refs,["old-review"]);
         session_runtime::update_board_authoring(user, &prepared.turn_ref, NOW, candidate.clone())?;
         Ok(candidate)
     }).unwrap();
@@ -80,7 +85,7 @@ fn revise_one_block_preserves_full_graph_sources_and_durable_candidate_then_comm
         assert_eq!(candidate.routes, before.routes);
         assert_eq!(candidate.update_items, before.update_items);
         assert!(!candidate.previewed && !candidate.staged);
-        assert!(candidate.commit_review.is_none() && candidate.commit_requested_at.is_none());
+        assert!(candidate.commit_selection.is_none() && candidate.commit_requested_at.is_none());
         assert_eq!(read_current(user, frozen)?.1, board, "revision stays private before a fresh preview and commit");
         Ok(())
     }).unwrap();
@@ -94,7 +99,7 @@ fn revise_one_block_preserves_full_graph_sources_and_durable_candidate_then_comm
         session_runtime::update_board_authoring(user, &prepared.turn_ref, NOW, candidate)
     }).unwrap();
     execute(&storage, frozen, &prepared.turn_ref, AuthorRequest::Commit {candidate_revision:2,
-        reviewed_delivery:Some(runtime::board_author::ReviewedDelivery{teaching_delivery_move_refs:vec![],delivery_scope:None})}, &[], &[], &token).unwrap();
+        selected_delivery:Some(runtime::board_author::SelectedDelivery{teaching_delivery_move_refs:vec![],delivery_scope:None})}, &[], &[], &token).unwrap();
     storage.with_user(|user| {
         user.agent_history = load_agent_history(&user.history_path)?;
         let saved = read_current(user, frozen)?.1;

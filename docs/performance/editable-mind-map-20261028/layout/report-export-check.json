@@ -1,0 +1,89 @@
+{
+  "recorded_at": "2026-10-28T08:16:43.868Z",
+  "environment": {
+    "platform": "win32 10.0.19044",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "logical_cpus": 16,
+    "chromium": "149.0.7827.55",
+    "viewport": "1440×1000",
+    "device_scale_factor": 1
+  },
+  "scenario": "Local Rust chapter text (500 distinct short labels), repeatable five-child hierarchy; source text not published in this report",
+  "font_load_ms": 179.60000002384186,
+  "measurements": [
+    {
+      "topics": 500,
+      "measured_nodes": 500,
+      "first_layout_ms": 175.7999999821186,
+      "warm_samples_ms": [
+        10.099999994039536,
+        12.5,
+        7.600000023841858,
+        9.599999994039536,
+        6.299999982118607,
+        6.300000011920929,
+        8.599999994039536,
+        9.900000005960464,
+        7.4000000059604645,
+        7.5999999940395355
+      ],
+      "median_ms": 8.100000008940697,
+      "max_ms": 12.5,
+      "bounds": {
+        "x": -1108,
+        "y": -13454,
+        "width": 3081,
+        "height": 27294
+      }
+    },
+    {
+      "topics": 1000,
+      "measured_nodes": 1000,
+      "first_layout_ms": 21.5,
+      "warm_samples_ms": [
+        15.300000011920929,
+        12.899999976158142,
+        14.100000023841858,
+        14.199999988079071,
+        14.699999988079071,
+        18.30000001192093,
+        13.800000011920929,
+        20,
+        11.899999976158142,
+        13
+      ],
+      "median_ms": 14.150000005960464,
+      "max_ms": 20,
+      "bounds": {
+        "x": -1108,
+        "y": -31130,
+        "width": 3223,
+        "height": 62646
+      }
+    }
+  ],
+  "png": [
+    {
+      "name": "rust-full.png",
+      "width": 3378,
+      "height": 2360,
+      "bytes": 720451,
+      "elapsed_ms": 144.40000000596046
+    },
+    {
+      "name": "rust-branch.png",
+      "width": 1536,
+      "height": 872,
+      "bytes": 132771,
+      "elapsed_ms": 23.400000005960464
+    },
+    {
+      "name": "rust-relations.png",
+      "width": 1202,
+      "height": 424,
+      "bytes": 54313,
+      "elapsed_ms": 18.099999994039536
+    }
+  ],
+  "oversized_export": "Error: 这张导图太大，请选中一个分支后导出，以保留清晰可读的文字。"
+}

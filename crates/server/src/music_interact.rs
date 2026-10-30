@@ -61,7 +61,7 @@ impl MusicCommands {
         let source = manifest(&scope.book_dir)?;
         let declared = publication(&scope.book_dir)?;
         let (reference, recording) = request_reference(&request);
-        if reference != &declared || recording != &source.recording.source || declared.book_id != scope.book.base.book_id
+        if reference != &declared || recording != &source.recording.source || declared.book_id != scope.reading_book().base.book_id
             || scope.publication.as_ref().is_some_and(|p| p.reference != declared) { return Err(unavailable()); }
         request.validate(&source, &declared)?;
         let mut pending = self.pending.lock().unwrap();

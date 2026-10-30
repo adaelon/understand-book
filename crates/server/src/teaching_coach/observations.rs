@@ -87,8 +87,8 @@ pub(super) fn with_material(job: &CoachJob, book: &Book) -> Result<CoachJob, Too
     Ok(hydrated)
 }
 
-/// Delivery review persists the actual read ledger, which can cover more than
-/// the small excerpt selected for display. Never infer reads from a target.
+/// Original successful read receipts cover more than a short display excerpt.
+/// Real historical reviews may supplement them. Never infer reads from a target.
 fn reviewed_ranges(job: &CoachJob) -> Result<Vec<EvidenceRange>, ToolError> {
     let mut ranges: Vec<EvidenceRange> = serde_json::from_value(job.input.context.get("verified_read_ranges").cloned().unwrap_or(json!([])))
         .map_err(|e| memory::teaching::invalid(e.to_string()))?;

@@ -298,7 +298,7 @@ export async function workspaceRead<T = unknown>(action: string, body: Record<st
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
   });
 }
-const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/source.read', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall',
+const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/source.read', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall', 'memory/prepare_note',
   'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'reader/selection.translate']);
 
 interface Admission extends RunDescriptor {

@@ -97,7 +97,7 @@ fn assert_tool_argument_recovery(case: &str) {
         assert_eq!(outcome.answer.as_deref(), Some(answer));
         assert_eq!(outcome.teaching_delivery_move_refs, ["selected:corrected"]);
         assert_eq!(port.inner.accepted, ["select"]);
-        assert_eq!(port.inner.reviews.len(), 1, "only the corrected complete move may reach review");
+        assert!(port.inner.reviews.is_empty(), "host acceptance must not fabricate a review");
         assert_eq!(plans.len(), 5);
         let sampled=plans[4].ordered_messages();
         let current=sampled.iter().filter_map(|message|message.content.as_deref())

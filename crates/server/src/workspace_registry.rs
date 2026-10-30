@@ -677,7 +677,7 @@ impl WorkspaceRegistry {
             return Ok(view(&scene));
         }
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
-        if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall"
+        if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall" | "memory/prepare_note"
             | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
             | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe"
             | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/source.read" | "boards/presentation.read" | "boards/presentation.observe"
@@ -1423,14 +1423,14 @@ impl NetworkRunPort {
                 .agent_history
                 .confirmation_id(&turn.session_id)
                 .map(str::to_owned),
-            book: w.workspace.book.clone(),
+            book: Some(w.workspace.book.clone()),
             book_dir: w.workspace.book_dir.clone(),
             provider_binding: profile,
-            reader_input: runtime::run_context::ReaderInputSnapshot::capture(
+            reader_input: Some(runtime::run_context::ReaderInputSnapshot::capture(
                 &w.workspace.book,
                 &w.workspace.reader,
                 message,
-            ),
+            )),
             question_quote: None,
             music_question: None,
             presentation_follow_up: w.presentation.clone(),
@@ -1457,6 +1457,10 @@ impl NetworkRunPort {
         turn: crate::AgentTurnRef,
         effect_revision: u64,
     ) -> Result<Self, ToolError> {
+        if scope.book.is_none() {
+            scope.check_user(&user.lock().unwrap())?;
+            return Ok(Self {previewed:Default::default(),animations:Default::default(),plots:Default::default(),access,user,scene:None,scope,turn,effect_revision});
+        }
         let guard = user.lock().unwrap();
         let mut registry = access.workspaces.lock().unwrap();
         let record = registry.record(&scope.user_id, &scope.workspace_id)?;
@@ -1491,15 +1495,8 @@ impl NetworkRunPort {
         }
     }
     fn authorized(&self) -> Result<(), ToolError> {
-        self.access
-            .library
-            .lock()
-            .unwrap()
-            .authorize(
-                &self.scope.user_id,
-                &self.scope.publication.as_ref().unwrap().reference,
-            )
-            .map_err(|_| missing())
+        if let Some(publication)=&self.scope.publication {self.access.library.lock().unwrap().authorize(&self.scope.user_id,&publication.reference).map_err(|_|missing())?;}
+        Ok(())
     }
     fn private<R>(
         &self,
@@ -1572,6 +1569,17 @@ impl crate::board_author::Storage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn personal_note_search(&mut self,request:Value)->Result<Value,ToolError>{
+        self.authorized()?;
+        let prepared={let user=self.user.lock().unwrap();self.scope.check_user(&user)?;crate::personal_note_retrieval::prepare(&user.store,&request)?};
+        let vectors=crate::personal_note_retrieval::infer(&prepared);
+        self.authorized()?;let user=self.user.lock().unwrap();self.scope.check_user(&user)?;
+        crate::personal_note_retrieval::finish(&user.store,prepared,vectors)
+    }
+    fn personal_note_context(&mut self)->Result<Value,ToolError>{
+        self.authorized()?;let mut user=self.user.lock().unwrap();self.scope.check_user(&user)?;
+        crate::personal_note_context::for_turn(&mut user,&self.scope.chat_session_id,&self.scope.turn_id)
+    }
     fn board_authoring_available(&self) -> bool { self.scope.board_context.is_some() }
     fn author_board(&mut self, request: runtime::board_author::AuthorRequest, bindings: &[runtime::orchestrator::SourceBinding], messages: &[runtime::Message], cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::board_author::AuthorResult, ToolError> {
         self.authorized()?;
@@ -1592,7 +1600,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
             read_tools::music::read(&manifest, reference, &request)
         } else {
             let reference = self.scope.publication.as_ref().ok_or_else(runtime::music::unavailable)?.reference.clone();
-            let manifest = self.scope.book.load_music_source(&self.scope.book_dir)?;
+            let manifest = self.scope.reading_book().load_music_source(&self.scope.book_dir)?;
             read_tools::music::read(&manifest, &reference, &request)
         }
     }
@@ -1646,7 +1654,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         let user = self.user.lock().unwrap();
         self.scope.check_user(&user)?;
         crate::workspace_record_context::read_scoped(&user, self.scope.learning_workspace_id.as_deref(),
-            &self.scope.book.base.book_id, request)
+            &self.scope.reading_book().base.book_id, request)
     }
     fn library_available(&self) -> bool { true }
     fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {
@@ -1678,7 +1686,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
     }
     fn media_source_for_text(&mut self, range: &read_tools::EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
         self.authorized()?;
-        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+        crate::video_source::text_snapshot(&self.scope.reading_book(), &self.scope.book_dir, range)
     }
     fn library_media_source_for_text(&mut self, reference: &base_schema::PublishedBookRef, range: &read_tools::EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
         self.authorized()?;
@@ -1792,7 +1800,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
             .and_then(|s| s.upgrade())
         {
             stream.reader_changed(crate::reader_state_response(
-                &self.scope.book,
+                &self.scope.reading_book(),
                 &scene.workspace.reader,
             ));
         }
@@ -1803,7 +1811,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         _: &read_tools::Book,
         _: &str,
     ) -> runtime::run_context::ReaderInputSnapshot {
-        self.scope.reader_input.clone()
+        self.scope.reader_input.clone().expect("reading scope")
     }
     fn tutor_active(&mut self) -> Result<bool, ToolError> {
         if let Some(id) = &self.scope.learning_workspace_id {

@@ -15,6 +15,9 @@ import BoardCanvas from './BoardCanvas.vue';
 import BoardReadingPane from './BoardReadingPane.vue';
 import BoardDiscussion from './BoardDiscussion.vue';
 import { discussionTurnKey, mergeBoardConversation, type BoardDiscussionTurn } from '../board-conversation';
+import { notesChanged, notesPanel, emptyNoteContent, startThought, registerThoughtContext } from '../personal-notes';
+import { registerNoteDestinations, startThoughtHere, thoughtSurfaceVisible, type NoteDestination } from '../note-placements';
+import { openPersonalChat } from '../personal-chat';
 
 const props = defineProps<{ boardId?: string | null; pendingImport?: BoardImportSource | null; run?: BoardRunView | null; pendingLocate?: BoardLocation | null }>();
 const emit = defineEmits<{
@@ -50,7 +53,7 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let openingBoard: { id: string; promise: Promise<void> } | null = null;
 const mobileTab = ref<'canvas' | 'reading' | 'discussion'>('canvas');
 const railTab = ref<'reading' | 'discussion'>('discussion');
-const railCollapsed = ref(false), canvasFullscreen = ref(false), fullscreenQuestionOpen = ref(false);
+const railCollapsed = ref(false), canvasFullscreen = ref(false);
 const fullscreenNotice = ref('');
 let previousLayout: { railCollapsed: boolean; railTab: 'reading' | 'discussion'; mobileTab: 'canvas' | 'reading' | 'discussion' } | null = null;
 let ownsBrowserFullscreen = false;
@@ -83,6 +86,45 @@ let handledImport: BoardImportSource | null = null;
 let disposed = false;
 const dirty = ref(false);
 const activeItem = computed(() => board.value?.items.find(item => item.item_id === view.value.selected_item_id) ?? null);
+function thoughtDestination(bind = false): NoteDestination | null {
+  if (!board.value) return null;
+  const item = bind ? activeItem.value : null;
+  return { kind:'board', board_id:board.value.board_id, workspace_id:board.value.learning_workspace_id,
+    ...(item ? {item_id:item.item_id} : {}), label: item ? `${board.value.title} · ${item.title}` : board.value.title };
+}
+const unregisterThoughtDestinations = registerNoteDestinations(() => {
+  if (!board.value || galleryOpen.value || !thoughtSurfaceVisible(root.value)) return [];
+  const plain = thoughtDestination()!, bound = activeItem.value ? thoughtDestination(true) : null;
+  return [...(bound ? [{key:`board:${board.value.board_id}:item`,label:'关联画布中选中的元素',detail:activeItem.value!.title,resolve:()=>bound}] : []),
+    {key:`board:${board.value.board_id}`,label:'放进当前画布',detail:`${board.value.title} · 独立卡片`,resolve:()=>plain}];
+});
+onBeforeUnmount(unregisterThoughtDestinations);
+const unregisterThoughtContext = registerThoughtContext(() => board.value && !galleryOpen.value && thoughtSurfaceVisible(root.value)
+  ? {board_id:board.value.board_id,board_item_id:activeItem.value?.item_id,workspace_id:board.value.learning_workspace_id,book_id:board.value.book_id,publication_id:board.value.publication_id,label:board.value.title} : null, 10);
+onBeforeUnmount(unregisterThoughtContext);
+function rememberHere() { const destination = thoughtDestination(!!activeItem.value); if (destination) startThoughtHere(destination, {book_id:board.value!.book_id,publication_id:board.value!.publication_id}); }
+watch(notesChanged, async () => {
+  const id = board.value?.board_id; if (!id) return;
+  try { const latest = await api.boardRead(id); if (board.value?.board_id === id) mergeSaved(latest.document); }
+  catch (failure) { error.value = message(failure); }
+});
+function noteRefs(items=board.value?.items ?? []) {return items.flatMap(item=>item.target.kind==='personal_note'?[item.target.reference]:[]);}
+async function synthesizeBoard(){
+  if(!board.value)return;
+  const refs=noteRefs();
+  await openPersonalChat(refs,'synthesis',`围绕「${board.value.title}」把这些想法整理为一份可编辑的解释草稿。请保留成立条件、反例、矛盾和待解问题，不推定我已掌握。`);
+}
+function writeFromBoard(){
+  if(!board.value)return;
+  const value=emptyNoteContent({workspace_id:board.value.learning_workspace_id,label:board.value.title});
+  value.source_refs=noteRefs();value.title=board.value.title;
+  value.content=`# 我现在的解释\n\n\n## 想法与线索\n\n${board.value.items.filter(item=>item.target.kind==='personal_note').map(item=>`### ${item.title}\n\n${item.readable_content.split('\n').map(line=>`> ${line}`).join('\n')}`).join('\n\n')}`;
+  startThought(value.context,value.content,value);
+}
+watch(()=>notesPanel.open,async(open,wasOpen)=>{if(wasOpen&&!open&&board.value){try{const latest=await api.boardRead(board.value.board_id);if(board.value?.board_id===latest.document.board_id){
+  const notes=new Map(latest.document.items.filter(item=>item.target.kind==='personal_note').map(item=>[item.item_id,item]));
+  board.value.items=board.value.items.map(item=>notes.has(item.item_id)?{...item,target:notes.get(item.item_id)!.target,title:notes.get(item.item_id)!.title,readable_content:notes.get(item.item_id)!.readable_content}:item);
+}}catch(failure){error.value=message(failure);}}});
 const readingItem = computed(() => board.value?.items.find(item => item.item_id === (view.value.reading_item_id ?? view.value.selected_item_id)) ?? null);
 const questionItem = computed(() => view.value.selected_block_id ? readingItem.value : activeItem.value);
 const playing = ref(false), animationProgress = ref(1);
@@ -119,7 +161,7 @@ const questionBusy = computed(() => preparingQuestion.value || awaitingAcceptanc
 const boardCommits = computed(() => mergeBoardDeliveries(runOnBoard.value?.commits));
 const targetTitle = computed(() => runOnBoard.value?.item_id ? board.value?.items.find(item => item.item_id === runOnBoard.value?.item_id)?.title ?? submittedTitle.value : uiText('全画板'));
 const visitedItems = computed(() => board.value?.items.filter(item => visited.value.includes(item.item_id)) ?? []);
-const filteredCatalog = computed(() => { if (catalogKind.value === 'prebuild') return catalog.value; const query = catalogQuery.value.trim().toLocaleLowerCase(); return catalog.value.filter(item => !query || `${item.title}\n${item.summary}`.toLocaleLowerCase().includes(query)); });
+const filteredCatalog = computed(() => { if ((catalogKind.value === 'prebuild' || catalogKind.value === 'personal_note')) return catalog.value; const query = catalogQuery.value.trim().toLocaleLowerCase(); return catalog.value.filter(item => !query || `${item.title}\n${item.summary}`.toLocaleLowerCase().includes(query)); });
 const busy = computed(() => loading.value || mutating.value);
 const saveLabel = computed(() => saving.value ? uiText('正在保存…') : error.value ? uiText('尚未保存') : dirty.value ? uiText('有未保存的修改') : uiText('已保存'));
 
@@ -144,14 +186,10 @@ async function showPanel(tab: 'reading' | 'discussion') {
     await panes.get(readingItem.value.item_id)?.locate(highlightedBlock.value, undefined, { focus: false });
   }
 }
-async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; fullscreenQuestionOpen.value = true; showPanel('discussion'); await nextTick(); root.value?.querySelector('textarea')?.focus(); }
+async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; showPanel('discussion'); await nextTick(); root.value?.querySelector('textarea')?.focus(); }
 function collapseRail() { railCollapsed.value = true; mobileTab.value = 'canvas'; }
-async function toggleQuestion() {
-  fullscreenQuestionOpen.value = !fullscreenQuestionOpen.value;
-  if (fullscreenQuestionOpen.value) { await nextTick(); root.value?.querySelector('textarea')?.focus(); }
-}
 function restoreFullscreenLayout() {
-  canvasFullscreen.value = false; fullscreenNotice.value = ''; fullscreenQuestionOpen.value = false;
+  canvasFullscreen.value = false; fullscreenNotice.value = '';
   if (previousLayout) {
     railCollapsed.value = previousLayout.railCollapsed; railTab.value = previousLayout.railTab; mobileTab.value = previousLayout.mobileTab;
     previousLayout = null;
@@ -168,7 +206,7 @@ async function exitCanvasFullscreen() {
 async function toggleCanvasFullscreen() {
   if (canvasFullscreen.value) { await exitCanvasFullscreen(); return; }
   previousLayout = { railCollapsed: railCollapsed.value, railTab: railTab.value, mobileTab: mobileTab.value };
-  canvasFullscreen.value = true; collapseRail(); fullscreenQuestionOpen.value = false; fullscreenNotice.value = '';
+  canvasFullscreen.value = true; collapseRail(); fullscreenNotice.value = '';
   if (document.fullscreenElement) { browserFullscreenActive = true; return; }
   if (!document.documentElement.requestFullscreen) {
     fullscreenNotice.value = uiText('当前环境不支持全屏，已展开到窗口。按 Esc 退出。'); return;
@@ -350,7 +388,7 @@ async function saveChanges(): Promise<boolean> {
           for (const position of positions) savingPositions.set(position.item_id, position.position);
           pendingTitle = undefined; pendingPositions.clear();
           try {
-            const saved = await api.boardUpdate({ board_id: board.value.board_id, expected_revision: board.value.revision, ...(title !== undefined ? { title: title.trim() } : {}), positions });
+            const saved = await api.boardUpdate({ board_id: board.value.board_id, expected_revision: board.value.revision, ...(noteRefs().length ? {note_refs:noteRefs()} : {}), ...(title !== undefined ? { title: title.trim() } : {}), positions });
             savingTitle = undefined; savingPositions.clear();
             mergeSaved(saved);
           } catch (failure) {
@@ -506,7 +544,7 @@ async function loadCatalog(more = false) {
   const after = more ? catalogNext.value ?? undefined : undefined;
   const sequence = ++catalogSequence; catalogLoading.value = true; catalogError.value = '';
   if (!more) { catalog.value = []; catalogNext.value = null; catalogTotal.value = null; relatedItem.value = null; relatedSequence++; }
-  try { const response = await (catalogKind.value === 'prebuild' ? api.boardCatalog(catalogKind.value, after, { category: catalogCategory.value, query: catalogQuery.value.trim() }) : api.boardCatalog(catalogKind.value, after)); if (sequence === catalogSequence) { catalog.value = more ? [...catalog.value, ...response.items] : response.items; catalogNext.value = response.next ?? null; catalogTotal.value = response.total ?? null; } }
+  try { const response = await ((catalogKind.value === 'prebuild' || catalogKind.value === 'personal_note') ? api.boardCatalog(catalogKind.value, after, { category: catalogCategory.value, query: catalogQuery.value.trim() }) : api.boardCatalog(catalogKind.value, after)); if (sequence === catalogSequence) { catalog.value = more ? [...catalog.value, ...response.items] : response.items; catalogNext.value = response.next ?? null; catalogTotal.value = response.total ?? null; } }
   catch (failure) { if (sequence === catalogSequence) catalogError.value = message(failure); }
   finally { if (sequence === catalogSequence) catalogLoading.value = false; }
 }
@@ -517,7 +555,8 @@ async function askQuestion() {
   const item = questionItem.value, current = board.value, text = question.value.trim();
   if (!current || !text || busy.value || questionBusy.value) return;
   const blockId = item ? view.value.selected_block_id ?? item.block_id : null;
-  const request: BoardQuestionRequest = { client_request_id: crypto.randomUUID(), message: text, context: { board_id: current.board_id, board_revision: current.revision, ...(item ? { item_id: item.item_id } : {}), ...(blockId ? { block_id: blockId } : {}) } };
+  const references=noteRefs(item?[item]:current.items);
+  const request: BoardQuestionRequest = { client_request_id: crypto.randomUUID(), message: text, context: { ...(references.length ? {note_refs:references} : {}), board_id: current.board_id, board_revision: current.revision, ...(item ? { item_id: item.item_id } : {}), ...(blockId ? { block_id: blockId } : {}) } };
   submitted.value = request; submittedTitle.value = item?.title ?? uiText('全画板'); preparingQuestion.value = true; questionError.value = '';
   const pane = item ? panes.get(item.item_id) : undefined;
   showPanel('discussion');
@@ -635,9 +674,9 @@ watch([galleryOpen, addOpen, deleteOpen], async () => {
 watch(() => props.boardId, id => { if (id && id !== board.value?.board_id) void openBoard(id); else if (!id && !board.value) galleryOpen.value = true; }, { immediate: true });
 watch(() => props.pendingImport, source => { if (source && source !== handledImport) { if (board.value) void importPending(); else openGallery(); } });
 watch(catalogKind, () => { catalogQuery.value = ''; if (addOpen.value) void loadCatalog(); });
-watch(catalogCategory, () => { if (addOpen.value && catalogKind.value === 'prebuild') void loadCatalog(); });
+watch(catalogCategory, () => { if (addOpen.value && (catalogKind.value === 'prebuild' || catalogKind.value === 'personal_note')) void loadCatalog(); });
 watch(catalogQuery, () => {
-  if (!addOpen.value || catalogKind.value !== 'prebuild') return;
+  if (!addOpen.value || !['prebuild','personal_note'].includes(catalogKind.value)) return;
   clearTimeout(catalogTimer); ++catalogSequence; catalog.value = []; catalogNext.value = null; catalogTotal.value = null; catalogLoading.value = true;
   catalogTimer = setTimeout(() => { void loadCatalog(); }, 240);
 });
@@ -696,6 +735,8 @@ defineExpose({ flush });
       <span v-if="board" class="board-save-state" :class="{ unsaved: dirty || error }" role="status"><LoaderCircle v-if="saving" :size="13" class="board-spinner" aria-hidden="true" /><Check v-else-if="!dirty && !error" :size="13" aria-hidden="true" />{{ saveLabel }}</span>
       <button class="board-search-trigger" type="button" :aria-label="uiText('搜索画板与全文')" @click="openGallery"><Search :size="17" aria-hidden="true" /></button>
       <button v-if="board" class="board-add-button" type="button" :disabled="busy" @click="openAdd"><Plus :size="16" aria-hidden="true" /><span>{{ uiText('添加内容') }}</span></button>
+      <div v-if="board" class="board-thought-actions"><button class="board-add-button" type="button" :disabled="busy" @click="rememberHere">{{ activeItem ? '在这里记想法' : '记想法' }}</button>
+      <button v-if="board && noteRefs().length" class="board-add-button" type="button" :disabled="busy" @click="writeFromBoard">整理成我的解释</button><button v-if="board && noteRefs().length" class="board-add-button" type="button" :disabled="busy" @click="synthesizeBoard">请 Agent 起草</button></div>
     </header>
     <div v-if="error && !galleryOpen && !addOpen && !deleteOpen" class="board-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="busy || saving" @click="flush">{{ uiText('重试保存') }}</button><button v-if="dirty" type="button" :disabled="busy || saving" @click="discardAndReload">{{ uiText('放弃未保存修改并重新载入') }}</button><button type="button" :disabled="busy" @click="openGallery">{{ uiText('查看画板列表') }}</button></div>
     <div v-else-if="savedNotice" class="board-notice" role="status">{{ savedNotice }}</div>
@@ -703,7 +744,7 @@ defineExpose({ flush });
     <div v-if="canvasFullscreen" class="board-fullscreen-tools" role="group" :aria-label="uiText('画板、讲解与讨论')">
       <button type="button" :aria-pressed="!railCollapsed && railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="16" aria-hidden="true" />{{ uiText('讲解') }}</button>
       <button type="button" :aria-pressed="!railCollapsed && railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="16" aria-hidden="true" />{{ uiText('讨论') }}</button>
-      <button type="button" :aria-pressed="fullscreenQuestionOpen" @click="toggleQuestion"><Plus :size="16" aria-hidden="true" />{{ fullscreenQuestionOpen ? uiText('收起提问') : uiText('提问') }}</button>
+      <button type="button" @click="suggestQuestion('')"><Plus :size="16" aria-hidden="true" />{{ uiText('提问') }}</button>
       <button type="button" :aria-label="uiText('退出全屏')" :title="uiText('退出全屏')" @click="exitCanvasFullscreen"><Minimize :size="16" aria-hidden="true" /><span>{{ uiText('退出全屏') }}</span></button>
     </div>
     <p v-if="canvasFullscreen && fullscreenNotice && railCollapsed" class="board-fullscreen-notice" role="status">{{ fullscreenNotice }}</p>
@@ -729,31 +770,33 @@ defineExpose({ flush });
         <BoardReadingPane v-for="item in visitedItems" v-show="item.item_id === readingItem?.item_id || item.item_id === focusedPresentationId" :key="`${boardMount}:${board.board_id}:${item.item_id}`" :ref="instance => setPane(item.item_id, instance)" :board-id="board.board_id" :item="item" :items="board.items" :deliveries="board.deliveries" :busy="busy || protectedItem(item.item_id)" :mapped-block-ids="mappedBlocks(item.item_id)" :mapped-item="mappedItem(item.item_id)" :highlighted-block-id="item.item_id === readingItem?.item_id ? highlightedBlock : null" @source="(id, anchor) => source(item.item_id, id, anchor)" @remove="removeItem" @select-item="locateItem" @activate-block="activateBlock" @activate-target="activateVisual" @user-control="userControl" />
       </div>
         <BoardDiscussion v-show="railTab === 'discussion'" :turns="discussionTurns" :items="board.items" :loading="conversationLoading" :error="conversationError" @retry="loadConversation" @locate="locateItem" @source="source" @suggest="suggestQuestion" />
+
+        <section class="board-conversation" :aria-label="uiText('在画板上继续提问')">
+          <div v-if="boardCommits.length" class="board-saved-parts" :aria-label="uiText('已保存的讲解')">
+            <button v-for="(part, index) in boardCommits" :key="boardDeliveryKey(part)" type="button" class="board-part-location" :data-board-part="index + 1" @click="locateDelivery(part)"><Check :size="13" aria-hidden="true" /><span>{{ uiText('已保存第{0}部分', [index + 1]) }}</span><span>{{ uiText('查看') }}</span></button>
+            <p v-if="runOnBoard?.incomplete && !runOnBoard.pending" role="status">{{ uiText('讲解尚未全部完成，已保存的部分可以继续查看。') }}</p>
+          </div>
+          <div v-if="deliveryNotice" class="board-delivery-notice" role="status"><Check :size="14" aria-hidden="true" /><span>{{ uiText('新的讲解和图解已加入画板') }}</span><button type="button" :disabled="refreshingDelivery" @click="locateDelivery()">{{ refreshingDelivery ? uiText('正在读取…') : uiText('定位新回答') }}</button><button class="board-notice-dismiss" type="button" :aria-label="uiText('关闭回答提示')" @click="deliveryNotice = null"><X :size="13" aria-hidden="true" /></button></div>
+          <div v-if="deliveryError" class="board-question-error" role="alert">{{ deliveryError }}<button type="button" :disabled="refreshingDelivery" @click="retryDeliveryRefresh">{{ uiText('重试') }}</button></div>
+          <div v-if="runOnBoard && (runOnBoard.pending || runOnBoard.error || (boardCommits.length && runOnBoard.incomplete))" class="board-run-status" :class="{ failed: runOnBoard.error }" :role="runOnBoard.error ? 'alert' : 'status'">
+            <LoaderCircle v-if="runOnBoard.pending" :size="14" class="board-spinner" aria-hidden="true" /><CornerDownRight v-else :size="14" aria-hidden="true" />
+            <span><strong>{{ uiText('针对：{0}', [targetTitle]) }}</strong>{{ runOnBoard.error || runOnBoard.status_text }}</span>
+            <button v-if="runOnBoard.can_retry" type="button" @click="emit('retry-follow-up', runOnBoard.request_id)">{{ uiText('重试这次追问') }}</button>
+            <button v-if="runOnBoard.can_stop" type="button" @click="emit('cancel-follow-up')"><Square :size="11" aria-hidden="true" />{{ uiText('停止') }}</button>
+          </div>
+          <p v-else-if="props.run?.pending" class="board-question-hint" role="status">{{ uiText('另一张画板的追问仍在进行，可以先继续浏览。') }}</p>
+          <p v-if="questionError" class="board-question-error" role="alert">{{ questionError }}</p>
+          <form class="board-question-form" @submit.prevent="askQuestion">
+            <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button></div>
+            <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="2" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>
+            <p v-if="preparingQuestion || awaitingAcceptance" class="board-question-hint" role="status">{{ preparingQuestion ? uiText('正在保留提问对象与演示现场…') : uiText('正在发送追问…') }}</p>
+          </form>
+        </section>
       </aside>
     </div>
     <div v-else class="board-unopened"><Shapes :size="40" aria-hidden="true" /><p>{{ loading ? uiText('正在打开画板…') : uiText('打开一张画板，让学习接着发生。') }}</p><button v-if="!loading" type="button" @click="openGallery">{{ uiText('查看我的画板') }}</button></div>
 
-    <section v-if="board" v-show="!canvasFullscreen || fullscreenQuestionOpen" class="board-conversation" :aria-label="uiText('在画板上继续提问')">
-      <div v-if="boardCommits.length" class="board-saved-parts" :aria-label="uiText('已保存的讲解')">
-        <button v-for="(part, index) in boardCommits" :key="boardDeliveryKey(part)" type="button" class="board-part-location" :data-board-part="index + 1" @click="locateDelivery(part)"><Check :size="13" aria-hidden="true" /><span>{{ uiText('已保存第{0}部分', [index + 1]) }}</span><span>{{ uiText('查看') }}</span></button>
-        <p v-if="runOnBoard?.incomplete && !runOnBoard.pending" role="status">{{ uiText('讲解尚未全部完成，已保存的部分可以继续查看。') }}</p>
-      </div>
-      <div v-if="deliveryNotice" class="board-delivery-notice" role="status"><Check :size="14" aria-hidden="true" /><span>{{ uiText('新的讲解和图解已加入画板') }}</span><button type="button" :disabled="refreshingDelivery" @click="locateDelivery()">{{ refreshingDelivery ? uiText('正在读取…') : uiText('定位新回答') }}</button><button class="board-notice-dismiss" type="button" :aria-label="uiText('关闭回答提示')" @click="deliveryNotice = null"><X :size="13" aria-hidden="true" /></button></div>
-      <div v-if="deliveryError" class="board-question-error" role="alert">{{ deliveryError }}<button type="button" :disabled="refreshingDelivery" @click="retryDeliveryRefresh">{{ uiText('重试') }}</button></div>
-      <div v-if="runOnBoard && (runOnBoard.pending || runOnBoard.error || (boardCommits.length && runOnBoard.incomplete))" class="board-run-status" :class="{ failed: runOnBoard.error }" :role="runOnBoard.error ? 'alert' : 'status'">
-        <LoaderCircle v-if="runOnBoard.pending" :size="14" class="board-spinner" aria-hidden="true" /><CornerDownRight v-else :size="14" aria-hidden="true" />
-        <span><strong>{{ uiText('针对：{0}', [targetTitle]) }}</strong>{{ runOnBoard.error || runOnBoard.status_text }}</span>
-        <button v-if="runOnBoard.can_retry" type="button" @click="emit('retry-follow-up', runOnBoard.request_id)">{{ uiText('重试这次追问') }}</button>
-        <button v-if="runOnBoard.can_stop" type="button" @click="emit('cancel-follow-up')"><Square :size="11" aria-hidden="true" />{{ uiText('停止') }}</button>
-      </div>
-      <p v-else-if="props.run?.pending" class="board-question-hint" role="status">{{ uiText('另一张画板的追问仍在进行，可以先继续浏览。') }}</p>
-      <p v-if="questionError" class="board-question-error" role="alert">{{ questionError }}</p>
-      <form class="board-question-form" @submit.prevent="askQuestion">
-        <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button><small>{{ uiText('讨论与图解都会留在这里') }}</small></div>
-        <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="1" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>
-        <p v-if="preparingQuestion || awaitingAcceptance" class="board-question-hint" role="status">{{ preparingQuestion ? uiText('正在保留提问对象与演示现场…') : uiText('正在发送追问…') }}</p>
-      </form>
-    </section>
+
 
     <div v-if="galleryOpen" class="board-dialog-scrim" @click.self="board && (galleryOpen = false)">
       <section class="board-gallery" role="dialog" aria-modal="true" :aria-label="uiText('我的知识画板')">
@@ -806,8 +849,8 @@ defineExpose({ flush });
 .board-playback{display:flex;align-items:center;gap:10px;flex-shrink:0;padding:9px 22px;border-bottom:1px solid var(--hairline);background:var(--reader-card)}.board-playback select{min-width:0;max-width:240px;padding:7px 9px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-soft);color:var(--steel);font:inherit;font-size:11px}.board-playback-controls{display:flex;align-items:center;gap:3px;flex-shrink:0}.board-playback button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:5px 9px;border:1px solid var(--hairline);border-radius:6px;background:transparent;color:var(--steel);font:inherit;font-size:11px;cursor:pointer}.board-playback .board-play-toggle{color:var(--brand-accent)}.board-playback .board-step-select{flex:1;max-width:360px}.board-playback .board-resume-following{color:var(--brand-accent);white-space:nowrap}.board-mapping-choices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 22px;border-bottom:1px solid var(--hairline);background:var(--surface-soft);font-size:11px;color:var(--steel)}.board-mapping-choices button{padding:5px 8px;border:1px solid var(--hairline);border-radius:6px;background:var(--reader-card);color:var(--brand-accent);font:inherit;text-align:left;cursor:pointer}.board-reader-stack.has-region{grid-template-rows:minmax(160px,1fr) minmax(200px,1fr)}.board-reader-stack.has-region>*{grid-area:auto}.board-reader-stack.has-region>.board-retained-presentation{min-height:0}@media(max-width:700px){.board-playback{gap:7px;flex-wrap:wrap;padding:8px 12px}.board-playback>select:first-child{flex:1;max-width:none;width:calc(100% - 152px)}.board-playback .board-step-select{max-width:none;flex-basis:150px}.board-playback button{padding:5px 7px}.board-mapping-choices{padding:8px 12px}.board-reader-stack.has-region{grid-template-rows:minmax(170px,1fr) minmax(200px,1fr)}}
 button{min-height:0;padding:0;border-radius:0}
 .board-search-trigger{display:grid;place-items:center;width:30px;height:32px;flex-shrink:0;border:0;background:transparent;color:var(--steel);cursor:pointer}.board-search-field{display:flex;align-items:center;gap:9px;padding:10px 12px;margin-bottom:12px;border:1px solid var(--hairline);border-radius:8px;background:var(--surface-soft);color:var(--stone)}.board-search-field input{width:100%;min-width:0;border:0;background:transparent;color:var(--ink);font-size:12px;outline:0}.board-search-field:focus-within{outline:2px solid var(--brand-accent);outline-offset:2px}.board-search-results{overflow:auto;min-height:100px;overscroll-behavior:contain}.board-search-result{display:flex;flex-direction:column;gap:6px;width:100%;padding:14px 8px;border:0;border-bottom:1px solid var(--hairline);background:transparent;text-align:left;color:var(--ink);cursor:pointer}.board-search-result:hover{background:var(--surface-soft)}.board-search-result small{display:flex;gap:7px;font-size:10px;color:var(--stone)}.board-search-result strong{font-size:13px;font-weight:550;line-height:1.7}.board-search-result p{margin:0;color:var(--steel);font-size:12px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
-.board-conversation{flex-shrink:0;padding:10px 22px 13px;border-top:1px solid var(--hairline);background:var(--reader-card)}.board-question-form{max-width:1050px;margin:0 auto}.board-question-target{display:flex;align-items:center;gap:6px;color:var(--steel);font-size:11px;line-height:1.6;margin-bottom:7px}.board-question-target>svg{flex-shrink:0;color:var(--brand-accent)}.board-question-target>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.board-question-target small{margin-left:auto;color:var(--stone);font-size:10px;white-space:nowrap}.board-question-row{display:flex;align-items:flex-end;gap:12px;border:1px solid var(--hairline);border-radius:10px;padding:8px 9px 8px 12px;background:var(--surface-soft)}.board-question-row:focus-within{border-color:var(--brand-accent)}.board-question-row textarea{flex:1;min-width:0;max-height:120px;min-height:40px;resize:vertical;background:transparent;border:0;outline:0;font:inherit;font-size:12px;line-height:1.7;color:var(--ink);padding:0}.board-question-row textarea::placeholder{color:var(--stone)}.board-question-send{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border:0;border-radius:8px;background:var(--brand-accent);color:white;cursor:pointer}.board-question-hint{font-size:11px;line-height:1.7;color:var(--stone);margin:7px 0 0}.board-question-error{display:flex;gap:12px;align-items:center;font-size:12px;line-height:1.7;color:var(--brand-error);margin:0 0 9px}.board-question-error button,.board-run-status button,.board-delivery-notice button{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;border:0;background:transparent;color:inherit;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.board-run-status{display:flex;gap:9px;align-items:center;max-width:1050px;margin:0 auto 10px;padding:3px 0 8px;border-bottom:1px solid var(--hairline-soft);color:var(--steel);font-size:11px;line-height:1.7}.board-run-status>svg{flex-shrink:0;color:var(--brand-accent)}.board-run-status>span{flex:1;min-width:0;overflow-wrap:anywhere}.board-run-status strong{display:block;color:var(--stone);font-size:10px;font-weight:400}.board-run-status.failed{color:var(--brand-error)}.board-delivery-notice{display:flex;align-items:center;gap:8px;margin:0 auto 10px;max-width:1050px;font-size:11px;line-height:1.7;color:var(--steel)}.board-delivery-notice>svg{color:var(--brand-accent);flex-shrink:0}.board-delivery-notice>span{flex:1}.board-delivery-notice .board-notice-dismiss{display:grid;place-items:center;width:24px;height:24px;text-decoration:none;color:var(--stone)}
-@media(max-width:700px){.board-conversation{padding:9px 12px 11px}.board-question-target small{display:none}.board-question-row{gap:7px;padding:8px 8px 8px 10px}.board-question-row textarea{font-size:13px;min-height:42px}.board-run-status{gap:7px;flex-wrap:wrap}.board-run-status>span{flex-basis:calc(100% - 26px)}.board-run-status>button{margin-left:22px}.board-run-status>button+button{margin-left:4px}.board-search-trigger{width:25px}.board-delivery-notice{flex-wrap:wrap}.board-delivery-notice>span{min-width:150px}}
+.board-conversation{flex-shrink:0;min-width:0;max-height:60%;overflow:auto;overscroll-behavior:contain;padding:12px 16px;border-top:1px solid var(--hairline);background:var(--reader-card)}.board-question-form{min-width:0;margin:0}.board-question-target{display:flex;align-items:center;gap:6px;color:var(--steel);font-size:11px;line-height:1.6;margin-bottom:7px}.board-question-target>svg{flex-shrink:0;color:var(--brand-accent)}.board-question-target>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.board-question-row{display:flex;align-items:flex-end;gap:12px;border:1px solid var(--hairline);border-radius:10px;padding:8px 9px 8px 12px;background:var(--surface-soft)}.board-question-row:focus-within{border-color:var(--brand-accent)}.board-question-row textarea{flex:1;min-width:0;max-height:120px;min-height:40px;resize:vertical;background:transparent;border:0;outline:0;font:inherit;font-size:13px;line-height:1.7;color:var(--ink);padding:0}.board-question-row textarea::placeholder{color:var(--stone)}.board-question-send{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border:0;border-radius:8px;background:var(--brand-accent);color:white;cursor:pointer}.board-question-hint{font-size:11px;line-height:1.7;color:var(--stone);margin:7px 0 0}.board-question-error{display:flex;gap:12px;align-items:center;font-size:12px;line-height:1.7;color:var(--brand-error);margin:0 0 9px}.board-question-error button,.board-run-status button,.board-delivery-notice button{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;border:0;background:transparent;color:inherit;font-size:11px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.board-run-status{display:flex;gap:9px;align-items:center;max-width:1050px;margin:0 auto 10px;padding:3px 0 8px;border-bottom:1px solid var(--hairline-soft);color:var(--steel);font-size:11px;line-height:1.7}.board-run-status>svg{flex-shrink:0;color:var(--brand-accent)}.board-run-status>span{flex:1;min-width:0;overflow-wrap:anywhere}.board-run-status strong{display:block;color:var(--stone);font-size:10px;font-weight:400}.board-run-status.failed{color:var(--brand-error)}.board-delivery-notice{display:flex;align-items:center;gap:8px;margin:0 auto 10px;max-width:1050px;font-size:11px;line-height:1.7;color:var(--steel)}.board-delivery-notice>svg{color:var(--brand-accent);flex-shrink:0}.board-delivery-notice>span{flex:1;min-width:0}.board-delivery-notice .board-notice-dismiss{display:grid;place-items:center;width:24px;height:24px;text-decoration:none;color:var(--stone)}
+@media(max-width:700px){.board-conversation{padding:9px 12px 11px}.board-question-row{gap:7px;padding:8px 8px 8px 10px}.board-question-row textarea{font-size:16px;min-height:48px}.board-run-status{gap:7px;flex-wrap:wrap}.board-run-status>span{flex-basis:calc(100% - 26px)}.board-run-status>button{margin-left:22px}.board-run-status>button+button{margin-left:4px}.board-search-trigger{width:25px}.board-delivery-notice{flex-wrap:wrap}.board-delivery-notice>span{min-width:150px}}
 .board-dialog-error{padding:11px 13px;margin:0 0 15px;border-radius:7px;background:color-mix(in srgb,var(--brand-error) 8%,var(--reader-card));color:var(--brand-error);font-size:12px;line-height:1.8}.board-dialog-error>button{display:block;margin-top:7px;background:transparent;border:0;border-bottom:1px solid currentColor;color:inherit;font-size:11px;cursor:pointer}
 .board-catalog-more{display:block;width:100%;margin-top:12px;padding:11px;border:1px solid var(--hairline);border-radius:7px;background:var(--surface-soft);color:var(--steel);font-size:12px;cursor:pointer}.board-kind-tabs button[role=tab]{white-space:normal;line-height:1.5}
 .board-catalog-row{border-bottom:1px solid var(--hairline-soft);padding-bottom:10px}.board-catalog-row .board-catalog-item{border-bottom:0;padding-bottom:9px}.board-related-trigger{display:flex;gap:5px;align-items:center;border:0;background:transparent;color:var(--stone);font-size:10px;cursor:pointer}.board-related-results{margin-top:10px;padding:10px;border-radius:7px;background:var(--surface-soft)}.board-related-results>button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:8px 3px;border:0;background:transparent;color:var(--steel);font-size:12px;text-align:left;cursor:pointer}.board-related-results small{font-size:10px;white-space:nowrap;color:var(--brand-accent)}.board-related-results p{font-size:11px;line-height:1.8;color:var(--stone);margin:3px 0}.board-related-results p>button{margin-left:8px;border:0;background:transparent;color:var(--brand-accent);font-size:11px;cursor:pointer}
@@ -817,10 +860,11 @@ button{min-height:0;padding:0;border-radius:0}
 <style scoped>
 .board-workspace .board-body{position:relative;grid-template-columns:minmax(0,1fr) clamp(320px,32%,420px)}
 .board-body.board-rail-collapsed{grid-template-columns:minmax(0,1fr)}
+.board-thought-actions{display:flex;gap:8px;flex-shrink:0}@media(max-width:1100px){.board-topbar{flex-wrap:wrap}.board-thought-actions{flex-basis:100%;justify-content:flex-end}.board-thought-actions button{font-size:11px}}
 .board-topbar{min-height:58px;padding-top:9px;padding-bottom:9px}
-.board-conversation{padding-top:8px;padding-bottom:10px}
-.board-question-row{align-items:center;padding-top:6px;padding-bottom:6px}
-.board-question-row textarea{min-height:28px}
+
+
+
 .board-rail-header{display:flex;align-items:center;flex-shrink:0;border-bottom:1px solid var(--hairline)}
 .board-rail-header .board-rail-tabs{flex:1;min-width:0;border-bottom:0;padding:0 18px;gap:18px;height:44px}
 .board-collapse-rail,.board-expand-rail{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--hairline);border-radius:8px;background:var(--reader-card);color:var(--steel);cursor:pointer}
@@ -835,7 +879,7 @@ button{min-height:0;padding:0;border-radius:0}
 .board-canvas-fullscreen{width:100%;height:100%;min-height:0}
 .board-canvas-fullscreen .board-body{flex:1}
 @media(max-width:700px){
-  .board-question-row textarea{min-height:32px}
+  
   .board-fullscreen-tools{top:12px;left:12px;max-width:calc(100% - 24px);gap:0}
   .board-fullscreen-tools button{padding:5px 7px;font-size:11px;min-height:36px}
   .board-fullscreen-tools button:last-child{padding-left:9px}
@@ -851,7 +895,7 @@ button{min-height:0;padding:0;border-radius:0}
 </style>
 
 <style scoped>
-.board-body{grid-template-columns:minmax(0,1fr) minmax(340px,37%)}.board-side-rail{display:flex;flex-direction:column;min-width:0;min-height:0;border-left:1px solid var(--hairline);background:var(--reader-card)}.board-rail-tabs{display:flex;align-items:center;flex-shrink:0;gap:20px;height:48px;padding:0 22px;border-bottom:1px solid var(--hairline)}.board-rail-tabs button{display:flex;align-items:center;gap:7px;height:100%;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--stone);font-size:12px;cursor:pointer}.board-rail-tabs button[aria-selected=true]{color:var(--brand-accent);border-bottom-color:var(--brand-accent)}.board-rail-tabs span{font-size:10px;color:var(--stone)}.board-discussion-live-dot{width:5px;height:5px;border-radius:50%;background:var(--brand-accent)}.board-side-rail .board-reader-stack{flex:1;min-height:0}.board-whole-context{flex-shrink:0;padding:3px 7px;border:1px solid var(--hairline);border-radius:5px;background:var(--surface-soft);color:var(--brand-accent);font-size:10px;cursor:pointer}.board-question-target>span{min-width:0}.board-question-form{max-width:none}.board-question-row textarea{font-size:13px}.board-question-target small{margin-left:auto}.board-side-rail :deep(.board-reading-pane){border-left:0}
+.board-body{grid-template-columns:minmax(0,1fr) minmax(340px,37%)}.board-side-rail{display:flex;flex-direction:column;min-width:0;min-height:0;border-left:1px solid var(--hairline);background:var(--reader-card)}.board-rail-tabs{display:flex;align-items:center;flex-shrink:0;gap:20px;height:48px;padding:0 22px;border-bottom:1px solid var(--hairline)}.board-rail-tabs button{display:flex;align-items:center;gap:7px;height:100%;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--stone);font-size:12px;cursor:pointer}.board-rail-tabs button[aria-selected=true]{color:var(--brand-accent);border-bottom-color:var(--brand-accent)}.board-rail-tabs span{font-size:10px;color:var(--stone)}.board-discussion-live-dot{width:5px;height:5px;border-radius:50%;background:var(--brand-accent)}.board-side-rail .board-reader-stack{flex:1;min-height:0}.board-whole-context{flex-shrink:0;padding:3px 7px;border:1px solid var(--hairline);border-radius:5px;background:var(--surface-soft);color:var(--brand-accent);font-size:10px;cursor:pointer}.board-question-target>span{flex:1;min-width:0}.board-question-form{max-width:none}.board-side-rail :deep(.board-reading-pane){border-left:0}
 @media(min-width:1400px){.board-body{grid-template-columns:minmax(0,1fr) 460px}}
-@media(max-width:700px){.board-body>.board-side-rail{width:100%;height:100%;border-left:0}.board-body.mobile-canvas>.board-side-rail{display:none}.board-body.mobile-reading>.board-canvas,.board-body.mobile-discussion>.board-canvas{display:none}.board-rail-tabs{display:none}.board-side-rail .board-reader-stack{height:100%}.board-mobile-switch{flex-shrink:0}.board-question-target{gap:5px}.board-whole-context{padding:3px 6px}.board-conversation{max-height:46%;overflow:auto}.board-question-target>span{white-space:nowrap}.board-run-status{margin-bottom:6px;padding-bottom:4px}}
+@media(max-width:700px){.board-body>.board-side-rail{width:100%;height:100%;border-left:0}.board-body.mobile-canvas>.board-side-rail{display:none}.board-body.mobile-reading>.board-canvas,.board-body.mobile-discussion>.board-canvas{display:none}.board-rail-tabs{display:none}.board-side-rail .board-reader-stack{height:100%}.board-mobile-switch{flex-shrink:0}.board-question-target{gap:5px}.board-whole-context{padding:3px 6px}.board-body.mobile-reading .board-conversation{display:none}.board-question-target>span{white-space:nowrap}.board-run-status{margin-bottom:6px;padding-bottom:4px}}
 </style>

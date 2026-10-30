@@ -279,7 +279,7 @@ pub(super) fn seed_with_presentation(
     transform(&mut content);
     for binding in &mut content.source_bindings {
         binding.publication_id = Some(publication.publication_id.clone());
-        binding.source_revision = Some(port.scope.book.source_fingerprint().into());
+        binding.source_revision = Some(port.scope.reading_book().source_fingerprint().into());
     }
     let sources = content.source_bindings.clone();
     let seed_answer = format!("先把两段路程与用时分别相加，再计算全程平均速度。去程与回程各 60 米，用时分别是 20 秒与 60 秒，因此平均速度为 1.5 m/s。 [[source:{}]]", sources[0].source_ref_id);
@@ -362,7 +362,7 @@ pub(super) fn seed_with_presentation(
         let fact: TeachingEvent = serde_json::from_value(json!({
             "event_id":"wb2-learner-expression","binding":{
                 "tutor_session_id":tutor.id,"session_revision":tutor.revision,"control_revision":state.control.revision,
-                "source_id":publication.book_id,"source_revision":port.scope.book.source_fingerprint(),"map_revision":"v1",
+                "source_id":publication.book_id,"source_revision":port.scope.reading_book().source_fingerprint(),"map_revision":"v1",
                 "chat_session_id":port.scope.chat_session_id,"turn_id":port.scope.turn_id},
             "kind":"usage_observed","causal_refs":[],"occurred_at":NOW,
             "payload":{"usage":{"kind":"user_message"},"response":LEARNER_QUOTE}
@@ -370,14 +370,14 @@ pub(super) fn seed_with_presentation(
         learning.append_teaching(&fact).unwrap();
         let evidence: LearningEvidence = serde_json::from_value(json!({
             "evidence_id":"wb2-understanding","action_ref":fact.event_id,"session_id":tutor.id,
-            "source_id":publication.book_id,"source_revision":port.scope.book.source_fingerprint(),"map_revision":"v1",
+            "source_id":publication.book_id,"source_revision":port.scope.reading_book().source_fingerprint(),"map_revision":"v1",
             "nature":"hypothesis","fact_refs":[fact.event_id],"teaching_implication":"继续比较等路程与等时间的不同条件。",
             "label":"平均速度与慢段权重","capability":"explanation","assistance_refs":[],"attempt":0,
             "status":"unassessed","interpretation":"用户已经用自己的话指出慢段占用更多时间。",
             "learner_quote":LEARNER_QUOTE,"interpreter_version":"wb2-fixture","source_quotes":[],
             "target":{"learning_focus":"平均速度与慢段权重","expected_performance":"解释等路程时为什么不能直接平均速度",
                 "capability":"explanation","source_bindings":[{"source_id":publication.book_id,
-                    "source_revision":port.scope.book.source_fingerprint(),"start_lid":"1.1","end_lid":"1.1"}],
+                    "source_revision":port.scope.reading_book().source_fingerprint(),"start_lid":"1.1","end_lid":"1.1"}],
                 "object_refs":[{"source_id":publication.book_id,"object_id":"speed","object_revision":1}]}
         })).unwrap();
         learning.append_evidence(&evidence).unwrap();

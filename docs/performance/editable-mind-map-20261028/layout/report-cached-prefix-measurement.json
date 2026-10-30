@@ -1,0 +1,81 @@
+{
+  "recorded_at": "2026-10-28T08:05:32.688Z",
+  "environment": {
+    "platform": "win32 10.0.19044",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "logical_cpus": 16,
+    "chromium": "149.0.7827.55",
+    "viewport": "1440×1000",
+    "device_scale_factor": 1
+  },
+  "scenario": "Local Rust chapter text (500 distinct short labels), repeatable five-child hierarchy; source text not published in this report",
+  "font_load_ms": 220.7999999821186,
+  "measurements": [
+    {
+      "topics": 500,
+      "measured_nodes": 500,
+      "first_layout_ms": 356,
+      "warm_samples_ms": [
+        18.400000005960464,
+        16.799999982118607,
+        12.200000017881393,
+        12,
+        13.400000005960464,
+        21,
+        18.799999982118607,
+        20.400000005960464,
+        13.599999994039536,
+        13.300000011920929
+      ],
+      "median_ms": 15.199999988079071,
+      "max_ms": 21,
+      "bounds": {
+        "x": -1108,
+        "y": -13454,
+        "width": 3081,
+        "height": 27294
+      }
+    },
+    {
+      "topics": 1000,
+      "measured_nodes": 1000,
+      "first_layout_ms": 57.599999994039536,
+      "warm_samples_ms": [
+        35.400000005960464,
+        31.099999994039536,
+        34.099999994039536,
+        35,
+        28.900000005960464,
+        31.299999982118607,
+        35.400000005960464,
+        32,
+        29.200000017881393,
+        24.399999976158142
+      ],
+      "median_ms": 31.649999991059303,
+      "max_ms": 35.400000005960464,
+      "bounds": {
+        "x": -1108,
+        "y": -31130,
+        "width": 3223,
+        "height": 62646
+      }
+    }
+  ],
+  "png": [
+    {
+      "name": "rust-full.png",
+      "width": 3378,
+      "height": 2360,
+      "bytes": 720451,
+      "elapsed_ms": 220.80000001192093
+    },
+    {
+      "name": "rust-branch.png",
+      "width": 1536,
+      "height": 872,
+      "bytes": 132771,
+      "elapsed_ms": 62.19999998807907
+    }
+  ]
+}

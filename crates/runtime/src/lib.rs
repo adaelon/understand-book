@@ -68,6 +68,8 @@ pub mod provider_stream;
 mod provider_timeout_tests;
 pub mod request_diagnostics;
 pub mod run_context;
+pub mod personal_notes;
+pub mod personal_run;
 pub mod run_events;
 pub mod semantic_release;
 pub mod tool_exposure;

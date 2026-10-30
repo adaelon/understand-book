@@ -1,0 +1,22 @@
+{
+  "scope": "Local fp16 clip, 2 chunks, two whole-build repetitions per variant; no paid provider",
+  "input_duration_ms": 36000,
+  "baseline_mean_ms": 19506.855450000003,
+  "resident_mean_ms": 16202.429449999998,
+  "mean_reduction_percent": 16.939818970155972,
+  "baseline_range_ms": [
+    20464.9199,
+    18548.791
+  ],
+  "resident_range_ms": [
+    16857.932399999998,
+    15546.926499999998
+  ],
+  "baseline_loads_per_build": 2,
+  "resident_loads_per_build": 1,
+  "exact_segments_equal": true,
+  "exact_text_equal": true,
+  "coverage_equal": true,
+  "api_calls": 0,
+  "peak_memory": "not measured"
+}

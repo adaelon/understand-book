@@ -164,6 +164,10 @@ mod presentation_interact;
 mod music_interact;
 mod music_source;
 mod note_api;
+mod personal_note_api;
+mod personal_chat;
+mod personal_note_context;
+mod personal_note_retrieval;
 mod board_api;
 mod board_conversation;
 mod board_prebuild;
@@ -1397,7 +1401,7 @@ fn migrate_agent_history(mut history: AgentHistory) -> Result<AgentHistory, Tool
 fn validate_agent_history(history: &AgentHistory) -> Result<(), ToolError> {
     let mut turn_ids = HashSet::new();
     for session in &history.sessions {
-        if session.id.trim().is_empty() || session.book_id.trim().is_empty() {
+        if session.id.trim().is_empty() || (session.book_id.is_empty() && session.learning_workspace_id.is_some()) {
             return Err(agent_history_internal(
                 "agent session id/book_id must not be empty",
             ));
@@ -1913,6 +1917,7 @@ fn finalize_user_agent_turn(
     }
     turn.outcome = outcome;
     turn.error = error;
+    if !delivery_failed {personal_note_context::remember_adoption(user,session.learning_workspace_id.as_deref(),turn)?;}
     validate_agent_turn(turn)?;
     if let Some(goal_ref) = turn.goal_ref.as_mut() {
         if let Some(goal) = session.goals.iter_mut().find(|goal| goal.id == goal_ref.id) {
@@ -1988,6 +1993,7 @@ fn agent_history_review_cursors(history: &AgentHistory) -> Vec<ReviewSessionCurs
     let mut cursors: Vec<ReviewSessionCursor> = history
         .sessions
         .iter()
+        .filter(|session| !session.book_id.is_empty())
         .filter_map(|session| {
             session.turns.last().map(|turn| ReviewSessionCursor {
                 turns: session.turns.iter().map(|t|memory::ReviewTurnOrigin {
@@ -2486,14 +2492,17 @@ fn agent_effect_label(book: &Book, effect: &AgentEffect) -> String {
 }
 
 fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
+    scoped_turn_view(Some(book),turn)
+}
+fn scoped_turn_view(book: Option<&Book>, turn: &AgentChatTurn) -> AgentChatTurnView {
     let question_quote = turn
         .question_quote
         .as_ref()
-        .map(|quote| question_quote_view(book, quote));
+        .and_then(|quote| book.map(|book|question_quote_view(book, quote)));
     let question_source_label = question_quote
         .as_ref()
         .map(|quote| quote.label.clone())
-        .or_else(|| question_source_label(book, turn));
+        .or_else(|| book.and_then(|book|question_source_label(book, turn)));
     let effect_labels = turn
         .run_summary
         .as_ref()
@@ -2502,12 +2511,12 @@ fn turn_view(book: &Book, turn: &AgentChatTurn) -> AgentChatTurnView {
         .map(|effects| {
             effects
                 .iter()
-                .map(|effect| agent_effect_label(book, effect))
+                .filter_map(|effect| book.map(|book|agent_effect_label(book, effect)))
                 .collect()
         })
         .unwrap_or_default();
     let mut outcome = turn.outcome.clone();
-    if let Some(public_outcome) = outcome.as_mut() {
+    if let (Some(public_outcome),Some(book)) = (outcome.as_mut(),book) {
         if let Some(legacy) = legacy_answer_projection(&turn.turn_id, public_outcome, book) {
             public_outcome.answer = Some(legacy.answer);
             public_outcome.answer_view = Some(legacy.view);
@@ -2849,6 +2858,16 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
 
 fn route_inner(state: &mut AppState, req: Req) -> Reply {
     let (local_path, _) = parse_query(req.url);
+    if local_path == "/memory/prepare_note" {
+        if req.method != "POST" {return method_not_allowed();}
+        let input=match body_value(req.body){Ok(value)=>value,Err(reply)=>return reply};
+        return match personal_note_api::prepare(&state.user,&state.workspace,&input){Ok(value)=>ok_json(&json!(value)),Err(error)=>err_reply(&error)};
+    }
+    if let Some(action)=local_path.strip_prefix("/me/notes/") {
+        if req.method != "POST" {return method_not_allowed();}
+        let input=match body_value(req.body){Ok(value)=>value,Err(reply)=>return reply};
+        return match personal_note_api::dispatch(&mut state.user,action,input,req.now){Ok(value)=>ok_json(&value),Err(error)=>err_reply(&error)};
+    }
     if let Some(action) = local_path.strip_prefix("/build_workbench/music/") {
         return music_calibration::dispatch(state, action, req.method, req.body);
     }
@@ -12088,6 +12107,7 @@ fn route_agent_source_open(state: &mut AppState, body: &str, now: &str) -> Reply
 /// `OuterOutcome{answer, incomplete, effects, trace, ...}`;agent 动作即时驱动共享 reader 视口,
 /// effects 供前端可撤销提议、trace 供查询踪迹展示。provider 错经 run 映射 `PROVIDER_ERROR` 透传不降级。
 struct ValidatedAgentInput {
+    personal_notes: Option<Value>,
     board_context: Option<board_api::FrozenBoardFollowUp>,
     music_question: Option<base_schema::MusicQuestionContext>,
     video_question: Option<base_schema::VideoQuestionContext>,
@@ -12300,7 +12320,10 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             }
         }
     }
-    Ok(ValidatedAgentInput { board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    let mut note_input=v.clone();
+    if let Some(board)=&board_context {if board.follow_up.note_refs.is_some(){note_input["note_refs"]=json!(board.follow_up.note_refs);}}
+    let personal_notes=personal_note_context::freeze(user,&note_input,workspace.selected_chat.as_deref()).map_err(|e|err_reply(&e))?;
+    Ok(ValidatedAgentInput { personal_notes, board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
 
@@ -12310,18 +12333,19 @@ fn prepare_agent_chat(
     now: &str,
 ) -> Result<agent_run::PreparedAgentChat, Reply> {
     if let Some(reply) = interaction_input::local_repeat(state, body)? { return Err(reply); }
+    if body_value(body)?["scope"] == "personal" { return personal_chat::prepare(state,body,now).map_err(|e|err_reply(&e)); }
     if let Some((id, goal)) = state.workspace.learning_workspace_id.as_deref().zip(state.workspace.learning_goal.as_ref()) {
         state.user.learning_store_for_workspace(Some(id)).and_then(|mut store| store.sync_workspace_goal(goal.revision, now))
             .map_err(|error| err_reply(&error))?;
     }
-    let ValidatedAgentInput { board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
+    let ValidatedAgentInput { personal_notes, board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, mut agent_message, presentation_context } = validate_agent_input(&mut state.user, &state.workspace, body)?;
     let msg = message.as_str();
     let current_book_id = state.workspace.book.base.book_id.clone();
-    let mut domain = if interaction.is_some() || board_context.is_some() {
+    let mut domain = if interaction.is_some() || board_context.is_some() || personal_notes.is_some() {
         Some(interaction_input::local_domain_for_request(state, &v, interaction.as_ref()).map_err(|e|err_reply(&e))?)
     } else { None };
-    if let Some(domain) = &mut domain { domain.board_context = board_context.clone(); }
+    if let Some(domain) = &mut domain { domain.board_context = board_context.clone(); domain.personal_notes=personal_notes; }
     let related_goal = interaction_input::related_goal(&state.user, state.workspace.selected_chat.as_deref(), interaction.as_ref());
     let turn_ref = match precommit_agent_turn_with_goal(
         state,
@@ -12365,7 +12389,7 @@ fn prepare_agent_chat(
     };
     session_runtime::link_teaching(&mut state.user, &turn_ref, now).map_err(|e| err_reply(&e))?;
     let mut scope = run_scope::RunScope::capture(state, &turn_ref, msg, question_quote, presentation_follow_up);
-    scope.reader_input.video_question = video_question;
+    scope.reader_input.as_mut().expect("reading scope").video_question = video_question;
     scope.music_question = music_question;
     scope.board_context = board_context;
     if scope.presentation_follow_up.is_some() {
@@ -12450,7 +12474,17 @@ fn run_precommitted_with_ports(
     port.check_access()?;
     let msg = prepared.message.as_str();
     let agent_message = prepared.agent_message.as_str();
-    let book = prepared.scope.book.as_ref();
+    if prepared.scope.book.is_none() {
+        let (checkpoint,projection)=port.with_user(|user| {
+            prepared.scope.check_user(user)?;
+            let session=user.agent_history.sessions.iter().find(|s|s.id==prepared.turn_ref.session_id).unwrap();
+            Ok::<_,ToolError>((session.compaction_checkpoint.clone(),user.session_store.as_ref().and_then(|s|s.logs.get(&session.id)).and_then(|l|l.projection.active_model_projection.clone())))
+        })?;
+        context.restore_model_projection(projection,adapter.projection_identity().as_deref());
+        let mut sink=agent_run::RunCheckpointSink{port,turn_ref:&prepared.turn_ref};
+        return runtime::personal_run::run(state_port,adapter,context,agent_message,checkpoint,&mut sink);
+    }
+    let book = prepared.scope.reading_book().as_ref();
     let current_book_id = book.base.book_id.as_str();
     let turn_ref = &prepared.turn_ref;
     let now = prepared.now.as_str();
@@ -13402,6 +13436,7 @@ mod tests {
     pub(crate) mod teaching_design_tests;
     mod teaching_design_live_tests;
     mod workspace_cache_live_tests;
+    mod personal_notes_live_tests;
     mod tutor_response_fit_tests;
     mod tutor_presentation_tests;
     mod tutor_understanding_view_tests;
@@ -13937,7 +13972,7 @@ mod tests {
         let mut state = state_named("mu1c-chat-generation");
         let prepared = prepare_agent_chat(&mut state, r#"{"message":"解释 1.1"}"#, "now").unwrap_or_else(|r| panic!("{}", r.body));
         let chat = prepared.turn_ref.session_id.clone();
-        let input = serde_json::to_value(&prepared.scope.reader_input.state).unwrap();
+        let input = serde_json::to_value(&prepared.scope.reader_input.as_ref().unwrap().state).unwrap();
         assert_eq!(route_agent_new(&mut state, "later").status, 200);
         assert_eq!(route_agent_history_select(&mut state, &json!({"session_id":chat}).to_string()).status, 200);
         let app = BorrowedAppPort(RefCell::new(&mut state));
@@ -13945,7 +13980,7 @@ mod tests {
             previewed:Default::default(), animations:Default::default(), plots:Default::default() };
         assert_eq!(port.read_live_reader(|r| r.revision()).unwrap_err().error_code, "WORKSPACE_STALE");
         assert_eq!(port.apply_reader(|_, _| panic!("stale closure ran")).unwrap_err().error_code, "WORKSPACE_STALE");
-        assert_eq!(serde_json::to_value(port.reader_input(&prepared.scope.book, "new question").state).unwrap(), input);
+        assert_eq!(serde_json::to_value(port.reader_input(&prepared.scope.reading_book(), "new question").state).unwrap(), input);
         assert!(port.submit_private(|store| store.projection_revision()).is_ok());
         app.with_app(|state| state.user = user_runtime::UserRuntime::visitor(MemoryStore::unavailable(tmp("mu1c-visitor"), agent_history_internal("unavailable"), "now")));
         assert_eq!(port.submit_private(|_| panic!("wrong owner closure ran")).unwrap_err().error_code, "RUN_OWNER_MISMATCH");

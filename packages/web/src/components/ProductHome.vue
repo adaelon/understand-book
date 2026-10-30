@@ -187,7 +187,6 @@ const questions = [
       <div class="home-nav-actions">
         <LanguageSwitcher />
         <a href="./?account=login" class="home-login">{{ uiText('登录') }}</a>
-        <a href="/downloads/UnderstandBookSetup.exe" class="home-nav-join" download>{{ uiText('Windows 版') }} <ArrowDown :size="15" /></a>
       </div>
     </header>
 
@@ -285,7 +284,6 @@ const questions = [
             <p class="home-beta-notice">{{ uiText('内测期间 AI Token 免费使用，不限额度。') }}</p>
             <a class="home-button home-button-light" href="./?account=register">{{ uiText('已有内测码，开始注册') }} <ArrowUpRight :size="18" /></a>
             <a class="home-begin-login" href="./?account=login">{{ uiText('已经有账号？继续阅读') }} <ArrowRight :size="16" /></a>
-            <a class="home-begin-login" href="/downloads/UnderstandBookSetup.exe" download>{{ uiText('下载 Windows 版 · 使用同一账号登录') }} <ArrowRight :size="16" /></a>
             <p>{{ uiText('使用内测码注册，验证邮箱后即可开始。') }}</p>
           </div>
         </div>

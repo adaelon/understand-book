@@ -155,8 +155,8 @@ fn tutor_tb1_fixture_replays_distinct_starts_and_source() {
     }
 }
 
-/// Fixed teaching choices exercise real prepare/design/select/review/storage.
-/// The adapter records actual requests; its acceptance is not a semantic verdict.
+/// Fixed teaching choices exercise real prepare/design/select/storage.
+/// The adapter records actual main-model inputs; host acceptance is not a semantic verdict.
 pub(super) fn om3_replay(
     state: &mut AppState,
     run: agent_run::PreparedAgentChat,
@@ -189,46 +189,29 @@ pub(super) fn om3_replay(
     let outcome: Value = serde_json::from_str(&result.reply.body).unwrap();
     assert_eq!(outcome["incomplete"], false, "{outcome}");
     let captured = samples.lock().unwrap();
-    let reviews: Vec<_> = captured.iter().filter(|sample| sample["kind"] == "structured_completion").collect();
-    assert_eq!(reviews.len(), 1, "the scripted selection must reach the real private review once");
-    let review: Value = serde_json::from_str(reviews[0]["input"][0]["content"].as_str().unwrap()).unwrap();
-    assert_eq!(review["frozen_input"]["current_request"], frozen["current_request"]);
-    assert_eq!(review["frozen_input"]["confirmed_preferences"], frozen["confirmed_preferences"]);
-    assert!(review["learner_view"]["learning_opportunity"]["continuity"].is_object(),
-        "review must receive the same continuity evidence used to choose support");
+    assert!(captured.iter().all(|sample| sample["kind"] != "structured_completion"),
+        "delivery must not invoke a fact or explanation reviewer");
     assert!(captured[0]["input"].to_string().contains(frozen["current_request"].as_str().unwrap()),
         "the actual first main-model request must carry the current words");
-    assert_eq!(review["proposed_delivery"]["text"], body);
-    assert_eq!(review["local_design"]["design_ref"], design_ref);
     let store = state.user.learning_store().unwrap();
     let deliveries = store.teaching_deliveries(&turn.session_id, &turn.turn_id).unwrap();
     assert_eq!(deliveries.len(), 1);
     assert_eq!(deliveries[0].payload["answer"], body);
     let selected = store.teaching_event(&deliveries[0].causal_refs[0]).unwrap();
     assert_eq!(selected.payload["move"]["delivery_text"], body);
-    assert_eq!(review["proposed_delivery"]["moves"][0]["target"], selected.payload["move"]["target"],
-        "the compact review must use the normalized local target that is committed");
     let accepted_design = store.teaching_event(&design_ref).unwrap();
-    let reviewed_blocks = review["local_design"]["blocks"].as_array().unwrap();
     let block_refs = selected.payload["move"]["block_refs"].as_array().unwrap();
-    let expected_blocks: Vec<_> = accepted_design.payload["design"]["blocks"].as_array().unwrap().iter()
-        .filter(|block| block_refs.contains(&block["block_id"])).cloned().collect();
-    assert_eq!(*reviewed_blocks, expected_blocks, "the review must retain the actual selected relationships");
+    assert!(block_refs.iter().all(|reference| accepted_design.payload["design"]["blocks"].as_array().unwrap()
+        .iter().any(|block| block["block_id"] == *reference)));
     let events = store.teaching_turn_events(&deliveries[0].binding.tutor_session_id, &turn.turn_id).unwrap();
-    let audit = events.iter().find(|event| event.kind == memory::teaching::TeachingFact::AgentWorkReviewed)
-        .expect("the original complete review packet must be persisted");
-    assert_eq!(audit.payload["current_design"]["design_ref"], design_ref);
-    assert_eq!(audit.payload["current_design"]["design"], accepted_design.payload["design"],
-        "compact model input must not discard the complete original design audit");
-    assert_eq!(audit.payload["proposed_delivery"]["moves"][0]["target"], selected.payload["move"]["target"]);
+    assert!(events.iter().all(|event| event.kind != memory::teaching::TeachingFact::AgentWorkReviewed),
+        "selection must not manufacture an accepted review");
     assert!(events.iter().all(|event| event.kind != memory::teaching::TeachingFact::LearnerAction),
         "teacher support does not create a learner submission");
     let report = json!({
         "prepare": frozen, "main_input": captured[0]["input"],
         "main_instructions": captured[0]["instructions"],
-        "review_input": review, "review_instructions": reviews[0]["instructions"],
         "delivery": deliveries[0], "selection": selected, "accepted_design": accepted_design,
-        "review_audit": audit,
         "outcome": outcome,
     });
     if let Ok(directory) = std::env::var("OM3_OUTPUT") {
@@ -259,11 +242,9 @@ fn om3_operational_barrier_delivers_a_method_without_a_new_test() {
     assert_eq!(movement["participation"]["choice"], "support");
     assert!(movement["response_expectation"].is_null());
     assert!(movement["assessment"].is_null());
-    assert_eq!(report["review_audit"]["payload"]["current_design"]["design"]["basis_refs"], json!([fact]));
-    assert!(report["review_input"]["learner_grounding"]["expressions"].as_array().unwrap().iter()
-        .any(|expression| expression["fact_ref"] == fact && expression["text"] == request),
-        "the compact review must still receive the original words behind the design's basis");
-    assert!(report["review_input"]["learner_grounding"]["interpretations"].as_array().unwrap().is_empty());
+    assert_eq!(report["accepted_design"]["payload"]["design"]["basis_refs"], json!([fact]));
+    assert!(report["main_input"].to_string().contains(request));
+    assert!(report["prepare"]["learner_context"]["interpretations"].as_array().unwrap().is_empty());
     assert!(state.user.learning_store().unwrap().learner_projection(&state.workspace.book.base.book_id).unwrap()
         .0.unwrap().rows.is_empty(), "a worked method supplies no independent-performance evidence");
 }

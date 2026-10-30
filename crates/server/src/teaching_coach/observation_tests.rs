@@ -198,6 +198,42 @@ fn append_read_receipts(state:&mut AppState,turn:&AgentTurnRef,lid:&str) {
 }
 
 #[test]
+fn ma2_unreviewed_delivery_restores_full_original_reads_and_input_time_help() {
+    let (_root,mut state)=fixture(false);
+    let paths=crate::session_store::SessionPaths::from_history(state.user.history_path.as_ref().unwrap());
+    let (mut sessions,mut history)=crate::session_store::SessionStore::open(paths).unwrap();
+    for session in state.user.agent_history.sessions.clone() { sessions.create(&mut history,session).unwrap(); }
+    for (book,chat) in state.user.agent_history.active_by_book.clone() { sessions.select(&mut history,&book,&chat).unwrap(); }
+    state.user.agent_history=history;state.user.session_store=Some(sessions);
+    let prior=prepare(&mut state,"请先解释总时间");
+    complete(&mut state,&prior,false);
+    let run=prepare(&mut state,"也就是说停车也算总时间，对吗？");
+    append_read_receipts(&mut state,&run.turn_ref,"1.1");
+    let mut response=outcome(None);response.source_bindings.clear();
+    finish(&mut state,&run.turn_ref,&response);
+    let binding:TeachingBinding=serde_json::from_value(run.tutor.as_ref().unwrap()["binding"].clone()).unwrap();
+    let store=state.user.learning_store().unwrap();
+    let job=store.coach_job_for_source(&binding.tutor_session_id,CoachJobOrigin::AfterTurn,&run.turn_ref.turn_id).unwrap().unwrap();
+    assert!(!job.input.context["turn_facts"].as_array().unwrap().iter().any(|fact|fact["kind"]=="agent_work_reviewed"));
+    assert!(store.agent_working_state(&binding).unwrap()["current_work"].is_null());
+    let claimed=claim_exact(&state,&job);
+    let frozen=observations::freeze_original_reads(&state.user,&claimed,&state.workspace.book,false).unwrap();
+    assert_eq!(frozen.input.context["verified_read_ranges"],json!([{"start_lid":"1.1","end_lid":"1.1"}]));
+    let hydrated=observations::with_material(&frozen,&state.workspace.book).unwrap();
+    assert_eq!(hydrated.input.context["read_sources"][0]["text"],state.workspace.book.text("1.1",Some("1.1")).unwrap());
+    let fact=&hydrated.input.context["observation_facts"][0];
+    assert_eq!(fact["user_expression"],"也就是说停车也算总时间，对吗？");
+    let help=fact["prior_help"].as_array().unwrap();
+    assert!(!help.is_empty());
+    assert!(help.iter().all(|item|item["binding"]["turn_id"]==prior.turn_ref.turn_id));
+    commit_candidate(&state,&frozen,candidate(&hydrated));
+    let saved=store.coach_job(&job.input.job_ref).unwrap().unwrap();
+    assert_eq!(saved.status,CoachJobStatus::Ready);
+    assert_eq!(saved.guidance.unwrap()["observation_receipts"][0]["status"],"recorded");
+    assert!(store.agent_working_state(&binding).unwrap()["current_work"].is_null());
+}
+
+#[test]
 fn background_observation_failed_backfill_recovers_only_original_turn_reads_before_explicit_retry() {
     let mut base=base_schema::sample_base();
     base.lid_nodes[0].span.end=200;base.lid_nodes[0].children.push("1.2".into());

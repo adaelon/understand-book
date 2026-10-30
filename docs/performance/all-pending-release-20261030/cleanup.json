@@ -1,0 +1,15 @@
+{
+  "status": "cleaned",
+  "removed": [
+    "candidate-data",
+    "build-tmp",
+    "qa-login.private.json",
+    "browser-auth.private.json",
+    "public-browser-auth.private.json"
+  ],
+  "qa_service_stopped": true,
+  "temporary_swap_removed": true,
+  "swappiness": 0,
+  "service": "WorkingDirectory=/opt/understand-book/releases/all-pending-20261030\nActiveState=active",
+  "available_gb": 4.23
+}

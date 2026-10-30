@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { inject } from 'vue';
@@ -1534,7 +1535,7 @@ onBeforeUnmount(() => {
       <button @click="props.activeLid && emit('focus-source', { lid: props.activeLid, quote: null })">{{ uiText('打开来源正文') }}</button>
     </footer>
 
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <section
         v-if="annotationSurface && (activeNoteMarker || activeHighlight)"
         class="pdf-annotation-surface"

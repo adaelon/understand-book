@@ -6,6 +6,12 @@
 mod backfill;
 mod document;
 mod note;
+mod personal_notes;
+pub use personal_notes::*;
+mod note_attachments;
+pub use note_attachments::*;
+mod personal_note_search;
+pub use personal_note_search::{NoteSearchHit,NoteIndexDocument};
 #[cfg(test)]
 mod note_tests;
 pub use note::*;
@@ -74,6 +80,8 @@ use std::time::{Duration, Instant};
 
 /// 记忆记录(符 V3 §4.3 / `[ADR-0015]`)。`type` 是 Rust 保留词 ⇒ serde rename。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Record {
     pub mem_id: String,
     #[serde(rename = "type")]
@@ -101,6 +109,8 @@ pub struct Record {
 
 /// 锚:`{lid?}` | `{concept?}`(切片0 主用 lid)。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Anchor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lid: Option<String>,
@@ -112,6 +122,8 @@ pub struct Anchor {
 /// (非全书 source 绝对偏移)。与 DOM 选区偏移 / JS `string.slice` / Rust `encode_utf16` 同口径(承 [ADR-0024]),
 /// 前端捕获↔后端切片↔前端重绘零换算。整段高亮(agent / 无选区)= range 缺省 None。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct TextRange {
     pub start: u32,
     pub end: u32,
@@ -119,6 +131,8 @@ pub struct TextRange {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum SelectionResolution {
     Resolved,
     Partial,
@@ -126,18 +140,24 @@ pub enum SelectionResolution {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum SelectionResolutionBasis {
     Exact,
     Recovered,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SelectedRange {
     pub lid: String,
     pub range: TextRange,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct SelectionContext {
     pub status: SelectionResolution,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -195,6 +215,8 @@ impl NoteBodyPlacement {
 
 /// 记忆引用锚定(`[ADR-0015]`,引用红线延伸 `[ADR-0004]`):recall 可验证、可跳原文。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct MemCitation {
     pub lid: String,
     pub book_id: String,
@@ -203,6 +225,8 @@ pub struct MemCitation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct Usage {
     pub count: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -545,6 +569,7 @@ struct PendingReadTouch {
 }
 
 pub struct MemoryStore {
+    note_lexical_index: std::sync::Mutex<Option<personal_note_search::NoteLexicalIndex>>,
     path: PathBuf,
     learning_path: PathBuf,
     writer_lease: Option<std::sync::Arc<dyn Send + Sync>>,
@@ -561,12 +586,12 @@ enum MemoryStorage {
 
 impl MemoryStore {
     /// Resolve navigation only. Mutations still require the actual current mem_id.
-    pub fn current_note_record(&self, previous: &str) -> Option<&Record> {
-        self.document.records.iter().find(|record| record.mem_id == previous && record.mem_type == "note")
+    pub fn current_note_record(&self, previous: &str) -> Option<Record> {
+        self.document.notes.iter().find(|note| note.note_id == previous)
             .or_else(|| {
                 let current = self.document.note_replacements.get(previous)?;
-                self.document.records.iter().find(|record| &record.mem_id == current && record.mem_type == "note")
-            })
+                self.document.notes.iter().find(|note| &note.note_id == current)
+            }).map(PersonalNote::as_record)
     }
 
     /// 默认库路径:`UNDERSTAND_BOOK_MEMORY_DIR` env 覆盖,否则 `<home>/.understand-book/memory/memory.json`。
@@ -596,7 +621,7 @@ impl MemoryStore {
             {
                 StoredMemory::Document(document) => {
                     let document = *document;
-                    if matches!(document.schema_version, 2 | 3) {
+                    if matches!(document.schema_version, 2 | 3 | 4 | 5) {
                         let document = document.migrate_previous().map_err(internal)?;
                         persist_document_atomically(&path, &document, false)?;
                         document
@@ -615,6 +640,7 @@ impl MemoryStore {
             MemoryDocument::empty()
         };
         Ok(MemoryStore {
+            note_lexical_index:std::sync::Mutex::new(None),
             learning_path: path.with_file_name("learning.db"),
             writer_lease: None,
             path,
@@ -656,6 +682,7 @@ impl MemoryStore {
     ) -> MemoryStore {
         let path = path.into();
         MemoryStore {
+            note_lexical_index:std::sync::Mutex::new(None),
             learning_path: path.with_file_name("learning.db"),
             writer_lease: None,
             path,
@@ -786,8 +813,9 @@ impl MemoryStore {
             .iter()
             .find(|r| r.mem_id == mem_id)
             .map(|r| r.usage.count)
+            .or_else(||self.document.notes.iter().find(|n|n.note_id == mem_id).map(|n|n.location.usage.count))
             .unwrap_or(0);
-        let record = Record {
+        let mut record = Record {
             mem_id: mem_id.clone(),
             mem_type: input.mem_type,
             layer: input.layer,
@@ -808,9 +836,19 @@ impl MemoryStore {
         };
         // upsert:同 mem_id 替换,否则追加。
         let mut candidate = self.projection_mutation_candidate()?;
-        match candidate.records.iter_mut().find(|r| r.mem_id == mem_id) {
-            Some(slot) => *slot = record.clone(),
-            None => candidate.records.push(record.clone()),
+        if record.mem_type == "note" {
+            match candidate.notes.iter_mut().find(|n|n.note_id == mem_id) {
+                Some(note) => {
+                    record.generated_at = note.created_at.clone();
+                    note.append_record(record.clone(),now);
+                },
+                None => candidate.notes.push(PersonalNote::from_record(record.clone(),NoteAuthorship::AssistantDraft)),
+            }
+        } else {
+            match candidate.records.iter_mut().find(|r| r.mem_id == mem_id) {
+                Some(slot) => *slot = record.clone(),
+                None => candidate.records.push(record.clone()),
+            }
         }
         self.commit_document(candidate)?;
         // P4-4:账本变更后重派生只读 .md 视图(best-effort,不阻断真相源)`[ADR-0040]`。
@@ -847,13 +885,13 @@ impl MemoryStore {
         }
         if let Some(existing) = self
             .document
-            .records
+            .notes
             .iter()
-            .find(|record| record.mem_id == mem_id)
+            .find(|note| note.note_id == mem_id)
         {
             return Ok(NoteSaveOutcome {
                 status: NoteSaveStatus::Existing,
-                record: existing.clone(),
+                record: existing.as_record(),
             });
         }
 
@@ -878,7 +916,7 @@ impl MemoryStore {
             source_session_id: input.source_session_id,
         };
         let mut candidate = self.projection_mutation_candidate()?;
-        candidate.records.push(record.clone());
+        candidate.notes.push(PersonalNote::from_record(record.clone(), NoteAuthorship::User));
         self.commit_document(candidate)?;
         let _ = self.write_profile_files();
         Ok(NoteSaveOutcome {
@@ -892,13 +930,13 @@ impl MemoryStore {
         validate_note_placement(&input.note_placement)?;
         let Some(index) = self
             .document
-            .records
+            .notes
             .iter()
-            .position(|record| record.mem_id == input.mem_id)
+            .position(|note| note.note_id == input.mem_id)
         else {
             return Err(memory_not_found(&input.mem_id));
         };
-        let old = self.document.records[index].clone();
+        let old = self.document.notes[index].as_record();
         if old.mem_type != "note" || old.selection_context.is_some() {
             return Err(note_reanchor_not_allowed());
         }
@@ -912,31 +950,11 @@ impl MemoryStore {
             book_id: old.book_id.clone(),
             note: None,
         }];
-        let mem_id = content_mem_id(
-            &old.book_id,
-            &old.mem_type,
-            &anchor,
-            &old.content,
-            old.range.as_ref(),
-            None,
-            Some(&input.note_placement),
-            old.note.as_ref(),
-        );
-        if mem_id == old.mem_id {
+        if old.note_placement.as_ref() == Some(&input.note_placement) {
             return Ok(old);
         }
-        if self
-            .document
-            .records
-            .iter()
-            .enumerate()
-            .any(|(candidate_index, record)| candidate_index != index && record.mem_id == mem_id)
-        {
-            return Err(note_reanchor_conflict(&mem_id));
-        }
-
         let replacement = Record {
-            mem_id,
+            mem_id: old.mem_id,
             mem_type: old.mem_type,
             layer: old.layer,
             book_id: old.book_id,
@@ -952,10 +970,10 @@ impl MemoryStore {
             source_session_id: old.source_session_id,
         };
         let mut candidate = self.projection_mutation_candidate()?;
-        candidate.records[index] = replacement.clone();
-        if replacement.mem_type == "note" {
-            candidate.replace_note_identity(&input.mem_id, &replacement.mem_id);
-        }
+        let location = &mut candidate.notes[index].location;
+        location.anchor = replacement.anchor.clone();
+        location.placement = replacement.note_placement.clone();
+        location.detached = false;
         self.commit_document(candidate)?;
         let _ = self.write_profile_files();
         Ok(replacement)
@@ -963,6 +981,16 @@ impl MemoryStore {
 
     /// Atomically promote the current record version without changing its content identity.
     pub fn promote(&mut self, input: PromoteInput) -> Result<Record, ToolError> {
+        if let Some(index) = self.document.notes.iter().position(|n|n.note_id == input.mem_id) {
+            let current = self.document.notes[index].as_record();
+            if current.layer == input.to_layer {return Ok(current);}
+            if current.layer != input.from_layer {return Err(personal_notes::note_error("MEMORY_LAYER_CONFLICT","conflict","笔记的层级已改变"));}
+            let mut candidate = self.projection_mutation_candidate()?;
+            candidate.notes[index].location.layer = input.to_layer;
+            let record = candidate.notes[index].as_record();
+            self.commit_document(candidate)?;
+            return Ok(record);
+        }
         let Some(index) = self
             .document
             .records
@@ -1004,18 +1032,18 @@ impl MemoryStore {
 
     /// 原子替换一条 memory:候选快照落盘成功后才切换内存状态。
     pub fn replace(&mut self, input: ReplaceInput, now: &str) -> Result<Record, ToolError> {
-        let Some(index) = self
+        let index = self
             .document
             .records
             .iter()
-            .position(|record| record.mem_id == input.mem_id)
-        else {
-            return Err(memory_not_found(&input.mem_id));
-        };
-        if self.document.records[index].mem_type == operation::PROFILE_EVIDENCE_RECORD_TYPE {
+            .position(|record| record.mem_id == input.mem_id);
+        let old = index.map(|i|self.document.records[i].clone())
+            .or_else(||self.document.notes.iter().find(|n|n.note_id == input.mem_id).map(PersonalNote::as_record))
+            .ok_or_else(||memory_not_found(&input.mem_id))?;
+        if old.mem_type == operation::PROFILE_EVIDENCE_RECORD_TYPE {
             return Err(profile_evidence_protected());
         }
-        if input.content.trim().is_empty() && self.document.records[index].note.as_ref().and_then(|n| n.retained_excerpt.as_ref()).is_none() {
+        if input.content.trim().is_empty() && old.note.as_ref().and_then(|n| n.retained_excerpt.as_ref()).is_none() {
             return Err(ToolError {
                 error_code: "INVALID_MEMORY_CONTENT".into(),
                 category: "validation".into(),
@@ -1023,7 +1051,6 @@ impl MemoryStore {
             });
         }
 
-        let old = self.document.records[index].clone();
         if old.note_placement.is_some() && input.selection_context.is_some() {
             return Err(invalid_note_placement(
                 "正文放置型 Note 不得通过 memory.replace 转为引用型".into(),
@@ -1081,7 +1108,7 @@ impl MemoryStore {
             }
         }
         validate_note_source(&validation_input, false)?;
-        let mem_id = content_mem_id(
+        let mem_id = if old.mem_type == "note" { old.mem_id.clone() } else { content_mem_id(
             &old.book_id,
             &old.mem_type,
             &anchor,
@@ -1090,13 +1117,13 @@ impl MemoryStore {
             selection_context.as_ref(),
             old.note_placement.as_ref(),
             validation_input.note.as_ref(),
-        );
+        ) };
         if self
             .document
             .records
             .iter()
             .enumerate()
-            .any(|(candidate_index, record)| candidate_index != index && record.mem_id == mem_id)
+            .any(|(candidate_index, record)| Some(candidate_index) != index && record.mem_id == mem_id)
         {
             return Err(ToolError {
                 error_code: "MEMORY_REPLACE_CONFLICT".into(),
@@ -1125,9 +1152,12 @@ impl MemoryStore {
             source_session_id: old.source_session_id,
         };
         let mut candidate = self.projection_mutation_candidate()?;
-        candidate.records[index] = replacement.clone();
         if replacement.mem_type == "note" {
-            candidate.replace_note_identity(&input.mem_id, &replacement.mem_id);
+            let note = candidate.notes.iter_mut().find(|n|n.note_id == input.mem_id).expect("read above");
+            note.location.anchor = replacement.anchor.clone();
+            note.append_record(replacement.clone(),now);
+        } else {
+            candidate.records[index.expect("non-note record")] = replacement.clone();
         }
         self.commit_document(candidate)?;
         let _ = self.write_profile_files();
@@ -1144,9 +1174,15 @@ impl MemoryStore {
         }
         let mut candidate = self.projection_mutation_candidate()?;
         let before = candidate.records.len();
+        let notes_before = candidate.notes.len();
         candidate.records.retain(|r| r.mem_id != mem_id);
+        candidate.notes.retain(|n|n.note_id != mem_id);
+        for operation in candidate.note_operations.values_mut().filter(|op|op.reference.note_id==mem_id) {operation.request=None;}
+        candidate.note_links.retain(|l|l.from.note_id != mem_id && l.to.note_id != mem_id);
+        candidate.note_attachments.retain(|a| a.note_id != mem_id);
+        candidate.note_discussions.retain(|d|d.reference.note_id != mem_id);
         candidate.note_replacements.retain(|previous, current| previous != mem_id && current != mem_id);
-        if candidate.records.len() == before {
+        if candidate.records.len() == before && candidate.notes.len() == notes_before {
             return Err(ToolError {
                 error_code: "MEMORY_NOT_FOUND".into(),
                 category: "not_found".into(),
@@ -1166,6 +1202,8 @@ impl MemoryStore {
             .document
             .records
             .iter()
+            .cloned()
+            .chain(self.document.notes.iter().filter(|n|!n.location.detached).map(PersonalNote::as_record))
             .filter(|record| record.mem_type != operation::PROFILE_EVIDENCE_RECORD_TYPE)
             .filter(|r| q.book_id.as_ref().is_none_or(|b| &r.book_id == b))
             .filter(|r| q.mem_type.as_ref().is_none_or(|t| &r.mem_type == t))
@@ -1180,7 +1218,6 @@ impl MemoryStore {
                     .as_ref()
                     .is_none_or(|t| r.content.contains(t.as_str()))
             })
-            .cloned()
             .collect();
         out.sort_by(|a, b| a.mem_id.cmp(&b.mem_id));
         out
@@ -1346,7 +1383,7 @@ impl MemoryStore {
     /// 单本阅读状态确定性派生 `[ADR-0075]`:保留已读顺序,其余只归约 qa/note/highlight 原始活动。
     /// 行为信号不直接表达困惑、掌握或能力;旧 reader profile 字段由显式兼容投影提供。
     pub fn derive_book_reading_state(&self, book_id: &str) -> BookReadingState {
-        BookReadingState::from_records(book_id, self.read_lids(book_id), &self.document.records)
+        BookReadingState::from_records(book_id, self.read_lids(book_id), &self.recall(&RecallQuery::default()))
     }
 
     /// 某书某 LID 的 qa 提问文本 `[ADR-0041]`,按 `generated_at` 序(tie `mem_id`),供透明展示。
@@ -1424,14 +1461,6 @@ fn note_reanchor_not_allowed() -> ToolError {
         error_code: "NOTE_REANCHOR_NOT_ALLOWED".into(),
         category: "validation".into(),
         message: "只有正文放置型或 legacy Note 可显式重锚".into(),
-    }
-}
-
-fn note_reanchor_conflict(mem_id: &str) -> ToolError {
-    ToolError {
-        error_code: "NOTE_REANCHOR_CONFLICT".into(),
-        category: "conflict".into(),
-        message: format!("Note 重锚目标记录已存在: {mem_id}"),
     }
 }
 
@@ -1689,7 +1718,8 @@ mod tests {
                 "2026-02-02T00:00:00Z",
             )
             .unwrap();
-        assert_eq!(replaced.mem_id, "mem_350f3ef2974c5419");
+        assert_eq!(replaced.mem_id, "mem_a4acdf2b6f3df284");
+        assert_eq!(store.personal_note(&NoteRef {note_id:replaced.mem_id.clone(),revision:Some(1)}).unwrap().value.record.content,"selected note");
         assert_eq!(replaced.anchor.lid.as_deref(), Some("3.1"));
         assert_eq!(
             replaced
@@ -1720,11 +1750,11 @@ mod tests {
             .any(|record| { record.mem_id == "mem_620ddff409de9979" && record.usage.count == 3 }));
         assert!(records
             .iter()
-            .any(|record| record.mem_id == "mem_350f3ef2974c5419"));
+            .any(|record| record.mem_id == "mem_a4acdf2b6f3df284"));
         assert!(!records.iter().any(|record| {
             matches!(
                 record.mem_id.as_str(),
-                "mem_a4acdf2b6f3df284" | "mem_0dcc7e3a8f87d6c4"
+                "mem_0dcc7e3a8f87d6c4"
             )
         }));
     }
@@ -1743,7 +1773,12 @@ mod tests {
         assert_eq!(document.schema_version, MEMORY_SCHEMA_VERSION);
         assert_eq!(document.document_revision, 1);
         assert_eq!(document.projection_revision, 1);
-        assert_eq!(document.records, legacy);
+        let mut projected=store.recall(&RecallQuery::default());
+        let mut expected=legacy;
+        projected.sort_by(|a,b|a.mem_id.cmp(&b.mem_id)); expected.sort_by(|a,b|a.mem_id.cmp(&b.mem_id));
+        assert_eq!(projected,expected);
+        assert!(document.records.iter().all(|r|r.mem_type != "note"));
+        assert!(document.notes.iter().all(|n|n.current_revision == 1 && n.current().authorship == NoteAuthorship::Unknown));
         assert!(document.profile_facts.is_empty());
         assert!(document.review_state.is_empty());
         assert!(document.exclusions.is_empty());
@@ -2153,7 +2188,7 @@ mod tests {
     }
 
     #[test]
-    fn reanchor_atomically_replaces_identity_and_preserves_note_envelope() {
+    fn reanchor_preserves_stable_identity_revision_and_note_envelope() {
         let path = tmp("note-reanchor");
         let mut store = MemoryStore::open(&path).unwrap();
         let old = store
@@ -2170,7 +2205,8 @@ mod tests {
             })
             .unwrap();
 
-        assert_ne!(moved.mem_id, old.mem_id);
+        assert_eq!(moved.mem_id, old.mem_id);
+        assert_eq!(store.document.notes[0].current_revision,1);
         assert_eq!(moved.anchor.lid.as_deref(), Some("2.2"));
         assert_eq!(
             moved
@@ -2194,14 +2230,13 @@ mod tests {
                     from_layer: "session".into(),
                     to_layer: "long_term".into(),
                 })
-                .unwrap_err()
-                .error_code,
-            "MEMORY_NOT_FOUND"
+                .unwrap().layer,
+            "long_term"
         );
     }
 
     #[test]
-    fn reanchor_conflict_and_persistence_failure_preserve_authoritative_records() {
+    fn reanchor_allows_shared_location_and_failed_write_preserves_authoritative_records() {
         let path = tmp("note-reanchor-conflict");
         let mut store = MemoryStore::open(&path).unwrap();
         let first = store
@@ -2217,18 +2252,17 @@ mod tests {
                 "t1",
             )
             .unwrap();
-        let before_conflict = store.document.clone();
         assert_eq!(
             store
                 .reanchor(ReanchorInput {
                     mem_id: first.mem_id.clone(),
                     note_placement: lid_placement("sha256:source-a", "2.2"),
                 })
-                .unwrap_err()
-                .error_code,
-            "NOTE_REANCHOR_CONFLICT"
+                .unwrap().mem_id,
+            first.mem_id
         );
-        assert_eq!(store.document, before_conflict);
+        let before_conflict = store.document.clone();
+        assert_eq!(before_conflict.notes.len(),2);
 
         let before_disk = std::fs::read_to_string(&path).unwrap();
         let blocker = tmp("note-reanchor-parent-blocker");
@@ -2439,7 +2473,8 @@ mod tests {
             )
             .unwrap();
 
-        assert_ne!(replaced.mem_id, old.mem_id);
+        assert_eq!(replaced.mem_id, old.mem_id);
+        assert_eq!(store.personal_note(&NoteRef {note_id:old.mem_id.clone(),revision:Some(1)}).unwrap().value.record,old);
         assert_eq!(replaced.content, "新内容");
         assert_eq!(replaced.anchor, old.anchor);
         assert_eq!(replaced.selection_context, old.selection_context);
@@ -2505,7 +2540,7 @@ mod tests {
     }
 
     #[test]
-    fn replace_rejects_missing_empty_and_target_id_conflict_without_mutation() {
+    fn replace_rejects_missing_empty_but_allows_equal_content_in_distinct_notes() {
         let path = tmp("replace-validation");
         let mut store = MemoryStore::open(&path).unwrap();
         let first = store
@@ -2540,18 +2575,19 @@ mod tests {
             .unwrap_err();
         assert_eq!(empty.error_code, "INVALID_MEMORY_CONTENT");
 
-        let conflict = store
+        assert_eq!(store.recall(&RecallQuery::default()), before);
+        let replaced = store
             .replace(
                 ReplaceInput {
-                    mem_id: first.mem_id,
+                    mem_id: first.mem_id.clone(),
                     content: second.content,
                     selection_context: None,
                 },
                 "t1",
             )
-            .unwrap_err();
-        assert_eq!(conflict.error_code, "MEMORY_REPLACE_CONFLICT");
-        assert_eq!(store.recall(&RecallQuery::default()), before);
+            .unwrap();
+        assert_eq!(replaced.mem_id,first.mem_id);
+        assert_eq!(store.recall(&RecallQuery::default()).len(),2);
     }
 
     #[test]

@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "checked_at": "2026-10-28T05:45:47.641Z",
+  "renderer": "merged production dist-multi",
+  "checks": [
+    {
+      "name": "rust-replay",
+      "primitives": 12,
+      "replyIds": [],
+      "explicitLinkIds": [
+        "l-demo",
+        "l-dst",
+        "l-fat",
+        "l-len",
+        "l-mut",
+        "l-noval",
+        "l-off",
+        "l-perm",
+        "l-read",
+        "l-use"
+      ],
+      "issues": [],
+      "page_errors": [],
+      "zoom_control": true
+    },
+    {
+      "name": "reply-links",
+      "primitives": 10,
+      "replyIds": [
+        "new-answer"
+      ],
+      "explicitLinkIds": [
+        "points-to-original"
+      ],
+      "issues": [],
+      "page_errors": [],
+      "zoom_control": true
+    }
+  ]
+}

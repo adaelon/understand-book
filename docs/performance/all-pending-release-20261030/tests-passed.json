@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "frontend_tests": {
+    "src/note-window.test.ts": 5,
+    "src/personal-notes.test.ts": 6,
+    "src/personal-chat.test.ts": 1,
+    "src/answer-note-selection.test.ts": 19,
+    "src/board-conversation.test.ts": 4,
+    "src/components/SourceExcerpt.test.ts": 7,
+    "src/board-canvas.test.ts": 17,
+    "src/components/PersonalNotes.test.ts": 9,
+    "src/board-source-reader.test.ts": 10,
+    "src/board-workspace.test.ts": 48,
+    "src/workspace-notes-api.test.ts": 6,
+    "src/components/BoardCanvas.mind-map.test.ts": 13,
+    "src/board-notes.test.ts": 5,
+    "src/App.board-source.test.ts": 9,
+    "src/components/BoardWorkspace.mind-map.test.ts": 12
+  },
+  "frontend_total": 171,
+  "rust": {
+    "memory-tests-fixed.log": {
+      "passed": 329,
+      "ignored": 1
+    },
+    "server-placement-final.log": {
+      "passed": 2,
+      "ignored": 0
+    },
+    "runtime-contract-tests.log": {
+      "passed": 13,
+      "ignored": 0
+    },
+    "runtime-board-tests.log": {
+      "passed": 7,
+      "ignored": 0
+    }
+  },
+  "mocked_browser_tests": 20,
+  "typecheck_and_multi_build": true,
+  "integration_notes": "Old mind-map tab label updated to 画布; workspace-note mock retains the real network exports. Local test-only Vite config allows the shared dependency junction."
+}

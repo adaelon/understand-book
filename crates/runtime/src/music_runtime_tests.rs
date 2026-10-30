@@ -1,17 +1,6 @@
 use super::*;
 use serde_json::{json, Value};
 
-#[test]
-fn music_review_editorial_feedback_never_calls_revise_accepted() {
-    let mut review=json!({"decision":"revise","improvements":[],"reading_path":{"understanding_gap":"Playback has not happened."}});
-    let feedback=teaching_review_editorial_feedback(&review).unwrap();
-    let guidance=feedback["guidance"].as_str().unwrap();
-    assert!(guidance.contains("尚未通过审阅"));
-    assert!(!guidance.contains("当前稿已通过审阅"));
-    review["decision"]=json!("accept");
-    assert!(teaching_review_editorial_feedback(&review).unwrap()["guidance"].as_str().unwrap().contains("优先直接交付已接纳稿"));
-}
-
 fn source() -> read_tools::music::MusicSourceSnapshot {
     serde_json::from_value(json!({"target":{"publication":{"book_id":"music","publication_id":"pub1"},
         "audio":{"recording":{"recording_id":"recording","revision":"1"},"start_ms":1000,"end_ms":2000},

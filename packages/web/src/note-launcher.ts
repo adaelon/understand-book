@@ -1,0 +1,151 @@
+import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
+import type { NoteWindowViewport } from './note-window';
+
+export interface LauncherPoint { x: number; y: number }
+export interface LauncherRect extends LauncherPoint { width: number; height: number }
+const gap = 12, edge = 16;
+const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(value, high));
+const overlaps = (a: LauncherRect, b: LauncherRect) => a.x < b.x + b.width + gap && a.x + a.width + gap > b.x
+  && a.y < b.y + b.height + gap && a.y + a.height + gap > b.y;
+
+/** Prefer the edge above the composer; a temporary keyboard never changes the saved point. */
+export function placeNoteLauncher(viewport: NoteWindowViewport, size: { width: number; height: number }, avoid: LauncherRect[], preferred?: LauncherPoint | null): LauncherPoint {
+  const left = viewport.x + edge, top = viewport.y + edge;
+  const right = Math.max(left, viewport.x + viewport.width - size.width - edge);
+  const bottom = Math.max(top, viewport.y + viewport.height - size.height - edge);
+  const fit = (point: LauncherPoint) => ({ x: clamp(point.x, left, right), y: clamp(point.y, top, bottom) });
+  const wanted = fit(preferred ?? { x: right, y: bottom });
+  // Each composer contributes its four free edges. Choose the nearest usable position.
+  const candidates = [wanted, ...avoid.flatMap(rect => [
+    fit({ x: wanted.x, y: rect.y - size.height - gap }),
+    fit({ x: wanted.x, y: rect.y + rect.height + gap }),
+    fit({ x: rect.x - size.width - gap, y: wanted.y }),
+    fit({ x: rect.x + rect.width + gap, y: wanted.y }),
+  ])];
+  return candidates.filter(point => !avoid.some(rect => overlaps({ ...point, ...size }, rect)))
+    .sort((a, b) => Math.hypot(a.x - wanted.x, a.y - wanted.y) - Math.hypot(b.x - wanted.x, b.y - wanted.y))[0] ?? wanted;
+}
+
+export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => string | null, visible: () => boolean) {
+  const measureViewport = (): NoteWindowViewport => {
+    const visual = window.visualViewport;
+    return { x: visual?.offsetLeft ?? 0, y: visual?.offsetTop ?? 0,
+      width: visual?.width || window.innerWidth, height: visual?.height || window.innerHeight };
+  };
+  const viewport = ref(measureViewport()), size = ref({ width: 104, height: 44 });
+  const avoid = ref<LauncherRect[]>([]), preferred = ref<LauncherPoint | null>(null), dragging = ref(false);
+  const position = computed(() => placeNoteLauncher(viewport.value, size.value, dragging.value ? [] : avoid.value, preferred.value));
+  const style = computed(() => ({ left: `${position.value.x}px`, top: `${position.value.y}px` }));
+  let frame = 0, observer: MutationObserver | undefined, resize: ResizeObserver | undefined;
+  let targets: Element[] = [], suppressClick = false;
+  let gesture: { id: number; x: number; y: number; start: LauncherPoint; prior: LauncherPoint | null; target: HTMLElement } | null = null;
+  const key = () => `understand-book:note-launcher:${owner()}`;
+  function persist() {
+    if (!owner() || !preferred.value) return;
+    try { localStorage.setItem(key(), JSON.stringify(preferred.value)); } catch { /* Recording remains available without position storage. */ }
+  }
+  function refresh() {
+    frame = 0;
+    if (!visible()) return;
+    viewport.value = measureViewport();
+    if (element.value) {
+      const rect = element.value.getBoundingClientRect();
+      if (rect.width && rect.height) size.value = { width: rect.width, height: rect.height };
+    }
+    const found = Array.from(document.querySelectorAll('.agent-input, .board-conversation, .personal-chat-composer, .workspace-mobile-nav'));
+    if (found.length !== targets.length || found.some((target, i) => target !== targets[i])) {
+      targets.forEach(target => resize?.unobserve(target));
+      targets = found; targets.forEach(target => resize?.observe(target));
+    }
+    const view = viewport.value;
+    avoid.value = targets.flatMap(target => {
+      const rect = target.getBoundingClientRect();
+      if (!rect.width || !rect.height || getComputedStyle(target).visibility === 'hidden'
+        || rect.bottom <= view.y || rect.top >= view.y + view.height) return [];
+      // Ignore a still-mounted reader behind the active board or another full-page surface.
+      const hit = document.elementsFromPoint(clamp(rect.x + rect.width / 2, view.x, view.x + view.width - 1),
+        clamp(rect.y + rect.height / 2, view.y, view.y + view.height - 1))
+        .find(node => !node.closest('[data-personal-notes]'));
+      return hit && target.contains(hit) ? [{ x: rect.x, y: rect.y, width: rect.width, height: rect.height }] : [];
+    });
+  }
+  function schedule() { if (!frame) frame = requestAnimationFrame(refresh); }
+  function begin(event: PointerEvent) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    suppressClick = false;
+    gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, start: { ...position.value },
+      prior: preferred.value, target: event.currentTarget as HTMLElement };
+  }
+  function move(event: PointerEvent) {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+    if (!dragging.value && Math.hypot(dx, dy) < 6) return;
+    event.preventDefault();
+    if (!dragging.value) gesture.target.setPointerCapture(event.pointerId);
+    dragging.value = true; suppressClick = true;
+    preferred.value = { x: gesture.start.x + dx, y: gesture.start.y + dy };
+  }
+  function finish(save = true) {
+    if (!gesture) return;
+    const current = gesture; gesture = null;
+    if (current.target.hasPointerCapture(current.id)) current.target.releasePointerCapture(current.id);
+    if (dragging.value && save) {
+      preferred.value = { ...position.value };
+      persist();
+    } else if (!save) { preferred.value = current.prior; suppressClick = false; }
+    dragging.value = false; schedule();
+  }
+  function end(event: PointerEvent) { if (gesture?.id === event.pointerId) finish(event.type !== 'pointercancel'); }
+  function click(event: MouseEvent, open: () => void) {
+    if (suppressClick) { event.preventDefault(); event.stopPropagation(); suppressClick = false; return; }
+    open();
+  }
+  function keyboard(event: KeyboardEvent) {
+    if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault(); event.stopPropagation();
+    const step = event.shiftKey ? 40 : 10;
+    preferred.value = placeNoteLauncher(viewport.value, size.value, [], {
+      x: position.value.x + (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0),
+      y: position.value.y + (event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0),
+    });
+    persist();
+  }
+  watch(owner, () => {
+    finish(false); preferred.value = null;
+    if (!owner()) return;
+    try {
+      const point = JSON.parse(localStorage.getItem(key()) ?? 'null');
+      if (point && Number.isFinite(point.x) && Number.isFinite(point.y)) preferred.value = point;
+    } catch { /* Use the default edge position. */ }
+    schedule();
+  }, { immediate: true });
+  watch(visible, () => { finish(); schedule(); }, { flush: 'post' });
+  onMounted(() => {
+    resize = new ResizeObserver(schedule);
+    const content = document.querySelector('.application-content');
+    if (content) resize.observe(content);
+    observer = new MutationObserver(records => {
+      if (records.some(record => !(record.target as Element).closest?.('[data-personal-notes]'))) schedule();
+    });
+    observer.observe(content ?? document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+    window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
+    document.addEventListener('scroll', schedule, true);
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    schedule();
+  });
+  onBeforeUnmount(() => {
+    finish(); cancelAnimationFrame(frame); observer?.disconnect(); resize?.disconnect();
+    window.removeEventListener('resize', schedule);
+    window.visualViewport?.removeEventListener('resize', schedule);
+    window.visualViewport?.removeEventListener('scroll', schedule);
+    document.removeEventListener('scroll', schedule, true);
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', end);
+    window.removeEventListener('pointercancel', end);
+  });
+  return { style, dragging, begin, click, keyboard };
+}

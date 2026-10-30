@@ -1,0 +1,10 @@
+{
+  "changed_at": "2026-10-28T13:56:11.661Z",
+  "project_backup": "E:\\allwork\\download\\agent\\understand-book\\tmp\\video-parallel-20261028\\activation\\project-config.before-merge-1793195771650.toml",
+  "project_old_plugin_enabled": false,
+  "project_new_plugin_enabled": true,
+  "user_new_plugin_enabled": false,
+  "user_original_plugin_unchanged": true,
+  "shell_engine": "E:\\allwork\\Understand Book\\operator-builds\\20261028-prebuild-reuse\\understand-book-build-x86_64-pc-windows-msvc.exe",
+  "new_session_required": true
+}

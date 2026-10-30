@@ -1,0 +1,201 @@
+{
+  "engines": {
+    "baseline": "E:\\allwork\\download\\agent\\understand-book\\tmp\\continuous-executor-20261028\\release\\understand-book-build-x86_64-pc-windows-msvc.exe",
+    "candidate": "E:/allwork/Understand Book/operator-builds/20261028-prebuild-reuse/understand-book-build-x86_64-pc-windows-msvc.exe"
+  },
+  "real_model": false,
+  "source_model_calls": 0,
+  "outputs_equal": true,
+  "requests": [
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark",
+    "/api/admin/build-tasks/local-music-benchmark"
+  ],
+  "samples": [
+    {
+      "repeat": 0,
+      "work": "schubert",
+      "variant": "baseline",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 7905.8682,
+      "reused_stages": null
+    },
+    {
+      "repeat": 0,
+      "work": "schubert",
+      "variant": "baseline",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 6748.6057,
+      "reused_stages": null
+    },
+    {
+      "repeat": 0,
+      "work": "schubert",
+      "variant": "candidate",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 6950.7980000000025,
+      "reused_stages": {
+        "audio": false,
+        "score_parse": false,
+        "score_render": false,
+        "demonstrations": []
+      }
+    },
+    {
+      "repeat": 0,
+      "work": "schubert",
+      "variant": "candidate",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 2013.1392000000014,
+      "reused_stages": {
+        "audio": true,
+        "score_parse": true,
+        "score_render": true,
+        "demonstrations": [
+          "upper-line-m3-4"
+        ]
+      }
+    },
+    {
+      "repeat": 0,
+      "work": "beethoven",
+      "variant": "baseline",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 8140.517099999997,
+      "reused_stages": null
+    },
+    {
+      "repeat": 0,
+      "work": "beethoven",
+      "variant": "baseline",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 7431.387199999997,
+      "reused_stages": null
+    },
+    {
+      "repeat": 0,
+      "work": "beethoven",
+      "variant": "candidate",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 7690.347399999999,
+      "reused_stages": {
+        "audio": false,
+        "score_parse": false,
+        "score_render": false,
+        "demonstrations": []
+      }
+    },
+    {
+      "repeat": 0,
+      "work": "beethoven",
+      "variant": "candidate",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 2096.816899999998,
+      "reused_stages": {
+        "audio": true,
+        "score_parse": true,
+        "score_render": true,
+        "demonstrations": []
+      }
+    },
+    {
+      "repeat": 1,
+      "work": "schubert",
+      "variant": "baseline",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 5826.552799999998,
+      "reused_stages": null
+    },
+    {
+      "repeat": 1,
+      "work": "schubert",
+      "variant": "baseline",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 3916.312300000005,
+      "reused_stages": null
+    },
+    {
+      "repeat": 1,
+      "work": "schubert",
+      "variant": "candidate",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 3961.0697,
+      "reused_stages": {
+        "audio": false,
+        "score_parse": false,
+        "score_render": false,
+        "demonstrations": []
+      }
+    },
+    {
+      "repeat": 1,
+      "work": "schubert",
+      "variant": "candidate",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 957.947699999997,
+      "reused_stages": {
+        "audio": true,
+        "score_parse": true,
+        "score_render": true,
+        "demonstrations": [
+          "upper-line-m3-4"
+        ]
+      }
+    },
+    {
+      "repeat": 1,
+      "work": "beethoven",
+      "variant": "baseline",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 8491.606199999995,
+      "reused_stages": null
+    },
+    {
+      "repeat": 1,
+      "work": "beethoven",
+      "variant": "baseline",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 8660.40019999999,
+      "reused_stages": null
+    },
+    {
+      "repeat": 1,
+      "work": "beethoven",
+      "variant": "candidate",
+      "phase": "uncached_rebuild",
+      "elapsed_ms": 7781.544900000008,
+      "reused_stages": {
+        "audio": false,
+        "score_parse": false,
+        "score_render": false,
+        "demonstrations": []
+      }
+    },
+    {
+      "repeat": 1,
+      "work": "beethoven",
+      "variant": "candidate",
+      "phase": "repeated_rebuild",
+      "elapsed_ms": 2061.8633999999875,
+      "reused_stages": {
+        "audio": true,
+        "score_parse": true,
+        "score_render": true,
+        "demonstrations": []
+      }
+    }
+  ]
+}

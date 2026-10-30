@@ -1,0 +1,9 @@
+{
+  "before": {
+    "directory": "0o755",
+    "index": "0o644"
+  },
+  "public_static_directories": "0755",
+  "public_static_files": "0644",
+  "files": 300
+}

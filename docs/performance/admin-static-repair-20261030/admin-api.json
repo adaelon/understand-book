@@ -1,0 +1,51 @@
+{
+  "checks": [
+    {
+      "path": "/api/admin/users?limit=20&offset=0",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/invites?limit=20&offset=0",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/usage",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/monitor",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/workspace-releases?limit=20&offset=0",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/operator-builds?limit=20&offset=0",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/books?limit=20&offset=0",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/allowance-offers",
+      "status": 200,
+      "json_object": true
+    },
+    {
+      "path": "/api/admin/cloud-plans",
+      "status": 200,
+      "json_object": true
+    }
+  ],
+  "model_requests": 0,
+  "business_writes": 0
+}

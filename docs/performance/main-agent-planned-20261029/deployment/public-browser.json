@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-29T16:10:23.564Z",
+  "origin": "https://understandbook.top",
+  "viewports": [
+    1440,
+    390
+  ],
+  "authenticated_reading": true,
+  "book_id": "logic-of-failure",
+  "horizontal_overflow": false,
+  "browser_errors": [],
+  "model_requests": 0
+}

@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-28T12:26:40.350545+00:00",
+  "schema": 21,
+  "checks": {
+    "existing_accounts_books_history_notes_and_boards_readable": true,
+    "linux_monitor_memory_disk_network_presence_and_authorization": true,
+    "multi_user_mind_map_create_edit_stale_conflict_undo_redo_read": true,
+    "historical_chat_files_preserved": 53,
+    "board_files_preserved": 88,
+    "boards_opened": 9,
+    "allowance_rows_preserved": 15,
+    "accounts_checked": 3,
+    "disabled_board_owners_preserved_without_login": 2
+  },
+  "binary_stat": {
+    "size": 59173576,
+    "mtime_ns": 1793190272475765241
+  },
+  "production_mutated": false,
+  "model_requests": 0
+}

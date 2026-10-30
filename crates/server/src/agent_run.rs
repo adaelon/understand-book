@@ -35,11 +35,11 @@ pub(crate) struct NetworkUserPort {
     pub user: crate::user_registry::UserHandle,
     pub access: Arc<crate::authorization::Authorization>,
     pub owner: String,
-    pub publication: crate::published_library::PublishedBookRef,
+    pub publication: Option<crate::published_library::PublishedBookRef>,
 }
 impl UserStatePort for NetworkUserPort {
     fn check_access(&self) -> Result<(), ToolError> {
-        self.access.library.lock().unwrap().authorize(&self.owner, &self.publication).map_err(|_|crate::authorization::missing())
+        self.publication.as_ref().map(|reference|self.access.library.lock().unwrap().authorize(&self.owner,reference).map_err(|_|crate::authorization::missing())).transpose().map(|_|())
     }
     fn with_user<R>(&self, operation: impl FnOnce(&mut crate::user_runtime::UserRuntime) -> R) -> R {
         operation(&mut self.user.lock().unwrap())
@@ -63,11 +63,19 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn personal_note_context(&mut self)->Result<Value,ToolError>{
+        self.port.with_app(|state|{self.scope.check_owner(state)?;crate::personal_note_context::for_turn(&mut state.user,&self.scope.chat_session_id,&self.scope.turn_id)})
+    }
+    fn personal_note_search(&mut self,request:Value)->Result<Value,ToolError>{
+        let prepared=self.port.with_app(|state|{self.scope.check_owner(state)?;crate::personal_note_retrieval::prepare(&state.user.store,&request)})?;
+        let vectors=crate::personal_note_retrieval::infer(&prepared);
+        self.port.with_app(|state|{self.scope.check_owner(state)?;crate::personal_note_retrieval::finish(&state.user.store,prepared,vectors)})
+    }
     fn workspace_records_available(&self) -> bool { true }
     fn workspace_records(&mut self, request: Value) -> Result<Value, ToolError> {
         self.port.with_app(|state| {
             self.scope.check_owner(state)?;
-            crate::workspace_record_context::read_scoped(&state.user, self.scope.learning_workspace_id.as_deref(), &self.scope.book.base.book_id, request)
+            crate::workspace_record_context::read_scoped(&state.user, self.scope.learning_workspace_id.as_deref(), &self.scope.reading_book().base.book_id, request)
         })
     }
     fn board_authoring_available(&self) -> bool { self.scope.board_context.is_some() }
@@ -82,7 +90,7 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
         let declared = crate::music_interact::publication(&self.scope.book_dir)?;
         if reference.is_some_and(|r| r != &declared) { return Err(runtime::music::unavailable()); }
-        let manifest = self.scope.book.load_music_source(&self.scope.book_dir)?;
+        let manifest = self.scope.reading_book().load_music_source(&self.scope.book_dir)?;
         read_tools::music::read(&manifest, &declared, &request)
     }
     fn interact_music(&mut self, request: runtime::music::MusicInteractRequest, cancellation: &CancellationToken) -> Result<runtime::music::MusicPlaybackReceipt, ToolError> {
@@ -108,7 +116,7 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
     fn library_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<runtime::library::LibrarySource, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
         crate::video_frames::require_reference(self.scope, Some(reference))?;
-        Ok(runtime::library::LibrarySource { reference: reference.clone(), book: self.scope.book.clone(), title: "当前资料".into() })
+        Ok(runtime::library::LibrarySource { reference: reference.clone(), book: self.scope.reading_book().clone(), title: "当前资料".into() })
     }
 
     fn record_presentation_methods(&mut self, observations: &runtime::presentation::PresentationMethodObservations) -> Result<(), ToolError> {
@@ -116,11 +124,11 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
     }
     fn media_source_snapshot(&mut self, target: base_schema::EvidenceTarget) -> Result<runtime::video_source::MediaSource, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
-        crate::video_source::snapshot(&self.scope.book, &self.scope.book_dir, target)
+        crate::video_source::snapshot(&self.scope.reading_book(), &self.scope.book_dir, target)
     }
     fn media_source_for_text(&mut self, range: &EvidenceRange) -> Result<Option<runtime::video_source::MediaSource>, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
-        crate::video_source::text_snapshot(&self.scope.book, &self.scope.book_dir, range)
+        crate::video_source::text_snapshot(&self.scope.reading_book(), &self.scope.book_dir, range)
     }
     fn video_source_context(&mut self) -> Result<Option<Value>, ToolError> {
         self.port.with_app(|state| self.scope.check_owner(state))?;
@@ -217,14 +225,14 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
             let result = operation(&mut state.user.store, &mut state.workspace.reader);
             if state.workspace.reader.revision() != before {
                 if let Some(stream) = state.workspace.active_agent_stream.as_ref().and_then(|s| s.upgrade()) {
-                    stream.reader_changed(reader_state_response(&self.scope.book, &state.workspace.reader));
+                    stream.reader_changed(reader_state_response(&self.scope.reading_book(), &state.workspace.reader));
                 }
             }
             Ok(result)
         })
     }
     fn reader_input(&mut self, _: &Book, _: &str) -> runtime::run_context::ReaderInputSnapshot {
-        self.scope.reader_input.clone()
+        self.scope.reader_input.clone().expect("reading scope")
     }
 
 }
@@ -506,7 +514,7 @@ fn execute_observed(
     observability: Option<&Arc<crate::observability::ObservabilityRuntime>>,
 ) -> ExecutionReport {
     let observation_run = observability.and_then(|runtime| {
-        runtime.start_run_with_input(&prepared.scope.book.base.book_id, &prepared.turn_ref.session_id,
+        runtime.start_run_with_input(prepared.scope.book_id(), &prepared.turn_ref.session_id,
             || json!({"message":prepared.message,"messages":prepared.messages}))
     });
     let observation_sink = observation_run.as_ref().map(|run| run.sink());
@@ -579,7 +587,7 @@ fn execute_observed(
             return ExecutionReport {
                 reply: err_reply(&error),
                 unsaved: Some(UnsavedRun {
-                    book_id: prepared.scope.book.base.book_id.clone(),
+                    book_id: prepared.scope.book_id().to_owned(),
                     session_id: prepared.turn_ref.session_id.clone(),
                     turn_id: prepared.turn_ref.turn_id.clone(),
                     summary,
@@ -596,7 +604,7 @@ fn execute_observed(
             return ExecutionReport {
                 reply: err_reply(&error),
                 unsaved: Some(UnsavedRun {
-                    book_id: prepared.scope.book.base.book_id.clone(),
+                    book_id: prepared.scope.book_id().to_owned(),
                     session_id: prepared.turn_ref.session_id.clone(),
                     turn_id: prepared.turn_ref.turn_id.clone(),
                     summary,
@@ -605,7 +613,7 @@ fn execute_observed(
                 }),
             };
         }
-        if let Err(error) = teaching::record_delivery(&prepared.scope.private_context(state), &prepared.turn_ref, &prepared.now) {
+        if let Err(error) = if prepared.scope.book.is_some() {teaching::record_delivery(&prepared.scope.private_context(state), &prepared.turn_ref, &prepared.now)} else {Ok(())} {
             return ExecutionReport::saved(err_reply(&error));
         }
         if let Err(error) = session_runtime::link_teaching(&mut state.user, &prepared.turn_ref, &prepared.now) {
@@ -749,7 +757,7 @@ impl RunCoordinator {
             .with_app(|state| prepare_agent_chat(state, body, now))?;
         let cancellation = CancellationToken::with_host_stop(self.host_stop.clone());
         let stream = RunStream::new(RunDescriptor {
-            book_id: prepared.scope.book.base.book_id.clone(),
+            book_id: prepared.scope.book_id().to_owned(),
             session_id: prepared.turn_ref.session_id.clone(),
             turn_id: prepared.turn_ref.turn_id.clone(),
         });
@@ -788,7 +796,7 @@ impl RunCoordinator {
             }
         });
         if let Some(unsaved) = result.unsaved {
-            *self.unsaved_book.lock().unwrap() = Some(original_book.clone());
+            *self.unsaved_book.lock().unwrap() = original_book.clone();
             stream.finish(None, Some(json!(unsaved.error)));
             *self.unsaved.lock().unwrap() = Some(unsaved);
             *self.unsaved_stream.lock().unwrap() = Some(stream);
@@ -800,7 +808,7 @@ impl RunCoordinator {
                     .iter()
                     .find(|s| s.id == descriptor.session_id)
                     .and_then(|s| s.turns.iter().find(|t| t.turn_id == descriptor.turn_id))
-                    .map(|turn| json!(turn_view(&original_book, turn)))
+                    .map(|turn| json!(scoped_turn_view(original_book.as_deref(), turn)))
             });
             stream.finish(view, None);
         }

@@ -29,7 +29,7 @@ fn video_revision_failure_history_notes_and_explicit_switch_keep_original_source
     let port = f.run(&w, "old-window");
     let range = EvidenceRange {start_lid:"1".into(),end_lid:"1".into(),ranges:vec![read_tools::SourceSelectedRange {
         lid:"1".into(),range:read_tools::SourceTextRange {start:0,end:8}}]};
-    let media = crate::video_source::text_snapshot(&port.scope.book, &port.scope.book_dir, &range).unwrap().unwrap();
+    let media = crate::video_source::text_snapshot(&port.scope.reading_book(), &port.scope.book_dir, &range).unwrap().unwrap();
     let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
     {
         let mut user = handle.lock().unwrap();
@@ -100,7 +100,7 @@ fn video_source_history_uses_original_network_publication_and_authorization() {
     let w = f.action(&f.a, &w, "page", "chat/new", json!({}));
     let port = f.run(&w, "page");
     let range = EvidenceRange { start_lid: "1".into(), end_lid: "1".into(), ranges: vec![read_tools::SourceSelectedRange { lid: "1".into(), range: read_tools::SourceTextRange { start: 0, end: 8 } }] };
-    let media = crate::video_source::text_snapshot(&port.scope.book, &port.scope.book_dir, &range).unwrap().unwrap();
+    let media = crate::video_source::text_snapshot(&port.scope.reading_book(), &port.scope.book_dir, &range).unwrap().unwrap();
     let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
     {
         let mut user = handle.lock().unwrap();

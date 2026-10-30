@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { BookOpen, ChevronDown, CornerDownRight, Link2, MessageSquareText, Shapes, Trash2, UserRound } from '@lucide/vue';
 import { t as uiText } from '../i18n';
 import { renderMarkdown } from '../md';
+import { openPersonalNotes } from '../personal-notes';
 import { boardDate, boardKindLabels } from '../board-workspace';
 import type { BoardItem } from '../generated/BoardItem';
 import type { BoardDelivery } from '../generated/BoardDelivery';
@@ -26,7 +27,7 @@ let locateTimer: ReturnType<typeof setTimeout> | undefined;
 const parent = computed(() => props.items?.find(item => item.item_id === props.item?.reply_to_item_id));
 const isSavedPart = computed(() => props.item?.target.kind === 'answer' && props.deliveries?.some(delivery =>
   !!delivery.commit_id && delivery.board_id === props.boardId && delivery.item_ids.includes(props.item!.item_id)));
-const icons = { prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound, drawing: Shapes };
+const icons = { personal_note: UserRound, prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound, drawing: Shapes };
 function readableParts(parts: unknown[]) {
   return parts.filter((part): part is AgentAnswerPart => !!part && typeof part === 'object' && 'kind' in part
     && ((part.kind === 'markdown' && 'text' in part && typeof part.text === 'string')
@@ -86,7 +87,8 @@ defineExpose({ flush, captureFollowUp: flush, locate, locateAnchor });
       <header class="board-reading-heading" tabindex="-1">
         <div class="board-reading-eyebrow" :class="item.target.kind"><component :is="icons[item.target.kind]" :size="15" aria-hidden="true" />{{ uiText(item.target.kind === 'drawing' ? '板书图解' : boardKindLabels[item.target.kind]) }}<span>{{ boardDate(item.created_at) }}</span></div>
         <h2 :title="item.title">{{ item.title }}</h2>
-        <p v-if="item.target.kind === 'prebuild' || item.target.kind === 'artifact'">{{ uiText('来自学习材料 · 保留加入时的内容') }}</p>
+        <p v-if="item.target.kind === 'personal_note'">我的想法 · 第 {{item.target.reference.revision}} 版 <button @click="openPersonalNotes({note_id:item.target.reference.note_id})">继续写这条想法</button></p>
+        <p v-else-if="item.target.kind === 'prebuild' || item.target.kind === 'artifact'">{{ uiText('来自学习材料 · 保留加入时的内容') }}</p>
         <p v-else-if="item.target.kind === 'answer'">{{ isSavedPart ? uiText('分段讲解 · 已保存在画板中') : uiText('完整回答 · 已独立保存在画板中') }}</p>
         <p v-else-if="item.target.kind === 'presentation'">{{ uiText('互动演示 · 保留内容与操作现场') }}</p>
         <p v-else-if="item.target.kind === 'understanding'">{{ uiText('自己的表达与 Agent 的理解解释，分别保留') }}</p>

@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-28T12:33:16.575684+00:00",
+  "public_pages_match_release": true,
+  "referenced_assets_equal": 9,
+  "board_preview_assets_equal": true,
+  "formatted_board_text_present": true,
+  "workspace_note_links_preserved": true,
+  "reader_and_admin_health": {
+    "reader": {
+      "authorized_books": 17,
+      "presentation_ready": true,
+      "manifest_and_body": true,
+      "history_and_allowance_readable": true
+    },
+    "admin": {
+      "authorized_books": 18,
+      "presentation_ready": true,
+      "manifest_and_body": true,
+      "history_and_allowance_readable": true
+    }
+  },
+  "service": "MainPID=407117\nNRestarts=0\nWorkingDirectory=/opt/understand-book/releases/editable-mind-map-20261028\nActiveState=active"
+}

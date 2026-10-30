@@ -131,10 +131,10 @@ impl ResidentStatePort for Port {
                 result.delivery_text = Some(self.candidate_text.clone());
             }
             crate::board_author::AuthorRequest::Commit {
-                reviewed_delivery, ..
+                selected_delivery, ..
             } => {
                 assert!(
-                    reviewed_delivery.is_some(),
+                    selected_delivery.is_some(),
                     "the runtime supplies the review after its guards"
                 );
                 self.commits += 1;
@@ -219,7 +219,7 @@ fn native_delivery_cannot_replace_reviewed_teaching_text_or_stage_before_that_ch
         // This test starts after a real preview has been sampled; the browser
         // acceptance separately exercises creation and image observation.
         context.board_candidate_id = Some("board:run:1".into());
-        context.board_reviewed_candidate_id = Some(if changed_diagram { "board:run:0" } else { "board:run:1" }.into());
+        context.board_selected_candidate_id = Some(if changed_diagram { "board:run:0" } else { "board:run:1" }.into());
         context.inspected_presentations.insert("board:run:1".into());
         let outcome = run_context(
             &b,
@@ -347,7 +347,7 @@ fn native_commit_requires_reviewed_local_scope_before_host_side_effects() {
     context.tutor_resolved = true;
     context.teaching_delivery_draft = Some(serde_json::json!({"text":accepted,"moves":[]}));
     context.board_candidate_id = Some("board:run:1".into());
-    context.board_reviewed_candidate_id = Some("board:run:1".into());
+    context.board_selected_candidate_id = Some("board:run:1".into());
     context.inspected_presentations.insert("board:run:1".into());
     let outcome = run_context(
         &b,

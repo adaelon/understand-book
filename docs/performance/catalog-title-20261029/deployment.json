@@ -1,0 +1,14 @@
+{
+  "status": "deployed",
+  "title": "失败的逻辑：事情因何出错，世间有无妙策",
+  "at_utc": "2026-10-29T02:26:13.769846+00:00",
+  "reference": {
+    "book_id": "logic-of-failure",
+    "publication_id": "01a18553-cdfa-7b00-b8bf-172505c00301"
+  },
+  "publication_unchanged": true,
+  "all_account_access_preserved": true,
+  "release": "/opt/understand-book/releases/catalog-title-20261029",
+  "maintenance_seconds": 7.06,
+  "model_requests": 0
+}

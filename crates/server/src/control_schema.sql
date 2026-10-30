@@ -44,8 +44,8 @@ CREATE TABLE reader_workspaces (
 );
 CREATE TABLE run_admissions (
     owner_user_id TEXT NOT NULL REFERENCES users(user_id), client_request_id TEXT NOT NULL,
-    turn_id TEXT NOT NULL, chat_session_id TEXT NOT NULL, workspace_id TEXT NOT NULL,
-    workspace_generation INTEGER NOT NULL, book_id TEXT NOT NULL, publication_id TEXT NOT NULL,
+    turn_id TEXT NOT NULL, chat_session_id TEXT NOT NULL, workspace_id TEXT,
+    workspace_generation INTEGER NOT NULL, book_id TEXT, publication_id TEXT,
     dispatch_state TEXT NOT NULL CHECK(dispatch_state IN ('preparing','queued','claimed','settled','admission_failed')),
     boot_id TEXT, attempt INTEGER NOT NULL DEFAULT 0,
     cancel_requested INTEGER NOT NULL DEFAULT 0,

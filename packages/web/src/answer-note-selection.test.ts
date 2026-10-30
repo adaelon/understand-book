@@ -4,6 +4,18 @@ import { renderMarkdown } from './md';
 import { answerNoteExcerpt } from './answer-note-selection';
 import { answerDisplayParts } from './answer-markdown';
 
+it('keeps attached thoughts out of the original answer selection and source offsets', () => {
+  const source='第一段解释。\n\n第二段解释。';
+  const root=document.createElement('div');root.innerHTML=renderMarkdown(source);
+  const range=document.createRange();range.selectNodeContents(root.querySelectorAll('p')[1]);
+  const originalSecondParagraph=answerNoteExcerpt(range,[source],root);
+  const mount=document.createElement('div');mount.setAttribute('data-reader-selection-ignore','');mount.textContent='我的想法不是助手的原话';root.querySelector('p')!.after(mount);
+  range.selectNodeContents(root);
+  expect(answerNoteExcerpt(range,[source],root)).toBe(source);
+  range.selectNodeContents(root.querySelectorAll('p')[1]);
+  expect(answerNoteExcerpt(range,[source],root)).toBe(originalSecondParagraph);
+});
+
 it.each([
   '__粗体__，以及 _斜体_。',
   '3. 第一项\n4. 第二项',

@@ -1,0 +1,344 @@
+{
+  "candidate_id": "board-visual-math-release",
+  "browser": "Chrome/138.0.7204.49",
+  "environment": {
+    "width": 1440,
+    "height": 1000,
+    "input": "mouse"
+  },
+  "environment_name": "custom-1440x1000-mouse",
+  "observations": [
+    {
+      "step": 0,
+      "action": null,
+      "scroll": {
+        "x": 0.0,
+        "y": 0.0,
+        "max_y": 0.0,
+        "viewport_width": 1440,
+        "viewport_height": 1000
+      },
+      "dom": {
+        "action_problems": [],
+        "board": {
+          "board_id": "release-math-check",
+          "issues": [],
+          "native": [
+            {
+              "height": 44,
+              "item_id": "intro",
+              "text": "容量随长度怎么变化？每一步需要读取什么？",
+              "width": 1080,
+              "x": 180,
+              "y": 201.046875
+            },
+            {
+              "height": 140,
+              "item_id": "state",
+              "text": "固定递推一张 dk×dvd_k \\times  d_vdk​×dv​ 状态表每个 token 原地改写",
+              "width": 240,
+              "x": 180,
+              "y": 286.046875
+            },
+            {
+              "height": 140,
+              "item_id": "window",
+              "text": "滑动窗口只保留最近一段位置读取范围由窗口决定",
+              "width": 240,
+              "x": 460,
+              "y": 286.046875
+            },
+            {
+              "height": 140,
+              "item_id": "compress",
+              "text": "压缩多个位置 → 更少条目用较少条目保留信息",
+              "width": 240,
+              "x": 740,
+              "y": 286.046875
+            },
+            {
+              "height": 140,
+              "item_id": "kv",
+              "text": "全量 KV保留每个历史位置容量随上下文增长",
+              "width": 240,
+              "x": 1020,
+              "y": 286.046875
+            },
+            {
+              "height": 46,
+              "item_id": "section",
+              "text": "固定递推：三步复用同一张表",
+              "width": 1080,
+              "x": 180,
+              "y": 489.046875
+            },
+            {
+              "height": 152,
+              "item_id": "outer",
+              "text": "① 外积落格dk×dvd_k \\times d_vdk​×dv​ 个位置ktvtTk_t v_t^{\\mathsf T}kt​vtT​",
+              "width": 290,
+              "x": 180,
+              "y": 587.046875
+            },
+            {
+              "height": 152,
+              "item_id": "update",
+              "text": "② 原地更新St=St−1+ktvtTS_t = S_{t-1} + k_t v_t^{\\mathsf T}St​=St−1​+kt​vtT​形状不变，内容持续累积",
+              "width": 300,
+              "x": 570,
+              "y": 587.046875
+            },
+            {
+              "height": 152,
+              "item_id": "read",
+              "text": "③ 查询读取ot=qtTSto_t = q_t^{\\mathsf T} S_tot​=qtT​St​从同一份状态取出结果",
+              "width": 290,
+              "x": 970,
+              "y": 587.046875
+            },
+            {
+              "height": 45,
+              "item_id": "meaning",
+              "text": "键和值决定表的形状，token 改变表的内容。",
+              "width": 1080,
+              "x": 180,
+              "y": 801.046875
+            }
+          ],
+          "ready": true,
+          "revision": 1
+        },
+        "controls": [
+          {
+            "id": "",
+            "tag": "BUTTON",
+            "text": "",
+            "value": ""
+          },
+          {
+            "id": "",
+            "tag": "BUTTON",
+            "text": "",
+            "value": ""
+          },
+          {
+            "id": "",
+            "tag": "BUTTON",
+            "text": "",
+            "value": ""
+          }
+        ],
+        "elements": [
+          {
+            "height": 1000,
+            "id": "app",
+            "tag": "DIV",
+            "width": 1440,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "height": 1,
+            "id": "",
+            "tag": "svg",
+            "width": 1,
+            "x": 180,
+            "y": 201.046875
+          },
+          {
+            "height": 1,
+            "id": "",
+            "tag": "svg",
+            "width": 1,
+            "x": 180,
+            "y": 201.046875
+          },
+          {
+            "height": 44,
+            "id": "",
+            "tag": "svg",
+            "width": 1080,
+            "x": 180,
+            "y": 201.046875
+          },
+          {
+            "height": 140,
+            "id": "",
+            "tag": "svg",
+            "width": 240,
+            "x": 180,
+            "y": 286.046875
+          },
+          {
+            "height": 140,
+            "id": "",
+            "tag": "svg",
+            "width": 240,
+            "x": 460,
+            "y": 286.046875
+          },
+          {
+            "height": 140,
+            "id": "",
+            "tag": "svg",
+            "width": 240,
+            "x": 740,
+            "y": 286.046875
+          },
+          {
+            "height": 140,
+            "id": "",
+            "tag": "svg",
+            "width": 240,
+            "x": 1020,
+            "y": 286.046875
+          },
+          {
+            "height": 46,
+            "id": "",
+            "tag": "svg",
+            "width": 1080,
+            "x": 180,
+            "y": 489.046875
+          },
+          {
+            "height": 152,
+            "id": "",
+            "tag": "svg",
+            "width": 290,
+            "x": 180,
+            "y": 587.046875
+          },
+          {
+            "height": 152,
+            "id": "",
+            "tag": "svg",
+            "width": 300,
+            "x": 570,
+            "y": 587.046875
+          },
+          {
+            "height": 152,
+            "id": "",
+            "tag": "svg",
+            "width": 290,
+            "x": 970,
+            "y": 587.046875
+          },
+          {
+            "height": 45,
+            "id": "",
+            "tag": "svg",
+            "width": 1080,
+            "x": 180,
+            "y": 801.046875
+          },
+          {
+            "height": 17,
+            "id": "",
+            "tag": "svg",
+            "width": 17,
+            "x": 35.5,
+            "y": 946.5
+          },
+          {
+            "height": 17,
+            "id": "",
+            "tag": "svg",
+            "width": 17,
+            "x": 115.5,
+            "y": 946.5
+          },
+          {
+            "height": 17,
+            "id": "",
+            "tag": "svg",
+            "width": 17,
+            "x": 162.5,
+            "y": 946.5
+          },
+          {
+            "height": 0,
+            "id": "",
+            "tag": "SCRIPT",
+            "width": 0,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "height": 0,
+            "id": "",
+            "tag": "SCRIPT",
+            "width": 0,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "scroll": {
+          "max_y": 0,
+          "viewport_height": 1000,
+          "viewport_width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "semantic_text": "上下文状态写入读取容量随长度怎么变化？每一步需要读取什么？固定递推一张 dk×dvd_k \\times  d_vdk​×dv​ 状态表每个 token 原地改写滑动窗口只保留最近一段位置读取范围由窗口决定压缩多个位置 → 更少条目用较少条目保留信息全量 KV保留每个历史位置容量随上下文增长固定递推：三步复用同一张表① 外积落格dk×dvd_k \\times d_vdk​×dv​ 个位置ktvtTk_t v_t^{\\mathsf T}kt​vtT​② 原地更新St=St−1+ktvtTS_t = S_{t-1} + k_t v_t^{\\mathsf T}St​=St−1​+kt​vtT​形状不变，内容持续累积③ 查询读取ot=qtTSto_t = q_t^{\\mathsf T} S_tot​=qtT​St​从同一份状态取出结果键和值决定表的形状，token 改变表的内容。100%拖动空白移动画板\n知识画板\n写入\n读取\n容量随长度怎么变化？每一步需要读取什么？\n固定递推\n一张 d_k × d_v 状态表\n每个 token 原地改写\n滑动窗口\n只保留最近一段位置\n读取范围由窗口决定\n压缩\n多个位置 → 更少条目\n用较少条目保留信息\n全量 KV\n保留每个历史位置\n容量随上下文增长\n固定递推：三步复用同一张表\n① 外积落格\n$d_k \\times d_v$ 个位置\n$k_t v_t^{\\mathsf T}$\n② 原地更新\n$S_t = S_{t-1} + k_t v_t^{\\mathsf T}$\n形状不变，内容持续累积\n③ 查询读取\n$o_t = q_t^{\\mathsf T} S_t$\n从同一份状态取出结果\n键和值决定表的形状，token 改变表的内容。\n画板视图\n缩小画板\n放大画板\n显示全部内容 显示全部内容",
+        "source_ref_ids": [],
+        "text": "上下文状态\n写入\n读取\n容量随长度怎么变化？每一步需要读取什么？\n固定递推\n一张 \n𝑑\n𝑘\n×\n𝑑\n𝑣\nd\nk\n\t​\n\n×d\nv\n\t​\n\n 状态表\n每个 token 原地改写\n滑动窗口只保留最近一段位置读取范围由窗口决定\n压缩多个位置 → 更少条目用较少条目保留信息\n全量 KV保留每个历史位置容量随上下文增长\n固定递推：三步复用同一张表\n① 外积落格\n𝑑\n𝑘\n×\n𝑑\n𝑣\nd\nk\n\t​\n\n×d\nv\n\t​\n\n 个位置\n𝑘\n𝑡\n𝑣\n𝑡\n𝑇\nk\nt\n\t​\n\nv\nt\nT\n\t​\n\n② 原地更新\n𝑆\n𝑡\n=\n𝑆\n𝑡\n−\n1\n+\n𝑘\n𝑡\n𝑣\n𝑡\n𝑇\nS\nt\n\t​\n\n=S\nt−1\n\t​\n\n+k\nt\n\t​\n\nv\nt\nT\n\t​\n\n形状不变，内容持续累积\n③ 查询读取\n𝑜\n𝑡\n=\n𝑞\n𝑡\n𝑇\n𝑆\n𝑡\no\nt\n\t​\n\n=q\nt\nT\n\t​\n\nS\nt\n\t​\n\n从同一份状态取出结果\n键和值决定表的形状，token 改变表的内容。\n100%\n\n拖动空白移动画板",
+        "unsupported_assets": [],
+        "visible_text": "上下文状态\n写入\n读取\n容量随长度怎么变化？每一步需要读取什么？\n固\n定\n递\n推\n一\n张\nd\nk\n×\nd\nv\nd\nk\n×\nd\nv\n状\n态\n表\n每\n个\nt\no\nk\ne\nn\n原\n地\n改\n写\n滑动窗口\n只保留最近一段位置\n读取范围由窗口决定\n压缩\n多个位置 → 更少条目\n用较少条目保留信息\n全量 KV\n保留每个历史位置\n容量随上下文增长\n固定递推：三步复用同一张表\n①\n外\n积\n落\n格\nd\nk\n×\nd\nv\nd\nk\n×\nd\nv\n个\n位\n置\nk\nt\nv\nt\nT\nk\nt\nv\nt\nT\n②\n原\n地\n更\n新\nS\nt\n=\nS\nt\n−\n1\n+\nk\nt\nv\nt\nT\nS\nt\n=\nS\nt\n−\n1\n+\nk\nt\nv\nt\nT\n形\n状\n不\n变\n，\n内\n容\n持\n续\n累\n积\n③\n查\n询\n读\n取\no\nt\n=\nq\nt\nT\nS\nt\no\nt\n=\nq\nt\nT\nS\nt\n从\n同\n一\n份\n状\n态\n取\n出\n结\n果\n键和值决定表的形状，token 改变表的内容。\n100%\n拖动空白移动画板\n"
+      },
+      "layout": {
+        "contentSize": {
+          "height": 1000,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "cssContentSize": {
+          "height": 1000,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "cssLayoutViewport": {
+          "clientHeight": 1000,
+          "clientWidth": 1440,
+          "pageX": 0,
+          "pageY": 0
+        },
+        "cssVisualViewport": {
+          "clientHeight": 1000,
+          "clientWidth": 1440,
+          "offsetX": 0,
+          "offsetY": 0,
+          "pageX": 0,
+          "pageY": 0,
+          "scale": 1,
+          "zoom": 1
+        },
+        "layoutViewport": {
+          "clientHeight": 1000,
+          "clientWidth": 1440,
+          "pageX": 0,
+          "pageY": 0
+        },
+        "visualViewport": {
+          "clientHeight": 1000,
+          "clientWidth": 1440,
+          "offsetX": 0,
+          "offsetY": 0,
+          "pageX": 0,
+          "pageY": 0,
+          "scale": 1,
+          "zoom": 1
+        }
+      },
+      "issues": [],
+      "screenshot": "linux-board-preview-0.png"
+    }
+  ],
+  "errors": [],
+  "status": "passed",
+  "service_account": "understand-book",
+  "model_requests": 0
+}

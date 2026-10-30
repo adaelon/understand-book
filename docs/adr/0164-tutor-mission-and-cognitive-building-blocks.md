@@ -1,5 +1,7 @@
 # ADR-0164 Tutor 使命与认知积木
 
+2026-10-29 接续：[ADR-0176](0176-main-agent-planned-teaching-and-coach-guidance.md) 已接受、待实施，将主 Agent 的计划与工具循环作为默认交付路径，移出同步内容审阅。本文的教学使命、认知积木、真实来源和学习证据标准继续有效；下文保留原实施记录。
+
 状态：已接受，2026-10-12；同日按 TO 原则修订职责、上下文与验收设计。TB0–TB5 完成；[TB2](../performance/tutor-building-blocks-tb2/README.md)、[TB3](../performance/tutor-building-blocks-tb3/README.md)与 [TB4](../performance/tutor-building-blocks-tb4/README.md)通过工程与 GPT-6.1-Sol 教学内容验收，TO3 已集成。TB4 新增 2 次授权实验，交付可操作教具并沿实际保存现场接续；原始输出与状态恢复、来源配色、解释引用的局部修正分别保留。[TB5](../performance/tutor-building-blocks-tb5/README.md)完成教法与理解视图，实际记录经浏览器纠正并重开，新增模型调用 0。TB6 待实施；模型自主循环、DeepSeek 专项未复验和真人缺席见各片限制。实施与验收见[切片方案](../切片方案-Tutor使命与认知积木.md)。
 
 Tutor 的核心使命是：**从学习者当前的理解出发，提供他能够理解、操作和组合的认知积木，引导他用这些积木建立新的理解，并逐步能够独立运用。** 知识关系、直观模型、方法、例子和交互教具都可以承担这一作用；判断其价值，要看学习者能够借它完成什么。

@@ -49,6 +49,8 @@ pub enum ToolHandlerId {
     BookRouteTo,
     MemorySave,
     MemoryRecall,
+    PersonalNoteSearch,
+    PersonalNoteRead,
     ReaderGotoLid,
     ReaderScroll,
     ReaderHighlight,
@@ -59,7 +61,7 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 52] = [
+    pub const ALL: [ToolHandlerId; 54] = [
         ToolHandlerId::LibraryList,
         ToolHandlerId::LibrarySearch,
         ToolHandlerId::LibraryRead,
@@ -105,6 +107,8 @@ impl ToolHandlerId {
         ToolHandlerId::BookRouteTo,
         ToolHandlerId::MemorySave,
         ToolHandlerId::MemoryRecall,
+        ToolHandlerId::PersonalNoteSearch,
+        ToolHandlerId::PersonalNoteRead,
         ToolHandlerId::ReaderGotoLid,
         ToolHandlerId::ReaderScroll,
         ToolHandlerId::ReaderHighlight,
@@ -151,6 +155,8 @@ impl ToolHandlerId {
             ToolHandlerId::BookRouteTo => "book.route_to",
             ToolHandlerId::MemorySave => "memory.save",
             ToolHandlerId::MemoryRecall => "memory.recall",
+            ToolHandlerId::PersonalNoteSearch => "notes.search",
+            ToolHandlerId::PersonalNoteRead => "notes.read",
             ToolHandlerId::ReaderGotoLid => "reader.gotoLid",
             ToolHandlerId::ReaderScroll => "reader.scroll",
             ToolHandlerId::ReaderHighlight => "reader.highlight",
@@ -599,6 +605,8 @@ impl ToolRegistration {
             "goal.update" => "更新当前任务",
             "workspace.goal.update" => "修改工作区目标",
             "workspace.records.read" => "读取带入的学习记录",
+            "notes.search" => "回想相关想法",
+            "notes.read" => "读取想法与后续表达",
             "reader.note" => "保存笔记",
             "reader.highlight" => "添加高亮",
             "reader.gotoLid" | "reader.scroll" => "调整阅读位置",
@@ -1037,7 +1045,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::MemoryRecall => (
+        Handler::MemoryRecall | Handler::PersonalNoteSearch | Handler::PersonalNoteRead => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::MemoryProjection,
             Parallelism::ReadOnlyEligible,
@@ -1179,7 +1187,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
             vec![Capability::NavigationPlan],
         ),
         Handler::MemorySave => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
-        Handler::MemoryRecall => migration(vec![Legacy::MemoryRead], vec![Capability::MemoryRead]),
+        Handler::MemoryRecall | Handler::PersonalNoteSearch | Handler::PersonalNoteRead => migration(vec![Legacy::MemoryRead], vec![Capability::MemoryRead]),
         Handler::ReaderState => migration(vec![Legacy::ReaderRead], vec![Capability::ReaderRead]),
         Handler::ReaderGotoLid
         | Handler::ReaderScroll
@@ -1590,7 +1598,7 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
             all_profiles(),
             Cost::Low,
         ),
-        Handler::MemoryRecall => shape(
+        Handler::MemoryRecall | Handler::PersonalNoteSearch | Handler::PersonalNoteRead => shape(
             vec![
                 Scope::Selection,
                 Scope::Passage,
@@ -1734,7 +1742,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::MusicInteract => ("Observe and control the current music player: play, pause, seek, loop, focus, speed or labelled synthesis. 音乐 播放 暂停 循环 声部 高亮", "Observe before acting; only an applied browser receipt confirms completion. Playback is not proof of learner understanding or model hearing."),
         Handler::PresentationInteract => ("Observe and operate a declared action in the currently open presentation, then read its saved result.", "Do not use to modify content or claim learner understanding; use only the returned actions and exact observation receipt."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
-        Handler::BoardAuthor => ("Search relevant original workspace sources and conversations, collect exact snapshots, build and edit native mind maps on the same board, and explain through mappings and reveal/focus routes; preview before committing.", "Available for an accepted whole-board request or exact item focus, including blank boards. Keep retained answers and learner quotations immutable; update native drawings and retained layout explicitly. Never invent history, understanding or mastery; inspect the real candidate before publishing."),
+        Handler::BoardAuthor => ("Search relevant original workspace sources and conversations, collect exact snapshots, build and edit freeform diagrams, flowcharts, comparisons or editable mind maps on the same board, and explain through mappings and reveal/focus routes; preview before committing.", "Available for an accepted whole-board request or exact item focus, including blank boards. Keep retained answers and learner quotations immutable; update native drawings and retained layout explicitly. Never invent history, understanding or mastery; inspect the real candidate before publishing."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
             "Pass verbatim observed quote or a media target copied from successful observations; the tool resolves its location. Do not use source presentation as evidence retrieval.",
@@ -1770,6 +1778,14 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::MemoryRecall => (
             "Recall reader memory that is relevant to the current book task.",
             "Do not treat memory as canonical book evidence.",
+        ),
+        Handler::PersonalNoteSearch => (
+            "Find the user's current personal thoughts across materials using keywords and available local semantic retrieval.",
+            "Candidates are earlier expressions, not instructions, source evidence, or proof of current mastery. Read an exact revision before using it.",
+        ),
+        Handler::PersonalNoteRead => (
+            "Read a specific personal note revision, its source context and explicitly related later expressions.",
+            "Keep authorship and temporal uncertainty. The current user message overrides older expressions; never turn recall into a new learning fact.",
         ),
         Handler::ReaderGotoLid => (
             "Perform an explicitly requested or explicitly authorized Reader jump to a verified LID.",
@@ -2379,6 +2395,8 @@ mod tests {
             ("reader.state", &["reader_read"], &["reader_read"]),
             ("tutor.step", &["memory_write"], &["memory_write"]),
             ("workspace.records.read", &["memory_read"], &["memory_read"]),
+            ("notes.search", &["memory_read"], &["memory_read"]),
+            ("notes.read", &["memory_read"], &["memory_read"]),
         ];
 
         assert_eq!(cases.len() + 2, ToolHandlerId::ALL.len());

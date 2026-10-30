@@ -1,0 +1,381 @@
+{
+  "passed_unique": 92,
+  "failed": [],
+  "ignored": [
+    "tutor_coach::tests::tutor_coach_replays_recorded_two_turn_outputs_and_adjustment"
+  ],
+  "tests": {
+    "agent_prompt::tests::agent_tool_policy_base_allows_zero_tool_answers_and_runtime_owns_qa_bookkeeping": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::task_need_capability_directory_is_small_resident_and_evidence_aware": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::cr10_evidence_policy_forbids_derived_lids_and_failed_source_retries": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::agent_tool_policy_modules_follow_the_current_visible_capabilities": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::resident_authored_instruction_assets_are_english": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::math_formatting_reaches_restored_chats_without_tool_activation": {
+      "status": "ok",
+      "log": "final-agent_prompt_tests.log"
+    },
+    "agent_prompt::tests::learner_starting_point_reaches_restored_plain_answers_without_tutor_or_tools": {
+      "status": "ok",
+      "log": "final-learner_starting_point.log"
+    },
+    "tutor::followup_contract_tests::observing_preparing_receives_local_explanation_without_active_tutor_workflows": {
+      "status": "ok",
+      "log": "followup-contract-fixed.log"
+    },
+    "tutor::followup_contract_tests::tutor_followup_exact_accepted_initial_design_retry_remains_idempotent": {
+      "status": "ok",
+      "log": "followup-contract-fixed.log"
+    },
+    "tutor::followup_contract_tests::tutor_followup_contract_stays_stable_across_design_references": {
+      "status": "ok",
+      "log": "followup-contract-fixed.log"
+    },
+    "tutor::followup_contract_tests::tutor_followup_revision_requires_previous_ref_but_initial_design_does_not": {
+      "status": "ok",
+      "log": "followup-contract-fixed.log"
+    },
+    "tutor::followup_contract_tests::tutor_model_vocabulary_is_stable_while_execution_rules_follow_state": {
+      "status": "ok",
+      "log": "followup-contract-fixed.log"
+    },
+    "tutor_continuation_tests::continuation_contract_legacy_move_and_public_allowlist": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_continuation_tests::continuation_contract_action_origins_and_direction_are_distinct": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_continuation_tests::tutor_projection_pure_click_owns_intent_and_accepts_optional_continuation": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_continuation_tests::tutor_action_intent_preserves_request_default_and_preference_precedence": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_continuation_tests::tutor_projection_exposes_only_current_operations": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_continuation_tests::continuation_contract_runtime_and_schema_reject_invalid_options": {
+      "status": "ok",
+      "log": "tutor_continuation_tests.log"
+    },
+    "tutor_coach::tests::tutor_coach_adds_no_redundant_or_unsourced_adjustment": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_adoption_uses_only_the_host_frozen_guidance": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_observation_already_interpreted_and_no_new_information_are_explicit": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_applies_same_starting_point_to_native_board_with_selected_explanation": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_preserves_spend_stop_without_retry": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_reuses_observed_usage_and_model_purpose": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_accepts_no_method_for_a_reasoned_reference_page": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_keeps_user_author_and_actual_evidence_separate_at_provider_boundary": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_checks_context_before_calling_provider": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_observing_mode_records_without_scheduling_a_lesson": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_records_actual_invite_to_support_adjustment_from_existing_move_facts": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_replays_recorded_two_turn_outputs_and_adjustment": {
+      "status": "ignored",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_keeps_observed_usage_when_provider_cannot_parse_its_response": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_observations_reject_unknown_duplicate_and_malformed_decisions": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_accepts_live_conclusion_with_empty_union_fields": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_cancellation_stops_before_a_correction_call": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_keeps_paid_usage_when_schema_or_method_validation_fails": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_limits_reasoning_only_for_supported_deepseek_profile": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tool_registry::contract_tests::tutor_coach_binding_and_adjustment_stay_private_in_tool_arguments": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tutor_coach::tests::tutor_coach_observation_coverage_gets_one_correction_with_same_frozen_facts": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::presentation::tests::presentation_coach_rejects_unknown_method_revision_and_missing_adaptation_without_retry": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_rejects_an_invitation_without_an_implementable_activity": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_stops_after_one_invalid_correction_and_keeps_both_errors": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_stops_after_one_malformed_json_correction": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_uses_one_structured_call_with_the_frozen_source_turn": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_repairs_invalid_step_reason_once_with_same_facts_and_observed_usage": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_keeps_meaningful_or_unrelated_conclusion_extras_invalid": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_repairs_live_malformed_public_json_once": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_uses_low_reasoning_only_for_deepseek_on_initial_and_correction_calls": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "tutor_coach::tests::tutor_coach_preserves_transport_and_spend_errors_without_retrying_them": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "orchestrator::tests::turn_failures::tutor_coach_guidance_is_private_and_present_from_the_first_sample": {
+      "status": "ok",
+      "log": "tutor_coach.log"
+    },
+    "orchestrator::tests::teaching_design_loop::teaching_writing_rules_reach_each_enabled_main_request_once": {
+      "status": "ok",
+      "log": "teaching_writing_rules.log"
+    },
+    "tutor_review_input::tests::explanation_projection_uses_current_words_and_their_input_time_help": {
+      "status": "ok",
+      "log": "explanation_projection.log"
+    },
+    "tutor_review_input::tests::explanation_projection_does_not_turn_a_ui_click_into_current_learner_words": {
+      "status": "ok",
+      "log": "explanation_projection.log"
+    },
+    "tutor_review_input::tests::explanation_projection_cannot_borrow_the_authors_explanation_or_review_verdict": {
+      "status": "ok",
+      "log": "explanation_projection.log"
+    },
+    "tutor_review_input::tests::explanation_projection_preserves_ui_question_context_without_source_or_target_expansion": {
+      "status": "ok",
+      "log": "explanation_projection.log"
+    },
+    "tutor_review_input::tests::wb4_explanation_projection_keeps_full_request_and_actual_committed_parts": {
+      "status": "ok",
+      "log": "explanation_projection.log"
+    },
+    "orchestrator::tests::teaching_design_loop::teaching_design_loop_help_and_continuation_do_not_lock_a_teaching_method": {
+      "status": "ok",
+      "log": "teaching_design_loop_help_and_continuation_do_not_lock_a_teaching_method.log"
+    },
+    "orchestrator::tests::teaching_design_loop::native_board_preview_reaches_teaching_selection_before_any_commit": {
+      "status": "ok",
+      "log": "native_board_preview_reaches_teaching_selection_before_any_commit.log"
+    },
+    "model_runtime::tests::agent_request_plan_resolves_override_catalog_and_default_in_priority_order": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::provider_capabilities_unknown_models_fail_closed_without_guessed_continuation": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::default_catalog_versions_every_inherited_resident_base_asset": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::agent_request_plan_projects_instructions_input_tools_and_auto_without_parallelism": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::shared_output_allowance_reserves_the_same_space_for_every_call": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::agent_tool_policy_request_plan_tracks_versioned_modules_and_explicit_auto_choice": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::wire_input_estimate_counts_images_without_treating_base64_as_text": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::messages_wire_estimate_counts_system_thinking_and_nested_tool_images": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "model_runtime::tests::deepseek_flash_aliases_compact_at_the_actual_window_watermark": {
+      "status": "ok",
+      "log": "final-model_runtime_tests.log"
+    },
+    "tutor::review_resolution_tests::learner_starting_point_reaches_teaching_reviews_without_changing_factual_review": {
+      "status": "ok",
+      "log": "final-learner_starting_point.log"
+    },
+    "tool_registry::contract_tests::mcp_guide_schema_has_conditional_requirements": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::advertised_example_validation_detects_projection_and_parser_drift": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::presentation_read_error_explains_the_complete_operation_without_hiding_cause": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::to5_examples_follow_final_schema_and_provider_requests": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::book_comparison_schema_requires_separate_targets": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::presentation_to4_examples_follow_final_schema_parser_and_provider_requests": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::ranked_search_delivery_matches_its_closed_output_schema": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_participation_rationale_stays_private_while_the_invitation_remains_public": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::artifact_read_exposes_pointer_and_cursor_rules": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::note_is_only_exposed_through_reader_note": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_new_support_allocates_help_and_an_optional_remaining_inference": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_neutral_request_can_invite_without_rewriting_learner_intent_or_forcing_every_turn": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::video_tool_specs_examples_survive_real_provider_projection": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::reader_commands_expose_nested_required_fields": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_schema_examples_stay_stable_when_actual_references_change": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_intent_origins_follow_the_frozen_mode_action_and_preferences": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::search_schemas_expose_existing_length_limits": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::book_common_semantics_and_routing_guidance_reach_the_resident_surface": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::advertised_examples_survive_provider_projection_and_real_validation": {
+      "status": "ok",
+      "log": "tool-registry-final.log"
+    },
+    "tool_registry::contract_tests::optional_nulls_match_serde_without_weakening_required_fields": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_learner_view_examples_follow_available_facts_and_current_permissions": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_operations_require_their_payloads": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_tc2a_misuse_and_help_have_valid_example_counterparts": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::author_operations_require_complete_inputs": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::goal_operations_never_silently_discard_plan_fields": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    },
+    "tool_registry::contract_tests::tutor_examples_follow_final_state_schema_and_provider_requests": {
+      "status": "ok",
+      "log": "tool-registry-contracts.log"
+    }
+  }
+}

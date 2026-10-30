@@ -1,0 +1,12 @@
+{
+  "status": "built",
+  "release": "/opt/understand-book/releases/board-visual-math-20261028",
+  "source_files_match": true,
+  "binary_stat": {
+    "size": 56631560,
+    "mtime_ns": 1793154647375826126
+  },
+  "temporary_swap_removed": true,
+  "original_swappiness_restored": true,
+  "last_build_line": "    Finished `release` profile [optimized] target(s) in 13m 07s"
+}

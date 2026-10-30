@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -63,7 +64,7 @@ function trapFocus(event: KeyboardEvent) {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="applicationOverlayTarget()">
     <div class="recap-backdrop" :inert="!!shareSource" :aria-hidden="shareSource ? 'true' : undefined" @click.self="emit('close')">
       <section class="session-recap" role="dialog" aria-modal="true" aria-labelledby="recap-title"
         @keydown.esc.stop.prevent="emit('close')" @keydown="trapFocus">
@@ -114,7 +115,7 @@ function trapFocus(event: KeyboardEvent) {
 
 <style scoped>
 .recap-backdrop { position: fixed; inset: 0; z-index: 160; background: #0006; display: grid; place-items: center; padding: 20px; }
-.session-recap { background: var(--canvas, #fffaf2); color: var(--ink, #222); width: min(820px, 100%); max-height: calc(100dvh - 40px); overflow: auto; border: 1px solid var(--hairline, #ddd); border-radius: 24px; padding: 24px; box-sizing: border-box; }
+.session-recap { background: var(--canvas, #fffaf2); color: var(--ink, #222); width: min(820px, 100%); max-height: calc(var(--app-content-height, 100dvh) - 40px); overflow: auto; border: 1px solid var(--hairline, #ddd); border-radius: 24px; padding: 24px; box-sizing: border-box; }
 header, .recap-range, footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 header { position: sticky; top: -24px; padding: 12px 0; background: var(--canvas, #fff); z-index: 1; }
 h2 { font: 400 24px/1.45 var(--font-display); font-synthesis: none; margin: 4px 0; } h3 { font-size: 17px; margin: 26px 0 12px; } h3 span { opacity: .55; font-size: 13px; margin-left: 8px; } h4, p { margin: 8px 0; }
@@ -137,5 +138,5 @@ summary { cursor: pointer; line-height: 1.6; } footer { justify-content: flex-en
 .recap-status { display: inline-block; font-size: 12px; padding: 3px 8px; border-radius: 5px; background: var(--surface, #f2f3f0); }
 button { font: inherit; font-size: 13px; color: inherit; background: transparent; border: 1px solid var(--hairline, #ccc); padding: 7px 10px; border-radius: 7px; cursor: pointer; flex-shrink: 0; } button:disabled { opacity: .45; cursor: default; }
 .recap-error, .recap-unavailable { color: var(--danger, #9c3c30); font-size: 13px; }
-@media (max-width: 600px) { .recap-backdrop { padding: 0; } .session-recap { width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; padding: 16px; } header { top: -16px; } .recap-range { align-items: flex-start; flex-wrap: wrap; } .recap-focus { padding: 16px; } .recap-share-bar { bottom: -16px; } .recap-share-bar span { display: none; } }
+@media (max-width: 600px) { .recap-backdrop { padding: 0; } .session-recap { width: 100%; height: var(--app-content-height, 100dvh); max-height: var(--app-content-height, 100dvh); border-radius: 0; padding: 16px; } header { top: -16px; } .recap-range { align-items: flex-start; flex-wrap: wrap; } .recap-focus { padding: 16px; } .recap-share-bar { bottom: -16px; } .recap-share-bar span { display: none; } }
 </style>

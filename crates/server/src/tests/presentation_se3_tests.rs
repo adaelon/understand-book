@@ -129,6 +129,10 @@ struct MethodProvider {
     delivered: RefCell<Option<PresentationRef>>,
 }
 impl ModelAdapter for MethodProvider {
+    fn complete_structured(&self,request:CompletionRequest)->Result<Value,AdapterError>{
+        Ok(crate::tests::tutor_loop_tests::fixture_coach_guidance(&request).expect("only the existing inline teaching coach may request a helper"))
+    }
+
     fn complete(&self,_:CompletionRequest)->Result<ParsedResponse,AdapterError>{unreachable!()}
     fn chat(&self,plan:&AgentRequestPlan)->Result<AssistantTurn,AdapterError>{
         self.plans.borrow_mut().push(plan.clone());

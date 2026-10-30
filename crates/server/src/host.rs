@@ -1724,6 +1724,14 @@ fn start_server_with_memory_path(
                                 continue;
                             }
                         }
+                        if api_url == "/me/notes/search" && method == "POST" && !reader_only {
+                            let reply=match crate::body_value(&body) {
+                                Ok(input)=>match crate::personal_note_retrieval::search_user(&state,&input){Ok(value)=>crate::ok_json(&value),Err(error)=>crate::err_reply(&error)},
+                                Err(reply)=>reply,
+                            };
+                            let _=request.respond(response_from_json(reply.status,reply.body));
+                            continue;
+                        }
                         let action = || {
                             if is_review_boundary(&method, &api_url) {
                                 let _ = review_coordinator.drain_boundary(boundary_timeout);

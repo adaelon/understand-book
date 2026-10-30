@@ -1,0 +1,219 @@
+{
+  "checked_at_utc": "2026-10-27T12:15:30.053353+00:00",
+  "provider": {
+    "adapter": "native",
+    "model": "deepseek-v4-flash",
+    "endpoint_origin": "https://api.deepseek.com",
+    "search_qps": "100",
+    "fetch_qps": "25"
+  },
+  "deployed_source_mechanisms": {
+    "crates/server/src/multi_user_review.rs": [
+      {
+        "line": 146,
+        "code": "let adapter = access.runs.task_adapter().map_err(|mut e| {"
+      },
+      {
+        "line": 203,
+        "code": "&ReviewMoment::from_millis(now_ms),"
+      }
+    ],
+    "crates/server/src/run_admission.rs": [
+      {
+        "line": 270,
+        "code": "task_config.clone(), crate::SELECTION_TRANSLATION_TIMEOUT,"
+      }
+    ],
+    "crates/server/src/multi_user_host.rs": [
+      {
+        "line": 356,
+        "code": "for _ in 0..4 {"
+      }
+    ],
+    "crates/server/src/presentation_sandbox.rs": [
+      {
+        "line": 266,
+        "code": "\"MemoryMax=1200M\","
+      },
+      {
+        "line": 268,
+        "code": "\"CPUQuota=150%\","
+      },
+      {
+        "line": 386,
+        "code": "\"MemoryMax=768M\","
+      },
+      {
+        "line": 388,
+        "code": "\"CPUQuota=100%\","
+      }
+    ]
+  },
+  "review_jobs": {
+    "states": {
+      "completed": 134,
+      "retryable": 2
+    },
+    "jobs": 136,
+    "sum_attempts": 48701,
+    "max_attempts": 24004,
+    "non_completed_metadata": [
+      {
+        "status": "retryable",
+        "attempts": 24004,
+        "updated_at": "1793103274832",
+        "next_attempt_at": "1793103334832"
+      },
+      {
+        "status": "retryable",
+        "attempts": 23994,
+        "updated_at": "1793103275846",
+        "next_attempt_at": "1793103335846"
+      }
+    ],
+    "latest_error_categories": [
+      {
+        "code": "REVIEW_INPUT_MISSING",
+        "category": "other",
+        "users": 1
+      }
+    ]
+  },
+  "private_storage_metadata": {
+    "bytes_by_category": {
+      "learning_db": 51765248,
+      "memory_json": 683958,
+      "sessions": 86502837,
+      "other": 428024,
+      "legacy_history": 3047181
+    },
+    "files_by_category": {
+      "learning_db": 12,
+      "memory_json": 12,
+      "sessions": 42,
+      "other": 60,
+      "legacy_history": 2
+    }
+  },
+  "database": {
+    "memory_review_retry_groups_24h": [
+      {
+        "calls": 73,
+        "task_attempts": 73,
+        "first_epoch": 1793047860,
+        "last_epoch": 1793057991,
+        "pending_accounting": 72,
+        "succeeded": 1
+      },
+      {
+        "calls": 8,
+        "task_attempts": 8,
+        "first_epoch": 1793057904,
+        "last_epoch": 1793058034,
+        "pending_accounting": 7,
+        "succeeded": 1
+      },
+      {
+        "calls": 5,
+        "task_attempts": 5,
+        "first_epoch": 1793057999,
+        "last_epoch": 1793058041,
+        "pending_accounting": 0,
+        "succeeded": 5
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793076134,
+        "last_epoch": 1793076134,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793075285,
+        "last_epoch": 1793075285,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793079511,
+        "last_epoch": 1793079511,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793022602,
+        "last_epoch": 1793022602,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793028771,
+        "last_epoch": 1793028771,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793058492,
+        "last_epoch": 1793058492,
+        "pending_accounting": 0,
+        "succeeded": 1
+      },
+      {
+        "calls": 1,
+        "task_attempts": 1,
+        "first_epoch": 1793102931,
+        "last_epoch": 1793102931,
+        "pending_accounting": 0,
+        "succeeded": 1
+      }
+    ],
+    "memory_review_send_intervals_24h": [
+      {
+        "intervals": 83,
+        "min_seconds": 1,
+        "mean_seconds": 124.13,
+        "median_seconds": 60,
+        "max_seconds": 6132
+      }
+    ],
+    "reader_workspaces": [
+      {
+        "total": 225
+      }
+    ],
+    "publications": [
+      {
+        "total": 19
+      }
+    ],
+    "recent_model_names": [
+      {
+        "model": "deepseek-v4-flash",
+        "charge_records": 255
+      }
+    ]
+  },
+  "timeout_log_categories": {
+    "unclassified": 119
+  },
+  "memory_review_error_log_count": 2596,
+  "log_error_codes": {
+    "REVIEW_EXECUTOR_FAILED": 79,
+    "REVIEW_PROVIDER_UNCONFIGURED": 0,
+    "MODEL_SPEND_PENDING": 0,
+    "MODEL_SPEND_EXHAUSTED": 0,
+    "ALLOWANCE_PENDING": 0,
+    "TUTOR_COACH": 0
+  }
+}

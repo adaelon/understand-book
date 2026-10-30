@@ -5,10 +5,14 @@ cd "$source_root"
 # Build in the final release directory: runtime source paths are compiled in.
 rm -f -- multi-reader-build.txt
 pnpm install --frozen-lockfile
+# Semantic recall is part of the hosted service, installed once outside releases.
+"${UNDERSTAND_BOOK_NODE:-node}" --import tsx scripts/prepare-local-embedding.mjs \
+  --config "${UNDERSTAND_BOOK_EMBEDDING_CONFIG:-/opt/understand-book/models/local-embedding.json}"
 pnpm -C packages/web build:multi
 pnpm -C apps/admin build
 mkdir -p packages/web/dist-multi/admin
 cp -a apps/admin/dist/. packages/web/dist-multi/admin/
+python3 scripts/linux/verify-web-release.py packages/web/dist-multi
 cargo build --locked --release -p server --bin server --bin manage_reader \
   --bin publish_book --bin reader_maintenance --bin presentation_worker --bin video_audio_review -j 1
 # Keep the build receipt beside the binaries and Web files it describes.
@@ -29,5 +33,6 @@ cargo build --locked --release -p server --bin server --bin manage_reader \
   cargo --version
   node --version
   pnpm --version
+  printf 'embedding_config=%s\n' "${UNDERSTAND_BOOK_EMBEDDING_CONFIG:-/opt/understand-book/models/local-embedding.json}"
 } > multi-reader-build.txt
 printf 'Multi-reader build complete: %s\n' "$source_root"

@@ -5,7 +5,7 @@ use crate::ReviewState;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const MEMORY_SCHEMA_VERSION: u32 = 4;
+pub const MEMORY_SCHEMA_VERSION: u32 = 6;
 #[cfg(test)]
 pub(crate) const PREVIOUS_MEMORY_SCHEMA_VERSION: u32 = 2;
 
@@ -15,6 +15,16 @@ pub struct MemoryDocument {
     pub document_revision: u64,
     pub projection_revision: u64,
     pub records: Vec<Record>,
+    #[serde(default)]
+    pub notes: Vec<crate::PersonalNote>,
+    #[serde(default)]
+    pub(crate) note_operations: BTreeMap<String, crate::personal_notes::NoteOperation>,
+    #[serde(default)]
+    pub note_links: Vec<crate::NoteLink>,
+    #[serde(default)]
+    pub note_discussions: Vec<crate::NoteDiscussion>,
+    #[serde(default)]
+    pub note_attachments: Vec<crate::NoteAttachment>,
     /// Read-only navigation from an earlier note identity to its current record.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) note_replacements: BTreeMap<String, String>,
@@ -29,21 +39,17 @@ pub struct MemoryDocument {
 }
 
 impl MemoryDocument {
-    pub(crate) fn replace_note_identity(&mut self, previous: &str, current: &str) {
-        if previous == current { return; }
-        for target in self.note_replacements.values_mut() {
-            if target == previous { *target = current.to_owned(); }
-        }
-        self.note_replacements.remove(current);
-        self.note_replacements.insert(previous.to_owned(), current.to_owned());
-    }
-
     pub(crate) fn empty() -> MemoryDocument {
         MemoryDocument {
             schema_version: MEMORY_SCHEMA_VERSION,
             document_revision: 0,
             projection_revision: 0,
             records: Vec::new(),
+            notes: Vec::new(),
+            note_operations: BTreeMap::new(),
+            note_links: Vec::new(),
+            note_discussions: Vec::new(),
+            note_attachments: Vec::new(),
             note_replacements: BTreeMap::new(),
             profile_facts: Vec::new(),
             review_state: ReviewState::default(),
@@ -53,32 +59,41 @@ impl MemoryDocument {
     }
 
     pub(crate) fn from_legacy(records: Vec<Record>) -> MemoryDocument {
-        MemoryDocument {
+        let mut document = MemoryDocument {
             schema_version: MEMORY_SCHEMA_VERSION,
             document_revision: 1,
             projection_revision: 1,
             records,
+            notes: Vec::new(),
+            note_operations: BTreeMap::new(),
+            note_links: Vec::new(),
+            note_discussions: Vec::new(),
+            note_attachments: Vec::new(),
             note_replacements: BTreeMap::new(),
             profile_facts: Vec::new(),
             review_state: ReviewState::default(),
             exclusions: Vec::new(),
             governance_state: ProfileGovernanceState::default(),
-        }
+        };
+        document.migrate_notes();
+        document
     }
 
     pub(crate) fn migrate_previous(mut self) -> Result<MemoryDocument, String> {
-        if !matches!(self.schema_version, 2 | 3) {
+        if !matches!(self.schema_version, 2 | 3 | 4 | 5) {
             return Err(format!(
                 "无法从 memory schema_version {} 迁移到 {}",
                 self.schema_version, MEMORY_SCHEMA_VERSION
             ));
         }
         self.schema_version = MEMORY_SCHEMA_VERSION;
+        self.migrate_notes();
         self.validate()?;
         Ok(self)
     }
 
     pub(crate) fn validate(&self) -> Result<(), String> {
+        self.validate_notes()?;
         if self.schema_version != MEMORY_SCHEMA_VERSION {
             return Err(format!(
                 "不支持的 memory schema_version: {} (expected {})",

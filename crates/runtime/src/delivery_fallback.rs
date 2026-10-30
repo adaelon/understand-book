@@ -184,7 +184,7 @@ pub(super) fn deliver(
     // A reported balance shortage cannot recover through another paid request.
     if previous.is_none() && compiled.is_none()
         && !insufficient_provider_balance(error)
-        && !crate::workspace_goal::exam_review_required(context.workspace_goal.as_ref(), context.accepted_workspace_goal.as_ref()) {
+        && !crate::workspace_goal::exam_goal_active(context.workspace_goal.as_ref(), context.accepted_workspace_goal.as_ref()) {
         let saved_presentations: Vec<_> = references.iter().map(|reference| {
             let key = serde_json::to_string(reference).unwrap();
             let previews: Vec<_> = context.presentation_delivery_observations.get(&key)

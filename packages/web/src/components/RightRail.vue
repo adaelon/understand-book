@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
+import { captureUserThought, openPersonalNotes } from '../personal-notes';
+import MessageThoughts from './MessageThoughts.vue';
 import { t as uiText } from '../i18n';
 
 import { inject } from 'vue';
 import { deliveredAnswerText, shareHighlightKey } from '../reading-share';
 const shareHighlight = inject(shareHighlightKey, null);
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
+const thoughtCaptureError=ref('');
+async function rememberUserThought(turnId:string) {try {thoughtCaptureError.value='';await captureUserThought(props.activeChatSessionId,turnId);} catch(error) {thoughtCaptureError.value=(error as Error).message;}}
 import { ArrowRight, ArrowUp, ChevronDown, ChevronLeft, CircleHelp, ExternalLink, Maximize2, Minimize2, Plus, Square, Undo2, X } from "@lucide/vue";
 import MobileLearningSheet from './MobileLearningSheet.vue';
 import QuestionImageInput from './QuestionImageInput.vue';
@@ -59,7 +64,6 @@ import type { BoardDelivery } from '../generated/BoardDelivery';
 import { boardDeliveryKey, mergeBoardDeliveries, type BoardLocation } from '../board-workspace';
 import type { RunActivity } from "../agent-run-state";
 import ProfileMemoryPanel from "./ProfileMemoryPanel.vue";
-import IntentArtifactPanel from "./IntentArtifactPanel.vue";
 import SessionRecap from './SessionRecap.vue';
 import { targetPublication, type RecapTarget } from '../session-recap';
 
@@ -69,6 +73,7 @@ type ContextTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  noteReferences?: import("../generated/NoteRef").NoteRef[];
   musicQuestion?: import('../music-api').MusicQuestionContext | null;
   videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   hasTeaching?: boolean;
@@ -134,6 +139,7 @@ const props = withDefaults(defineProps<{
   learningPurposeReady?: boolean;
   learningPurposeBusy?: boolean;
   agentInput: string;
+  personalNoteReference?: import('../generated/NoteRef').NoteRef;
   sending: boolean;
   historyLoading?: boolean;
   historyError?: string | null;
@@ -201,6 +207,8 @@ const emit = defineEmits<{
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
   (e: "send-agent"): void;
+  (e: 'clear-personal-note'): void;
+  (e: 'continue-personal-note', turnId: string, reference: import('../generated/NoteRef').NoteRef): void;
   (e: 'continue-answer', turnId: string): void;
   (e: 'clarify-answer', turnId: string, excerpt?: string, receipt?: PresentationFollowUp): void;
   (e: 'choose-continuation', view: TutorContinuationView, optionId: string, receipt?: PresentationFollowUp): void;
@@ -668,7 +676,6 @@ watch(() => props.sending, sending => {
 });
 const tabs: { id: ContextTab; label: string }[] = [
   { id: "agent", label: uiText('问答') },
-  { id: "artifacts", label: uiText('成果') },
   { id: "profile", label: uiText('画像') },
   { id: "formula", label: uiText('公式') },
   { id: "notes", label: uiText('笔记') },
@@ -684,9 +691,6 @@ watch(() => props.selectedLid, () => { if (activeTab.value === 'formula') emit('
 const profileAttentionCount = computed(() => (
   (props.profileMemory?.pending_candidates.length ?? 0)
   + (props.profileMemory?.status.pending_sensitive_confirmation ? 1 : 0)
-));
-const artifactAcceptedCount = computed(() => (
-  props.intentArtifacts?.artifacts.filter((artifact) => artifact.state === "accepted").length ?? 0
 ));
 watch(() => props.askDraft, async (draft) => {
   if (!draft) return;
@@ -1017,7 +1021,7 @@ function focusActivityHelp(deliveryRefs: string[]) {
   node?.scrollIntoView({ block: 'center' });
   node?.querySelector<HTMLButtonElement>('[data-help-action]')?.focus();
 }
-defineExpose({ focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation, prepareCompletionFeedback });
+defineExpose({ focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation, locateScene, prepareCompletionFeedback });
 
 watch(() => props.activeChatSessionId, () => { closeAgentSourcePopup(); clearAnswerSelection(); });
 watch(activeTab, clearAnswerSelection);
@@ -1041,6 +1045,7 @@ function dismissAnswerSelection() {
 }
 function startAnswerSelection(event: PointerEvent) {
   if (event.button !== 0) return;
+  if ((event.target as HTMLElement | null)?.closest('[data-note-attachment]')) return;
   clearAnswerSelection();
   answerSelectionDragging = true;
 }
@@ -1065,6 +1070,7 @@ function onAnswerSelectionChange() {
   const range = sel.getRangeAt(0);
   const start = range.startContainer.nodeType === 3 ? range.startContainer.parentElement : (range.startContainer as HTMLElement);
   const end = range.endContainer.nodeType === 3 ? range.endContainer.parentElement : (range.endContainer as HTMLElement);
+  if (start?.closest('[data-note-attachment]') || end?.closest('[data-note-attachment]')) { clearAnswerSelection(); return; }
   const startAnswer = start?.closest?.(".ans-text");
   if (!startAnswer || startAnswer !== end?.closest?.(".ans-text") || !transcriptRef.value?.contains(startAnswer)) {
     clearAnswerSelection();
@@ -1222,7 +1228,6 @@ function selectTab(tab: ContextTab) {
   chatMenuOpen.value = false;
   if (tab === "profile") emit("refresh-profile");
   if (tab === 'formula') emit('request-formula');
-  if (tab === "artifacts") emit("open-artifacts");
 }
 
 function memoryUpdateLabel(update: ProfileMemoryUpdate): string {
@@ -1295,19 +1300,15 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">
           {{ profileAttentionCount }}
         </span>
-        <span v-if="tab.id === 'artifacts' && artifactAcceptedCount" class="tab-badge">
-          {{ artifactAcceptedCount }}
-        </span>
       </button>
       <div ref="contextTools" class="context-tools">
-        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'artifacts'].includes(activeTab) }" type="button" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
-          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'artifacts'].includes(tab.id))?.label ?? uiText('工具') }}
-          <span v-if="profileAttentionCount" class="tool-attention">{{ profileAttentionCount }}</span>
+        <button ref="contextMenuButton" class="context-menu-toggle" :class="{ active: !['agent', 'profile'].includes(activeTab) }" type="button" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')" :aria-expanded="contextMenuOpen" aria-controls="reader-secondary-tabs" @click="contextMenuOpen = !contextMenuOpen; chatMenuOpen = false">
+          {{ tabs.find(tab => tab.id === activeTab && !['agent', 'profile'].includes(tab.id))?.label ?? uiText('工具') }}
           <ChevronDown :size="14" aria-hidden="true" />
         </button>
         <div v-show="contextMenuOpen" id="reader-secondary-tabs" class="secondary-tabs" role="tablist" :aria-label="musicMode ? uiText('更多伴听工具') : uiText('更多阅读工具')">
           <button v-for="tab in tabs.slice(2)" :key="tab.id" class="tab" :class="{ active: activeTab === tab.id }" type="button" role="tab" :id="`reader-tab-${tab.id}`" :aria-selected="activeTab === tab.id" :aria-controls="`reader-panel-${tab.id}`" @click="selectTab(tab.id)">
-            {{ tab.label }}<span v-if="tab.id === 'profile' && profileAttentionCount" class="tab-badge">{{ profileAttentionCount }}</span>
+            {{ tab.label }}
           </button>
         </div>
       </div>
@@ -1418,7 +1419,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <p v-if="turn.musicQuestion" class="turn-video-context">{{ uiText('音乐问题 ·') }} {{ videoTime(turn.musicQuestion.audio.start_ms) }}–{{ videoTime(turn.musicQuestion.audio.end_ms) }}<span v-if="turn.musicQuestion.occurrence_id"> {{ uiText('· 当前演奏片段') }}</span></p>
           <p v-if="turn.videoQuestion" class="turn-video-context">{{ uiText('视频问题 ·') }} {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? uiText(' · 已选区域') : '' }}<span v-if="turn.videoQuestion.range"> {{ uiText('· 时间范围') }} {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
           <details v-if="turn.musicQuestion?.image || turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片')" />{{ uiText('查看提问图片') }}</summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片放大预览')" /></details>
-          <p class="u-msg">{{ turn.user }}</p>
+          <MessageThoughts v-if="turn.turnId && !turn.pending" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" role="user" :text="turn.user"><p class="u-msg">{{ turn.user }}</p></MessageThoughts><p v-else class="u-msg">{{ turn.user }}</p>
+          <button v-if="turn.turnId && !turn.pending && turn.user.trim()" class="quiet" @click="rememberUserThought(turn.turnId)">留为我的想法</button>
+          <div v-if="turn.noteReferences?.length && !turn.pending" class="turn-note-links"><span>这次用到的想法</span><button v-for="(reference,index) in turn.noteReferences" :key="`${reference.note_id}:${reference.revision}`" @click="openPersonalNotes(reference)">想法 {{index+1}} · 第 {{reference.revision}} 版</button><button v-if="turn.turnId" @click="emit('continue-personal-note',turn.turnId,turn.noteReferences[0]!)">围绕这些想法补充</button></div>
+          <p v-if="thoughtCaptureError" role="alert">{{ thoughtCaptureError }}</p>
           <button v-if="turn.boardFollowUp" type="button" class="board-location board-question-link"
             @click="emit('open-board-location', { board_id: turn.boardFollowUp.board_id, item_id: turn.boardFollowUp.item_id, block_id: turn.boardFollowUp.block_id })">
             <span>{{ uiText('回到画板提问对象') }}</span><ArrowRight :size="14" aria-hidden="true" />
@@ -1455,6 +1459,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <p v-if="!turn.pending && turn.boardDeliveryError" class="board-delivery-error incomplete" role="status">{{ uiText('内容没有加入画板：{0}', [turn.boardDeliveryError]) }}</p>
 
           <div v-if="turn.outcome && (!turn.error || turn.spendStop)" class="a-msg">
+            <MessageThoughts :session-id="props.activeChatSessionId" :turn-id="turn.turnId ?? ''" role="assistant" :text="deliveredAnswerText(turn)">
             <div v-if="answerParts(turn.outcome).length" :ref="el => { if (turn.turnId) { if (el) answerRoots.set(turn.turnId, el as HTMLElement); else answerRoots.delete(turn.turnId); } }" class="ans-text md" @pointerdown="startAnswerSelection" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
               <template v-for="(part, pi) in turnDisplayParts(turn)" :key="pi">
                 <div
@@ -1488,6 +1493,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               </template>
             </div>
             <p v-else class="ans-text">{{ uiText('暂无回答。') }}</p>
+            </MessageThoughts>
             <div v-if="workspaceVisible && workspace?.turnId === turn.turnId" :ref="element => { workspaceTeachingTarget = element as HTMLElement | null; }" class="workspace-teaching" />
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
               :ref="instance => { if (instance) activityInstances.set(turn.turnId!, instance as InstanceType<typeof TutorActivities>); else activityInstances.delete(turn.turnId!); }"
@@ -1615,6 +1621,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <span>{{ uiText('补充任务：') }}{{ targetGoal.interpretation }}</span>
           <button :aria-label="uiText('取消补充任务')" @click="emit('clear-goal-target')">×</button>
         </div>
+        <div v-if="props.personalNoteReference" class="ask-draft"><div class="ask-draft-head"><span>继续推敲这条想法 · 第 {{props.personalNoteReference.revision}} 版</span><button aria-label="结束想法关联" @click="emit('clear-personal-note')"><X :size="14" /></button></div></div>
         <div v-if="props.askDraft" class="ask-draft">
           <div class="ask-draft-head">
             <span>{{ askQuoteLabel(props.askDraft) }}</span>
@@ -1663,19 +1670,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <div ref="responseSidebarHost" />
         <div v-if="$slots['learning-actions']" class="sidebar-section"><p class="sidebar-label">{{ uiText('学习记录') }}</p><div ref="recordsSidebarHost" /></div>
       </aside>
-    </section>
-
-    <section id="reader-panel-artifacts" v-show="activeTab === 'artifacts'" class="tab-panel artifact-panel" role="tabpanel" aria-labelledby="reader-tab-artifacts">
-      <IntentArtifactPanel
-        :preparation-available="props.preparationAvailable"
-        @prepare="emit('prepare-artifacts')"
-        :overlay="props.intentArtifacts"
-        :loading="props.intentArtifactsLoading"
-        :error="props.intentArtifactsError"
-        @refresh="emit('refresh-artifacts')"
-        @goto="emit('goto', $event)"
-        @cite="emit('artifact-cited', $event)"
-      />
     </section>
 
     <section id="reader-panel-profile" v-show="activeTab === 'profile'" class="tab-panel profile-panel" role="tabpanel" aria-labelledby="reader-tab-profile">
@@ -1780,7 +1774,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
       <p v-else class="empty panel-empty">{{ uiText('暂无笔记或高亮。') }}</p>
     </section>
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <div
         v-if="answerSelection"
         ref="answerPopover"
@@ -1801,7 +1795,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
     </Teleport>
 
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <div v-if="historyOpen" class="history-backdrop" @click.self="historyOpen = false">
         <section class="history-dialog" role="dialog" aria-modal="true" aria-labelledby="history-title">
           <header class="history-dialog-head">
@@ -1857,7 +1851,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
     </Teleport>
 
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <div
         v-if="agentSourcePopup"
         class="agent-source-popup-layer"
@@ -1928,6 +1922,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </template>
 
 <style scoped>
+.turn-note-links{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:12px 0;font-size:11px;color:var(--steel)}.turn-note-links button{font:inherit;color:inherit;background:var(--surface-soft);border:1px solid var(--hairline);border-radius:6px;padding:6px 9px;cursor:pointer}
 .turn-question-image { margin: 8px 0 12px; font-size: 12px; color: var(--steel); }
 .turn-question-image summary { display: flex; align-items: center; gap: 8px; cursor: zoom-in; }
 .turn-question-image summary img { width: 120px; height: 80px; object-fit: contain; border: 1px solid var(--line); border-radius: 8px; }
@@ -1994,7 +1989,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   inset: var(--app-input-viewport-top, 0px) 0 auto;
   z-index: 70;
   width: 100%;
-  height: var(--app-input-viewport-height, 100dvh);
+  height: var(--app-input-viewport-height, var(--app-content-height, 100dvh));
   max-height: none;
   border: 0;
   background: var(--canvas);
@@ -2214,7 +2209,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   pointer-events: auto;
 }
 .history-dialog {
-  width: min(760px, calc(100vw - 2rem));
+  width: min(760px, calc(var(--app-content-width, 100vw) - 2rem));
   max-height: min(78vh, 780px);
   display: flex;
   flex-direction: column;
@@ -2494,7 +2489,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--canvas);
-  max-width: calc(100vw - 16px);
+  max-width: calc(var(--app-content-width, 100vw) - 16px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
 }
 .answer-popover button {
@@ -2615,8 +2610,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 }
 .agent-source-popup {
   position: fixed;
-  width: min(620px, calc(100vw - 24px));
-  max-height: min(760px, calc(100dvh - 24px));
+  width: min(620px, calc(var(--app-content-width, 100vw) - 24px));
+  max-height: min(760px, calc(var(--app-content-height, 100dvh) - 24px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2871,7 +2866,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .conversation-wide .agent-compose-row:not(.video-compose) > textarea { grid-column: 1; grid-row: 1; }
 .conversation-wide .agent-compose-row:not(.video-compose) > .composer-controls { display: none; }
 .conversation-wide .agent-compose-row:not(.video-compose) > button { grid-column: 2; grid-row: 1; align-self: center; }
-.agent-input-context { display: grid; gap: 0.5rem; max-height: min(128px, calc(var(--app-input-viewport-height, 100dvh) * .22)); overflow-y: auto; }
+.agent-input-context { display: grid; gap: 0.5rem; max-height: min(128px, calc(var(--app-input-viewport-height, var(--app-content-height, 100dvh)) * .22)); overflow-y: auto; }
 .compose-caption { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--steel); font-size: .75rem; }
 .compose-caption button { min-height: 28px; padding: 2px 8px; border: 0; background: transparent; }
 .transcript { min-height: 0; padding: 12px 16px 16px; }
@@ -2886,7 +2881,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .context-menu-toggle.active { background: var(--surface-soft); color: var(--ink); }
 .tool-attention { color: var(--brand-green-deep); font-size: .75rem; }
 .chat-actions .fullscreen-button { width: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
-.chat-secondary-actions, .secondary-tabs { display: flex; flex-direction: column; align-items: stretch; gap: 4px; position: absolute; z-index: 20; top: calc(100% + 4px); width: 230px; max-height: calc(var(--app-input-viewport-height, 100dvh) - 80px); overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
+.chat-secondary-actions, .secondary-tabs { display: flex; flex-direction: column; align-items: stretch; gap: 4px; position: absolute; z-index: 20; top: calc(100% + 4px); width: 230px; max-height: calc(var(--app-input-viewport-height, var(--app-content-height, 100dvh)) - 80px); overflow-y: auto; padding: 8px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--canvas); box-shadow: 0 8px 24px #0002; }
 .chat-secondary-actions { right: 0; }
 .secondary-tabs { left: 0; width: 160px; }
 .chat-secondary-actions button, .secondary-tabs .tab { justify-content: flex-start; text-align: left; min-height: 40px; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font-weight: 400; }

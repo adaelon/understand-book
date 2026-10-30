@@ -198,6 +198,8 @@ pub struct DispositionReceipt {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnDomain {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub personal_notes: Option<Value>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) board_commits: Vec<crate::board_author::CommittedPart>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

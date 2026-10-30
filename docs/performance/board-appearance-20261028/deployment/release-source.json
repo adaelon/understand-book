@@ -1,0 +1,20 @@
+{
+  "baseline": "registration-only-20261027",
+  "files": [
+    "crates/runtime/src/board_author.rs",
+    "packages/web/board-preview-assets.mjs",
+    "packages/web/src/components/BoardCanvas.vue",
+    "packages/web/src/components/BoardDrawingText.vue",
+    "packages/web/src/board-canvas-appearance.ts",
+    "packages/web/src/board-math.ts",
+    "packages/web/src/board-preview.ts",
+    "packages/web/src/board-workspace.ts",
+    "packages/web/src/board-canvas.test.ts",
+    "packages/web/src/board-math.test.ts",
+    "packages/web/src/board-workspace.test.ts"
+  ],
+  "removed": [],
+  "preserves_workspace_notes": true,
+  "preserves_registration_and_runtime_fixes": true,
+  "schema": 21
+}

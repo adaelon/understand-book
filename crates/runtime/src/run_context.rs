@@ -239,6 +239,11 @@ impl From<read_tools::ToolError> for TeachingSelectionPreflightError {
 
 /// An operation must be deterministic: model calls run after this borrow ends.
 pub trait ResidentStatePort {
+    fn personal_note_context(&mut self)->Result<serde_json::Value,read_tools::ToolError>{Ok(serde_json::Value::Null)}
+    fn personal_note_search(&mut self, request:serde_json::Value)->Result<serde_json::Value,read_tools::ToolError>{
+        self.submit_private(|store|store.search_personal_notes(request["query"].as_str().unwrap_or_default(),request["book_id"].as_str(),request["limit"].as_u64().unwrap_or(8).clamp(1,20) as usize)
+            .map(|hits|serde_json::json!({"hits":hits,"semantic":{"status":"unavailable","reason":"this host supplies lexical retrieval"}})))?
+    }
     fn board_authoring_available(&self) -> bool { false }
     fn author_board(&mut self, _request: crate::board_author::AuthorRequest, _bindings: &[crate::orchestrator::SourceBinding], _messages: &[Message], _cancellation: &CancellationToken) -> Result<crate::board_author::AuthorResult, read_tools::ToolError> {
         Err(crate::board_author::unavailable())
@@ -349,6 +354,7 @@ impl ResidentStatePort for BorrowedResidentState<'_> {
 }
 
 pub struct RunContext {
+    pub personal_note_reads: Vec<memory::NoteRef>,
     /// The previous accepted turn's recoverable input. It never grants current
     /// tool activation or evidence authority.
     pub active_model_projection: Option<crate::active_projection::ActiveModelProjection>,
@@ -376,7 +382,7 @@ pub struct RunContext {
     pub(crate) board_delivery_draft: Option<String>,
     pub(crate) board_candidate_id: Option<String>,
     pub(crate) board_review_preview: Option<crate::board_author::ReviewPreview>,
-    pub(crate) board_reviewed_candidate_id: Option<String>,
+    pub(crate) board_selected_candidate_id: Option<String>,
     /// Successful choices from this design in the current turn, including
     /// choices omitted from the latest draft but explicitly retained later.
     pub(crate) accepted_teaching_moves: std::collections::BTreeMap<String, serde_json::Value>,
@@ -406,8 +412,6 @@ pub struct RunContext {
     pub(crate) presentation_preview_observations: std::collections::BTreeMap<String, Vec<serde_json::Value>>,
     pub(crate) presentation_delivery_observations: std::collections::BTreeMap<String, Vec<serde_json::Value>>,
     /// Retained after the author's image queue is consumed, for independent review.
-    pub(crate) presentation_preview_images: std::collections::BTreeMap<String, Vec<crate::presentation_author::PreviewImage>>,
-    pub(crate) presentation_delivery_images: std::collections::BTreeMap<String, Vec<crate::presentation_author::PreviewImage>>,
     pub(crate) pending_previews: std::collections::BTreeSet<String>,
     pub(crate) unobserved_preview_environments: std::collections::HashSet<(String, String)>,
     pub(crate) pending_plot_refs: std::collections::HashSet<String>,
@@ -497,6 +501,7 @@ impl RunContext {
     ) -> Self {
         Self {
             active_model_projection: None,
+            personal_note_reads: Vec::new(),
             sampled_model_projection: None,
             tool_declaration_history: Default::default(),
             model_turns: 0,
@@ -515,7 +520,7 @@ impl RunContext {
             board_delivery_draft: None,
             board_candidate_id: None,
             board_review_preview: None,
-            board_reviewed_candidate_id: None,
+            board_selected_candidate_id: None,
             accepted_teaching_moves: Default::default(),
             goal: None,
             workspace_goal: None,
@@ -534,8 +539,6 @@ impl RunContext {
             presentation_images: Vec::new(),
             presentation_preview_observations: Default::default(),
             presentation_delivery_observations: Default::default(),
-            presentation_preview_images: Default::default(),
-            presentation_delivery_images: Default::default(),
             pending_previews: Default::default(),
             unobserved_preview_environments: Default::default(),
             pending_plot_refs: Default::default(),

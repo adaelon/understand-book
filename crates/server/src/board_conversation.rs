@@ -24,11 +24,11 @@ pub(crate) fn read(user: &UserRuntime, document: &BoardDocument) -> Result<Value
         let mut turns = Vec::new();
         for turn in &session.turns {
             let native = same_scope
-                && turn
+                && (document.learning_workspace_id.is_some() || turn
                     .published_book_ref
                     .as_ref()
                     .map(|reference| reference.publication_id.as_str())
-                    == document.publication_id.as_deref()
+                    == document.publication_id.as_deref())
                 && turn.domain.board_context.as_ref().is_some_and(|context| {
                     context.follow_up.board_id == document.board_id
                         && context.learning_workspace_id == document.learning_workspace_id

@@ -1,0 +1,12 @@
+{
+  "status": "built",
+  "release": "/opt/understand-book/releases/capacity-fixes-20261027",
+  "source_files_match": true,
+  "binary_stat": {
+    "size": 56665816,
+    "mtime_ns": 1793113392596097225
+  },
+  "temporary_swap_removed": true,
+  "original_swappiness_restored": true,
+  "last_build_line": "    Finished `release` profile [optimized] target(s) in 23m 58s"
+}

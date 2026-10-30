@@ -56,7 +56,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         assert_eq!(ids.contains(&"resident-agent.tutor.select"), status == "active");
         // Question design and explanation quality also apply to ordinary
         // conversation; the shared guidance does not enable active teaching.
-        for rule in ["Before writing any question used to judge understanding",
+        for rule in ["Before writing a question to establish independent application",
             "Condition change and prediction:",
             "Error location and repair:",
             "Counterexamples and boundaries:",
@@ -74,7 +74,7 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
         // the evidence boundary when active teaching is disabled.
         assert_eq!(text.matches("To establish independent relationship understanding").count(),
             usize::from(status == "active"), "{status}");
-        assert_eq!(text.matches("a correct answer alone cannot distinguish recall from relationship understanding").count(),
+        assert_eq!(text.matches("a correct answer alone cannot distinguish recall from independent relationship use").count(),
             usize::from(matches!(status,"active"|"observing")), "{status}");
         assert_eq!(text.matches("Ask a discriminating follow-up only when the next teaching step depends").count(),
             usize::from(matches!(status,"active"|"observing")), "{status}");
@@ -85,14 +85,14 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
             assert!(text.contains("omission or different wording alone does not establish a misconception"));
         }
         if status == "active" {
-            assert_eq!(text.matches("After a learner response, judge the relationships actually expressed").count(),1);
-            assert!(text.contains("an omitted detail remains unconfirmed, not automatically misunderstood"));
+            assert_eq!(text.matches("After a learner response, first address the pending invitation and the relationships actually expressed").count(),1);
+            assert!(text.contains("An omitted detail remains unconfirmed, not automatically misunderstood"));
             assert!(text.contains("change the entry point or representation using their feedback"));
             assert!(text.contains("leave more of the next judgment to them"));
             // A direct request still reaches the model beside the guided default;
             // the teaching policy must preserve its priority and response boundary.
             assert!(text.contains("deliver the whole requested content"));
-            assert!(text.contains("supply the concepts and rules needed to start"));
+            assert!(text.contains("Supply what makes a first response possible"));
             assert!(text.contains("Resolve the whole request"));
             assert!(text.contains("State the property that makes a rule apply to this case"));
             assert!(text.contains("Stop at the user response boundary"));

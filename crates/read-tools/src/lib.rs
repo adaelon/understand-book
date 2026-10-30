@@ -22,7 +22,7 @@ mod video_discourse;
 pub mod video_graph;
 pub mod math_structure;
 mod ranked_search;
-pub use ranked_search::{RankedSearchHit, RankedSearchResult};
+pub use ranked_search::{LexicalTextIndex, RankedSearchHit, RankedSearchResult};
 
 /// Versioned normalized-search semantics. Dependency or Unicode-data upgrades must change this
 /// value because it is bound into every search cursor's canonical request digest.

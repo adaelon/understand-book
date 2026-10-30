@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-28T16:08:00.917928+00:00",
+  "schema": 21,
+  "checks": {
+    "existing_accounts_books_history_notes_and_boards_readable": true,
+    "source_windows_continuous_read_chapters_highlights_without_reader_mutation": 1,
+    "source_open_targets_current_reading_position": 1,
+    "preexisting_sources_without_publication_remain_unavailable": 8,
+    "linux_monitor_memory_disk_network_presence_and_authorization": true,
+    "multi_user_mind_map_create_edit_stale_conflict_undo_redo_read": true,
+    "historical_chat_files_preserved": 54,
+    "board_files_preserved": 100,
+    "boards_opened": 9,
+    "allowance_rows_preserved": 17,
+    "accounts_checked": 3,
+    "disabled_board_owners_preserved_without_login": 2
+  },
+  "binary_stat": {
+    "size": 59255176,
+    "mtime_ns": 1793203186598819943
+  },
+  "production_mutated": false,
+  "model_requests": 0
+}

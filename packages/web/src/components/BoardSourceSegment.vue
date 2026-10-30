@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { AssetManifest, BoardSourceReadResponse } from '../api';
 import { t as uiText } from '../i18n';
-import { renderSourceMarkdown } from '../md';
+import { renderInlineMarkdown, renderSourceMarkdown } from '../md';
 import { markMarkdownDomSourceRanges } from '../markdown-source-map';
 import 'katex/dist/katex.min.css';
 
@@ -10,6 +10,7 @@ const props = defineProps<{
   segment: BoardSourceReadResponse['segments'][number];
   assets: AssetManifest | null;
   loadingImages: boolean;
+  inline?: boolean;
 }>();
 
 function unavailableImage(image: HTMLImageElement, message: string) {
@@ -23,7 +24,7 @@ function imageFailed(event: Event) {
 }
 const rendered = computed(() => {
   const root = document.createElement('div');
-  root.innerHTML = renderSourceMarkdown(props.segment.text);
+  root.innerHTML = props.inline ? renderInlineMarkdown(props.segment.text) : renderSourceMarkdown(props.segment.text);
   markMarkdownDomSourceRanges(props.segment.text, root,
     props.segment.highlights.map(range => ({ ...range, className: 'source-highlight' })));
   for (const image of root.querySelectorAll('img')) {
@@ -39,8 +40,8 @@ const rendered = computed(() => {
 </script>
 
 <template>
-  <article class="board-source-segment" :data-source-lid="segment.lid" :data-source-kind="segment.kind"
-    :class="{ 'has-citation': segment.highlights.length > 0 }" @error.capture="imageFailed" v-html="rendered"></article>
+  <component :is="inline ? 'span' : 'article'" class="board-source-segment" :data-source-lid="segment.lid" :data-source-kind="segment.kind"
+    :class="{ 'has-citation': !inline && segment.highlights.length > 0 }" @error.capture="imageFailed" v-html="rendered"></component>
 </template>
 
 <style scoped>

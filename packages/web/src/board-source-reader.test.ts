@@ -45,6 +45,62 @@ beforeEach(() => {
 afterEach(() => { view?.unmount(); view = undefined; document.body.innerHTML = ''; vi.restoreAllMocks(); });
 
 describe('continuous source reading', () => {
+  it('rejoins the published MLA sentence across inline formulas while retaining per-source highlights', async () => {
+    const parts = [
+      ['paragraph', '只保存潜变量的依据如下。设键的上投影为 '],
+      ['formula', '$U_k$'],
+      ['paragraph', '，上下文潜变量按行组成矩阵 '],
+      ['formula', '$c$'],
+      ['paragraph', '，展开键为 '],
+      ['formula', '$K=cU_k$'],
+      ['paragraph', '。矩阵乘法的结合律给出'],
+    ].map(([kind, text], index) => ({ lid: `4.20.6.${13 + index}`, kind, text, highlights: [{ start: 0, end: index === 6 ? 1 : text.length }] }));
+    const display = { lid: '4.20.6.20', kind: 'formula', text: '$$\nqK^{\\mathsf T}=(qU_k^{\\mathsf T})c^{\\mathsf T}.\n$$', highlights: [] };
+    vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ source_lid: parts[0].lid, focus_lid: parts[0].lid,
+      segments: [...parts, display, segment('4.20.6.21', '下一段保持独立。'), segment('4.20.6.22', '再下一段。')] }));
+    const reader = await open();
+    const sentence = reader.find('[data-source-lid="4.20.6.13"]').element.parentElement!;
+    expect(sentence.tagName).toBe('P');
+    expect([...sentence.querySelectorAll('[data-source-lid]')].map(node => node.getAttribute('data-source-lid'))).toEqual(parts.map(part => part.lid));
+    expect(sentence.querySelectorAll('p, article')).toHaveLength(0);
+    expect(sentence.querySelectorAll('.katex')).toHaveLength(3);
+    for (const part of parts) expect(reader.find(`[data-source-lid="${part.lid}"] mark`).exists()).toBe(true);
+    expect(reader.find('[data-source-lid="4.20.6.19"] mark').text()).toBe('。');
+    expect(reader.find('[data-source-lid="4.20.6.20"] .katex-display').exists()).toBe(true);
+    expect(sentence.contains(reader.find('[data-source-lid="4.20.6.20"]').element)).toBe(false);
+    for (const lid of ['4.20.6.21', '4.20.6.22']) {
+      expect(reader.find(`[data-source-lid="${lid}"]`).element.tagName).toBe('ARTICLE');
+      expect(reader.find(`[data-source-lid="${lid}"] p`).exists()).toBe(true);
+    }
+  });
+
+  it('preserves block markdown in paragraph leaves outside an inline formula sentence', async () => {
+    vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ segments: [
+      segment('2.3', '- 保存键\n- 保存值'), segment('2.4', '> 核对原文。'),
+    ] }));
+    const reader = await open();
+    expect(reader.findAll('[data-source-lid="2.3"] ul li').map(item => item.text())).toEqual(['保存键', '保存值']);
+    expect(reader.find('[data-source-lid="2.4"] blockquote').text()).toBe('核对原文。');
+  });
+
+  it('joins a sentence split across fetched pages without losing the original citation or cursor', async () => {
+    const first = { ...segment('2.3', '保存变量 '), highlights: [{ start: 0, end: 4 }] };
+    vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ segments: [first], next_lid: first.lid }));
+    const reader = await open();
+    const scroll = reader.find('[data-source-reader-scroll]').element as HTMLElement;
+    const originalTop = reader.find('[data-source-lid="2.3"]').element.getBoundingClientRect().top;
+    vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ segments: [{ ...segment('2.4', '$c$'), kind: 'formula' }, segment('2.5', '，随后恢复。')], next_lid: null, outline: undefined }));
+    await reader.find('.source-reader-edge-after button').trigger('click');
+    await flushPromises();
+    const sentence = reader.find('[data-source-lid="2.3"]').element.parentElement!;
+    expect(sentence.tagName).toBe('P');
+    expect(sentence.querySelectorAll('[data-source-lid]')).toHaveLength(3);
+    expect(reader.find('[data-source-lid="2.3"] mark').text()).toBe('保存变量');
+    expect(reader.find('[data-source-lid="2.3"]').element.getBoundingClientRect().top).toBe(originalTop);
+    expect(scroll.scrollTop).toBeGreaterThan(0);
+    expect(api.boardSourceRead).toHaveBeenLastCalledWith({ ...request, anchor_lid: '2.3', direction: 'after', include_outline: false });
+  });
+
   it('loads the citation binding read-only, renders original markdown and locates the cited paragraph', async () => {
     const reader = await open();
     expect(api.boardSourceRead).toHaveBeenCalledOnce();

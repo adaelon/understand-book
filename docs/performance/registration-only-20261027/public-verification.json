@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "verified_at_utc": "2026-10-27T15:36:56.192708+00:00",
+  "public_pages_match_release": true,
+  "referenced_assets_equal": 7,
+  "byte_comparison_phase": "Initial publish verification completed before the final POST probe assertion",
+  "free_unlimited_tokens_copy_present": true,
+  "guest_creation_status": 401,
+  "guest_creation_error_code": "AUTH_REQUIRED",
+  "browser": {
+    "status": "passed",
+    "checked_at": "2026-10-27T15:34:23.085Z",
+    "widths": [
+      390,
+      1440
+    ],
+    "languages": [
+      "zh-CN",
+      "en"
+    ],
+    "guest_links_route_to_registration": true,
+    "free_tokens_visible": true,
+    "guest_entry_absent": true,
+    "page_errors": [],
+    "real_registration_submissions": 0
+  },
+  "verification_adjustments": [
+    "Use the same browser User-Agent for GET and POST probes",
+    "Allow 30 seconds for public browser assertions instead of the local 5 second default"
+  ],
+  "production_code_changed_after_publish": false
+}

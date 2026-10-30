@@ -1,0 +1,88 @@
+{
+  "recorded_at": "2026-10-28T08:13:37.856Z",
+  "environment": {
+    "platform": "win32 10.0.19044",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "logical_cpus": 16,
+    "chromium": "149.0.7827.55",
+    "viewport": "1440×1000",
+    "device_scale_factor": 1
+  },
+  "scenario": "Local Rust chapter text (500 distinct short labels), repeatable five-child hierarchy; source text not published in this report",
+  "font_load_ms": 297.60000002384186,
+  "measurements": [
+    {
+      "topics": 500,
+      "measured_nodes": 500,
+      "first_layout_ms": 306.2999999821186,
+      "warm_samples_ms": [
+        13.600000023841858,
+        17.099999994039536,
+        15.699999988079071,
+        16.100000023841858,
+        9.199999988079071,
+        11.400000005960464,
+        10.099999994039536,
+        13.900000005960464,
+        12.400000005960464,
+        17
+      ],
+      "median_ms": 13.750000014901161,
+      "max_ms": 17.099999994039536,
+      "bounds": {
+        "x": -1108,
+        "y": -13454,
+        "width": 3081,
+        "height": 27294
+      }
+    },
+    {
+      "topics": 1000,
+      "measured_nodes": 1000,
+      "first_layout_ms": 45.19999998807907,
+      "warm_samples_ms": [
+        27.80000001192093,
+        24.19999998807907,
+        25.80000001192093,
+        22.5,
+        23.30000001192093,
+        32.79999998211861,
+        23,
+        32.900000005960464,
+        18.80000001192093,
+        23.099999994039536
+      ],
+      "median_ms": 23.75,
+      "max_ms": 32.900000005960464,
+      "bounds": {
+        "x": -1108,
+        "y": -31130,
+        "width": 3223,
+        "height": 62646
+      }
+    }
+  ],
+  "png": [
+    {
+      "name": "rust-full.png",
+      "width": 3378,
+      "height": 2360,
+      "bytes": 720451,
+      "elapsed_ms": 268.89999997615814
+    },
+    {
+      "name": "rust-branch.png",
+      "width": 1536,
+      "height": 872,
+      "bytes": 132771,
+      "elapsed_ms": 37.099999994039536
+    },
+    {
+      "name": "rust-relations.png",
+      "width": 1202,
+      "height": 424,
+      "bytes": 51461
+    }
+  ],
+  "oversized_export": "Error: 这张导图太大，请选中一个分支后导出，以保留清晰可读的文字。"
+}

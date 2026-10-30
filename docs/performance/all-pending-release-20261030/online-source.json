@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-10-30T06:31:55.430635+00:00",
+  "release": "/opt/understand-book/releases/board-source-publication-20261030",
+  "paths": [
+    "crates",
+    "packages/core/src",
+    "packages/core/test",
+    "packages/core/package.json",
+    "packages/core/tsconfig.json",
+    "packages/web/src",
+    "packages/web/playwright",
+    "packages/web/public",
+    "packages/web/vite.config.ts",
+    "packages/web/package.json",
+    "packages/web/tsconfig.json",
+    "packages/web/home.html",
+    "packages/web/index.html",
+    "packages/i18n",
+    "scripts",
+    "apps/admin/src",
+    "apps/admin/package.json",
+    "Cargo.toml",
+    "Cargo.lock",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml"
+  ],
+  "service": "MainPID=514831\nActiveState=active\nSubState=running",
+  "disk": "Filesystem      Size  Used Avail Use% Mounted on\n/dev/vda2        40G   33G  4.8G  88% /",
+  "memory": "total        used        free      shared  buff/cache   available\nMem:            3712        1677         576          77        1837        2035\nSwap:              0           0           0",
+  "bytes": 9217076
+}

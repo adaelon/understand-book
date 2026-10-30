@@ -160,12 +160,13 @@ fn ex12_comparison_changes_only_guidance_and_keeps_shared_tools() {
 }
 
 #[test]
-fn ex12_archived_profile_keeps_catalog_authoring_and_compaction_budgets() {
+fn ex12_archived_profile_keeps_its_recorded_authoring_and_compaction_budgets() {
     let profile: runtime::ModelRuntimeProfile = serde_json::from_value(json_file(evidence().join("provider-profile.json"))).unwrap();
     assert_eq!(serde_json::to_value(&profile.resolution).unwrap(), json!("CatalogMatch"));
     let plan = runtime::AgentRequestPlan::for_agent_turn(profile.clone(), &[Message::user("original request")], &[spec()]);
-    assert_eq!(plan.output_token_limit, Some(131_072));
-    assert_eq!(runtime::compaction::compaction_output_token_limit(&profile), 65_536);
+    // This archived experiment explicitly used an 8,000-token reserve.
+    assert_eq!(plan.output_token_limit, Some(8_000));
+    assert_eq!(runtime::compaction::compaction_output_token_limit(&profile), 8_000);
 }
 
 #[test]

@@ -1,0 +1,27 @@
+{
+  "status": "published",
+  "finished_at_utc": "2026-10-30T04:33:12.985378+00:00",
+  "reference": {
+    "book_id": "steel-warship-buoyancy",
+    "publication_id": "01a18b15-50e0-76b1-8266-5586050ec579"
+  },
+  "title": "为什么钢铁做成的军舰不会沉入海底",
+  "operation_id": "steel-warship-online-20261030-v1",
+  "existing_enabled_accounts": 16,
+  "all_account_grants": 1,
+  "future_accounts_granted": false,
+  "online_import_pid_unchanged": true,
+  "grant_maintenance_seconds": 0.44,
+  "service_active": true,
+  "release": "personal-notes-20261030",
+  "build_readiness": "reader",
+  "tutor_status": "ready",
+  "teaching_assets_status": "ready",
+  "file_count": 12,
+  "model_requests": 0,
+  "access_scope": "adaelon_only",
+  "allowed_accounts": [
+    "adaelon"
+  ],
+  "access_restriction_at_utc": "2026-10-30T04:34:24.099370+00:00"
+}

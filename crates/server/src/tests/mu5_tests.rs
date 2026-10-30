@@ -401,7 +401,7 @@ fn mu5_old_run_keeps_original_private_scope_but_reader_stales_and_revocation_sto
             .error_code,
         "WORKSPACE_STALE"
     );
-    let original = port.scope.book.clone();
+    let original = port.scope.reading_book().clone();
     port.submit_private(|store| {
         Reader::save_note(
             &original,
@@ -608,7 +608,7 @@ fn mu5_live_reader_observes_user_navigation_but_late_run_effect_does_not_overrid
     let w = f.create(&f.a, &f.x, "one");
     let w = f.action(&f.a, &w, "one", "chat/new", json!({}));
     let mut port = f.run(&w, "one");
-    let book = port.scope.book.clone();
+    let book = port.scope.reading_book().clone();
     port.apply_reader(|s, r| r.goto_lid(&book, s, "1.5", "now"))
         .unwrap()
         .unwrap();

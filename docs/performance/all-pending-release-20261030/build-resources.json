@@ -1,0 +1,14 @@
+{
+  "unit": "ub-all-pending-20261030-build-r2",
+  "original_swappiness": 0,
+  "temporary_swap": "/opt/understand-book/acceptance/all-pending-20261030/build.swap",
+  "release": "/opt/understand-book/releases/all-pending-20261030",
+  "binaries": [
+    "server",
+    "manage_reader",
+    "publish_book",
+    "reader_maintenance",
+    "presentation_worker",
+    "video_audio_review"
+  ]
+}

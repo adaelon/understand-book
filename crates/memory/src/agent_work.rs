@@ -104,9 +104,12 @@ impl LearningStore {
                     .take(3).map(|next|json!({"review_ref":next.event_id,"changes":change_summary(&next.payload["changes_since_previous_review"])})).collect::<Vec<_>>() }));
         }
         if corrections.len()>8 { corrections.drain(..corrections.len()-8); }
-        let current_work=work.pop().unwrap_or(Value::Null);
+        // A prior turn's review is history, not the current turn's work state.
+        // New deliveries need no review and must not inherit a stale rejection.
+        let current_work=work.iter().position(|record| record["turn_id"] == binding.turn_id)
+            .map(|index| work.remove(index)).unwrap_or(Value::Null);
         Ok(json!({"current_work":current_work,"previous_work":work,"corrections":corrections,
-            "meaning":"Teacher work and review observations only. accepted_by_review means that review accepted the candidate; it is not proof of factual truth, actual delivery, or learner understanding. Full records and evidence are readable with tutor.step trace using review_ref. Older records may be outside this bounded view."}))
+            "meaning":"Historical teacher review observations only. current_work is null when this turn has no actual review. The active Resident Goal owns current work and unresolved questions; actual delivery and source records remain separate. accepted_by_review describes that historical review, not factual truth, delivery, or learner understanding. Read full records with tutor.step trace using review_ref. Older records may be outside this bounded view."}))
     }
 }
 
@@ -177,5 +180,21 @@ mod tests {
         }
         let other=LearningStore::open(&path,false).unwrap().with_workspace(Some("B"));
         assert!(other.agent_working_state(&binding).unwrap()["current_work"].is_null());
+    }
+
+    #[test]
+    fn unreviewed_turn_does_not_inherit_a_current_review_or_resolve_old_issues() {
+        let dir=tempfile::tempdir().unwrap();let binding=binding();
+        let mut store=LearningStore::open(&dir.path().join("learning.db"),false).unwrap();
+        start(&mut store,&binding);
+        let rejected=store.append_agent_work_review(&binding,"binding:turn",record(1,false),"before").unwrap();
+        let mut next=binding.clone();next.turn_id="next".into();start(&mut store,&next);
+        let state=store.agent_working_state(&next).unwrap();
+        assert!(state["current_work"].is_null());
+        assert_eq!(state["previous_work"][0]["review_ref"],rejected.event_id);
+        assert_eq!(state["corrections"][0]["review_status"],"revision_requested");
+        assert!(state["corrections"][0]["accepted_review_ref"].is_null());
+        assert_eq!(store.teaching_event(&rejected.event_id).unwrap(),rejected);
+        assert_eq!(store.learner_projection("book").unwrap().1,0);
     }
 }

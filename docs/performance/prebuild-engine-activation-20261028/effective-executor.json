@@ -1,0 +1,33 @@
+{
+  "name": "understand_book_build_executor",
+  "enabled": true,
+  "disabled_reason": null,
+  "transport": {
+    "type": "stdio",
+    "command": "cmd.exe",
+    "args": [
+      "/d",
+      "/s",
+      "/c",
+      "scripts\\start-build-executor-mcp.cmd"
+    ],
+    "env": {
+      "UNDERSTAND_BOOK_BUILD_EXE": "E:\\allwork\\Understand Book\\operator-builds\\20261028-prebuild-reuse\\understand-book-build-x86_64-pc-windows-msvc.exe"
+    },
+    "env_vars": [
+      "UNDERSTAND_BOOK_BUILD_EXE",
+      "UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT",
+      "USERPROFILE"
+    ],
+    "cwd": "C:\\Users\\Lenovo\\.codex\\plugins\\cache\\understand-book-operator-20261028\\understand-book\\0.1.0+codex.20261028131533\\."
+  },
+  "enabled_tools": [
+    "executor.open",
+    "executor.input.next",
+    "executor.generation.start",
+    "executor.submit_candidate"
+  ],
+  "disabled_tools": null,
+  "startup_timeout_sec": 10.0,
+  "tool_timeout_sec": 120.0
+}

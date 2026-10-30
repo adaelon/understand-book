@@ -116,6 +116,10 @@ struct RecordingProvider {
     plans: RefCell<Vec<AgentRequestPlan>>,
 }
 impl ModelAdapter for RecordingProvider {
+    fn complete_structured(&self,request:CompletionRequest)->Result<Value,AdapterError>{
+        Ok(crate::tests::tutor_loop_tests::fixture_coach_guidance(&request).expect("only the existing inline teaching coach may request a helper"))
+    }
+
     fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         unreachable!("no model helpers")
     }

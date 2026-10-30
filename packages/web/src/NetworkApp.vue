@@ -5,6 +5,7 @@ import { useAccountPresence } from './account-presence';
 import LanguageSwitcher from './components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
+import { pendingNoteSource, noteSourceError } from './personal-notes';
 import { isTauri } from '@tauri-apps/api/core';
 import DesktopAuthorization from './components/DesktopAuthorization.vue';
 import DesktopSignIn from './components/DesktopSignIn.vue';
@@ -461,6 +462,19 @@ async function logout() {
   } finally { busy.value = false; }
   channel?.postMessage('changed');
 }
+watch(pendingNoteSource, async target => {
+  if (!target) return;
+  if (!target.book_id || !target.publication_id) {
+    noteSourceError.value = '这条记录没有可打开的资料版本，原话和保留摘录仍可阅读。'; pendingNoteSource.value = null; return;
+  }
+  if (busy.value) { noteSourceError.value = '正在打开另一份资料，请稍后再返回记录现场。'; pendingNoteSource.value = null; return; }
+  if (target.board_id && target.workspace_id && target.workspace_id === network.value.workspace?.learning_workspace_id && !libraryOpen.value && !suspended.value) return;
+  if (!libraryOpen.value && !suspended.value && network.value.workspace?.published_book_ref.book_id === target.book_id && network.value.workspace?.published_book_ref.publication_id === target.publication_id && (network.value.workspace?.learning_workspace_id ?? null) === target.workspace_id) return;
+  await openBook({ book_id: target.book_id, publication_id: target.publication_id }, target.workspace_id);
+  if (pendingNoteSource.value === target && (openingError.value || network.value.workspace?.published_book_ref.publication_id !== target.publication_id)) {
+    noteSourceError.value = `原资料暂时无法打开：${openingError.value || '尚未切换到原资料，请重试。'}`; pendingNoteSource.value = null;
+  }
+});
 async function openBook(reference: PublishedBookRef, learningId: string | null = selectedLearningId.value, members?: PublishedBookRef[]) {
   if (busy.value) return;
   if (materialFor(reference)?.media_kind === 'video') void preloadVideoPlayback().catch(() => {});

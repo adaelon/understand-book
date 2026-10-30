@@ -28,7 +28,8 @@ pub(crate) struct Candidate {
     #[serde(default)]
     pub source_bindings: Vec<SourceBinding>,
     #[serde(default)]
-    pub commit_review: Option<runtime::board_author::ReviewedDelivery>,
+    #[serde(alias = "commit_review")]
+    pub commit_selection: Option<runtime::board_author::SelectedDelivery>,
     #[serde(default)]
     pub commit_requested_at: Option<String>,
 }
@@ -106,7 +107,7 @@ impl<P: agent_run::AppStatePort> agent_run::RuntimeStatePort<'_, P> {
 
 /// Source tools use the accepted run's immutable source scope, never the active Reader.
 pub(crate) fn source_workspace(scope: &run_scope::RunScope, publication: Option<std::sync::Arc<published_library::PublishedBook>>) -> reader_workspace::ReaderWorkspace {
-    let book = publication.as_ref().map_or_else(|| scope.book.clone(), |p| p.book.clone());
+    let book = publication.as_ref().map_or_else(|| scope.reading_book().clone(), |p| p.book.clone());
     let directory = publication.as_ref().map_or_else(|| scope.book_dir.clone(), |p| p.directory.clone());
     let reader = reader::Reader::new(&book, reader::DEFAULT_RADIUS);
     let mut workspace = reader_workspace::ReaderWorkspace::local(directory, book, reader, vec![], None);
@@ -177,7 +178,7 @@ pub(crate) fn repair_commits(
         .domain
         .board_authoring
         .as_ref()
-        .filter(|candidate| candidate.commit_review.is_some());
+        .filter(|candidate| candidate.commit_selection.is_some());
     if intent.is_none() && current.domain.board_commits.is_empty() {
         return Ok(vec![]);
     }
@@ -211,9 +212,9 @@ pub(crate) fn repair_commits(
             let candidate = intent
                 .filter(|candidate| Some(&candidate.candidate_id) == delivery.commit_id.as_ref())
                 .ok_or_else(|| {
-                    error("A durable board part is missing its frozen reviewed candidate")
+                    error("A durable board part is missing its frozen selected candidate")
                 })?;
-            let review = candidate.commit_review.as_ref().expect("intent checked");
+            let review = candidate.commit_selection.as_ref().expect("intent checked");
             CommittedPart {
                 delivery: delivery.clone(),
                 candidate_revision: candidate.candidate_revision,
@@ -442,6 +443,18 @@ pub(crate) fn execute(
     cancellation: &CancellationToken,
 ) -> Result<AuthorResult, ToolError> {
     cancellation.check()?;
+    // A board is retained independently of the active Reader and final chat.
+    // Give implicit current-book sources their exact publication before prepare,
+    // revise or an incremental commit can persist them, including unscoped runs.
+    let mut published_bindings = bindings.to_vec();
+    if let Some(publication) = &frozen.publication {
+        for binding in &mut published_bindings {
+            if binding.publication_id.is_none() && binding.book_id == publication.book_id {
+                binding.publication_id = Some(publication.publication_id.clone());
+            }
+        }
+    }
+    let bindings = published_bindings.as_slice();
     let now = crate::multi_user_host::now().to_string();
     storage.with_user(|user| repair_commits(user, reference, &now).map(|_| ()))?;
     let source_workspaces = match &request {
@@ -466,6 +479,7 @@ pub(crate) fn execute(
             read_current(user, frozen)?;
             let mut source: board_api::BoardImportSource = serde_json::from_value(source).map_err(|e| error(e.to_string()))?;
             let source_publication = match &source {
+                board_api::BoardImportSource::PersonalNote { .. } => None,
                 board_api::BoardImportSource::Answer { session_id, turn_id } | board_api::BoardImportSource::Presentation { session_id, turn_id, .. } =>
                     crate::workspace_record_context::permitted_turn(user, frozen.learning_workspace_id.as_deref(), &frozen.book_id, session_id, turn_id)?.published_book_ref,
                 _ => source_workspaces[0].publication.as_ref().map(|p|p.reference.clone()),
@@ -478,7 +492,8 @@ pub(crate) fn execute(
                 "published_book_ref":source_publication,"retained":false})))
         }),
         AuthorRequest::Read { collection, offset, length, board_revision, candidate_revision } => storage.with_user(|user| {
-            let (_, board) = read_current(user, frozen)?;
+            let (_, mut board) = read_current(user, frozen)?;
+            board_api::resolve_note_items(user,&mut board,true);
             let active_turn = turn(user, reference)?;
             let current = active_turn.domain.board_authoring.as_ref();
             let understanding_items = crate::board_understanding::items(user, frozen, &reference.session_id, &reference.turn_id, &now)?
@@ -602,7 +617,7 @@ pub(crate) fn execute(
             let candidate = Candidate { board_id: board.board_id.clone(), base_board_revision, candidate_revision,
                 candidate_id: format!("board:{}:{candidate_revision}", reference.turn_id), items, update_items, links, mappings, routes,
                 explanation_blocks:raw_explanation_blocks, delivery_text, answer_parts: compiled.parts.iter().map(|part| json!(part)).collect(), previewed: false, staged: false,
-                source_bindings:bindings.to_vec(),commit_review:None,commit_requested_at:None };
+                source_bindings:bindings.to_vec(),commit_selection:None,commit_requested_at:None };
             let projected = project(&board, &candidate)?;
             store.validate_candidate(&projected)?;
             require_declared_anchors(user, &projected)?;
@@ -705,7 +720,7 @@ pub(crate) fn execute(
             candidate.candidate_id = format!("board:{}:{}", reference.turn_id, candidate.candidate_revision);
             candidate.previewed = false;
             candidate.staged = false;
-            candidate.commit_review = None;
+            candidate.commit_selection = None;
             candidate.commit_requested_at = None;
             let projected = project(&board, &candidate)?;
             store.validate_candidate(&projected)?;
@@ -770,7 +785,7 @@ pub(crate) fn execute(
             result.delivery_text = Some(candidate.delivery_text);
             Ok(result)
         }),
-        AuthorRequest::Commit { candidate_revision, reviewed_delivery } => storage.with_user(|user| {
+        AuthorRequest::Commit { candidate_revision, selected_delivery } => storage.with_user(|user| {
             if let Some(part)=turn(user,reference)?.domain.board_commits.iter().find(|part|part.candidate_revision==candidate_revision) {
                 let mut result=AuthorResult::value(json!({"status":"board_part_committed","candidate_revision":candidate_revision,
                     "candidate_id":part.delivery.commit_id,"delivery":part.delivery,"already_committed":true}));
@@ -778,13 +793,13 @@ pub(crate) fn execute(
             }
             let mut candidate=selected_candidate(user,reference,candidate_revision)?;
             if !candidate.previewed {return Err(runtime::board_author::error("BOARD_PREVIEW_REQUIRED","The exact board part needs a successful actual preview before commit"));}
-            let review=reviewed_delivery.ok_or_else(||runtime::board_author::error("BOARD_REVIEW_REQUIRED","Commit requires the runtime's inspected and reviewed board part"))?;
+            let selection=selected_delivery.ok_or_else(||runtime::board_author::error("BOARD_TEACHING_SELECTION_REQUIRED","Commit requires the runtime's inspected and selected board part"))?;
             let (store,board)=read_current(user,frozen)?;
             project(&board,&candidate)?;
-            // Persist the exact review before the board write. A lost session
+            // Persist the exact selection before the board write. A lost session
             // acknowledgment can then repair this receipt without reinterpreting
             // a newer teaching selection or creating a different board item.
-            candidate.commit_review=Some(review);
+            candidate.commit_selection=Some(selection);
             candidate.commit_requested_at=Some(now.clone());
             session_runtime::update_board_authoring(user,reference,&now,candidate.clone())?;
             let delivery=store.append_authored_part(&frozen.follow_up,candidate.base_board_revision,&reference.session_id,&reference.turn_id,
@@ -854,6 +869,66 @@ mod tests {
             "mappings":[{"mapping_id":"condition-map","explanation":{"item_id":reserved_answer_item_id(&turn.turn_id),"block_id":"condition","content_revision":revision+1},"visual":{"kind":"item","item_id":"drawing-condition"}}],
             "routes":[{"route_id":"route-condition","title":"看时间","steps":[{"step_id":"time","explanation":{"item_id":reserved_answer_item_id(&turn.turn_id),"block_id":"condition","content_revision":revision+1},
                 "reveal_targets":[{"kind":"item","item_id":"drawing-condition"}],"focus_targets":[{"kind":"item","item_id":"drawing-condition"}],"transition":"draw","duration_ms":800}]}]})).unwrap()
+    }
+
+    #[test]
+    fn board_source_publication_unscoped_authoring_persists_exact_sources_before_commit() {
+        let (_root, mut state, mut prepared, board) = setup();
+        assert!(prepared.scope.learning_workspace_id.is_none());
+        let publication = base_schema::PublishedBookRef {
+            book_id: state.workspace.book.base.book_id.clone(), publication_id: "original-publication".into(),
+        };
+        let mut document: BoardDocument = serde_json::from_value(board.clone()).unwrap();
+        document.publication_id = Some(publication.publication_id.clone());
+        let saved = state.user.history_path.as_ref().unwrap().parent().unwrap()
+            .join("boards/unscoped").join(&document.board_id).join("revisions")
+            .join(format!("{}.json", document.revision));
+        std::fs::write(&saved, serde_json::to_vec(&document).unwrap()).unwrap();
+        std::fs::write(saved.parent().unwrap().parent().unwrap().join("head.json"),
+            serde_json::to_vec(&BoardSummary::from(&document)).unwrap()).unwrap();
+        let frozen = prepared.scope.board_context.as_mut().unwrap();
+        frozen.publication = Some(publication.clone());
+        let mut binding: SourceBinding = serde_json::from_value(board["items"][0]["source_bindings"][0].clone()).unwrap();
+        binding.publication_id = None;
+        let mut explicit = binding.clone();
+        explicit.source_ref_id = "explicit-original".into();
+        explicit.publication_id = Some("another-exact-publication".into());
+        let mut foreign = binding.clone();
+        foreign.source_ref_id = "foreign-original".into();
+        foreign.book_id = "another-book".into();
+        foreign.publication_id = Some("foreign-publication".into());
+        let sources = vec![binding.clone(), explicit.clone(), foreign.clone()];
+        state.user.agent_history.sessions.iter_mut().find(|s| s.id == prepared.turn_ref.session_id).unwrap()
+            .turns.iter_mut().find(|t| t.turn_id == prepared.turn_ref.turn_id).unwrap()
+            .domain.board_context = Some(frozen.clone());
+        let mut request = serde_json::to_value(prepared_request(&board, &prepared.turn_ref)).unwrap();
+        request["blocks"][0]["markdown"] = json!(format!("原文依据。[[source:{}]]", binding.source_ref_id));
+        let port = crate::agent_run::BorrowedAppPort(RefCell::new(&mut state));
+        let storage = LocalStorage { port: &port, scope: &prepared.scope };
+        let frozen = prepared.scope.board_context.as_ref().unwrap();
+        let cancel = CancellationToken::default();
+        execute(&storage, frozen, &prepared.turn_ref, serde_json::from_value(request).unwrap(), &sources, &[], &cancel).unwrap();
+        storage.with_user(|user| {
+            let mut candidate = selected_candidate(user, &prepared.turn_ref, 1)?;
+            assert_eq!(candidate.source_bindings[0].publication_id.as_deref(), Some("original-publication"));
+            assert_eq!(candidate.source_bindings[1], explicit);
+            assert_eq!(candidate.source_bindings[2], foreign);
+            assert!(candidate.items.iter().all(|item| item.source_bindings[0].publication_id.as_deref() == Some("original-publication")));
+            candidate.previewed = true;
+            session_runtime::update_board_authoring(user, &prepared.turn_ref, NOW, candidate)?;
+            Ok(())
+        }).unwrap();
+        execute(&storage, frozen, &prepared.turn_ref, AuthorRequest::Commit {
+            candidate_revision: 1,
+            selected_delivery: Some(runtime::board_author::SelectedDelivery { teaching_delivery_move_refs: vec![], delivery_scope: None }),
+        }, &sources, &[], &cancel).unwrap();
+        storage.with_user(|user| {
+            let reopened = board_api::scoped_store(user, None)?.read(&document.board_id)?;
+            let retained = reopened.items.iter().find(|item| item.item_id == reserved_answer_item_id(&prepared.turn_ref.turn_id)).unwrap();
+            assert_eq!(retained.source_bindings[0].publication_id.as_deref(), Some("original-publication"));
+            Ok(())
+        }).unwrap();
+        assert!(sources[0].publication_id.is_none(), "the caller's evidence is unchanged");
     }
 
     #[test]
@@ -1001,7 +1076,7 @@ mod tests {
             &prepared.turn_ref,
             AuthorRequest::Commit {
                 candidate_revision: 2,
-                reviewed_delivery: Some(runtime::board_author::ReviewedDelivery {
+                selected_delivery: Some(runtime::board_author::SelectedDelivery {
                     teaching_delivery_move_refs: vec![],
                     delivery_scope: None,
                 }),
@@ -1064,7 +1139,7 @@ mod tests {
             board_revision: None,
             candidate_revision: None,
         };
-        let review = || runtime::board_author::ReviewedDelivery {
+        let review = || runtime::board_author::SelectedDelivery {
             teaching_delivery_move_refs: vec![],
             delivery_scope: None,
         };
@@ -1091,7 +1166,7 @@ mod tests {
             &prepared.turn_ref,
             AuthorRequest::Commit {
                 candidate_revision: 1,
-                reviewed_delivery: Some(review()),
+                selected_delivery: Some(review()),
             },
             &[],
             &[],
@@ -1110,7 +1185,7 @@ mod tests {
             &prepared.turn_ref,
             AuthorRequest::Commit {
                 candidate_revision: 1,
-                reviewed_delivery: None,
+                selected_delivery: None,
             },
             &[],
             &[],
@@ -1150,7 +1225,7 @@ mod tests {
                 let mut candidate = selected_candidate(user, &prepared.turn_ref, 2)?;
                 assert_eq!(candidate.items[0].item_id, second_id);
                 candidate.previewed = true;
-                candidate.commit_review = Some(review());
+                candidate.commit_selection = Some(review());
                 candidate.commit_requested_at = Some(NOW.into());
                 session_runtime::update_board_authoring(
                     user,

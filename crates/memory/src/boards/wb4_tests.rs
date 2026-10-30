@@ -11,6 +11,7 @@ type Authored = (
 
 fn follow_up() -> BoardFollowUp {
     BoardFollowUp {
+        note_refs: None,
         board_id: "board-1".into(),
         board_revision: 1,
         item_id: Some("answer-1".into()),

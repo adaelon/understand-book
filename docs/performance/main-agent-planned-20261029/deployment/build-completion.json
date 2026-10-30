@@ -1,0 +1,12 @@
+{
+  "status": "built",
+  "release": "/opt/understand-book/releases/main-agent-planned-20261029",
+  "source_files_match": true,
+  "binary_stat": {
+    "size": 58737416,
+    "mtime_ns": 1793288950183033676
+  },
+  "temporary_swap_removed": true,
+  "original_swappiness_restored": true,
+  "last_build_line": "    Finished `release` profile [optimized] target(s) in 14m 18s"
+}

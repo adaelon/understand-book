@@ -1,0 +1,17 @@
+{
+  "publication": {
+    "book_id": "mu5-x",
+    "publication_id": "01a18a8a-5fb8-7f60-b8b3-72b27561f3c4"
+  },
+  "accepted": 202,
+  "personal_chat_ref": {
+    "session_id": "chat-01a18a8b-8bbc-70c3-b640-103695c458ad",
+    "turn_id": "turn_01a18a8b-8c66-7221-82a5-c30f45849682"
+  },
+  "note_refs": [
+    {
+      "note_id": "note-01a18a8b-87ad-7d63-b9dd-175ebd5aae20",
+      "revision": 1
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "checked_at": "2026-10-28T02:36:30.596Z",
+  "public_reader_startup": true,
+  "registration_preserved": true,
+  "renderer_source": "https://understandbook.top/board-preview/renderer.js",
+  "synthetic_fixture_only": true,
+  "production_board_data_modified": false,
+  "formula_count": 5,
+  "issues": [],
+  "page_errors": []
+}

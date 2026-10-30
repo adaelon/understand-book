@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "runtime": {
+    "passed": 133,
+    "ignored": 2
+  },
+  "server_monitor": {
+    "passed": 6
+  },
+  "reader": {
+    "passed": 203,
+    "first_run": {
+      "passed": 71,
+      "blocked_suites": 3,
+      "reason": "local memory pressure and shared dependency path"
+    },
+    "remaining_rerun": 132
+  },
+  "admin": {
+    "passed": 73
+  },
+  "browser": {
+    "passed": 2,
+    "viewports": [
+      1440,
+      390
+    ],
+    "recovery_without_reload": true,
+    "draft_preserved": true,
+    "duplicate_questions": 0
+  },
+  "web_build": "reader-BqRvA1vI.js",
+  "admin_build": "index-DtUMsl_M.js",
+  "new_model_requests": 0
+}

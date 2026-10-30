@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -715,7 +716,7 @@ watch(
     @pointerup="onPointerUp"
     @keydown="onKeydown"
   >
-    <Teleport to="body" :disabled="paginated">
+    <Teleport :to="applicationOverlayTarget()" :disabled="paginated">
     <FocusReaderPane v-if="focusMounted && props.focusSource" v-show="paginated" ref="focusPane" :source="props.focusSource" :anchor="focusAnchor"
       :class="{ 'focus-reader-pending': !focusReady }"
       :typography="props.typography ?? defaultTypography" :active="paginated && props.readerActive !== false"
@@ -861,7 +862,7 @@ watch(
         aria-controls="reader-annotation-preview" @pointerdown.stop @mousedown.prevent
         @click="toggleAnnotation(group.lid, $event)">✎<span>{{ group.records.length }}</span></button>
     </div>
-    <Teleport to="body">
+    <Teleport :to="applicationOverlayTarget()">
       <AnnotationPreview v-if="activeRecord" id="reader-annotation-preview" :style="previewStyle"
         :records="activeRecords" :active="activeRecord" :source-text="annotationSourceText"
         :render-markdown="props.renderMarkdown" @select="selectAnnotation" @close="closeAnnotation(true)"

@@ -74,7 +74,7 @@ pub(crate) fn source_context(
     {
         return Err(failed("Run publication mismatch; reopen the intended publication before retrying."));
     }
-    let (manifest, _) = scope.book.load_video_source(&scope.book_dir)?;
+    let (manifest, _) = scope.reading_book().load_video_source(&scope.book_dir)?;
     Ok(Some(
         serde_json::json!({"publication":publication.reference,"video":manifest.source.video,"transcript":manifest.material.transcript,"duration_ms":manifest.source.duration_ms,
         "width":manifest.source.width,"height":manifest.source.height,"tools":["video.search","video.read_frames","video.review_audio"],
@@ -87,7 +87,7 @@ pub(crate) fn search_for_run(scope: &crate::run_scope::RunScope, request: read_t
         &fs::read(scope.book_dir.join("publication.json")).map_err(|_| runtime::video::unavailable())?
     ).map_err(|e| failed(e.to_string()))?;
     if scope.publication.as_ref().is_some_and(|p| p.reference != publication.reference) { return Err(failed("Run publication mismatch; reopen the intended publication before retrying.")); }
-    scope.book.search_video(&scope.book_dir, &publication.reference, request)
+    scope.reading_book().search_video(&scope.book_dir, &publication.reference, request)
 }
 
 pub(crate) fn read_for_run(
@@ -117,7 +117,7 @@ pub(crate) fn read_for_run(
                 .join(&publication.reference.publication_id)
         });
     read_frames(
-        &scope.book,
+        &scope.reading_book(),
         &scope.book_dir,
         &publication.reference,
         &scope.turn_id,
@@ -468,13 +468,13 @@ pub(crate) mod tests {
         let publication = crate::published_library::PublishedBook { reference:reference.clone(), book:book.clone(), manifest:declared,
             directory:dir.path().into(),localization_cache:dir.path().join("cache/localization.json") };
         let mut scope = crate::run_scope::RunScope { board_context: None, music_question: None, learning_workspace_id: None, goal: None, members: None, publication:Some(Arc::new(publication)), user_id:"u".into(),workspace_id:"w".into(),
-            workspace_generation:1,chat_session_id:"c".into(),turn_id:"run".into(),confirmation_id:None,book,book_dir:dir.path().into(),
-            provider_binding:runtime::ModelRuntimeProfile::fallback("test",runtime::ProviderToolProtocol::Native),reader_input:input,
+            workspace_generation:1,chat_session_id:"c".into(),turn_id:"run".into(),confirmation_id:None,book:Some(book),book_dir:dir.path().into(),
+            provider_binding:runtime::ModelRuntimeProfile::fallback("test",runtime::ProviderToolProtocol::Native),reader_input:Some(input),
             question_quote:None,presentation_follow_up:None };
         let search = || serde_json::from_value(json!({"query":"visiblecode"})).unwrap();
         assert_eq!(search_for_run(&scope,search()).unwrap()["coverage"]["accepted"],json!([]));
         let original = read_for_run(&scope,request.clone(),&CancellationToken::default()).unwrap();
-        let (manifest, _) = scope.book.load_video_source(dir.path()).unwrap();
+        let (manifest, _) = scope.reading_book().load_video_source(dir.path()).unwrap();
         let dep="video-enrichments/v1/frame.png";
         fs::create_dir_all(dir.path().join("video-enrichments/v1")).unwrap();
         fs::write(dir.path().join(dep),base64::engine::general_purpose::STANDARD.decode(&original.images[0].png_base64).unwrap()).unwrap();

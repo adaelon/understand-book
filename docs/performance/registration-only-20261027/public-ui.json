@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "checked_at": "2026-10-27T15:34:23.085Z",
+  "widths": [
+    390,
+    1440
+  ],
+  "languages": [
+    "zh-CN",
+    "en"
+  ],
+  "guest_links_route_to_registration": true,
+  "free_tokens_visible": true,
+  "guest_entry_absent": true,
+  "page_errors": [],
+  "real_registration_submissions": 0
+}

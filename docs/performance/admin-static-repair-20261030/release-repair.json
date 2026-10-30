@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-10-30T08:50:39.939314+00:00",
+  "package_files": 312,
+  "admin_files": 12,
+  "package_bytes": 28996634,
+  "failed_package_preserved": "/opt/understand-book/acceptance/all-pending-20261030/web-dist.reader-only.tar.gz",
+  "gate_before_candidate_replace": true,
+  "gate_before_cutover": true,
+  "public_admin_page_verification": true,
+  "service_pid": "524591"
+}

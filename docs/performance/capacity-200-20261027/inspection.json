@@ -1,0 +1,635 @@
+{
+  "checked_at_utc": "2026-10-27T12:12:46.209190+00:00",
+  "service": {
+    "MainPID": "325972",
+    "NRestarts": "0",
+    "ControlGroup": "/system.slice/understand-book-multi.service",
+    "MemoryCurrent": "745684992",
+    "CPUUsageNSec": "45097971000",
+    "TasksCurrent": "17",
+    "CPUQuotaPerSecUSec": "infinity",
+    "MemoryHigh": "infinity",
+    "MemoryMax": "infinity",
+    "TasksMax": "23509",
+    "LimitNOFILE": "524288",
+    "WorkingDirectory": "/opt/understand-book/releases/account-access-20261027",
+    "ActiveState": "active",
+    "SubState": "running",
+    "ActiveEnterTimestamp": "Tue 2026-10-27 19:50:13 CST"
+  },
+  "process_paths": [
+    "/opt/understand-book/releases/account-access-20261027/target/release/server",
+    "/opt/understand-book/data/multi-reader-to-tb-20261012"
+  ],
+  "service_root": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+  "binary": "/opt/understand-book/releases/account-access-20261027/target/release/server",
+  "safe_effective_environment": {
+    "UNDERSTAND_BOOK_SERVICE_ROOT": "/opt/understand-book/data/multi-reader-to-tb-20261012",
+    "UNDERSTAND_BOOK_WEB_DIST": "/opt/understand-book/releases/account-access-20261027/packages/web/dist-multi",
+    "UNDERSTAND_BOOK_ADDR": "127.0.0.1:8788",
+    "UNDERSTAND_BOOK_ORIGIN": "https://understandbook.top",
+    "UNDERSTAND_BOOK_MEDIA_ACCEL_ROOT": "/opt/understand-book/data/multi-reader-to-tb-20261012/shared-cache/video-playback",
+    "UB_OBSERVABILITY_MODE": "full",
+    "UB_OBSERVABILITY_SPOOL_DIR": "/opt/understand-book/data/multi-reader-inv9-20261009/observability-spool"
+  },
+  "environment_key_names": [
+    "DEEPSEEK_SEARCH_QPS",
+    "DEEPSEEK_FETCH_QPS",
+    "UNDERSTAND_BOOK_PROVIDER",
+    "FLUID_LLM_MODEL",
+    "VIDEO_WHISPER_MODEL_DIR",
+    "DEEPSEEK_SEARCH_BASE_URL",
+    "UB_OBSERVABILITY_MODE",
+    "UNDERSTAND_BOOK_SERVICE_ROOT",
+    "UB_OBSERVABILITY_SPOOL_DIR",
+    "UNDERSTAND_BOOK_MEDIA_ACCEL_ROOT"
+  ],
+  "limits": {
+    "file_exists": false,
+    "file_mtime_utc": null,
+    "overrides": {},
+    "effective_from_deployed_source": {
+      "active_runs": 4,
+      "user_active_runs": 1,
+      "queued_runs": 20,
+      "user_queued_runs": 4,
+      "model_slots": 2,
+      "user_model_slots": 1,
+      "preview_slots": 1,
+      "plot_slots": 1,
+      "animation_slots": 1,
+      "sse_connections": 40,
+      "user_sse_connections": 4,
+      "sync_waiters": 20,
+      "user_sync_waiters": 4,
+      "request_bytes": 65536,
+      "event_bytes": 262144,
+      "resident_users": 10,
+      "workspaces": 20,
+      "user_workspaces": 4,
+      "books": 20,
+      "book_bytes": 2147483648,
+      "presentation_bytes": 536870912,
+      "presentation_files": 4096
+    }
+  },
+  "machine": {
+    "cpu_count": 4,
+    "cpu_model": "Intel(R) Xeon(R) Platinum 8457C",
+    "memory_bytes": {
+      "MemTotal": 3893227520,
+      "MemAvailable": 1806745600,
+      "SwapTotal": 0,
+      "SwapFree": 0
+    },
+    "disk_bytes": {
+      "total": 41956249600,
+      "used": 27183407104,
+      "free": 12965867520
+    },
+    "load_average": [
+      0.08,
+      0.12,
+      0.16
+    ],
+    "process": {
+      "FDSize": "256",
+      "VmSize": "1673076 kB",
+      "VmHWM": "555260 kB",
+      "VmRSS": "555260 kB",
+      "Threads": "17"
+    },
+    "open_file_descriptors": 37
+  },
+  "root_config_names": [
+    "model-rates.json",
+    "presentation-sandbox.json",
+    "control.sqlite",
+    "web-rates.json"
+  ],
+  "render_limits": {
+    "worker": "/opt/understand-book/releases/account-access-20261027/target/release/presentation_worker"
+  },
+  "nginx_capacity_directives": [
+    {
+      "file": "/etc/nginx/nginx.conf",
+      "line": 6,
+      "directive": "worker_processes auto;"
+    },
+    {
+      "file": "/etc/nginx/nginx.conf",
+      "line": 14,
+      "directive": "worker_connections 1024;"
+    },
+    {
+      "file": "/etc/nginx/nginx.conf",
+      "line": 24,
+      "directive": "sendfile            on;"
+    },
+    {
+      "file": "/etc/nginx/nginx.conf",
+      "line": 27,
+      "directive": "keepalive_timeout   65;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 13,
+      "directive": "add_header Cache-Control \"no-store\";"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 18,
+      "directive": "client_max_body_size 64k;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 25,
+      "directive": "add_header Cache-Control \"no-cache\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 36,
+      "directive": "add_header Cache-Control \"public, max-age=31536000, immutable\";"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 40,
+      "directive": "add_header Cache-Control \"no-store\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 48,
+      "directive": "add_header Cache-Control \"no-store\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 59,
+      "directive": "add_header Cache-Control \"public, max-age=31536000, immutable\";"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 66,
+      "directive": "add_header Cache-Control \"no-store\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 70,
+      "directive": "add_header Cache-Control \"no-store\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 73,
+      "directive": "proxy_pass http://127.0.0.1:8788;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 86,
+      "directive": "proxy_read_timeout 600s;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 87,
+      "directive": "proxy_buffering off;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 88,
+      "directive": "proxy_cache off;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 94,
+      "directive": "sendfile on;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 100,
+      "directive": "add_header Cache-Control \"no-store\" always;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 108,
+      "directive": "proxy_pass http://127.0.0.1:8788;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 118,
+      "directive": "proxy_read_timeout 600s;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 119,
+      "directive": "proxy_buffering off;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 120,
+      "directive": "proxy_cache off;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 123,
+      "directive": "proxy_pass http://127.0.0.1:8788;"
+    },
+    {
+      "file": "/etc/nginx/conf.d/understand-book-multi.conf",
+      "line": 126,
+      "directive": "proxy_pass http://127.0.0.1:8788;"
+    }
+  ],
+  "database": {
+    "schema": [
+      {
+        "user_version": 20
+      }
+    ],
+    "user_counts": [
+      {
+        "total": 12,
+        "enabled": 6
+      }
+    ],
+    "current_run_states": [
+      {
+        "dispatch_state": "admission_failed",
+        "unsaved": 0,
+        "count": 1
+      },
+      {
+        "dispatch_state": "settled",
+        "unsaved": 0,
+        "count": 126
+      }
+    ],
+    "table_names": [
+      {
+        "name": "admin_usage_events"
+      },
+      {
+        "name": "book_publications"
+      },
+      {
+        "name": "learning_workspace_goals"
+      },
+      {
+        "name": "learning_workspace_members"
+      },
+      {
+        "name": "learning_workspaces"
+      },
+      {
+        "name": "mcp_usage"
+      },
+      {
+        "name": "model_call_charges"
+      },
+      {
+        "name": "publication_operations"
+      },
+      {
+        "name": "reader_workspaces"
+      },
+      {
+        "name": "service_usage"
+      },
+      {
+        "name": "service_usage_receipts"
+      },
+      {
+        "name": "web_usage"
+      },
+      {
+        "name": "web_usage_receipts"
+      },
+      {
+        "name": "web_usage_reconciliations"
+      },
+      {
+        "name": "workspace_exam_sprints"
+      },
+      {
+        "name": "workspace_release_archives"
+      },
+      {
+        "name": "workspace_release_instance_history"
+      },
+      {
+        "name": "workspace_release_instance_operations"
+      },
+      {
+        "name": "workspace_release_instance_private_materials"
+      },
+      {
+        "name": "workspace_release_instances"
+      },
+      {
+        "name": "workspace_releases"
+      }
+    ],
+    "usage_24h": [
+      {
+        "kind": "completed",
+        "event_count": 5,
+        "user_count": 1
+      },
+      {
+        "kind": "question",
+        "event_count": 13,
+        "user_count": 1
+      },
+      {
+        "kind": "read",
+        "event_count": 137,
+        "user_count": 2
+      }
+    ],
+    "completed_turn_seconds_24h": [
+      {
+        "sample_count": 5,
+        "mean_seconds": 338.2,
+        "p50_seconds": 381,
+        "p95_seconds": 501,
+        "max_seconds": 501
+      }
+    ],
+    "model_outcomes_24h": [
+      {
+        "purpose": "available_answer",
+        "state": "settled",
+        "charge_count": 3,
+        "outcome_count": 3,
+        "response_count": 3,
+        "succeeded_count": 3
+      },
+      {
+        "purpose": "compaction",
+        "state": "settled",
+        "charge_count": 3,
+        "outcome_count": 3,
+        "response_count": 3,
+        "succeeded_count": 3
+      },
+      {
+        "purpose": "memory_review",
+        "state": "pending",
+        "charge_count": 79,
+        "outcome_count": 79,
+        "response_count": 79,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "memory_review",
+        "state": "settled",
+        "charge_count": 16,
+        "outcome_count": 16,
+        "response_count": 16,
+        "succeeded_count": 16
+      },
+      {
+        "purpose": "outer",
+        "state": "pending",
+        "charge_count": 3,
+        "outcome_count": 3,
+        "response_count": 3,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "outer",
+        "state": "settled",
+        "charge_count": 97,
+        "outcome_count": 97,
+        "response_count": 97,
+        "succeeded_count": 97
+      },
+      {
+        "purpose": "query",
+        "state": "settled",
+        "charge_count": 1,
+        "outcome_count": 1,
+        "response_count": 1,
+        "succeeded_count": 1
+      },
+      {
+        "purpose": "tutor_coach",
+        "state": "pending",
+        "charge_count": 5,
+        "outcome_count": 5,
+        "response_count": 5,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "tutor_coach",
+        "state": "settled",
+        "charge_count": 25,
+        "outcome_count": 25,
+        "response_count": 25,
+        "succeeded_count": 25
+      },
+      {
+        "purpose": "tutor_delivery_review",
+        "state": "settled",
+        "charge_count": 11,
+        "outcome_count": 11,
+        "response_count": 11,
+        "succeeded_count": 11
+      },
+      {
+        "purpose": "tutor_explanation_review",
+        "state": "settled",
+        "charge_count": 11,
+        "outcome_count": 11,
+        "response_count": 11,
+        "succeeded_count": 11
+      }
+    ],
+    "model_calls_per_run_24h": [
+      {
+        "run_count": 13,
+        "mean_charge_count": 9.92,
+        "max_charge_count": 32,
+        "mean_response_count": 9.92,
+        "max_response_count": 32
+      }
+    ],
+    "usage_7d": [
+      {
+        "kind": "completed",
+        "event_count": 25,
+        "user_count": 3
+      },
+      {
+        "kind": "question",
+        "event_count": 45,
+        "user_count": 3
+      },
+      {
+        "kind": "read",
+        "event_count": 724,
+        "user_count": 9
+      }
+    ],
+    "completed_turn_seconds_7d": [
+      {
+        "sample_count": 25,
+        "mean_seconds": 245.68,
+        "p50_seconds": 225,
+        "p95_seconds": 501,
+        "max_seconds": 754
+      }
+    ],
+    "model_outcomes_7d": [
+      {
+        "purpose": "available_answer",
+        "state": "pending",
+        "charge_count": 3,
+        "outcome_count": 3,
+        "response_count": 3,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "available_answer",
+        "state": "settled",
+        "charge_count": 8,
+        "outcome_count": 8,
+        "response_count": 8,
+        "succeeded_count": 8
+      },
+      {
+        "purpose": "compaction",
+        "state": "settled",
+        "charge_count": 3,
+        "outcome_count": 3,
+        "response_count": 3,
+        "succeeded_count": 3
+      },
+      {
+        "purpose": "memory_review",
+        "state": "pending",
+        "charge_count": 164,
+        "outcome_count": 164,
+        "response_count": 164,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "memory_review",
+        "state": "settled",
+        "charge_count": 50,
+        "outcome_count": 50,
+        "response_count": 50,
+        "succeeded_count": 50
+      },
+      {
+        "purpose": "outer",
+        "state": "pending",
+        "charge_count": 6,
+        "outcome_count": 6,
+        "response_count": 6,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "outer",
+        "state": "settled",
+        "charge_count": 384,
+        "outcome_count": 384,
+        "response_count": 384,
+        "succeeded_count": 384
+      },
+      {
+        "purpose": "profile",
+        "state": "settled",
+        "charge_count": 2,
+        "outcome_count": 2,
+        "response_count": 2,
+        "succeeded_count": 2
+      },
+      {
+        "purpose": "query",
+        "state": "settled",
+        "charge_count": 4,
+        "outcome_count": 4,
+        "response_count": 4,
+        "succeeded_count": 4
+      },
+      {
+        "purpose": "repair",
+        "state": "settled",
+        "charge_count": 1,
+        "outcome_count": 1,
+        "response_count": 1,
+        "succeeded_count": 1
+      },
+      {
+        "purpose": "tutor_coach",
+        "state": "pending",
+        "charge_count": 11,
+        "outcome_count": 11,
+        "response_count": 11,
+        "succeeded_count": 0
+      },
+      {
+        "purpose": "tutor_coach",
+        "state": "settled",
+        "charge_count": 81,
+        "outcome_count": 81,
+        "response_count": 81,
+        "succeeded_count": 79
+      },
+      {
+        "purpose": "tutor_delivery_review",
+        "state": "settled",
+        "charge_count": 33,
+        "outcome_count": 33,
+        "response_count": 33,
+        "succeeded_count": 31
+      },
+      {
+        "purpose": "tutor_explanation_review",
+        "state": "settled",
+        "charge_count": 13,
+        "outcome_count": 13,
+        "response_count": 13,
+        "succeeded_count": 13
+      }
+    ],
+    "model_calls_per_run_7d": [
+      {
+        "run_count": 42,
+        "mean_charge_count": 10.88,
+        "max_charge_count": 32,
+        "mean_response_count": 10.88,
+        "max_response_count": 32
+      }
+    ]
+  },
+  "database_file_bytes": {
+    "control.sqlite": 8527872,
+    "control.sqlite-wal": 762232,
+    "control.sqlite-shm": 32768
+  },
+  "recent_service_log_marker_counts": {
+    "USER_RUNTIME_CAPACITY": 0,
+    "WORKSPACE_CAPACITY": 0,
+    "RUN_QUEUE_FULL": 0,
+    "SERVICE_CAPACITY": 0,
+    "MODEL_RATE_LIMIT": 0,
+    "429": 0,
+    "database is locked": 0,
+    "No space left": 0,
+    "out of memory": 0,
+    "timed out": 0,
+    "timeout": 118
+  },
+  "recent_service_log_lines_scanned": 2751,
+  "top_memory_processes": [
+    "COMMAND           RSS",
+    "server          555260",
+    "mysqld          467180",
+    "minio           99276",
+    "next-server (v  65808",
+    "dockerd         38520",
+    "cloud-monitor-a 37364",
+    "containerd      32444",
+    "cloud-monitor-a 28424"
+  ],
+  "network_connections_summary": "Total: 208\nTCP:   34 (estab 9, closed 10, orphaned 0, timewait 1)\n\nTransport Total     IP        IPv6\nRAW\t  1         1         0        \nUDP\t  7         4         3        \nTCP\t  24        17        7        \nINET\t  32        22        10       \nFRAG\t  0         0         0"
+}

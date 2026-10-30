@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "production_web_build": true,
+  "front_end_tests": 31,
+  "browser_cases": 11,
+  "viewports": [
+    [
+      320,
+      568
+    ],
+    [
+      390,
+      600
+    ],
+    [
+      1280,
+      600
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "languages": [
+    "zh-CN",
+    "en"
+  ],
+  "screenshots_inspected": [
+    "browser-release/registration-entry-registr-b3b96-he-only-beta-entry-at-390px/registration-entry-390.png",
+    "browser-release/registration-entry-registr-b3f12-e-only-beta-entry-at-1440px/registration-free-tokens-1440.png"
+  ],
+  "checks": [
+    "homepage email registration entry",
+    "prominent free unlimited AI tokens",
+    "email registration and validation",
+    "login and password recovery",
+    "old guest link routes to registration",
+    "no guest entry on sign-in page"
+  ],
+  "page_errors": 0
+}

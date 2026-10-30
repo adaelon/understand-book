@@ -117,7 +117,7 @@ mod native_board_expression_coach {
         assert!(handoff.contains("通过可变切片修改的是原数组中的同一个元素"));
         assert!(!handoff.contains("use presentation.author read_method"));
         assert_eq!(context.tutor.as_ref().unwrap()["status"],"observing");
-        assert!(context.board_reviewed_candidate_id.is_none(),"ordinary planning must not manufacture active teaching review");
+        assert!(context.board_selected_candidate_id.is_none(),"ordinary planning must not manufacture active teaching review");
     }
 
     #[test]

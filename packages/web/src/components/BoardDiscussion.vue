@@ -57,7 +57,7 @@ watch(() => props.turns, async () => { if (nearBottom.value) await latest(); els
         <MessageSquareText :size="25" aria-hidden="true" />
         <h3>{{ uiText('从一个问题开始') }}</h3>
         <p>{{ uiText('说出你想理解的主题，我们一起梳理概念、画出关系，把理解接着往前推。') }}</p>
-        <button type="button" @click="emit('suggest', uiText('帮我梳理这个主题，用思维导图画出关键概念和它们的关系。'))">{{ uiText('梳理主题，画出关系') }}<ArrowUpRight :size="14" /></button>
+        <button type="button" @click="emit('suggest', uiText('帮我梳理这个主题，选择合适的图解画出关键概念和它们的关系。'))">{{ uiText('梳理主题，画出关系') }}<ArrowUpRight :size="14" /></button>
         <button type="button" @click="emit('suggest', uiText('请结合这张画板，帮我找出还没弄清楚的地方，并一步步讲解。'))">{{ uiText('看看哪里还没弄懂') }}<ArrowUpRight :size="14" /></button>
       </div>
       <article v-for="entry in display" :key="discussionTurnKey(entry.turn)" class="board-discussion-turn" :data-turn-id="entry.turn.turnId" :data-session-id="entry.turn.sessionId">

@@ -135,8 +135,8 @@ fn board_root_candidate_imports_sources_and_atomically_edits_native_drawings_and
         session_runtime::update_board_authoring(user,&prepared.turn_ref,NOW,candidate)
     }).unwrap();
     let _=first;
-    let review=||Some(runtime::board_author::ReviewedDelivery{teaching_delivery_move_refs:vec![],delivery_scope:None});
-    let committed=execute(&storage,frozen,&prepared.turn_ref,AuthorRequest::Commit{candidate_revision:1,reviewed_delivery:review()},&[],&[],&token).unwrap().committed.unwrap();
+    let review=||Some(runtime::board_author::SelectedDelivery{teaching_delivery_move_refs:vec![],delivery_scope:None});
+    let committed=execute(&storage,frozen,&prepared.turn_ref,AuthorRequest::Commit{candidate_revision:1,selected_delivery:review()},&[],&[],&token).unwrap().committed.unwrap();
     assert!(committed.parent_item_id.is_none());
     let before=storage.with_user(|user|Ok(read_current(user,frozen)?.1)).unwrap();
     let original=before.items.iter().find(|item|item.item_id=="retained-original").unwrap().clone();
@@ -157,7 +157,7 @@ fn board_root_candidate_imports_sources_and_atomically_edits_native_drawings_and
         let revision=candidate.candidate_revision; candidate.previewed=true;
         session_runtime::update_board_authoring(user,&prepared.turn_ref,NOW,candidate)?; Ok(revision)
     }).unwrap();
-    let saved=execute(&storage,frozen,&prepared.turn_ref,AuthorRequest::Commit{candidate_revision,reviewed_delivery:review()},&[],&[],&token).unwrap().committed.unwrap();
+    let saved=execute(&storage,frozen,&prepared.turn_ref,AuthorRequest::Commit{candidate_revision,selected_delivery:review()},&[],&[],&token).unwrap().committed.unwrap();
     storage.with_user(|user| {
         let (store,after)=read_current(user,frozen)?;
         assert_eq!(after.revision,before.revision+1);

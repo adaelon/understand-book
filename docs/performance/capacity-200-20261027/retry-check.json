@@ -1,0 +1,21 @@
+{
+  "checked_at_utc": "2026-10-27T12:18:42.716792+00:00",
+  "retryable_session_presence": [
+    {
+      "attempts": 24008,
+      "session_log_exists": false,
+      "latest_review_error_code": "REVIEW_INPUT_MISSING"
+    },
+    {
+      "attempts": 23998,
+      "session_log_exists": false,
+      "latest_review_error_code": "REVIEW_INPUT_MISSING"
+    }
+  ],
+  "log_counts": {
+    "Memory review: REVIEW_INPUT_MISSING": 2420,
+    "Memory review: REVIEW_EXECUTOR_FAILED": 79
+  },
+  "service_pid": "325972",
+  "service_state": "active"
+}

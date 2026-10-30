@@ -199,7 +199,7 @@ fn music_network_receipt_releases_workspace_locks_and_sources_keep_original_publ
     let turn=AgentTurnRef {session_id:port.scope.chat_session_id.clone(),turn_id:port.scope.turn_id.clone(),user_turn_ordinal:1};
     let handle=f.access.users.lock().unwrap().get("A","now").unwrap();
     let binding=SourceBinding {
-        music:Some(saved.clone()),media:None,source_ref_id:"music-source".into(),book_id:publication.book_id.clone(),publication_id:Some(publication.publication_id.clone()),source_revision:Some(port.scope.book.source_fingerprint().into()),
+        music:Some(saved.clone()),media:None,source_ref_id:"music-source".into(),book_id:publication.book_id.clone(),publication_id:Some(publication.publication_id.clone()),source_revision:Some(port.scope.reading_book().source_fingerprint().into()),
         evidence_range:None,evidence_text_digest:String::new(),label_snapshot:saved.label.clone(),preview_snapshot:saved.preview.clone(),
     };
     {

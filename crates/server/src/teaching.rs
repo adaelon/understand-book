@@ -959,7 +959,7 @@ fn inherited_selection_target(
 }
 
 /// Share all deterministic validation and normalization with the eventual
-/// append, so a model review examines exactly the move the host will accept.
+/// append, so selection saves exactly the move validated by the host.
 fn prepare_select(
     state: &PrivateBookContext<'_>,
     turn: &AgentTurnRef,

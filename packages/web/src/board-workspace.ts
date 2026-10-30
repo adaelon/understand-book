@@ -8,7 +8,7 @@ import type { BoardVisualTarget } from './generated/BoardVisualTarget';
 import { t as uiText, formatLocale } from './i18n';
 import type { BoardDiscussionTurn } from './board-conversation';
 
-export type BoardKind = 'prebuild' | 'answer' | 'presentation' | 'understanding';
+export type BoardKind = 'personal_note' | 'prebuild' | 'answer' | 'presentation' | 'understanding';
 export interface BoardSourceRequest { board_id: string; item_id: string; source_ref_id: string }
 export interface BoardQuestionRequest { client_request_id: string; message: string; context: BoardFollowUp }
 export interface BoardRunView {
@@ -46,12 +46,14 @@ export function mergeBoardDeliveries(...groups: (readonly BoardDelivery[] | null
   return [...deliveries.values()].sort((a, b) => a.after_revision - b.after_revision);
 }
 
-export const boardKinds: BoardKind[] = ['prebuild', 'answer', 'presentation', 'understanding'];
+export const boardKinds: BoardKind[] = ['personal_note','prebuild', 'answer', 'presentation', 'understanding'];
 export const boardKindLabels: Record<BoardItem['target']['kind'], string> = {
+  personal_note: '我的想法',
   prebuild: '材料知识', artifact: '材料知识', answer: '问答讲解', presentation: '互动演示', understanding: '我的理解', drawing: '板书图解',
 };
 export const boardArtifactLabels = { all: '全部材料知识', pass1: '概念与论断', discourse: '篇章脉络', book_structure: '全书结构', teaching: '教学知识点' };
 export const boardKindDescriptions: Record<BoardKind, string> = {
+  personal_note: '同一条想法可以放在多个画板。继续写时，各处都会显示更新。',
   prebuild: '材料中的概念、论断、篇章脉络与全书结构，保留当时内容与原文。',
   answer: '一段完整回答，和它引用的原文一起保留。',
   presentation: '保存演示内容及当前状态，随时回到这个现场。',
@@ -114,10 +116,10 @@ export function boardTextPreview(text: string): string {
     .replace(/\[\[source:[^\]\n]+\]\]/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-export function clampBoardZoom(zoom: number): number { return Math.max(0.25, Math.min(1.75, zoom)); }
+export function clampBoardZoom(zoom: number, minimum = 0.25): number { return Math.max(minimum, Math.min(1.75, zoom)); }
 
 export function zoomBoardAt(view: BoardView, zoom: number, point: { x: number; y: number }): BoardView {
-  const next = clampBoardZoom(zoom), ratio = next / view.zoom;
+  const next = clampBoardZoom(zoom, Math.min(0.25, view.zoom)), ratio = next / view.zoom;
   return { ...view, zoom: next, x: point.x - (point.x - view.x) * ratio, y: point.y - (point.y - view.y) * ratio };
 }
 
@@ -127,7 +129,7 @@ export function fitBoard(items: BoardItem[], width: number, height: number, curr
   const top = Math.min(...items.map(item => item.position.y));
   const right = Math.max(...items.map(item => item.position.x + item.size.width));
   const bottom = Math.max(...items.map(item => item.position.y + item.size.height));
-  const zoom = Math.min(1, clampBoardZoom(Math.min((width - 72) / Math.max(1, right - left), (height - 100) / Math.max(1, bottom - top))));
+  const zoom = Math.min(1, Math.max(1, width - 72) / Math.max(1, right - left), Math.max(1, height - 100) / Math.max(1, bottom - top));
   return { ...current, zoom, x: (width - (right - left) * zoom) / 2 - left * zoom,
     y: (height - (bottom - top) * zoom) / 2 - top * zoom };
 }

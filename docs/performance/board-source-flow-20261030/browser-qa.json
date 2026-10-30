@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "at_utc": "2026-10-30T05:54:47.6667156Z",
+  "environment": "Local real source-reader components with source segments and citation ranges extracted from the published book",
+  "viewports": [
+    {
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "checks": [
+    "Seven source pieces form one paragraph with three inline formulas",
+    "Display formula remains a separate block",
+    "Citation text and formula highlights remain visible",
+    "Following-page text loads through section 2.3.3",
+    "Return-to-citation restores the quoted sentence",
+    "Closing returns to the local board preview",
+    "Mobile reading region has scrollWidth=clientWidth=380",
+    "Final desktop and mobile screenshots refreshed after local preview font resources were made available; no preview font access errors"
+  ],
+  "screenshots": [
+    "desktop.jpg",
+    "mobile.jpg"
+  ],
+  "production_mutated": false,
+  "model_requests": 0,
+  "limitations": [
+    "Preview uses recorded source data and does not load book illustrations",
+    "Existing strong emphasis markers in the following paragraph remain literal"
+  ]
+}

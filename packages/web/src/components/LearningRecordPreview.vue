@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
@@ -31,7 +32,7 @@ function trapFocus(event: KeyboardEvent) {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="applicationOverlayTarget()">
     <div class="record-backdrop" @click.self="emit('close')">
       <section class="record-preview" role="dialog" aria-modal="true" aria-labelledby="learning-record-title" @keydown.esc.stop.prevent="emit('close')" @keydown="trapFocus">
         <header><div><p>{{ uiText('原记录 · 只读查看') }}</p><h2 id="learning-record-title">{{ record?.title || uiText('聊天与学习记录') }}</h2></div><button ref="closeButton" @click="emit('close')">{{ uiText('关闭原记录') }}</button></header>

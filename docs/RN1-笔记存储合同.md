@@ -1,6 +1,20 @@
 # RN1 笔记存储合同
 
-RN1 实现私人笔记的内容身份、主要关联、v4 存储及原子编辑。决策沿 [ADR-0160 §7](adr/0160-reading-share-images-and-calm-surfaces.md#7-笔记内容与关联)，演示留存和交互已由 [RN2](切片方案-阅读分享与安静呈现.md#rn2-演示笔记保存与返回闭环) 实现。
+本合同现由 PN1 接续：私人笔记使用稳定身份、追加修订、schema 6 存储与原子编辑；RN1 的原话/摘录和主要关联规则继续生效。决策沿 [ADR-0160 §7](adr/0160-reading-share-images-and-calm-surfaces.md#7-笔记内容与关联)，演示留存和交互已由 [RN2](切片方案-阅读分享与安静呈现.md#rn2-演示笔记保存与返回闭环) 实现。
+
+2026-10-30 已实现 [ADR-0177](adr/0177-personal-notes-evolution-and-teaching-recall.md) 与 [PN1–PN6](切片方案-个人想法演进与教学召回.md)。新用户级笔记允许没有材料，使用 `/me/notes/*`；旧 RN1 材料采集入口仍按下述来源规则核验。验证见 [PN 报告](performance/personal-notes-20261030/README.md)。
+
+## 稳定笔记与版本
+
+`MemoryDocument.notes` 是正文和历史的唯一权威，note_id 由宿主创建，不随正文、位置或材料变化。每个已提交 `NoteRevision` 保存原话、可选标题、authorship、来源素材、NoteContext、source_refs、based_on_turn、saved_at、change_note 与 restored_from。current_revision 指向当前版，历史按确切版本只读。
+
+创建/修订/恢复携带 operation_id；重试返回原结果。同一内容不添加空版本；修订必须匹配 base_revision，冲突保留调用方草稿供明确整合。恢复复制被选版内容并追加新修订。删除清除正文与所有版本，保留必要身份/重试状态，防止晚到任务复活正文。
+
+`NoteRef` 是 note_id 和可选 revision。当前查看和当前画板解析最新版本；讨论接纳、历史反馈与历史画板冻结 revision。source_refs、NoteLink 的建立版本和说明依据版本分别保存；已删除来源不妨碍已有综合稿继续写。
+
+`NoteContext.origin` 保存产生时的消息原句/出现序号或演示状态，画布来源保存 board_id / board_item_id。展示位置独立于修订：`MemoryDocument.note_attachments` 保存消息与演示引用，画布沿用 `BoardItem::PersonalNote` 和 `BoardLink`。添加/移除位置不追加正文版本、不改写产生现场、不复制正文；同一目标的重复放置返回已有引用。画布的卡片与连线经 `BoardStore::place_personal_note` 一次提交。正式正文先保存成功但放置失败时，设备草稿保留已确认 NoteID；重试只补放置。`notes.read` 返回产生现场与消息/演示展示引用，画布的反向位置由用户私有画布查询读取。验证见[放置验收](performance/personal-notes-20261030/placements/README.md)。
+
+内容来源分别为 user、assistant_draft、adopted_assistant、material_excerpt、unknown。用户修改 AI 稿后仍保留采用 AI 修改身份和形成它的讨论。旧内容不会因为迁移而被推测为用户原话或新掌握事实。
 
 ## 持久字段
 
@@ -44,13 +58,13 @@ RN1 实现私人笔记的内容身份、主要关联、v4 存储及原子编辑�
 
 `memory/replace` 只接收用户要修改的 `content`，默认继承摘录、关联、来源、选区、正文放置及 layer，保留首次保存时间。已有摘录时允许清空用户文字；没有摘录时拒绝空正文。原文的显式重新选择继续沿 `selection_context`，核对原材料／发布和 LID，并同步原文摘录；回答／演示不得通过该参数换关联。
 
-`memory/reanchor` 沿原真实位置校验，原子改变当前 placement、anchor、citations 和 mem_id，保留原关联。`memory/promote`、Agent 提议保留与撤销继续使用原命令和原所有权。碰撞或持久化失败不切换内存及磁盘中的原记录。
+`memory/reanchor` 沿原真实位置校验，原子改变当前显示 placement、anchor、citations，保持 note_id 和正文修订不变，保留原关联。正文的旧情境仍属于其保存版本。`memory/promote`、Agent 提议保留与撤销继续使用原命令和原所有权。碰撞或持久化失败不切换内存及磁盘中的原记录。
 
-RN4 在原 v4 文档增加可选 `note_replacements`：replace／reanchor 同次原子保存旧 ID 到当前 ID 的只读导航，删除清除对应关系；回顾可解析编辑后的记录，命令仍使用当前 ID。旧文档缺省为空，已发生的旧替换不反推。见 [RN4 验收](performance/reading-notes-rn4-20261010/README.md)。
+RN4 原 v4 文档留下的 `note_replacements` 在升级后继续解析旧链接到稳定身份；PN1 后正文 replace 追加版本，重锚改变显示位置，两者都不再产生另一条笔记身份。旧系统没有留下的正文与替换过程不反推。见 [RN4 验收](performance/reading-notes-rn4-20261010/README.md)。
 
 ## 版本升级与验证
 
-MemoryDocument 当前为 v4；v2、v3 及既有裸数组入口原子升级。版本升级只改变 schema 门禁，保留原 records、document/projection revisions、profile、review、exclusions 和 governance；未知版本拒绝读取。
+MemoryDocument 当前为 schema 6；旧 v5、v4、v3、v2 与裸数组由原入口有限升级。v5 原有笔记和历史不变，新位置集合为空。现存 note Record 迁为稳定笔记首版，来源与批注位置保留，作者无法确定则为 unknown；普通记忆、document/projection revisions、profile、review、exclusions 和 governance 保留。升级持久化失败不替换内存与旧文件；未知更高版本拒绝读取。旧 v4 的当前正文是可迁移的全部原话，不补写已丢失历史。
 
 固定旧结构样本位于 `crates/memory/tests/fixtures/memory-v3.json`，沿仓库既有脱敏 legacy 样本扩展 v3 精确选区与 PDF 放置结构。memory 测试逐字段比对升级前后，另覆盖完整私人记忆状态、旧裸数组、升级写入失败、新关联身份、内容编辑、重锚与保存失败。server 路由测试覆盖四类入口、当前聊天变化、未交付回答、错误版本／现场及原发布准入。
 
@@ -58,6 +72,6 @@ MemoryDocument 当前为 v4；v2、v3 及既有裸数组入口原子升级。版
 
 ## 已知限制
 
-- RN1 提供存储和服务接口；新编辑入口、内容分区呈现、搜索和列表时间排序由 RN2–RN4 接入。
+- 全局编辑、内容分区、历史与召回已由 PN1–PN6 接入；未发送草稿仅保存在当前设备，历史旧正文无法追补。
 - RN2 已实现从已存笔记读取原演示，不再要求原聊天存在，见 [RN2 实现与验收](performance/reading-notes-rn2-20261010/README.md)。
-- 回答摘录接口接收已交付 Markdown 中的连续文字；RN3 接入浏览器选区时需沿实际呈现格式提取相应原片段。
+- 回答摘录接口接收已交付 Markdown 中的连续文字；个人讨论的 AI 稿保留 based_on_turn 与实际想法引用，保存或采用本身不证明掌握。

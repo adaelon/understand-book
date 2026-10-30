@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "at_utc": "2026-10-29T02:27:10.448890+00:00",
+  "accounts": {
+    "admin": {
+      "title": "失败的逻辑：事情因何出错，世间有无妙策",
+      "is_default": true,
+      "original_publication": true,
+      "reading_available": true,
+      "tutor_ready": true
+    },
+    "reader": {
+      "title": "失败的逻辑：事情因何出错，世间有无妙策",
+      "is_default": true,
+      "original_publication": true,
+      "reading_available": true,
+      "tutor_ready": true
+    }
+  },
+  "model_requests": 0
+}

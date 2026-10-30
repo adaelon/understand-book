@@ -17,10 +17,14 @@ class LauncherTest(unittest.TestCase):
         shutil.copyfile(Path(__file__).with_name("start-reader.sh"), script)
         server = self.root / "target/release/server"
         server.parent.mkdir(parents=True)
-        server.write_text('#!/usr/bin/env bash\nprintf "%s" "${UNDERSTAND_BOOK_WEB_DIST:-}" > web-dist.txt\nprintf "%s\\0" "$@"\n', encoding="utf-8")
+        server.write_text('#!/usr/bin/env bash\nprintf "%s" "${UNDERSTAND_BOOK_WEB_DIST:-}" > web-dist.txt\nprintf "%s" "${UNDERSTAND_BOOK_EMBEDDING_CONFIG:-}" > embedding.txt\nprintf "%s\\0" "$@"\n', encoding="utf-8")
         server.chmod(0o755)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("UNDERSTAND_BOOK_")}
         self.env["MSYS_NO_PATHCONV"] = "1"
+        config = self.root / "models/local-embedding.json"
+        config.parent.mkdir()
+        config.write_text('{}')
+        self.env["UNDERSTAND_BOOK_EMBEDDING_CONFIG"] = config.as_posix()
         self.bash = os.environ.get("MU11_BASH", "bash")
 
     def run_launcher(self, **env):
@@ -38,6 +42,16 @@ class LauncherTest(unittest.TestCase):
         self.assertEqual(self.args(result), ["--multi-user", "/srv/readers with spaces", "--origin",
                                              "https://reader.example", "--addr", "127.0.0.1:8788"])
         self.assertTrue((self.root / "web-dist.txt").read_text().replace("\\", "/").endswith("/packages/web/dist-multi"))
+        self.assertEqual((self.root / "embedding.txt").read_text(), self.env["UNDERSTAND_BOOK_EMBEDDING_CONFIG"])
+
+    def test_missing_model_installation_does_not_launch_degraded_release(self):
+        result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user",
+                                   UNDERSTAND_BOOK_SERVICE_ROOT="/srv/readers",
+                                   UNDERSTAND_BOOK_ORIGIN="https://reader.example",
+                                   UNDERSTAND_BOOK_EMBEDDING_CONFIG=(self.root / "missing.json").as_posix())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        self.assertIn("Semantic retrieval is not installed", result.stderr.decode())
 
     def test_explicit_preview_bundle_is_preserved(self):
         result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user",

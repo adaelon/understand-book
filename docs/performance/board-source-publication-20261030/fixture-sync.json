@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "updated_test_fixtures": [
+    "crates/server/src/board_author.rs"
+  ],
+  "release_compiled_code_unchanged": true,
+  "reason": "Keep the unit-test board head consistent with its edited revision; cfg(test) only."
+}

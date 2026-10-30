@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "unique_tests": 13,
+  "suites": [
+    {
+      "log": "tests-fixed-3.log",
+      "passed": 2
+    },
+    {
+      "log": "author-regressions-frozen.log",
+      "passed": 8
+    },
+    {
+      "log": "source-regressions-frozen.log",
+      "passed": 4
+    }
+  ],
+  "test_binary": "server-47897d61a2bcfb9c.exe",
+  "at_utc": "2026-10-30T04:59:09.608136+00:00",
+  "note": "Related regressions use the same frozen binary as the two new passing tests; a later Cargo invocation was cancelled when unrelated concurrent source edits triggered a rebuild."
+}

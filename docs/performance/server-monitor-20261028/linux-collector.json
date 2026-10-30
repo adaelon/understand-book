@@ -1,0 +1,24 @@
+{
+  "collection_ms": 0.27523000000000003,
+  "disk": {
+    "available_bytes": 9395544064,
+    "total_bytes": 41956249600,
+    "used_bytes": 30753730560,
+    "used_percent": 73.29952236722322
+  },
+  "memory": {
+    "available_bytes": 2388058112,
+    "total_bytes": 3893227520,
+    "used_bytes": 1505169408,
+    "used_percent": 38.66122388860541
+  },
+  "network": {
+    "interfaces": [
+      "eth0"
+    ],
+    "receive_bytes_per_second": 44.396052871248166,
+    "transmit_bytes_per_second": 44.396052871248166
+  },
+  "passed": true,
+  "evidence": "Unmodified OS collector functions extracted from crates/server/src/server_monitor.rs; isolated Linux probe, no service restart."
+}

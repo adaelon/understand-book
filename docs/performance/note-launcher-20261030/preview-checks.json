@@ -1,0 +1,29 @@
+[
+  {
+    "width": 1920,
+    "noFooter": true,
+    "sendUnobstructed": true,
+    "oneClickFocused": true,
+    "draftResumed": true,
+    "savedLocally": true,
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "noFooter": true,
+    "sendUnobstructed": true,
+    "oneClickFocused": true,
+    "draftResumed": true,
+    "savedLocally": true,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "noFooter": true,
+    "sendUnobstructed": true,
+    "oneClickFocused": true,
+    "draftResumed": true,
+    "savedLocally": true,
+    "errors": []
+  }
+]

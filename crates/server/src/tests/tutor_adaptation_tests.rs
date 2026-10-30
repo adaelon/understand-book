@@ -227,7 +227,7 @@ fn tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis() {
 }
 
 #[test]
-fn om3_assisted_expression_carries_original_help_into_the_new_question_and_review() {
+fn om3_assisted_expression_carries_original_help_into_the_next_unreviewed_turn() {
     let (_root, mut state) = super::teaching_design_tests::fixture();
     let first = prepare_agent_chat(&mut state, r#"{"message":"请解释为什么停车时间也在分母里。"}"#, "om3").unwrap();
     let design = super::teaching_design_tests::design_request("om3-initial", None);
@@ -266,15 +266,13 @@ fn om3_assisted_expression_carries_original_help_into_the_new_question_and_revie
     selection["move"]["participation"] = json!({"choice":"conclude","reason":"沿用受助例子直接回应新条件；独立应用仍未知。"});
     selection["move"]["delivery_text"] = json!("沿用刚才的行程，路程与行驶时间保持不变。停车从 5 分钟增加到 8 分钟，总时间就从 15 分钟增加到 18 分钟。平均速度用同一路程除以总时间；分子不变、正的分母增大，所以平均速度降低。");
     let report = super::tutor_building_blocks_tests::om3_replay(&mut state, next, revised, selection, "assisted-next-question");
-    let review = &report["review_input"];
-    assert!(report["main_input"].to_string().contains(evidence["evidence_ref"].as_str().unwrap()),
-        "the original evidence reference must also reach the actual main-model request");
-    assert!(review["learner_view"]["learning_opportunity"]["continuity"]["teaching_implications"].as_array().unwrap()
-        .iter().any(|item| item["evidence_ref"] == evidence["evidence_ref"]));
-    assert!(review["learner_grounding"]["expressions"].as_array().unwrap()
-        .iter().any(|item| item["fact_ref"] == fact && item["text"] == words));
-    assert!(review["learner_grounding"]["delivered_support"].as_array().unwrap()
-        .iter().any(|item| item["delivery_ref"] == delivery && item["answer"] == first_report["delivery"]["payload"]["answer"]));
+    let main_input = report["main_input"].to_string();
+    assert!(main_input.contains(evidence["evidence_ref"].as_str().unwrap()),
+        "the original evidence reference must reach the actual main-model request");
+    assert!(main_input.contains(words), "the original assisted expression must remain available");
+    assert!(main_input.contains(&delivery), "the actual prior support must remain identifiable");
+    assert!(report["prepare"]["learner_context"]["learning_opportunity"]["continuity"]["teaching_implications"]
+        .as_array().unwrap().iter().any(|item| item["evidence_ref"] == evidence["evidence_ref"]));
     assert!(report["delivery"]["payload"]["move"]["response_expectation"].is_null());
     let store = state.user.learning_store().unwrap();
     assert_eq!(serde_json::to_value(store.evidence(evidence["evidence_ref"].as_str().unwrap()).unwrap()).unwrap(),

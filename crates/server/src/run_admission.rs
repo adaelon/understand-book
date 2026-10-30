@@ -1,5 +1,7 @@
 //! Durable admission metadata; business input and output remain in private History.
 use crate::*;
+#[path="personal_admission.rs"]
+mod personal;
 use crate::{
     agent_run::{FinishedRun, NetworkUserPort, PreparedAgentChat},
     authorization::{missing, Authorization, AuthorizedContext},
@@ -68,9 +70,9 @@ pub(crate) struct FrozenTurn<M = Vec<Message>> {
     turn: String,
     ordinal: u64,
     head: Option<String>,
-    publication: PublishedBookRef,
+    publication: Option<PublishedBookRef>,
     normalized: Value,
-    reader: runtime::run_context::ReaderInputSnapshot,
+    reader: Option<runtime::run_context::ReaderInputSnapshot>,
     #[serde(default)]
     music_question: Option<base_schema::MusicQuestionContext>,
     confirmation: Option<String>,
@@ -122,11 +124,7 @@ impl FrozenTurn {
         if self.version != 1 {
             return Err(fault("RUN_INPUT_INCOMPATIBLE", "conflict"));
         }
-        let publication = access
-            .library
-            .lock()
-            .unwrap()
-            .load(&self.owner, &self.publication)?;
+        let publication = self.publication.as_ref().map(|reference|access.library.lock().unwrap().load(&self.owner,reference)).transpose()?;
         Ok(PreparedAgentChat {
             response_language: runtime::response_language::ResponseLanguage::from_request(&self.normalized)?,
             exam_calendar: self.exam_sprint.as_ref().map(|sprint| sprint.calendar(
@@ -143,9 +141,9 @@ impl FrozenTurn {
                 chat_session_id: self.chat.clone(),
                 turn_id: self.turn.clone(),
                 confirmation_id: self.confirmation.clone(),
-                book: publication.book.clone(),
-                book_dir: publication.directory().to_path_buf(),
-                publication: Some(publication),
+                book: publication.as_ref().map(|p|p.book.clone()),
+                book_dir: publication.as_ref().map(|p|p.directory().to_path_buf()).unwrap_or_default(),
+                publication,
                 provider_binding: self.provider.profile.clone(),
                 reader_input: self.reader.clone(),
                 question_quote: self.quote.clone(),
@@ -171,11 +169,15 @@ struct Admission {
     chat: String,
     workspace: String,
     generation: u64,
-    publication: PublishedBookRef,
+    publication: Option<PublishedBookRef>,
     state: String,
     cancel: bool,
     closed: bool,
     unsaved: bool,
+}
+impl Admission {fn book_id(&self)->&str{self.publication.as_ref().map(|r|r.book_id.as_str()).unwrap_or_default()}}
+fn authorize_source(access:&Authorization,owner:&str,reference:Option<&PublishedBookRef>)->Result<(),ToolError>{
+    if let Some(reference)=reference {access.library.lock().unwrap().authorize(owner,reference).map_err(|_|missing())?;}Ok(())
 }
 fn read_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Admission> {
     Ok(Admission {
@@ -183,12 +185,9 @@ fn read_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<Admission> {
         key: r.get(1)?,
         turn: r.get(2)?,
         chat: r.get(3)?,
-        workspace: r.get(4)?,
+        workspace: r.get::<_,Option<String>>(4)?.unwrap_or_default(),
         generation: r.get(5)?,
-        publication: PublishedBookRef {
-            book_id: r.get(6)?,
-            publication_id: r.get(7)?,
-        },
+        publication: r.get::<_,Option<String>>(6)?.zip(r.get::<_,Option<String>>(7)?).map(|(book_id,publication_id)|PublishedBookRef{book_id,publication_id}),
         state: r.get(8)?,
         cancel: r.get(9)?,
         closed: r.get(10)?,
@@ -396,11 +395,7 @@ impl RunAdmissions {
         if row.closed {
             return Err(closed());
         }
-        access
-            .library
-            .lock()
-            .unwrap()
-            .authorize(&row.owner, &row.publication)
+        authorize_source(access, &row.owner, row.publication.as_ref())
             .map_err(|_| missing())?;
         let user = context.user.lock().unwrap();
         let saved = frozen_input(&user, row)?.ok_or_else(|| if row.state == "preparing" { preparing() } else { closed() })?;
@@ -418,6 +413,7 @@ impl RunAdmissions {
         input: &Value,
         now: &str,
     ) -> Result<Value, ToolError> {
+        if input["scope"]=="personal" {return self.admit_personal(access,context,input,now);}
         let key = input["client_request_id"]
             .as_str()
             .filter(|s| !s.is_empty() && s.len() <= 128)
@@ -504,13 +500,13 @@ impl RunAdmissions {
             chat: chat.into(),
             workspace: workspace.into(),
             generation: scene.workspace.generation,
-            publication: scene
+            publication: Some(scene
                 .workspace
                 .publication
                 .as_ref()
                 .unwrap()
                 .reference
-                .clone(),
+                .clone()),
             state: "preparing".into(),
             cancel: false,
             closed: false,
@@ -543,12 +539,13 @@ impl RunAdmissions {
             {
                 return Err(fault("RUN_QUEUE_FULL", "rate_limit"));
             }
-            tx.execute("INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_id,workspace_generation,book_id,publication_id,dispatch_state) VALUES(?,?,?,?,?,?,?,?,'preparing')",params![row.owner,row.key,row.turn,row.chat,row.workspace,row.generation,row.publication.book_id,row.publication.publication_id]).map_err(|_|storage())?;
+            tx.execute("INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_id,workspace_generation,book_id,publication_id,dispatch_state) VALUES(?,?,?,?,?,?,?,?,'preparing')",params![row.owner,row.key,row.turn,row.chat,row.workspace,row.generation,row.publication.as_ref().map(|r|&r.book_id),row.publication.as_ref().map(|r|&r.publication_id)]).map_err(|_|storage())?;
             tx.commit().map_err(|_| storage())?;
         }
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                personal_notes,
                 board_context,
                 music_question,
                 video_question,
@@ -574,7 +571,7 @@ impl RunAdmissions {
                 request["teaching_ref"].as_str().map(str::to_owned),
                 related_goal.as_deref().or_else(|| request["goal_id"].as_str()),
                 request["goal_action"].as_str(),
-                Some(row.publication.clone()),
+                row.publication.clone(),
                 Some(&row.turn),
                 now,
             )?;
@@ -582,6 +579,7 @@ impl RunAdmissions {
             session.turns.last_mut().unwrap().domain.interaction = interaction;
             session.turns.last_mut().unwrap().board_follow_up = board_context.as_ref().map(|context| context.follow_up.clone());
             session.turns.last_mut().unwrap().domain.board_context = board_context.clone();
+            session.turns.last_mut().unwrap().domain.personal_notes = personal_notes;
             let private = PrivateBookContext {
                 learning_workspace_id: scene.workspace.learning_workspace_id.as_deref(),
                 user: &user,
@@ -626,7 +624,7 @@ impl RunAdmissions {
                 reader: {
                     let mut reader = runtime::run_context::ReaderInputSnapshot::capture(&scene.workspace.book, &scene.workspace.reader, &message);
                     reader.video_question = video_question.clone();
-                    reader
+                    Some(reader)
                 },
                 confirmation: user.agent_history.confirmation_id(chat).map(str::to_owned),
                 provider: provider.binding,
@@ -704,12 +702,13 @@ impl RunAdmissions {
         if frozen.version != 1 {
             return Err(fault("RUN_INPUT_INCOMPATIBLE", "conflict"));
         }
+        if row.publication.is_some() {
         if let Some(event) = find_turn(user, row).and_then(|t| t.domain.choice_event.as_ref()) {
             user.learning_store_for_workspace(frozen.learning_workspace_id.as_deref())?.append_teaching(event)?;
             self.point("chosen_receipt")?;
         }
         if frozen.teaching.context.is_none() && find_turn(user,row).is_some_and(|t|t.domain.interaction.is_some()) {
-            let publication = access.library.lock().unwrap().load(&row.owner,&row.publication)?;
+            let publication = access.library.lock().unwrap().load(&row.owner,row.publication.as_ref().ok_or_else(invalid)?)?;
             let private = PrivateBookContext { user, book:&publication.book, book_dir:publication.directory(),
                 learning_workspace_id:frozen.learning_workspace_id.as_deref(),
                 messages:&frozen.messages, selected_chat:Some(&row.chat) };
@@ -748,6 +747,7 @@ impl RunAdmissions {
         session_runtime::link_teaching(user, &frozen.turn_ref(), &frozen.now)?;
         crate::teaching_coach::ensure_turn(user, frozen.learning_workspace_id.as_deref(),
             &frozen.turn_ref(), frozen.teaching.context.as_ref(), &frozen.now)?;
+        }
         self.point("prepared")?;
         {
             let mut state = self.state.lock().unwrap();
@@ -883,7 +883,7 @@ fn find_turn_mut<'a>(
         .and_then(|s| s.turns.iter_mut().find(|t| t.turn_id == row.turn))
 }
 fn descriptor(row: &Admission) -> Value {
-    json!({"book_id":row.publication.book_id,"workspace_id":row.workspace,"workspace_generation":row.generation,"published_book_ref":row.publication,"session_id":row.chat,"turn_id":row.turn,"dispatch_state":row.state,"persistence_state":if row.unsaved{"failed"}else{"saved"}})
+    json!({"book_id":row.book_id(),"workspace_id":row.workspace,"workspace_generation":row.generation,"published_book_ref":row.publication,"session_id":row.chat,"turn_id":row.turn,"dispatch_state":row.state,"persistence_state":if row.unsaved{"failed"}else{"saved"}})
 }
 fn reply_error(reply: Reply) -> ToolError {
     let v: Value = serde_json::from_str(&reply.body).unwrap_or_default();
@@ -921,7 +921,7 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
+    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }
@@ -977,11 +977,7 @@ impl RunAdmissions {
                     self.end_pending(&mut user, &row, "SENSITIVE_CONFIRMATION_EXPIRED", false)?;
                     return self.update(&row, "settled", false);
                 }
-                if access
-                    .library
-                    .lock()
-                    .unwrap()
-                    .authorize(&row.owner, &row.publication)
+                if authorize_source(access, &row.owner, row.publication.as_ref())
                     .is_err()
                 {
                     self.end_pending(&mut user, &row, "RUN_PERMISSION_REVOKED", false)?;
@@ -1077,11 +1073,7 @@ impl RunAdmissions {
                 {
                     return Err(pending_confirmation::required());
                 }
-                access
-                    .library
-                    .lock()
-                    .unwrap()
-                    .authorize(&row.owner, &row.publication)
+                authorize_source(access, &row.owner, row.publication.as_ref())
                     .map_err(|_| fault("RUN_PERMISSION_REVOKED", "permission"))?;
                 frozen.teaching.resume(&user)?;
                 Ok(frozen)
@@ -1165,7 +1157,7 @@ impl RunAdmissions {
                 .or_insert_with(|| {
                     agent_stream::RunStream::queued(
                         agent_stream::RunDescriptor {
-                            book_id: row.publication.book_id.clone(),
+                            book_id: row.book_id().to_owned(),
                             session_id: row.chat.clone(),
                             turn_id: row.turn.clone(),
                         },
@@ -1197,7 +1189,7 @@ impl RunAdmissions {
         let spend_scope = runtime::model_spend::ChargeScope::ReaderRun {
             user_id: row.owner.clone(), run_ref: row.turn.clone(),
         };
-        provider_adapter.set_spend_context(spend_scope.clone(), Some(access.spend.port_with_attribution(
+        provider_adapter.set_spend_context(spend_scope.clone(), Some(access.spend.port_with_optional_publication(
             spend_scope, row.publication.clone(), runtime::model_spend::ChargeAttribution {
                 parent_task_ref: row.turn.clone(),
                 learning_workspace_id: prepared.scope.learning_workspace_id.clone(),
@@ -1211,11 +1203,11 @@ impl RunAdmissions {
             owner: row.owner.clone(),
             cancellation: cancellation.clone(),
             usage: Mutex::new(Default::default()),
-            authorization: Some((access, &row.publication)),
+            authorization: row.publication.as_ref().map(|reference|(access.as_ref(),reference)),
             stream: Some(stream.clone()),
         };
         let observation = self.observability.start_run_with_input(
-            &prepared.scope.book.base.book_id,
+            prepared.scope.book_id(),
             &prepared.turn_ref.session_id,
             || json!({"message":prepared.message,"messages":prepared.messages}),
         );
@@ -1344,7 +1336,7 @@ impl RunAdmissions {
                 for binding in &mut outcome.source_bindings {
                     if binding.publication_id.is_none() && binding.book_id == publication.reference.book_id {
                         binding.publication_id = Some(publication.reference.publication_id.clone());
-                        binding.source_revision = Some(prepared.scope.book.source_fingerprint().into());
+                        binding.source_revision = Some(prepared.scope.reading_book().source_fingerprint().into());
                     }
                 }
             }
@@ -1385,11 +1377,11 @@ impl RunAdmissions {
             )?;
         }
         board_delivery::ensure_saved(&mut user, &prepared.turn_ref, &prepared.now)?;
-        teaching::record_delivery(
+        if prepared.scope.book.is_some() {teaching::record_delivery(
             &prepared.scope.private_user(&user),
             &prepared.turn_ref,
             &prepared.now,
-        )?;
+        )?;}
         session_runtime::link_teaching(&mut user, &prepared.turn_ref, &prepared.now)?;
         let cursors = agent_history_review_cursors(&user.agent_history);
         user.store.reconcile_review_jobs(&cursors, &prepared.now)?;
@@ -1405,7 +1397,7 @@ impl RunAdmissions {
                     .find(|t| t.turn_id == prepared.turn_ref.turn_id)
             })
             .ok_or_else(missing)?;
-        Ok(json!(turn_view(&prepared.scope.book, t)))
+        Ok(json!(scoped_turn_view(prepared.scope.book.as_deref(), t)))
     }
     fn record_completed(&self, user: &user_runtime::UserRuntime, reference: &AgentTurnRef) -> Result<(),ToolError> {
         let session = user.agent_history.sessions.iter().find(|s|s.id==reference.session_id).ok_or_else(missing)?;
@@ -1485,7 +1477,7 @@ impl RunAdmissions {
                 .or_insert_with(|| {
                     let stream = agent_stream::RunStream::queued(
                         agent_stream::RunDescriptor {
-                            book_id: row.publication.book_id.clone(),
+                            book_id: row.book_id().to_owned(),
                             session_id: row.chat.clone(),
                             turn_id: row.turn.clone(),
                         },
@@ -1741,7 +1733,8 @@ fn validate_frozen(
         .iter()
         .find(|s| s.id == row.chat)
         .ok_or_else(missing)?;
-    let valid = f.version == 1
+    let valid = (f.publication.is_some() || (f.normalized["scope"]=="personal" && f.reader.is_none() && f.learning_workspace_id.is_none() && session.book_id.is_empty()))
+        && f.version == 1
         && f.owner == row.owner
         && f.workspace == row.workspace
         && f.generation == row.generation

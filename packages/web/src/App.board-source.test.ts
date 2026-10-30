@@ -5,6 +5,7 @@ import { defineComponent, ref } from 'vue';
 import App from './App.vue';
 import type { SourcePopupView } from './api';
 import { network, submittedRunDrafts } from './network-context';
+import { currentThoughtContext, emptyNoteContext, pendingNoteSource, notesPanel } from './personal-notes';
 
 const mocks = vi.hoisted(() => ({ showReader: vi.fn(), scrollLidIntoView: vi.fn(), api: Object.fromEntries([
   'videoPlayback', 'videoContext', 'musicContext', 'videoDraft', 'desktopStatus', 'buildWorkbench', 'manifest', 'assetManifest',
@@ -45,21 +46,44 @@ beforeEach(() => {
 afterEach(() => {
   wrapper?.unmount(); wrapper = undefined;
   network.value = { ...network.value, enabled: false, workspace: null, identity: null };
+  pendingNoteSource.value = null;
   submittedRunDrafts.clear(); localStorage.clear(); sessionStorage.clear();
   window.history.replaceState({}, '', '/'); vi.restoreAllMocks();
 });
-async function setup() {
+async function setup(openBoard = true) {
   wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     ReaderWorkspace: defineComponent({ name: 'ReaderWorkspace', props: ['returnAvailable', 'returnLabel'], setup(_, { expose }) { expose({ showReader: mocks.showReader, showAssistant: vi.fn() }); return {}; }, template: '<div><slot /></div>' }),
     ReaderPane: defineComponent({ setup(_, { expose }) { expose({ captureScrollAnchor: () => null, scrollLidIntoView: mocks.scrollLidIntoView }); }, template: '<div />' }),
     BoardWorkspace: defineComponent({ name: 'BoardWorkspace', props: ['boardId', 'pendingLocate'], setup() { return { draft: ref('未发出的追问') }; }, template: '<div><textarea v-model="draft" /></div>' }),
   } } });
   await flushPromises();
-  wrapper.getComponent({ name: 'RightRail' }).vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'answer-A' });
+  if (openBoard) wrapper.getComponent({ name: 'RightRail' }).vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'answer-A' });
   await flushPromises();
   return wrapper;
 }
 describe('board source navigation', () => {
+  it('returns a placed thought to its workspace board while reading another material', async () => {
+    const app = await setup(false);
+    network.value = {...network.value,enabled:true,workspace:{workspace_id:'reader',generation:1,revision:1,learning_workspace_id:'learning',published_book_ref:{book_id:'startup',publication_id:'pub-current'}} as never};
+    await flushPromises();notesPanel.open=true;
+    pendingNoteSource.value={...emptyNoteContext(),book_id:'original-material',publication_id:'pub-original',workspace_id:'learning',board_id:'board-original',board_item_id:'note-card'};
+    await flushPromises();
+    expect(app.getComponent({name:'BoardWorkspace'}).props('pendingLocate')).toEqual({board_id:'board-original',item_id:'note-card'});
+    expect(notesPanel.open).toBe(false);expect(pendingNoteSource.value).toBeNull();
+  });
+  it('provides the visible reading location for global notes without using hidden pages behind the library or board', async () => {
+    const app = await setup(false);
+    expect(currentThoughtContext()).toMatchObject({ book_id: 'startup', lid: '1.1', label: '首章' });
+    await app.setProps({ readerVisible: false });
+    expect(currentThoughtContext()).toBeNull();
+    await app.setProps({ readerVisible: true });
+    expect(currentThoughtContext()?.book_id).toBe('startup');
+    app.getComponent({ name: 'RightRail' }).vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'answer-A' });
+    await flushPromises();
+    expect(currentThoughtContext()).toBeNull();
+    app.unmount(); wrapper = undefined;
+    expect(currentThoughtContext()).toBeNull();
+  });
   it('previews an available source first, enters the reader explicitly, and returns to the same mounted board and draft', async () => {
     const app = await setup(), board = app.getComponent({ name: 'BoardWorkspace' });
     const boardElement = board.element;

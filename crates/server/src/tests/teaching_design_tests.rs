@@ -731,7 +731,7 @@ fn teaching_select_preflight_preserves_immutable_retries_and_allows_new_identity
 }
 
 #[test]
-fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed() {
+fn teaching_select_preserves_immutable_identity_without_content_review() {
     struct ReviewCounter {
         inner: ChatStubAdapter,
         reviewed: RefCell<Vec<Value>>,
@@ -778,20 +778,8 @@ fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed()
     assert_eq!(reply["incomplete"],false,"{reply}");
     assert!(reply["trace"].as_array().unwrap().iter().any(|step|
         step["result_digest"].as_str().is_some_and(|text|text.contains("同一教学操作不能改写已保存事实"))),"{reply}");
-    let reviewed=adapter.reviewed.borrow();
-    assert_eq!(reviewed.len(),2,"only the original and the new identity may reach fact review: {reviewed:?}");
-    assert_eq!(reviewed[0]["proposed_delivery"]["text"],original["move"]["delivery_text"]);
-    assert_eq!(reviewed[1]["proposed_delivery"]["text"],revision["move"]["delivery_text"]);
-    let explanations=adapter.explanations_reviewed.borrow();
-    assert_eq!(explanations.len(),2,"the rejected rewrite must not consume an explanation review: {explanations:?}");
-    assert_eq!(explanations[0]["current_delivery"],original["move"]["delivery_text"]);
-    assert_eq!(explanations[1]["current_delivery"],revision["move"]["delivery_text"]);
-    for explanation in explanations.iter() {
-        assert_eq!(explanation["current_request"],"Explain whole-trip speed.");
-        for excluded in ["current_source_evidence", "current_design", "agent_working_state", "review"] {
-            assert!(explanation.get(excluded).is_none(),"{excluded} must not supply the missing explanation");
-        }
-    }
+    assert!(adapter.reviewed.borrow().is_empty());
+    assert!(adapter.explanations_reviewed.borrow().is_empty());
     let store=state.user.learning_store().unwrap();
     let saved=store.teaching_event(&format!("move:{}:original",turn.turn_id)).unwrap();
     assert_eq!(saved.payload["move"]["delivery_text"],original["move"]["delivery_text"]);
@@ -799,7 +787,7 @@ fn teaching_select_rewrite_preflight_skips_review_but_new_identity_is_reviewed()
     assert_eq!(deliveries.len(),1);
     assert_eq!(deliveries[0].payload["move"]["move_id"],"revision");
     assert_eq!(deliveries[0].payload["answer"],revision["move"]["delivery_text"],
-        "the useful revision must pass review and become the actual delivered body");
+        "the new selection must become the actual delivered body");
 }
 
 #[test]
@@ -1362,9 +1350,9 @@ fn agent_work_review_reopens_into_next_turn_separate_from_learner_context() {
         .unwrap_or_else(|e|panic!("{}",e.body));
     let context=next.tutor.as_ref().unwrap();
     assert!(context["learner_context"].get("agent_working_state").is_none());
-    assert_eq!(context["agent_working_state"]["current_work"]["review_status"],"accepted_by_review");
+    assert!(context["agent_working_state"]["current_work"].is_null(), "the new turn has no content review");
     assert_eq!(context["agent_working_state"]["corrections"][0]["review_ref"],rejected_ref);
-    assert_eq!(context["agent_working_state"]["current_work"]["delivered_refs"].as_array().unwrap().len(),1);
+    assert_eq!(state.user.learning_store().unwrap().teaching_deliveries(&run.turn_ref.session_id,&run.turn_ref.turn_id).unwrap().len(),1);
     assert!(context["learner_context"]["interpretations"].as_array().unwrap().is_empty());
     assert!(!context["learner_context"]["uninterpreted_fact_refs"].as_array().unwrap().contains(&json!(rejected_ref)));
     let trace=call(&state,&next.turn_ref,json!({"operation":"trace","event_id":rejected_ref}));
@@ -1419,10 +1407,9 @@ fn agent_work_review_observing_reopens_without_an_active_course_or_learner_claim
         .unwrap_or_else(|e|panic!("{}",e.body));
     let context=next.tutor.as_ref().unwrap();
     assert_eq!(context["status"],"observing");
-    assert_eq!(context["agent_working_state"]["current_work"]["review_ref"],accepted_ref);
-    assert_eq!(context["agent_working_state"]["current_work"]["review_status"],"accepted_by_review");
+    assert!(context["agent_working_state"]["current_work"].is_null(), "the new turn has no content review");
     assert_eq!(context["agent_working_state"]["corrections"][0]["review_ref"],rejected_ref);
-    assert_eq!(context["agent_working_state"]["current_work"]["delivered_refs"],json!([]),
+    assert!(state.user.learning_store().unwrap().teaching_deliveries(&run.turn_ref.session_id,&run.turn_ref.turn_id).unwrap().is_empty(),
         "ordinary answer delivery must not invent a selected teaching move");
     let delivered=state.user.learning_store().unwrap().teaching_event(
         &format!("usage:{}:assistant:{}",persisted.binding.tutor_session_id,run.turn_ref.turn_id)).unwrap();

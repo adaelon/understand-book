@@ -38,6 +38,7 @@ export interface BoardSourceReadResponse {
   outline?: { lid: string; title: string; depth: number }[];
 }
 export interface BoardUpdateRequest {
+  note_refs?: import('./generated/NoteRef').NoteRef[];
   board_id: string; expected_revision: number; title?: string;
   positions?: { item_id: string; position: { x: number; y: number }; size?: { width: number; height: number } }[];
   remove_item_ids?: string[];
@@ -1177,7 +1178,7 @@ export interface AgentChatTurn {
   music_question?: import('./music-api').MusicQuestionContext | null;
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   published_book_ref?: import('./network-context').PublishedBookRef | null;
-  domain?: { workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  domain?: { personal_notes?: { references: import("./generated/NoteRef").NoteRef[]; adopted_references?: import("./generated/NoteRef").NoteRef[] } | null; workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
@@ -1285,6 +1286,9 @@ export interface LearningEvidenceView {
 }
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  note_refs?: import('./generated/NoteRef').NoteRef[];
+  note_reply_to?: string;
+  personal_chat_ref?: {session_id:string;turn_id:string};
   board_follow_up?: BoardFollowUp;
   music_question?: import('./music-api').MusicQuestionContext;
   video_window_id?: string;
@@ -1399,6 +1403,7 @@ function qs(params: Record<string, string | undefined>): string {
 }
 
 export const api = {
+  prepareNote: (value: unknown) => http<import('./generated/NoteContent').NoteContent>('POST', '/memory/prepare_note', value),
   videoPlayback: () => http<import("./video-api").VideoPlayback | null>("GET", "/book/video_playback"),
   videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
   musicContext: () => http<import('./music-api').MusicContext | null>('GET', '/book/music_context'),
@@ -1641,7 +1646,7 @@ export const api = {
   boardSearch: (query: string) => http<{ items: BoardSearchHit[] }>('POST', '/boards/search', { query }),
   boardRelated: (source: BoardImportSource) => http<{ items: BoardSearchHit[] }>('POST', '/boards/related', { source }),
   boardCreate: (title: string) => http<BoardDocument>('POST', '/boards/create', { title }),
-  boardRead: (board_id: string) => http<{ document: BoardDocument; view: BoardView }>('POST', '/boards/read', { board_id }),
+  boardRead: (board_id: string, revision?: number) => http<{ document: BoardDocument; view: BoardView }>('POST', '/boards/read', { board_id, revision }),
   boardConversation: (board_id: string) => http<BoardConversationResponse>('POST', '/boards/conversation', { board_id }),
   boardUpdate: ({ expected_revision, ...request }: BoardUpdateRequest) =>
     http<BoardDocument>('POST', '/boards/update', { ...request, board_revision: expected_revision }),

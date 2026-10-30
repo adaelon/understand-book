@@ -1902,6 +1902,6 @@ fn mu1c_presentation_author_keeps_original_chat_and_material_after_switch() {
     assert!(version.is_ok());
     app.with_app(|state| {
         assert!(state.private_context().read_presentation(&turn.session_id, &reference).is_err());
-        assert_eq!(scope.private_context(state).read_presentation(&turn.session_id, &reference).unwrap().owner.book_id, scope.book.base.book_id);
+        assert_eq!(scope.private_context(state).read_presentation(&turn.session_id, &reference).unwrap().owner.book_id, scope.reading_book().base.book_id);
     });
 }

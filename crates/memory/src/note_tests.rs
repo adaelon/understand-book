@@ -244,20 +244,16 @@ fn rn1_failed_edits_collisions_and_writes_keep_original() {
     let mut other = input(1);
     other.content = "other".into();
     store.save_note(other, "t1").unwrap();
-    let before = store.document.clone();
-    let bytes = std::fs::read(&path).unwrap();
     let replace = |content: &str| ReplaceInput {
         mem_id: first.mem_id.clone(),
         content: content.into(),
         selection_context: None,
     };
-    assert_eq!(
-        store
-            .replace(replace("other"), "t2")
-            .unwrap_err()
-            .error_code,
-        "MEMORY_REPLACE_CONFLICT"
-    );
+    // Stable identity permits two distinct thoughts to have identical wording.
+    assert_eq!(store.replace(replace("other"), "t2").unwrap().mem_id, first.mem_id);
+    assert_eq!(store.document.notes.len(), 2);
+    let before = store.document.clone();
+    let bytes = std::fs::read(&path).unwrap();
     assert!(store.replace(replace(""), "t2").is_err());
     std::fs::create_dir(atomic_temporary_path(&path)).unwrap();
     assert!(store.replace(replace("changed"), "t2").is_err());
@@ -290,10 +286,12 @@ fn rn1_v3_fixture_preserves_every_stored_field_and_failed_upgrade() {
     let store = MemoryStore::open(&path).unwrap();
     let expected: MemoryDocument = serde_json::from_value({
         let mut v = original;
-        v["schema_version"] = 4.into();
+        v["schema_version"] = MEMORY_SCHEMA_VERSION.into();
         v
     })
     .unwrap();
+    let mut expected = expected;
+    expected.migrate_notes();
     assert_eq!(store.document, expected);
     assert!(store.document.records.iter().all(|r| r.note.is_none()));
     assert_eq!(MemoryStore::open(path).unwrap().document, expected);
@@ -310,7 +308,7 @@ fn rn4_note_navigation_survives_edits_reanchor_reopen_and_delete() {
     let moved = store.reanchor(ReanchorInput { mem_id: edited.mem_id.clone(), note_placement: NoteBodyPlacement::LidBlock { source_fingerprint: "existing-source".into(), lid: "1.2".into() } }).unwrap();
     let reopened = MemoryStore::open(&path).unwrap();
     for id in [&first.mem_id, &edited.mem_id, &moved.mem_id] {
-        assert_eq!(reopened.current_note_record(id), Some(&moved));
+        assert_eq!(reopened.current_note_record(id), Some(moved.clone()));
     }
     let before = store.document.clone();
     std::fs::create_dir(atomic_temporary_path(&path)).unwrap();
@@ -329,6 +327,6 @@ fn rn4_returning_to_prior_content_keeps_navigation_acyclic() {
     let edited = store.replace(ReplaceInput { mem_id: first.mem_id.clone(), content: "edited".into(), selection_context: None }, "edited").unwrap();
     let restored = store.replace(ReplaceInput { mem_id: edited.mem_id.clone(), content: first.content.clone(), selection_context: None }, "restored").unwrap();
     assert_eq!(restored.mem_id, first.mem_id);
-    assert_eq!(store.current_note_record(&edited.mem_id), Some(&restored));
-    assert_eq!(store.current_note_record(&first.mem_id), Some(&restored));
+    assert_eq!(store.current_note_record(&edited.mem_id), Some(restored.clone()));
+    assert_eq!(store.current_note_record(&first.mem_id), Some(restored));
 }

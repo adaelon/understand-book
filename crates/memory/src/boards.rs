@@ -113,10 +113,12 @@ pub struct BoardSize {
 }
 
 fn validate_item_update(original: &BoardItem, item: &BoardItem) -> Result<(), ToolError> {
+    let note_revision=matches!((&original.target,&item.target),(BoardTarget::PersonalNote{reference:old},BoardTarget::PersonalNote{reference:new}) if old.note_id==new.note_id && new.revision.is_some());
     let drawing_revision = matches!((&original.target, &item.target),
         (BoardTarget::Drawing { session_id: old_session, turn_id: old_turn, .. },
          BoardTarget::Drawing { session_id, turn_id, .. }) if old_session == session_id && old_turn == turn_id);
-    if ((!drawing_revision) && (item.target != original.target || item.readable_content != original.readable_content))
+    if ((!drawing_revision && !note_revision) && (item.target != original.target || item.readable_content != original.readable_content))
+        || (note_revision && !item.readable_content.is_empty())
         || item.source_bindings != original.source_bindings
         || item.created_at != original.created_at
         || item.reply_to_item_id != original.reply_to_item_id
@@ -293,6 +295,8 @@ pub enum BoardArtifactKind {
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardTarget {
+    /// Body belongs only to the user's note store. This ref is the saved board snapshot's version.
+    PersonalNote { reference: crate::NoteRef },
     Artifact {
         source_id: String,
         source_revision: String,
@@ -344,6 +348,9 @@ pub enum BoardTarget {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct BoardFollowUp {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub note_refs: Option<Vec<crate::NoteRef>>,
     pub board_id: String,
     pub board_revision: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -381,6 +388,7 @@ pub struct BoardDelivery {
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardLookupTarget {
+    PersonalNote { note_id: String },
     Artifact {
         source_id: String,
         source_revision: String,
@@ -401,6 +409,7 @@ pub enum BoardLookupTarget {
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardSearchKind {
+    PersonalNote,
     Board,
     Prebuild,
     Answer,
@@ -610,6 +619,41 @@ impl BoardStore {
         }
         self.validate_document(&document)?;
         self.commit(&document)?;
+        Ok(document)
+    }
+
+    /// Place one canonical thought and its optional connector as one board revision.
+    /// A replay returns the existing card; it never makes a second copy of the text.
+    pub fn place_personal_note(&self, board_id: &str, reference: crate::NoteRef, related_item: Option<&str>, now: &str) -> Result<BoardDocument, ToolError> {
+        let _access = access()?;
+        let head = self.read_head(board_id)?;
+        let mut document = self.read_snapshot(&head, head.revision)?;
+        let target = related_item.map(|id| document.items.iter().find(|i|i.item_id==id).cloned()
+            .ok_or_else(||not_found("关联的画布元素已移除，请重新选择位置"))).transpose()?;
+        let existing = document.items.iter().find(|i|matches!(&i.target,BoardTarget::PersonalNote {reference:r} if r.note_id==reference.note_id)).map(|i|i.item_id.clone());
+        let mut changed = false;
+        let item_id = if let Some(id) = existing { id } else {
+            changed = true;
+            let id = format!("item-{}",uuid::Uuid::now_v7());
+            document.items.push(BoardItem {
+                item_id:id.clone(),reply_to_item_id:None,block_id:None,explanation_blocks:vec![],title:"我的想法".into(),readable_content:String::new(),
+                position:target.as_ref().map(|i|BoardPosition{x:i.position.x+i.size.width+48.0,y:i.position.y})
+                    .unwrap_or(BoardPosition{x:(document.items.len()%3) as f64*360.0,y:(document.items.len()/3) as f64*260.0}),
+                size:BoardSize{width:320.0,height:220.0},created_at:now.into(),source_bindings:vec![],target:BoardTarget::PersonalNote{reference},
+            });
+            id
+        };
+        if let Some(target) = target {
+            if target.item_id==item_id { return Err(invalid("不能把想法关联到它自己")); }
+            let from=BoardVisualTarget::Item{item_id}; let to=BoardVisualTarget::Item{item_id:target.item_id};
+            if !document.links.iter().any(|l|l.from==from&&l.to==to) {
+                document.links.push(BoardLink{link_id:format!("note-link-{}",uuid::Uuid::now_v7()),from,to,label:"我的想法".into(),based_on:vec![]}); changed=true;
+            }
+        }
+        if changed {
+            document.revision=head.revision.checked_add(1).ok_or_else(||invalid("Board revision limit reached"))?;
+            document.updated_at=now.into();self.validate_document(&document)?;self.commit(&document)?;
+        }
         Ok(document)
     }
 
@@ -954,7 +998,7 @@ impl BoardStore {
         }
         let mut hits = Vec::new();
         for head in self.list_unlocked()?.into_iter().filter(|head| {
-            head.book_id == book_id && head.publication_id.as_deref() == publication_id
+            self.learning_workspace_id.is_some() || (head.book_id == book_id && head.publication_id.as_deref() == publication_id)
         }) {
             let document = self.read_snapshot(&head, head.revision)?;
             if document.title.to_lowercase().contains(&query) {
@@ -1016,11 +1060,12 @@ impl BoardStore {
         let _access = access()?;
         let mut hits = Vec::new();
         for head in self.list_unlocked()?.into_iter().filter(|head| {
-            head.book_id == book_id && head.publication_id.as_deref() == publication_id
+            self.learning_workspace_id.is_some() || (head.book_id == book_id && head.publication_id.as_deref() == publication_id)
         }) {
             let document = self.read_snapshot(&head, head.revision)?;
             for item in &document.items {
                 let matches = match (target, &item.target) {
+                    (BoardLookupTarget::PersonalNote{note_id},BoardTarget::PersonalNote{reference})=>note_id==&reference.note_id,
                     (BoardLookupTarget::Artifact { source_id, source_revision, artifact, entry_id },
                      BoardTarget::Artifact { source_id: source, source_revision: revision, artifact: kind, entry_id: id, .. }) =>
                         source_id == source && source_revision == revision && artifact == kind && entry_id == id,
@@ -1633,6 +1678,7 @@ fn search_hit(
                 BoardTarget::Presentation { .. } => BoardSearchKind::Presentation,
                 BoardTarget::Understanding { .. } => BoardSearchKind::Understanding,
                 BoardTarget::Drawing { .. } => BoardSearchKind::Drawing,
+                BoardTarget::PersonalNote { .. } => BoardSearchKind::PersonalNote,
             })
             .unwrap_or(BoardSearchKind::Board),
         title: item
@@ -2028,6 +2074,7 @@ mod tests {
 
     fn follow_up(document: &BoardDocument) -> BoardFollowUp {
         BoardFollowUp {
+            note_refs: None,
             board_id: document.board_id.clone(),
             board_revision: document.revision,
             item_id: Some(document.items[0].item_id.clone()),
@@ -2049,7 +2096,7 @@ mod tests {
     }
 
     fn root_follow_up(document: &BoardDocument) -> BoardFollowUp {
-        BoardFollowUp { board_id:document.board_id.clone(),board_revision:document.revision,
+        BoardFollowUp { note_refs:None, board_id:document.board_id.clone(),board_revision:document.revision,
             item_id:None,block_id:None,presentation:None }
     }
 
@@ -2338,14 +2385,11 @@ mod tests {
         assert_eq!(hits[0].item_id.as_deref(), Some("answer-1"));
         assert!(hits[0].snippet.contains("NeedleAtTheEnd"));
         assert_eq!(hits[0].board_revision, saved.revision);
-        assert!(store
-            .search("physics", Some("release-2"), "needleattheend", 30)
-            .unwrap()
-            .is_empty());
-        assert!(store
-            .search("other-book", Some("release-1"), "needleattheend", 30)
-            .unwrap()
-            .is_empty());
+        // PN6: a personal workspace board can be reused from another material.
+        assert_eq!(store.search("physics",Some("release-2"),"needleattheend",30).unwrap().len(),1);
+        assert_eq!(store.search("other-book",Some("release-1"),"needleattheend",30).unwrap().len(),1);
+        let other_workspace=BoardStore::open(temp.path(),Some("workspace-2"),false).unwrap();
+        assert!(other_workspace.search("physics",Some("release-1"),"needleattheend",30).unwrap().is_empty());
         let quote = store
             .search("physics", Some("release-1"), "停车不计算", 30)
             .unwrap();

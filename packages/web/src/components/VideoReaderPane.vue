@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { startThought } from '../personal-notes';
 import { t as uiText } from '../i18n';
 import { getLocale } from '../i18n';
 
@@ -186,7 +187,17 @@ function captureQuestion(draftId: string): import('../../../core/src/generated/V
     frame: { video: { ...published.source.video }, actual_pts_ms: frameTime.value, width: video.videoWidth, height: video.videoHeight }, region: null, range: null };
 }
 const editing = computed(() => selecting.value || rangeEditing.value);
-defineExpose({ captureQuestion, seek, editing });
+function rememberMoment() {
+  player.value?.pause();
+  startThought(thoughtContext());
+}
+function thoughtContext() {
+  const reference=(props.published ?? props.playback)?.publication;
+  const actual=frameTime.value ?? Math.round((player.value?.currentTime ?? 0)*1000);
+  return {book_id:reference?.book_id ?? null,publication_id:reference?.publication_id ?? null,video_time_ms:actual,
+    label:`${props.initial.title} · ${timeLabel(actual)}`};
+}
+defineExpose({ captureQuestion, seek, editing, thoughtContext });
 let loadedPublication: string | undefined;
 function seek(ms: number) { if (player.value) { player.value.currentTime = ms / 1000; position.value = ms; player.value.pause(); remember(); } }
 function timeLabel(ms: number) { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
@@ -258,6 +269,7 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
       </div>
     </div>
     <div v-if="published" class="video-tools" :aria-label="uiText('视频提问工具')">
+      <button :disabled="frameTime === null" @click="rememberMoment">记下此刻的想法</button>
       <div class="region-actions">
         <button v-if="!selecting" :disabled="selectionDisabled || frameTime === null || !sameFrame" :title="uiText('暂停视频，框选想了解的代码、公式或图示')" @click="beginSelection"><Focus :size="16" aria-hidden="true" />{{ question?.region ? uiText('重新框选') : uiText('框选画面') }}</button>
         <button v-else class="is-active" @click="cancelSelection"><X :size="15" aria-hidden="true" />{{ uiText('退出框选') }}</button>

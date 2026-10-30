@@ -1,0 +1,58 @@
+{
+  "status": "root_cause_confirmed_read_only",
+  "diagnosed_on": "2026-10-30",
+  "timezone": "Asia/Hong_Kong",
+  "production_release": "/opt/understand-book/releases/personal-notes-20261030",
+  "production_pid": 506143,
+  "board": {
+    "board_id": "board-01a18b04-23bc-78d2-a73e-4f0783643fec",
+    "title": "上下文状态",
+    "created_at_hkt": "2026-10-30T12:14:26+08:00",
+    "inspected_revision": 2,
+    "book_id": "ai-infra-book-complete",
+    "publication_id": "01a100f5-e3c3-72f3-8bfb-eb8a08774ab5",
+    "learning_workspace_id": null,
+    "item_count": 23,
+    "source_binding_instances": 207,
+    "distinct_source_bindings": 9,
+    "distinct_bindings_missing_publication_id": 9,
+    "origin_session_id": "chat-01a18b05-1c21-7cc3-b9d5-de6e9b62088a",
+    "origin_turn_id": "turn_01a18b05-20b2-7a22-b2a1-601edd8d47f1"
+  },
+  "read_only_evidence": {
+    "publication_record_exists": true,
+    "owner_grant_for_exact_publication_exists": true,
+    "all_nine_lids_exist_in_published_base": true,
+    "all_nine_saved_preview_prefixes_occur_in_published_source": true,
+    "origin_turn_accepted_event_has_exact_publication": true,
+    "origin_sources_bound_event_all_nine_lack_publication_id": true,
+    "origin_turn_finished_event_all_nine_lack_publication_id": true,
+    "origin_board_delivered_event_matches_board_revision_2": true,
+    "source_lids": ["4.20.2", "4.20.4", "4.20.5.37", "4.20.6.21", "4.20.8.2", "4.20.9.2", "4.20.10.4", "4.20.3", "4.20.7.2"]
+  },
+  "cause": [
+    "Current-book source.present produces a SourceBinding with publication_id None.",
+    "Board authoring copies those bindings directly into retained answer and topic items.",
+    "Terminal source stamping only runs for learning_workspace_id Some and stamps the outcome; this turn is unscoped and saved all nine bindings without publication_id.",
+    "The network board-source route compares the absent binding publication with the explicit current publication, selects cross_book::source_view_at, and fails at publication_id.ok_or_else(authorization::missing) before loading any source text.",
+    "The frontend displays the returned Object is unavailable message verbatim. Retrying retains the same incomplete source binding."
+  ],
+  "live_release_code_locations": [
+    "crates/runtime/src/orchestrator.rs:1792 present_prepared",
+    "crates/server/src/board_author.rs:597 prepare answer source bindings",
+    "crates/server/src/board_author.rs:692 candidate source bindings",
+    "crates/server/src/run_admission.rs:1334 save_finished publication stamping",
+    "crates/server/src/workspace_registry.rs:710 network board source routing",
+    "crates/server/src/cross_book.rs:218 required publication id"
+  ],
+  "previous_evidence": "docs/performance/board-source-window-20261028/deployment/legacy-source-verification.json",
+  "repair_direction": [
+    "Bind same-book sources to the frozen exact publication before persisting board candidates and items, including unscoped cloud reading.",
+    "Recover already saved same-book sources from the board and original turn's matching exact publication; retain existing source-range validation and explicit cross-book identities.",
+    "Cover generation, persistence, reopening, source.resolve and source.read together with an unscoped cloud board regression."
+  ],
+  "verification_scope": "Inspected live persisted data, exact publication grant and published source files, and current deployed source code. Did not issue a fresh authenticated browser/API reproduction or run model generation.",
+  "production_data_modified": false,
+  "product_code_modified": false,
+  "fix_deployed": false
+}

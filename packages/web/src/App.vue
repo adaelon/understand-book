@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pendingNoteSource, noteSourceError, editThought, keepNoteDraft, notesPanel, openPersonalNotes, personalNotes, registerThoughtContext, startThought } from './personal-notes';
 import { t as uiText, getLocale } from './i18n';
 
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toRaw, watch } from "vue";
@@ -397,6 +398,7 @@ const rightRailRef = ref<{
   showMemory: (memId: string) => Promise<boolean>;
   replaceMemory?: (oldId: string, record: MemoryRecord) => void;
   openNotePresentation: (record: MemoryRecord, restore?: boolean) => Promise<void>;
+  locateScene: (receipt: import('./generated/PresentationFollowUp').PresentationFollowUp, restore?: boolean) => Promise<void>;
   openRecapTarget: (target: RecapTarget) => Promise<void>;
 } | null>(null);
 interface Segment {
@@ -1405,15 +1407,25 @@ function prepareExamQuestion(message: string) {
   workspaceRef.value?.showAssistant('agent');
 }
 async function beginNote(draft: Omit<NoteDraft, 'materialKey' | 'initialContent'>) {
-  if (draft.memId && noteEditor.value?.memId === draft.memId && !draft.selectionContext) { noteCollapsed.value = false; return; }
-  const materialKey = noteMaterialKey.value;
-  if (!await beforeNoteLeave(uiText('打开另一条笔记')) || disposed || materialKey !== noteMaterialKey.value) return;
-  noteEditor.value = { ...draft, materialKey, initialContent: draft.content };
-  noteCollapsed.value = false; noteError.value = '';
+  try {
+    if (draft.memId) {
+      if (draft.selectionContext) {
+        const note=await personalNotes.read({note_id:draft.memId});
+        const source=await api.prepareNote({content:draft.content,note:{association:{kind:'selection'},retained_excerpt:draft.selectionContext.raw_quote},selection_context:draft.selectionContext});
+        const editing=editThought(note); editing.value.source=source.source;editing.value.capture=source.capture;editing.value.context=source.context;keepNoteDraft(editing);
+        openPersonalNotes({note_id:draft.memId});notesPanel.draftId=editing.draft_id;
+      } else openPersonalNotes({note_id:draft.memId});
+      return;
+    }
+    const value=await api.prepareNote({content:draft.content,note:draft.request,selection_context:draft.selectionContext,lid:draft.lid || undefined,label:draft.title});
+    startThought(value.context,value.content,value);
+  } catch (error) { fail(error); }
 }
+function refreshPersonalNotes() { void refreshAnnotations().catch(fail); }
+onMounted(() => window.addEventListener('personal-notes-changed',refreshPersonalNotes));
+onBeforeUnmount(() => window.removeEventListener('personal-notes-changed',refreshPersonalNotes));
 function openNewNote(lid = selectedLid.value, content = "", selectionContext: SelectionContext | null = null) {
-  if (!lid) return;
-  void beginNote({ lid, memId: null, layer: 'long_term', content, selectionContext,
+  void beginNote({ lid:lid ?? '', memId: null, layer: 'long_term', content, selectionContext,
     title: uiText('原文'), excerpt: selectionContext ? { kind: 'original', text: selectionContext.raw_quote } : null,
     request: selectionContext ? { association: { kind: 'selection' }, retained_excerpt: selectionContext.raw_quote } : undefined });
 }
@@ -2748,6 +2760,42 @@ async function onScrollEdge(direction: "up" | "down") {
   }
 }
 let readerNavigationRequest = 0;
+let noteSourceNavigating = false;
+watch([pendingNoteSource, appSurface, () => buildWorkbenchSnapshot.value?.book_id, () => videoPane.value, () => network.value.workspace?.learning_workspace_id], async ([target]) => {
+  if (!target || noteSourceNavigating) return;
+  const boardInOpenWorkspace = !!target.board_id && !!target.workspace_id && target.workspace_id === network.value.workspace?.learning_workspace_id;
+  if (!network.value.enabled && target.book_id !== buildWorkbenchSnapshot.value?.book_id) {
+    noteSourceNavigating = true;
+    try {
+      const library = await api.bookLibrary();
+      const original = library.books.find(book => book.book_id === target.book_id && book.route === 'reader');
+      if (!original) throw new Error('原资料当前不可用，原话和保留摘录仍可阅读。');
+      await submitOpenBook(original.dir);
+      if (buildWorkbenchSnapshot.value?.book_id !== target.book_id) throw new Error(bookPickerError.value || '原资料暂时无法打开');
+    } catch (failure) { noteSourceError.value = (failure as Error).message; pendingNoteSource.value = null; }
+    finally { noteSourceNavigating = false; }
+  }
+  if (pendingNoteSource.value !== target || appSurface.value !== 'reader' || (!boardInOpenWorkspace && target.book_id !== buildWorkbenchSnapshot.value?.book_id)) return;
+  if (network.value.enabled && !boardInOpenWorkspace && target.publication_id !== network.value.workspace?.published_book_ref.publication_id) return;
+  if (network.value.enabled && target.workspace_id !== (network.value.workspace?.learning_workspace_id ?? null)) return;
+  if (target.video_time_ms != null && !videoPane.value) return;
+  noteSourceNavigating = true;
+  try {
+    await nextTick();
+    if (target.board_id) await openBoardLocation({board_id:target.board_id,item_id:target.board_item_id ?? undefined});
+    else if (target.session_id && target.turn_id) {
+      if (target.session_id !== activeChatSessionId.value) await selectChat(target.session_id);
+      if (target.session_id !== activeChatSessionId.value || !chat.value.some(turn=>turn.turnId===target.turn_id)) throw new Error('原对话当前不可用，想法仍保留在这里。');
+      workspaceRef.value?.showAssistant('agent'); requestWorkspaceTab('agent'); await nextTick();
+      if (target.origin?.kind === 'presentation') await rightRailRef.value?.locateScene(target.origin.receipt, true);
+      else if (!await rightRailRef.value?.scrollToTurn(target.turn_id)) throw new Error('原消息暂时无法定位');
+    }
+    else if (target.video_time_ms != null) videoPane.value?.seek(target.video_time_ms);
+    else if (target.lid && !await doGoto(target.lid)) throw new Error('原位置暂时无法定位，想法仍保留在这里。');
+    notesPanel.open = false; noteSourceError.value = '';
+  } catch (failure) { noteSourceError.value = (failure as Error).message; }
+  finally { pendingNoteSource.value = null; noteSourceNavigating = false; }
+});
 async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: () => boolean, sourceRanges?: Map<string, [number, number]>): Promise<boolean> {
   if (!lid) return false;
   if (!restoreCurrent) readingContinuity.cancelRestore();
@@ -3526,6 +3574,7 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  noteReferences?: import("./generated/NoteRef").NoteRef[];
   boardFollowUp?: BoardFollowUp | null;
   boardDelivery?: BoardDelivery | null;
   boardCommits?: BoardDelivery[];
@@ -3570,6 +3619,20 @@ const agentHistoryLoading = ref(true);
 const agentHistoryError = ref<string | null>(null);
 let startupHistoryRequestSeq = 0;
 const agentInput = ref(recapProps.chatDraft?.message ?? "");
+const personalDiscussion=ref<{reference:import('./generated/NoteRef').NoteRef; replyTo?:string}|null>(null);
+async function discussPersonalNote(event:Event){
+  const detail=(event as CustomEvent).detail;
+  if(appSurface.value!=='reader' || sending.value || agentHistoryLoading.value || agentHistoryError.value)return;
+  event.preventDefault();
+  const references=detail.references ?? [detail];const reference=references[0];
+  personalDiscussion.value=reference?{reference}:null;notesPanel.open=false;workspaceRef.value?.showAssistant('agent');
+  const message=detail.message ?? uiText('请和我一起推敲这条想法，先回应我表达的关系和疑问。');
+  const turn=await submitAgentMessage(message,message,null,undefined,{note_refs:references,personal_chat_ref:detail.personal_chat_ref});
+  if(turn?.turnId && reference)personalDiscussion.value={reference,replyTo:turn.turnId};
+}
+onMounted(()=>window.addEventListener('personal-note-discuss',discussPersonalNote));
+onBeforeUnmount(()=>window.removeEventListener('personal-note-discuss',discussPersonalNote));
+watch(activeChatSessionId,()=>{personalDiscussion.value=null;});
 watch(agentInput, value => {
   if (publishedVideo.value && !value && videoQuestion.draft.value) videoQuestion.input('');
 });
@@ -3883,6 +3946,26 @@ function closeBoardSourcePreview() {
   boardSourceOpenLid = undefined;
 }
 onBeforeUnmount(closeBoardSourcePreview);
+let unregisterThoughtContext: (() => void) | undefined;
+onMounted(() => {
+  unregisterThoughtContext = registerThoughtContext(() => {
+    if (!recapProps.readerVisible || appSurface.value !== 'reader' || !buildWorkbenchSnapshot.value?.book_id) return null;
+    // Boards and presentations have explicit capture entries; never attach to a hidden reading page.
+    if (boardVisible.value || boardSourcePreview.value || (presentationWorkspace.value && !presentationWorkspace.value.suspended) || agentFullscreen.value || !readerRegionVisible.value) return null;
+    const context = {
+      book_id: buildWorkbenchSnapshot.value.book_id,
+      publication_id: network.value.workspace?.published_book_ref.publication_id ?? null,
+      workspace_id: network.value.workspace?.learning_workspace_id ?? null,
+    };
+    if (videoMode.value) {
+      const moment = videoPane.value?.thoughtContext();
+      return moment ? { ...context, ...moment } : context;
+    }
+    const lid = activeReaderSurface.value === 'pdf' ? pdfViewportAnchorLid.value : readerPaneRef.value?.captureScrollAnchor(segments.value.map(segment => segment.lid))?.lid ?? readingAnchorLid.value;
+    return { ...context, lid: lid ?? null, label: [recapProps.materialTitle, activeChapterTitle.value].filter(Boolean).join(' · ') || '当前阅读位置' };
+  });
+});
+onBeforeUnmount(() => unregisterThoughtContext?.());
 function writeBoardRoute(id: string | null, target?: BoardLocation) {
   const url = boardRouteUrl(location.href, id ? { boardId: id,
     publication: network.value.workspace?.published_book_ref ?? null,
@@ -4351,6 +4434,7 @@ function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
 function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
   return {
+    noteReferences: [...(turn.domain?.personal_notes?.references ?? []), ...(turn.domain?.personal_notes?.adopted_references ?? [])].filter((ref,index,all) => all.findIndex(other => other.note_id === ref.note_id && other.revision === ref.revision) === index),
     videoQuestion: turn.video_question,
     musicQuestion: turn.music_question,
     spendStop: spendNotice(turn.error, turn.status === 'pending_assistant' ? 'pending' : 'saved'),
@@ -4825,7 +4909,12 @@ async function sendAgent() {
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
   if (!mediaMode.value) agentInput.value = "";
   askDraft.value = null;
-  await submitAgentMessage(msg, msg, draft, undefined, targetGoalId.value ? { goal_id: targetGoalId.value } : {}, submittedDraft);
+  const note=personalDiscussion.value;
+  const turn=await submitAgentMessage(msg, msg, draft, undefined, {
+    ...(targetGoalId.value ? { goal_id: targetGoalId.value } : {}),
+    ...(note?.replyTo ? {note_reply_to:note.replyTo} : note ? {note_refs:[note.reference]} : {}),
+  }, submittedDraft);
+  if(note && turn?.turnId)personalDiscussion.value={reference:note.reference,replyTo:turn.turnId};
 }
 
 function targetGoal(goalId: string) {
@@ -5821,6 +5910,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @recap-publication="recapEmit('recap-publication', $event)"
         :fullscreen="agentFullscreen"
         :agent-input="agentInput"
+        :personal-note-reference="personalDiscussion?.reference"
         :music-question="musicQuestionContext"
         :video-question="videoQuestion.draft.value?.context"
         :video-images-enabled="!!publishedVideo"
@@ -5903,6 +5993,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         :requested-tab="workspaceAuxTab"
         :requested-tab-revision="workspaceAuxTabRevision"
         @send-agent="sendAgent"
+        @clear-personal-note="personalDiscussion=null"
+        @continue-personal-note="(turnId, reference) => { personalDiscussion={reference,replyTo:turnId};workspaceRef?.showAssistant('agent'); }"
         @retry-history="retryHistory"
         @toggle-fullscreen="toggleAgentFullscreen"
         @presentation-follow-up="sendPresentationFollowUp"

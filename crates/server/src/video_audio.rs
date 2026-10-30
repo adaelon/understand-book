@@ -35,7 +35,7 @@ pub(crate) fn review_for_run_metered(scope: &crate::run_scope::RunScope, request
         &fs::read(scope.book_dir.join("publication.json")).map_err(|e| failed(e.to_string()))?
     ).map_err(|e| failed(e.to_string()))?;
     if scope.publication.as_ref().is_some_and(|p| p.reference != declared.reference) { return Err(failed("Run publication mismatch")); }
-    review_audio_metered(&scope.book, &scope.book_dir, &declared.reference, &scope.turn_id, request, cancel, &AudioConfig::from_env()?,spend.map(|spend|(spend,scope)))
+    review_audio_metered(&scope.reading_book(), &scope.book_dir, &declared.reference, &scope.turn_id, request, cancel, &AudioConfig::from_env()?,spend.map(|spend|(spend,scope)))
 }
 
 fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &CancellationToken, deadline: Instant, started: Option<&mut bool>) -> Result<(), ToolError> {

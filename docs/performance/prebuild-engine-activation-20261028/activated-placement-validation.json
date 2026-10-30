@@ -1,0 +1,15 @@
+{
+  "status": "compatible",
+  "registration_scope": "root_shared",
+  "plugin_parent_server_registered": true,
+  "child_effective_config_inherits_registration": true,
+  "agent_local_server_registered": false,
+  "user_config_server_registered": false,
+  "project_config_server_registered": false,
+  "child_connection_ownership": "thread_owned_stdio_connection",
+  "parent_child_connection_shared": false,
+  "caller_role_authenticated": false,
+  "original_project_settings_preserved": true,
+  "project_enabled": true,
+  "outside_project_enabled": false
+}
