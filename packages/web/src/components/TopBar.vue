@@ -14,6 +14,7 @@ const props = defineProps<{
   focusReading?: boolean;
   chatUnavailable?: boolean;
   boardAvailable?: boolean;
+  notesAvailable?: boolean;
   chapterTitle: string;
   guideChapterTitle?: string;
   guideChapterEnabled?: boolean;
@@ -42,6 +43,7 @@ const emit = defineEmits<{
   (e: "open-build-intent"): void;
   (e: "open-workbench"): void;
   (e: "open-board"): void;
+  (e: "open-notes"): void;
   (e: "open-settings"): void;
   (e: "close-mobile"): void;
 }>();
@@ -79,6 +81,7 @@ function closeMobileAfterAction(event: MouseEvent) {
       <button v-if="!videoMode" class="ghost-pill" :class="{ active: leftRailOpen }" @click="emit('toggle-left-rail')">{{ uiText('目录') }}</button>
       <button class="ghost-pill" :disabled="chatUnavailable" @click="emit('new-chat')">{{ uiText('新对话') }}</button>
       <button v-if="boardAvailable" class="ghost-pill" @click="emit('open-board')">{{ uiText('画板') }}</button>
+      <button v-if="notesAvailable" class="ghost-pill" @click="emit('open-notes')">{{ uiText('空间笔记') }}</button>
       <button
         v-if="buildIntentAvailable"
         class="topbar-icon-button"

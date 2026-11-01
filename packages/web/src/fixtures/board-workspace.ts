@@ -17,7 +17,7 @@ export function boardFixture(): { document: BoardDocument; view: BoardView } {
   return structuredClone({ document: { board_id: 'board-bayes', learning_workspace_id: 'learning-probability', book_id: 'book-probability', publication_id: 'pub-1', source_revision: '1', title: '贝叶斯：把新证据放进判断', revision: 1, created_at: '2026-10-25T08:00:00Z', updated_at: '2026-10-25T08:30:00Z', items: boardFixtureItems, deliveries: [], links: [], mappings: [], routes: [] }, view: { x: 35, y: 37, zoom: .92, selected_item_id: 'item-answer', selected_block_id: null, reading_item_id: null, playback: null, presentation_states: {} } });
 }
 export const boardFixtureCatalog: BoardCatalogItem[] = boardFixtureItems.flatMap<BoardCatalogItem>(item => {
-  if (item.target.kind === 'drawing') return [];
+  if (item.target.kind === 'drawing' || item.target.kind === 'topic') return [];
   if (item.target.kind === 'personal_note') return [{kind:'personal_note',title:item.title,summary:item.readable_content,source:{kind:'personal_note',reference:item.target.reference}}];
   if (item.target.kind === 'artifact') return [{ kind: 'prebuild', category: item.target.artifact, title: item.title, summary: item.readable_content,
     source: { kind: 'artifact', artifact: item.target.artifact, entry_id: item.target.entry_id, source_revision: item.target.source_revision } }];
@@ -25,7 +25,8 @@ export const boardFixtureCatalog: BoardCatalogItem[] = boardFixtureItems.flatMap
   source: item.target.kind === 'prebuild' ? { kind: 'prebuild', object_id: item.target.object_id, object_revision: item.target.object_revision, map_revision: item.target.map_revision }
     : item.target.kind === 'answer' ? { kind: 'answer', session_id: item.target.session_id, turn_id: item.target.turn_id }
       : item.target.kind === 'presentation' ? { kind: 'presentation', session_id: item.target.receipt.session_id, turn_id: item.target.receipt.turn_id, reference: item.target.receipt.reference, receipt: item.target.receipt }
-        : { kind: 'understanding', evidence_id: item.target.evidence_id } }];
+        : item.target.kind === 'note' ? { kind: 'note', note_id: item.target.note_id }
+          : { kind: 'understanding', evidence_id: item.target.evidence_id } }];
 });
 
 export function boardFixturePresentation(): PresentationView {

@@ -1,0 +1,57 @@
+{
+  "error": {
+    "category": "validation",
+    "error_code": "TOOL_ARGUMENTS_INVALID",
+    "message": "$.move.practice.source_lids is not allowed\nResubmit a complete move. Current $.move allowed fields: [\"actions\",\"assessment\",\"block_refs\",\"board_candidate_revision\",\"coach_adjustment\",\"continuation\",\"delivery_text\",\"design_ref\",\"explanation\",\"hint\",\"interpretation_refs\",\"kind\",\"move_id\",\"note_refs\",\"object_ids\",\"participation\",\"practice\",\"presentation\",\"prompt\",\"responds_to\",\"response_expectation\",\"target\"]; required fields: [\"move_id\",\"object_ids\",\"kind\",\"prompt\",\"design_ref\",\"block_refs\",\"participation\",\"target\"]. Omit fields absent from this current contract, even when null.\nCorrect the complete call using only this operation's fields; omit unrelated fields even when null. Selected operation schema: {\"additionalProperties\":false,\"properties\":{\"delivery_move_refs\":{},\"delivery_scope\":{},\"finish\":{},\"move\":{},\"operation\":{\"enum\":[\"select\"]}},\"required\":[\"operation\",\"move\"]}"
+  },
+  "trace": [
+    {
+      "args": "{\"lid\": \"1\", \"end_lid\": \"1.11\"}",
+      "model_tool_loop": 1,
+      "result_digest": "{\"lid\":\"1\",\"text\":\"# 为什么钢铁做成的军舰不会沉入海底？\\n\\n一块实心钢铁放进水里会下沉，可是用钢铁造出的军舰，比一块钢铁重得多，却能浮在海面上。这是为什么呢？要弄清这个问题，需要同时考虑物体的重量，以及它能排开多少水。\\n\\n物体进入水中，会占据一部分原本属于水的空间，把那里的水挤开。水也会对物体产生一个向上的托力，这就是浮力。阿基米德原理告诉我们：**物体受到的浮力，等于",
+      "tool": "book.text"
+    },
+    {
+      "args": "{\"message\": \"我先把本章原文再读一遍，挑一条还没被你练过的关系来出题，避开刚做过的测力计那道。\"}",
+      "model_tool_loop": 1,
+      "result_digest": "{\"reported\":true}",
+      "tool": "agent.progress"
+    },
+    {
+      "args": "{\"operation\": \"working\", \"focus\": \"为「用当前材料练一练」出一道新练习题：换关系、不重复最近一题（测力计示数差求体积）。\", \"next_move\": \"读 1–1.11 原文确定新关系与数字，再建新设计并选出一道练习。\", \"items\": [{\"id\": \"read-source\", \"description\": \"读 1–1.11 原文，确认可用于新题的数值关系\", \"status\": \"in_progress\"}, {\"id\": \"pick-target\", \"description\": \"按交错规则选一条未最近练过的关系并自解题、冻结评分\", \"status\": \"pending\"}, {\"id\": \"design\", \"description\": \"建立新教学设计（previous_ref 指向当前设计）\", \"status\": \"pending\"}, {\"id\": \"select\", \"description\": \"选出一道带提示与评分契约的练习并交付\", \"status\": \"pending\"}]}",
+      "model_tool_loop": 1,
+      "result_digest": "{\"changed\":true,\"goal_id\":\"goal_turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576\",\"revision\":2}",
+      "tool": "goal.update"
+    },
+    {
+      "args": "{\"design\":{\"basis_refs\":[\"usage:tutor-purpose:turn_01a18f63-69e5-7a73-8c6f-9960d19f8271:user:turn_01a18fa4-4fcf-74a1-8e45-ffab7e223f51\"],\"blocks\":[{\"block_id\":\"solid-vs-hollow\",\"purpose\":\"让学习者能把「同样一批铁，实心块与中空船壳」放在同一把尺子下比：向下要托住的是它自己的重量，向上能托多少看它在水下占住了多大的空间。这样他就能判掉「轻的沉、重的浮，所以重量不起作用」这种读法，而能说出是重量与排开的水重两者相比。\",\"relation\":\"一批 3 吨的铁，做成实心块时外形只占 0.4 立方米；完全浸没时被它挤开的水就是 0.4 立方米，按 1 立方米水重 1 吨算，这份水重 0.4 吨，也就是水最多向上托 0.4 吨。它自己压下去的是 3 吨，托的比压的少 2.6 吨，所以细线一松它就继续往下走，沉到底；泡得再深也还是只占那么大，不会多排出水来。同一批铁改成中空的船壳，船体外形在水下占住 5 立方米，被挤开的 5 立方米水重 5 吨；船上连人带货正好 5 吨，向上托的与向下压的抵平，它就停在水面上。两组数放在一起：要托住的是重量（3 吨、5 吨），能托多少由水下占住的空间决定（0.4 立方米、5 立方米）；所以「重量不起作用、只看外形」说不通，重量与排开的水重必须相比。\",\"source_bindings\":[{\"end_lid\":\"1.11\",\"start_lid\":\"1\"}]}],\"focus_block_refs\":[\"solid-vs-hollow\"],\"organizing_model\":\"上一题练的是「用测力计示数差求出石头体积」，而且刚刚被判为没有满足标准；按交错规则，同一关系不能连着再练。这次回到本章开头那组最核心的对照：同样一批铁，实心块与中空船壳在水下能占住的空间差多少，能得到的托力就差多少——由此才能判掉「轻的沉、重的浮，所以重量跟沉浮无关」这种很像的读法。\",\"previous_ref\":\"design:turn_01a18fa2-9758-7f13-b8c4-ef2a26e92f50:design-practice-find-volume-compose\",\"representation\":{\"kind\":\"text\",\"reason\":\"题面只需给出四个可比的数（甲的 0.4 立方米、乙的 5 立方米、3 吨与 5 吨）和 1 立方米水重 1 吨的换算前提；两组量的对比在文字里就能并排看清，不需要图形。\"},\"revision_reason\":\"本轮再次接受「用当前材料里学过的内容练一练」。练习历史显示最近一题是「用测力计示数差与溢出的水重对出浮力」，刚被判为未满足标准，按交错规则不能连着再练；因此换到同章尚未练过的「实心铁块与中空船壳的水下体积对比」，并把「重的浮着、轻的沉了，所以重量不起作用」这个很像的错读摆出来，让「自重与能排开的水重两者相比」这一步成为本题的分辨点。难度按新关系从 discriminate 起步，distance 记为 near。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"在「3 吨铁实心只占 0.4 立方米、同一批铁做成空船壳水下占 5 立方米、1 立方米水重 1 吨」的条件下，分别算出甲最多得到 0.4 吨的托力（托不住自己的 3 吨）、乙排开 5 吨水（正好托住连人带货的 5 吨），并指出「重量不起作用、只看外形」不成立：要托住的正是重量，能托多少由水下占住的空间决定。\",\"learning_focus\":\"浮力与排水：同样一批铁，实心块与中空船壳的水下体积对比\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.11\",\"start_lid\":\"1\"}]}},\"operation\":\"design\",\"operation_id\":\"design-practice-solid-vs-hollow\"}",
+      "model_tool_loop": 2,
+      "result_digest": "{\"design\":{\"basis_refs\":[\"usage:tutor-purpose:turn_01a18f63-69e5-7a73-8c6f-9960d19f8271:user:turn_01a18fa4-4fcf-74a1-8e45-ffab7e223f51\"],\"blocks\":[{\"block_id\":\"solid-vs-hollow\",\"purpose\":\"让学习者能把「同样一批铁",
+      "tool": "tutor.step"
+    },
+    {
+      "args": "{\"focus\": \"原文已读（1–1.11）：可用关系包括浮力=排开水的重力、实心铁排水封顶而沉、中空船体提供大水下空间、漂浮时浮力=整船总重、加货使吃水变深、载荷过大或大量进水会浮不住。\", \"items\": [{\"description\": \"读 1–1.11 原文，确认可用于新题的数值关系\", \"id\": \"read-source\", \"status\": \"completed\"}, {\"description\": \"选「实心铁块 vs 中空船壳」这条未最近练过的关系，自解：0.4 m³→0.4 吨托力 < 3 吨；5 m³→5 吨托力 = 5 吨总重\", \"id\": \"pick-target\", \"status\": \"completed\"}, {\"description\": \"建立新教学设计（previous_ref 指向当前设计）\", \"id\": \"design\", \"status\": \"in_progress\"}, {\"description\": \"选出一道带提示与评分契约的练习并交付\", \"id\": \"select\", \"status\": \"pending\"}], \"next_move\": \"用新设计选出一道 discriminate 练习：0.4 立方米对 5 立方米，冻结评分与四级提示。\", \"operation\": \"working\"}",
+      "model_tool_loop": 2,
+      "result_digest": "{\"changed\":true,\"goal_id\":\"goal_turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576\",\"revision\":3}",
+      "tool": "goal.update"
+    },
+    {
+      "args": "{\"move\":{\"block_refs\":[\"solid-vs-hollow\"],\"design_ref\":\"design:turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576:design-practice-solid-vs-hollow\",\"finish\":true,\"kind\":\"question\",\"move_id\":\"practice-solid-vs-hollow\",\"object_ids\":[],\"prompt\":\"请回答两问：\\n\\n（1）甲完全浸在水里时，被它挤开的水有多重？水向上托它的力有多大？把这份托力和它自己的 3 吨放在一起比一比，然后说说：细线为什么必须一直提着它，一松手又会怎样？\\n\\n（2）小华这段话里，哪一步不成立？用甲、乙两组数（0.4 立方米、5 立方米、3 吨、5 吨）说说理由。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"在「3 吨铁实心只占 0.4 立方米、同一批铁做成的空船壳水下占 5 立方米、1 立方米水重 1 吨」的条件下，分别算出甲最多得到 0.4 吨的托力（托不住自己的 3 吨）、乙排开 5 吨水（正好托住连人带货的 5 吨），并指出“重量不起作用、只看外形”不成立：要托住的正是重量，能托多少由水下占住的空间决定。\",\"learning_focus\":\"浮力与排水：同样一批铁，实心块与中空船壳的水下体积对比\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.11\",\"start_lid\":\"1\"}]}},\"operation\":\"select\"}",
+      "model_tool_loop": 3,
+      "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.finish is not allowed\\nResubmit a complete move. Current $.move allowed fields: [\\\"actions\\\",\\\"assessment\\\",\\\"block_ref",
+      "tool": "tutor.step"
+    },
+    {
+      "args": "{\"finish\":true,\"move\":{\"block_refs\":[\"solid-vs-hollow\"],\"design_ref\":\"design:turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576:design-practice-solid-vs-hollow\",\"kind\":\"question\",\"move_id\":\"practice-solid-vs-hollow\",\"object_ids\":[],\"prompt\":\"请回答两问：\\n\\n（1）甲完全浸在水里时，被它挤开的水有多重？水向上托它的力有多大？把这份托力和它自己的 3 吨放在一起比一比，然后说说：细线为什么必须一直提着它，一松手又会怎样？\\n\\n（2）小华这段话里，哪一步不成立？用甲、乙两组数（0.4 立方米、5 立方米、3 吨、5 吨）说说理由。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"在「3 吨铁实心只占 0.4 立方米、同一批铁做成的空船壳水下占 5 立方米、1 立方米水重 1 吨」的条件下，分别算出甲最多得到 0.4 吨的托力（托不住自己的 3 吨）、乙排开 5 吨水（正好托住连人带货的 5 吨），并指出“重量不起作用、只看外形”不成立：要托住的正是重量，能托多少由水下占住的空间决定。\",\"learning_focus\":\"浮力与排水：同样一批铁，实心块与中空船壳的水下体积对比\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.11\",\"start_lid\":\"1\"}]}},\"operation\":\"select\"}",
+      "model_tool_loop": 4,
+      "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.participation is required\\nResubmit a complete move. Current $.move allowed fields: [\\\"actions\\\",\\\"assessment\\\",\\\"block",
+      "tool": "tutor.step"
+    },
+    {
+      "args": "{\"finish\":true,\"move\":{\"block_refs\":[\"solid-vs-hollow\"],\"design_ref\":\"design:turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576:design-practice-solid-vs-hollow\",\"kind\":\"question\",\"move_id\":\"practice-solid-vs-hollow\",\"object_ids\":[],\"prompt\":\"请回答两问：\\n\\n（1）甲完全浸在水里时，被它挤开的水有多重？水向上托它的力有多大？把这份托力和它自己的 3 吨放在一起比一比，然后说说：细线为什么必须一直提着它，一松手又会怎样？\\n\\n（2）小华这段话里，哪一步不成立？用甲、乙两组数（0.4 立方米、5 立方米、3 吨、5 吨）说说理由。\",\"target\":{\"capability\":\"explanation\",\"expected_performance\":\"在「3 吨铁实心只占 0.4 立方米、同一批铁做成的空船壳水下占 5 立方米、1 立方米水重 1 吨」的条件下，分别算出甲最多得到 0.4 吨的托力（托不住自己的 3 吨）、乙排开 5 吨水（正好托住连人带货的 5 吨），并指出“重量不起作用、只看外形”不成立：要托住的正是重量，能托多少由水下占住的空间决定。\",\"learning_focus\":\"浮力与排水：同样一批铁，实心块与中空船壳的水下体积对比\",\"object_refs\":[],\"source_bindings\":[{\"end_lid\":\"1.11\",\"start_lid\":\"1\"}]}},\"operation\":\"select\"}",
+      "model_tool_loop": 5,
+      "result_digest": "{\"error_code\":\"TOOL_ARGUMENTS_INVALID\",\"category\":\"validation\",\"message\":\"$.move.practice.source_lids is not allowed\\nResubmit a complete move. Current $.move allowed fields: [\\\"actions\\\",\\\"assessment",
+      "tool": "tutor.step"
+    }
+  ]
+}

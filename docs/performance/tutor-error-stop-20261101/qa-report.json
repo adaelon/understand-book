@@ -1,0 +1,22 @@
+{
+  "assets_checked": 1235,
+  "old_assets_retained": 16,
+  "mobile_fixes_preserved": true,
+  "accounts": {
+    "reader": {
+      "login_history_allowance_workspaces": true,
+      "presentation_ready": true
+    },
+    "admin": {
+      "login_history_allowance_workspaces": true,
+      "presentation_ready": true
+    },
+    "adaelon": {
+      "login_history_allowance_workspaces": true,
+      "presentation_ready": true
+    }
+  },
+  "model_calls": 0,
+  "reported_history_public_message": "这次回答未能完成，请重试。",
+  "passed": true
+}

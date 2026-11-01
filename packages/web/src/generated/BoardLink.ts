@@ -2,4 +2,9 @@
 import type { BoardContentRef } from "./BoardContentRef";
 import type { BoardVisualTarget } from "./BoardVisualTarget";
 
-export type BoardLink = { link_id: string, from: BoardVisualTarget, to: BoardVisualTarget, label: string, based_on: Array<BoardContentRef>, };
+export type BoardLink = { link_id: string, from: BoardVisualTarget, to: BoardVisualTarget, label: string, based_on: Array<BoardContentRef>,
+/**
+ * Workspace notebook relations are projected at read time, never retained
+ * as a second editable relationship in a board revision.
+ */
+note_relation_id?: string, reason?: string, };

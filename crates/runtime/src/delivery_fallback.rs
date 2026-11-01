@@ -179,6 +179,25 @@ pub(super) fn deliver(
         .and_then(|draft| draft["text"].as_str()))
         .and_then(|text| compile_agent_answer(text, &bindings, &context.answer_provenance).ok());
     let accepted_draft = compiled.is_some();
+    if error.category == "provider" && previous.is_none() && compiled.is_none()
+        && context.board_request_context.is_some() && context.trace.is_empty()
+        && context.board_candidate_id.is_none() && context.board_delivery_draft.is_none()
+        && context.teaching_delivery_draft.is_none() && references.is_empty() && context.effects.is_empty() {
+        // The provider failed before this run could touch the retained board.
+        // Its frozen scope is available even though the generic fallback's
+        // book reads are empty. Report the operation state without asking a
+        // second model to infer missing material from that reduced packet.
+        let english=context.response_language==Some(crate::response_language::ResponseLanguage::English);
+        let regeneration=context.board_request_context.as_ref().is_some_and(|scope|scope["regeneration"].is_object());
+        let status=match (english,regeneration) {
+            (true,true)=>"No new board changes were applied. Your current edits and the original pending suggestion are preserved. You can regenerate it from the current content when the service is available.",
+            (true,false)=>"No new board changes were applied. Your current board content is preserved; please retry when the service is available.",
+            (false,true)=>"本次没有应用新的画板修改。你的当前编辑和原待处理建议都已保留，服务恢复后可按当前内容重新生成。",
+            (false,false)=>"本次没有应用新的画板修改。当前画板内容已保留，请在服务恢复后重试。",
+        };
+        let text=format!("{}\n\n{status}",provider_failure_notice(error,context.response_language).expect("provider notice"));
+        compiled=compile_agent_answer(&text,&bindings,&context.answer_provenance).ok();
+    }
     // A failed source repair already used its final model attempt. All other
     // recoverable execution errors get one small, tools-disabled synthesis.
     // A reported balance shortage cannot recover through another paid request.
@@ -194,7 +213,7 @@ pub(super) fn deliver(
             serde_json::json!({"reference":reference,"saved":true,"author_previews":previews})
         }).collect();
         let payload = serde_json::json!({
-            "question":context.current_user_message.as_deref().unwrap_or(question),
+            "question":context.current_user_message.as_deref().filter(|text| !text.trim().is_empty()).unwrap_or(question),
             "read_evidence":excerpts,
             "music_interactions":context.music_interactions,
             "attached_image":context.question_image.as_ref().map(|image| serde_json::json!({"origin":image.origin,"width":image.width,"height":image.height,"guidance":"Actual user-attached pixels accompany this request; explain them directly, without claiming they are a verified source observation or proof of hearing audio."})),

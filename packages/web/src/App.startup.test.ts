@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { mount, flushPromises } from "@vue/test-utils";
+import { config, mount, flushPromises } from "@vue/test-utils";
 import { defineComponent, inject } from 'vue';
 import { renderShare, shareHighlightKey, shareNoteKey, sharePresentationKey } from './reading-share';
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.vue";
+import PersonalNotes from './components/PersonalNotes.vue';
+import { discardNoteDraft, emptyNoteContent, emptyNoteContext, notesPanel, openThoughtCapture, readNoteDrafts } from './personal-notes';
 import { network, installIdentity, installWorkspace, submittedRunDrafts, readerKey } from './network-context';
 import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
@@ -15,7 +17,7 @@ const api = vi.hoisted(() => Object.fromEntries([
   "sourceManifest", "state", "profileManifest", "text", "recall", "agentHistory",
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
-  "save", "replace", "delete", "agentHistorySelect", "agentSourceResolve", "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
+  "save", "replace", "delete", "prepareNote", "agentHistorySelect", "agentSourceResolve", "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
 ].map(key => [key, vi.fn()])));
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api }));
 vi.mock("./components/PdfReaderPane.vue", () => ({ default: { name: "PdfReaderPane", template: "<div />" } }));
@@ -31,8 +33,17 @@ const history = (book = "startup") => ({ active_session_id: `${book}-chat`, sess
   current: { id: `${book}-chat`, book_id: book, turns: [], goals: [] } });
 let book = "startup";
 const wrappers: ReturnType<typeof mount>[] = [];
-function start() {
-  const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true } });
+const originalStubs = config.global.stubs;
+const boardWorkspaceStub = defineComponent({ name: 'BoardWorkspace',
+  props: ['boardId', 'pendingImport', 'run', 'pendingLocate', 'notesRevision'], template: '<div />',
+  setup(_, { expose }) { expose({ flush: async () => true }); } });
+afterAll(() => { config.global.stubs = originalStubs; });
+function start(withNoteSurface = false) {
+  const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: withNoteSurface ? {
+    ReaderPane: defineComponent({ name: 'ReaderPane', template: '<div />', setup(_, { expose }) {
+      expose({ captureScrollAnchor: () => ({ lid: '1.1' }) });
+    } }),
+  } : {} } });
   wrappers.push(wrapper);
   return wrapper;
 }
@@ -46,6 +57,7 @@ function startPurpose(chatDraft?: { message: string; quote: { lid: string; quote
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  config.global.stubs = { ...originalStubs, BoardWorkspace: boardWorkspaceStub };
   book = "startup";
   api.videoContext.mockResolvedValue(null);
   api.musicContext.mockResolvedValue(null);
@@ -105,6 +117,25 @@ it('submits the frozen board target without attaching the reader selection and o
   expect(board.props('run')).toMatchObject({ accepted: true, turn_id: 'accepted-board-turn', board_id: 'board-A', item_id: 'point-A' });
 });
 
+it('recovers board delivery and exact navigation from persisted history', async () => {
+  const context = { board_id: 'board-A', board_revision: 7, item_id: 'point-A' };
+  const delivery = { board_id: 'board-A', before_revision: 8, after_revision: 9, item_ids: ['answer-A'], block_ids: ['block-answer-A'],
+    origin_session_id: 'startup-chat', origin_turn_id: 'saved-turn', parent_item_id: 'point-A' };
+  api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
+    turn_id: 'saved-turn', user: '之前的问题', status: 'completed', effect_labels: [], board_follow_up: context, board_delivery: delivery,
+    outcome: { answer: '完整回答', effects: [] },
+  }] } });
+  const w = startPurpose(); await flushPromises();
+  const rail = w.findComponent({ name: 'RightRail' });
+  expect(rail.props('chat')[0]).toMatchObject({ boardFollowUp: context, boardDelivery: delivery });
+  rail.vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'answer-A', block_id: 'block-answer-A' });
+  await flushPromises();
+  expect(w.findComponent({ name: 'BoardWorkspace' }).props('pendingLocate')).toEqual({ board_id: 'board-A', item_id: 'answer-A', block_id: 'block-answer-A' });
+  expect(w.findComponent({ name: 'BoardWorkspace' }).props('run')).toMatchObject({ accepted: true, pending: false, delivery });
+  expect(new URL(location.href).searchParams.get('board_block_id')).toBe('block-answer-A');
+  window.history.replaceState({}, '', '/');
+});
+
 it('submits a whole-board local question with the actual chat head and retries rejection inside the board', async () => {
   vi.stubGlobal('EventSource', class extends EventTarget { close() {} });
   const { ApiError } = await import('./api');
@@ -128,25 +159,6 @@ it('submits a whole-board local question with the actual chat head and retries r
   window.history.replaceState({}, '', '/');
 });
 
-it('recovers board delivery and exact navigation from persisted history', async () => {
-  const context = { board_id: 'board-A', board_revision: 7, item_id: 'point-A' };
-  const delivery = { board_id: 'board-A', before_revision: 8, after_revision: 9, item_ids: ['answer-A'], block_ids: ['block-answer-A'],
-    origin_session_id: 'startup-chat', origin_turn_id: 'saved-turn', parent_item_id: 'point-A' };
-  api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [{
-    turn_id: 'saved-turn', user: '之前的问题', status: 'completed', effect_labels: [], board_follow_up: context, board_delivery: delivery,
-    outcome: { answer: '完整回答', effects: [] },
-  }] } });
-  const w = startPurpose(); await flushPromises();
-  const rail = w.findComponent({ name: 'RightRail' });
-  expect(rail.props('chat')[0]).toMatchObject({ boardFollowUp: context, boardDelivery: delivery });
-  rail.vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'answer-A', block_id: 'block-answer-A' });
-  await flushPromises();
-  expect(w.findComponent({ name: 'BoardWorkspace' }).props('pendingLocate')).toEqual({ board_id: 'board-A', item_id: 'answer-A', block_id: 'block-answer-A' });
-  expect(w.findComponent({ name: 'BoardWorkspace' }).props('run')).toMatchObject({ accepted: true, pending: false, delivery });
-  expect(new URL(location.href).searchParams.get('board_block_id')).toBe('block-answer-A');
-  window.history.replaceState({}, '', '/');
-});
-
 it('retries saving the original board answer without sending another model question', async () => {
   const context = { board_id: 'board-A', board_revision: 7, item_id: 'point-A' };
   const turn = { turn_id: 'saved-turn', user: '之前的问题', status: 'completed', effect_labels: [], board_follow_up: context,
@@ -156,7 +168,7 @@ it('retries saving the original board answer without sending another model quest
   w.findComponent({ name: 'RightRail' }).vm.$emit('open-board-location', { board_id: 'board-A', item_id: 'point-A' });
   await flushPromises();
   const board = w.findComponent({ name: 'BoardWorkspace' });
-  expect(board.props('run')).toMatchObject({ accepted: true, can_retry: true, error: '暂时无法写入画板' });
+  expect(board.props('run')).toMatchObject({ accepted: true, can_retry: true, error: '这次回答未能完成，请重试。' });
   const delivery = { board_id: 'board-A', before_revision: 7, after_revision: 8, item_ids: ['answer-A'], block_ids: ['block-answer-A'],
     origin_session_id: 'startup-chat', origin_turn_id: 'saved-turn', parent_item_id: 'point-A' };
   api.agentRunRetrySave.mockResolvedValue({ persistence_state: 'saved' });
@@ -189,7 +201,7 @@ it.each([false, true])('understanding conversation navigation preserves the draf
   else { expect(scroll).toHaveBeenCalledWith('original-turn'); expect(onUnavailable).not.toHaveBeenCalled(); }
 });
 
-it.each(['history', 'submission'])('shows the failure explanation without internal error codes in %s', async source => {
+it.each(['history', 'submission'])('shows the public failure message without internal error codes in %s', async source => {
   const message = '当前服务暂不可用，请稍后重试。';
   if (source === 'history') api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current,
     turns: [{ turn_id: 'failed', user: '原问题', status: 'failed', effect_labels: [],
@@ -204,7 +216,7 @@ it.each(['history', 'submission'])('shows the failure explanation without intern
     rail.vm.$emit('update:agentInput', '原问题');
     rail.vm.$emit('send-agent'); await flushPromises();
   }
-  expect(rail.props('chat')[0].error).toBe(message);
+  expect(rail.props('chat')[0].error).toBe('这次回答未能完成，请重试。');
 });
 
 it('shows an actionable review failure after loading a failed teaching turn', async () => {
@@ -624,6 +636,8 @@ it('opens understanding directly from the chat without changing teaching or the 
 });
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
+  readNoteDrafts().forEach(discardNoteDraft);
+  Object.assign(notesPanel, { open: false, view: 'library', draftId: null, reference: null });
   network.value = { ...network.value, enabled: false, workspace: null, identity: null };
   localStorage.clear(); sessionStorage.clear();
   submittedRunDrafts.clear();
@@ -1247,127 +1261,135 @@ it.each([false, true])('keeps a plain workspace draft in video, binds it on send
 });
 
 
+// Exercise the reader-to-global-notes boundary with the current versioned note service.
+function noteSurface(records: any[] = []) {
+  const view = (record: any, revision = 1) => ({ note_id: record.mem_id, created_at: '1700000000', current_revision: revision,
+    value: { revision, saved_at: '1700000000', title: null, authorship: 'user', record,
+      context: { ...emptyNoteContext(), book_id: record.book_id }, source_refs: [], change_note: null, based_on_turn: null, restored_from: null } });
+  const saved = new Map(records.map(record => [record.mem_id, view(record)]));
+  const write = vi.fn(async (_action: string, input: any) => {
+    const id = input.note_id ?? 'saved', previous = saved.get(id);
+    const result = view({ ...(previous?.value.record ?? { type: 'note', book_id: 'startup', layer: 'long_term', anchor: {} }),
+      mem_id: id, content: input.value.content, note: input.value.source }, (previous?.current_revision ?? 0) + 1);
+    result.value.context = input.value.context; saved.set(id, result); return result;
+  });
+  vi.stubGlobal('fetch', vi.fn(async (url: unknown, init?: RequestInit) => {
+    const action = String(url).split('/').at(-1), input = JSON.parse(String(init?.body ?? '{}'));
+    if (action === 'create' || action === 'revise') return Response.json(await write(action, input));
+    if (action === 'read') return Response.json(saved.get(input.note_id));
+    if (action === 'history') return Response.json({ revisions: [], discussions: [] });
+    if (action === 'links') return Response.json({ links: [] });
+    if (action === 'attachments' || action === 'board_locations') return Response.json({ items: [] });
+    if (action === 'list') return Response.json({ notes: [...saved.values()], next_cursor: null });
+    throw new Error(`Unexpected note fixture request: ${url}`);
+  }));
+  api.prepareNote.mockImplementation(async (input: any) => ({ ...emptyNoteContent({ book_id: 'startup',
+    session_id: input.note?.association.session_id ?? input.note?.association.receipt?.session_id ?? null,
+    turn_id: input.note?.association.turn_id ?? input.note?.association.receipt?.turn_id ?? null }, input.content),
+    source: input.note ? { material: { book_id: 'startup', publication_id: null }, association: input.note.association,
+      retained_excerpt: input.note.retained_excerpt ? { kind: input.note.association.kind === 'answer' ? 'assistant' : 'original', text: input.note.retained_excerpt } : null, source_bindings: [] } : null }));
+  const notes = mount(PersonalNotes); wrappers.push(notes as never);
+  const click = async (text: string) => { await notes.findAll('button').find(button => button.text() === text)!.trigger('click'); await flushPromises(); };
+  const body = () => notes.get('textarea[aria-label="想法正文"]');
+  const save = async () => { await notes.get('.thought-actions .primary').trigger('click'); await flushPromises(); };
+  return { notes, write, saved, click, body, save };
+}
+
 describe('RN2 presentation note draft', () => {
   const receipt = { session_id: 'startup-chat', turn_id: 'old-turn', reference: { presentation_id: 'page', revision: 2 }, state_revision: 4, saved_state_ref: 'state-4' };
   it('keeps the captured association across collapse, chat change and save failure', async () => {
-    const wrapper = start(); await flushPromises();
-    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('record-note', receipt, 'Recorded example');
-    await flushPromises();
-    let editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
-    editor.vm.$emit('update:content', 'my thought'); editor.vm.$emit('collapse'); await flushPromises();
-    expect(wrapper.findComponent({ name: 'NoteEditorPanel' }).exists()).toBe(false);
+    const n = noteSurface(), w = start(true); await flushPromises();
+    w.getComponent({ name: 'RightRail' }).vm.$emit('record-note', receipt, 'Recorded example'); await flushPromises();
+    await n.body().setValue('my thought'); await n.notes.get('[aria-label="收起我的想法"]').trigger('click');
     api.agentNew.mockResolvedValue({ ok: true, history: { ...history(), active_session_id: 'new-chat', current: { ...history().current, id: 'new-chat' } } });
-    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('new-chat'); await flushPromises();
-    await wrapper.get('.note-resume').trigger('click');
-    editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
-    expect(editor.props('content')).toBe('my thought');
-    api.save.mockRejectedValueOnce(new Error('write failed'));
-    editor.vm.$emit('save'); await flushPromises();
-    expect(editor.props('error')).toContain('write failed');
-    expect(editor.props('content')).toBe('my thought');
-    api.save.mockResolvedValue({ status: 'CREATED', record: { mem_id: 'saved' } });
-    editor.vm.$emit('save'); await flushPromises();
-    expect(api.save).toHaveBeenLastCalledWith(expect.objectContaining({ content: 'my thought', note: { association: { kind: 'presentation', receipt } } }));
-    expect(wrapper.findComponent({ name: 'NoteEditorPanel' }).exists()).toBe(false);
-    expect(wrapper.findComponent({ name: 'RightRail' }).props('activeChatSessionId')).toBe('new-chat');
+    w.getComponent({ name: 'RightRail' }).vm.$emit('new-chat'); await flushPromises();
+    await n.notes.get('.thought-entry').trigger('click'); await flushPromises();
+    expect((n.body().element as HTMLTextAreaElement).value).toBe('my thought');
+    n.write.mockRejectedValueOnce(new Error('write failed')); await n.save();
+    expect(n.notes.get('[role="alert"]').text()).toContain('write failed');
+    expect(readNoteDrafts()[0].value.content).toBe('my thought');
+    await n.save();
+    expect(n.write).toHaveBeenLastCalledWith('create', expect.objectContaining({ value: expect.objectContaining({ content: 'my thought',
+      source: expect.objectContaining({ association: { kind: 'presentation', receipt } }) }) }));
+    expect(notesPanel.open).toBe(false); expect(readNoteDrafts()).toEqual([]);
+    expect(w.getComponent({ name: 'RightRail' }).props('activeChatSessionId')).toBe('new-chat');
   });
-  it('edits a reactive saved note through replace and binds follow-up to the selected chat', async () => {
-    const wrapper = start(); await flushPromises();
+  it('revises a saved note under its stable identity and binds follow-up to that note', async () => {
     const record = { mem_id: 'saved', type: 'note', book_id: 'startup', content: 'original', layer: 'long_term', anchor: {}, note: { association: { kind: 'presentation', receipt, title: 'Example' } } };
-    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises();
-    const editor = wrapper.findComponent({ name: 'NoteEditorPanel' });
-    expect(editor.props('content')).toBe('original');
-    editor.vm.$emit('update:content', 'edited');
-    api.replace.mockResolvedValue({ ...record, mem_id: 'edited', content: 'edited' });
-    editor.vm.$emit('save'); await flushPromises();
-    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'saved', content: 'edited', selection_context: undefined });
+    const n = noteSurface([record]), w = start(true); await flushPromises();
+    w.getComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises();
+    await n.click('继续写'); await n.body().setValue('edited'); await n.save();
+    expect(n.write).toHaveBeenCalledWith('revise', expect.objectContaining({ note_id: 'saved', base_revision: 1, value: expect.objectContaining({ content: 'edited' }) }));
+    expect(n.saved.get('saved')?.current_revision).toBe(2);
     api.agentRunCreate.mockResolvedValue({ answer: 'ok', answer_view: { parts: [] }, effects: [] });
-    wrapper.findComponent({ name: 'RightRail' }).vm.$emit('note-follow-up', 'explain', receipt, 'edited'); await flushPromises();
-    expect(api.agentRunCreate).toHaveBeenCalledWith('explain', expect.objectContaining({ note_mem_id: 'edited', presentation_follow_up: receipt }));
+    w.getComponent({ name: 'RightRail' }).vm.$emit('note-follow-up', 'explain', receipt, 'saved'); await flushPromises();
+    expect(api.agentRunCreate).toHaveBeenCalledWith('explain', expect.objectContaining({ note_mem_id: 'saved', presentation_follow_up: receipt }));
   });
 });
 
-
-describe('RN3 unified note draft', () => {
+describe('RN3 global note draft', () => {
   const turn = { turnId: 'answer-1', pending: false, outcome: { answer: '__选中的回答__' },
-    questionSelection: { lid: '1.1', quote: '提问时选择的原文', status: 'resolved', raw_quote: '提问时选择的原文',
-      resolved_quote: '提问时选择的原文', ranges: [{ lid: '1.1', range: { start: 0, end: 9 } }] } };
+    questionSelection: { lid: '1.1', quote: '提问时选择的原文', status: 'resolved', raw_quote: '提问时选择的原文', resolved_quote: '提问时选择的原文', ranges: [{ lid: '1.1', range: { start: 0, end: 9 } }] } };
   const old = { mem_id: 'old', type: 'note', book_id: 'startup', layer: 'long_term', anchor: { lid: '1.1' }, content: '> 原来混排的内容\n\n用户编辑过的文字' };
-  const editor = (w: ReturnType<typeof start>) => w.findComponent({ name: 'NoteEditorPanel' });
-  async function choose(w: ReturnType<typeof start>, label: string) {
-    await w.get('.note-transition').findAll('button').find(b => b.text() === label)!.trigger('click'); await flushPromises();
-  }
-  it('records answers directly with their fixed turn, preserving the composer and reading position', async () => {
-    const w = start(); await flushPromises();
-    const rail = w.findComponent({ name: 'RightRail' });
-    rail.vm.$emit('update:agentInput', '我的问题');
-    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
-    expect(editor(w).props('content')).toBe('');
-    expect(editor(w).props('excerpt')).toEqual({ kind: 'assistant', text: '__选中的回答__' });
+  it('records an answer with its fixed turn without changing the composer or reading position', async () => {
+    const n = noteSurface(), w = start(true); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('update:agentInput', '我的问题'); rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    expect((n.body().element as HTMLTextAreaElement).value).toBe('');
+    expect(n.notes.get('.thought-excerpt').text()).toContain('选中的回答');
+    expect(rail.props('agentInput')).toBe('我的问题'); expect(rail.props('selectedLid')).toBe('1.1');
     api.agentNew.mockResolvedValue({ ok: true, history: { ...history(), active_session_id: 'other', current: { ...history().current, id: 'other' } } });
-    rail.vm.$emit('new-chat'); await flushPromises();
-    expect(editor(w).exists()).toBe(true);
-    editor(w).vm.$emit('save'); await flushPromises();
-    expect(api.save).toHaveBeenCalledWith(expect.objectContaining({ content: '', selection_context: undefined,
-      note: { association: { kind: 'answer', session_id: 'startup-chat', turn_id: 'answer-1' }, retained_excerpt: '__选中的回答__' } }));
-    expect(rail.props('selectedLid')).toBe('1.1');
+    rail.vm.$emit('new-chat'); await flushPromises(); await n.save();
+    expect(api.prepareNote).toHaveBeenCalledWith(expect.objectContaining({ note: { association: { kind: 'answer', session_id: 'startup-chat', turn_id: 'answer-1' }, retained_excerpt: '__选中的回答__' } }));
+    expect(n.write.mock.calls[0][1].value.context).toMatchObject({ session_id: 'startup-chat', turn_id: 'answer-1' });
   });
-  it('processes another note with continue, failure, save and discard without overwriting the draft', async () => {
-    const w = start(); await flushPromises(); const rail = w.findComponent({ name: 'RightRail' });
+  it('keeps independent drafts when another note opens and retains failed revisions for retry', async () => {
+    const n = noteSurface([old]), w = start(true); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
+    rail.vm.$emit('edit-note', old); await flushPromises(); await n.click('继续写'); await n.body().setValue('第一次修改');
+    const original = readNoteDrafts()[0];
+    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    expect(readNoteDrafts()).toHaveLength(2); expect(original.value.content).toBe('第一次修改');
     rail.vm.$emit('edit-note', old); await flushPromises();
-    expect(editor(w).props('legacy')).toBe(true);
-    expect(editor(w).props('content')).toBe(old.content);
-    editor(w).vm.$emit('update:content', '第一次修改');
-    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
-    await choose(w, '继续编辑'); expect(editor(w).props('content')).toBe('第一次修改');
-    rail.vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
-    api.replace.mockRejectedValueOnce(new Error('写入失败'));
-    await choose(w, '保存并继续');
-    expect(w.find('.note-transition').exists()).toBe(true); expect(editor(w).props('content')).toBe('第一次修改');
-    api.replace.mockResolvedValue({ ...old, mem_id: 'new-id', content: '第一次修改' });
-    await choose(w, '保存并继续');
-    expect(api.replace).toHaveBeenLastCalledWith({ mem_id: 'old', content: '第一次修改', selection_context: undefined });
-    expect(editor(w).props('excerpt').kind).toBe('assistant');
-    rail.vm.$emit('edit-note', old); await flushPromises(); await choose(w, '放弃并继续');
-    expect(editor(w).props('content')).toBe(old.content);
+    expect((n.body().element as HTMLTextAreaElement).value).toBe('第一次修改');
+    n.write.mockRejectedValueOnce(new Error('写入失败')); await n.save();
+    expect(n.notes.get('[role="alert"]').text()).toContain('写入失败'); expect(original.value.content).toBe('第一次修改');
+    await n.save(); expect(n.saved.get('old')?.value.record.content).toBe('第一次修改');
+    expect(readNoteDrafts()).toHaveLength(1); openThoughtCapture(); await flushPromises();
+    await n.notes.get('[aria-label="放弃这份草稿"]').trigger('click'); expect(readNoteDrafts()).toEqual([]);
   });
-  it('keeps whitespace meaningful to Markdown when saving a legacy note', async () => {
-    const w = start(); await flushPromises();
-    const record = { ...old, content: '    const n = 1;\n\n' };
-    w.findComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises();
-    editor(w).vm.$emit('save'); await flushPromises();
-    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'old', content: record.content, selection_context: undefined });
+  it('preserves Markdown whitespace when revising an old note', async () => {
+    const record = { ...old, content: '    const n = 1;\n\n' }, n = noteSurface([record]), w = start(true); await flushPromises();
+    w.getComponent({ name: 'RightRail' }).vm.$emit('edit-note', record); await flushPromises(); await n.click('继续写');
+    await n.body().setValue(record.content + '    const m = 2;\n'); await n.save();
+    expect(n.write.mock.calls[0][1].value.content).toBe(record.content + '    const m = 2;\n');
   });
-  it('guards material switches and unload, and preserves failed text before leaving', async () => {
-    const w = start(); await flushPromises();
-    w.findComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
-    const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); expect(event.defaultPrevented).toBe(true);
-    const leave = (w.vm as unknown as { beforeNoteLeave: (label: string) => Promise<boolean> }).beforeNoteLeave('切换发布');
-    await flushPromises(); await choose(w, '继续编辑'); expect(await leave).toBe(false);
-    const exit = (w.vm as unknown as { beforeNoteLeave: (label: string) => Promise<boolean> }).beforeNoteLeave('退出登录');
-    await flushPromises(); await choose(w, '放弃并继续'); expect(await exit).toBe(true);
-    expect(editor(w).exists()).toBe(false);
-    const clean = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(clean); expect(clean.defaultPrevented).toBe(false);
+  it('keeps device-persisted drafts across material switches without a blocking leave prompt', async () => {
+    const n = noteSurface(), w = start(true); await flushPromises();
+    w.getComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    await n.body().setValue('跨材料继续写');
+    expect(await (w.vm as unknown as { beforeNoteLeave: (label: string) => Promise<boolean> }).beforeNoteLeave('切换发布')).toBe(true);
+    const draft = readNoteDrafts()[0]; expect(draft.value.content).toBe('跨材料继续写');
+    expect(Object.values(localStorage).some(value => value.includes(draft.draft_id))).toBe(true);
+    const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event); expect(event.defaultPrevented).toBe(false);
+    expect(n.write).not.toHaveBeenCalled();
   });
-  it('clears private drafts on an identity change and ignores late save failures', async () => {
+  it('hides another account’s drafts and ignores its late save failure while retaining its device copy', async () => {
     installIdentity({ user_id: 'A', csrf_token: 'a' });
     installWorkspace({ workspace_id: 'w', generation: 1, revision: 1, selected_chat: 'startup-chat', published_book_ref: { book_id: 'startup', publication_id: 'p1' }, reader: { book_id: 'startup', viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', visible_lids: ['1.1'], width: 1 }, layout: { rev: 0, open_slots: [] } } } as never);
-    const pending = deferred<unknown>(); api.save.mockReturnValue(pending.promise);
-    const w = start(); await flushPromises();
-    w.findComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
-    editor(w).vm.$emit('save'); await flushPromises();
-    installIdentity({ user_id: 'B', csrf_token: 'b' }); await flushPromises();
-    pending.reject(new Error('A 的保存错误')); await flushPromises();
-    expect(editor(w).exists()).toBe(false); expect(w.text()).not.toContain('A 的保存错误');
+    const n = noteSurface(), w = start(true); await flushPromises();
+    w.getComponent({ name: 'RightRail' }).vm.$emit('save-answer-selection', turn, '__选中的回答__'); await flushPromises();
+    await n.body().setValue('A 的想法'); const pending = deferred<any>(); n.write.mockReturnValueOnce(pending.promise);
+    await n.notes.get('.thought-actions .primary').trigger('click'); await flushPromises();
+    installIdentity({ user_id: 'B', csrf_token: 'b' }); await flushPromises(); pending.reject(new Error('A 的保存错误')); await flushPromises();
+    expect(readNoteDrafts()).toEqual([]); expect(notesPanel.open).toBe(false); expect(n.notes.text()).not.toContain('A 的保存错误');
+    installIdentity({ user_id: 'A', csrf_token: 'a' }); await flushPromises(); expect(readNoteDrafts()[0].value.content).toBe('A 的想法');
   });
-  it.each(['ReaderPane', 'RightRail'])('opens original notes from %s with read-only excerpts and atomic text editing', async name => {
-    const w = start(); await flushPromises();
+  it.each(['ReaderPane', 'RightRail'])('opens original notes from %s with a read-only excerpt and versioned body editing', async name => {
     const record = { ...old, content: '自己的话', note: { association: { kind: 'selection' }, retained_excerpt: { kind: 'original', text: '原文片段' } } };
-    const surface = w.findComponent({ name });
-    surface.vm.$emit('edit-note', record); await flushPromises();
-    expect(editor(w).props('excerpt')).toEqual(record.note.retained_excerpt);
-    editor(w).vm.$emit('update:content', ''); editor(w).vm.$emit('save'); await flushPromises();
-    expect(api.replace).toHaveBeenCalledWith({ mem_id: 'old', content: '', selection_context: undefined });
+    const n = noteSurface([record]), w = start(true); await flushPromises();
+    w.getComponent({ name }).vm.$emit('edit-note', record); await flushPromises(); expect(n.notes.get('.thought-excerpt').text()).toContain('原文片段');
+    await n.click('继续写'); await n.body().setValue(''); await n.save();
+    expect(n.write).toHaveBeenCalledWith('revise', expect.objectContaining({ note_id: 'old', base_revision: 1,
+      value: expect.objectContaining({ content: '', source: record.note }) }));
   });
 });
 
@@ -1375,19 +1397,21 @@ describe('RN3 unified note draft', () => {
 describe('RN4 note continuity', () => {
   const note = { mem_id: 'old', type: 'note', book_id: 'startup', layer: 'long_term', anchor: {}, content: '自己的想法', generated_at: '1700000000',
     note: { material: { book_id: 'startup', publication_id: null }, association: { kind: 'answer', session_id: 'original', turn_id: 'original-turn' }, retained_excerpt: { kind: 'assistant', text: '原回答摘录' }, source_bindings: [] } };
-  it('uses the replacement identity immediately and keeps a failed delete visible', async () => {
+  it('refreshes the same note after a revision and keeps a failed delete visible', async () => {
+    const n = noteSurface([note]);
     api.recall.mockResolvedValue([note]);
     const w = start(); await flushPromises(); const rail = w.getComponent({ name: 'RightRail' });
     rail.vm.$emit('edit-note', note); await flushPromises();
-    const saved = { ...note, mem_id: 'edited', content: '修订文字' };
-    api.replace.mockResolvedValue(saved); api.recall.mockResolvedValue([saved]);
-    const editor = w.getComponent({ name: 'NoteEditorPanel' }); editor.vm.$emit('update:content', saved.content); editor.vm.$emit('save'); await flushPromises();
-    expect(rail.props('contextNotes')).toEqual([saved]); expect(w.text()).toContain('笔记已保存');
+    const saved = { ...note, content: '修订文字' };
+    api.recall.mockResolvedValue([saved]);
+    await n.click('继续写'); await n.body().setValue(saved.content); await n.save();
+    expect(rail.props('contextNotes')).toEqual([saved]); expect(n.notes.text()).toContain('已保存');
+    expect(n.saved.get('old')?.current_revision).toBe(2);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     api.delete.mockRejectedValueOnce(new Error('删除失败'));
     rail.vm.$emit('delete-note', saved); await flushPromises(); expect(rail.props('contextNotes')).toEqual([saved]);
     api.delete.mockResolvedValue({ ok: true }); api.recall.mockResolvedValue([]);
-    rail.vm.$emit('delete-note', saved); await flushPromises(); expect(api.delete).toHaveBeenLastCalledWith('edited');
+    rail.vm.$emit('delete-note', saved); await flushPromises(); expect(api.delete).toHaveBeenLastCalledWith('old');
     expect(rail.props('contextNotes')).toEqual([]); expect(w.text()).toContain('笔记已删除');
   });
   it('opens the original answer and reports a deleted chat without changing notes', async () => {
@@ -1442,15 +1466,17 @@ describe('RS1 shared note selection and scope', () => {
     } } }); wrappers.push(w); return w;
   }
   it('keeps saved text and an independent editing draft untouched while using the real book title', async () => {
+    const n = noteSurface([note]);
     api.recall.mockResolvedValue([note]); api.paperMetadata.mockResolvedValue({ title: { value: '理解学习的方法' } });
     const w = startSharing(); await flushPromises();
     const rail = w.getComponent({ name: 'RightRail' }); rail.vm.$emit('edit-note', note); await flushPromises();
-    w.getComponent({ name: 'NoteEditorPanel' }).vm.$emit('update:content', '未保存的修改'); await flushPromises();
+    await n.click('继续写'); await n.body().setValue('未保存的修改'); await flushPromises();
     await rail.get('button').trigger('click'); await flushPromises();
     const share = w.getComponent({ name: 'ShareImagePanel' });
     expect(share.props('source')).toMatchObject({ parts: [{ label: '阅读笔记', text: note.content }], sources: ['《理解学习的方法》', '首章'] });
     share.vm.$emit('close'); await flushPromises();
-    expect(w.getComponent({ name: 'NoteEditorPanel' }).props('content')).toBe('未保存的修改');
+    expect((n.body().element as HTMLTextAreaElement).value).toBe('未保存的修改');
+    expect(n.write).not.toHaveBeenCalled();
     expect(rail.props('contextNotes')[0].content).toBe(note.content);
     expect(api.replace).not.toHaveBeenCalled(); expect(api.save).not.toHaveBeenCalled(); expect(api.agentRunCreate).not.toHaveBeenCalled();
   });

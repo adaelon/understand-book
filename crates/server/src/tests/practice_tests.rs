@@ -1,6 +1,7 @@
 //! Retrieval practice on the existing formal-activity path (ADR-0178, P1).
 use super::*;
 use super::tutor_loop_tests::{finish, fixture_with_book, outcome, step_with_design};
+use memory::teaching::TeachingFact;
 
 fn fixture() -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
@@ -55,6 +56,21 @@ fn hint(state: &mut AppState, id: &str, operation: &str) -> Value {
     let help = json_post(state, "/tutor/action", json!({"operation_id":operation,"delivery_ref":id,"action":"request_hint"}))["help"].clone();
     json_post(state, "/tutor/help-displayed", json!({"help_ref":help["event_id"]}));
     help
+}
+
+#[test]
+fn practice_request_crosses_tool_validation_and_host_selection() {
+    let (_root, mut state) = fixture();
+    let proposal = practice_move(PROMPT, warmup(hints()));
+    let registry = runtime::tool_registry::ToolRegistry::try_new(runtime::orchestrator::tool_specs()).unwrap();
+    registry.registration("tutor.step").unwrap().validate_arguments(&proposal.to_string()).unwrap();
+    let turn = prepare_agent_chat(&mut state, r#"{"message":"Let me practice average speed."}"#, "now")
+        .unwrap_or_else(|r| panic!("{}", r.body)).turn_ref;
+    select(&state, &turn, proposal).unwrap();
+    finish(&mut state, &turn, &outcome(None));
+    let id = format!("delivery:{}:practice", turn.turn_id);
+    json_post(&mut state, "/tutor/display", json!({"delivery_ref":id}));
+    assert_eq!(hint(&mut state, &id, "registered-hint")["hint_kind"], "in_problem");
 }
 
 #[test]
@@ -146,6 +162,9 @@ fn practice_contract_rejects_named_targets_missing_solutions_and_unordered_hints
     let missing_note = practice_move(PROMPT, warmup(json!([{"kind":"own_note","text":"Your note.","note_ref":{"note_id":"missing","revision":1}}])));
     let mut undismissable = practice_move(PROMPT, warmup(hints()));
     undismissable["move"]["actions"] = json!(["submit","revise","request_hint","reveal"]);
+    let mut no_revision = practice_move(PROMPT, warmup(hints()));
+    no_revision["move"]["actions"] = json!(["submit","request_hint","reveal","skip"]);
+    assert!(select(&state, &turn, no_revision).unwrap_err().message.contains("改答"));
     for proposal in [practice_move(PROMPT, warmup(unordered)), missing_solution, single_hint, no_assessment, missing_note, undismissable] {
         assert!(select(&state, &turn, proposal.clone()).is_err(), "{proposal}");
     }
@@ -211,6 +230,46 @@ fn a_correct_answer_releases_the_solution_and_later_revisions_count_it_as_help()
     let id = delivered(&mut state, warmup(hints()));
     let partial = json_post(&mut state, "/tutor/action", json!({"operation_id":"b1","delivery_ref":id,"action":"submit","response":"A"}));
     assert!(partial["help"].is_null(), "{partial}");
+}
+
+#[test]
+fn open_practice_releases_its_solution_after_assessment_and_restores_it_on_read() {
+    let (_root, mut state) = fixture();
+    let turn = prepare_agent_chat(&mut state, r#"{"message":"Let me practice."}"#, "now")
+        .unwrap_or_else(|r| panic!("{}", r.body)).turn_ref;
+    let mut proposal = practice_move(PROMPT, warmup(hints()));
+    proposal["move"]["assessment"]["rule"] = json!({"kind":"open","items":[{
+        "id":"time","criterion":"Uses all elapsed time, including the stop.","source_lids":["1.1"]}]});
+    select(&state, &turn, proposal).unwrap();
+    finish(&mut state, &turn, &outcome(None));
+    let id = format!("delivery:{}:practice", turn.turn_id);
+    json_post(&mut state, "/tutor/display", json!({"delivery_ref":id}));
+    let submitted = json_post(&mut state, "/tutor/action", json!({
+        "operation_id":"open-practice","delivery_ref":id,"action":"submit","response":"all time"}));
+    assert_eq!(submitted["assessment"], "unassessed");
+    assert!(submitted["help"].is_null());
+    let read = |state: &mut AppState| json_post(state, "/tutor/activities",
+        json!({"session_id":turn.session_id,"turn_id":turn.turn_id}))["activities"][0].clone();
+    assert!(read(&mut state)["help"].is_null());
+    let evaluation = prepare_agent_chat(&mut state, &json!({"message":"all time",
+        "teaching_ref":submitted["event_id"]}).to_string(), "later").unwrap_or_else(|r| panic!("{}", r.body));
+    let items = json!([{"id":"time","verdict":"supported","response_quote":"all time",
+        "sources":[{"lid":"1.1","quote":"total time"}],"reason":"Includes every part of elapsed time."}]);
+    for _ in 0..2 {
+        let result = teaching::assessment_accept(&state.private_context(), &evaluation.turn_ref,
+            submitted["event_id"].as_str().unwrap(), items.clone()).unwrap();
+        assert_eq!(result["assessment"], "correct");
+    }
+    let restored = read(&mut state);
+    assert_eq!(restored["help"]["reason"], "concluded");
+    assert!(restored["help"]["text"].as_str().unwrap().contains("rest included"));
+    let facts = state.user.learning_store().unwrap().teaching_activity_events(&id).unwrap();
+    assert_eq!(facts.iter().filter(|event| event.kind == TeachingFact::HelpDelivered).count(), 1);
+    json_post(&mut state, "/tutor/help-displayed", json!({"help_ref":restored["help"]["event_id"]}));
+    json_post(&mut state, "/tutor/action", json!({"operation_id":"open-practice-revised",
+        "delivery_ref":id,"action":"revise","response":"all time"}));
+    let revised = state.user.learning_store().unwrap().teaching_event("action:open-practice-revised").unwrap();
+    assert_eq!(revised.payload["assistance_refs"], json!(["seen:help:open-practice"]));
 }
 
 #[test]
@@ -288,10 +347,14 @@ fn both() -> EvidenceRange { EvidenceRange { start_lid: "1.1".into(), end_lid: "
 
 /// Pose one practice problem on paragraph `lid` in a new turn and deliver it.
 fn pose(state: &mut AppState, lid: &str, prompt: &str, mode: &str, distance: &str) -> Result<String, read_tools::ToolError> {
+    pose_focus(state, lid, &format!("Relationship in paragraph {lid}"), prompt, mode, distance)
+}
+
+fn pose_focus(state: &mut AppState, lid: &str, focus: &str, prompt: &str, mode: &str, distance: &str) -> Result<String, read_tools::ToolError> {
     let turn = prepare_agent_chat(state, r#"{"message":"Let me practice"}"#, "now").unwrap_or_else(|r| panic!("{}", r.body)).turn_ref;
     let mut proposal = practice_move(prompt, json!({"entry":"warmup","mode":mode,"distance":distance,"hints":hints()}));
     proposal["move"]["object_ids"] = json!([]);
-    proposal["move"]["target"] = json!({"learning_focus":format!("Relationship in paragraph {lid}"),"expected_performance":"Use it in a new situation",
+    proposal["move"]["target"] = json!({"learning_focus":focus,"expected_performance":"Use it in a new situation",
         "capability":"explanation","source_bindings":[{"start_lid":lid,"end_lid":lid}],"object_refs":[]});
     let result = step_with_design(&state.private_context(), &turn, proposal, &[], &[both()]);
     if let Err(error) = result {
@@ -319,6 +382,36 @@ fn consecutive_problems_interleave_relationships_and_retries_use_a_new_situation
     let repeated = pose(&mut state, "1.1", "Trip one: which quantities decide the whole outing? A, B or C.", "recall", "adjacent").unwrap_err();
     assert!(repeated.message.contains("新情境"), "{}", repeated.message);
     pose(&mut state, "1.1", "Trip three: which quantities decide the whole outing? A, B or C.", "recall", "adjacent").unwrap();
+}
+
+#[test]
+fn different_relationships_in_the_same_chapter_interleave_without_sharing_progression() {
+    let (_root, mut state) = two_relationships();
+    let trip = "Total time of a journey";
+    let pump = "Accumulation at a constant rate";
+    let first = pose_focus(&mut state, "1", trip, "Trip one: choose A, B or C.", "recall", "adjacent").unwrap();
+    assert_eq!(answer(&mut state, &first, "chapter-a1", r#"["A","B"]"#)["assessment"], "correct");
+    // Both relationships cite the whole chapter, as the real reader entry does.
+    pose_focus(&mut state, "1", pump, "Pump one: choose A, B or C.", "recall", "adjacent").unwrap();
+    let repeat = pose_focus(&mut state, "1", " Accumulation  at a constant rate ", "Pump two: choose A, B or C.", "recall", "adjacent").unwrap_err();
+    assert!(repeat.message.contains("交错"), "{}", repeat.message);
+    let too_easy = pose_focus(&mut state, "1", trip, "Trip two: choose A, B or C.", "recall", "adjacent").unwrap_err();
+    assert!(too_easy.message.contains("调高"), "{}", too_easy.message);
+    pose_focus(&mut state, "1", trip, "Trip three: choose A, B or C.", "recall", "far").unwrap();
+}
+
+#[test]
+fn renaming_a_formal_object_does_not_bypass_practice_interleaving() {
+    let (_root, mut state) = fixture();
+    let first = delivered(&mut state, warmup(hints()));
+    let saved = state.user.learning_store().unwrap().teaching_event(&first).unwrap();
+    let turn = prepare_agent_chat(&mut state, r#"{"message":"Let me practice again."}"#, "now")
+        .unwrap_or_else(|r| panic!("{}", r.body)).turn_ref;
+    let mut proposal = practice_move("Another journey: choose A, B or C.", warmup(hints()));
+    proposal["move"]["target"] = saved.payload["move"]["target"].clone();
+    proposal["move"]["target"]["learning_focus"] = json!("A new label for the same defined quantity");
+    let error = select(&state, &turn, proposal).unwrap_err();
+    assert!(error.message.contains("交错"), "{}", error.message);
 }
 
 #[test]

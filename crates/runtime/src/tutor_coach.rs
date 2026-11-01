@@ -66,6 +66,11 @@ pub enum CoachObservationDecision {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CoachHypothesis {
+    #[serde(default)]
+    pub understanding: memory::understanding::UnderstandingObservation,
+    #[serde(default)]
+    pub note_links: Vec<memory::understanding::NoteEvidenceLink>,
+    #[schemars(schema_with = "observation_target_schema")]
     pub target: Value,
     pub interpretation: String,
     pub teaching_implication: String,
@@ -73,6 +78,11 @@ pub struct CoachHypothesis {
     pub design_ref: Option<String>,
     #[serde(default)]
     pub block_refs: Vec<String>,
+}
+
+fn observation_target_schema(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    let schema=crate::tutor::target_input_schema();
+    serde_json::from_value(schema).expect("local teaching target schema")
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -121,6 +131,10 @@ next_step 及 alternatives[].next_step 只包含 focus、participation、可选 
 你同时负责可靠整理本轮理解观察。observation_facts 给出当前真实用户表达及表达之前已获得的帮助；对其中每个 already_interpreted 不为 true 的 fact_ref，observations 必须且只能给出一个 decision。already_interpreted=true 的事实可以省略。只能引用本次 observation_facts 中的 fact_ref，不猜测其他事实。record 表示有值得保留的暂定理解或疑问，必须有 hypothesis；no_new_information 表示没有新的理解信息，必须给出具体 reason，不写 hypothesis。普通复述、主动求证、疑问与纠正都可以支持暂定理解，不能因为尚未独立应用而漏记；纯粹“继续”“谢谢”可以不新增理解。用户在帮助后的表达要保留受助条件，不把它说成独立掌握。
 actual_delivery 是这条用户表达之后才提供的教师帮助，绝不能把它的结论写成用户此前已经会。hypothesis.interpretation 只说明原话实际支持的关系、输入之前的帮助及尚未确认的部分；teaching_implication 写由此支持的具体后续动作。target 写 learning_focus、expected_performance、capability、source_bindings（确切 start_lid/end_lid），只选 read_sources 中确实完整提供且支撑这条表达的最小正文范围；旧设计的目标范围或 needs_read 定位不代表本轮已经读取，不要照抄过宽的旧目标。媒体使用输入中真实 source_ref_ids，不虚构来源。design_ref/block_refs 只引用输入实际存在且适用的设计与块。不要输出 operation_id、fact_refs 或 supersedes，宿主绑定当前事实；后来的新表达追加新观察，不覆盖早先真实发生的理解。输入 teaching_context.status=observing 或 observation_only=true 时只整理观察，next_step.participation 采用 conclude，不安排额外课程、活动、预案、设计或补读。
 音乐伴听时先安排可听见的一种关系，给完整聆听留白；需要比较时选取实际来源绑定的两个片段及声部角色。谱面事实、录音分析、人工听辨与比喻应区分。播放器已播放、循环次数、跟谱高亮和教师解释都是提供的帮助，不是用户已听见或掌握；只有真实表达能支持理解判断。谱面合成是明确标注的示范，不能当作原录音分离声部。用户只想完整听完时不要用连续测验打断。
+understanding 必须分别填写 demonstrated（原话实际展示的目标能力）、difficulties（原话已显露的错误或具体障碍）、unconfirmed（不能据这次表达确认的部分），无依据的部分用空数组。只说“算吗，我不确定”时 demonstrated=[]、difficulties=[]，疑问放入 unconfirmed；提问意识或信心不是目标知识能力。每一项写具体关系和条件，不能只写“已掌握”或分数。正确答案但理由有误要保留理由的障碍；概念正确但算术失误只归计算；看过讲解或参考笔记后复述不得说成独立运用。后续表达若改变旧判断，按这次新证据更新同一关系的说明，历史原话保留。
+时间边界必须按 observation_facts.prior_help 判断：空数组表示此前没有记录到帮助，不能写“获得讲解后”。read_sources 是供你核验知识的材料，不表示用户看过；actual_delivery 是用户这句话之后的回复，绝不是 prior_help。即使 read_sources 恰好包含完整答案，也不能据此补造此前的帮助。用户自述参考过资料但没有回执时，说明“用户自述参考”，不编造帮助事件。
+known_focuses 提供已有关系；同一关系沿用 hypothesis.target.focus_ref 及其准确 learning_focus，新关系省略。focus_ref 只能放在 hypothesis.target 内，不能放在 hypothesis 或 observation 顶层。capability 表示要判断的知识能力，沿当前目标；提问不是名为 question 的能力，不能因表达方式改变关系的能力归组。personal_notes 提供本轮确切版本，只有这条理解实际涉及其中的关系时才填写 note_links，每项写 reference 和该版正文中的准确 quote；多条笔记逐条归因，不能把整轮判断分发给所有笔记。用户本轮明确转向别的问题时不关联原笔记。
+record 与 no_new_information 两种 observation 都必须填写自身的 reason，不能用 hypothesis.interpretation 代替。整体 reason 和 next_step.participation.reason 也分别必填。明确讨论或修正已提供笔记中的关系时，hypothesis.note_links 应保留该版原文引用，即使本次观点已与原文不同。理解的变化连接旧想法，不能因观点变化丢掉来路。
 输出简洁且可实施，通常一项推荐和零到两项条件预案足够。不要重写整章、长篇复述输入、给学习者打分或建立新的能力画像。"#;
 
 /// The host supplies a fixed job input and its managed/budgeted adapter. This

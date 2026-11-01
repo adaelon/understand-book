@@ -108,6 +108,116 @@ struct Port {
     deliveries: usize,
     commits: usize,
 }
+
+struct ReferenceRepairPort {
+    inner: Port,
+    attempts: usize,
+    correction_fails: bool,
+}
+impl ResidentStatePort for ReferenceRepairPort {
+    fn board_authoring_available(&self)->bool {true}
+    fn author_board(&mut self, request:crate::board_author::AuthorRequest, bindings:&[SourceBinding], messages:&[Message], cancellation:&crate::run_context::CancellationToken)
+        ->Result<crate::board_author::AuthorResult,ToolError> {
+        match request {
+            crate::board_author::AuthorRequest::Prepare {..} => {
+                self.attempts+=1;
+                if self.attempts==1 {return Err(crate::board_author::error("BOARD_AUTHORING_INVALID","Explanation failed the ordinary answer compiler: UNKNOWN_SOURCE_REF source_ref_typo"))}
+                if self.attempts==2 || self.correction_fails {return Err(crate::board_author::error("INVALID_BOARD",
+                    "The referenced board item is unavailable. Available in the proposed board: {\"item_id\":\"item-board-turn_run\",\"block_id\":\"example\",\"content_revision\":14}. Use this exact content reference for that content."))}
+                Ok(crate::board_author::AuthorResult::value(json!({"status":"candidate_prepared","candidate_id":"board:run:1","candidate_revision":1})))
+            },
+            crate::board_author::AuthorRequest::Preview {..} => {
+                let mut result=crate::board_author::AuthorResult::value(json!({"status":"candidate_previewed","candidate_id":"board:run:1","candidate_revision":1}));
+                result.previewed_candidate=Some("board:run:1".into());
+                result.images.push(crate::presentation_author::PreviewImage{caption:"Native preview fixture".into(),png_base64:"png".into(),candidate_id:Some("board:run:1".into()),environment_name:Some("fixture".into())});
+                Ok(result)
+            },
+            other=>self.inner.author_board(other,bindings,messages,cancellation),
+        }
+    }
+    fn submit_private<R>(&mut self,f:impl FnOnce(&mut MemoryStore)->R)->Result<R,ToolError>{self.inner.submit_private(f)}
+    fn read_live_reader<R>(&mut self,f:impl FnOnce(&Reader)->R)->Result<R,ToolError>{self.inner.read_live_reader(f)}
+    fn apply_reader<R>(&mut self,f:impl FnOnce(&mut MemoryStore,&mut Reader)->R)->Result<R,ToolError>{self.inner.apply_reader(f)}
+    fn reader_input(&mut self,book:&Book,question:&str)->crate::run_context::ReaderInputSnapshot{self.inner.reader_input(book,question)}
+}
+
+#[test]
+fn native_board_reference_repair_gets_one_recovery_after_source_correction_then_commits_or_stops() {
+    for correction_fails in [false,true] {
+        let b=book();
+        let prepare=|source:&str,item_id:&str|json!({"operation":"prepare","base_board_revision":13,
+            "blocks":[{"block_id":"example","markdown":format!("Example [[source:{source}]]")}],"drawings":[],
+            "operations":[{"kind":"insert_topic","parent_item_id":"mutable","index":0,"topic":{"item_id":"example-topic","title":"s[0] = 99",
+                "based_on":[{"item_id":item_id,"block_id":"example","content_revision":14}]}}]});
+        let mut steps=vec![
+            turn_calls(vec![call("source-typo","board.author",&prepare("source_ref_typo","item-board-turn-run").to_string())]),
+            turn_calls(vec![call("source-corrected","board.author",&prepare("source_ref_exact","item-board-turn-run").to_string())]),
+            turn_calls(vec![call("reference-repair","board.author",&prepare("source_ref_exact",if correction_fails {"item-board-turn-run-again"} else {"item-board-turn_run"}).to_string())]),
+        ];
+        if !correction_fails {
+            steps.push(turn_calls(vec![call("preview","board.author",r#"{"operation":"preview","candidate_revision":1}"#)]));
+            steps.push(turn_calls(vec![call("commit","board.author",r#"{"operation":"commit","candidate_revision":1}"#)]));
+        }
+        steps.push(turn_final(if correction_fails {"The example was not applied."} else {"The example has been saved."}));
+        let adapter=RequestPlanRecordingAdapter::new(steps,vec![]);
+        let mut port=ReferenceRepairPort{inner:Port{store:MemoryStore::open(tmp(&format!("board-reference-repair-{correction_fails}"))).unwrap(),reader:Reader::new(&b,1),candidate_text:"The checked example.".into(),deliveries:0,commits:0},attempts:0,correction_fails};
+        let snapshot=default_profile_snapshot(&b,&port.inner.store,"t0");
+        let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        // The request already consumed its expression-coach handoff, exactly
+        // as in replay-06. The test exercises the remaining tool protocol.
+        context.native_board_coach=Some(json!({"status":"ready"}));
+        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"Add the example without changing the current title","t0").unwrap();
+        assert_eq!(port.attempts,3,"the first exact reference repair must reach the host");
+        assert!(tool_result(&context.messages,"source-typo").contains("UNKNOWN_SOURCE_REF"));
+        assert!(tool_result(&context.messages,"source-corrected").contains("INVALID_BOARD"));
+        assert_eq!(port.inner.commits,usize::from(!correction_fails));
+        assert_eq!(outcome.incomplete,correction_fails);
+        if correction_fails {
+            assert_eq!(outcome.warning.as_deref(),Some("AGENT_NO_PROGRESS"),"another invalid reference cannot renew the recovery budget");
+            assert_eq!(adapter.seen_plans.borrow().len(),4,"stop after the one correction and its honest finalization");
+        } else {
+            assert!(context.inspected_presentations.contains("board:run:1"),"the successful repair still needs a preview sampled before commit");
+            assert!(tool_result(&context.messages,"commit").contains("board_part_committed"));
+        }
+    }
+}
+
+#[test]
+fn native_board_conflict_finishes_with_host_notice_without_selecting_unreviewed_tutor_content() {
+    for scenario in ["preview", "read", "page"] {
+        let b = book();
+        let conflict = json!({"current_board_revision":10,"item_ids":["mutable"],"message":"The reader renamed this topic."});
+        let (request, result) = match scenario {
+            "preview" => (json!({"operation":"preview","candidate_revision":1}),
+                json!({"status":"candidate_pending_changes","candidate_id":"board:run:1","candidate_revision":1,"conflict":conflict})),
+            "read" => (json!({"operation":"read"}),
+                json!({"status":"board_read","candidate_id":"board:run:1","candidate":{"conflict":conflict}})),
+            _ => (json!({"operation":"read","collection":"items","offset":0,"length":10}),
+                json!({"status":"board_page","candidate_id":"board:run:1","candidate_conflict":conflict,"records":[]})),
+        };
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("check-current", "board.author", &request.to_string())])],vec![]);
+        let mut port = ReadProgressPort {store:MemoryStore::open(tmp(&format!("board-conflict-notice-{scenario}"))).unwrap(),reader:Reader::new(&b,1),results:VecDeque::from([result]),reads:0};
+        let snapshot = default_profile_snapshot(&b,&port.store,"t0");
+        let mut context = RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        context.tutor=Some(json!({"status":"active","current_design":{"design_ref":"design:unreviewed"}}));
+        context.board_candidate_id=Some("board:run:1".into());
+        context.teaching_delivery_draft=Some(json!({"text":"UNREVIEWED candidate explanation","moves":[]}));
+        context.teaching_delivery_move_refs=vec!["unreviewed-move".into()];
+        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"Rename this branch and add an example","t0").unwrap();
+        assert_eq!(port.reads,1,"the persisted conflict must not prompt another authoring attempt");
+        let text=outcome.answer.as_deref().unwrap();
+        assert!(text.contains("尚未应用") && text.contains("按当前内容重新生成"));
+        assert!(!text.contains("UNREVIEWED"));
+        assert!(!outcome.incomplete);
+        assert!(outcome.teaching_delivery_move_refs.is_empty());
+        assert!(!context.tutor_resolved,"the operational notice does not claim teaching approval");
+        assert!(context.board_delivery_draft.is_none());
+        assert!(context.board_candidate_id.is_none());
+    }
+}
+
 impl ResidentStatePort for Port {
     fn board_authoring_available(&self) -> bool {
         true

@@ -171,6 +171,11 @@ pub(crate) fn dispatch(
         "read" => json!(user
             .store
             .personal_note(&parse::<NoteRef>(input.clone())?)?),
+        "thinking" => crate::note_thinking::page(user,&input)?,
+        "thinking_evidence" => crate::note_thinking::evidence(user,&input,false)?,
+        "thinking_correct" => crate::note_thinking::evidence(user,&input,true)?,
+        "thinking_retry" => crate::note_thinking::retry(user,&input,now)?,
+        "thinking_start" => crate::note_thinking::start(user,&input)?,
         "history" => {
             json!({"revisions":user.store.personal_note_history(string(&input,"note_id")?,input["before"].as_u64().and_then(|v|v.try_into().ok()),input["limit"].as_u64().unwrap_or(20) as usize)?,
             "discussions":user.store.note_discussions(string(&input,"note_id")?)})

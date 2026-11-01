@@ -4,7 +4,33 @@ use memory::boards::{BoardDocument, BoardTarget};
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
+fn superseded_candidates(user: &UserRuntime, document: &BoardDocument) -> BTreeSet<(String, String, String, u32)> {
+    let mut resolved = BTreeSet::new();
+    for session in &user.agent_history.sessions {
+        if !session.matches_scope(document.learning_workspace_id.as_deref(), &document.book_id) { continue; }
+        for turn in &session.turns {
+            if turn.status != crate::AgentAssistantStatus::Completed { continue; }
+            let Some(context) = &turn.domain.board_context else { continue; };
+            if context.follow_up.board_id != document.board_id
+                || context.learning_workspace_id != document.learning_workspace_id
+                || context.book_id != document.book_id
+                || turn.published_book_ref.as_ref().map(|reference| &reference.publication_id) != document.publication_id.as_ref() { continue; }
+            let Some(reference) = &context.follow_up.regenerate_from else { continue; };
+            let Some(candidate) = &turn.domain.board_authoring else { continue; };
+            let delivered = turn.board_delivery.as_ref().is_some_and(|delivery| delivery.board_id == document.board_id)
+                || turn.domain.board_commits.iter().any(|part| part.delivery.board_id == document.board_id);
+            // A new conflict replaces the prior suggestion with its own card.
+            // Otherwise only an actually delivered edit resolves the old card;
+            // a plain reply, failed save or cancelled attempt leaves it pending.
+            if candidate.conflict.is_none() && (!delivered || candidate.operations.is_empty()) { continue; }
+            resolved.insert((reference.session_id.clone(), reference.turn_id.clone(), reference.candidate_id.clone(), reference.candidate_revision));
+        }
+    }
+    resolved
+}
+
 pub(crate) fn read(user: &UserRuntime, document: &BoardDocument) -> Result<Value, ToolError> {
+    let superseded = superseded_candidates(user, document);
     let imported: BTreeSet<_> = document
         .items
         .iter()
@@ -68,6 +94,24 @@ pub(crate) fn read(user: &UserRuntime, document: &BoardDocument) -> Result<Value
             };
             let mut value = json!(original);
             value["board_commits"] = json!(crate::session_runtime::board_commits(original));
+            if let Some(candidate) = original.domain.board_authoring.as_ref() {
+                let confirmation = candidate.requires_confirmation && !candidate.confirmed && !candidate.dismissed && candidate.commit_selection.is_some();
+                let replaced = superseded.contains(&(session.id.clone(), original.turn_id.clone(), candidate.candidate_id.clone(), candidate.candidate_revision));
+                if original.status != crate::AgentAssistantStatus::Cancelled && !replaced && (candidate.conflict.is_some() || confirmation) {
+                    let conflict = candidate.conflict.clone().unwrap_or(Value::Null);
+                    value["pending_board_edit"] = json!({
+                        "candidate_id": candidate.candidate_id,
+                        "candidate_revision": candidate.candidate_revision,
+                        "session_id": session.id,
+                        "turn_id": original.turn_id,
+                        "requires_confirmation": confirmation,
+                        "current_board_revision": conflict["current_board_revision"],
+                        "item_ids": conflict["item_ids"],
+                        "message": conflict["message"],
+                        "summary": candidate.delivery_text,
+                    });
+                }
+            }
             turns.push(value);
         }
         if !turns.is_empty() {
@@ -107,6 +151,60 @@ mod tests {
     use crate::{board_api, AgentAssistantStatus, AgentTurnError};
 
     const NOW: &str = "2026-10-26T08:00:00Z";
+
+    #[test]
+    fn regeneration_resolves_only_the_exact_pending_card_after_delivery_or_a_new_conflict() {
+        let (_root, mut state, _) = crate::tests::board_browser_host::fixture();
+        let board = board_api::route(&state.user, &state.workspace, "create", &json!({"title":"重新生成"}), NOW).unwrap();
+        let document: BoardDocument = serde_json::from_value(board.clone()).unwrap();
+        let follow_up = serde_json::from_value(json!({"board_id":document.board_id,"board_revision":document.revision})).unwrap();
+        let frozen = board_api::freeze_follow_up(&state.user, &state.workspace, &follow_up).unwrap();
+        let mut session = state.user.agent_history.sessions[0].clone();
+        let mut original = session.turns[0].clone();
+        original.turn_id = "original-conflict".into();
+        original.status = AgentAssistantStatus::Completed;
+        original.published_book_ref = None;
+        original.board_follow_up = Some(follow_up);
+        original.domain.board_context = Some(frozen);
+        original.board_delivery = None;
+        original.domain.board_commits.clear();
+        original.domain.board_authoring = Some(serde_json::from_value(json!({
+            "board_id":document.board_id,"base_board_revision":1,"candidate_revision":2,"candidate_id":"pending-exact",
+            "items":[],"update_items":[],"operations":[],"links":[],"mappings":[],"routes":[],
+            "delivery_text":"待处理的例子","answer_parts":[],"previewed":false,"staged":false,
+            "conflict":{"current_board_revision":2,"item_ids":["topic"],"message":"人工修改已保留"}
+        })).unwrap());
+        let mut next = original.clone();
+        next.turn_id = "regenerated".into();
+        next.domain.board_context.as_mut().unwrap().follow_up.regenerate_from = Some(memory::boards::BoardRegenerationRef {
+            session_id:session.id.clone(),turn_id:original.turn_id.clone(),candidate_id:"pending-exact".into(),candidate_revision:2,
+        });
+        next.board_follow_up = Some(next.domain.board_context.as_ref().unwrap().follow_up.clone());
+        let candidate = next.domain.board_authoring.as_mut().unwrap();
+        candidate.candidate_id = "new-candidate".into();
+        candidate.conflict = None;
+        candidate.operations = vec![memory::boards::BoardEditOperation::UpdateTopic { item_id:"topic".into(), title:Some("例子".into()), style:None }];
+        let delivery = serde_json::from_value(json!({"board_id":document.board_id,"before_revision":2,"after_revision":3,
+            "item_ids":["topic"],"block_ids":[],"origin_session_id":session.id,"origin_turn_id":next.turn_id})).unwrap();
+        next.board_delivery = Some(delivery);
+        session.turns = vec![original, next];
+        state.user.agent_history.sessions = vec![session];
+        for status in [AgentAssistantStatus::Failed, AgentAssistantStatus::Cancelled, AgentAssistantStatus::PendingAssistant] {
+            state.user.agent_history.sessions[0].turns[1].status = status;
+            assert!(read(&state.user,&document).unwrap()["sessions"][0]["turns"][0]["pending_board_edit"].is_object());
+        }
+        state.user.agent_history.sessions[0].turns[1].status = AgentAssistantStatus::Completed;
+        assert!(read(&state.user,&document).unwrap()["sessions"][0]["turns"][0]["pending_board_edit"].is_null());
+        state.user.agent_history.sessions[0].turns[1].domain.board_context.as_mut().unwrap().follow_up.regenerate_from.as_mut().unwrap().candidate_revision = 1;
+        assert!(read(&state.user,&document).unwrap()["sessions"][0]["turns"][0]["pending_board_edit"].is_object());
+        state.user.agent_history.sessions[0].turns[1].domain.board_context.as_mut().unwrap().follow_up.regenerate_from.as_mut().unwrap().candidate_revision = 2;
+        state.user.agent_history.sessions[0].turns[1].board_delivery = None;
+        assert!(read(&state.user,&document).unwrap()["sessions"][0]["turns"][0]["pending_board_edit"].is_object());
+        state.user.agent_history.sessions[0].turns[1].domain.board_authoring.as_mut().unwrap().conflict = Some(json!({"message":"另一次人工修改"}));
+        let repeated = read(&state.user,&document).unwrap();
+        assert!(repeated["sessions"][0]["turns"][0]["pending_board_edit"].is_null());
+        assert!(repeated["sessions"][0]["turns"][1]["pending_board_edit"].is_object());
+    }
 
     #[test]
     fn discussion_orders_mixed_original_timestamps_before_current_chat() {

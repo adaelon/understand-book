@@ -22,7 +22,8 @@ describe('board browser transport', () => {
   });
   it('retains a local board question across a lost creation response and recovers without resubmitting', async () => {
     network.value = { ...network.value, enabled: false };
-    const context = { board_id: 'board-A', board_revision: 7, item_id: 'point-A' };
+    const context = { board_id: 'board-A', board_revision: 7, item_id: 'point-A',
+      regenerate_from: { session_id: 'source-chat', turn_id: 'conflicted-turn', candidate_id: 'candidate-A', candidate_revision: 3 } };
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
       calls.push({ url, body: JSON.parse(String(init.body)) });

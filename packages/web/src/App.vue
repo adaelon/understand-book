@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { notesOwner, pendingNoteSource, noteSourceError, editThought, keepNoteDraft, notesPanel, openPersonalNotes, personalNotes, registerThoughtContext, startThought } from './personal-notes';
+import { pendingUnderstandingAction, type UnderstandingAction, type UnderstandingReference } from './note-thinking';
 import { claimWarmupOffer, examDailyCount, MarginTracker, marginEnabled, marginQuietToday, recordMarginIgnored, setMarginEnabled, today, WARMUP_LIMIT } from './practice-pacing';
 import { t as uiText, getLocale } from './i18n';
 
@@ -271,6 +272,8 @@ import ReaderWorkspace, { type WorkspaceAuxTab } from "./components/ReaderWorksp
 import NoteEditorPanel from "./components/NoteEditorPanel.vue";
 import RightRail from "./components/RightRail.vue";
 import BoardWorkspace from './components/BoardWorkspace.vue';
+import NotesWorkspace from './components/NotesWorkspace.vue';
+import type { WorkspaceNoteImportSource, WorkspaceNoteSourceRequest } from './api';
 import { mergeBoardDeliveries, type BoardQuestionRequest, type BoardRunView, type BoardLocation } from './board-workspace';
 import type { BoardFollowUp } from './generated/BoardFollowUp';
 import type { BoardDelivery } from './generated/BoardDelivery';
@@ -1385,6 +1388,7 @@ const noteDirty = computed(() => !!noteEditor.value && (noteEditor.value.memId
   : !!noteEditor.value.content.trim() || !!noteEditor.value.excerpt));
 const noteTransition = ref<{ label: string; resolve: (proceed: boolean) => void } | null>(null);
 async function beforeNoteLeave(label = uiText('离开当前材料')): Promise<boolean> {
+  if (notesWorkspaceRef.value && !await notesWorkspaceRef.value.beforeLeave()) return false;
   if (boardWorkspaceRef.value && !await boardWorkspaceRef.value.flush()) return false;
   if (noteTransition.value || noteSaving.value) return false;
   if (!noteDirty.value) { cancelNote(); return true; }
@@ -1401,7 +1405,7 @@ async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
   noteTransition.value = null;
   pending.resolve(action !== 'continue');
 }
-defineExpose({ beforeNoteLeave, prepareExamQuestion, startExamPractice: (days: number) => startExamPractice(days) });
+defineExpose({ beforeNoteLeave, prepareExamQuestion, openWorkspaceNotes, openBoard, prepareWorkspaceNoteQuestion, openWorkspaceNoteSource, navigateWorkspaceNoteSource, workspaceNotesChanged, startExamPractice: (days: number) => startExamPractice(days) });
 function prepareExamQuestion(message: string) {
   askDraft.value = null;
   targetGoalId.value = null;
@@ -2794,6 +2798,11 @@ watch([pendingNoteSource, appSurface, () => buildWorkbenchSnapshot.value?.book_i
     }
     else if (target.video_time_ms != null) videoPane.value?.seek(target.video_time_ms);
     else if (target.lid && !await doGoto(target.lid)) throw new Error('原位置暂时无法定位，想法仍保留在这里。');
+    const understanding=pendingUnderstandingAction.value;
+    if(understanding && understanding.context.session_id===target.session_id && understanding.context.turn_id===target.turn_id) {
+      pendingUnderstandingAction.value=null;
+      await startUnderstandingAction(understanding);
+    }
     notesPanel.open = false; noteSourceError.value = '';
   } catch (failure) { noteSourceError.value = (failure as Error).message; }
   finally { pendingNoteSource.value = null; noteSourceNavigating = false; }
@@ -3922,6 +3931,81 @@ const boardPendingLocate = ref<BoardLocation | null>(initialBoardRoute?.itemId ?
   board_id: initialBoardRoute.boardId, item_id: initialBoardRoute.itemId, block_id: initialBoardRoute.blockId,
 } : null);
 const boardWorkspaceRef = ref<InstanceType<typeof BoardWorkspace>>();
+const notesWorkspaceRef = ref<InstanceType<typeof NotesWorkspace>>();
+const notesVisible = ref(false), selectedWorkspaceNote = ref<string | null>(null), notesRevision = ref(0);
+const workspaceNoteImporting = ref(false), workspaceNoteError = ref('');
+const workspaceNotePreview = ref<SourcePopupView | null>(null);
+const workspaceNoteSource = ref<WorkspaceNoteSourceRequest | null>(null);
+const workspaceNoteQuestion = ref<{ noteId: string; title: string } | null>(null);
+async function openWorkspaceNotes(noteId?: string) {
+  if (!await beforeNoteLeave()) return;
+  selectedWorkspaceNote.value = noteId ?? null;
+  notesVisible.value = true; workspaceNoteError.value = '';
+  mobileGlobalActionsOpen.value = false;
+}
+function workspaceNotesChanged() { notesRevision.value += 1; }
+async function closeWorkspaceNotes() {
+  if (notesWorkspaceRef.value && !await notesWorkspaceRef.value.beforeLeave()) return;
+  notesVisible.value = false; workspaceNotesChanged();
+}
+async function importWorkspaceNote(source: WorkspaceNoteImportSource) {
+  if (workspaceNoteImporting.value || !await beforeNoteLeave()) return;
+  workspaceNoteImporting.value = true;
+  try {
+    const note = await api.workspaceNoteImport({ source });
+    workspaceNotesChanged(); await openWorkspaceNotes(note.note_id);
+  } catch (failure) { fail(failure); }
+  finally { workspaceNoteImporting.value = false; }
+}
+async function boardFromWorkspaceNote({ noteId }: { noteId: string }) {
+  await closeWorkspaceNotes();
+  if (!notesVisible.value) openBoard({ kind: 'note', note_id: noteId });
+}
+async function prepareWorkspaceNoteQuestion(note: { noteId: string; title: string }) {
+  await closeWorkspaceNotes();
+  if (notesVisible.value) return;
+  boardVisible.value = false;
+  workspaceNoteQuestion.value = note; askDraft.value = null; targetGoalId.value = null;
+  agentInput.value = uiText('帮我梳理「{0}」，看看它和空间内哪些笔记有关，并解释原因。', [note.title]);
+  workspaceRef.value?.showAssistant('agent');
+}
+async function openWorkspaceNoteSource(request: WorkspaceNoteSourceRequest) {
+  workspaceNoteError.value = '';
+  try {
+    const source = await api.workspaceNoteSourceResolve(request);
+    // Source previews retain the original excerpt, including cross-material references.
+    workspaceNoteSource.value = request;
+    workspaceNotePreview.value = source;
+  } catch (failure) { workspaceNoteError.value = errorMessage(failure); }
+}
+async function navigateWorkspaceNoteSource(request = workspaceNoteSource.value) {
+  if (!request || (notesWorkspaceRef.value && !await notesWorkspaceRef.value.beforeLeave())) return;
+  try {
+    const source = await api.workspaceNoteSourceResolve(request);
+    if (source.stale || !source.can_open_in_reader) { workspaceNotePreview.value = source; return; }
+    if (source.media) {
+      const current = (videoPlayback.value ?? publishedVideo.value)?.publication;
+      if (!videoPane.value || current?.book_id !== source.media.publication.book_id || current.publication_id !== source.media.publication.publication_id) {
+        workspaceNotePreview.value = source; return;
+      }
+      videoPane.value.seek(mediaSourceStart(source.media));
+    } else if (source.music) {
+      if (!musicPane.value || musicContext.value?.publication.book_id !== source.music.target.publication.book_id || musicContext.value.publication.publication_id !== source.music.target.publication.publication_id) {
+        workspaceNotePreview.value = source; return;
+      }
+      musicPane.value.openSource(source.music.target);
+    } else {
+      const opened = await api.workspaceNoteSourceOpen(request);
+      if (opened.source_url) { window.open(opened.source_url, '_blank', 'noopener,noreferrer'); return; }
+      await syncViewport(true, true);
+    }
+    workspaceNotePreview.value = null; notesVisible.value = false; boardVisible.value = false;
+    workspaceRef.value?.showReader();
+  } catch (failure) {
+    workspaceNoteError.value = errorMessage(failure); workspaceNotePreview.value = null;
+    if (!notesVisible.value) fail(failure);
+  }
+}
 const boardSourceError = ref('');
 const boardSourcePreview = ref<SourcePopupView | null>(null);
 const boardSourceRequest = ref<BoardSourceRequest | null>(null);
@@ -4295,6 +4379,8 @@ async function finishResidentRun(snapshot: RunSnapshot) {
   const current = () => !disposed && context === workspaceContextKey.value
     && snapshot.descriptor.session_id === activeChatSessionId.value && (workspaceChat || runOwnsCurrentScene(snapshot));
   if (!current()) return;
+  workspaceNotesChanged();
+  if (notesVisible.value) void notesWorkspaceRef.value?.refresh();
   if (snapshot.final_view?.domain?.workspace_goal_update && network.value.workspace?.learning_workspace_id) {
     window.dispatchEvent(new CustomEvent('learning-workspace-goal-changed', { detail: { learning_workspace_id: network.value.workspace.learning_workspace_id } }));
   }
@@ -4449,7 +4535,7 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
     boardDelivery: turn.board_delivery,
     boardCommits: mergeBoardDeliveries(matchingPrevious?.turnId === turn.turn_id ? matchingPrevious.boardCommits : [], turn.board_commits),
     boardIncomplete: turn.status !== "pending_assistant" && turn.status !== "completed",
-    boardDeliveryError: turn.board_delivery_error?.message,
+    boardDeliveryError: agentFailureMessage(turn.board_delivery_error),
     boardDeliveryErrorCode: turn.board_delivery_error?.error_code,
     boardRequestId: matchingPrevious?.boardRequestId,
     turnId: turn.turn_id,
@@ -4676,7 +4762,7 @@ async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: Learni
   } finally { guidingChapter.value = false; }
 }
 /** Practice one exact saved idea against the open material (ADR-0178). */
-async function startNoteRevisit(noteRef: import('./generated/NoteRef').NoteRef) {
+async function startNoteRevisit(noteRef: import('./generated/NoteRef').NoteRef, understandingRef?:UnderstandingReference) {
   if (!learningPurposeAvailable.value || guidingChapter.value || sending.value || hasUnconfirmedReadingRequest()
     || !learningPurposeReady.value) return;
   const request = { sourceId: buildWorkbenchSnapshot.value!.book_id, sourceRevision: noteSourceFingerprint.value!,
@@ -4691,16 +4777,34 @@ async function startNoteRevisit(noteRef: import('./generated/NoteRef').NoteRef) 
       || request.sourceRevision !== noteSourceFingerprint.value) return;
     tutorPanelOpen.value = false;
     workspaceRef.value?.showAssistant('agent');
-    await submitAgentMessage('', uiText('用我这条想法练一练'), null, undefined, {
+    const turn=await submitAgentMessage('', uiText('用我这条想法练一练'), null, undefined, {
       entry_action: 'revisit_note', note_ref: noteRef,
+      ...(understandingRef?{understanding_ref:understandingRef,note_refs:[noteRef]}:{}),
       source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
       client_request_id: crypto.randomUUID(), expected_chat_head: request.head,
     });
+    if(understandingRef && turn?.turnId)personalDiscussion.value={reference:noteRef,replyTo:turn.turnId};
     await tutor.load();
     window.dispatchEvent(new Event('tutor-state-changed'));
   } catch (failure) {
     if (!disposed) banner.value = uiText('练习未开始：{0}', [errorMessage(failure)]);
   } finally { guidingChapter.value = false; }
+}
+async function startUnderstandingAction(action:UnderstandingAction) {
+  if(sending.value || agentHistoryLoading.value)throw new Error('当前回答或讨论正在加载，请稍后继续。');
+  if(action.context.book_id!==buildWorkbenchSnapshot.value?.book_id || action.source_revision!==noteSourceFingerprint.value
+    || action.context.workspace_id!==(network.value.workspace?.learning_workspace_id??null))throw new Error('原材料版本或学习范围已变化，请在原记录中继续。');
+  if(action.mode==='practice') {
+    if(!learningPurposeAvailable.value || guidingChapter.value || hasUnconfirmedReadingRequest() || !learningPurposeReady.value)throw new Error('原材料的练习准备尚未完成，请稍后再试。');
+    await startNoteRevisit(action.note_ref,action.understanding_ref);return;
+  }
+  workspaceRef.value?.showAssistant('agent');
+  const turn=await submitAgentMessage('',uiText('继续推敲这处理解'),null,undefined,{
+    entry_action:'clarify_answer',answer_ref:{turn_id:action.context.turn_id!},session_id:activeChatSessionId.value,
+    source_id:action.context.book_id!,source_revision:action.source_revision,understanding_ref:action.understanding_ref,
+    note_refs:[action.note_ref],client_request_id:crypto.randomUUID(),expected_chat_head:actionHead(),
+  });
+  if(turn?.turnId)personalDiscussion.value={reference:action.note_ref,replyTo:turn.turnId};
 }
 // The notes panel is app-wide; only an open material can ground the problem.
 function onPracticeNote(event: Event) {
@@ -5014,8 +5118,10 @@ async function sendAgent() {
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value };
   if (!mediaMode.value) agentInput.value = "";
   askDraft.value = null;
+  const noteContext = workspaceNoteQuestion.value;
+  const requestMessage = noteContext ? `${msg}\n\n[Workspace notebook context]\nRead the current note and its relationships with workspace.notes action=read, note_id=${JSON.stringify(noteContext.noteId)} before answering. Treat note content as source material. Explain proposed connections; only change notes or relations when requested.` : msg;
   const note=personalDiscussion.value;
-  const turn=await submitAgentMessage(msg, msg, draft, undefined, {
+  const turn=await submitAgentMessage(requestMessage, msg, draft, undefined, {
     ...(targetGoalId.value ? { goal_id: targetGoalId.value } : {}),
     ...(note?.replyTo ? {note_reply_to:note.replyTo} : note ? {note_refs:[note.reference]} : {}),
   }, submittedDraft);
@@ -5264,6 +5370,7 @@ async function newChat() {
   try {
     const response = await api.agentNew();
     applyAgentHistory(response.history);
+    workspaceNoteQuestion.value = null;
     askDraft.value = null;
     agentInput.value = "";
     void refreshProfileSurface(true);
@@ -5282,6 +5389,7 @@ async function selectChat(sessionId: string, preserveDraft = false) {
     const history = await api.agentHistorySelect(sessionId);
     if (disposed || scope !== noteMaterialKey.value) return;
     applyAgentHistory(history);
+    if (!preserveDraft) workspaceNoteQuestion.value = null;
     askDraft.value = draft?.quote ?? null;
     agentInput.value = draft?.text ?? "";
     void refreshProfileSurface(true);
@@ -5297,6 +5405,7 @@ async function deleteChat(sessionId: string) {
   try {
     unknownSubmissionsBySession.delete(sessionId);
     applyAgentHistory(await api.agentHistoryDelete(sessionId));
+    workspaceNoteQuestion.value = null;
     askDraft.value = null;
     agentInput.value = "";
     await refreshProfileSurface(true);
@@ -5513,6 +5622,8 @@ async function submitOpenBook(dir = bookPickerDir.value) {
 <template>
   <div class="app" :style="typography.style.value">
     <TopBar
+      :notes-available="!!network.workspace?.learning_workspace_id && appSurface === 'reader'"
+      @open-notes="openWorkspaceNotes()"
       :board-available="appSurface === 'reader'"
       @open-board="openBoard()"
       :video-mode="mediaMode"
@@ -6004,6 +6115,10 @@ async function submitOpenBook(dir = bookPickerDir.value) {
       ></div>
 
       <RightRail
+        :workspace-notes-available="!!network.workspace?.learning_workspace_id"
+        :workspace-note-importing="workspaceNoteImporting"
+        @save-workspace-note="importWorkspaceNote"
+        @open-workspace-notes="openWorkspaceNotes()"
         @add-to-board="openBoard"
         @open-board-location="openBoardLocation"
         :music-mode="musicMode"
@@ -6138,6 +6253,7 @@ async function submitOpenBook(dir = bookPickerDir.value) {
         @artifact-cited="recordIntentUsage('artifact_cited', $event)"
       >
         <template #learning-actions>
+          <span v-if="workspaceNoteQuestion" class="note-question-context">{{ uiText('围绕笔记提问：{0}', [workspaceNoteQuestion.title]) }} <button type="button" @click="workspaceNoteQuestion = null">{{ uiText('取消') }}</button></span>
           <button type="button" @click="openTutorPanel('understanding')">{{ uiText('我的理解') }}</button>
         </template>
         <template #learning-details>
@@ -6167,10 +6283,18 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     <div v-if="boardMounted && appSurface === 'reader'" v-show="boardVisible" class="board-workspace-overlay">
       <p v-if="boardSourceError" class="banner" role="alert">{{ boardSourceError }} <button @click="boardSourceError = ''">{{ uiText('关闭') }}</button></p>
       <BoardWorkspace ref="boardWorkspaceRef" :board-id="boardId" :pending-import="boardPendingImport" :pending-locate="boardPendingLocate" :run="boardRun"
+        :notes-revision="notesRevision" @open-note="openWorkspaceNotes" @notes-changed="workspaceNotesChanged"
         @follow-up="sendBoardQuestion" @retry-follow-up="retryBoardQuestion" @cancel-follow-up="cancelBoardQuestion" @located="boardPendingLocate = null"
         @board-open="boardOpened" @board-deleted="boardId = null; writeBoardRoute(null)" @close="closeBoard" @source="openBoardSource" @imported="boardPendingImport = null" />
       <BoardSourcePreview v-if="boardSourceRequest" :source="boardSourcePreview" :source-request="boardSourceRequest" :loading="boardSourceLoading" :opening="boardSourceOpening" :error="boardSourcePreviewError" :can-open-in-reader="boardSourceCanOpen" @close="closeBoardSourcePreview" @open-reader="openBoardSourceInReader" @retry="retryBoardSource" />
     </div>
+
+    <div v-if="notesVisible && appSurface === 'reader'" class="notes-workspace-overlay">
+      <p v-if="workspaceNoteError" class="banner" role="alert">{{ workspaceNoteError }} <button @click="workspaceNoteError = ''">{{ uiText('关闭') }}</button></p>
+      <NotesWorkspace ref="notesWorkspaceRef" :key="network.workspace?.learning_workspace_id || 'local'" :initial-note-id="selectedWorkspaceNote" :learning-workspace-id="network.workspace?.learning_workspace_id"
+        @close="closeWorkspaceNotes" @changed="workspaceNotesChanged" @open-board="boardFromWorkspaceNote" @ask="prepareWorkspaceNoteQuestion" @source="openWorkspaceNoteSource" />
+    </div>
+    <BoardSourcePreview v-if="workspaceNotePreview" :source="workspaceNotePreview" context="note" :can-open="workspaceNotePreview.can_open_in_reader" @open="navigateWorkspaceNoteSource()" @close="workspaceNotePreview = null" />
 
     <aside
       v-if="notePlacementState.phase !== 'idle'"
@@ -6385,6 +6509,9 @@ async function submitOpenBook(dir = bookPickerDir.value) {
   background: var(--bg, #f5f4ef);
 }
 .board-workspace-overlay > .board-workspace { flex: 1; min-height: 0; }
+.notes-workspace-overlay { position: fixed; inset: 0; z-index: 145; display: flex; flex-direction: column; background: var(--bg); }
+.notes-workspace-overlay > .notes-workspace { flex: 1; min-height: 0; }
+.note-question-context { display: block; font-size: 12px; color: var(--accent); }
 .note-transition { position: fixed; z-index: 150; bottom: 24px; right: 16px; box-sizing: border-box; width: min(380px, calc(100vw - 32px)); padding: 20px; background: var(--canvas); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 32px #0003; }
 .note-transition button { min-height: 44px; margin: 4px; }
 .note-resume { position: fixed; z-index: 120; right: 20px; bottom: 24px; padding: 12px 18px; background: var(--canvas); color: var(--accent); border: 1px solid var(--line); border-radius: 12px; }

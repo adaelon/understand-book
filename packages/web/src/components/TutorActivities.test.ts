@@ -157,6 +157,33 @@ it('assembles an answer from card picks instead of free text', async () => {
   } finally { wrapper.unmount(); }
 });
 
+it('restores released practice help and concludes a newly assessed open answer once', async () => {
+  const activity = { delivery_ref: 'open-practice', status: 'active', attempted: true, help_seen: [],
+    assessment: { status: 'unassessed' },
+    move: { move_id: 'practice', prompt: 'A cyclist rests ten minutes…', actions: ['revise', 'request_hint', 'reveal'],
+      practice: { entry: 'warmup', mode: 'recall', hint_count: 2 } } };
+  api.tutorActivities.mockResolvedValue({ activities: [activity] });
+  const onConcluded = vi.fn(); window.addEventListener('practice-concluded', onConcluded);
+  let wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
+  try {
+    await flushPromises();
+    expect(wrapper.find('.help').exists()).toBe(false);
+    api.tutorActivities.mockResolvedValue({ activities: [{ ...activity, assessment: { status: 'correct' },
+      help: { event_id: 'solution', text: 'Count all 60 minutes.', reason: 'concluded' } }] });
+    window.dispatchEvent(new Event('tutor-state-changed')); await flushPromises();
+    expect(wrapper.get('.help').text()).toContain('完整解答');
+    expect(wrapper.get('.help').text()).toContain('Count all 60 minutes.');
+    expect(onConcluded).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new Event('tutor-state-changed')); await flushPromises();
+    expect(onConcluded).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
+    wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
+    await flushPromises();
+    expect(wrapper.get('.help').text()).toContain('Count all 60 minutes.');
+    expect(onConcluded).toHaveBeenCalledTimes(1);
+  } finally { wrapper.unmount(); window.removeEventListener('practice-concluded', onConcluded); }
+});
+
 it('labels practice hints by where they point and opens the exact note or passage', async () => {
   const practice = { delivery_ref: 'practice', status: 'active', attempted: false,
     help_seen: [{ action: 'request_hint', hint_kind: 'in_problem', hint_index: 0, text: 'Look at the rest.' }],

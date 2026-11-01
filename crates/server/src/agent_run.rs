@@ -63,6 +63,13 @@ impl<P: AppStatePort> RuntimeStatePort<'_, P> {
     }
 }
 impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
+    fn workspace_notes_available(&self) -> bool { self.scope.learning_workspace_id.is_some() }
+    fn workspace_notes(&mut self, request: Value) -> Result<Value, ToolError> {
+        self.port.with_app(|state| {
+            self.scope.check_owner(state)?;
+            crate::workspace_notes_api::agent(&state.user, self.scope, request, &crate::multi_user_host::now().to_string())
+        })
+    }
     fn personal_note_context(&mut self)->Result<Value,ToolError>{
         self.port.with_app(|state|{self.scope.check_owner(state)?;crate::personal_note_context::for_turn(&mut state.user,&self.scope.chat_session_id,&self.scope.turn_id)})
     }
@@ -585,7 +592,7 @@ fn execute_observed(
             &prepared.now,
         )) {
             return ExecutionReport {
-                reply: err_reply(&error),
+                reply: err_reply(&crate::agent_failure::tool(&error)),
                 unsaved: Some(UnsavedRun {
                     book_id: prepared.scope.book_id().to_owned(),
                     session_id: prepared.turn_ref.session_id.clone(),
@@ -602,7 +609,7 @@ fn execute_observed(
         }
         if let Err(error) = board_delivery::ensure_saved(&mut state.user, &prepared.turn_ref, &prepared.now) {
             return ExecutionReport {
-                reply: err_reply(&error),
+                reply: err_reply(&crate::agent_failure::tool(&error)),
                 unsaved: Some(UnsavedRun {
                     book_id: prepared.scope.book_id().to_owned(),
                     session_id: prepared.turn_ref.session_id.clone(),
@@ -614,17 +621,17 @@ fn execute_observed(
             };
         }
         if let Err(error) = if prepared.scope.book.is_some() {teaching::record_delivery(&prepared.scope.private_context(state), &prepared.turn_ref, &prepared.now)} else {Ok(())} {
-            return ExecutionReport::saved(err_reply(&error));
+            return ExecutionReport::saved(err_reply(&crate::agent_failure::tool(&error)));
         }
         if let Err(error) = session_runtime::link_teaching(&mut state.user, &prepared.turn_ref, &prepared.now) {
-            return ExecutionReport::saved(err_reply(&error));
+            return ExecutionReport::saved(err_reply(&crate::agent_failure::tool(&error)));
         }
         if prepared.scope.check_workspace(state).is_ok()
         {
             state.workspace.messages = persisted_messages;
         }
         if let Err(error) = reconcile_agent_history_review_jobs(state, &prepared.now) {
-            return ExecutionReport::saved(err_reply(&error));
+            return ExecutionReport::saved(err_reply(&crate::agent_failure::tool(&error)));
         }
         ExecutionReport::saved(match result {
             Ok(outcome) => {
@@ -634,13 +641,13 @@ fn execute_observed(
                     if turn.board_follow_up.is_some() {
                         value["board_follow_up"] = json!(turn.board_follow_up);
                         value["board_delivery"] = json!(turn.board_delivery);
-                        value["board_delivery_error"] = json!(turn.board_delivery_error);
+                        value["board_delivery_error"] = json!(turn.board_delivery_error.as_ref().map(crate::agent_failure::turn));
                         value["board_commits"] = json!(session_runtime::board_commits(turn));
                     }
                 }
                 ok_json(&value)
             },
-            Err(error) => err_reply(&error),
+            Err(error) => err_reply(&crate::agent_failure::tool(&error)),
         })
     });
     if let Some(run) = observation_run {

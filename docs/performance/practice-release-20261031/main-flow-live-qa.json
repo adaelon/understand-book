@@ -1,0 +1,75 @@
+{
+  "status": "passed",
+  "production_mutated": false,
+  "learner": "simulated answers exercise the real model and host; not evidence of human learning",
+  "budget_micro_cny": 5746181,
+  "cases": [
+    {
+      "case": "correct_without_hints",
+      "delivery_ref": "delivery:turn_01a18f9d-d763-7240-b0b4-6f07df69d894:practice-measured-buoyancy",
+      "assessment": "correct"
+    },
+    {
+      "case": "correct_with_hints",
+      "delivery_ref": "delivery:turn_01a18fa0-4044-7261-a456-09765564658b:practice-displacement-weight",
+      "hints": [
+        "in_problem",
+        "structure"
+      ],
+      "assessment": "correct"
+    },
+    {
+      "case": "wrong_then_revise",
+      "delivery_ref": "delivery:turn_01a18fc1-9959-7412-82df-b767fbaa30fd:practice-solid-vs-hollow",
+      "first": "incorrect",
+      "revised": "correct"
+    },
+    {
+      "case": "skip_then_explain",
+      "delivery_ref": "delivery:turn_01a18fc5-2a68-72f3-94c3-a61392f66ffb:practice-displaced-total-weight",
+      "explanation_turn": "turn_01a18fc6-7075-7733-9838-14fca099030f"
+    },
+    {
+      "case": "note_revisit_and_reveal",
+      "delivery_ref": "delivery:turn_01a18fc7-6fee-7503-aace-c204cee94160:practice-note-hollow-box",
+      "exact_note_quote": true,
+      "solution_visible": true
+    }
+  ],
+  "validation_segments": [
+    {
+      "cases": [
+        "correct_without_hints",
+        "correct_with_hints"
+      ],
+      "source": "post-interleave-revise-failure.json",
+      "scope": "Passed before enforcing the revise action; retained because the hint and correct-answer paths are unchanged."
+    },
+    {
+      "cases": [
+        "wrong_then_revise",
+        "skip_then_explain",
+        "note_revisit_and_reveal"
+      ],
+      "scope": "New problems under the final contract requiring revise."
+    }
+  ],
+  "session_id": "chat-01a18fc1-994e-7590-8732-c5baa4ac99c0",
+  "workspace_id": "ws-01a18fc1-993f-7e02-99d4-12dee2e1af24",
+  "book": {
+    "book_id": "steel-warship-buoyancy",
+    "publication_id": "01a18b15-50e0-76b1-8266-5586050ec579"
+  },
+  "current_turn": "turn_01a18fc7-6fee-7503-aace-c204cee94160",
+  "finished_at_utc": "2026-10-31T02:28:02.536704+00:00",
+  "remaining_segment_model_calls": 42,
+  "model_calls": 99,
+  "provider_cost_micro_cny": 9417258,
+  "purposes": [
+    "memory_review",
+    "outer",
+    "practice_check",
+    "tutor_assessment",
+    "tutor_coach"
+  ]
+}

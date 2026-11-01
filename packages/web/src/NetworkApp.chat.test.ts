@@ -4,12 +4,13 @@ import { nextTick } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import NetworkApp from './NetworkApp.vue';
 import { api } from './api';
+import { discardNoteDraft, emptyNoteContent, keepNoteDraft, notesPanel, readNoteDrafts } from './personal-notes';
 import { installIdentity, installWorkspace, network, type NetworkWorkspace } from './network-context';
 import { workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
   'videoPlayback', 'videoContext', 'musicContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
-  'recall', 'save', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
+  'recall', 'prepareNote', 'save', 'profileMemory', 'tutorState', 'tutorReadiness', 'agentRunCreate', 'agentRun',
 ].map(name => [name, vi.fn()])));
 vi.mock('./api', async original => {
   const actual = await original<typeof import('./api')>();
@@ -19,15 +20,18 @@ vi.mock('./components/PdfReaderPane.vue', () => ({ default: { name: 'PdfReaderPa
 
 let workspace: NetworkWorkspace;
 let requests: string[];
+let restoredFailure: string | undefined;
 let wrapper: ReturnType<typeof mount>;
 const history = () => ({ active_session_id: workspace.selected_chat ?? '', sessions: [], current: {
   id: workspace.selected_chat ?? '', learning_workspace_id: workspace.learning_workspace_id, book_id: 'book', goals: [], turns: workspace.selected_chat === 'old' ? [{
-    turn_id: 'old-turn', user: '原对话', status: 'completed', answer: '旧回答', effect_labels: [],
+    turn_id: 'old-turn', user: '原对话', status: restoredFailure ? 'failed' : 'completed', answer: restoredFailure ? null : '旧回答', effect_labels: [],
+    error: restoredFailure ? { error_code: restoredFailure, category: 'validation', message: '$.move.delivery_text is required' } : undefined,
+    board_delivery_error: restoredFailure ? { error_code: restoredFailure, category: 'validation', message: '$.move.board_candidate_revision is required' } : undefined,
   }] : [],
 } });
 
 beforeEach(() => {
-  vi.resetAllMocks(); requests = [];
+  vi.resetAllMocks(); requests = []; restoredFailure = undefined;
   installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
   workspace = { workspace_id: 'workspace', generation: 1, revision: 1, selected_chat: 'old',
     published_book_ref: { book_id: 'book', publication_id: 'publication' }, reader: {
@@ -64,7 +68,7 @@ beforeEach(() => {
   }));
 });
 afterEach(() => {
-  wrapper?.unmount(); vi.restoreAllMocks(); vi.unstubAllGlobals();
+  wrapper?.unmount(); readNoteDrafts().forEach(discardNoteDraft); vi.restoreAllMocks(); vi.unstubAllGlobals();
   network.value = { ...network.value, enabled: false, identity: null, workspace: null };
   sessionStorage.clear(); localStorage.clear();
 });
@@ -73,6 +77,14 @@ async function start() {
   await flushPromises();
 }
 function rail() { return wrapper.getComponent({ name: 'RightRail' }); }
+
+it.each(['TOOL_ARGUMENTS_INVALID', 'FUTURE_INTERNAL_ERROR'])('restores %s history with a public failure message', async code => {
+  restoredFailure = code;
+  await start();
+  expect(rail().props('chat')[0].error).toBe('这次回答未能完成，请重试。');
+  expect(rail().props('chat')[0].boardDeliveryError).toBe('这次回答未能完成，请重试。');
+  expect(JSON.stringify(rail().props('chat'))).not.toContain('$.move');
+});
 
 it('restores a workspace chat while reading a different material from its first turn', async () => {
   workspace = { ...workspace, reader: { ...workspace.reader, book_id: 'second-book' }, learning_workspace_id: 'learning-A', published_book_ref: { book_id: 'second-book', publication_id: 'p2' } };
@@ -218,27 +230,21 @@ it('offers a local history retry if chat creation succeeds but its history canno
 });
 
 
-it('RN3 preserves an answer draft across network chat changes and processes it before logout', async () => {
+it('RN3 retains an owner-scoped device draft across chat changes and logout', async () => {
+  reads.prepareNote.mockResolvedValue({ ...emptyNoteContent({ book_id: 'book', publication_id: 'publication', session_id: 'old', turn_id: 'old-turn' }),
+    source: { association: { kind: 'answer', session_id: 'old', turn_id: 'old-turn' }, retained_excerpt: { kind: 'assistant', text: '原回答' } } });
   wrapper = mount(NetworkApp, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { App: false,
     TopBar: { template: '<div><slot name="account" /></div>' } } } });
   await flushPromises();
   rail().vm.$emit('save-answer-selection', { turnId: 'old-turn', pending: false, outcome: { answer: '原回答' } }, '原回答');
   await flushPromises();
-  const editor = () => wrapper.getComponent({ name: 'NoteEditorPanel' });
-  editor().vm.$emit('update:content', '我的想法');
+  const draft = readNoteDrafts()[0]; draft.value.content = '我的想法'; keepNoteDraft(draft);
   rail().vm.$emit('new-chat'); await flushPromises();
-  expect(editor().props('content')).toBe('我的想法');
-  const logout = () => wrapper.findAll('button').find(b => b.text() === '退出登录')!;
-  await logout().trigger('click'); await flushPromises();
-  expect(requests).not.toContain('/api/auth/logout');
-  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '继续编辑')!.trigger('click'); await flushPromises();
-  expect(network.value.identity?.user_id).toBe('reader');
-  await logout().trigger('click'); await flushPromises();
-  reads.save.mockRejectedValueOnce(new Error('写入失败'));
-  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '保存并继续')!.trigger('click'); await flushPromises();
-  expect(requests).not.toContain('/api/auth/logout'); expect(editor().props('content')).toBe('我的想法');
-  reads.save.mockResolvedValue({ mem_id: 'saved' });
-  await wrapper.get('.note-transition').findAll('button').find(b => b.text() === '保存并继续')!.trigger('click'); await flushPromises();
-  expect(reads.save).toHaveBeenLastCalledWith(expect.objectContaining({ note: { association: { kind: 'answer', session_id: 'old', turn_id: 'old-turn' }, retained_excerpt: '原回答' } }));
-  expect(requests).toContain('/api/auth/logout'); expect(network.value.identity).toBeNull();
+  expect(readNoteDrafts()[0].value).toMatchObject({ content: '我的想法', context: { session_id: 'old', turn_id: 'old-turn' } });
+  expect(reads.prepareNote).toHaveBeenCalledWith(expect.objectContaining({ note: { association: { kind: 'answer', session_id: 'old', turn_id: 'old-turn' }, retained_excerpt: '原回答' } }));
+  await wrapper.findAll('button').find(b => b.text() === '退出登录')!.trigger('click'); await flushPromises();
+  expect(requests).toContain('/api/auth/logout'); expect(network.value.identity).toBeNull(); expect(readNoteDrafts()).toEqual([]);
+  installIdentity({ user_id: 'different-reader', csrf_token: 'other' }); expect(readNoteDrafts()).toEqual([]);
+  installIdentity({ user_id: 'reader', csrf_token: 'csrf' }); expect(readNoteDrafts()[0].value.content).toBe('我的想法');
+  expect(reads.save).not.toHaveBeenCalled(); notesPanel.open = false;
 });

@@ -1,0 +1,36 @@
+{
+  "status": "published",
+  "release": "/opt/understand-book/releases/note-thinking-20261101",
+  "backup": "/opt/understand-book/backups/note-mobile-controls-20261101T080525Z",
+  "source_files": [
+    "packages/web/src/components/PersonalNotes.vue",
+    "packages/web/src/note-launcher.ts"
+  ],
+  "new_assets": [
+    "reader-CxfpjFGf.css",
+    "webviewWindow-LeuPI4vI.js",
+    "reader-CD5KhATP.js",
+    "LocalPdfReader-BZ0hBzQS.js"
+  ],
+  "css_resources_checked": 458,
+  "pid_before": "70237",
+  "backend_restarted": false,
+  "data_migration": false,
+  "public_static_verification": {
+    "routes": [
+      "/",
+      "/index.html",
+      "/admin/",
+      "/admin/login",
+      "/admin/users",
+      "/admin/invites",
+      "/admin/usage",
+      "/admin/monitor",
+      "/admin/workspace-releases",
+      "/admin/operator-builds"
+    ],
+    "static_files": 13
+  },
+  "pid_after": "70237",
+  "at_utc": "2026-11-01T08:05:26.642596+00:00"
+}

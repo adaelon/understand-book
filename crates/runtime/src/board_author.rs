@@ -1,7 +1,7 @@
 //! Native board candidates share the ordinary answer compiler and final-turn boundary.
 use memory::boards::{
     BoardContentRef, BoardExplanationMapping, BoardGraphic, BoardLink, BoardPosition, BoardRoute,
-    BoardSize,
+    BoardSize, BoardEditOperation,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -56,6 +56,7 @@ pub enum ReadCollection {
     Links,
     Mappings,
     Routes,
+    MindMaps,
     UnderstandingItems,
     UnderstandingRefs,
     FormalConditionRefs,
@@ -65,6 +66,7 @@ pub enum ReadCollection {
     CandidateLinks,
     CandidateMappings,
     CandidateRoutes,
+    CandidateOperations,
 }
 
 impl ReadCollection {
@@ -76,6 +78,7 @@ impl ReadCollection {
             Self::Links => "/board/links",
             Self::Mappings => "/board/mappings",
             Self::Routes => "/board/routes",
+            Self::MindMaps => "/board/mind_maps",
             Self::UnderstandingItems => "/understanding_items",
             Self::UnderstandingRefs => "/understanding_refs",
             Self::FormalConditionRefs => "/formal_condition_refs",
@@ -85,6 +88,7 @@ impl ReadCollection {
             Self::CandidateLinks => "/candidate/links",
             Self::CandidateMappings => "/candidate/mappings",
             Self::CandidateRoutes => "/candidate/routes",
+            Self::CandidateOperations => "/candidate/operations",
         }
     }
 }
@@ -127,6 +131,7 @@ pub fn read_page(
     let records = if matches!(&collection, ReadCollection::Layout) {
         body["board"]["items"].as_array().into_iter().flatten().map(|item| {
             json!({"item_id":item["item_id"],"title":item["title"],"kind":item["target"]["kind"],
+                "note_id":item["target"]["note_id"],"missing":item["target"]["missing"],
                 "position":item["position"],"size":item["size"],"reply_to_item_id":item["reply_to_item_id"],
                 "block_id":item["block_id"],"explanation_block_ids":item["explanation_blocks"].as_array().into_iter().flatten()
                     .map(|block|block["block_id"].clone()).collect::<Vec<_>>()})
@@ -157,6 +162,7 @@ pub fn read_page(
         json!({"status":"board_page","board_id":body["board"]["board_id"],"board_revision":revision,
         "reserved_answer_item_id":body["reserved_answer_item_id"],"proposed_content_revision":body["proposed_content_revision"],
         "answer_position":body["answer_position"],"answer_size":body["answer_size"],
+        "candidate_id":body["candidate_id"],"candidate_change":body["candidate_change"],"candidate_conflict":body["candidate"]["conflict"],
         "candidate_revision":body["candidate_revision"],"collection":collection,"offset":offset,"length":length,
         "total":records.len(),"records":records[offset..end],"complete":end==records.len(),
         "next_calls":if end<records.len() {vec![json!({"name":"board.author","arguments":next})]} else {vec![]}}),
@@ -253,6 +259,7 @@ pub(crate) fn project_read(
                 ("candidate_links", "/candidate/links"),
                 ("candidate_mappings", "/candidate/mappings"),
                 ("candidate_routes", "/candidate/routes"),
+                ("candidate_operations", "/candidate/operations"),
             ] {
                 if raw
                     .pointer(path)
@@ -269,6 +276,7 @@ pub(crate) fn project_read(
             ("links", "/board/links"),
             ("mappings", "/board/mappings"),
             ("routes", "/board/routes"),
+            ("mind_maps", "/board/mind_maps"),
             ("understanding_items", "/understanding_items"),
             ("understanding_refs", "/understanding_refs"),
             ("formal_condition_refs", "/formal_condition_refs"),
@@ -293,7 +301,7 @@ pub(crate) fn project_read(
                 "reserved_answer_item_id":raw["reserved_answer_item_id"],"candidate_revision":raw["candidate_revision"],
                 "proposed_content_revision":raw["proposed_content_revision"],"answer_position":raw["answer_position"],"answer_size":raw["answer_size"],
                 "notice":"The full board did not fit. Start with layout, then read the needed collections at this board_revision. No content record was delivered.",
-                "collections":["committed","layout","items","links","mappings","routes","understanding_items","understanding_refs","formal_condition_refs","candidate_items","candidate_blocks","candidate_updates","candidate_links","candidate_mappings","candidate_routes"],
+                "collections":["committed","layout","items","links","mappings","routes","mind_maps","understanding_items","understanding_refs","formal_condition_refs","candidate_items","candidate_blocks","candidate_updates","candidate_links","candidate_mappings","candidate_routes","candidate_operations"],
                 "next_calls":[call("layout",0)]});
             if bytes(&body) > limit {
                 return ToolResultDraft {
@@ -357,6 +365,11 @@ pub enum AuthorRequest {
         blocks: Vec<ExplanationBlock>,
         drawings: Vec<Drawing>,
         #[serde(default)]
+        operations: Vec<BoardEditOperation>,
+        /// Retained content actually used to decide this edit, beyond its write set.
+        #[serde(default)]
+        read_item_ids: Vec<String>,
+        #[serde(default)]
         update_drawings: Vec<Drawing>,
         #[serde(default)]
         layout: Vec<LayoutUpdate>,
@@ -382,6 +395,8 @@ pub enum AuthorRequest {
         blocks: Vec<ExplanationBlock>,
         #[serde(default)]
         drawings: Vec<Drawing>,
+        #[serde(default)]
+        operations: Option<Vec<BoardEditOperation>>,
     },
     Deliver {
         candidate_revision: u32,
@@ -466,7 +481,7 @@ impl ReviewPreview {
         Ok(json!({"status":"inspected_candidate","board_id":candidate["board_id"],
             "base_board_revision":candidate["base_board_revision"],"candidate_revision":candidate["candidate_revision"],
             "delivery_text":candidate["delivery_text"],"items":items("items"),"update_items":items("update_items"),
-            "links":candidate["links"],"mappings":candidate["mappings"],"routes":candidate["routes"],
+            "links":candidate["links"],"mappings":candidate["mappings"],"routes":candidate["routes"],"operations":candidate["operations"],
             "author_preview_observations":[self.report],
             "delivery_boundary":"Proposed native board, actually previewed and inspected; not yet committed. The author has observed this exact diagram and explanation. The runtime requires the selected text and previewed revision to match at delivery."}))
     }
@@ -548,6 +563,7 @@ pub fn spec() -> crate::ToolSpec {
     let content = json!({"type":"object","properties":{"item_id":{"type":"string","description":"For a block in this prepare, copy read.reserved_answer_item_id. A block_id is not an item_id. For retained content, copy its observed item_id."},"block_id":{"type":["string","null"],"description":"The explicit blocks[].block_id within the answer item, or an exact observed retained block ID; null addresses the whole item."},"content_revision":{"type":"integer","minimum":1,"description":"For content created by this prepare, copy read.proposed_content_revision (base_board_revision + 1), not the current board revision or candidate revision. Retained references keep their observed content_revision."}},"required":["item_id","block_id","content_revision"],"additionalProperties":false});
     let visual = json!({"oneOf":[
         {"type":"object","properties":{"kind":{"enum":["item"]},"item_id":{"type":"string"}},"required":["kind","item_id"],"additionalProperties":false},
+        {"type":"object","properties":{"kind":{"enum":["topic_edge"]},"child_item_id":{"type":"string"}},"required":["kind","child_item_id"],"additionalProperties":false},
         {"type":"object","properties":{"kind":{"enum":["link"]},"link_id":{"type":"string"}},"required":["kind","link_id"],"additionalProperties":false},
         {"type":"object","properties":{"kind":{"enum":["presentation_anchor"]},"item_id":{"type":"string"},"reference":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"],"additionalProperties":false},"anchor_id":{"type":"string"}},"required":["kind","item_id","reference","anchor_id"],"additionalProperties":false}
     ]});
@@ -562,6 +578,7 @@ pub fn spec() -> crate::ToolSpec {
     let scene_receipt = json!({"type":"object","properties":{"session_id":{"type":"string"},"turn_id":{"type":"string"},"reference":presentation_ref,"state_revision":{"type":"integer","minimum":1},"saved_state_ref":{"type":"string"}},"required":["session_id","turn_id","reference","state_revision","saved_state_ref"],"additionalProperties":false});
     let source = json!({"description":"Copy the exact source object from catalog. Historical answers and presentations resolve their original publication automatically.","oneOf":[
         json!({"type":"object","properties":{"kind":{"enum":["personal_note"]},"reference":{"type":"object","properties":{"note_id":{"type":"string","minLength":1},"revision":{"type":"integer","minimum":1}},"required":["note_id"],"additionalProperties":false}},"required":["kind","reference"],"additionalProperties":false}),
+        json!({"type":"object","properties":{"kind":{"enum":["note"]},"note_id":{"type":"string"}},"required":["kind","note_id"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["artifact"]},"artifact":{"enum":["pass1","discourse","book_structure"]},"entry_id":{"type":"string"},"source_revision":{"type":"string"}},"required":["kind","artifact","entry_id","source_revision"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["answer"]},"session_id":{"type":"string"},"turn_id":{"type":"string"}},"required":["kind","session_id","turn_id"],"additionalProperties":false}),
         json!({"type":"object","properties":{"kind":{"enum":["presentation"]},"session_id":{"type":"string"},"turn_id":{"type":"string"},"reference":presentation_ref,"receipt":scene_receipt},"required":["kind","session_id","turn_id","reference"],"additionalProperties":false}),
@@ -570,7 +587,7 @@ pub fn spec() -> crate::ToolSpec {
     ]});
     let drawing = json!({"type":"object","properties":{"item_id":{"type":"string"},"title":{"type":"string"},"position":point,"size":size,"graphic":graphic,"based_on":{"type":"array","items":content}},"required":["item_id","title","position","size","graphic"],"additionalProperties":false});
     let extra = json!({
-            "kind":{"enum":["personal_note","answer","presentation","prebuild","understanding"]},
+            "kind":{"enum":["personal_note","note","answer","presentation","prebuild","understanding"]},
             "query":{"type":"string","description":"Search the full permitted source contents before pagination, including answers beyond the first page."},
             "after":{"type":"integer","minimum":0},
             "limit":{"type":"integer","minimum":1,"maximum":50},
@@ -578,9 +595,9 @@ pub fn spec() -> crate::ToolSpec {
             "source":source,
             "imports":{"type":"array","items":{"type":"object","properties":{"source":source,"published_book_ref":publication,"item_id":{"type":"string"},"position":point,"size":size},"required":["source","item_id","position","size"],"additionalProperties":false},"description":"Resolve exact original sources into the private candidate; full content and provenance are server owned."},
             "update_drawings":{"type":"array","items":drawing,"description":"Explicitly replace native graphic/text/geometry of existing drawings using their exact item_id, including visual refinements to an existing board. Preserve source meaning and provenance; prior revisions stay readable."},
-            "layout":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"position":point,"size":size},"required":["item_id","position","size"],"additionalProperties":false},"description":"Move or resize retained items without changing their saved content. Use aligned groups and generous gaps so relationships and labels stay readable."}
+            "layout":{"type":"array","items":{"type":"object","properties":{"item_id":{"type":"string"},"position":point,"size":size},"required":["item_id","position","size"],"additionalProperties":false},"description":"Move or resize retained items or this prepare's answer/drawings without changing content. To move the new explanation card away from a topic map after preview, use read.reserved_answer_item_id here. Topic geometry is derived; move its map with set_mind_map instead. Use aligned groups and generous gaps so relationships and labels stay readable."}
     });
-    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this accepted board when a visual relationship helps the current request. A short explanation, correction or clarification can be answered directly without authoring a diagram. Prioritize the host-selected explanation block over the rest of a long previous answer. When drawing is useful, read the relevant board layout and exact sources. Call plan with the concrete relationship before preparing new visuals or changing the explanation strategy; consume its coach handoff in the next sampling before drawing. Plan is run-local and reused by later prepare/revise/preview calls. Layout, font or position-only adjustments do not need a new plan. Search catalog or workspace.records.read only when relevant existing material or original conversations are needed. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. State the current learning workspace scope and never fabricate history or understanding. Choose the visual structure that explains the requested relationship. Use native drawings with text, shapes, paths and labelled links for flowcharts, causal networks, comparisons, spatial groupings and other freeform diagrams; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
+    let mut spec = crate::ToolSpec { name: "board.author".into(), description: "Use this accepted board when a visual relationship helps the current request. A short explanation, correction or clarification can be answered directly without authoring a diagram. Prioritize the host-selected explanation block over the rest of a long previous answer. When drawing is useful, read the relevant board layout and exact sources. Call plan with the concrete relationship before preparing new visuals or changing the explanation strategy; consume its coach handoff in the next sampling before drawing. Plan is run-local and reused by later prepare/revise/preview calls. Layout, font or position-only adjustments do not need a new plan. Search catalog or workspace.records.read only when relevant existing material or original conversations are needed. catalog searches all permitted sources before returning a bounded page; source_read returns an exact original snapshot and prepare imports resolves that same source identity. Workspace notes use kind note and stable note_id; their current text and shared relations are resolved from workspace.notes. Use workspace.notes relation_save to connect two note cards with a label and reason, never a duplicate native board link. Projected note_relation_id links are read-only and cannot be route/mapping targets. State the current learning workspace scope and never fabricate history or understanding. Choose the visual structure that explains the requested relationship. Use native drawings with text, shapes, paths and labelled links for flowcharts, causal networks, comparisons, spatial groupings and other freeform diagrams; circle/highlight with paths; connect explanations to visuals with mappings and progressive focus/reveal routes. Update existing native drawings through update_drawings and retained geometry through layout while keeping original answers and learner quotes immutable. Read the accepted persistent board, prepare native drawings with stable explanation blocks and a local teaching route, inspect the real Reader BoardCanvas preview, then stage exactly that observed candidate for the final successful answer. read returns the reserved answer item ID, current content revision and exact retained knowledge/understanding snapshots. Each prepare replaces the candidate and invalidates its preview. New content references use base_board_revision+1; existing references retain their exact observed revision. Every explanation block has an explicit stable block_id; never infer blocks from Markdown positions. Cite new source claims only with this turn's observed source.present references. Drawing based_on references identify formal conditions or actual learner evidence; they do not establish mastery. Do not fabricate learner quotes or understanding records; use tutor.step evidence for real user expressions. Preview images must be inspected in a later model sampling before deliver. Use commit to publish one complete observed part and keep working. A committed part survives cancellation or failure; read returns its exact receipts and the next reserved answer item ID. After any parts are committed, explicitly commit every additional part and finish with references to the saved parts. Deliver keeps the whole-turn staging path only when no parts have been committed. If the board changes, read and prepare/preview again. Existing presentations use declared real anchor IDs and exact PresentationRef; this tool never changes their experimental state.".into(), parameters: json!({
         "type":"object","properties":{
             "operation":{"enum":["read","catalog","source_read","plan","prepare","revise","preview","deliver","commit"]},
             "focus":{"type":"string","minLength":1,"description":"The concrete relationship the reader should understand, especially the selected explanation's unresolved point. Call plan before designing new visuals or changing the explanation strategy."},
@@ -588,7 +605,7 @@ pub fn spec() -> crate::ToolSpec {
             "base_board_revision":{"type":"integer","minimum":1},
             "candidate_revision":{"type":"integer","minimum":1},
             "presentations":{"type":"array","items":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer","minimum":1}},"required":["presentation_id","revision"],"additionalProperties":false},"description":"Exact presentation versions already delivered by presentation.author in this run. They become independent retained board items in this part; do not invent Markdown presentation markers."},
-            "collection":{"enum":["committed","layout","items","links","mappings","routes","understanding_items","understanding_refs","formal_condition_refs","candidate_items","candidate_blocks","candidate_updates","candidate_links","candidate_mappings","candidate_routes"],"description":"Read complete records from one collection. layout returns every item's identity and geometry without long retained answer text. Follow next_calls to recover omitted collections."},
+            "collection":{"enum":["committed","layout","items","links","mappings","routes","mind_maps","understanding_items","understanding_refs","formal_condition_refs","candidate_items","candidate_blocks","candidate_updates","candidate_links","candidate_mappings","candidate_routes","candidate_operations"],"description":"Read complete records from one collection. layout returns every item's identity and geometry without long retained answer text. Follow next_calls to recover omitted collections."},
             "offset":{"type":"integer","minimum":0},
             "length":{"type":"integer","minimum":1,"maximum":50},
             "board_revision":{"type":"integer","minimum":1,"description":"Pin continuation pages to the observed board revision; read again after a conflict."},
@@ -611,6 +628,36 @@ pub fn spec() -> crate::ToolSpec {
     spec.description.push_str(" Compose around a clear visual model using shapes, spatial groups and labelled links. Give related nodes consistent alignment, generous whitespace and a small muted color palette. Keep node headings short and supporting text sparse; allocate enough space for ordinary headings around 22-26 px and body text around 16-19 px at natural scale. Put long explanations in blocks instead of shrinking text to cram the whole board onto one screen. Use local route focus to make each group readable while preserving the full model's relationships. Inspect hierarchy, spacing and readable text in the real preview. Continue revising only to fix a concrete wrong relationship, overlap, unreadable text or missing requested meaning; once those issues are resolved, deliver the inspected candidate.");
     spec.description.push_str(" revise changes only the supplied existing blocks by block_id and drawings by item_id in the current uncommitted candidate, preserving every other item, link, mapping and route. Supply at least one change. It creates a new revision and invalidates the previous preview and teaching approval. Read collection=candidate_blocks for the original source-bound blocks. Preview and inspect the revised candidate before selecting it by move.board_candidate_revision; never rewrite its teaching body at select.");
     spec.parameters["properties"].as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+    let style = json!({"type":"object","properties":{"color":{"type":["string","null"]},"bold":{"type":"boolean"}},"additionalProperties":false});
+    let topic = json!({"type":"object","properties":{"item_id":{"type":"string"},"title":{"type":"string","description":"A concise editable topic title. Keep detailed explanation in blocks."},"style":style,"based_on":{"type":"array","items":content}},"required":["item_id","title"],"additionalProperties":false});
+    let map = json!({"type":"object","properties":{"map_id":{"type":"string"},"root_item_id":{"type":"string"},"layout":{"enum":["balanced","right"]},"anchor":point,"branch_sides":{"type":"object","additionalProperties":{"enum":["left","right"]}}},"required":["map_id","root_item_id","anchor"],"additionalProperties":false});
+    let variant = |kind: &str, fields: Value, required: &[&str]| {
+        let mut fields = fields.as_object().unwrap().clone();
+        fields.insert("kind".into(), json!({"enum":[kind]}));
+        let required = std::iter::once("kind").chain(required.iter().copied()).collect::<Vec<_>>();
+        json!({"type":"object","properties":fields,"required":required,"additionalProperties":false})
+    };
+    let id = json!({"type":"string"});
+    let index = json!({"type":"integer","minimum":0});
+    let operations = vec![
+        variant("create_mind_map", json!({"map":map,"root":topic}), &["map","root"]),
+        variant("insert_topic", json!({"parent_item_id":id,"index":index,"topic":topic}), &["parent_item_id","index","topic"]),
+        variant("update_topic", json!({"item_id":id,"title":{"type":"string"},"style":style}), &["item_id"]),
+        variant("move_subtree", json!({"item_id":id,"parent_item_id":id,"index":index}), &["item_id","parent_item_id","index"]),
+        variant("copy_subtree", json!({"item_id":id,"parent_item_id":id,"index":index,"id_prefix":id}), &["item_id","parent_item_id","index","id_prefix"]),
+        variant("remove_subtree", json!({"item_id":id}), &["item_id"]),
+        variant("set_mind_map", json!({"map_id":id,"layout":{"enum":["balanced","right"]},"anchor":point,"branch_sides":{"type":"object","additionalProperties":{"enum":["left","right"]}}}), &["map_id"]),
+        variant("put_link", json!({"link":spec.parameters["properties"]["links"]["items"]}), &["link"]),
+        variant("remove_link", json!({"link_id":id}), &["link_id"]),
+        variant("put_mapping", json!({"mapping":spec.parameters["properties"]["mappings"]["items"]}), &["mapping"]),
+        variant("remove_mapping", json!({"mapping_id":id}), &["mapping_id"]),
+        variant("put_route", json!({"route":spec.parameters["properties"]["routes"]["items"]}), &["route"]),
+        variant("remove_route", json!({"route_id":id}), &["route_id"]),
+    ];
+    spec.parameters["properties"]["operations"] = json!({"type":"array","items":{"oneOf":operations},"description":"Semantic mind-map edits, using the same atomic operations as the manual editor. Prepare: ordered operation batch against base_board_revision. Revise: replace the entire uncommitted batch while preserving other candidate content. Parent order is children index; never draw tree edges manually or guess topic coordinates. Insert parent before children. Stable IDs survive rebase and undo."});
+    spec.parameters["properties"]["read_item_ids"] = json!({"type":"array","items":{"type":"string"},"description":"Exact retained item IDs whose current content this edit depends on. Include shared notes read for this explanation. The host checks these plus all writes before rebasing; do not list unrelated branches."});
+    spec.description.push_str(" For an explicitly requested mind map or a genuinely hierarchical outline, use operations create_mind_map and insert_topic with short topic titles and based_on references. Only these topics have derived tree edges and geometry. Freeform diagrams use drawings, links and explicit positions; drawings are full diagram content, not limited to annotations. Choose the form from the user request and the relationship being explained, not from whether a mind map already exists on the board. Both forms can coexist. Preserve the existing map and unrelated items when adding a different diagram. Reorganizing old drawings into a new mind map still requires the existing conversion confirmation.");
+    spec.description.push_str(" A selected topic scopes edits to that topic and descendants. Explanation or clarification requests may be answered as text only; expand, add an example, simplify or reorganize uses semantic operations without replacing unrelated branches. Use stable IDs and put_link/put_mapping/put_route to update existing relationships rather than duplicate them. On an unrelated human edit, read or preview rebases the existing candidate, changes its candidate_revision, and clears earlier preview and teaching approval. Inspect the new actual preview and repeat active teaching selection. On candidate_pending_changes, preserve the human result and offer to redo from current content; do not recreate deleted targets or overwrite the conflicting branch. Ordinary topic layout accepts no model coordinates except a new map's root anchor.");
     crate::tool_schema::complete_spec(spec)
 }
 
@@ -660,6 +707,25 @@ mod tests {
         registration.validate_arguments(&prepare.to_string()).unwrap();
         let AuthorRequest::Prepare { links, .. } = serde_json::from_value::<AuthorRequest>(prepare).unwrap() else { panic!() };
         assert!(links[0].based_on.is_empty());
+    }
+
+    #[test]
+    fn editable_tree_operations_and_tree_edge_targets_pass_the_actual_native_tool_contract() {
+        let registry = crate::orchestrator::resident_tool_registry();
+        let registration = registry.registration("board.author").unwrap();
+        let input = json!({"operation":"prepare","base_board_revision":4,"blocks":[{"block_id":"why","markdown":"切片借用数组的一段。"}],"drawings":[],
+            "read_item_ids":["source"],"operations":[
+                {"kind":"create_mind_map","map":{"map_id":"slice-map","root_item_id":"slice","layout":"balanced","anchor":{"x":400,"y":120}},"root":{"item_id":"slice","title":"切片"}},
+                {"kind":"insert_topic","parent_item_id":"slice","index":0,"topic":{"item_id":"permission","title":"借用权限","style":{"bold":true}}},
+                {"kind":"put_mapping","mapping":{"mapping_id":"why-permission","explanation":{"item_id":"answer","block_id":"why","content_revision":5},"visual":{"kind":"topic_edge","child_item_id":"permission"}}}
+            ]});
+        registration.validate_arguments(&input.to_string()).unwrap();
+        let AuthorRequest::Prepare {operations,read_item_ids,..}=serde_json::from_value::<AuthorRequest>(input).unwrap() else {panic!()};
+        assert_eq!(operations.len(),3);
+        assert_eq!(read_item_ids,["source"]);
+        let revised=json!({"operation":"revise","candidate_revision":2,"operations":[{"kind":"update_topic","item_id":"permission","title":"只读或可写"}]});
+        registration.validate_arguments(&revised.to_string()).unwrap();
+        assert!(matches!(serde_json::from_value::<AuthorRequest>(revised).unwrap(),AuthorRequest::Revise {operations:Some(_),..}));
     }
 
     #[test]

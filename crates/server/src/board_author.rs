@@ -5,6 +5,15 @@ use runtime::board_author::{AuthorRequest, AuthorResult};
 use runtime::presentation::{PresentationOwner, PresentationRef};
 use runtime::run_context::CancellationToken;
 
+#[path = "board_author_edits.rs"]
+mod edits;
+#[path = "board_author_confirmation.rs"]
+mod confirmation;
+pub(crate) use confirmation::{candidate_confirmation, candidate_preview, confirmation_update};
+#[path = "board_author_regeneration.rs"]
+mod regeneration;
+pub(crate) use regeneration::{RegenerationContext, regeneration_context, regeneration_public_context};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Candidate {
     pub board_id: String,
@@ -14,6 +23,26 @@ pub(crate) struct Candidate {
     pub items: Vec<BoardItem>,
     #[serde(default)]
     pub update_items: Vec<BoardItem>,
+    #[serde(default)]
+    pub operations: Vec<BoardEditOperation>,
+    #[serde(default)]
+    pub read_item_ids: Vec<String>,
+    /// Exact semantic base, including resolved shared-note text. Kept private;
+    /// it is not another model-facing copy of the board.
+    #[serde(default)]
+    pub edit_base: Option<BoardDocument>,
+    #[serde(default)]
+    pub conflict: Option<Value>,
+    #[serde(default)]
+    pub note_revisions: std::collections::BTreeMap<String, u32>,
+    #[serde(default)]
+    pub regeneration: Option<Box<RegenerationContext>>,
+    #[serde(default)]
+    pub requires_confirmation: bool,
+    #[serde(default)]
+    pub confirmed: bool,
+    #[serde(default)]
+    pub dismissed: bool,
     pub links: Vec<BoardLink>,
     pub mappings: Vec<BoardExplanationMapping>,
     pub routes: Vec<BoardRoute>,
@@ -260,10 +289,28 @@ pub(crate) fn repair_commits(
 pub(crate) fn same_retained_identity(left: &BoardItem, right: &BoardItem) -> bool {
     left.item_id == right.item_id
         || matches!((&left.target, &right.target),
+        (BoardTarget::Note { note_id: left, .. }, BoardTarget::Note { note_id: right, .. }) if left == right)
+        || matches!((&left.target, &right.target),
         (BoardTarget::Understanding { evidence_id: left, .. }, BoardTarget::Understanding { evidence_id: right, .. }) if left == right)
 }
 
 fn read_current(
+    user: &user_runtime::UserRuntime,
+    frozen: &board_api::FrozenBoardFollowUp,
+) -> Result<(BoardStore, BoardDocument), ToolError> {
+    let (store, board) = read_current_document(user, frozen)?;
+    if frozen.follow_up.item_id.as_ref().is_some_and(|id| !board.items.iter().any(|item| &item.item_id == id)) {
+        return Err(error(
+            "The selected item was removed; open a current board item before authoring",
+        ));
+    }
+    if frozen.follow_up.item_id.as_ref().is_some_and(|id| board.items.iter().any(|item|
+        &item.item_id == id && matches!(item.target, BoardTarget::Note { missing: true, .. }))) {
+        return Err(error("The selected workspace note was deleted; choose another note before authoring"));
+    }
+    Ok((store, board))
+}
+fn read_current_document(
     user: &user_runtime::UserRuntime,
     frozen: &board_api::FrozenBoardFollowUp,
 ) -> Result<(BoardStore, BoardDocument), ToolError> {
@@ -274,11 +321,6 @@ fn read_current(
         || board.publication_id.as_ref() != frozen.publication.as_ref().map(|p| &p.publication_id)
     {
         return Err(authorization::missing());
-    }
-    if frozen.follow_up.item_id.as_ref().is_some_and(|id| !board.items.iter().any(|item| &item.item_id == id)) {
-        return Err(error(
-            "The selected item was removed; open a current board item before authoring",
-        ));
     }
     Ok((store, board))
 }
@@ -307,7 +349,6 @@ fn project(board: &BoardDocument, candidate: &Candidate) -> Result<BoardDocument
         return Err(runtime::board_author::error("BOARD_REVISION_CONFLICT", "The board changed after this candidate was prepared; read, prepare and preview the new layout"));
     }
     let mut projected = board.clone();
-    projected.revision += 1;
     for update in &candidate.update_items {
         let retained = projected.items.iter_mut().find(|item| item.item_id == update.item_id)
             .ok_or_else(|| error("The updated board item is unavailable"))?;
@@ -317,7 +358,16 @@ fn project(board: &BoardDocument, candidate: &Candidate) -> Result<BoardDocument
     projected.links.extend(candidate.links.clone());
     projected.mappings.extend(candidate.mappings.clone());
     projected.routes.extend(candidate.routes.clone());
+    if candidate.operations.is_empty() { projected.revision += 1; }
+    else { projected = apply_board_edits(&projected, &candidate.operations, &board.updated_at)?; }
+    if let Some(regeneration)=&candidate.regeneration { regeneration::require_preserved(regeneration,board,&projected)?; }
     Ok(projected)
+}
+pub(crate) fn validate_current(store: &BoardStore, board: &BoardDocument, candidate: &Candidate) -> Result<BoardDocument, ToolError> {
+    if candidate.note_revisions != store.note_revisions(board, &candidate.read_item_ids)? {
+        return Err(runtime::board_author::error("BOARD_EDIT_CONFLICT", "A shared note used by this suggestion changed. Keep the reader's current content and redo the suggestion from that note."));
+    }
+    project(board, candidate)
 }
 fn readable(parts: &[AgentAnswerPart]) -> String {
     parts
@@ -479,7 +529,7 @@ pub(crate) fn execute(
             read_current(user, frozen)?;
             let mut source: board_api::BoardImportSource = serde_json::from_value(source).map_err(|e| error(e.to_string()))?;
             let source_publication = match &source {
-                board_api::BoardImportSource::PersonalNote { .. } => None,
+                board_api::BoardImportSource::Note { .. } | board_api::BoardImportSource::PersonalNote { .. } => None,
                 board_api::BoardImportSource::Answer { session_id, turn_id } | board_api::BoardImportSource::Presentation { session_id, turn_id, .. } =>
                     crate::workspace_record_context::permitted_turn(user, frozen.learning_workspace_id.as_deref(), &frozen.book_id, session_id, turn_id)?.published_book_ref,
                 _ => source_workspaces[0].publication.as_ref().map(|p|p.reference.clone()),
@@ -492,7 +542,8 @@ pub(crate) fn execute(
                 "published_book_ref":source_publication,"retained":false})))
         }),
         AuthorRequest::Read { collection, offset, length, board_revision, candidate_revision } => storage.with_user(|user| {
-            let (_, mut board) = read_current(user, frozen)?;
+            let (store, mut board) = read_current_document(user, frozen)?;
+            let changed = edits::refresh(user, frozen, reference, &store, &board, &now)?;
             board_api::resolve_note_items(user,&mut board,true);
             let active_turn = turn(user, reference)?;
             let current = active_turn.domain.board_authoring.as_ref();
@@ -511,14 +562,24 @@ pub(crate) fn execute(
                 "answer_position":next_position(&board, parent, &size),"answer_size":size,
                 "candidate_revision":current.map(|c| c.candidate_revision).unwrap_or(0),
                 "proposed_content_revision":board.revision+1,"understanding_items":understanding_items,"understanding_refs":understanding_refs,"formal_condition_refs":conditions,
-                "candidate":current,
+                "candidate":current.map(edits::public_candidate),
+                "candidate_id":current.map(|candidate|&candidate.candidate_id),
+                "candidate_change":if changed {Some(if current.is_some_and(|candidate|candidate.conflict.is_some()) {"pending_changes"} else {"rebased"})} else {None},
                 "notice":"Retained source references are historical. Use source.present for new claims. understanding_items are actual current-turn evidence; use the exact understanding_refs for each existing or proposed item and content revision. Keep learner_quote separate from interpretation. Follow next_calls for omitted records; read collection=layout to inspect all retained item positions without long answer text."});
-            Ok(AuthorResult::value(runtime::board_author::read_page(body,collection,offset,length,board_revision,candidate_revision)?))
+            let mut result = AuthorResult::value(runtime::board_author::read_page(body,collection,offset,length,board_revision,candidate_revision)?);
+            result.invalidates_delivery = changed;
+            Ok(result)
         }),
-        AuthorRequest::Prepare { base_board_revision, blocks, drawings, update_drawings, layout: layout_updates, imports, presentations, links, mappings, routes } => storage.with_user(|user| {
+        AuthorRequest::Prepare { base_board_revision, blocks, drawings, mut operations, read_item_ids, update_drawings, layout: layout_updates, imports, presentations, links, mappings, routes } => storage.with_user(|user| {
             let (store, board) = read_current(user, frozen)?;
             if board.revision != base_board_revision { return Err(runtime::board_author::error("BOARD_REVISION_CONFLICT", "Read the current board before preparing an update")); }
+            if read_item_ids.iter().any(|id| !board.items.iter().any(|item| &item.item_id == id)) {
+                return Err(error("read_item_ids must name observed retained items, not proposed or missing topics"));
+            }
             let active_turn = turn(user, reference)?;
+            if active_turn.domain.board_authoring.as_ref().is_some_and(|candidate|candidate.conflict.is_some()) {
+                return Err(runtime::board_author::error("BOARD_EDIT_PENDING_READER", "The conflicting suggestion is retained for the reader. Finish with a short explanation and let the reader choose redo from current content; this run cannot replace the human edit with another candidate."));
+            }
             let candidate_revision = active_turn.domain.board_authoring.as_ref().map_or(1, |old| old.candidate_revision + 1);
             let question = active_turn.user.clone();
             if blocks.is_empty() || blocks.iter().any(|block| block.block_id.trim().is_empty() || block.markdown.trim().is_empty()) {
@@ -569,11 +630,18 @@ pub(crate) fn execute(
                 update_items.push(item);
             }
             for update in layout_updates {
-                if let Some(item) = update_items.iter_mut().find(|item| item.item_id == update.item_id) {
+                if board.items.iter().any(|item| item.item_id == update.item_id && matches!(item.target, BoardTarget::Topic { .. })) {
+                    return Err(error("Topic geometry comes from the shared layout. Use set_mind_map for the root anchor or layout mode."));
+                }
+                if let Some(item) = items.iter_mut().find(|item| item.item_id == update.item_id) {
+                    // The reserved answer is part of this candidate, so a failed
+                    // preview can move it away from the derived topic layout.
+                    item.position = update.position; item.size = update.size;
+                } else if let Some(item) = update_items.iter_mut().find(|item| item.item_id == update.item_id) {
                     item.position = update.position; item.size = update.size;
                 } else {
                     let mut item = board.items.iter().find(|item| item.item_id == update.item_id).cloned()
-                        .ok_or_else(|| error("The retained layout item is unavailable"))?;
+                        .ok_or_else(|| error("The layout item is not retained or authored by this prepare. Use the current reserved_answer_item_id to position its answer."))?;
                     item.position = update.position; item.size = update.size; update_items.push(item);
                 }
             }
@@ -587,6 +655,9 @@ pub(crate) fn execute(
                 let mut source_layout = board.clone(); source_layout.items = retained;
                 let mut source_parent = None;
                 for (index, mut item) in imported.drain(..).enumerate() {
+                    if matches!(&item.target, BoardTarget::Note { .. }) && source_layout.items.iter().any(|old| same_retained_identity(old, &item)) {
+                        return Err(error("This note is already on the board. Reuse its existing item identity instead of importing another copy"));
+                    }
                     if index == 0 {
                         item.item_id = import.item_id.clone(); item.position = import.position.clone(); item.size = import.size.clone();
                         source_parent = Some(item.clone());
@@ -614,11 +685,27 @@ pub(crate) fn execute(
                 item.position = next_position(&layout, parent, &item.size);
                 layout.items.push(item.clone()); items.push(item);
             }
-            let candidate = Candidate { board_id: board.board_id.clone(), base_board_revision, candidate_revision,
+            for operation in &mut operations {
+                if let BoardEditOperation::CreateMindMap { root: topic, .. } | BoardEditOperation::InsertTopic { topic, .. } = operation {
+                    topic.source_bindings = note_api::bindings(bindings);
+                    if frozen.requires_conversion_confirmation && topic.based_on.is_empty() {
+                        if let Some(item_id) = &frozen.follow_up.item_id {
+                            topic.based_on.push(BoardContentRef { item_id:item_id.clone(),block_id:frozen.follow_up.block_id.clone(),content_revision:frozen.follow_up.board_revision });
+                        }
+                    }
+                }
+            }
+            let mut candidate = Candidate { board_id: board.board_id.clone(), base_board_revision, candidate_revision,
                 candidate_id: format!("board:{}:{candidate_revision}", reference.turn_id), items, update_items, links, mappings, routes,
+                operations, read_item_ids, edit_base:Some(board.clone()), conflict:None, note_revisions:Default::default(),
+                regeneration:frozen.regeneration.clone(),
+                requires_confirmation:frozen.requires_conversion_confirmation,confirmed:false,dismissed:false,
                 explanation_blocks:raw_explanation_blocks, delivery_text, answer_parts: compiled.parts.iter().map(|part| json!(part)).collect(), previewed: false, staged: false,
                 source_bindings:bindings.to_vec(),commit_selection:None,commit_requested_at:None };
+            candidate.read_item_ids = edits::dependencies(&board, &candidate);
+            candidate.note_revisions = store.note_revisions(&board, &candidate.read_item_ids)?;
             let projected = project(&board, &candidate)?;
+            edits::require_scope(&board, &projected, frozen, &candidate)?;
             store.validate_candidate(&projected)?;
             require_declared_anchors(user, &projected)?;
             session_runtime::update_board_authoring(user, reference, &now, candidate.clone())?;
@@ -632,18 +719,27 @@ pub(crate) fn execute(
             result.invalidates_delivery = true;
             Ok(result)
         }),
-        AuthorRequest::Revise { candidate_revision, blocks, drawings } => storage.with_user(|user| {
+        AuthorRequest::Revise { candidate_revision, blocks, drawings, operations } => storage.with_user(|user| {
             let active_turn = turn(user, reference)?;
             if active_turn.domain.board_commits.iter().any(|part| part.candidate_revision == candidate_revision) {
                 return Err(runtime::board_author::error("BOARD_CANDIDATE_COMMITTED", "This candidate is already saved. Prepare a new part to extend the board; saved explanations remain immutable."));
             }
             let mut candidate = selected_candidate(user, reference, candidate_revision)?;
             let (store, board) = read_current(user, frozen)?;
-            project(&board, &candidate)?;
-            if blocks.is_empty() && drawings.is_empty() {
-                return Err(error("Revise needs at least one existing explanation block or drawing to replace"));
+            validate_current(&store, &board, &candidate)?;
+            if blocks.is_empty() && drawings.is_empty() && operations.is_none() {
+                return Err(error("Revise needs explanation blocks, drawings or a replacement semantic operation batch"));
             }
             let mut content_changed = false;
+            if let Some(mut operations) = operations {
+                for operation in &mut operations {
+                    if let BoardEditOperation::CreateMindMap { root: topic, .. } | BoardEditOperation::InsertTopic { topic, .. } = operation {
+                        topic.source_bindings = note_api::bindings(&candidate.source_bindings);
+                    }
+                }
+                content_changed |= operations != candidate.operations;
+                candidate.operations = operations;
+            }
             if !blocks.is_empty() {
                 if candidate.explanation_blocks.is_empty() {
                     return Err(error("This older candidate has no original explanation blocks. Prepare its complete explanation and drawings before revising blocks."));
@@ -722,7 +818,11 @@ pub(crate) fn execute(
             candidate.staged = false;
             candidate.commit_selection = None;
             candidate.commit_requested_at = None;
+            candidate.conflict = None;
+            candidate.read_item_ids = edits::dependencies(&board, &candidate);
+            candidate.note_revisions = store.note_revisions(&board, &candidate.read_item_ids)?;
             let projected = project(&board, &candidate)?;
+            edits::require_scope(&board, &projected, frozen, &candidate)?;
             store.validate_candidate(&projected)?;
             require_declared_anchors(user, &projected)?;
             session_runtime::update_board_authoring(user, reference, &now, candidate.clone())?;
@@ -739,14 +839,24 @@ pub(crate) fn execute(
         }),
         AuthorRequest::Preview { candidate_revision, viewport } => {
             let (candidate, projected) = storage.with_user(|user| {
-                let candidate = selected_candidate(user, reference, candidate_revision)?;
-                let (_, board) = read_current(user, frozen)?;
+                selected_candidate(user, reference, candidate_revision)?;
+                let (store, board) = read_current_document(user, frozen)?;
+                edits::refresh(user, frozen, reference, &store, &board, &now)?;
+                let candidate = turn(user, reference)?.domain.board_authoring.clone().expect("candidate checked");
+                if candidate.conflict.is_some() { return Ok((candidate, None)); }
                 let projected = project(&board, &candidate)?;
-                Ok((candidate, projected))
+                Ok((candidate, Some(projected)))
             })?;
+            let Some(projected) = projected else {
+                let mut result = AuthorResult::value(json!({"status":"candidate_pending_changes","candidate_id":candidate.candidate_id,
+                    "candidate_revision":candidate.candidate_revision,"conflict":candidate.conflict,
+                    "next":"The reader's current content is preserved. Offer to redo this suggestion from the current selected subtree; do not overwrite it."}));
+                result.invalidates_delivery = true;
+                return Ok(result);
+            };
+            let candidate_revision = candidate.candidate_revision;
             // Chromium work must never hold the user/session lock.
-            let candidate_item_ids = candidate.items.iter().chain(&candidate.update_items)
-                .map(|item| item.item_id.clone()).collect::<Vec<_>>();
+            let candidate_item_ids = edits::preview_ids(&projected, &candidate);
             let report = crate::board_preview::preview(&candidate.candidate_id, &projected, &candidate_item_ids, viewport, cancellation)?;
             cancellation.check()?;
             let valid = report.errors.is_empty() && !report.observations.is_empty()
@@ -754,6 +864,7 @@ pub(crate) fn execute(
                     && observation.dom["board"]["ready"] == true);
             let mut result = AuthorResult::value(json!({"status":if valid {"preview_ready_for_inspection"} else {"preview_failed"},
                 "candidate_id":candidate.candidate_id,"candidate_revision":candidate_revision,"base_board_revision":candidate.base_board_revision,
+                "requires_confirmation":candidate.requires_confirmation,
                 "environment":report.environment,"environment_name":report.environment_name,"errors":report.errors,
                 "observations":report.observations.iter().map(|observation| json!({"dom":observation.dom,"layout":observation.layout,"issues":observation.issues})).collect::<Vec<_>>() }));
             for observation in &report.observations {
@@ -762,7 +873,7 @@ pub(crate) fn execute(
             }
             storage.with_user(|user| {
                 let mut current = selected_candidate(user, reference, candidate_revision)?;
-                let (_, board) = read_current(user, frozen)?; project(&board, &current)?;
+                let (store, board) = read_current(user, frozen)?; validate_current(&store, &board, &current)?;
                 current.previewed = valid; current.staged = false;
                 session_runtime::update_board_authoring(user, reference, &now, current)
             })?;
@@ -775,8 +886,11 @@ pub(crate) fn execute(
                 return Err(runtime::board_author::error("BOARD_PART_COMMIT_REQUIRED", "This turn already has committed board parts. Commit this additional complete part, then finish with references to the retained parts."));
             }
             let mut candidate = selected_candidate(user, reference, candidate_revision)?;
+            if candidate.requires_confirmation {
+                return Err(runtime::board_author::error("BOARD_CONVERSION_COMMIT_REQUIRED", "Use commit after the actual preview and teaching review to offer this conversion for the reader's confirmation. The original board remains intact until they accept."));
+            }
             if !candidate.previewed { return Err(runtime::board_author::error("BOARD_PREVIEW_REQUIRED", "The exact candidate requires a successful actual BoardCanvas preview")); }
-            let (_, board) = read_current(user, frozen)?; project(&board, &candidate)?;
+            let (store, board) = read_current(user, frozen)?; validate_current(&store, &board, &candidate)?;
             candidate.staged = true;
             session_runtime::update_board_authoring(user, reference, &now, candidate.clone())?;
             let mut result = AuthorResult::value(json!({"status":"delivery_staged","candidate_id":candidate.candidate_id,
@@ -795,15 +909,20 @@ pub(crate) fn execute(
             if !candidate.previewed {return Err(runtime::board_author::error("BOARD_PREVIEW_REQUIRED","The exact board part needs a successful actual preview before commit"));}
             let selection=selected_delivery.ok_or_else(||runtime::board_author::error("BOARD_TEACHING_SELECTION_REQUIRED","Commit requires the runtime's inspected and selected board part"))?;
             let (store,board)=read_current(user,frozen)?;
-            project(&board,&candidate)?;
+            validate_current(&store,&board,&candidate)?;
             // Persist the exact selection before the board write. A lost session
             // acknowledgment can then repair this receipt without reinterpreting
             // a newer teaching selection or creating a different board item.
             candidate.commit_selection=Some(selection);
             candidate.commit_requested_at=Some(now.clone());
             session_runtime::update_board_authoring(user,reference,&now,candidate.clone())?;
-            let delivery=store.append_authored_part(&frozen.follow_up,candidate.base_board_revision,&reference.session_id,&reference.turn_id,
-                &candidate.candidate_id,candidate.items.clone(),candidate.update_items.clone(),candidate.links.clone(),candidate.mappings.clone(),candidate.routes.clone(),&now)?;
+            if candidate.requires_confirmation && !candidate.confirmed {
+                return Ok(AuthorResult::value(json!({"status":"candidate_confirmation_required","candidate_id":candidate.candidate_id,
+                    "candidate_revision":candidate.candidate_revision,"board_id":candidate.board_id,
+                    "next":"The conversion preview is ready for the reader. Finish with a short notice asking them to inspect and accept it in the board. Do not claim it was saved; the old drawings stay intact."})));
+            }
+            let delivery=store.append_authored_part_with_edits(&frozen.follow_up,candidate.base_board_revision,&reference.session_id,&reference.turn_id,
+                &candidate.candidate_id,candidate.items.clone(),candidate.update_items.clone(),candidate.links.clone(),candidate.mappings.clone(),candidate.routes.clone(),candidate.operations.clone(),&now)?;
             repair_commits(user,reference,&now)?;
             let mut result=AuthorResult::value(json!({"status":"board_part_committed","candidate_id":candidate.candidate_id,
                 "candidate_revision":candidate_revision,"delivery":delivery,"already_committed":false,
@@ -1665,3 +1784,7 @@ mod learning_tests;
 #[cfg(test)]
 #[path = "board_author_revise_tests.rs"]
 mod revise_tests;
+
+#[cfg(test)]
+#[path = "board_author_edit_tests.rs"]
+mod edit_tests;

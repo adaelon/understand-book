@@ -1,0 +1,124 @@
+[
+  {
+    "path": "crates/runtime/src/orchestrator.rs",
+    "status": "merged_preserving_live_board_regeneration_recovery",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/teaching_revision.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/tool_registry.rs",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/tool_schema.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/tutor.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/tool_argument_recovery_tests.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/teaching_patch_tests.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/tool_contract_tests.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/teaching_design_loop_tests.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/runtime/src/presentation_authoring_tests.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/server/src/agent_failure.rs",
+    "status": "new"
+  },
+  {
+    "path": "crates/server/src/agent_run.rs",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/server/src/agent_stream.rs",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/server/src/lib.rs",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/web/src/agent-run-state.ts",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/web/src/account-allowance.ts",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/web/src/App.vue",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/web/src/agent-run-state.test.ts",
+    "status": "clean",
+    "live_equals_baseline": true,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/web/src/NetworkApp.chat.test.ts",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "packages/i18n/src/en.json",
+    "status": "clean",
+    "live_equals_baseline": false,
+    "local_equals_live": false
+  },
+  {
+    "path": "crates/server/src/authorization.rs",
+    "status": "targeted_public_history_error_projection"
+  }
+]

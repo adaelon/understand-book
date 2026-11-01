@@ -1,0 +1,44 @@
+{
+  "status": "published",
+  "release": "/opt/understand-book/releases/note-thinking-20261101",
+  "previous_release": "/opt/understand-book/releases/practice-20261031",
+  "backup": "/opt/understand-book/backups/note-thinking-20261101",
+  "finished_at_utc": "2026-11-01T06:31:00.190252+00:00",
+  "approximate_maintenance_seconds": 275.55,
+  "service_pid": "70237",
+  "accounts": {
+    "reader": {
+      "authorized_books": 19,
+      "existing_note_paths": 3,
+      "presentation_ready": true,
+      "history_and_allowance_readable": true
+    },
+    "admin": {
+      "authorized_books": 20,
+      "existing_note_paths": 0,
+      "presentation_ready": true,
+      "history_and_allowance_readable": true
+    }
+  },
+  "preserved": {
+    "historical_files": 180,
+    "memory_documents": 28,
+    "learning_databases": 28,
+    "learning_rows": 2045,
+    "control_rows": {
+      "users": 29,
+      "book_publications": 22,
+      "book_grants": 498,
+      "allowance_periods": 23,
+      "manual_receipts": 0,
+      "learning_workspaces": 13,
+      "workspace_releases": 4,
+      "run_admissions": 170
+    }
+  },
+  "deployment_checks": {
+    "initial_public_probe": "default Python request received 403; the established release User-Agent received 200 on all three public pages",
+    "data_recovery": "automatic restore into the original source path was refused by the maintenance tool; the intact upgraded data directory was returned to its original path, candidate checks repeated, and traffic opened",
+    "data_snapshot_used_to_overwrite_live_data": false
+  }
+}

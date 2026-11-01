@@ -1,0 +1,30 @@
+{
+  "checked_at_utc": "2026-11-01T11:14:39.388015+00:00",
+  "pages": [
+    "/",
+    "/index.html",
+    "/admin/"
+  ],
+  "assets": [
+    "/assets/home-D8OwlJLK.js",
+    "/assets/reader-BUKtgqkK.js",
+    "/admin/assets/index-DtUMsl_M.js"
+  ],
+  "accounts": {
+    "reader": {
+      "catalog": 19,
+      "existing_note_paths": 3,
+      "history_allowance_workspaces": true,
+      "presentation_ready": true
+    },
+    "admin": {
+      "catalog": 20,
+      "existing_note_paths": 0,
+      "history_allowance_workspaces": true,
+      "presentation_ready": true
+    }
+  },
+  "errors": [],
+  "passed": true,
+  "service_executable": "/opt/understand-book/releases/tutor-recovery-20261101/target/release/server"
+}

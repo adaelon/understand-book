@@ -237,10 +237,7 @@ fn adm6_real_run_preserves_note_goal_and_explicit_continue_uses_new_call() {
             stopped["turn"]["error"]["error_code"],
             "ALLOWANCE_INSUFFICIENT"
         );
-        assert!(stopped["turn"]["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("已保存"));
+        assert_eq!(stopped["persistence_state"], "saved", "{stopped}");
         let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
         let (goal, note_id) = {
             let user = handle.lock().unwrap();

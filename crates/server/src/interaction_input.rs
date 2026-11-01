@@ -341,6 +341,15 @@ impl InteractionInput {
             },
             _ => unreachable!(),
         }
+        if let Some(reference)=input.get("understanding_ref").filter(|v|!v.is_null()) {
+            let evidence=crate::note_thinking::evidence(user,reference,false)?;
+            if reference["workspace_id"].as_str()!=workspace.learning_workspace_id.as_deref()
+                || evidence["source_id"]!=workspace.book.base.book_id || evidence["source_revision"]!=workspace.book.source_fingerprint()
+                || evidence["superseded"]==true { return Err(invalid("理解依据或学习范围已变化，请刷新原笔记后继续")); }
+            let target: memory::teaching::TeachingTarget=serde_json::from_value(evidence["target"].clone()).map_err(|_|invalid("这条历史记录尚无可接续的知识关系"))?;
+            resolved.source_bindings=target.source_bindings.clone();
+            resolved.target=Some(target);
+        }
         if resolved.source_bindings.iter().any(|s| s.source_id != workspace.book.base.book_id
             || s.source_revision != workspace.book.source_fingerprint()) {
             return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原回答的来源已变化，请重新选择原文"));

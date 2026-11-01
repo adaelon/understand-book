@@ -14,6 +14,12 @@ pub struct RubricItem {
     pub id: String,
     /// Includes necessary conditions, accepted equivalents and permitted omissions.
     pub criterion: String,
+    /// The single relationship/capability this criterion can actually distinguish.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<crate::teaching::TeachingTarget>,
+    /// Exact versions used by this criterion; omitted for an unattributed result.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub note_refs: Vec<crate::NoteRef>,
     #[serde(default)]
     pub source_lids: Vec<String>,
     /// Current-turn source.present IDs for prepared music or observed video.
@@ -386,13 +392,13 @@ mod tests {
         let c = AssessmentContract {
             rule: ScoringRule::Open {
                 items: vec![
-                    RubricItem {
+                    RubricItem { target:None, note_refs:Vec::new(),
                         id: "distance".into(),
                         criterion: "Uses total distance, equivalent wording accepted".into(),
                         source_lids: vec!["1".into()],
                         source_ref_ids: vec![],
                     },
-                    RubricItem {
+                    RubricItem { target:None, note_refs:Vec::new(),
                         id: "time".into(),
                         criterion: "Uses total time".into(),
                         source_lids: vec!["1".into()],

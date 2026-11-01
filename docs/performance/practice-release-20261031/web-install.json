@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "verification": [
+    {
+      "home.html": [
+        "/assets/understand-book-logo-BT-JV6JN.js",
+        "/brand/logo-v1.svg",
+        "/brand/icon-v1-32.png",
+        "/assets/understand-book-logo-DlL5gjOb.css",
+        "/brand/site-v1.webmanifest",
+        "/assets/home-CPUAudYE.css",
+        "/brand/icon-v1-180.png",
+        "/assets/home-CpHtsCk4.js"
+      ],
+      "index.html": [
+        "/assets/reader-C5gRmYza.js",
+        "/assets/understand-book-logo-BT-JV6JN.js",
+        "/brand/logo-v1.svg",
+        "/brand/icon-v1-32.png",
+        "/assets/understand-book-logo-DlL5gjOb.css",
+        "/assets/reader-DE6kO9FC.css",
+        "/brand/site-v1.webmanifest",
+        "/brand/icon-v1-180.png",
+        "/assets/_commonjsHelpers-CqkleIqs.js"
+      ],
+      "admin/index.html": [
+        "/admin/assets/index-DtUMsl_M.js",
+        "/admin/assets/index-N-bMjGBC.css"
+      ]
+    },
+    [
+      "/admin/assets/index-N-bMjGBC.css",
+      "/assets/reader-C5gRmYza.js",
+      "/assets/understand-book-logo-BT-JV6JN.js",
+      "/brand/logo-v1.svg",
+      "/brand/icon-v1-32.png",
+      "/assets/understand-book-logo-DlL5gjOb.css",
+      "/assets/reader-DE6kO9FC.css",
+      "/admin/assets/index-DtUMsl_M.js",
+      "/brand/site-v1.webmanifest",
+      "/assets/home-CPUAudYE.css",
+      "/brand/icon-v1-180.png",
+      "/assets/home-CpHtsCk4.js",
+      "/assets/_commonjsHelpers-CqkleIqs.js"
+    ]
+  ],
+  "files": 304
+}

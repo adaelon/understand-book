@@ -350,7 +350,12 @@ fn rn4_recap_follows_edited_note_and_reports_deletion() {
     let saved = state.user.store.replace(memory::ReplaceInput {
         mem_id: original.into(), content: "edited in RN4".into(), selection_context: None,
     }, "edited").unwrap();
-    assert_ne!(saved.mem_id, original);
+    assert_eq!(saved.mem_id, original);
+    let current = state.user.store.personal_note(&memory::NoteRef {
+        note_id: original.into(), revision: None,
+    }).unwrap();
+    assert_eq!(current.current_revision, 2);
+    assert_eq!(current.value.record.content, "edited in RN4");
     let cutoff = before["through_seq"].as_u64();
     let after = recap(&mut state, &turn.session_id, cutoff);
     assert_eq!(after["effects"][0]["object_id"], saved.mem_id);

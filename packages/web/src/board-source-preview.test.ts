@@ -14,6 +14,17 @@ afterEach(() => { wrapper?.unmount(); wrapper = undefined; document.body.innerHT
 async function open(source: SourcePopupView) { wrapper = mount(BoardSourcePreview, { props: { source }, attachTo: document.body }); await flushPromises(); return wrapper; }
 
 describe('board retained source preview', () => {
+  it('opens note sources through the parent while keeping the preview available for failure feedback', async () => {
+    const view = await open(base());
+    expect(document.querySelector('.board-source-open')).toBeNull();
+    await view.setProps({ context: 'note', canOpen: true });
+    expect(document.querySelector('[role="dialog"]')!.getAttribute('aria-label')).toBe('笔记原文');
+    expect(document.querySelector('.board-source-close')!.getAttribute('aria-label')).toBe('关闭来源预览，返回笔记');
+    (document.querySelector('.board-source-open') as HTMLButtonElement).click(); await flushPromises();
+    expect(view.emitted('open')).toHaveLength(1);
+    expect(view.emitted('close')).toBeUndefined();
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  });
   it('reads the available quote with surrounding context before explicitly opening the reader', async () => {
     const source = { ...base(), can_open_in_reader: true, context_before: '前一段。', context_after: '后一段。', heading_path: ['第六章', '攻击距离'] };
     const view = await open(source);

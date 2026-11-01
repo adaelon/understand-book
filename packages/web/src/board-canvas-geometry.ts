@@ -24,6 +24,11 @@ export function presentationTargetMatches(target: Extract<BoardVisualTarget, { k
 }
 
 export function targetBounds(target: BoardVisualTarget, items: BoardItem[], links: BoardLink[], position: BoardItemPosition = item => item.position, visited = new Set<string>()): BoardBounds | null {
+  if (target.kind === 'topic_edge') {
+    const child = items.find(item => item.item_id === target.child_item_id);
+    const parent = items.find(item => item.target.kind === 'topic' && item.target.children.includes(target.child_item_id));
+    return child && parent ? connectBounds(itemBounds(parent, position), itemBounds(child, position)).bounds : null;
+  }
   if (target.kind !== 'link') {
     const item = items.find(item => item.item_id === target.item_id);
     return item && (target.kind !== 'presentation_anchor' || presentationTargetMatches(target, item)) ? itemBounds(item, position) : null;
@@ -42,9 +47,17 @@ export function linkGeometry(link: BoardLink, items: BoardItem[], links: BoardLi
   return from && to ? connectBounds(from, to) : null;
 }
 
+function connectionIsHorizontal(from: BoardBounds, to: BoardBounds): boolean {
+  const xOverlap = Math.min(from.x + from.width, to.x + to.width) - Math.max(from.x, to.x);
+  const yOverlap = Math.min(from.y + from.height, to.y + to.height) - Math.max(from.y, to.y);
+  if (xOverlap > 0 && yOverlap <= 0) return false;
+  if (yOverlap > 0 && xOverlap <= 0) return true;
+  return Math.abs(to.x + to.width / 2 - from.x - from.width / 2) >= Math.abs(to.y + to.height / 2 - from.y - from.height / 2);
+}
+
 export function connectBounds(from: BoardBounds, to: BoardBounds): BoardLinkGeometry {
   const dx = to.x + to.width / 2 - from.x - from.width / 2, dy = to.y + to.height / 2 - from.y - from.height / 2;
-  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const horizontal = connectionIsHorizontal(from, to);
   const sign = (horizontal ? dx : dy) >= 0 ? 1 : -1;
   const start = horizontal ? { x: from.x + (sign > 0 ? from.width : 0), y: from.y + from.height / 2 } : { x: from.x + from.width / 2, y: from.y + (sign > 0 ? from.height : 0) };
   const end = horizontal ? { x: to.x + (sign > 0 ? 0 : to.width), y: to.y + to.height / 2 } : { x: to.x + to.width / 2, y: to.y + (sign > 0 ? 0 : to.height) };
@@ -56,6 +69,11 @@ export function connectBounds(from: BoardBounds, to: BoardBounds): BoardLinkGeom
   return { path: `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`,
     bounds: { x, y, width: Math.max(...points.map(point => point.x)) - x, height: Math.max(...points.map(point => point.y)) - y },
     label: { x: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8, y: (start.y + 3 * c1.y + 3 * c2.y + end.y) / 8 } };
+}
+
+/** Put a vertical relationship's text inside the gap, rather than over its upper topic. */
+export function connectionLabelOffsetY(from: BoardBounds, to: BoardBounds): number {
+  return connectionIsHorizontal(from, to) ? -9 : 4;
 }
 
 export function focusBoardBounds(bounds: BoardBounds, width: number, height: number, current: BoardView): BoardView {

@@ -13,6 +13,8 @@ R3 按教学共同质量标准核对完整事实关系、来源归属和修订�
 
 画板范围由 frozen_input.has_board_context=true、proposed_board 或 delivery_scope.kind=board_part 确认。仅在此范围内，书内实质主张（规则、成立条件、具体数值等）必须在实际交付中附可点击原文引用：核对 proposed_delivery.text、explanation_blocks 或本轮相应 committed_deliveries 中的 [[source:<source_ref_id>]] 标记或已编译 sources 部分，及其对应的 presented_source_references。读过原文或调用 source.present 不能代替正文实际附引用；缺失时指出具体主张与应补引用的位置。推导应明确所据原文前提和推论身份，用户假设、示例数值不冒充书中结论。同一段共同依据和清楚承接的总结无须重复引用，操作说明、寒暄及单纯调整布局不强加引用。普通非画板回答保持原有引用要求。
 
+画板范围由 frozen_input.has_board_context=true、proposed_board 或 delivery_scope.kind=board_part 确认。仅在此范围内，书内实质主张（规则、成立条件、具体数值等）必须在实际交付中附可点击原文引用：核对 proposed_delivery.text、explanation_blocks 或本轮相应 committed_deliveries 中的 [[source:<source_ref_id>]] 标记或已编译 sources 部分，及其对应的 presented_source_references。读过原文或调用 source.present 不能代替正文实际附引用；缺失时指出具体主张与应补引用的位置。推导应明确所据原文前提和推论身份，用户假设、示例数值不冒充书中结论。同一段共同依据和清楚承接的总结无须重复引用，操作说明、寒暄及单纯调整布局不强加引用。普通非画板回答保持原有引用要求。
+
 R4 理解判断依据真实原话与当时帮助。learner_grounding.expressions 才是学习者表达；interpretations 是可修正解读，delivered_support 是已给帮助。准确复述支持当下表达出的关系，受助条件须保留，不能宣称独立应用或整个主题掌握。教师漏讲或误解不能记作用户缺陷。没有理解诊断时 learner_claims=[]；有则逐条引用真实表达。原话不充分时撤回无依据判断，不强加测验补救。声称“上一轮”“此前演示”时按帮助记录中的实际顺序与时间核对；较早说过不代表紧邻上一轮说过。
 
 R5 本稿没有新页面或影音交付，不评审不存在的布局、截图或交互效果；历史页面的公开文字、真实状态与当时帮助仍可用于核对用户所指对象和历史陈述，不能把作者说明当成已观察效果。

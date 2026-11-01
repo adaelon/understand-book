@@ -7,6 +7,8 @@ import BoardCanvas from './components/BoardCanvas.vue';
 import { boardFixture, boardFixtureCatalog, boardFixtureItems, boardFixtureReceipt } from './fixtures/board-workspace';
 import { boardDate, fitBoard, zoomBoardAt, projectBoardRoute, type BoardQuestionRequest, type BoardRunView } from './board-workspace';
 import BoardReadingPane from './components/BoardReadingPane.vue';
+import { layoutMindMaps } from './mind-map-layout';
+import type { BoardItem } from './generated/BoardItem';
 import { requestWorkspaceRecovery } from './network-client';
 
 const mocks = vi.hoisted(() => ({ api: { boardConversation: vi.fn(), boardList: vi.fn(), boardCreate: vi.fn(), boardRead: vi.fn(), boardUpdate: vi.fn(), boardImport: vi.fn(), boardDelete: vi.fn(), boardCatalog: vi.fn(), boardViewSave: vi.fn(), boardSearch: vi.fn() }, flushScene: vi.fn(), mounts: 0 }));
@@ -714,6 +716,26 @@ describe('board camera', () => {
     expect((point.y - next.y) / next.zoom).toBeCloseTo((point.y - state.y) / state.zoom);
     const fitted = fitBoard(boardFixtureItems, 600, 650, state);
     for (const item of boardFixtureItems) { expect(item.position.x * fitted.zoom + fitted.x).toBeGreaterThanOrEqual(0); expect((item.position.y + item.size.height) * fitted.zoom + fitted.y).toBeLessThanOrEqual(650); }
+  });
+  it('fits every topic of a 500-topic map below the ordinary minimum zoom', () => {
+    const topics: BoardItem[] = Array.from({ length: 500 }, (_, index) => ({ ...boardFixtureItems[0], item_id: `topic-${index}`,
+      title: `Rust 切片 ${index}：借用一段连续元素，不复制原数组，保留读写权限与作用范围`,
+      target: { kind: 'topic', children: Array.from({ length: 5 }, (_, child) => index * 5 + child + 1).filter(child => child < 500).map(child => `topic-${child}`), style: { color: null, bold: false }, based_on: [] } }));
+    const layout = layoutMindMaps(topics, [{ map_id: 'large-map', root_item_id: 'topic-0', layout: 'balanced', anchor: { x: 100, y: 150 }, branch_sides: {} }]);
+    const fitted = fitBoard(layout.items, 1000, 700, boardFixture().view);
+    expect(fitted.zoom).toBeGreaterThan(0); expect(fitted.zoom).toBeLessThan(.25);
+    for (const item of layout.items) {
+      expect(item.position.x * fitted.zoom + fitted.x).toBeGreaterThanOrEqual(0);
+      expect(item.position.y * fitted.zoom + fitted.y).toBeGreaterThanOrEqual(0);
+      expect((item.position.x + item.size.width) * fitted.zoom + fitted.x).toBeLessThanOrEqual(1000);
+      expect((item.position.y + item.size.height) * fitted.zoom + fitted.y).toBeLessThanOrEqual(700);
+    }
+    const point = { x: 450, y: 350 };
+    expect(zoomBoardAt(fitted, fitted.zoom * .8, point)).toEqual(fitted);
+    const readable = zoomBoardAt(fitted, fitted.zoom * 1.2, point);
+    expect(readable.zoom).toBeCloseTo(fitted.zoom * 1.2);
+    expect((point.x - readable.x) / readable.zoom).toBeCloseTo((point.x - fitted.x) / fitted.zoom);
+    expect((point.y - readable.y) / readable.zoom).toBeCloseTo((point.y - fitted.y) / fitted.zoom);
   });
 });
 

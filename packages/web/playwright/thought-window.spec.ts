@@ -337,9 +337,11 @@ test('the recording entry stays above the phone reading navigation', async ({ pa
   await expect(page.getByRole('textbox', { name: '想法正文', exact: true })).toBeFocused();
 });
 
-test('fullscreen chat keeps the thought entry above the input with the mobile keyboard open', async ({ page }) => {
+test('the mobile keyboard hides the thought entry until dismissal and keeps send clickable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(async () => { const path = '/playwright/fixtures/send-button.ts'; (await import(path)).openConversation(true); });
+  await page.locator('.thought-entry').press('Alt+ArrowLeft');
+  const preferred = await page.evaluate(() => localStorage.getItem('understand-book:note-launcher:dock-reader'));
   const input = page.locator('textarea[data-workspace-input="agent"]');
   await input.fill('为什么船变重之后还能浮着？');
   await page.evaluate(() => {
@@ -348,12 +350,90 @@ test('fullscreen chat keeps the thought entry above the input with the mobile ke
     window.visualViewport!.dispatchEvent(new Event('resize'));
   });
   await expect(page.locator('html')).toHaveAttribute('data-workspace-keyboard', 'true');
+  await expect(page.locator('.thought-entry')).toBeHidden();
   const send = page.locator('.send-agent');
   await send.click({ timeout: 3000 });
   await expect(page.locator('[data-sends]')).toHaveAttribute('data-sends', '1');
-  const button = (await send.boundingBox())!, toolbar = (await page.locator('.thought-toolbar').boundingBox())!;
-  expect(toolbar.y + toolbar.height).toBeLessThanOrEqual((await page.locator('.agent-input').boundingBox())!.y);
-  expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(500);
+  const button = (await send.boundingBox())!;
+  expect(button.y + button.height).toBeLessThanOrEqual(500);
+  await expect(page.locator('.thought-entry')).toBeHidden();
+  await page.evaluate(() => {
+    delete (visualViewport as unknown as { height?: number }).height;
+    delete (visualViewport as unknown as { offsetTop?: number }).offsetTop;
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.thought-entry')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('understand-book:note-launcher:dock-reader'))).toBe(preferred);
+  await page.evaluate(() => {
+    Object.defineProperty(visualViewport, 'height', { configurable: true, value: 422 });
+    Object.defineProperty(visualViewport, 'scale', { configurable: true, value: 2 });
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.thought-entry')).toBeVisible();
+  await page.evaluate(() => {
+    delete (visualViewport as unknown as { height?: number }).height;
+    delete (visualViewport as unknown as { scale?: number }).scale;
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await page.locator('.thought-entry').click();
+  await expect(page.getByRole('textbox', { name: '想法正文', exact: true })).toBeFocused();
+});
+
+for (const viewport of [{ width: 390, height: 844, keyboardHeight: 320 }, { width: 320, height: 568, keyboardHeight: 260 }]) {
+test(`a mobile note can be saved with a short keyboard viewport and its receipt expires at ${viewport.width}px`, async ({ page }) => {
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
+  await page.goto('/note-launcher-preview.html');
+  await page.locator('.thought-entry').click();
+  await page.getByRole('textbox', { name: '想法正文', exact: true }).fill('我知道了：船下沉一些，就能排开更多水。');
+  await page.evaluate(height => {
+    Object.defineProperty(visualViewport, 'height', { configurable: true, value: height });
+    Object.defineProperty(visualViewport, 'offsetTop', { configurable: true, value: 40 });
+    visualViewport!.dispatchEvent(new Event('resize'));
+  }, viewport.keyboardHeight);
+  const save = page.getByRole('button', { name: '保存想法', exact: true });
+  await expect.poll(async () => { const box = (await save.boundingBox())!; return box.y + box.height; }).toBeLessThanOrEqual(viewport.keyboardHeight + 40);
+  await expect.poll(async () => {
+    const status = (await page.locator('.draft-status-line').boundingBox())!;
+    const actions = (await page.locator('.thought-actions').boundingBox())!;
+    return status.y + status.height - actions.y;
+  }).toBeLessThanOrEqual(0);
+  const evidence = resolve('../../docs/performance/note-mobile-controls-20261101');
+  mkdirSync(evidence, { recursive: true });
+  await page.screenshot({ path: resolve(evidence, `mobile-note-save-${viewport.width}.png`), clip: { x: 0, y: 40, width: viewport.width, height: viewport.keyboardHeight } });
+  await save.click({ timeout: 3000 });
+  await expect(page.locator('.thought-entry')).toBeHidden();
+  await expect(page.locator('.toolbar-notice')).toContainText('已保存');
+  await expect(page.locator('.toolbar-notice')).toBeHidden({ timeout: 4500 });
+  const send = page.locator('.send-agent');
+  await send.click({ timeout: 3000 });
+  await expect(page.locator('textarea[data-workspace-input="agent"]')).toHaveValue('');
+  await page.screenshot({ path: resolve(evidence, `mobile-after-save-${viewport.width}.png`), clip: { x: 0, y: 40, width: viewport.width, height: viewport.keyboardHeight } });
+  await page.evaluate(() => {
+    delete (visualViewport as unknown as { height?: number }).height;
+    delete (visualViewport as unknown as { offsetTop?: number }).offsetTop;
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.thought-entry')).toBeVisible();
+  await expect(page.locator('.toolbar-notice')).toBeHidden();
+});
+}
+
+test('the mobile keyboard also leaves the learning goal save button clickable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/note-launcher-preview.html');
+  await page.getByRole('button', { name: '学习与会话', exact: true }).click();
+  await page.getByRole('button', { name: '调整目标', exact: true }).click();
+  const editor = page.locator('.conversation-learning-goal form');
+  await editor.locator('input').fill('理解浮力与船的重量如何平衡');
+  await page.evaluate(() => {
+    Object.defineProperty(visualViewport, 'height', { configurable: true, value: 350 });
+    Object.defineProperty(visualViewport, 'offsetTop', { configurable: true, value: 40 });
+    visualViewport!.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('.thought-entry')).toBeHidden();
+  await editor.getByRole('button', { name: '保存目标', exact: true }).click({ timeout: 3000 });
+  await expect(editor).toBeHidden();
+  await expect(page.locator('.goal-text')).toHaveText('理解浮力与船的重量如何平衡');
 });
 
 test('profile replaces artifacts in the main navigation and can return to the draft', async ({ page }) => {

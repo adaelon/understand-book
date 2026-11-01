@@ -10,6 +10,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use ts_rs::TS;
 
+mod mind_map;
+pub use mind_map::*;
+
 // A host already owns the private-root writer lease. This short lock also makes
 // read/check/commit atomic between requests from multiple windows in that host.
 static BOARD_ACCESS: Mutex<()> = Mutex::new(());
@@ -37,6 +40,12 @@ pub struct BoardDocument {
     pub mappings: Vec<BoardExplanationMapping>,
     #[serde(default)]
     pub routes: Vec<BoardRoute>,
+    #[serde(default)]
+    #[ts(optional, as = "Option<_>")]
+    pub mind_maps: Vec<BoardMindMap>,
+    #[serde(default)]
+    #[ts(optional, as = "Option<_>")]
+    pub edit_history: BoardEditHistory,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -113,11 +122,14 @@ pub struct BoardSize {
 }
 
 fn validate_item_update(original: &BoardItem, item: &BoardItem) -> Result<(), ToolError> {
+    let topic_revision = matches!((&original.target, &item.target),
+        (BoardTarget::Topic { based_on: original_sources, .. }, BoardTarget::Topic { based_on, .. })
+            if based_on == original_sources && item.readable_content.is_empty());
     let note_revision=matches!((&original.target,&item.target),(BoardTarget::PersonalNote{reference:old},BoardTarget::PersonalNote{reference:new}) if old.note_id==new.note_id && new.revision.is_some());
     let drawing_revision = matches!((&original.target, &item.target),
         (BoardTarget::Drawing { session_id: old_session, turn_id: old_turn, .. },
          BoardTarget::Drawing { session_id, turn_id, .. }) if old_session == session_id && old_turn == turn_id);
-    if ((!drawing_revision && !note_revision) && (item.target != original.target || item.readable_content != original.readable_content))
+    if ((!drawing_revision && !topic_revision && !note_revision) && (item.target != original.target || item.readable_content != original.readable_content))
         || (note_revision && !item.readable_content.is_empty())
         || item.source_bindings != original.source_bindings
         || item.created_at != original.created_at
@@ -217,6 +229,9 @@ pub enum BoardVisualTarget {
     Link {
         link_id: String,
     },
+    TopicEdge {
+        child_item_id: String,
+    },
     PresentationAnchor {
         item_id: String,
         reference: NotePresentationRef,
@@ -233,6 +248,14 @@ pub struct BoardLink {
     pub label: String,
     #[serde(default)]
     pub based_on: Vec<BoardContentRef>,
+    /// Workspace notebook relations are projected at read time, never retained
+    /// as a second editable relationship in a board revision.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub note_relation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -295,6 +318,20 @@ pub enum BoardArtifactKind {
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardTarget {
+    Topic {
+        #[serde(default)]
+        children: Vec<String>,
+        #[serde(default)]
+        style: BoardTopicStyle,
+        #[serde(default)]
+        based_on: Vec<BoardContentRef>,
+    },
+    /// The notebook owns the title, body and provenance; the board owns layout.
+    Note {
+        note_id: String,
+        #[serde(default)]
+        missing: bool,
+    },
     /// Body belongs only to the user's note store. This ref is the saved board snapshot's version.
     PersonalNote { reference: crate::NoteRef },
     Artifact {
@@ -362,6 +399,28 @@ pub struct BoardFollowUp {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub presentation: Option<NotePresentationReceipt>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub intent: Option<BoardFollowUpIntent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub regenerate_from: Option<BoardRegenerationRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct BoardRegenerationRef {
+    pub session_id: String,
+    pub turn_id: String,
+    pub candidate_id: String,
+    pub candidate_revision: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub enum BoardFollowUpIntent {
+    ConvertToMindMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -388,6 +447,9 @@ pub struct BoardDelivery {
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub enum BoardLookupTarget {
+    Note {
+        note_id: String,
+    },
     PersonalNote { note_id: String },
     Artifact {
         source_id: String,
@@ -411,11 +473,13 @@ pub enum BoardLookupTarget {
 pub enum BoardSearchKind {
     PersonalNote,
     Board,
+    Note,
     Prebuild,
     Answer,
     Presentation,
     Understanding,
     Drawing,
+    Topic,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -446,6 +510,15 @@ pub struct BoardView {
     pub playback: Option<BoardPlaybackState>,
     #[serde(default)]
     pub presentation_states: BTreeMap<String, NotePresentationReceipt>,
+    #[serde(default)]
+    #[ts(optional, as = "Option<_>")]
+    pub folded_topic_ids: Vec<String>,
+    #[serde(default)]
+    #[ts(optional, as = "Option<_>")]
+    pub selected_item_ids: Vec<String>,
+    #[serde(default)]
+    #[ts(optional, as = "Option<_>")]
+    pub mind_map_outline: bool,
 }
 
 impl Default for BoardView {
@@ -459,12 +532,16 @@ impl Default for BoardView {
             reading_item_id: None,
             playback: None,
             presentation_states: BTreeMap::new(),
+            folded_topic_ids: vec![],
+            selected_item_ids: vec![],
+            mind_map_outline: false,
         }
     }
 }
 
 pub struct BoardStore {
     root: PathBuf,
+    private_root: PathBuf,
     learning_workspace_id: Option<String>,
     private: bool,
 }
@@ -485,6 +562,7 @@ impl BoardStore {
         };
         Ok(Self {
             root,
+            private_root: private_root.to_owned(),
             learning_workspace_id: learning_workspace_id.map(str::to_owned),
             private,
         })
@@ -493,19 +571,20 @@ impl BoardStore {
     pub fn create(&self, mut document: BoardDocument) -> Result<BoardDocument, ToolError> {
         let _access = access()?;
         document.revision = 1;
+        normalize_note_references(&mut document);
         assign_answer_blocks(&mut document);
         self.validate_document(&document)?;
         if self.read_head_optional(&document.board_id)?.is_some() {
             return Err(conflict("This board already exists"));
         }
         self.commit(&document)?;
-        Ok(document)
+        self.hydrate_notes(document)
     }
 
     pub fn read(&self, board_id: &str) -> Result<BoardDocument, ToolError> {
         let _access = access()?;
         let head = self.read_head(board_id)?;
-        self.read_snapshot(&head, head.revision)
+        self.hydrate_notes(self.read_snapshot(&head, head.revision)?)
     }
 
     pub fn read_revision(&self, board_id: &str, revision: u32) -> Result<BoardDocument, ToolError> {
@@ -514,7 +593,7 @@ impl BoardStore {
         if revision == 0 || revision > head.revision {
             return Err(not_found("This board revision is unavailable"));
         }
-        self.read_snapshot(&head, revision)
+        self.hydrate_notes(self.read_snapshot(&head, revision)?)
     }
 
     /// The board's durable receipts are authoritative even if a run stopped
@@ -577,6 +656,7 @@ impl BoardStore {
         let _access = access()?;
         let head = self.read_head(&document.board_id)?;
         let previous = self.read_snapshot(&head, head.revision)?;
+        normalize_note_references(&mut document);
         assign_answer_blocks(&mut document);
         if head.revision != expected_revision {
             self.replay_layout_over_deliveries(&mut document, expected_revision, &head, &previous)?;
@@ -589,6 +669,7 @@ impl BoardStore {
             || document.links != previous.links
             || document.mappings != previous.mappings
             || document.routes != previous.routes
+            || document.mind_maps != previous.mind_maps
         {
             return Err(invalid(
                 "A board's original material and creation time cannot change",
@@ -617,9 +698,10 @@ impl BoardStore {
         }) {
             prune_removed_targets(&mut document);
         }
+        mind_map::record_edit(&mut document, &previous, BoardEditActor::Human, "Edit board");
         self.validate_document(&document)?;
         self.commit(&document)?;
-        Ok(document)
+        self.hydrate_notes(document)
     }
 
     /// Place one canonical thought and its optional connector as one board revision.
@@ -647,7 +729,7 @@ impl BoardStore {
             if target.item_id==item_id { return Err(invalid("不能把想法关联到它自己")); }
             let from=BoardVisualTarget::Item{item_id}; let to=BoardVisualTarget::Item{item_id:target.item_id};
             if !document.links.iter().any(|l|l.from==from&&l.to==to) {
-                document.links.push(BoardLink{link_id:format!("note-link-{}",uuid::Uuid::now_v7()),from,to,label:"我的想法".into(),based_on:vec![]}); changed=true;
+                document.links.push(BoardLink{link_id:format!("note-link-{}",uuid::Uuid::now_v7()),from,to,label:"我的想法".into(),based_on:vec![],note_relation_id:None,reason:None}); changed=true;
             }
         }
         if changed {
@@ -673,6 +755,7 @@ impl BoardStore {
         if let Some(delivery) = delivery_for_identity(&document, session_id, turn_id, None)? {
             return Ok(delivery);
         }
+        let previous = document.clone();
         if follow_up.board_revision == 0 || follow_up.board_revision > head.revision {
             return Err(invalid("The selected board revision is unavailable"));
         }
@@ -738,6 +821,8 @@ impl BoardStore {
         document.revision = delivery.after_revision;
         document.updated_at = now.into();
         document.deliveries.push(delivery.clone());
+        normalize_note_references(&mut document);
+        mind_map::record_edit(&mut document, &previous, BoardEditActor::Ai, "Add explanation");
         self.validate_document(&document)?;
         self.commit(&document)?;
         Ok(delivery)
@@ -769,8 +854,19 @@ impl BoardStore {
             links,
             mappings,
             routes,
+            vec![],
             now,
         )
+    }
+
+    pub fn append_authored_delivery_with_edits(
+        &self, follow_up: &BoardFollowUp, expected_revision: u32,
+        session_id: &str, turn_id: &str, items: Vec<BoardItem>, update_items: Vec<BoardItem>,
+        links: Vec<BoardLink>, mappings: Vec<BoardExplanationMapping>, routes: Vec<BoardRoute>,
+        operations: Vec<BoardEditOperation>, now: &str,
+    ) -> Result<BoardDelivery, ToolError> {
+        self.append_authored(follow_up, expected_revision, session_id, turn_id, None,
+            items, update_items, links, mappings, routes, operations, now)
     }
 
     /// Commits one complete, observed part while its turn may continue. A retry
@@ -806,8 +902,21 @@ impl BoardStore {
             links,
             mappings,
             routes,
+            vec![],
             now,
         )
+    }
+
+    pub fn append_authored_part_with_edits(
+        &self, follow_up: &BoardFollowUp, expected_revision: u32,
+        session_id: &str, turn_id: &str, commit_id: &str,
+        items: Vec<BoardItem>, update_items: Vec<BoardItem>, links: Vec<BoardLink>,
+        mappings: Vec<BoardExplanationMapping>, routes: Vec<BoardRoute>,
+        operations: Vec<BoardEditOperation>, now: &str,
+    ) -> Result<BoardDelivery, ToolError> {
+        if commit_id.trim().is_empty() { return Err(invalid("A board part must retain its candidate commit identity")); }
+        self.append_authored(follow_up, expected_revision, session_id, turn_id, Some(commit_id),
+            items, update_items, links, mappings, routes, operations, now)
     }
 
     fn append_authored(
@@ -822,6 +931,7 @@ impl BoardStore {
         links: Vec<BoardLink>,
         mappings: Vec<BoardExplanationMapping>,
         routes: Vec<BoardRoute>,
+        operations: Vec<BoardEditOperation>,
         now: &str,
     ) -> Result<BoardDelivery, ToolError> {
         let _access = access()?;
@@ -830,6 +940,7 @@ impl BoardStore {
         if let Some(receipt) = delivery_for_identity(&document, session_id, turn_id, commit_id)? {
             return Ok(receipt);
         }
+        let previous = document.clone();
         if head.revision != expected_revision {
             return Err(conflict(
                 "The board changed after this authored content was previewed",
@@ -867,7 +978,8 @@ impl BoardStore {
             parent_item_id: follow_up.item_id.clone(),
         };
         let mut updated = BTreeSet::new();
-        for item in update_items {
+        for mut item in update_items {
+            normalize_note_item(&mut item);
             if !updated.insert(item.item_id.clone()) {
                 return Err(invalid("An authored update must name each existing item once"));
             }
@@ -895,9 +1007,19 @@ impl BoardStore {
         document.links.extend(links);
         document.mappings.extend(mappings);
         document.routes.extend(routes);
+        mind_map::apply_operations(&mut document, &operations, now)?;
+        for item in &document.items {
+            let original = previous.items.iter().find(|old| old.item_id == item.item_id);
+            if original != Some(item) && matches!(item.target, BoardTarget::Topic { .. })
+                && !receipt.item_ids.contains(&item.item_id) {
+                receipt.item_ids.push(item.item_id.clone());
+            }
+        }
         document.revision = after_revision;
         document.updated_at = now.into();
         document.deliveries.push(receipt.clone());
+        normalize_note_references(&mut document);
+        mind_map::record_edit(&mut document, &previous, BoardEditActor::Ai, "AI board edit");
         self.validate_document(&document)?;
         self.commit(&document)?;
         Ok(receipt)
@@ -908,6 +1030,7 @@ impl BoardStore {
     pub fn validate_candidate(&self, document: &BoardDocument) -> Result<(), ToolError> {
         let _access = access()?;
         let mut candidate = document.clone();
+        normalize_note_references(&mut candidate);
         assign_answer_blocks(&mut candidate);
         self.validate_document(&candidate)
     }
@@ -935,6 +1058,8 @@ impl BoardStore {
             || candidate.mappings != base.mappings
             || latest.routes != base.routes
             || candidate.routes != base.routes
+            || latest.mind_maps != base.mind_maps
+            || candidate.mind_maps != base.mind_maps
         {
             return Err(changed());
         }
@@ -1000,7 +1125,7 @@ impl BoardStore {
         for head in self.list_unlocked()?.into_iter().filter(|head| {
             self.learning_workspace_id.is_some() || (head.book_id == book_id && head.publication_id.as_deref() == publication_id)
         }) {
-            let document = self.read_snapshot(&head, head.revision)?;
+            let document = self.hydrate_notes(self.read_snapshot(&head, head.revision)?)?;
             if document.title.to_lowercase().contains(&query) {
                 hits.push(search_hit(
                     &document,
@@ -1062,9 +1187,10 @@ impl BoardStore {
         for head in self.list_unlocked()?.into_iter().filter(|head| {
             self.learning_workspace_id.is_some() || (head.book_id == book_id && head.publication_id.as_deref() == publication_id)
         }) {
-            let document = self.read_snapshot(&head, head.revision)?;
+            let document = self.hydrate_notes(self.read_snapshot(&head, head.revision)?)?;
             for item in &document.items {
                 let matches = match (target, &item.target) {
+                    (BoardLookupTarget::Note { note_id }, BoardTarget::Note { note_id: id, missing: false }) => note_id == id,
                     (BoardLookupTarget::PersonalNote{note_id},BoardTarget::PersonalNote{reference})=>note_id==&reference.note_id,
                     (BoardLookupTarget::Artifact { source_id, source_revision, artifact, entry_id },
                      BoardTarget::Artifact { source_id: source, source_revision: revision, artifact: kind, entry_id: id, .. }) =>
@@ -1229,6 +1355,7 @@ impl BoardStore {
 
     fn validate_document(&self, document: &BoardDocument) -> Result<(), ToolError> {
         validate_id(&document.board_id)?;
+        validate_mind_maps(document)?;
         if document.learning_workspace_id != self.learning_workspace_id
             || document.book_id.trim().is_empty()
             || document.title.trim().is_empty()
@@ -1257,6 +1384,12 @@ impl BoardStore {
                 }
             }
             validate_geometry(item)?;
+            if let BoardTarget::Note { note_id, .. } = &item.target {
+                validate_id(note_id)?;
+            }
+            if let BoardTarget::Topic { based_on, .. } = &item.target {
+                for reference in based_on { self.validate_content_ref(document, reference)?; }
+            }
             if let BoardTarget::Drawing {
                 graphic,
                 session_id,
@@ -1293,6 +1426,12 @@ impl BoardStore {
             }
             validate_visual_target(document, &link.from)?;
             validate_visual_target(document, &link.to)?;
+            if let (BoardVisualTarget::Item { item_id: from }, BoardVisualTarget::Item { item_id: to }) = (&link.from, &link.to) {
+                let is_note = |id: &String| document.items.iter().any(|item| &item.item_id == id && matches!(item.target, BoardTarget::Note { .. }));
+                if is_note(from) && is_note(to) {
+                    return Err(invalid("Connect workspace notes with notebook relations so every board shares the same label and reason"));
+                }
+            }
             for reference in &link.based_on {
                 self.validate_content_ref(document, reference)?;
             }
@@ -1412,6 +1551,49 @@ impl BoardStore {
         self.write_json(&directory.join("head.json"), &BoardSummary::from(document))
     }
 
+    /// Reads the notebook once for this board. Deleted notes keep their layout
+    /// placeholder but never expose an old body from a retained board revision.
+    fn hydrate_notes(&self, mut document: BoardDocument) -> Result<BoardDocument, ToolError> {
+        if !document.items.iter().any(|item| matches!(item.target, BoardTarget::Note { .. })) {
+            return Ok(document);
+        }
+        let notebook = crate::workspace_notes::WorkspaceNoteStore::open(
+            &self.private_root, self.learning_workspace_id.as_deref(), self.private,
+        )?.list()?;
+        let notes: BTreeMap<_, _> = notebook.notes.iter().map(|note| (note.note_id.as_str(), note)).collect();
+        let mut note_items = BTreeMap::<&str, Vec<&str>>::new();
+        for item in &mut document.items {
+            let BoardTarget::Note { note_id, missing } = &mut item.target else { continue };
+            if let Some(note) = notes.get(note_id.as_str()) {
+                *missing = false;
+                item.title = note.title.clone();
+                item.readable_content = note.content.clone();
+                item.source_bindings = note.source_bindings.clone();
+                note_items.entry(note_id.as_str()).or_default().push(item.item_id.as_str());
+            } else {
+                *missing = true;
+                item.title = "笔记已删除".into();
+                item.readable_content.clear();
+                item.source_bindings.clear();
+            }
+        }
+        for relation in &notebook.relations {
+            let (Some(from), Some(to)) = (note_items.get(relation.from_note_id.as_str()), note_items.get(relation.to_note_id.as_str())) else { continue };
+            for from_id in from {
+                for to_id in to {
+                    document.links.push(BoardLink {
+                        link_id: format!("note-relation-{}-{}-{}", relation.relation_id, from_id, to_id),
+                        from: BoardVisualTarget::Item { item_id: (*from_id).into() },
+                        to: BoardVisualTarget::Item { item_id: (*to_id).into() },
+                        label: relation.label.clone(), based_on: vec![],
+                        note_relation_id: Some(relation.relation_id.clone()), reason: Some(relation.reason.clone()),
+                    });
+                }
+            }
+        }
+        Ok(document)
+    }
+
     fn write_json(&self, path: &Path, value: &impl Serialize) -> Result<(), ToolError> {
         if self.private {
             let parent = path.parent().expect("board file has a parent");
@@ -1420,6 +1602,22 @@ impl BoardStore {
         }
         crate::persist_document_atomically(path, value, self.private)
     }
+}
+
+fn normalize_note_item(item: &mut BoardItem) {
+    if let BoardTarget::Note { missing, .. } = &mut item.target {
+        *missing = false;
+        item.title = "笔记".into();
+        item.readable_content.clear();
+        item.source_bindings.clear();
+    }
+}
+
+/// Board revisions persist only note identities. Hydrated text and shared
+/// relationship projections must never become stale retained snapshots.
+fn normalize_note_references(document: &mut BoardDocument) {
+    for item in &mut document.items { normalize_note_item(item); }
+    document.links.retain(|link| link.note_relation_id.is_none());
 }
 
 /// The original whole-answer address remains valid after fine blocks are added.
@@ -1467,6 +1665,7 @@ fn validate_visual_target(
     let exists = match target {
         BoardVisualTarget::Item { item_id } => document.items.iter().any(|item| &item.item_id == item_id),
         BoardVisualTarget::Link { link_id } => document.links.iter().any(|link| &link.link_id == link_id),
+        BoardVisualTarget::TopicEdge { child_item_id } => board_topic_parent(document, child_item_id).is_some(),
         BoardVisualTarget::PresentationAnchor { item_id, reference, anchor_id } => {
             !anchor_id.trim().is_empty() && document.items.iter().any(|item| &item.item_id == item_id
                 && matches!(&item.target, BoardTarget::Presentation { receipt, .. } if &receipt.reference == reference))
@@ -1559,6 +1758,8 @@ fn prune_removed_targets(document: &mut BoardDocument) {
 }
 
 fn normalize_view(document: &BoardDocument, view: &mut BoardView) {
+    view.folded_topic_ids.retain(|id| document.items.iter().any(|item| &item.item_id == id && matches!(item.target, BoardTarget::Topic { .. })));
+    view.selected_item_ids.retain(|id| document.items.iter().any(|item| &item.item_id == id));
     if view
         .selected_item_id
         .as_ref()
@@ -1673,11 +1874,13 @@ fn search_hit(
         block_id: item.and_then(|item| item.block_id.clone()),
         kind: item
             .map(|item| match &item.target {
+                BoardTarget::Note { .. } => BoardSearchKind::Note,
                 BoardTarget::Prebuild { .. } | BoardTarget::Artifact { .. } => BoardSearchKind::Prebuild,
                 BoardTarget::Answer { .. } => BoardSearchKind::Answer,
                 BoardTarget::Presentation { .. } => BoardSearchKind::Presentation,
                 BoardTarget::Understanding { .. } => BoardSearchKind::Understanding,
                 BoardTarget::Drawing { .. } => BoardSearchKind::Drawing,
+                BoardTarget::Topic { .. } => BoardSearchKind::Topic,
                 BoardTarget::PersonalNote { .. } => BoardSearchKind::PersonalNote,
             })
             .unwrap_or(BoardSearchKind::Board),
@@ -1805,6 +2008,10 @@ mod wb3_tests;
 mod wb4_tests;
 
 #[cfg(test)]
+#[path = "boards/workspace_note_tests.rs"]
+mod workspace_note_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
@@ -1859,6 +2066,8 @@ mod tests {
             links: vec![],
             mappings: vec![],
             routes: vec![],
+            mind_maps: vec![],
+            edit_history: BoardEditHistory::default(),
         }
     }
 
@@ -2080,6 +2289,8 @@ mod tests {
             item_id: Some(document.items[0].item_id.clone()),
             block_id: document.items[0].block_id.clone(),
             presentation: None,
+            intent: None,
+            regenerate_from: None,
         }
     }
 
@@ -2097,7 +2308,7 @@ mod tests {
 
     fn root_follow_up(document: &BoardDocument) -> BoardFollowUp {
         BoardFollowUp { note_refs:None, board_id:document.board_id.clone(),board_revision:document.revision,
-            item_id:None,block_id:None,presentation:None }
+            item_id:None,block_id:None,presentation:None,intent:None,regenerate_from:None }
     }
 
     #[test]

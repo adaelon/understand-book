@@ -122,7 +122,9 @@ test('mobile fullscreen fallback, source reading and missing citations stay usab
   const fixture = await serveBoard(page);
   await page.goto('/board-workspace-visual.html');
   await expect(page.locator('.board-card')).toHaveCount(4);
+  await page.locator('.board-mobile-switch').getByRole('button', { name: '讨论', exact: true }).click();
   await page.getByRole('textbox', { name: '在画板上提问', exact: true }).fill('留在画板的草稿');
+  await page.locator('.board-mobile-switch').getByRole('button', { name: '画板', exact: true }).click();
   await page.getByRole('button', { name: '全屏画板', exact: true }).click();
   await expect(page.locator('.board-fullscreen-notice')).toContainText('浏览器未允许全屏');
   const full = await page.locator('.board-canvas').boundingBox();
@@ -141,6 +143,7 @@ test('mobile fullscreen fallback, source reading and missing citations stay usab
   await expect(page.locator('.board-workspace')).toHaveClass(/board-canvas-fullscreen/);
   await page.keyboard.press('Escape');
   await expect(page.locator('.board-workspace')).not.toHaveClass(/board-canvas-fullscreen/);
+  await page.locator('.board-mobile-switch').getByRole('button', { name: '讨论', exact: true }).click();
   await expect(page.getByRole('textbox', { name: '在画板上提问', exact: true })).toHaveValue('留在画板的草稿');
   fixture.saved.document.items[1].source_bindings = [];
   await page.reload();
@@ -154,6 +157,104 @@ test('mobile fullscreen fallback, source reading and missing citations stay usab
   expect(toolbarFits).toBe(true);
   expect(await page.locator('.board-canvas-tools').evaluate(node => node.getBoundingClientRect().right <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('board-fullscreen-mobile-english.png') });
+});
+
+function addMixedDiagram(fixture: Awaited<ReturnType<typeof serveBoard>>) {
+  const doc = fixture.saved.document;
+  doc.items = [structuredClone(boardFixtureItems[1])];
+  doc.items[0].position = { x: 0, y: 0 };
+  doc.items[0].size = { width: 260, height: 180 };
+  const topics = [
+    ['topic-root', '从证据更新判断', ['topic-prior', 'topic-likelihood', 'topic-result']],
+    ['topic-prior', '先验：从原有比例开始', []],
+    ['topic-likelihood', '似然：比较不同解释', []],
+    ['topic-result', '后验：结合条件重新判断', []],
+  ] as const;
+  for (const [id, title, children] of topics) doc.items.push({
+    ...structuredClone(boardFixtureItems[1]), item_id: id, title, block_id: undefined, readable_content: '',
+    target: { kind: 'topic', children: [...children], style: { color: null, bold: false }, based_on: [] },
+  });
+  doc.mind_maps = [{ map_id: 'map-bayes', root_item_id: 'topic-root', layout: 'right', anchor: { x: 350, y: 70 }, branch_sides: {} }];
+  const steps = ['观察新证据', '比较两种解释', '更新当前判断'];
+  steps.forEach((text, index) => doc.items.push({
+    ...structuredClone(boardFixtureItems[1]), item_id: `flow-${index}`, title: text, block_id: undefined, readable_content: text,
+    position: { x: index * 330, y: 330 }, size: { width: 210, height: 96 },
+    target: { kind: 'drawing', graphic: { kind: 'shape', shape: 'rectangle', text, color: '#487f79' }, session_id: 'diagram-session', turn_id: 'diagram-turn', based_on: [] },
+  }));
+  doc.links = [0, 1].map(index => ({ link_id: `step-${index}`, from: { kind: 'item', item_id: `flow-${index}` }, to: { kind: 'item', item_id: `flow-${index + 1}` }, label: index ? '形成新的判断' : '保持条件一致', based_on: [] }));
+  fixture.saved.view = { ...fixture.saved.view, x: 30, y: 95, zoom: .8 };
+}
+
+test('sidebar composer preserves the canvas height, selected topic and draft across tabs, collapse and fullscreen', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await serveBoard(page); addMixedDiagram(fixture);
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/board-workspace-visual.html');
+  await expect(page.locator('[data-topic-id]')).toHaveCount(4);
+  await expect(page.locator('.board-drawing')).toHaveCount(3);
+  await page.locator('[data-topic-id="topic-result"]').click();
+  const composer = page.locator('.board-side-rail .board-conversation');
+  const input = composer.getByRole('textbox', { name: '在画板上提问', exact: true });
+  await expect(composer).toContainText('针对：后验：结合条件重新判断及其子主题');
+  await input.fill('画出这一步的分支和回路，保留旁边的导图。');
+  const canvas = (await page.locator('.board-canvas').boundingBox())!;
+  const form = (await composer.boundingBox())!;
+  expect(canvas.y + canvas.height).toBeGreaterThanOrEqual(899);
+  expect(form.x).toBeGreaterThanOrEqual(canvas.x + canvas.width);
+  expect(form.y + form.height).toBeLessThanOrEqual(900);
+  await page.screenshot({ path: info.outputPath('sidebar-desktop-reading.png') });
+  await page.locator('.board-rail-tabs').getByRole('tab', { name: '讨论', exact: true }).click();
+  await expect(input).toHaveValue('画出这一步的分支和回路，保留旁边的导图。');
+  await page.screenshot({ path: info.outputPath('sidebar-desktop-discussion.png') });
+  await page.getByRole('button', { name: '收起讲解与讨论', exact: true }).click();
+  await expect(composer).toBeHidden();
+  expect((await page.locator('.board-canvas').boundingBox())!.width).toBe(1440);
+  await page.getByRole('button', { name: '展开讲解与讨论', exact: true }).click();
+  await expect(input).toHaveValue('画出这一步的分支和回路，保留旁边的导图。');
+  await page.getByRole('button', { name: '全屏画板', exact: true }).click();
+  await expect(composer).toBeHidden();
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: '提问', exact: true }).click();
+  await expect(input).toBeFocused();
+  expect((await page.locator('.board-canvas').boundingBox())!.height).toBe(900);
+  await expect(composer).toContainText('后验：结合条件重新判断');
+  await page.screenshot({ path: info.outputPath('sidebar-fullscreen.png') });
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: '退出全屏', exact: true }).click();
+  expect(errors).toEqual([]);
+});
+
+test('sidebar composer stays in mobile discussion, preserves drafts and fits a short viewport', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { Element.prototype.requestFullscreen = async () => { throw new Error('Fullscreen unavailable'); }; });
+  const fixture = await serveBoard(page); addMixedDiagram(fixture);
+  await page.goto('/board-workspace-visual.html');
+  const composer = page.locator('.board-conversation');
+  const input = composer.getByRole('textbox', { name: '在画板上提问', exact: true });
+  const tabs = page.locator('.board-mobile-switch');
+  await expect(composer).toBeHidden();
+  await page.getByRole('button', { name: '显示全部内容', exact: true }).click();
+  expect((await page.locator('.board-canvas').boundingBox())!.y + (await page.locator('.board-canvas').boundingBox())!.height).toBeGreaterThanOrEqual(843);
+  await page.screenshot({ path: info.outputPath('sidebar-mobile-canvas.png') });
+  await tabs.getByRole('button', { name: '讨论', exact: true }).click();
+  await expect(composer).toBeVisible();
+  await input.fill('我想先看完整流程，再理解每一步。');
+  await page.screenshot({ path: info.outputPath('sidebar-mobile-discussion.png') });
+  await tabs.getByRole('button', { name: '讲解', exact: true }).click();
+  await expect(composer).toBeHidden();
+  await expect(page.locator('.board-reading-pane:visible')).toBeVisible();
+  await tabs.getByRole('button', { name: '讨论', exact: true }).click();
+  await expect(input).toHaveValue('我想先看完整流程，再理解每一步。');
+  await page.setViewportSize({ width: 390, height: 500 });
+  const bounds = (await input.boundingBox())!;
+  expect(bounds.y).toBeGreaterThan(0); expect(bounds.y + bounds.height).toBeLessThanOrEqual(500);
+  expect(await page.locator('.board-workspace').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('sidebar-mobile-short.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await tabs.getByRole('button', { name: '画板', exact: true }).click();
+  await page.getByRole('button', { name: '全屏画板', exact: true }).click();
+  await page.locator('.board-fullscreen-tools').getByRole('button', { name: '提问', exact: true }).click();
+  await expect(input).toBeVisible(); await expect(input).toBeFocused();
+  await expect(input).toHaveValue('我想先看完整流程，再理解每一步。');
+  await page.screenshot({ path: info.outputPath('sidebar-mobile-fullscreen.png') });
 });
 
 test('temporary source reader scrolls through the book, preserves its anchor and opens the current reading position', async ({ page }, info) => {

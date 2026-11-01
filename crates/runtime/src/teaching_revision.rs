@@ -138,6 +138,21 @@ impl TeachingRevisionDraft {
                 .cmp(right.path)
                 .then_with(|| right.range.start.cmp(&left.range.start))
         });
+        let changes = request.get("move_changes").map(|changes| changes.as_object()
+            .ok_or_else(|| invalid("move_changes 须为字段修改对象。"))).transpose()?;
+        if let Some(changes) = changes {
+            for (field, value) in changes {
+                if !matches!(field.as_str(), "participation" | "response_expectation" | "coach_adjustment") {
+                    return Err(invalid(&format!("move_changes 不支持修改 {field}；来源或设计变化须提交完整 select。")));
+                }
+                if field == "participation" && value.is_null() {
+                    return Err(invalid("participation 不能删除；请明确新的参与方式。"));
+                }
+            }
+            if changes.contains_key("response_expectation") && replacements.iter().any(|edit| edit.path == "/move/response_expectation/public_prompt") {
+                return Err(invalid("整项修改 response_expectation 时不要同时编辑 public_prompt 段落。"));
+            }
+        }
         let mut candidate = current.select_request.clone();
         for replacement in replacements {
             let Value::String(text) = candidate
@@ -147,6 +162,13 @@ impl TeachingRevisionDraft {
                 unreachable!("validated text field")
             };
             text.replace_range(replacement.range, replacement.new_text);
+        }
+        if let Some(changes) = changes {
+            let movement = candidate["move"].as_object_mut().expect("retained select move");
+            for (field, value) in changes {
+                if value.is_null() { movement.remove(field); }
+                else { movement.insert(field.clone(), value.clone()); }
+            }
         }
         Ok(candidate)
     }
@@ -251,6 +273,38 @@ mod tests {
 
     fn revision(reference: &str, edits: Value) -> Value {
         json!({"operation":"revise","draft_ref":reference,"edits":edits})
+    }
+
+    #[test]
+    fn allocation_revision_preserves_body_and_removes_only_the_named_invitation() {
+        let original = selection();
+        let mut draft = TeachingRevisionDraft::default();
+        let reference = draft.retain(&original).unwrap().to_owned();
+        let mut request = revision(&reference, json!([]));
+        request["move_changes"] = json!({"participation":{"choice":"conclude","reason":"已完成直接讲解"},
+            "response_expectation":null});
+        let mut expected = original.clone();
+        expected["move"]["participation"] = request["move_changes"]["participation"].clone();
+        expected["move"].as_object_mut().unwrap().remove("response_expectation");
+        assert_eq!(draft.prepare_revision(&request).unwrap(), expected);
+        assert_eq!(draft.prepare_revision(&revision(&reference, json!([]))).unwrap(), original,
+            "preparation never changes the retained draft before full validation");
+    }
+
+    #[test]
+    fn allocation_changes_reject_conflicting_invitation_edits_without_mutating_draft() {
+        let original = selection();
+        let mut draft = TeachingRevisionDraft::default();
+        let reference = draft.retain(&original).unwrap().to_owned();
+        let mut request = revision(&reference, json!([{ "field":"public_prompt", "paragraph":1, "new_text":"Another question?" }]));
+        request["move_changes"] = json!({"response_expectation":null});
+        assert!(draft.prepare_revision(&request).unwrap_err().message.contains("同时"));
+        request = revision(&reference, json!([]));
+        request["move_changes"] = json!({"participation":null});
+        assert!(draft.prepare_revision(&request).is_err());
+        request["move_changes"] = json!({"target":{}});
+        assert!(draft.prepare_revision(&request).is_err());
+        assert_eq!(draft.prepare_revision(&revision(&reference, json!([]))).unwrap(), original);
     }
 
     #[test]

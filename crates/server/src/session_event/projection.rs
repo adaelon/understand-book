@@ -91,7 +91,8 @@ impl SessionProjection {
             }
             EventBody::BoardAuthoringUpdated(candidate) => {
                 let turn = self.turn(event)?;
-                if turn.status != AgentAssistantStatus::PendingAssistant
+                if (turn.status != AgentAssistantStatus::PendingAssistant
+                    && !crate::board_author::confirmation_update(turn.domain.board_authoring.as_ref(), candidate))
                     || turn.domain.board_context.as_ref().is_none_or(|context| context.follow_up.board_id != candidate.board_id)
                     || turn.domain.board_authoring.as_ref().is_some_and(|old| old.candidate_revision > candidate.candidate_revision)
                 { return Err(invalid("board candidate requires its pending accepted turn")); }

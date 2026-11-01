@@ -1,0 +1,130 @@
+{
+  "case": "correct_reason",
+  "elapsed_ms": 10440,
+  "error": null,
+  "input": {
+    "actual_delivery": {
+      "answer": "你提到了时间范围。我们沿这段行程继续看。",
+      "relative_to_expression": "after"
+    },
+    "known_focuses": [
+      {
+        "capability": "application",
+        "expected_performance": "依据行程起止判断时间范围并解释变化",
+        "focus_ref": "focus:elapsed",
+        "learning_focus": "全程平均速度使用包含停车的总时间",
+        "object_refs": [],
+        "source_bindings": [
+          {
+            "end_lid": "1.1",
+            "source_id": "book",
+            "source_revision": "v1",
+            "start_lid": "1.1"
+          }
+        ]
+      }
+    ],
+    "observation_facts": [
+      {
+        "already_interpreted": false,
+        "fact_ref": "correct_reason",
+        "fact_refs": [
+          "correct_reason"
+        ],
+        "help_before_expression": "no_recorded_prior_help",
+        "prior_help": [],
+        "user_expression": "同样走 10 千米，若途中停车变长，从出发到到达的时间更长，所以全程平均速度更小。"
+      }
+    ],
+    "observation_only": true,
+    "personal_notes": {
+      "explicit": [
+        {
+          "content": "停车的时候没运动，这段时间应该不算吧？",
+          "reference": {
+            "note_id": "note",
+            "revision": 1
+          }
+        }
+      ],
+      "references": [
+        {
+          "note_id": "note",
+          "revision": 1
+        }
+      ]
+    },
+    "read_sources": [
+      {
+        "range": {
+          "end_lid": "1.1",
+          "start_lid": "1.1"
+        },
+        "text": "全程平均速度等于总路程除以从出发到到达的总时间，停车时间也属于这段时间。只统计运动时间得到的是运动期间的平均速度，回答的问题不同。相同路程下，总时间越长，全程平均速度越小。10 千米的行程中运动 10 分钟、停车 5 分钟，总时间为 15 分钟即 0.25 小时，全程平均速度是 40 千米每小时。"
+      }
+    ],
+    "source_turn_ref": "correct_reason",
+    "teaching_context": {
+      "status": "observing"
+    },
+    "trigger": "after_turn"
+  },
+  "model": "deepseek-v4-flash",
+  "result": {
+    "alternatives": [],
+    "needs_read": [],
+    "next_step": {
+      "focus": "确认停车时间计入全程总时间这一关系；本轮不追加新的学习活动。",
+      "participation": {
+        "choice": "conclude",
+        "reason": "当前处于观察整理状态，用户已表达出停车变长导致总时间更长、全程平均速度更小的关系，本轮无需再安排表达或练习。"
+      }
+    },
+    "observations": [
+      {
+        "decision": "record",
+        "fact_ref": "correct_reason",
+        "hypothesis": {
+          "block_refs": [],
+          "interpretation": "用户在没有记录到先前帮助的情况下，用“同样走 10 千米”和“从出发到到达的时间”说明：停车变长会让总时间更长，因此全程平均速度更小。这支持用户已把停车时段纳入全程时间范围，并据此判断平均速度变化；但尚未通过具体数值或新情境展示独立计算或应用。",
+          "note_links": [
+            {
+              "quote": "停车的时候没运动，这段时间应该不算吧？",
+              "reference": {
+                "note_id": "note",
+                "revision": 1
+              }
+            }
+          ],
+          "target": {
+            "capability": "application",
+            "expected_performance": "在相同总路程下，依据包含停车的从出发到到达总时间，解释停车时间变长为什么使全程平均速度变小。",
+            "focus_ref": "focus:elapsed",
+            "learning_focus": "全程平均速度使用包含停车的总时间",
+            "source_bindings": [
+              {
+                "end_lid": "1.1",
+                "source_id": "book",
+                "source_revision": "v1",
+                "start_lid": "1.1"
+              }
+            ]
+          },
+          "teaching_implication": "承接用户已经表达出的“总时间变长则全程平均速度变小”，不再重复解释停车时间是否该计入；若后续继续，可用一个含具体运动时间与停车时间的行程，让用户计算或比较全程平均速度。",
+          "understanding": {
+            "demonstrated": [
+              "能说明在相同路程下，停车时间变长使从出发到到达的总时间更长，因此全程平均速度更小。"
+            ],
+            "difficulties": [],
+            "unconfirmed": [
+              "尚未确认用户能否用具体的运动时间与停车时间算出总时间并求全程平均速度。",
+              "尚未确认用户能否在换一个行程数据时独立应用这一关系。"
+            ]
+          }
+        },
+        "reason": "用户原话在没有记录到先前帮助的条件下，正确表达了总时间与全程平均速度的反向关系，并显示停车时段被纳入从出发到到达的总时间，因此值得记录为暂定理解。"
+      }
+    ],
+    "reason": "用户原话在没有记录到先前帮助的条件下，正确表达了总时间与全程平均速度的反向关系，并显示停车时段被纳入从出发到到达的总时间；因此记录该暂定理解，并按观察状态收束，不追加活动。"
+  }
+}

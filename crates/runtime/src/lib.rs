@@ -33,6 +33,7 @@ pub mod guided_read_replay;
 pub mod goal;
 pub mod workspace_goal;
 pub mod workspace_records;
+pub mod workspace_notes;
 pub mod tutor;
 pub mod practice;
 pub mod learning_map;

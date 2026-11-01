@@ -42,6 +42,8 @@ export function useNoteWindow(owner: () => string | null) {
     return { x: visual?.offsetLeft ?? 0, y: visual?.offsetTop ?? 0, width: visual?.width || window.innerWidth, height: visual?.height || window.innerHeight };
   };
   const viewport = ref(measure()), preferred = ref<NoteWindowFrame | null>(null), interacting = ref(false);
+  const compactFrame = ref<NoteWindowFrame | null>(null);
+  const expanded = computed(() => compactFrame.value !== null);
   const frame = computed(() => preferred.value ? fitNoteWindow(preferred.value, viewport.value) : defaultNoteWindow(viewport.value));
   const style = computed(() => ({ left: `${frame.value.x}px`, top: `${frame.value.y}px`, width: `${frame.value.width}px`, height: `${frame.value.height}px` }));
   let gesture: { action: NoteWindowAction; pointerId: number; x: number; y: number; frame: NoteWindowFrame; target: HTMLElement } | null = null;
@@ -49,6 +51,17 @@ export function useNoteWindow(owner: () => string | null) {
   function persist() {
     if (!owner() || !preferred.value) return;
     try { localStorage.setItem(storageKey(), JSON.stringify(preferred.value)); } catch { /* Position is optional; drafts have separate persistence. */ }
+  }
+  function toggleExpanded() {
+    finish();
+    if (compactFrame.value) { preferred.value = compactFrame.value; compactFrame.value = null; }
+    else {
+      compactFrame.value = { ...frame.value };
+      const width = Math.min(720, viewport.value.width - 24), height = Math.min(860, viewport.value.height - 48);
+      preferred.value = fitNoteWindow({ x: viewport.value.x + (viewport.value.width - width) / 2,
+        y: viewport.value.y + (viewport.value.height - height) / 2, width, height }, viewport.value);
+    }
+    persist();
   }
   function finish(save = true) {
     if (!gesture) return;
@@ -81,7 +94,7 @@ export function useNoteWindow(owner: () => string | null) {
   }
   function updateViewport() { viewport.value = measure(); }
   watch(owner, () => {
-    finish(false); preferred.value = null;
+    finish(false); preferred.value = null; compactFrame.value = null;
     if (!owner()) return;
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey()) ?? 'null');
@@ -105,5 +118,5 @@ export function useNoteWindow(owner: () => string | null) {
     window.removeEventListener('pointerup', end);
     window.removeEventListener('pointercancel', end);
   });
-  return { style, interacting, begin, keyboard, finish };
+  return { style, interacting, expanded, toggleExpanded, begin, keyboard, finish };
 }

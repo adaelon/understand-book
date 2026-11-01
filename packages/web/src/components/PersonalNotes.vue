@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import NoteThinking from './NoteThinking.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, ChevronRight, FileText, GripHorizontal, History, Link2, MapPin, Minus, PenLine, Plus, Search, Trash2 } from '@lucide/vue';
+import { ArrowLeft, ArrowUpRight, Check, ChevronDown, ChevronRight, FileText, GripHorizontal, History, Link2, MapPin, Maximize2, Minimize2, Minus, PenLine, Plus, Search, Trash2 } from '@lucide/vue';
 import { useNoteWindow, type NoteWindowAction } from '../note-window';
 import { useNoteLauncher } from '../note-launcher';
 import { renderMarkdown } from '../md';
@@ -22,6 +23,11 @@ watch(query, value=>{clearTimeout(searchTimer);const request=++searchRequest;sea
     catch(failure){if(request===searchRequest)error.value=(failure as Error).message;}finally{if(request===searchRequest)searching.value=false;}},250);
 });
 const selected = ref<PersonalNoteView | null>(null), draft = ref<NoteDraft | null>(null), error = ref(''), notice = ref(''), saving = ref(false);
+watch(notice, (message, _previous, onCleanup) => {
+  if (!message) return;
+  const timeout = setTimeout(() => { notice.value = ''; }, 3000);
+  onCleanup(() => clearTimeout(timeout));
+}, { flush: 'sync' });
 const history = ref<NoteRevision[]>([]), discussions = ref<NoteDiscussion[]>([]), links = ref<NoteLink[]>([]);
 const tab = ref<'write' | 'history' | 'links'>('write'), historyVersion = ref<NoteRevision | null>(null), comparing = ref(false);
 const conflict = ref<PersonalNoteView | null>(null), linkTarget = ref(''), linkReason = ref(''), confirmDelete = ref(false);
@@ -51,6 +57,7 @@ function returnToSource() {
 }
 const comparisonRevision = ref(0);
 const textInput = ref<HTMLTextAreaElement | null>(null), panel = ref<HTMLElement | null>(null);
+const historicalReader = ref<HTMLElement | null>(null);
 const composing=ref(false);
 const noteWindow = useNoteWindow(notesOwner);
 const launcherElement = ref<HTMLElement | null>(null);
@@ -238,6 +245,7 @@ async function suggestLink() {
 }
 const discussion=ref<{title:string;personal:boolean;session_id:string;turn:{user:string;outcome?:{answer?:string};error?:{message:string}}}|null>(null);
 async function readDiscussion(sessionId:string,turnId:string){try{discussion.value=await noteRequest('discussion',{session_id:sessionId,turn_id:turnId});}catch(failure){error.value=(failure as Error).message;}}
+async function readThinkingRevision(revision:number){if(!selected.value)return;const noteId=selected.value.note_id;try{const note=await personalNotes.read({note_id:noteId,revision});if(selected.value?.note_id!==noteId)return;historyVersion.value=note.value;tab.value='history';await nextTick();historicalReader.value?.scrollIntoView?.({block:'start'});}catch(failure){error.value=(failure as Error).message;}}
 function keydown(event: KeyboardEvent) {
   if (event.isComposing || composing.value || event.keyCode === 229) return;
   if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (placementMenuOpen.value) placementMenuOpen.value = false; else if (contextMenuOpen.value) contextMenuOpen.value = false; else close(); }
@@ -267,7 +275,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
       <header class="thought-heading" @pointerdown="noteWindow.begin($event, 'move')">
         <div class="thought-window-title"><span class="thought-pen"><PenLine :size="16" /></span><h1>{{ notesPanel.view === 'capture' ? '随手记' : '我的想法' }}</h1></div>
         <span class="thought-drag-grip" tabindex="0" role="button" aria-label="移动想法窗口" aria-description="拖动顶部，或使用方向键移动窗口" title="拖动顶部移动" @keydown="noteWindow.keyboard($event, 'move')"><GripHorizontal :size="18" /></span>
-        <div class="thought-window-tools"><button v-if="notesPanel.view !== 'library'" class="icon-button" aria-label="我的想法" title="查看全部想法" @click="openPersonalNotes()"><FileText :size="16" /></button><button v-else class="icon-button" aria-label="记个想法" title="继续随手记" @click="capture"><PenLine :size="16" /></button><button class="icon-button" aria-label="收起我的想法" title="收起，草稿会保留" @click="close"><Minus :size="18" /></button></div>
+        <div class="thought-window-tools"><button v-if="notesPanel.view !== 'library'" class="icon-button" aria-label="我的想法" title="查看全部想法" @click="openPersonalNotes()"><FileText :size="16" /></button><button v-else class="icon-button" aria-label="记个想法" title="继续随手记" @click="capture"><PenLine :size="16" /></button><button class="icon-button" :aria-label="noteWindow.expanded.value ? '还原想法窗口' : '展开想法窗口'" :title="noteWindow.expanded.value ? '还原窗口' : '展开阅读思考过程'" @click="noteWindow.toggleExpanded"><Minimize2 v-if="noteWindow.expanded.value" :size="16" /><Maximize2 v-else :size="16" /></button><button class="icon-button" aria-label="收起我的想法" title="收起，草稿会保留" @click="close"><Minus :size="18" /></button></div>
       </header>
       <div class="thought-layout">
         <aside v-if="notesPanel.view === 'library'" class="thought-navigation">
@@ -284,6 +292,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
             <button v-if="notesPanel.view === 'detail'" class="mobile-back" @click="openPersonalNotes()"><ArrowLeft :size="16" />全部想法</button>
             <div v-if="selected" class="thought-meta"><span>{{ draft?.value.context.label || selected?.value.context.label || '随时记录的想法' }}</span><span>第 {{ selected.current_revision }} 版 · {{ time(selected.value.saved_at) }}</span></div>
             <nav v-if="selected" class="thought-tabs" aria-label="笔记视图"><button :aria-pressed="tab === 'write'" @click="tab = 'write'"><FileText :size="15" />当前表述</button><button :aria-pressed="tab === 'history'" @click="tab = 'history'"><History :size="15" />思考过程</button><button :aria-pressed="tab === 'links'" @click="tab = 'links'"><Link2 :size="15" />联系 <span>{{ links.length || '' }}</span></button></nav>
+            <NoteThinking v-if="selected && tab==='history'" :note-id="selected.note_id" :revision="selected.current_revision" @revision="readThinkingRevision" @discussion="readDiscussion" />
             <template v-if="tab === 'write'">
               <div v-if="draft" class="thought-compose" data-workspace-input><input v-model="draft.value.title" class="thought-title-input" placeholder="一个念头…" aria-label="想法标题" title="标题可以留空" :readonly="saving || !!draft.pending" @input="changed" /><textarea ref="textInput" v-model="draft.value.content" class="thought-writing" placeholder="想到了什么？先写下来。" aria-label="想法正文" @compositionstart="composing=true" @compositionend="composing=false" :readonly="saving || !!draft.pending" @input="changed" /><div class="draft-status-line"><p class="muted draft-status" :role="error || draftStorageError ? 'alert' : undefined" :class="{ 'storage-error': draftStorageError || error }">{{ draftStorageError ? '草稿暂未写入设备' : error || (draft.pending ? '保存结果待确认，可重试' : '草稿已保留') }}</p><div class="thought-context"><button v-if="canChooseContext" class="context-toggle" :disabled="saving || !!draft.pending" :aria-expanded="contextMenuOpen" aria-label="选择想法来源" :title="contextLabel" @click="toggleContextMenu"><MapPin :size="12" /><span>{{ contextLabel }}</span><ChevronDown :size="12" /></button><span v-else class="context-fixed" :title="contextLabel"><MapPin :size="12" />{{ contextLabel }}</span><div v-if="contextMenuOpen" class="context-options"><p>记录它从哪里产生</p><button v-if="contextCandidate" @click="chooseContext(contextCandidate)"><MapPin :size="14" /><span>关联当前位置<small>{{ contextCandidate.label || '当前阅读位置' }}</small></span></button><button @click="chooseContext(null)"><PenLine :size="14" /><span>独立想法<small>不关联页面位置</small></span></button></div></div></div></div>
               <template v-else-if="selected"><h2 class="thought-title">{{ title(selected) }}</h2><p class="muted">{{ author(selected.value) }}</p><div class="md thought-prose" v-html="renderMarkdown(currentText)"></div></template>
@@ -295,14 +304,11 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
                   <div v-if="placementMenuOpen" class="placement-options" aria-label="选择想法放置位置"><p>让想法留在相关内容旁</p><button v-if="draft" @click="onlySave"><span>只保存想法<small>默认 · 不放到页面里</small></span><Check v-if="!draft.destination" :size="14" /></button><button v-for="choice in placementChoices" :key="choice.key" :disabled="placing" @click="choosePlacement(choice)"><span>{{ choice.label }}<small>{{ choice.detail }}</small></span></button><p v-if="!placementChoices.length">打开画布、点选一条消息或打开演示，就能选择放置位置。</p><p v-if="placing" role="status">正在记录位置…</p><p v-if="draft?.destination" class="chosen-location">已选：{{ draft.destination.label }}</p></div>
                 </div><span class="action-spacer" /><button v-if="selected" :disabled="saving" @click="discuss">一起推敲 <ArrowUpRight :size="15" /></button><button v-if="selected" :disabled="saving" @click="practice">练一练</button><button v-if="draft" class="primary" title="Ctrl / ⌘ + Enter 保存" :disabled="saving || placing || capturingSource || (!draft.value.content.trim() && !draft.value.source?.retained_excerpt)" @click="save">{{ saving ? '正在保存…' : capturingSource ? '正在记录现场…' : draft.saved_note ? '重试放置' : draft.pending ? '重试这次保存' : draft.destination ? '保存并放置' : '保存想法' }}<Check :size="15" /></button>
               </footer>
+              <NoteThinking v-if="selected" :note-id="selected.note_id" :revision="selected.current_revision" compact @revision="readThinkingRevision" @discussion="readDiscussion" />
               <details v-if="selected && (placements.length || boardPlacements.length)" class="thought-locations"><summary>放在 {{ placements.length + boardPlacements.length }} 个位置</summary><div v-for="item in placements" :key="item.attachment.attachment_id"><button @click="pendingNotePlacementLocation={kind:'attachment',target:item.attachment.target,label:item.attachment.label}">{{ item.attachment.label }} ↗</button><button aria-label="移除这个放置位置" @click="removePlacement(item.attachment.attachment_id)">×</button></div><div v-for="location in boardPlacements" :key="location.board_id+location.item_id"><button @click="openBoardPlacement(location)">画布 · {{ location.label }} ↗</button><button aria-label="从这个画布移除" @click="removeBoardPlacement(location)">×</button></div></details>
             </template>
             <template v-if="tab === 'history' && selected">
-              <p class="muted">每次保存的原话都留在这里。更晚的表述，也可以继续推敲。</p>
-              <div class="thought-timeline"><button v-for="version in history" :key="version.revision" :aria-pressed="historyVersion?.revision === version.revision" @click="historyVersion = version"><span>第 {{ version.revision }} 版</span><small>{{ time(version.saved_at) }} · {{ author(version) }}</small><span v-if="version.restored_from">从第 {{ version.restored_from }} 版恢复</span><p v-if="version.change_note">{{ version.change_note }}</p></button></div>
-              <button v-if="history.length && history.at(-1)!.revision > 1" @click="moreHistory">更早的版本</button>
-              <article v-if="historyVersion" class="historical-note"><header><h3>第 {{ historyVersion.revision }} 版 · 只读</h3><button @click="comparing = !comparing">{{ comparing ? '阅读原文' : '对照当前版' }}</button></header><label v-if="comparing" class="muted">对照版本<select v-model.number="comparisonRevision" aria-label="对照版本"><option :value="0">当前版</option><option v-for="version in history" :key="version.revision" :value="version.revision">第 {{version.revision}} 版</option></select></label><div v-if="comparing" class="note-diff"><div v-for="(line, index) in differences" :key="index" :class="line.kind"><span>{{ line.kind === 'added' ? '+ 新' : line.kind === 'removed' ? '− 旧' : '　' }}</span><pre>{{ line.text || ' ' }}</pre></div></div><div v-else class="md" v-html="renderMarkdown(historyVersion.record.content)"></div><blockquote v-if="historyVersion.record.note?.retained_excerpt">{{ historyVersion.record.note.retained_excerpt.text }}</blockquote><button :disabled="saving || !!draft?.pending" @click="restore(dirty)">{{ dirty ? '先保存当前修改，再恢复此版本' : '从此版本继续写（保存为新版本）' }}</button></article>
-              <div v-if="discussions.length" class="related-discussions"><h3>相关讨论与补充</h3><article v-for="item in discussions" :key="item.turn.turn_id"><small>围绕第 {{ item.reference.revision }} 版 · {{ time(item.created_at) }}</small><p>{{ item.expression || '引用了这版想法进行讨论' }}</p><button @click="readDiscussion(item.turn.session_id,item.turn.turn_id)">查看当时的讨论</button></article></div>
+              <article v-if="historyVersion" ref="historicalReader" class="historical-note"><header><h3>第 {{ historyVersion.revision }} 版 · 只读</h3><button @click="comparing = !comparing">{{ comparing ? '阅读原文' : '对照当前版' }}</button></header><label v-if="comparing" class="muted">对照版本<select v-model.number="comparisonRevision" aria-label="对照版本"><option :value="0">当前版</option><option v-for="version in history" :key="version.revision" :value="version.revision">第 {{version.revision}} 版</option></select></label><div v-if="comparing" class="note-diff"><div v-for="(line, index) in differences" :key="index" :class="line.kind"><span>{{ line.kind === 'added' ? '+ 新' : line.kind === 'removed' ? '− 旧' : '　' }}</span><pre>{{ line.text || ' ' }}</pre></div></div><div v-else class="md" v-html="renderMarkdown(historyVersion.record.content)"></div><blockquote v-if="historyVersion.record.note?.retained_excerpt">{{ historyVersion.record.note.retained_excerpt.text }}</blockquote><button :disabled="saving || !!draft?.pending" @click="restore(dirty)">{{ dirty ? '先保存当前修改，再恢复此版本' : '从此版本继续写（保存为新版本）' }}</button></article>
             </template>
             <template v-if="tab === 'links' && selected">
               <p class="muted">把互相启发的想法联系起来，也可以写下为什么。</p>
@@ -325,7 +331,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
       <span v-for="edge in resizeEdges" :key="edge" class="thought-resize" :class="`resize-${edge}`" aria-hidden="true" @pointerdown="noteWindow.begin($event, edge)" />
       <button class="thought-resize resize-se" aria-label="调整想法窗口大小" aria-description="拖动边角，或使用方向键调整窗口大小" title="拖动调整大小" @pointerdown="noteWindow.begin($event, 'se')" @keydown="noteWindow.keyboard($event, 'se')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 9 9 3M7 9 9 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" /></svg></button>
     </section>
-  <div v-if="notesOwner()" v-show="!notesPanel.open" ref="launcherElement" class="thought-toolbar" :class="{ 'is-dragging': launcher.dragging.value }" :style="launcher.style.value" data-personal-notes>
+  <div v-if="notesOwner()" v-show="!notesPanel.open" ref="launcherElement" class="thought-toolbar" :class="{ 'is-dragging': launcher.dragging.value, 'keyboard-open': launcher.keyboardOpen.value }" :style="launcher.style.value" data-personal-notes>
     <span v-if="notice" class="toolbar-notice" role="status"><Check :size="14" />{{ notice }}</span>
     <button class="thought-entry" aria-label="记一下" :title="drafts.length ? '继续草稿 · 可拖动 · Ctrl / ⌘ + Shift + M' : '记一下 · 可拖动 · Ctrl / ⌘ + Shift + M'" aria-description="点击直接记录；拖动或按 Alt 加方向键移动入口" aria-keyshortcuts="Control+Shift+M Meta+Shift+M" aria-controls="personal-thought-window" :aria-expanded="notesPanel.open && notesPanel.view === 'capture'" @pointerdown="launcher.begin" @keydown="launcher.keyboard" @click="launcher.click($event, capture)"><PenLine :size="17" /><span>记一下</span><span v-if="drafts.length" class="draft-dot" aria-label="有未完成的草稿" /></button>
   </div>
@@ -370,7 +376,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .thought-compose { display: flex; flex-direction: column; flex: 1 0 112px; min-height: 0; }
 .thought-title-input { flex: none; border: 0; border-radius: 0; background: transparent; font-size: 18px; font-weight: 600; line-height: 1.6; width: 100%; box-sizing: border-box; color: #4b4033; margin: 0 0 8px; padding: 0; box-shadow: none; }
 .thought-title-input::placeholder { color: #b7a88e; font-weight: 500; }
-.thought-writing { flex: 1; border: 0; border-radius: 0; background: transparent; box-sizing: border-box; width: 100%; min-height: 56px; resize: none; font-size: 16px; line-height: 1.9; letter-spacing: .01em; color: inherit; padding: 0; box-shadow: none; scrollbar-width: thin; scrollbar-color: #ded2bd transparent; }
+.thought-writing { flex: 1; border: 0; border-radius: 0; background: transparent; box-sizing: border-box; width: 100%; min-height: 32px; resize: none; font-size: 16px; line-height: 1.9; letter-spacing: .01em; color: inherit; padding: 0; box-shadow: none; scrollbar-width: thin; scrollbar-color: #ded2bd transparent; }
 .thought-writing::placeholder { color: #a89c89; }
 .thought-writing:focus, .thought-title-input:focus { outline: none; border: 0; background: transparent; box-shadow: none; }
 .thought-title { font-size: 19px; line-height: 1.6; overflow-wrap: anywhere; }
@@ -442,7 +448,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .thought-provenance h3 { width: 100%; font-size: 12px; margin-bottom: 0; }
 .thought-provenance button { background: transparent; border: 1px solid var(--line, #dedfd6); border-radius: 7px; padding: 7px 9px; color: var(--steel, #687066); font-size: 11px; }
 .thought-link textarea { width: 100%; box-sizing: border-box; min-height: 90px; }
-.thought-toolbar { position: fixed; z-index: 10000; width: max-content; }
+.thought-toolbar { position: fixed; z-index: 10000; width: max-content; pointer-events: none; }
+.thought-toolbar .thought-entry { pointer-events: auto; }
+/* Keep the receipt and measured size, while yielding all input controls to the keyboard. */
+.thought-toolbar.keyboard-open .thought-entry { visibility: hidden; pointer-events: none; }
 .thought-toolbar .thought-entry { display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; height: 44px; padding: 0 15px; border: 1px solid #dfd2be; border-radius: 24px; background: #fffaf0; color: #896243; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; touch-action: none; user-select: none; box-shadow: 0 3px 12px #49341b14, 0 1px 3px #49341b09; }
 .thought-toolbar .thought-entry:active { transform: none; }
 .thought-toolbar .thought-entry:hover { background: #f7eddd; border-color: #c9b18e; }

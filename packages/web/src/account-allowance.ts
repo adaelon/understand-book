@@ -84,6 +84,7 @@ const spendReasons: Record<string, string> = {
 };
 export interface SpendError { error_code: string; category: string; message: string; execution_error?: SpendError | null }
 export interface SpendNotice { code: string; message: string }
+export function spendFailureMessage(code: string): string | undefined { return spendReasons[code]; }
 export function spendNotice(error: SpendError | null | undefined, persistence: 'saved' | 'pending' | 'failed' | 'unsubmitted'): SpendNotice | undefined {
   const cause = error?.error_code === 'TURN_UNSAVED' ? error.execution_error : error;
   if (cause?.category !== 'model_spend' || !spendReasons[cause.error_code]) return;

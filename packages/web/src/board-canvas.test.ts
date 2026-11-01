@@ -141,6 +141,34 @@ describe('native board graphics in the shared canvas', () => {
     expect(wrapper.emitted('select')?.[0]).toEqual(['shape']);
     expect(wrapper.emitted('user-control')).toEqual([['keyboard'], ['keyboard']]);
   });
+  it('places a shared note relation label above adjacent cards when their 40px gap cannot contain it', async () => {
+    const notes: BoardItem[] = ['first-note', 'second-note'].map((noteId, index) => ({
+      item_id: `item-${noteId}`, title: noteId, readable_content: '练习记录', explanation_blocks: [],
+      position: { x: index * 360, y: 0 }, size: { width: 320, height: 220 },
+      created_at: '2026-10-27', source_bindings: [], target: { kind: 'note', note_id: noteId, missing: false },
+    }));
+    const relation: BoardLink = {
+      link_id: 'shared-practice-link', note_relation_id: 'practice-relation',
+      from: { kind: 'item', item_id: notes[0].item_id }, to: { kind: 'item', item_id: notes[1].item_id },
+      label: '提供练习实例', reason: '这次练习记录展示了反馈如何帮助调整下一次练习。', based_on: [],
+    };
+    const wrapper = setup({ items: notes, links: [relation] });
+    const connection = wrapper.get('[data-board-link="shared-practice-link"]');
+    const background = connection.get('.board-note-link-label-bg');
+    // SVG attributes are world coordinates; the label must clear both cards,
+    // whose top edge is y = 0, rather than sit behind their content.
+    expect(Number(background.attributes('y')) + Number(background.attributes('height'))).toBeLessThanOrEqual(0);
+    expect(connection.get('.board-link-label').text()).toBe(relation.label);
+    expect(connection.attributes('aria-label')).toBe(relation.label);
+    expect(connection.get('title').text()).toContain(relation.reason);
+    expect(connection.attributes('tabindex')).toBe('0');
+    await connection.trigger('keydown', { key: 'Enter' });
+    await connection.trigger('keydown', { key: ' ' });
+    expect(wrapper.emitted('activate-target')).toEqual([
+      [{ kind: 'link', link_id: relation.link_id }], [{ kind: 'link', link_id: relation.link_id }],
+    ]);
+    expect(wrapper.emitted('user-control')).toEqual([['keyboard'], ['keyboard']]);
+  });
   it('recalculates links during a native drag and commits the new world position once on release', async () => {
     const wrapper = setup({ view: { ...view, zoom: .5 } });
     const path = wrapper.get('.board-link-stroke').attributes('d');

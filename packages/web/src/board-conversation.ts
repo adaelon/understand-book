@@ -1,4 +1,4 @@
-import type { BoardConversationSession, OuterOutcome } from './api';
+import type { BoardConversationSession, OuterOutcome, PendingBoardEdit } from './api';
 import type { AnswerDraft, RunActivity } from './agent-run-state';
 import type { BoardDelivery } from './generated/BoardDelivery';
 import { mergeBoardDeliveries } from './board-workspace';
@@ -17,6 +17,7 @@ export interface BoardDiscussionTurn {
   activities?: RunActivity[];
   error?: string | null;
   commits?: BoardDelivery[];
+  pendingBoardEdit?: PendingBoardEdit | null;
 }
 export function discussionTurnKey(turn: BoardDiscussionTurn) {
   return `${turn.sessionId}:${turn.turnId ?? `request:${turn.requestId}`}`;
@@ -31,6 +32,7 @@ export function mergeBoardConversation(sessions: BoardConversationSession[], liv
       runStatus: turn.status === 'cancelled' ? uiText('已停止') : undefined,
       activities: turn.run_summary?.activities ?? undefined,
       commits: mergeBoardDeliveries(turn.board_commits, turn.board_delivery ? [turn.board_delivery] : []),
+      pendingBoardEdit: turn.pending_board_edit,
     };
     turns.set(discussionTurnKey(view), view);
   }

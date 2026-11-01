@@ -155,7 +155,9 @@ fn enqueue_delivery(user: &user_runtime::UserRuntime, turn: &AgentTurnRef, times
         })).collect();
     let packet = json!({"trigger":if backfill {"observation_backfill"} else {"after_turn"},"source_turn_ref":turn.turn_id,
         "teaching_context":context,"observation_only":backfill,"current_design":actual_design,
-        "dialogue":dialogue,"actual_delivery":{"answer":outcome.answer,"answer_view":outcome.answer_view},
+        "dialogue":dialogue,"actual_delivery":{"relative_to_expression":"after","answer":outcome.answer,"answer_view":outcome.answer_view},
+        "personal_notes":saved.domain.personal_notes,
+        "known_focuses":store.focus_candidates(&binding.source_id,&binding.source_revision,24)?,
         "source_bindings":saved.source_bindings,"turn_facts":events,"observation_facts":observation_facts,
         "consumed_guidance":store.coach_turn_context(&turn.session_id,&turn.turn_id)?.and_then(|d|d.context),
         "publication":saved.published_book_ref,

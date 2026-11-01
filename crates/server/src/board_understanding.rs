@@ -152,7 +152,7 @@ mod tests {
             "board_revision":board["revision"],"source":metadata["sources"]["prebuild"]}), NOW).unwrap();
         let board: BoardDocument = serde_json::from_value(board).unwrap();
         let follow_up = memory::boards::BoardFollowUp { note_refs:None, board_id: board.board_id.clone(), board_revision: board.revision,
-            item_id: Some(board.items[0].item_id.clone()), block_id: None, presentation: None };
+            item_id: Some(board.items[0].item_id.clone()), block_id: None, presentation: None, intent: None, regenerate_from: None };
         let frozen = board_api::freeze_follow_up(&state.user, &state.workspace, &follow_up).unwrap();
         (root, state, frozen, board, metadata["session_id"].as_str().unwrap().into(), metadata["turn_id"].as_str().unwrap().into())
     }

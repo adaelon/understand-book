@@ -7,4 +7,8 @@ import type { TeachingSourceBinding } from "./TeachingSourceBinding";
 /**
  * A source-grounded focus; formal object identity is optional.
  */
-export type TeachingTarget = { learning_focus: string, expected_performance: string, capability: string, source_bindings: Array<TeachingSourceBinding>, media_bindings?: Array<TeachingMediaBinding>, music_bindings?: Array<TeachingMusicBinding>, object_refs: Array<TeachingObjectRevision>, };
+export type TeachingTarget = {
+/**
+ * Private relationship identity. Reuse an offered candidate only for the same relationship.
+ */
+focus_ref?: string, learning_focus: string, expected_performance: string, capability: string, source_bindings: Array<TeachingSourceBinding>, media_bindings?: Array<TeachingMediaBinding>, music_bindings?: Array<TeachingMusicBinding>, object_refs: Array<TeachingObjectRevision>, };

@@ -69,7 +69,10 @@ fn native_board_selection_preflight_binds_real_candidate_design_focus_and_typed_
     assert_eq!(movement.design_ref.as_deref(),accepted["design_ref"].as_str());
     assert_eq!(movement.block_refs,vec!["total-time"]);
     assert!(!movement.block_refs.iter().any(|id|id=="canvas-only-state"));
-    assert_eq!(json!(movement.target),accepted["design"]["target"]);
+    let mut expected_target=accepted["design"]["target"].clone();
+    let focus=movement.target.as_ref().unwrap().focus_ref.as_ref().expect("accepted relationship identity");
+    expected_target["focus_ref"]=json!(focus);
+    assert_eq!(json!(movement.target),expected_target);
     assert_eq!(movement.capability,accepted["design"]["target"]["capability"]);
     assert_eq!(movement.object_ids,Vec::<String>::new());
     assert_eq!(movement.prompt,accepted["design"]["target"]["learning_focus"]);

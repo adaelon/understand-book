@@ -535,9 +535,10 @@ impl ToolExposurePlan {
         );
         let workspace_goal_slot = usize::from(registry.registration("workspace.goal.update").is_some());
         let workspace_records_slot = usize::from(registry.registration("workspace.records.read").is_some());
+        let workspace_notes_slot = usize::from(registry.registration("workspace.notes").is_some());
         let progress_slot = usize::from(registry.registration("agent.progress").is_some());
         let board_slot = usize::from(registry.registration("board.author").is_some());
-        let direct_limit = board_slot + progress_slot + workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + ranked_search_slot + source_slot + if registry.registration("goal.update").is_some() {
+        let direct_limit = board_slot + progress_slot + workspace_notes_slot + workspace_records_slot + workspace_goal_slot + tutor_slot + batch_read_slot + ranked_search_slot + source_slot + if registry.registration("goal.update").is_some() {
             DEFAULT_DIRECT_TOOL_LIMIT
         } else {
             DEFAULT_DIRECT_TOOL_LIMIT - 1
@@ -1502,7 +1503,7 @@ fn classify(
         Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::AgentProgress => (Disposition::Direct, Reason::RuntimeOwned),
-        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::WorkspaceRecordsRead => (Disposition::Direct, Reason::RuntimeOwned),
+        Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::WorkspaceRecordsRead | Handler::WorkspaceNotes => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::TutorStep => (Disposition::Hidden, Reason::RuntimeOwned),
         Handler::LibraryList | Handler::LibrarySearch | Handler::LibraryRead => (Disposition::Deferred, Reason::CoreRead),
         Handler::LibraryLearning => (Disposition::Deferred, Reason::CapabilityDeferred),
@@ -1598,7 +1599,7 @@ fn classify(
 fn direct_priority(handler: ToolHandlerId) -> usize {
     match handler {
         ToolHandlerId::ToolSearch => 0,
-        ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::TutorStep | ToolHandlerId::BoardAuthor => 1,
+        ToolHandlerId::GoalUpdate | ToolHandlerId::WorkspaceGoalUpdate | ToolHandlerId::WorkspaceRecordsRead | ToolHandlerId::WorkspaceNotes | ToolHandlerId::TutorStep | ToolHandlerId::BoardAuthor => 1,
         ToolHandlerId::Book(BookToolId::Text) | ToolHandlerId::BookTextBatch => 1,
         ToolHandlerId::Book(BookToolId::Context) => 2,
         ToolHandlerId::Book(BookToolId::SearchText | BookToolId::Search) => 3,
@@ -1715,7 +1716,7 @@ mod tests {
     use super::*;
     // These existing exposure contracts describe runs without a learning workspace.
     fn resident_tool_registry() -> ToolRegistry {
-        crate::orchestrator::resident_tool_registry().without_workspace_goal_update().without_workspace_records()
+        crate::orchestrator::resident_tool_registry().without_workspace_goal_update().without_workspace_records().without_workspace_notes()
     }
     #[test]
     fn board_authoring_does_not_mask_unavailable_html_presentation_authoring() {

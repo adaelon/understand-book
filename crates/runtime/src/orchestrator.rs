@@ -844,9 +844,16 @@ impl TurnProgressLedger {
     }
 
     fn observe_read(&mut self, tool: &str, arguments: &str, body: &str) {
-        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning" | "board.author" | "workspace.records.read") { return; }
+        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning" | "board.author" | "workspace.records.read" | "workspace.notes") { return; }
         let Ok(body) = serde_json::from_str::<serde_json::Value>(body) else { return; };
         if body.get("error_code").is_some() || body.get("projection").is_some() { return; }
+        if tool == "workspace.notes" {
+            let args = serde_json::from_str(arguments).unwrap_or_default();
+            if let Some(identity) = crate::workspace_notes::progress_identity(&args, &body) {
+                self.read_observations.insert((tool.into(), identity.to_string()));
+            }
+            return;
+        }
         if matches!(tool, "board.author" | "workspace.records.read") {
             let args: serde_json::Value = serde_json::from_str(arguments).unwrap_or_default();
             // Credit only the source/page/record identities actually delivered
@@ -3536,7 +3543,7 @@ fn retain_teaching_revision_draft(fragments: &mut ContextFragmentLedger, request
 fn retain_teaching_revision_fragment(fragments: &mut ContextFragmentLedger, draft: &serde_json::Value) -> Result<(), ToolError> {
     fragments.upsert(ContextFragment::new(
         "agent.teaching_revision", FragmentScope::Dynamic, Role::System,
-        format!("Current unaccepted teaching draft (private editable data, not learner evidence or permission to deliver). The tool error describes the concrete failed host check. With draft_ref, use tutor.step revise and editable_paragraphs' exact field/paragraph numbers with complete replacement new_text; all numbers address the same current draft. The host preserves all other text and preserved_select_fields. Evidence-only resubmission uses edits:[]. Without draft_ref, correct the complete select_request. This draft is NOT selected or delivered: {draft}"),
+        format!("Current unaccepted teaching draft (private editable data, not learner evidence or permission to deliver). The tool error describes the concrete failed host check. With draft_ref, use tutor.step revise and editable_paragraphs' exact field/paragraph numbers with complete replacement new_text; all numbers address the same current draft. Use move_changes for participation/response_expectation/coach_adjustment corrections, omitting unchanged fields and using null only to remove response_expectation or coach_adjustment. The host preserves all unnamed text and preserved_select_fields. Evidence-only or metadata-only resubmission uses edits:[]. Without draft_ref, correct the complete select_request. This draft is NOT selected or delivered: {draft}"),
         FragmentSensitivity::Private,
     )).map_err(context_fragment_error)?;
     Ok(())
@@ -4167,6 +4174,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         crate::tutor::spec(),
         crate::workspace_goal::spec(),
         crate::workspace_records::spec(),
+        crate::workspace_notes::spec(),
         book_s(BookToolId::Query),
         book_s(BookToolId::Synthesize),
         book_s(BookToolId::SearchText),
@@ -5258,6 +5266,7 @@ fn dispatch_state_tool(
         | ToolHandlerId::GoalUpdate
         | ToolHandlerId::WorkspaceGoalUpdate
         | ToolHandlerId::WorkspaceRecordsRead
+        | ToolHandlerId::WorkspaceNotes
         | ToolHandlerId::SourcePresent
         | ToolHandlerId::PresentationAuthor
         | ToolHandlerId::BoardAuthor
@@ -5534,7 +5543,7 @@ struct ProgressPhaseGuard {
     consecutive_stalled_batches: usize,
     recovery_pending: bool,
     recovery_used: bool,
-    argument_validation_recovery_granted: bool,
+    correction_failures: BTreeSet<(String, String, String)>,
     argument_correction_tools: BTreeSet<String>,
 }
 
@@ -5543,12 +5552,16 @@ impl ProgressPhaseGuard {
         self.recovery_pending && !self.recovery_used
     }
 
-    fn observe_argument_validation_error(&mut self, tool: &str) {
-        // A first schema rejection can arrive during the existing semantic or
-        // locator recovery. Let the model consume that new tool feedback once;
-        // another malformed call does not renew the same no-progress phase.
-        if !self.argument_validation_recovery_granted {
-            self.argument_validation_recovery_granted = true;
+    fn observe_correction_error(&mut self, tool: &str, code: &str, message: &str) {
+        // Compare the actual failed check, without repair instructions or JSON
+        // byte offsets. Changing a move id/argument length cannot renew it.
+        let diagnostic = message.lines().next().unwrap_or(message);
+        let diagnostic = if diagnostic.starts_with("tool arguments are not valid JSON:") {
+            diagnostic.split(" at line ").next().unwrap_or(diagnostic)
+        } else { diagnostic };
+        // Selecting and revising the same board share one failed check.
+        let family = if code.starts_with("BOARD_") && matches!(tool, "tutor.step" | "board.author") { "board.author" } else { tool };
+        if self.correction_failures.insert((family.into(), code.into(), diagnostic.into())) {
             self.recovery_pending = true;
             self.recovery_used = false;
             self.argument_correction_tools.insert(tool.into());
@@ -5556,33 +5569,33 @@ impl ProgressPhaseGuard {
     }
 
     fn observe_error(&mut self, tool: &str, result: &str) {
-        if matches!(
-            tool_result_error_code(result).as_deref(),
-            Some("LID_NOT_FOUND" | "LID_PROVENANCE_REQUIRED" | "LID_RECOVERY_REQUIRED")
-        ) {
+        let error = serde_json::from_str::<serde_json::Value>(result).unwrap_or_default();
+        let code = error["error_code"].as_str().unwrap_or_default();
+        let board_repair = matches!(tool, "tutor.step" | "board.author") && matches!(code,
+            "BOARD_TEACHING_TEXT_MISMATCH" | "BOARD_INSPECTION_REQUIRED" | "BOARD_TEACHING_SELECTION_REQUIRED" | "BOARD_REVISION_CONFLICT"
+            | "BOARD_TEACHING_REFERENCE_REQUIRED" | "BOARD_CANDIDATE_REVISION_REQUIRED" | "BOARD_CANDIDATE_CHANGED" | "BOARD_ARGUMENTS_INVALID" | "BOARD_REGENERATION_PROTECTED");
+        let correctable = board_repair || matches!(code, "TOOL_ARGUMENTS_INVALID" | "PRESENTATION_ARGUMENTS_INVALID")
+            || (matches!(tool, "tutor.step" | "presentation.author") && matches!(code,
+                "TEACHING_INVALID" | "PRESENTATION_INSPECTION_REQUIRED" | "TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING"));
+        if correctable { self.observe_correction_error(tool, code, error["message"].as_str().unwrap_or_default()); }
+        if matches!(code, "LID_NOT_FOUND" | "LID_PROVENANCE_REQUIRED" | "LID_RECOVERY_REQUIRED") {
             self.recovery_pending = true;
-        }
-        if matches!(tool, "tutor.step" | "presentation.author") && matches!(tool_result_error_code(result).as_deref(),
-            Some("TEACHING_INVALID" | "TOOL_ARGUMENTS_INVALID" | "PRESENTATION_ARGUMENTS_INVALID" | "PRESENTATION_INSPECTION_REQUIRED" | "TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING"))
-        {
-            self.recovery_pending = true;
-            self.argument_correction_tools.insert(tool.into());
         }
         if matches!(tool, "video.read_frames" | "video.search" | "video.review_audio")
-            && serde_json::from_str::<serde_json::Value>(result).ok()
-                .is_some_and(|v| matches!(v["category"].as_str(), Some("invalid_input" | "validation")))
-        {
+            && matches!(error["category"].as_str(), Some("invalid_input" | "validation")) {
             self.recovery_pending = true;
             self.argument_correction_tools.insert(tool.into());
         }
-        if matches!(tool, "tutor.step" | "board.author") && matches!(tool_result_error_code(result).as_deref(),
-            Some("BOARD_TEACHING_TEXT_MISMATCH" | "BOARD_INSPECTION_REQUIRED" | "BOARD_TEACHING_SELECTION_REQUIRED" | "BOARD_REVISION_CONFLICT"
-                | "BOARD_TEACHING_REFERENCE_REQUIRED" | "BOARD_CANDIDATE_REVISION_REQUIRED" | "BOARD_CANDIDATE_CHANGED" | "BOARD_ARGUMENTS_INVALID"))
-        {
+        if board_repair {
             // A board repair crosses from selection back to prepare and preview.
-            // Use the existing bounded recovery, without renewing it indefinitely.
-            self.recovery_pending = true;
             self.argument_correction_tools.extend(["tutor.step".into(), "board.author".into()]);
+        }
+        if tool == "board.author" && tool_result_error_code(result).as_deref() == Some("INVALID_BOARD") {
+            // The store can reject a new-content reference with its exact
+            // repair address. Let the author consume that feedback through
+            // the same single recovery; a repeated failure does not renew it.
+            self.recovery_pending = true;
+            self.argument_correction_tools.insert(tool.into());
         }
     }
     fn blocks(&self, progress_signature: &str) -> bool {
@@ -5596,7 +5609,7 @@ impl ProgressPhaseGuard {
             self.consecutive_stalled_batches = 0;
             self.recovery_pending = false;
             self.recovery_used = false;
-            self.argument_validation_recovery_granted = false;
+            self.correction_failures.clear();
             self.argument_correction_tools.clear();
             return;
         }
@@ -7102,6 +7115,9 @@ fn run_context_inner(
     if !state.workspace_records_available() {
         tool_registry = tool_registry.without_workspace_records();
     }
+    if !state.workspace_notes_available() {
+        tool_registry = tool_registry.without_workspace_notes();
+    }
     if context.goal.is_none() {
         tool_registry = tool_registry.without_goal_update();
     }
@@ -7305,6 +7321,7 @@ fn run_context_inner(
     // Keep the actual failed operation through no-progress finalization. The
     // last tool result may otherwise be reduced to a historical receipt.
     let mut last_teaching_error: Option<ToolError> = None;
+    let mut pending_board_edit_notice: Option<&str> = None;
     let mut review_retry_used = false;
     let mut teaching_revision_draft = crate::teaching_revision::TeachingRevisionDraft::default();
     let mut completed_capabilities = BTreeSet::new();
@@ -8131,7 +8148,6 @@ fn run_context_inner(
                     None,
                 ),
                 Some(handler) if !schema_valid => {
-                    phase_progress_guard.observe_argument_validation_error(&tc.name);
                     let code = match handler {
                         ToolHandlerId::GoalUpdate => "GOAL_UPDATE_INVALID",
                         ToolHandlerId::WorkspaceGoalUpdate => "WORKSPACE_GOAL_UPDATE_INVALID",
@@ -8140,7 +8156,12 @@ fn run_context_inner(
                     };
                     let error = argument_validation.as_ref().and_then(|r| r.as_ref().err())
                         .expect("registered tool has an argument validation error");
-                    (err_json(code, "validation", &error.message), None, None)
+                    phase_progress_guard.observe_correction_error(&tc.name, code, &error.message);
+                    let mut result = serde_json::json!({"error_code":code,"category":"validation","message":error.message});
+                    if handler == ToolHandlerId::TutorStep {
+                        if let Some(reference) = teaching_revision_draft.reference() { result["draft_ref"] = serde_json::json!(reference); }
+                    }
+                    (result.to_string(), None, None)
                 }
                 Some(ToolHandlerId::AgentProgress) => {
                     let result = match progress_message.as_ref().expect("progress message was validated") {
@@ -8340,20 +8361,33 @@ fn run_context_inner(
                         let revision = context.board_review_preview.as_ref()
                             .and_then(|preview| preview.report["candidate_revision"].as_u64())
                             .expect("selected native candidate has a revision") as u32;
-                        let staged = state.author_board(crate::board_author::AuthorRequest::Deliver { candidate_revision:revision },
+                        let confirmation = context.board_review_preview.as_ref().is_some_and(|preview| preview.report["requires_confirmation"] == true);
+                        let delivery_request = if confirmation {
+                            crate::board_author::AuthorRequest::Commit { candidate_revision:revision, selected_delivery:Some(crate::board_author::SelectedDelivery {
+                                teaching_delivery_move_refs:context.teaching_delivery_move_refs.clone(),
+                                delivery_scope:context.teaching_delivery_draft.as_ref().and_then(|draft|draft.get("delivery_scope")).cloned(),
+                            }) }
+                        } else { crate::board_author::AuthorRequest::Deliver { candidate_revision:revision } };
+                        let staged = state.author_board(delivery_request,
                             &context.evidence_ledger.bindings(), messages, &context.cancellation).and_then(|staged| {
+                                if confirmation && staged.body["status"] == "candidate_confirmation_required" { return Ok(None); }
                                 let text = staged.delivery_text.ok_or_else(|| crate::board_author::error(
                                     "BOARD_TEACHING_SELECTION_REQUIRED", "The accepted board explanation could not be staged."))?;
                                 crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved,
                                     context.teaching_delivery_draft.as_ref(), &text)?;
-                                Ok(text)
+                                Ok(Some(text))
                             });
                         match staged {
                             Ok(text) => {
-                                context.board_delivery_draft = Some(text);
+                                context.board_delivery_draft = text;
+                                if confirmation {
+                                    context.board_candidate_id = None;
+                                    context.board_selected_candidate_id = None;
+                                    context.board_review_preview = None;
+                                }
                                 if let Ok(value) = &mut result {
-                                    value["native_board"] = serde_json::json!({"status":"delivery_staged","candidate_revision":revision});
-                                    value["next"] = serde_json::json!("The accepted native diagram and exact explanation are staged together. Complete this reply to save them; no further board.author deliver is needed. A revised prepare still requires preview and teaching selection again.");
+                                    value["native_board"] = serde_json::json!({"status":if confirmation {"candidate_confirmation_required"} else {"delivery_staged"},"candidate_revision":revision});
+                                    value["next"] = serde_json::json!(if confirmation {"The conversion preview is ready for the reader to inspect and accept. Finish this reply; do not claim the conversion was saved. The original board stays intact until acceptance."} else {"The accepted native diagram and exact explanation are staged together. Complete this reply to save them; no further board.author deliver is needed. A revised prepare still requires preview and teaching selection again."});
                                 }
                             }
                             Err(error) => {
@@ -8394,6 +8428,12 @@ fn run_context_inner(
                     let result = serde_json::from_str(&tc.arguments)
                         .map_err(|e| memory::teaching::invalid(e.to_string()))
                         .and_then(|request| state.workspace_records(request));
+                    (result.map(|value| value.to_string()).unwrap_or_else(|error| to_json(&error)), None, None)
+                }
+                Some(ToolHandlerId::WorkspaceNotes) => {
+                    let result = serde_json::from_str(&tc.arguments)
+                        .map_err(|error| ToolError { error_code:"WORKSPACE_NOTES_INVALID".into(), category:"validation".into(), message:error.to_string() })
+                        .and_then(|request| state.workspace_notes(request));
                     (result.map(|value| value.to_string()).unwrap_or_else(|error| to_json(&error)), None, None)
                 }
                 Some(ToolHandlerId::WorkspaceGoalUpdate) => {
@@ -8549,8 +8589,8 @@ fn run_context_inner(
                             crate::board_author::AuthorRequest::Plan { focus, needs } => Some(serde_json::json!({"focus":focus,"needs":needs})),
                             // New native relationships need a plan before they are staged. A
                             // geometry-only update or a plain explanation stays on its cheap path.
-                            crate::board_author::AuthorRequest::Prepare { drawings, imports, links, mappings, routes, .. }
-                                if !expression_plan_sampled && (!drawings.is_empty() || !imports.is_empty() || !links.is_empty() || !mappings.is_empty() || !routes.is_empty()) =>
+                            crate::board_author::AuthorRequest::Prepare { drawings, operations, imports, links, mappings, routes, .. }
+                                if !expression_plan_sampled && (!drawings.is_empty() || !operations.is_empty() || !imports.is_empty() || !links.is_empty() || !mappings.is_empty() || !routes.is_empty()) =>
                                 Some(serde_json::json!({"focus":"A native visual explanation was proposed before planning; resolve the current request and selected relation first."})),
                             _ => None,
                         };
@@ -8582,7 +8622,11 @@ fn run_context_inner(
                         if let crate::board_author::AuthorRequest::Deliver { candidate_revision }
                             | crate::board_author::AuthorRequest::Commit { candidate_revision, .. } = &request {
                             let is_commit=matches!(&request,crate::board_author::AuthorRequest::Commit{..});
-                            let current=state.author_board(crate::board_author::AuthorRequest::Read { collection:None,offset:0,length:None,board_revision:None,candidate_revision:None }, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
+                            let mut current=state.author_board(crate::board_author::AuthorRequest::Read { collection:None,offset:0,length:None,board_revision:None,candidate_revision:None }, &context.evidence_ledger.bindings(), messages, &context.cancellation)?;
+                            if current.invalidates_delivery {
+                                current.body["next"] = serde_json::json!("The reader edited the board. Read candidate_change and candidate.conflict. A rebased candidate needs a new actual preview and active teaching selection; a conflicting suggestion remains pending and must not overwrite the reader.");
+                                return Ok(current);
+                            }
                             let already_committed=is_commit && current.body["committed"].as_array().into_iter().flatten().any(|delivery|
                                 delivery["commit_id"].as_str().is_some_and(|id|id.ends_with(&format!(":{candidate_revision}"))));
                             if already_committed {
@@ -8647,6 +8691,22 @@ fn run_context_inner(
                                 context.board_candidate_id = None;
                                 context.board_selected_candidate_id = None;
                                 context.events.board_committed(delivery);
+                            }
+                            if result.body["status"] == "candidate_confirmation_required"
+                                || result.body["status"] == "candidate_pending_changes"
+                                || result.body["candidate"]["conflict"].is_object()
+                                || result.body["candidate_conflict"].is_object() {
+                                context.board_candidate_id = None;
+                                context.board_selected_candidate_id = None;
+                                context.board_review_preview = None;
+                            }
+                            if result.body["status"] == "candidate_pending_changes"
+                                || result.body["candidate"]["conflict"].is_object()
+                                || result.body["candidate_conflict"].is_object() {
+                                // A persisted edit conflict is an operational handoff,
+                                // not teaching content to select or an invitation for
+                                // the author to replace the reader's latest work.
+                                pending_board_edit_notice = Some("这部分内容在生成建议期间发生了修改，本次 AI 改图尚未应用。你的修改和待处理的 AI 建议都已保留；可以在建议卡片中选择“按当前内容重新生成”。");
                             }
                             if let Some(text) = result.delivery_text {
                                 context.board_delivery_draft = Some(text);
@@ -9291,14 +9351,17 @@ fn run_context_inner(
             && context.pending_previews.is_empty() && context.pending_plot_refs.is_empty()
             && crate::board_author::validate_teaching_delivery(context.tutor.as_ref(), context.tutor_resolved,
                 context.teaching_delivery_draft.as_ref(), text).is_ok());
-        if let Some(raw) = finish_board.or_else(|| finish_draft.and_then(|draft| draft["text"].as_str())) {
+        let finishing_pending_edit = pending_board_edit_notice.is_some();
+        if let Some(raw) = pending_board_edit_notice.or(finish_board).or_else(|| finish_draft.and_then(|draft| draft["text"].as_str())) {
             context.cancellation.check()?;
             let delivery = compile_selected_answer(raw, &context.evidence_ledger.bindings(), &context.answer_provenance)?;
             context.progress_ledger.observe(RuntimeProgressEvent::FinalAnswer);
             let answer = Some(delivery.compiled.answer.clone());
             let mut answer_view = delivery.compiled.view.clone();
-            append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(),
-                context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+            if !finishing_pending_edit {
+                append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(),
+                    context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+            }
             publish_teaching_delivery(&context.events, &answer_view);
             messages.push(Message { provider_continuation: None, role: Role::Assistant,
                 content: answer.clone(), tool_calls: vec![], tool_call_id: None });
@@ -9310,7 +9373,7 @@ fn run_context_inner(
                 trace: std::mem::take(trace),
                 profile_usage: profile_usage_trace(profile_snapshot, &claimed_used_fact_ids, &profile_influences),
                 memory_updates: profile_memory_updates,
-                teaching_delivery_move_refs: context.teaching_delivery_move_refs.clone(),
+                teaching_delivery_move_refs: if finishing_pending_edit { vec![] } else { context.teaching_delivery_move_refs.clone() },
                 source_bindings: delivery.compiled.bindings, delivery_diagnostics: None,
                 request_audit: std::mem::take(&mut request_audit),
             });
@@ -9356,9 +9419,11 @@ fn run_context_inner(
                 "AGENT_NO_PROGRESS"
             };
             if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
-                return Err(last_teaching_error.unwrap_or_else(|| memory::teaching::invalid(if context.delivered_presentations.is_empty() {
-                    "本轮讲解尚未准备完成，请重试。"
-                } else { "演示页已保存，但本轮正文尚未完成选择与检查，请重试。" })));
+                // The final tool rejection remains in the trace. Keep the actual
+                // host stop reason so recovery and public reporting see why we ended.
+                return Err(ToolError { error_code: stop_reason.into(), category: "loop".into(),
+                    message: last_teaching_error.map_or_else(|| "本轮讲解尚未准备完成。".into(),
+                        |error| format!("Execution stopped: {stop_reason}. Last tool error ({}): {}", error.error_code, error.message)) });
             }
             let exam_active = crate::workspace_goal::exam_goal_active(context.workspace_goal.as_ref(), context.accepted_workspace_goal.as_ref());
             let mut finalization_context_fragments = context_fragments.clone();
@@ -9638,6 +9703,7 @@ mod tests {
     mod workspace_goal { include!("workspace_goal_tests.rs"); }
     mod workspace_cache { include!("workspace_cache_tests.rs"); }
     mod workspace_records { include!("workspace_records_tests.rs"); }
+    mod workspace_notes { include!("workspace_notes_tests.rs"); }
     mod delivery_fallback_tests { include!("delivery_fallback_tests.rs"); }
     mod board_author_runtime_tests { include!("board_author_runtime_tests.rs"); }
     mod board_recovery_paths_tests { include!("board_recovery_paths_tests.rs"); }
@@ -18893,7 +18959,7 @@ user_question={}",
         // inflated the old baseline enough to admit the seeded model request.
         let registry = crate::experiment::registry(&b, resident_tool_registry())
             .without_library().without_web().without_tutor()
-            .without_workspace_goal_update().without_workspace_records().without_goal_update().without_board_authoring();
+            .without_workspace_goal_update().without_workspace_records().without_workspace_notes().without_goal_update().without_board_authoring();
         let unseeded = ToolExposureState::default();
         let mut seeded = ToolExposureState::default();
         seed_turn_tool_activations(&classify_turn_intent(question), &registry, &ToolExposureContext {

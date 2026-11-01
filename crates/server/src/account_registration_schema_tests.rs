@@ -40,10 +40,17 @@ fn schema_definitions(db: &Connection) -> Vec<(String, String)> {
     db.prepare("SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name")
         .unwrap()
         .query_map([], |r| {
+            let name: String = r.get(0)?;
             let sql: String = r.get(1)?;
-            // ALTER TABLE changes whitespace in the stored CREATE TABLE text.
+            // RENAME TABLE quotes the table name; its fields and constraints
+            // must still match the fresh schema, including their SQL literals.
+            let sql = sql.replacen(
+                &format!("CREATE TABLE \"{name}\""),
+                &format!("CREATE TABLE {name}"),
+                1,
+            );
             Ok((
-                r.get(0)?,
+                name,
                 sql.chars().filter(|c| !c.is_whitespace()).collect(),
             ))
         })

@@ -29,6 +29,7 @@ pub enum ToolHandlerId {
     GoalUpdate,
     WorkspaceGoalUpdate,
     WorkspaceRecordsRead,
+    WorkspaceNotes,
     TutorStep,
     SourcePresent,
     PresentationAuthor,
@@ -61,7 +62,7 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 54] = [
+    pub const ALL: [ToolHandlerId; 55] = [
         ToolHandlerId::LibraryList,
         ToolHandlerId::LibrarySearch,
         ToolHandlerId::LibraryRead,
@@ -77,6 +78,7 @@ impl ToolHandlerId {
         ToolHandlerId::GoalUpdate,
         ToolHandlerId::WorkspaceGoalUpdate,
         ToolHandlerId::WorkspaceRecordsRead,
+        ToolHandlerId::WorkspaceNotes,
         ToolHandlerId::TutorStep,
         ToolHandlerId::Artifact(ArtifactToolId::List),
         ToolHandlerId::Artifact(ArtifactToolId::Search),
@@ -135,6 +137,7 @@ impl ToolHandlerId {
             ToolHandlerId::GoalUpdate => "goal.update",
             ToolHandlerId::WorkspaceGoalUpdate => "workspace.goal.update",
             ToolHandlerId::WorkspaceRecordsRead => "workspace.records.read",
+            ToolHandlerId::WorkspaceNotes => "workspace.notes",
             ToolHandlerId::TutorStep => "tutor.step",
             ToolHandlerId::PresentationInteract => "presentation.interact",
             ToolHandlerId::PresentationAuthor => "presentation.author",
@@ -605,6 +608,7 @@ impl ToolRegistration {
             "goal.update" => "更新当前任务",
             "workspace.goal.update" => "修改工作区目标",
             "workspace.records.read" => "读取带入的学习记录",
+            "workspace.notes" => "整理学习空间笔记",
             "notes.search" => "回想相关想法",
             "notes.read" => "读取想法与后续表达",
             "reader.note" => "保存笔记",
@@ -701,11 +705,13 @@ impl ToolRegistration {
                         ));
                     }
                 }
-                let allowed: Vec<_> = properties.keys().map(String::as_str).collect();
                 message.push_str(&format!(
-                    "\nResubmit a complete move. Current $.move allowed fields: {}; required fields: {}. Omit fields absent from this current contract, even when null.",
-                    json!(allowed), movement["required"]
+                    "\nCurrent required move fields: {}. Omit fields absent from this current contract, even when null.",
+                    movement["required"]
                 ));
+                if properties.contains_key("delivery_text") {
+                    message.push_str(" For a full select, preserve the complete body. With a retained draft_ref, prefer revise with edits/move_changes for the supported corrections; unnamed fields are preserved.");
+                }
             }
         }
         // These operation branches contain only the closed root fields and their
@@ -768,6 +774,11 @@ impl ToolRegistry {
     }
     pub(crate) fn without_workspace_records(mut self) -> Self {
         self.registrations.retain(|r| r.handler != ToolHandlerId::WorkspaceRecordsRead);
+        self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
+        self
+    }
+    pub(crate) fn without_workspace_notes(mut self) -> Self {
+        self.registrations.retain(|r| r.handler != ToolHandlerId::WorkspaceNotes);
         self.by_name = self.registrations.iter().enumerate().map(|(i, r)| (r.spec.name.clone(), i)).collect();
         self
     }
@@ -1002,7 +1013,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::ToolDiscovery,
             Parallelism::SequentialOnly,
         ),
-        Handler::LibraryLearning | Handler::WorkspaceRecordsRead => (
+        Handler::LibraryLearning | Handler::WorkspaceRecordsRead | Handler::WorkspaceNotes => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::MemoryProjection,
             Parallelism::SequentialOnly,
@@ -1153,6 +1164,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         Handler::TutorStep => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryWrite]),
         Handler::LibraryLearning => migration(vec![Legacy::MemoryWrite], vec![Capability::MemoryRead, Capability::MemoryWrite]),
         Handler::WorkspaceRecordsRead => migration(vec![Legacy::MemoryRead], vec![Capability::MemoryRead]),
+        Handler::WorkspaceNotes => migration(vec![Legacy::MemoryRead, Legacy::MemoryWrite], vec![Capability::MemoryRead, Capability::MemoryWrite]),
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
         Handler::VideoReadFrames | Handler::VideoReviewAudio => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::VideoSearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate]),
@@ -1420,6 +1432,7 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
         Handler::TutorStep => shape(vec![Scope::Document], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::LibraryLearning => shape(vec![Scope::Corpus], vec![Operation::Explain], Effect::MemoryWrite, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::WorkspaceRecordsRead => shape(vec![Scope::Corpus], vec![Operation::Explain, Operation::Summarize], Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
+        Handler::WorkspaceNotes => shape(vec![Scope::Document, Scope::Corpus], vec![Operation::Explain, Operation::Compare, Operation::Summarize], Effect::MemoryWrite, vec![Precondition::MemoryReadPermission, Precondition::MemoryWritePermission], all_profiles(), Cost::Low),
         Handler::AgentProgress => shape(
             vec![Scope::Document], vec![Operation::Explain], Effect::ReadOnly,
             vec![Precondition::BookAvailable], all_profiles(), Cost::Low,
@@ -1712,6 +1725,10 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
             "Read original chats, facts and corrections explicitly linked to this workspace when they matter to the current request.",
             "Do not treat historical interpretations as current mastery, overwrite original records or infer access to other materials.",
         ),
+        Handler::WorkspaceNotes => (
+            "Find and read reusable learning workspace notes, save requested explanations, and organize related notes with explicit reasons. 学习空间笔记、知识卡片、笔记关联、整理理解。",
+            "Reading or explanation alone does not authorize changes. Do not invent provenance, overwrite a changed revision, attribute Agent wording to the user or claim mastery from a note.",
+        ),
         Handler::TutorStep => ("Read teaching materials and learning evidence, assess a formal response against its frozen contract, and select one grounded move.", "Do not invent grades or mastery, alter frozen criteria, or advance a paused learning session."),
         Handler::WorkspaceGoalUpdate => (
             "Change the workspace direction using the complete current user message and exact new goal wording.",
@@ -1742,7 +1759,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::MusicInteract => ("Observe and control the current music player: play, pause, seek, loop, focus, speed or labelled synthesis. 音乐 播放 暂停 循环 声部 高亮", "Observe before acting; only an applied browser receipt confirms completion. Playback is not proof of learner understanding or model hearing."),
         Handler::PresentationInteract => ("Observe and operate a declared action in the currently open presentation, then read its saved result.", "Do not use to modify content or claim learner understanding; use only the returned actions and exact observation receipt."),
         Handler::PresentationAuthor => ("Create and rehearse rich HTML answers, static Python/Matplotlib charts and interactive explanations.", "Do not use for a short plain answer or persist an untested candidate."),
-        Handler::BoardAuthor => ("Search relevant original workspace sources and conversations, collect exact snapshots, build and edit freeform diagrams, flowcharts, comparisons or editable mind maps on the same board, and explain through mappings and reveal/focus routes; preview before committing.", "Available for an accepted whole-board request or exact item focus, including blank boards. Keep retained answers and learner quotations immutable; update native drawings and retained layout explicitly. Never invent history, understanding or mastery; inspect the real candidate before publishing."),
+        Handler::BoardAuthor => ("Search relevant original workspace sources and conversations, collect exact snapshots, build and edit freeform diagrams, flowcharts, comparisons or editable mind maps on the same board, and explain through mappings and reveal/focus routes; preview before committing.", "Available for an accepted whole-board request or exact item focus, including blank boards. Keep retained answers and learner quotations immutable; edit mind-map topics through atomic operations and update free drawings or retained layout explicitly. A selected topic limits changes to its subtree. Never invent history, understanding or mastery; inspect the real candidate before publishing."),
         Handler::SourcePresent => (
             "Present an opaque user-visible source reference for evidence already observed in this turn.",
             "Pass verbatim observed quote or a media target copied from successful observations; the tool resolves its location. Do not use source presentation as evidence retrieval.",
@@ -2395,6 +2412,7 @@ mod tests {
             ("reader.state", &["reader_read"], &["reader_read"]),
             ("tutor.step", &["memory_write"], &["memory_write"]),
             ("workspace.records.read", &["memory_read"], &["memory_read"]),
+            ("workspace.notes", &["memory_read", "memory_write"], &["memory_read", "memory_write"]),
             ("notes.search", &["memory_read"], &["memory_read"]),
             ("notes.read", &["memory_read"], &["memory_read"]),
         ];
@@ -2593,7 +2611,7 @@ mod tests {
             let error = registration.validate_arguments(&input.to_string()).unwrap_err();
             assert!(error.message.starts_with(&original.message));
             assert!(error.message.contains(&format!("Place $.{field} at $.move.{field}")), "{error:?}");
-            assert!(error.message.contains("Resubmit a complete move"));
+            assert!(error.message.contains("Current required move fields:"));
             assert!(error.message.len() < 3_000, "recovery should not dump the full Tutor schema");
 
             // Following the given path fixes the actual rejected call without
@@ -2613,14 +2631,11 @@ mod tests {
         let input = json!({"operation":"select","kind":"explain","delivery_text":"A second body.",
             "move":{"board_candidate_revision":3}});
         let error = registration.validate_arguments(&input.to_string()).unwrap_err();
-        let allowed = error.message.split("Current $.move allowed fields: ").nth(1).unwrap()
-            .split("; required fields:").next().unwrap();
-        let allowed: Vec<String> = serde_json::from_str(allowed).unwrap();
         for field in ["kind", "move_id", "delivery_text", "target", "intent_origin", "interaction_intent", "preference_ref"] {
-            assert!(!allowed.iter().any(|allowed| allowed == field), "{field} must remain host owned");
             assert!(!error.message.contains(&format!("at $.move.{field}")));
         }
-        assert!(error.message.contains("required fields: [\"board_candidate_revision\"]"));
+        assert!(error.message.contains("Current required move fields: [\"board_candidate_revision\"]"));
+        assert!(!error.message.contains("complete body") && !error.message.contains("draft_ref"), "native board repair must not request a second body");
         registration.validate_arguments(r#"{"operation":"select","move":{"board_candidate_revision":3}}"#).unwrap();
     }
 

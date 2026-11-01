@@ -86,6 +86,12 @@ function endResponseEditing() {
   editingDelivery.value = null; emit('editing-response', false);
 }
 const helps = ref<Record<string, TutorHelp>>({});
+const concluded = new Set<string>();
+function concludePractice(deliveryRef: string) {
+  if (concluded.has(deliveryRef)) return;
+  concluded.add(deliveryRef);
+  window.dispatchEvent(new CustomEvent('practice-concluded', { detail: { delivery_ref: deliveryRef } }));
+}
 // Practice hints point back to sources; the label says where, without a level number.
 const hintPlaces: Record<NonNullable<TutorHelp['hint_kind']>, string> = { in_problem: uiText('再看看题目'), structure: uiText('换个角度看题'), own_note: uiText('你自己的想法'),
   source: uiText('回到原文'), worked_step: uiText('关键一步') };
@@ -132,6 +138,12 @@ async function load() {
   try {
     const result = await api.tutorActivities(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
+    for (const activity of result.activities) {
+      if (activity.help) helps.value[activity.delivery_ref] = activity.help;
+      const previous = activities.value.find(saved => saved.delivery_ref === activity.delivery_ref);
+      if (activity.move.practice && activity.assessment?.status === 'correct'
+        && previous && previous.assessment?.status !== 'correct') concludePractice(activity.delivery_ref);
+    }
     activities.value = result.activities;
     await observeVisibleContent();
     await markDisplayed();
@@ -235,7 +247,7 @@ async function send() {
   // A concluded practice problem lets an active warm-up offer its next problem.
   if (activities.value.some(a => a.delivery_ref === request.delivery_ref && a.move.practice)
     && (result.assessment === 'correct' || ['skip', 'reveal'].includes(request.action))) {
-    window.dispatchEvent(new CustomEvent('practice-concluded', { detail: { delivery_ref: request.delivery_ref } }));
+    concludePractice(request.delivery_ref);
   }
   if (result.help) {
     helps.value[request.delivery_ref] = result.help;
@@ -261,7 +273,7 @@ async function retry() {
 }
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
   visible.clear(); visibleHelp.clear(); displayed.clear(); answerDeliveries.clear(); observer?.disconnect();
-  pending = null; activities.value = []; helps.value = {}; responses.value = {}; responseOrigins.value = {}; void load();
+  pending = null; activities.value = []; helps.value = {}; concluded.clear(); responses.value = {}; responseOrigins.value = {}; void load();
 }, { immediate: true });
 watch(() => props.ready, () => { void markDisplayed(); });
 watch(visibleActivities, () => { void observeVisibleContent(); });

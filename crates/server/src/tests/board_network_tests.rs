@@ -2,6 +2,27 @@ use super::*;
 use super::mu5_tests::Fixture;
 
 #[test]
+fn mind_map_network_edits_use_board_revision_and_survive_another_window() {
+    let f = Fixture::new();
+    let first = f.create(&f.a, &f.x, "mind-map-first");
+    let created = f.action(&f.a, &first, "mind-map-first", "boards/create", json!({"title":"可编辑导图"}));
+    let id = created["result"]["board_id"].clone();
+    let edited = f.action(&f.a, &created, "mind-map-first", "boards/edit", json!({
+        "board_id":id,"board_revision":1,"action":"创建主题","operations":[
+            {"kind":"create_mind_map","map":{"map_id":"map","root_item_id":"root","anchor":{"x":0,"y":0}},"root":{"item_id":"root","title":"Rust"}}
+        ]
+    }));
+    assert_eq!(edited["result"]["revision"], 2);
+    let second = f.create(&f.a, &f.x, "mind-map-second");
+    let reopened = f.action(&f.a, &second, "mind-map-second", "boards/read", json!({"board_id":id}));
+    assert_eq!(reopened["result"]["document"]["mind_maps"][0]["root_item_id"], "root");
+    let undo = f.action(&f.a, &reopened, "mind-map-second", "boards/undo", json!({"board_id":id,"board_revision":2}));
+    assert!(undo["result"]["items"].as_array().unwrap().is_empty());
+    let redo = f.action(&f.a, &undo, "mind-map-second", "boards/redo", json!({"board_id":id,"board_revision":3}));
+    assert_eq!(redo["result"]["items"][0]["item_id"], "root");
+}
+
+#[test]
 fn wb1_network_boards_reopen_across_reader_windows_without_crossing_private_scope() {
     let f = Fixture::new();
     let learning = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"理解概念"},"members":[f.x,f.y]}))["learning_workspace_id"].clone();

@@ -83,8 +83,9 @@ pub(crate) fn freeze(
             pages.push(page);
         }
     }
+    let understanding=input.get("understanding_ref").filter(|v|!v.is_null()).map(|reference|crate::note_thinking::evidence(user,reference,false)).transpose()?;
     Ok(Some(
-        json!({"references":exact,"explicit":pages,"prior_discussion":prior,"reply_to_turn":reply,"accepted_at":crate::multi_user_host::now().to_string()}),
+        json!({"references":exact,"explicit":pages,"prior_discussion":prior,"understanding":understanding,"reply_to_turn":reply,"accepted_at":crate::multi_user_host::now().to_string()}),
     ))
 }
 
@@ -129,6 +130,24 @@ pub(crate) fn remember_adoption(
         context["adopted_references"] = json!(references);
     }
     Ok(())
+}
+
+pub(crate) fn evidence_notes(user: &user_runtime::UserRuntime, binding: &memory::teaching::TeachingBinding, links: Option<&Value>) -> Result<Vec<memory::NoteRef>,ToolError> {
+    let links:Vec<memory::understanding::NoteEvidenceLink>=serde_json::from_value(links.cloned().unwrap_or(json!([]))).map_err(|e|memory::teaching::invalid(e.to_string()))?;
+    let context=user.agent_history.sessions.iter().find(|s|s.id==binding.chat_session_id)
+        .and_then(|s|s.turns.iter().find(|t|t.turn_id==binding.turn_id)).and_then(|t|t.domain.personal_notes.as_ref());
+    let offered:Vec<memory::NoteRef>=context.map(|c|["references","adopted_references"].iter().flat_map(|field|c[*field].as_array().into_iter().flatten())
+        .filter_map(|r|serde_json::from_value(r.clone()).ok()).collect()).unwrap_or_default();
+    let mut refs=Vec::new();
+    for link in links {
+        if !offered.contains(&link.reference) || link.reference.revision.is_none() || link.quote.trim().is_empty() {
+            return Err(memory::teaching::invalid("理解关联需要本轮确切笔记版本及对应原话"));
+        }
+        let note=user.store.personal_note(&link.reference)?;
+        if !note.value.record.content.contains(&link.quote) {return Err(memory::teaching::invalid("理解关联片段不属于所引用的笔记版本"));}
+        if !refs.contains(&link.reference) {refs.push(link.reference)}
+    }
+    Ok(refs)
 }
 
 pub(crate) fn for_turn(

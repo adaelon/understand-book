@@ -1236,7 +1236,9 @@ fn tutor_t16_source_only_resident_delivers_and_continues_after_reopen() {
     let rows = store.teaching_deliveries(&session.id, &turn.turn_id).unwrap();
     assert_eq!(rows.len(), 1, "{first}");
     assert!(rows[0].binding.map_revision.is_none());
-    assert_eq!(rows[0].payload["move"]["target"], movement["move"]["target"]);
+    let mut delivered_target=rows[0].payload["move"]["target"].clone();
+    assert!(delivered_target.as_object_mut().unwrap().remove("focus_ref").is_some());
+    assert_eq!(delivered_target, movement["move"]["target"]);
     let binding = store.teaching_event(&format!("binding:{}", turn.turn_id)).unwrap();
     assert_eq!(binding.payload["learner_context"]["confirmed_background"], json!([]));
     assert!(binding.payload["learner_context"]["current_request"].as_str().unwrap().contains("have not read"));
@@ -1258,7 +1260,7 @@ fn tutor_t16_source_only_resident_delivers_and_continues_after_reopen() {
     let session = state.user.agent_history.sessions.last().unwrap();
     let turn = session.turns.last().unwrap();
     let binding = state.user.learning_store().unwrap().teaching_event(&format!("binding:{}", turn.turn_id)).unwrap();
-    assert_eq!(binding.payload["learner_context"]["current_target"], movement["move"]["target"]);
+    assert_eq!(binding.payload["learner_context"]["current_target"], rows[0].payload["move"]["target"]);
     assert!(!binding.payload["learner_context"]["recent_facts"].as_array().unwrap().is_empty());
     let revision = state.user.learning_store().unwrap().state().unwrap().control.revision;
     json_post(&mut state, "/tutor/mutate", json!({"operation_id":"off","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
@@ -1545,7 +1547,7 @@ fn tutor_target_reports_revision_mismatch_before_interpretation_scope() {
 }
 
 #[test]
-fn tutor_validation_recovery_allows_one_correction_then_stops_churn() {
+fn tutor_validation_recovery_accepts_distinct_corrections_then_stops_repeated_errors() {
     for recover in [true, false] {
         let (_root, mut state) = fixture_with_assets(false);
         let movement = source_move(&state);
@@ -1566,17 +1568,6 @@ fn tutor_validation_recovery_allows_one_correction_then_stops_churn() {
             call("tutor.step", third), answer("Use total time."),
         ]);
         let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
-        if !recover {
-            assert_eq!(result.reply.status,400,"{}",result.reply.body);
-            let error:Value=serde_json::from_str(&result.reply.body).unwrap();
-            assert_eq!(error["error_code"],"TOOL_ARGUMENTS_INVALID","{error}");
-            assert!(error["message"].as_str().unwrap().contains("hint"),"{error}");
-            assert!(!result.reply.body.contains("预算终答"));
-            let session=state.user.agent_history.sessions.last().unwrap();
-            let turn=session.turns.last().unwrap();
-            assert!(state.user.learning_store().unwrap().teaching_deliveries(&session.id,&turn.turn_id).unwrap().is_empty());
-            continue;
-        }
         assert_eq!(result.reply.status,200,"{}",result.reply.body);
         let reply:Value=serde_json::from_str(&result.reply.body).unwrap();
         let trace = reply["trace"].as_array().unwrap();

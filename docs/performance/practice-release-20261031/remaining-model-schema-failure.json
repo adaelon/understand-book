@@ -1,0 +1,58 @@
+{
+  "status": "failed",
+  "production_mutated": false,
+  "learner": "simulated answers exercise the real model and host; not evidence of human learning",
+  "budget_micro_cny": 6340578,
+  "cases": [
+    {
+      "case": "correct_without_hints",
+      "delivery_ref": "delivery:turn_01a18f9d-d763-7240-b0b4-6f07df69d894:practice-measured-buoyancy",
+      "assessment": "correct"
+    },
+    {
+      "case": "correct_with_hints",
+      "delivery_ref": "delivery:turn_01a18fa0-4044-7261-a456-09765564658b:practice-displacement-weight",
+      "hints": [
+        "in_problem",
+        "structure"
+      ],
+      "assessment": "correct"
+    }
+  ],
+  "validation_segments": [
+    {
+      "cases": [
+        "correct_without_hints",
+        "correct_with_hints"
+      ],
+      "source": "post-interleave-revise-failure.json",
+      "scope": "Passed before enforcing the revise action; retained because the hint and correct-answer paths are unchanged."
+    },
+    {
+      "cases": [
+        "wrong_then_revise",
+        "skip_then_explain",
+        "note_revisit_and_reveal"
+      ],
+      "scope": "New problems under the final contract requiring revise."
+    }
+  ],
+  "session_id": "chat-01a18fbd-a04f-7a93-849a-063afb9b940f",
+  "workspace_id": "ws-01a18fbd-a043-7080-b0ba-9151029f9112",
+  "book": {
+    "book_id": "steel-warship-buoyancy",
+    "publication_id": "01a18b15-50e0-76b1-8266-5586050ec579"
+  },
+  "current_turn": "turn_01a18fbd-a05d-7a51-bd4f-5241c85ed576",
+  "failure": "Model turn failed: {'category': 'validation', 'error_code': 'TOOL_ARGUMENTS_INVALID', 'message': '$.move.practice.source_lids is not allowed\\nResubmit a complete move. Current $.move allowed fields: [\"actions\",\"assessment\",\"block_refs\",\"board_candidate_revision\",\"coach_adjustment\",\"continuation\",\"delivery_text\",\"desig",
+  "remaining_segment_model_calls": 6,
+  "model_calls": 57,
+  "provider_cost_micro_cny": 5041217,
+  "purposes": [
+    "memory_review",
+    "outer",
+    "practice_check",
+    "tutor_assessment",
+    "tutor_coach"
+  ]
+}

@@ -37,11 +37,12 @@ pub(super) fn freeze_facts(store: &LearningStore, events: &[TeachingEvent]) -> R
                     group["prior_help"].as_array_mut().unwrap().push(help);
                 }
             }
+            group["help_before_expression"]=json!(if group["assistance_refs"].as_array().unwrap().is_empty(){"no_recorded_prior_help"}else{"prior_help_recorded"});
             continue;
         }
         groups.push(json!({"fact_ref":fact.event_id,"fact_refs":[fact.event_id],
             "user_expression":text,"binding":fact.binding,"occurred_at":fact.occurred_at,
-            "assistance_refs":help_refs,"prior_help":prior_help,
+            "assistance_refs":help_refs,"prior_help":prior_help,"help_before_expression":if help_refs.is_empty(){"no_recorded_prior_help"}else{"prior_help_recorded"},
             "already_interpreted":store.fact_has_interpretation(&fact.event_id)?}));
     }
     Ok(groups)
@@ -143,7 +144,7 @@ pub(super) fn commit(user: &user_runtime::UserRuntime, job: &CoachJob, guidance:
             "operation_id":format!("background:{}:{}",job.input.source_ref,observation.fact_ref),
             "target":candidate.target,"fact_refs":refs,"interpretation":candidate.interpretation,
             "teaching_implication":candidate.teaching_implication,"design_ref":candidate.design_ref,
-            "block_refs":candidate.block_refs});
+            "block_refs":candidate.block_refs,"understanding":candidate.understanding,"note_links":candidate.note_links});
         let assistance:Vec<String> = serde_json::from_value(fact["assistance_refs"].clone()).map_err(|e| memory::teaching::invalid(e.to_string()))?;
         let accepted = crate::teaching::accept_hypothesis_with_assistance(&context, &job.input.binding, &request, &bindings, &ranges, &assistance)?;
         receipts.push(json!({"fact_ref":observation.fact_ref,"status":"recorded","evidence_ref":accepted["evidence_ref"]}));

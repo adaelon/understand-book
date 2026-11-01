@@ -1,0 +1,83 @@
+{
+  "status": "passed",
+  "production_mutated": false,
+  "learner": "simulated answers exercise the real model and host; not evidence of human learning",
+  "budget_micro_cny": 3550841,
+  "cases": [
+    {
+      "case": "correct_without_hints",
+      "delivery_ref": "delivery:turn_01a18f9d-d763-7240-b0b4-6f07df69d894:practice-measured-buoyancy",
+      "assessment": "correct"
+    },
+    {
+      "case": "correct_with_hints",
+      "delivery_ref": "delivery:turn_01a18fa0-4044-7261-a456-09765564658b:practice-displacement-weight",
+      "hints": [
+        "in_problem",
+        "structure"
+      ],
+      "assessment": "correct"
+    },
+    {
+      "case": "wrong_then_revise",
+      "delivery_ref": "delivery:turn_01a18fc1-9959-7412-82df-b767fbaa30fd:practice-solid-vs-hollow",
+      "first": "incorrect",
+      "revised": "correct"
+    },
+    {
+      "case": "skip_then_explain",
+      "delivery_ref": "delivery:turn_01a18fc5-2a68-72f3-94c3-a61392f66ffb:practice-displaced-total-weight",
+      "explanation_turn": "turn_01a18fc6-7075-7733-9838-14fca099030f"
+    },
+    {
+      "case": "note_revisit_and_reveal",
+      "delivery_ref": "delivery:turn_01a18fe7-7945-7633-9721-7f9be1954d84:practice-note-two-hollow-boxes",
+      "exact_note_quote": true,
+      "solution_visible": true
+    }
+  ],
+  "validation_segments": [
+    {
+      "cases": [
+        "correct_without_hints",
+        "correct_with_hints"
+      ],
+      "source": "post-interleave-revise-failure.json",
+      "scope": "Passed before enforcing the revise action; retained because the hint and correct-answer paths are unchanged."
+    },
+    {
+      "cases": [
+        "wrong_then_revise",
+        "skip_then_explain",
+        "note_revisit_and_reveal"
+      ],
+      "scope": "New problems under the final contract requiring revise."
+    },
+    {
+      "case": "learner_facing_solution",
+      "scope": "Final prompt clarification: inspect the explanation exactly as revealed to the learner."
+    }
+  ],
+  "session_id": "chat-01a18fe7-78b1-7c02-bbab-9f75a22283b6",
+  "workspace_id": "ws-01a18fe7-7898-7da0-975f-ab541bec7765",
+  "book": {
+    "book_id": "steel-warship-buoyancy",
+    "publication_id": "01a18b15-50e0-76b1-8266-5586050ec579"
+  },
+  "current_turn": "turn_01a18fe7-7945-7633-9721-7f9be1954d84",
+  "finished_at_utc": "2026-10-31T03:02:39.098861+00:00",
+  "learner_facing_solution": {
+    "delivery_ref": "delivery:turn_01a18fe7-7945-7633-9721-7f9be1954d84:practice-note-two-hollow-boxes",
+    "manual_review": "passed"
+  },
+  "final_solution_segment_model_calls": 7,
+  "model_calls": 110,
+  "provider_cost_micro_cny": 9937068,
+  "purposes": [
+    "memory_review",
+    "outer",
+    "practice_check",
+    "tutor_assessment",
+    "tutor_coach"
+  ]
+}

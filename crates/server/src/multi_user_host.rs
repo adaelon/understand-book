@@ -713,6 +713,18 @@ pub(crate) fn dispatch(
                 if !query.is_empty() || (method == "GET" && !input.is_null()) {
                     return Err(invalid());
                 }
+                if action == "notes" {
+                    expect_method(method, "POST")?;
+                    let scope = id.as_deref().ok_or_else(invalid)?;
+                    let workspace = access.learning_workspace_metadata(principal.user_id(), scope)?;
+                    let operation = path.rsplit('/').next().ok_or_else(invalid)?;
+                    if workspace.archived && !matches!(operation, "list" | "read") {
+                        return Err(crate::user_storage_paths::error("LEARNING_WORKSPACE_ARCHIVED", "conflict", "Restore the learning workspace before changing its notes"));
+                    }
+                    let context = access.context(principal, now)?;
+                    let user = context.user.lock().unwrap();
+                    return crate::workspace_notes_api::account(&user, scope, operation, &input, &now.to_string()).map(HttpReply::json);
+                }
                 if action == "preparations" {
                     access.learning_workspace_metadata(principal.user_id(), id.as_deref().ok_or_else(invalid)?)?;
                     return crate::personal_preparations::request(access, principal.user_id(), id.as_deref().ok_or_else(invalid)?, method, input, now).map(HttpReply::json);

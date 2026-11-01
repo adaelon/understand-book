@@ -248,7 +248,7 @@ describe("RightRail history visibility", () => {
       outcome: { answer: 'Embedding 把文本表示为向量，检索时通过向量比较找到相关片段。演示页尚未完成。', warning,
         effects: [], trace: [], memory_updates: [], turns: 1, tokens_spent: 0, incomplete: true,
         profile_usage: { snapshot_revision: 0, injected_fact_ids: [], claimed_used_fact_ids: [], influences: [] } },
-    }] }, shallow: true });
+    }] }, shallow: true, global: { renderStubDefaultSlot: true } });
     try {
       expect(wrapper.get('.a-msg .ans-text').text()).toContain('Embedding 把文本表示为向量');
       expect(wrapper.get('.a-msg .ans-text').text()).toContain('演示页尚未完成');
@@ -645,7 +645,7 @@ describe('WB1 board entry from conversation', () => {
     const reference = { presentation_id: 'demo-one', revision: 2 };
     const receipt = { session_id: 'chat-1', turn_id: 'answer-one', reference, state_revision: 4, saved_state_ref: 'saved-four' };
     const outcome = sourceOutcome();
-    const wrapper = mount(RightRail, { shallow: true, props: { ...baseProps, chat: [{
+    const wrapper = mount(RightRail, { shallow: true, global: { renderStubDefaultSlot: true }, props: { ...baseProps, chat: [{
       turnId: receipt.turn_id, user: '解释这个概念', pending: false,
       outcome: { ...outcome, answer_view: { ...outcome.answer_view, parts: [{ kind: 'presentation', ...reference }] } },
       questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [],
@@ -679,7 +679,7 @@ describe('WB2 saved board locations in conversation history', () => {
   });
 
   it('retains the answer and original target when delivery fails, without claiming it was saved', async () => {
-    const wrapper = mount(RightRail, { shallow: true,
+    const wrapper = mount(RightRail, { shallow: true, global: { renderStubDefaultSlot: true },
       props: { ...baseProps, chat: [{ ...turn(), boardDeliveryError: '画板暂时无法保存' }] } });
 
     expect(wrapper.get('.a-msg').text()).toContain('First claim.');
@@ -1060,7 +1060,8 @@ describe("RightRail agent sources", () => {
     const first = deferred<Response>();
     const second = deferred<Response>();
     const responses = [first, second];
-    vi.stubGlobal("fetch", vi.fn(() => responses.shift()!.promise));
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => String(input).endsWith('/agent/source.resolve')
+      ? responses.shift()!.promise : Promise.resolve(Response.json({ items: [] }))));
     const wrapper = mount(RightRail, {
       attachTo: document.body,
       props: {

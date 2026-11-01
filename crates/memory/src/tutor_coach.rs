@@ -134,6 +134,9 @@ fn get_turn(connection: &Connection, scope: &str, chat: &str, turn: &str) -> Res
 }
 
 impl LearningStore {
+    pub fn coach_job_for_turn(&self, turn: &str) -> Result<Option<Value>,ToolError> {
+        self.connection.query_row("SELECT job_ref,status FROM teaching_coach_jobs WHERE learning_workspace_id=? AND source_ref=? AND origin IN ('after_turn','observation_backfill') ORDER BY seq DESC LIMIT 1",params![self.workspace_scope,turn],|row|Ok(serde_json::json!({"job_ref":row.get::<_,String>(0)?,"status":row.get::<_,String>(1)?,"workspace_id":self.learning_workspace_id()}))).optional().map_err(storage)
+    }
     pub fn ready_coach_for_binding(&self, binding: &TeachingBinding, goal: Option<u32>) -> Result<Option<CoachJob>, ToolError> {
         // A recovered older turn can register and finish after a newer turn.
         // Prefer the original fact order, with insertion order only as fallback.

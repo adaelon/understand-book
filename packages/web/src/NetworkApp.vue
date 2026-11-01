@@ -5,6 +5,9 @@ import { useAccountPresence } from './account-presence';
 import LanguageSwitcher from './components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
+import NotesWorkspace from './components/NotesWorkspace.vue';
+import BoardSourcePreview from './components/BoardSourcePreview.vue';
+import type { SourcePopupView, WorkspaceNoteSourceRequest } from './api';
 import { pendingNoteSource, noteSourceError } from './personal-notes';
 import { isTauri } from '@tauri-apps/api/core';
 import DesktopAuthorization from './components/DesktopAuthorization.vue';
@@ -239,6 +242,51 @@ function bookLabel(book: CatalogBook) {
   return uiText('{0} · 版本 {1}{2}', [title, versions.findIndex(item => samePublication(item.published_book_ref, book.published_book_ref)) + 1, book.is_default ? uiText('（默认）') : '']);
 }
 const readerApp = ref<InstanceType<typeof App> | null>(null);
+const homeNotes = ref<LearningWorkspace | null>(null), homeNotesRef = ref<InstanceType<typeof NotesWorkspace>>();
+const homeNotesError = ref(''), homeNotePreview = ref<SourcePopupView | null>(null);
+const homeNoteSourceRequest = ref<WorkspaceNoteSourceRequest | null>(null);
+const homeNoteSourcePublication = ref<PublishedBookRef | null>(null);
+const homeNoteSourceAvailable = ref(false);
+async function openHomeNotes(space: LearningWorkspace) {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave()) return;
+  homeNotes.value = space; homeNotesError.value = '';
+}
+async function closeHomeNotes() {
+  if (homeNotesRef.value && !await homeNotesRef.value.beforeLeave()) return;
+  homeNotes.value = null;
+}
+async function notebookReader(action: (app: InstanceType<typeof App>) => unknown, preferred?: PublishedBookRef | null) {
+  const space = homeNotes.value;
+  if (!space || !await homeNotesRef.value?.beforeLeave()) return;
+  const member = space.members.find(item => item.readable && (!preferred || samePublication(item.published_book_ref, preferred)));
+  if (!member) { homeNotesError.value = uiText('笔记已保存在这个空间。加入一份资料后，就可以在画板和 Agent 对话中继续使用。'); return; }
+  if (space.archived) { homeNotesError.value = uiText('这个空间已归档。恢复空间后可继续讨论和整理。'); return; }
+  const current = network.value.workspace;
+  if (current?.learning_workspace_id !== space.learning_workspace_id || (preferred && !samePublication(current.published_book_ref, preferred)) || !space.members.some(item => item.readable && samePublication(item.published_book_ref, current.published_book_ref))) {
+    await openBook(member.published_book_ref, space.learning_workspace_id);
+  } else { libraryOpen.value = false; suspended.value = false; }
+  await nextTick();
+  if (network.value.workspace?.learning_workspace_id !== space.learning_workspace_id || !readerApp.value || openingError.value) {
+    homeNotesError.value = openingError.value || uiText('暂时无法打开学习现场，请重试。'); return;
+  }
+  homeNotes.value = null;
+  await action(readerApp.value);
+}
+async function homeNoteSource(request: WorkspaceNoteSourceRequest) {
+  const space = homeNotes.value; if (!space) return;
+  try {
+    const note = await api.workspaceNote(request.note_id, space.learning_workspace_id);
+    const binding = note.source_bindings.find(item => item.source_ref_id === request.source_ref_id);
+    if (!binding) return;
+    homeNoteSourceRequest.value = request;
+    homeNoteSourceAvailable.value = !space.archived && space.members.some(item => item.readable && item.published_book_ref.book_id === binding.book_id && (!binding.publication_id || item.published_book_ref.publication_id === binding.publication_id));
+    homeNoteSourcePublication.value = space.members.find(item => item.readable && item.published_book_ref.book_id === binding.book_id && (!binding.publication_id || item.published_book_ref.publication_id === binding.publication_id))?.published_book_ref ?? null;
+    homeNotePreview.value = { source_ref_id: binding.source_ref_id, label: binding.label_snapshot,
+      highlighted_quote: binding.preview_snapshot, context_before: '', context_after: '',
+      stale: true, can_open_in_reader: false, unavailable_reason: uiText('这是保存笔记时保留的来源摘录。') };
+  } catch (failure) { homeNotesError.value = failure instanceof Error ? failure.message : String(failure); }
+}
+watch(() => network.value.epoch, () => { homeNotes.value = null; homeNotePreview.value = null; });
 const key = computed(sceneKey);
 const appKey = computed(readerKey);
 const chatDraft = ref<ChatDraft | null>(readLearningDraft(learningDraftKey()));
@@ -452,6 +500,7 @@ async function login() {
   finally { password.value = ''; busy.value = false; checking.value = false; }
 }
 async function logout() {
+  if (homeNotesRef.value && !await homeNotesRef.value.beforeLeave()) return;
   if (network.value.identity?.is_guest && !window.confirm(uiText('退出后，这枚内测码无法再次使用，也无法自行恢复游客记录。确定退出体验吗？'))) return;
   if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('退出登录'))) return;
   const n = network.value, w = n.workspace;
@@ -655,7 +704,7 @@ onBeforeUnmount(() => {
       <SharedWorkspaceCatalog v-if="sharedOpen" :books="materialBooks" @started="startSharedLearning" />
       <section v-if="selectedLearning" class="learning-details" :aria-label="uiText('当前工作区')">
         <header class="learning-goal-heading"><div><span class="network-library-kicker">{{ uiText('当前学习目标') }} <span class="goal-revision">{{ uiText('· 第') }} {{ selectedLearning.goal.revision }} {{ uiText('版') }}</span></span><h2>{{ selectedLearning.goal.text }}</h2><p v-if="selectedLearning.goal.constraints.length" class="goal-constraints">{{ selectedLearning.goal.constraints.join('；') }}</p></div>
-          <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">{{ uiText('继续学习') }}<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">{{ uiText('修改大目标') }}</button></div></header>
+          <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">{{ uiText('继续学习') }}<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy" @click="openHomeNotes(selectedLearning)">{{ uiText('空间笔记') }}</button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">{{ uiText('修改大目标') }}</button></div></header>
         <form v-if="editingGoal" class="learning-goal-edit" @submit.prevent="reviseGoal">
           <label>{{ uiText('工作区大目标') }}<textarea v-model="goalDraft" required :disabled="busy" /></label>
           <button :disabled="busy || !goalDraft.trim()">{{ uiText('保存大目标') }}</button><button type="button" :disabled="busy" @click="editingGoal = false">{{ uiText('取消修改') }}</button>
@@ -724,6 +773,14 @@ onBeforeUnmount(() => {
       <div class="book-opening-actions"><button v-if="opening" @click="cancelBookOpening">{{ uiText('取消') }}</button><template v-else><button class="book-opening-retry" @click="retryBookOpening">{{ uiText('重试打开') }}</button><button @click="cancelBookOpening">{{ uiText('返回书架') }}</button></template></div>
     </aside>
     <AccountMcp v-if="mcpOpen" @close="closeMcp" />
+    <div v-if="homeNotes" class="home-notes-overlay">
+      <p v-if="homeNotesError" class="home-notes-notice" role="status">{{ homeNotesError }} <button @click="homeNotesError = ''">{{ uiText('关闭') }}</button></p>
+      <NotesWorkspace ref="homeNotesRef" :key="homeNotes.learning_workspace_id" :learning-workspace-id="homeNotes.learning_workspace_id" :readonly="homeNotes.archived"
+        @changed="readerApp?.workspaceNotesChanged()"
+        @close="closeHomeNotes" @open-board="request => notebookReader(app => app.openBoard({ kind: 'note', note_id: request.noteId }))"
+        @ask="request => notebookReader(app => app.prepareWorkspaceNoteQuestion(request))" @source="homeNoteSource" />
+    </div>
+    <BoardSourcePreview v-if="homeNotePreview" :source="homeNotePreview" context="note" :can-open="homeNoteSourceAvailable" @open="homeNotePreview = null; homeNoteSourceRequest && notebookReader(app => app.navigateWorkspaceNoteSource(homeNoteSourceRequest), homeNoteSourcePublication)" @close="homeNotePreview = null" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
     <aside v-if="linkedSource" class="network-source" :aria-label="uiText('演示来源')">
@@ -736,6 +793,10 @@ onBeforeUnmount(() => {
   </div>
 </template>
 <style scoped>
+.home-notes-overlay { position: fixed; inset: 0; z-index: 145; display: flex; flex-direction: column; background: var(--reader-canvas); }
+.home-notes-overlay > .notes-workspace { flex: 1; min-height: 0; }
+.home-notes-notice { margin: 0; padding: 12px 24px; background: var(--surface-soft); color: var(--ink); font-size: 13px; line-height: 1.8; }
+.home-notes-notice button { margin-left: 12px; border: 0; background: transparent; color: var(--brand-accent-deep); }
 .workspace-goal-bar { flex: none; display: flex; align-items: center; gap: 16px; justify-content: space-between; padding: 8px 24px; background: var(--surface-soft, #f4f0e8); border-bottom: 1px solid var(--line); }
 .workspace-goal-bar > div { min-width: 0; }
 .workspace-goal-bar span { color: var(--muted); font-size: 11px; }

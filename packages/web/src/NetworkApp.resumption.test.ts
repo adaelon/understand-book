@@ -19,6 +19,7 @@ beforeEach(() => {
   workspace = { workspace_id: 'this-window', generation: 3, revision: 8, selected_chat: 'original-chat',
     published_book_ref: books[1].published_book_ref, reader: { viewport: { top_lid: '1.16' } } } as NetworkWorkspace;
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
+    if (url === '/api/account/presence') return Response.json({ ok: true });
     calls.push(`${init.method} ${url}`);
     if (url === '/api/auth/me') return Response.json(identity);
     if (url === '/api/videos') return Response.json({ videos: [] });

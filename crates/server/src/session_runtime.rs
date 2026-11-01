@@ -363,7 +363,9 @@ pub(crate) fn update_board_authoring(
     if user.session_store.is_some() {
         return append(user, reference, at, EventBody::BoardAuthoringUpdated(authoring));
     }
-    if current_turn(user, reference)?.status != AgentAssistantStatus::PendingAssistant {
+    let current = current_turn(user, reference)?;
+    if current.status != AgentAssistantStatus::PendingAssistant
+        && !crate::board_author::confirmation_update(current.domain.board_authoring.as_ref(), &authoring) {
         return Err(agent_history_internal("board authoring requires a pending turn"));
     }
     let mut candidate = user.agent_history.clone();

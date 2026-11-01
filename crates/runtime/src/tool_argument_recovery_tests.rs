@@ -8,6 +8,11 @@ struct ArgumentRecoveryTeachingPort<'a> {
 
 impl ResidentStatePort for ArgumentRecoveryTeachingPort<'_> {
     fn tutor_step_preflight(&self, request: &serde_json::Value, _: &[SourceBinding], _: &[read_tools::EvidenceRange]) -> Result<serde_json::Value, crate::run_context::TeachingSelectionPreflightError> {
+        if request["move"]["interaction_intent"] == "direct_explanation" && request["move"]["participation"]["choice"] == "invite" {
+            return Err(crate::run_context::TeachingSelectionPreflightError {
+                error: memory::teaching::invalid("用户选择直接讲解时不要夹带新的作答任务"), missing_source_read: None,
+            });
+        }
         if request["move"]["intent_origin"] == "session_default" {
             return Err(crate::run_context::TeachingSelectionPreflightError {
                 error: memory::teaching::invalid("教学意图需匹配当前原话或会话默认；直接讲解应采用解释动作"),
@@ -104,17 +109,39 @@ fn assert_tool_argument_recovery(case: &str) {
             .rfind(|text|text.starts_with("runtime_state_snapshot.v1")).unwrap();
         assert!(!current.contains("agent.teaching_revision"),"acceptance clears the private repair state");
     } else {
-        let error = outcome.unwrap_err();
-        assert_eq!(error.error_code, "TOOL_ARGUMENTS_INVALID");
-        assert!(error.message.contains("$.move.participation"));
+        if case == "budget" {
+            let error = outcome.unwrap_err();
+            assert_eq!(error.error_code, TURN_LIMIT_EXCEEDED);
+            assert!(error.message.contains("$.move.participation"));
+        } else {
+            let outcome = outcome.unwrap();
+            assert!(outcome.incomplete);
+            assert_eq!(outcome.warning.as_deref(), Some("AGENT_NO_PROGRESS"));
+        }
         assert!(port.inner.accepted.is_empty() && port.inner.reviews.is_empty());
         assert!(context.teaching_delivery_draft.is_none());
-        assert_eq!(plans.len(), if case == "budget" { 3 } else { 4 },
+        assert_eq!(plans.len(), if case == "budget" { 3 } else { 5 },
             "argument correction cannot bypass the turn limit or renew a repeated schema failure");
         if case == "repeat" {
             assert_eq!(tool_result_error_code(&tool_result(&context.messages, "still-missing-participation")).as_deref(), Some("TOOL_ARGUMENTS_INVALID"));
         }
     }
+}
+
+#[test]
+fn correction_guard_does_not_renew_cycles_or_changed_json_offsets() {
+    let mut guard = ProgressPhaseGuard::default();
+    guard.observe_correction_error("tutor.step", "TOOL_ARGUMENTS_INVALID", "tool arguments are not valid JSON: trailing characters at line 1 column 20");
+    guard.recovery_used = true;
+    guard.observe_correction_error("tutor.step", "TOOL_ARGUMENTS_INVALID", "tool arguments are not valid JSON: trailing characters at line 1 column 900");
+    assert!(!guard.recovery_available());
+    guard.observe_correction_error("tutor.step", "TOOL_ARGUMENTS_INVALID", "$.move.delivery_text is required\nCurrent draft: 1");
+    assert!(guard.recovery_available());
+    guard.recovery_used = true;
+    guard.observe_correction_error("tutor.step", "TOOL_ARGUMENTS_INVALID", "tool arguments are not valid JSON: trailing characters at line 1 column 5");
+    assert!(!guard.recovery_available(), "returning to a previously rejected shape is not a new failure");
+    guard.observe_correction_error("tutor.step", "TOOL_ARGUMENTS_INVALID", "$.move.delivery_text is required\nCurrent draft: 2");
+    assert!(!guard.recovery_available(), "new draft/repair instructions do not change the failed field");
 }
 
 #[test]
@@ -130,4 +157,67 @@ fn tool_argument_recovery_does_not_renew_repeated_schema_errors() {
 #[test]
 fn tool_argument_recovery_does_not_bypass_turn_budget() {
     assert_tool_argument_recovery("budget");
+}
+
+#[test]
+fn distinct_argument_feedback_after_syntax_and_semantic_repair_reaches_delivery() {
+    let b = book();
+    let mut store = MemoryStore::open(tmp("successive-argument-repair")).unwrap();
+    let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+    let snapshot = default_profile_snapshot(&b, &store, "t0");
+    let answer = "The retained catalog keeps the card available for another route.";
+    let mut semantic = selected_body("semantic", answer);
+    semantic["move"]["intent_origin"] = serde_json::json!("session_default");
+    let mut missing = selected_body("missing-body", answer);
+    missing["move"].as_object_mut().unwrap().remove("delivery_text");
+    let mut corrected = selected_body("corrected", answer);
+    corrected["finish"] = serde_json::json!(true);
+    let adapter = ReviewedTeachingAdapter::new(vec![
+        turn_calls(vec![call("syntax", "tutor.step", r#"{"move":{}},"operation":"select"}"#)]),
+        turn_calls(vec![call("semantic", "tutor.step", &semantic.to_string())]),
+        turn_calls(vec![call("missing-body", "tutor.step", &missing.to_string())]),
+        turn_calls(vec![call("corrected", "tutor.step", &corrected.to_string())]),
+    ], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    context.tutor = Some(serde_json::json!({"status":"active", "default_teaching_intent":"guided_inquiry",
+        "current_design":{"design_ref":"design:current","design":design()}, "learner_context":{}}));
+    let mut port = ArgumentRecoveryTeachingPort { inner: TeachingPort {
+        inner: BorrowedResidentState { store: &mut store, reader: &mut reader },
+        accepted: vec![], selections: Default::default(), reviews: vec![],
+    }};
+    let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
+        &mut EphemeralCompactionCheckpointSink::default(), "Explain this relationship.", "t0").unwrap();
+    assert!(!outcome.incomplete);
+    assert_eq!(outcome.answer.as_deref(), Some(answer));
+    assert_eq!(outcome.turns, 4);
+    let plans = adapter.inner.0.seen_plans.borrow();
+    assert_eq!(plans.len(), 4, "new missing-field feedback must reach the next sampling");
+    assert!(serde_json::to_string(&plans[3].ordered_messages()).unwrap().contains("$.move.delivery_text"));
+    assert_repair_request_prefixes(&plans);
+}
+
+fn assert_repair_request_prefixes(plans: &[crate::model_runtime::AgentRequestPlan]) {
+    use crate::deepseek_messages::{request_projection, MessagesCapabilities, ToolUpdateMode};
+    let bodies: Vec<_> = plans.iter().map(|plan| request_projection("fixture", plan,
+        MessagesCapabilities { tool_update: ToolUpdateMode::InHistory, system_in_history: true }).unwrap().0).collect();
+    for pair in bodies.windows(2) {
+        assert_eq!(pair[0]["system"], pair[1]["system"], "repair must not rewrite the system prefix");
+        assert_eq!(pair[0]["tools"], pair[1]["tools"], "repair must not re-declare tools");
+        let before = pair[0]["messages"].as_array().unwrap();
+        let after = pair[1]["messages"].as_array().unwrap();
+        assert_eq!(&after[..before.len()], before.as_slice(), "repair appends to the exact sent history");
+    }
+}
+
+#[test]
+fn tutor_repair_contract_measurement() {
+    let context = serde_json::json!({"status":"active"});
+    let spec = crate::tutor::model_spec_for_context(&context).unwrap();
+    let report = serde_json::json!({"schema_chars":spec.parameters.to_string().chars().count(),
+        "schema_utf8_bytes":spec.parameters.to_string().len(), "description_chars":spec.description.chars().count(),
+        "examples":spec.parameters["examples"].as_array().unwrap().len()});
+    if let Some(path) = std::env::var_os("TUTOR_REPAIR_CONTRACT_REPORT") {
+        std::fs::write(path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    }
+    println!("{report}");
 }

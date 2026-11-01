@@ -167,8 +167,42 @@ fn chat(running: &RunningServer, message: &str) -> JoinHandle<(u16, Value)> {
 }
 
 fn finish_missing_page(provider: &Provider, first: ProviderStep) {
-    first.answer("页面尚未交付。");
-    provider.next().answer("页面尚未交付。");
+    let mut step = first;
+    let mut answers = 0;
+    loop {
+        if let Some(draft) = pending_goal_compaction(&step.request) {
+            step.answer(&draft.to_string());
+        } else {
+            step.answer("页面尚未交付。");
+            answers += 1;
+            if answers == 2 { return; }
+        }
+        step = provider.next();
+    }
+}
+
+// Long goal-lifecycle fixtures may cross the real context watermark. Preserve
+// their source-linked unfinished requests without consuming an ordinary answer.
+fn pending_goal_compaction(request: &Value) -> Option<Value> {
+    let messages = request["messages"].as_array()?;
+    let instruction = messages.last()?["content"].as_str()?;
+    if !instruction.starts_with("You are performing a CONTEXT CHECKPOINT COMPACTION") {
+        return None;
+    }
+    let metadata: Value = serde_json::from_str(instruction.lines().last()?).expect("compaction source map");
+    let mut obligations = Vec::new();
+    let mut coverage = Vec::new();
+    for (index, source) in metadata["eligible_items"].as_array().unwrap().iter().enumerate() {
+        let id = format!("pending.{index}");
+        let position = source["ordered_message_index"].as_u64().unwrap() as usize;
+        obligations.push(json!({"item_id":id,"text":messages[position]["content"],
+            "source_item_ids":[source["source_item_id"]],"evidence_refs":source["evidence_refs"]}));
+        coverage.push(json!({"source_item_id":source["source_item_id"],
+            "disposition":"compacted","target_item_ids":[id]}));
+    }
+    Some(json!({"active_goal":[],"progress":[],"decisions":[],"user_constraints":[],
+        "open_obligations":obligations,"unresolved_ambiguities":[],"critical_facts":[],
+        "critical_examples":[],"next_steps":[],"source_coverage":coverage}))
 }
 
 #[test]
@@ -853,7 +887,12 @@ fn resident_commit_failure_keeps_pending_and_startup_recovers_interrupted() {
     let original_goal_id = history.sessions[0].goals[0].id.clone();
     restarted.set_provider_config(provider.config.clone());
     let resumed = chat(&restarted, "继续");
-    provider.next().answer("继续后的答案。");
+    let mut step = provider.next();
+    if let Some(draft) = pending_goal_compaction(&step.request) {
+        step.answer(&draft.to_string());
+        step = provider.next();
+    }
+    step.answer("继续后的答案。");
     assert_eq!(resumed.join().unwrap().0, 200);
     let history = crate::session_store::load_chat_storage(&path).unwrap().0;
     assert_eq!(history.sessions[0].turns[1].goal_ref.as_ref().unwrap().id, original_goal_id);
@@ -1230,7 +1269,7 @@ fn resident_restored_projection_does_not_restore_prior_tool_activation() {
     }));
     let sampled = provider.next();
     assert!(sampled.request["tools"].as_array().unwrap().iter()
-        .any(|tool| tool["function"]["name"] == "memory_recall"));
+        .any(|tool| tool["function"]["name"] == "notes_search"));
     let sampled_messages = sampled.request["messages"].as_array().unwrap().clone();
     sampled.answer("这个术语的解释已完成。");
     assert_eq!(first.join().unwrap().0, 200);
@@ -1240,9 +1279,9 @@ fn resident_restored_projection_does_not_restore_prior_tool_activation() {
     assert_eq!(&request.request["messages"].as_array().unwrap()[..sampled_messages.len()],
         sampled_messages.as_slice());
     assert!(request.request["tools"].as_array().unwrap().iter()
-        .all(|tool| tool["function"]["name"] != "memory_recall"),
+        .all(|tool| tool["function"]["name"] != "notes_search"),
         "restored history must not restore a prior run's discovery activation");
-    request.tool("memory.recall", json!({"lid":"1.1"}));
+    request.tool("notes.search", json!({"query":"earlier thoughts","limit":1}));
     let rejected = provider.next();
     assert!(rejected.request["messages"].as_array().unwrap().iter()
         .rev().find(|message| message["role"] == "tool").unwrap()["content"]

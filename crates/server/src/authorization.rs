@@ -156,6 +156,7 @@ pub(crate) fn capability(path: &str) -> Result<Capability, ToolError> {
                 ["learning-workspaces", id, "archive"] => Capability::LearningWorkspace(Some((*id).into()), "archive"),
                 ["learning-workspaces", id, "preparations"] => Capability::LearningWorkspace(Some((*id).into()), "preparations"),
                 ["learning-workspaces", id, "records"] => Capability::LearningWorkspace(Some((*id).into()), "records"),
+                ["learning-workspaces", id, "notes", _] => Capability::LearningWorkspace(Some((*id).into()), "notes"),
                 ["workspaces", id, ..] => Capability::Workspace((*id).into()),
                 ["agent", "runs", id] => Capability::Run((*id).into(), String::new()),
                 ["agent", "runs", id, action]
@@ -539,9 +540,9 @@ impl AuthorizedContext {
 pub(crate) fn turn_json(turn: &crate::AgentChatTurn) -> Value {
     json!({"turn_id":turn.turn_id,"user":turn.user,"status":turn.status,"domain":turn.domain,
         "board_commits":crate::session_runtime::board_commits(turn),
-        "board_follow_up":turn.board_follow_up,"board_delivery":turn.board_delivery,"board_delivery_error":turn.board_delivery_error,
+        "board_follow_up":turn.board_follow_up,"board_delivery":turn.board_delivery,"board_delivery_error":turn.board_delivery_error.as_ref().map(crate::agent_failure::turn),
         "teaching_ref":turn.teaching_ref,"goal_ref":turn.goal_ref,"presentation_follow_up":turn.presentation_follow_up,
         "published_book_ref":turn.published_book_ref,"music_question":turn.music_question,"outcome":turn.outcome,
         "usage":turn.run_summary.as_ref().and_then(|s|s.usage.as_ref()),
-        "error":turn.error.as_ref().map(|e| json!({"error_code":e.error_code,"message":"The saved turn did not complete"}))})
+        "error":turn.error.as_ref().map(crate::agent_failure::turn)})
 }

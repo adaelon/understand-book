@@ -1,0 +1,332 @@
+[
+  {
+    "path": "crates/memory/src/assessment.rs",
+    "status": "local_update",
+    "local_bytes": 19734,
+    "production_bytes": 18811
+  },
+  {
+    "path": "crates/memory/src/learning.rs",
+    "status": "local_update",
+    "local_bytes": 47403,
+    "production_bytes": 46086
+  },
+  {
+    "path": "crates/memory/src/learning_evidence.rs",
+    "status": "local_update",
+    "local_bytes": 80163,
+    "production_bytes": 74324
+  },
+  {
+    "path": "crates/memory/src/learning_records.rs",
+    "status": "local_update",
+    "local_bytes": 29646,
+    "production_bytes": 28689
+  },
+  {
+    "path": "crates/memory/src/lib.rs",
+    "status": "merged",
+    "local_bytes": 119266,
+    "production_bytes": 116243
+  },
+  {
+    "path": "crates/memory/src/teaching.rs",
+    "status": "local_update",
+    "local_bytes": 49946,
+    "production_bytes": 48945
+  },
+  {
+    "path": "crates/memory/src/tutor_coach.rs",
+    "status": "local_update",
+    "local_bytes": 34230,
+    "production_bytes": 33725
+  },
+  {
+    "path": "crates/runtime/src/delivery_fallback.rs",
+    "status": "merged",
+    "local_bytes": 21287,
+    "production_bytes": 23425
+  },
+  {
+    "path": "crates/runtime/src/delivery_fallback_tests.rs",
+    "status": "kept_production_tests_including_local_case",
+    "local_bytes": 19837,
+    "production_bytes": 24682
+  },
+  {
+    "path": "crates/runtime/src/orchestrator_presentation_coach_tests.rs",
+    "status": "local_update",
+    "local_bytes": 23102,
+    "production_bytes": 22537
+  },
+  {
+    "path": "crates/runtime/src/tool_schema.rs",
+    "status": "already_deployed",
+    "local_bytes": 12946,
+    "production_bytes": 12946
+  },
+  {
+    "path": "crates/runtime/src/tutor.rs",
+    "status": "merged",
+    "local_bytes": 217067,
+    "production_bytes": 215897
+  },
+  {
+    "path": "crates/runtime/src/tutor_coach.rs",
+    "status": "local_update",
+    "local_bytes": 60505,
+    "production_bytes": 57749
+  },
+  {
+    "path": "crates/server/src/account_registration_schema_tests.rs",
+    "status": "local_update",
+    "local_bytes": 16346,
+    "production_bytes": 16051
+  },
+  {
+    "path": "crates/server/src/agent_run_tests.rs",
+    "status": "local_update",
+    "local_bytes": 75884,
+    "production_bytes": 73994
+  },
+  {
+    "path": "crates/server/src/cross_book.rs",
+    "status": "local_update",
+    "local_bytes": 19350,
+    "production_bytes": 18987
+  },
+  {
+    "path": "crates/server/src/interaction_input.rs",
+    "status": "local_update",
+    "local_bytes": 41844,
+    "production_bytes": 40417
+  },
+  {
+    "path": "crates/server/src/lib.rs",
+    "status": "merged",
+    "local_bytes": 1027760,
+    "production_bytes": 1002029
+  },
+  {
+    "path": "crates/server/src/personal_note_api.rs",
+    "status": "local_update",
+    "local_bytes": 23684,
+    "production_bytes": 22865
+  },
+  {
+    "path": "crates/server/src/personal_note_context.rs",
+    "status": "local_update",
+    "local_bytes": 11899,
+    "production_bytes": 10572
+  },
+  {
+    "path": "crates/server/src/run_admission.rs",
+    "status": "local_update",
+    "local_bytes": 79020,
+    "production_bytes": 77243
+  },
+  {
+    "path": "crates/server/src/teaching.rs",
+    "status": "merged",
+    "local_bytes": 169479,
+    "production_bytes": 166189
+  },
+  {
+    "path": "crates/server/src/teaching/practice.rs",
+    "status": "already_deployed",
+    "local_bytes": 13485,
+    "production_bytes": 13485
+  },
+  {
+    "path": "crates/server/src/teaching_coach.rs",
+    "status": "local_update",
+    "local_bytes": 28317,
+    "production_bytes": 28133
+  },
+  {
+    "path": "crates/server/src/teaching_coach/observations.rs",
+    "status": "local_update",
+    "local_bytes": 10793,
+    "production_bytes": 10453
+  },
+  {
+    "path": "crates/server/src/tests/cache_observation_tests.rs",
+    "status": "local_update",
+    "local_bytes": 9808,
+    "production_bytes": 9823
+  },
+  {
+    "path": "crates/server/src/tests/e1_workspace_integration_tests.rs",
+    "status": "local_update",
+    "local_bytes": 28834,
+    "production_bytes": 28373
+  },
+  {
+    "path": "crates/server/src/tests/native_board_selection_tests.rs",
+    "status": "local_update",
+    "local_bytes": 17972,
+    "production_bytes": 17763
+  },
+  {
+    "path": "crates/server/src/tests/practice_tests.rs",
+    "status": "already_deployed",
+    "local_bytes": 32566,
+    "production_bytes": 32566
+  },
+  {
+    "path": "crates/server/src/tests/session_recap_tests.rs",
+    "status": "local_update",
+    "local_bytes": 13804,
+    "production_bytes": 13556
+  },
+  {
+    "path": "crates/server/src/tests/teaching_design_tests.rs",
+    "status": "local_update",
+    "local_bytes": 127233,
+    "production_bytes": 126720
+  },
+  {
+    "path": "crates/server/src/tests/tutor_continuation_tests.rs",
+    "status": "local_update",
+    "local_bytes": 146668,
+    "production_bytes": 146525
+  },
+  {
+    "path": "crates/server/src/tests/tutor_loop_tests.rs",
+    "status": "local_update",
+    "local_bytes": 119357,
+    "production_bytes": 119207
+  },
+  {
+    "path": "packages/web/src/App.vue",
+    "status": "merged",
+    "local_bytes": 334042,
+    "production_bytes": 331630
+  },
+  {
+    "path": "packages/web/src/api.ts",
+    "status": "merged",
+    "local_bytes": 77579,
+    "production_bytes": 81750
+  },
+  {
+    "path": "packages/web/src/components/PersonalNotes.vue",
+    "status": "local_update",
+    "local_bytes": 60675,
+    "production_bytes": 60096
+  },
+  {
+    "path": "packages/web/src/components/RightRail.vue",
+    "status": "merged",
+    "local_bytes": 172285,
+    "production_bytes": 170029
+  },
+  {
+    "path": "packages/web/src/components/TutorActivities.test.ts",
+    "status": "already_deployed",
+    "local_bytes": 33254,
+    "production_bytes": 33254
+  },
+  {
+    "path": "packages/web/src/components/TutorActivities.vue",
+    "status": "already_deployed",
+    "local_bytes": 32111,
+    "production_bytes": 32111
+  },
+  {
+    "path": "packages/web/src/components/UnderstandingSpace.vue",
+    "status": "local_update",
+    "local_bytes": 43911,
+    "production_bytes": 42435
+  },
+  {
+    "path": "packages/web/src/generated/TeachingTarget.ts",
+    "status": "local_update",
+    "local_bytes": 873,
+    "production_bytes": 751
+  },
+  {
+    "path": "packages/web/src/note-window.ts",
+    "status": "local_update",
+    "local_bytes": 7382,
+    "production_bytes": 6669
+  },
+  {
+    "path": "crates/memory/src/understanding.rs",
+    "status": "local_update",
+    "local_bytes": 33319,
+    "production_bytes": null
+  },
+  {
+    "path": "crates/runtime/examples/note_understanding_eval.rs",
+    "status": "local_update",
+    "local_bytes": 6053,
+    "production_bytes": null
+  },
+  {
+    "path": "crates/server/src/note_thinking.rs",
+    "status": "local_update",
+    "local_bytes": 15573,
+    "production_bytes": null
+  },
+  {
+    "path": "crates/server/src/note_thinking/tests.rs",
+    "status": "local_update",
+    "local_bytes": 14964,
+    "production_bytes": null
+  },
+  {
+    "path": "packages/web/src/components/NoteThinking.test.ts",
+    "status": "local_update",
+    "local_bytes": 5532,
+    "production_bytes": null
+  },
+  {
+    "path": "packages/web/src/components/NoteThinking.vue",
+    "status": "local_update",
+    "local_bytes": 14022,
+    "production_bytes": null
+  },
+  {
+    "path": "packages/web/src/components/UnderstandingSummary.vue",
+    "status": "local_update",
+    "local_bytes": 5709,
+    "production_bytes": null
+  },
+  {
+    "path": "packages/web/src/note-thinking.ts",
+    "status": "local_update",
+    "local_bytes": 3191,
+    "production_bytes": null
+  },
+  {
+    "path": "packages/web/src/App.startup.test.ts",
+    "status": "merged",
+    "local_bytes": 129624,
+    "production_bytes": 124379
+  },
+  {
+    "path": "packages/web/src/NetworkApp.chat.test.ts",
+    "status": "local_update",
+    "local_bytes": 14810,
+    "production_bytes": 14810
+  },
+  {
+    "path": "packages/web/src/NetworkApp.resumption.test.ts",
+    "status": "local_update",
+    "local_bytes": 15097,
+    "production_bytes": 15020
+  },
+  {
+    "path": "packages/web/src/components/RightRail.test.ts",
+    "status": "local_update",
+    "local_bytes": 97479,
+    "production_bytes": 97228
+  },
+  {
+    "path": "packages/i18n/src/en.json",
+    "status": "merged",
+    "local_bytes": 279565,
+    "production_bytes": 289149
+  }
+]

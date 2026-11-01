@@ -149,6 +149,7 @@ mod learning_map_build;
 mod learning_map_recall;
 mod pending_confirmation;
 pub mod agent_run;
+mod agent_failure;
 mod run_admission;
 mod session_event;
 mod session_log;
@@ -167,7 +168,9 @@ mod presentation_interact;
 mod music_interact;
 mod music_source;
 mod note_api;
+mod workspace_notes_api;
 mod personal_note_api;
+mod note_thinking;
 mod personal_chat;
 mod personal_note_context;
 mod personal_note_retrieval;
@@ -2529,7 +2532,7 @@ fn scoped_turn_view(book: Option<&Book>, turn: &AgentChatTurn) -> AgentChatTurnV
         board_commits: session_runtime::board_commits(turn),
         board_follow_up: turn.board_follow_up.clone(),
         board_delivery: turn.board_delivery.clone(),
-        board_delivery_error: turn.board_delivery_error.clone(),
+        board_delivery_error: turn.board_delivery_error.as_ref().map(agent_failure::turn),
         video_question: turn.video_question.clone(),
         music_question: turn.music_question.clone(),
         domain: turn.domain.clone(),
@@ -2543,7 +2546,7 @@ fn scoped_turn_view(book: Option<&Book>, turn: &AgentChatTurn) -> AgentChatTurnV
         status: turn.status,
         run_summary: turn.run_summary.clone(),
         outcome,
-        error: turn.error.clone(),
+        error: turn.error.as_ref().map(agent_failure::turn),
         question_source_label,
         question_quote,
         effect_labels,
@@ -3086,6 +3089,26 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
         }
         return route_agent_source_resolve(state, req.body);
     }
+    if let Some(operation) = path.strip_prefix("/notes/") {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let value = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        if operation == "source.open" {
+            let binding = match workspace_notes_api::source_binding(&state.user, &state.workspace, &value) {
+                Ok(binding) => binding, Err(error) => return err_reply(&error),
+            };
+            if binding.book_id != state.workspace.book.base.book_id || binding.publication_id.as_ref() != state.workspace.publication.as_ref().map(|p| &p.reference.publication_id) {
+                return err_reply(&authorization::missing());
+            }
+            let Some(range) = binding.evidence_range.as_ref() else { return validation("MEDIA_SOURCE_NAVIGATION", "Use the saved media position"); };
+            if let Err(error) = state.workspace.book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest)) { return err_reply(&error); }
+            if let Err(error) = state.workspace.reader.goto_lid(&state.workspace.book, &mut state.user.store, &range.start_lid, req.now) { return err_reply(&error); }
+            save_session(state, None);
+            return ok_json(&SourceOpenView { source_ref_id: binding.source_ref_id, opened: true });
+        }
+        return match workspace_notes_api::route(&state.user, &state.workspace, operation, &value, req.now) {
+            Ok(value) => ok_json(&value), Err(error) => err_reply(&error),
+        };
+    }
     if let Some(operation) = path.strip_prefix("/boards/") {
         if req.method != "POST" { return agent_method_not_allowed(); }
         let value = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
@@ -3101,7 +3124,7 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
             save_session(state, None);
             return ok_json(&SourceOpenView { source_ref_id: binding.source_ref_id, opened: true });
         }
-        return match board_api::route(&state.user, &state.workspace, operation, &value, req.now) {
+        return match board_api::route_mut(&mut state.user, &state.workspace, operation, &value, req.now) {
             Ok(v) => ok_json(&v), Err(e) => err_reply(&e),
         };
     }
@@ -13424,6 +13447,7 @@ mod tests {
     mod w3_profile_scope_tests;
     mod w5_reader_tests;
     mod board_network_tests;
+    mod workspace_notes_tests;
     pub(crate) mod board_browser_host;
     pub(crate) mod board_follow_up_browser_host;
     pub(crate) mod board_wb3_browser_host;
@@ -14172,6 +14196,11 @@ mod tests {
             unimplemented!("precommit ordering test does not use complete")
         }
 
+        fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+            Ok(tutor_loop_tests::fixture_coach_guidance(&request)
+                .expect("only the independent after-turn coach uses structured completion"))
+        }
+
         fn chat(&self, _: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
             let persisted: serde_json::Value = serde_json::from_str(
                 &std::fs::read_to_string(&self.history_path)
@@ -14200,8 +14229,13 @@ mod tests {
 
         fn complete_structured(
             &self,
-            _req: CompletionRequest,
+            request: CompletionRequest,
         ) -> Result<serde_json::Value, AdapterError> {
+            if let Some(guidance) = tutor_loop_tests::fixture_coach_guidance(&request) {
+                return Ok(guidance);
+            }
+            // Independent observation must neither consume the scenario's
+            // scripted response nor conceal a second memory extraction.
             *self.structured_calls.lock().unwrap() += 1;
             self.structured_outputs
                 .borrow_mut()
@@ -20189,7 +20223,7 @@ unchanged after training concludes";
         );
         assert_eq!(reanchored.status, 200, "{}", reanchored.body);
         let reanchored: Value = serde_json::from_str(&reanchored.body).unwrap();
-        assert_ne!(reanchored["mem_id"], old_id);
+        assert_eq!(reanchored["mem_id"], old_id);
         assert_eq!(reanchored["content"], "placed markdown note");
         assert_eq!(reanchored["anchor"]["lid"], "1.2");
         assert_eq!(reanchored["note_placement"], second_placement);
@@ -20446,8 +20480,13 @@ unchanged after training concludes";
         );
         assert_eq!(replaced.status, 200);
         let new_record: serde_json::Value = serde_json::from_str(&replaced.body).unwrap();
-        assert_ne!(new_record["mem_id"], old["mem_id"]);
+        assert_eq!(new_record["mem_id"], old["mem_id"]);
         assert_eq!(new_record["content"], "新内容");
+        let original = s.user.store.personal_note(&memory::NoteRef {
+            note_id: old_id.into(), revision: Some(1),
+        }).unwrap();
+        assert_eq!(original.value.record.content, "旧内容");
+        assert_eq!(original.current_revision, 2);
         assert_eq!(new_record["anchor"], old["anchor"]);
         assert_eq!(new_record["citations"], old["citations"]);
 
@@ -23409,33 +23448,50 @@ Version 1.2 and bare 1.1 stay unchanged.
 
     #[test]
     fn finalization_protocol_violation_persists_incomplete_fallback_without_effects() {
+        struct ViolatingFinalizer {
+            ordinary_calls: std::cell::Cell<usize>,
+            finalized: Arc<Mutex<bool>>,
+        }
+        impl ModelAdapter for ViolatingFinalizer {
+            fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
+                unreachable!("this fixture uses chat and the independent coach")
+            }
+            fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
+                Ok(tutor_loop_tests::fixture_coach_guidance(&request).expect("after-turn coach"))
+            }
+            fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+                let messages = request.ordered_messages();
+                if messages.first().and_then(|m| m.content.as_deref())
+                    .is_some_and(|text| text.starts_with("available_answer.v2")) {
+                    return Ok(AssistantTurn { provider_continuation: None,
+                        text: Some("本轮解释未完成，原文与阅读位置已经保留。".into()),
+                        tool_calls: vec![], usage_total_tokens: Some(1) });
+                }
+                let finalizing = messages.iter().any(|m| m.content.as_deref()
+                    .is_some_and(|text| text.contains("finalization_sampling.v1")));
+                if finalizing {
+                    assert!(request.tools.is_empty());
+                    *self.finalized.lock().unwrap() = true;
+                } else {
+                    self.ordinary_calls.set(self.ordinary_calls.get() + 1);
+                    assert!(self.ordinary_calls.get() <= 6, "invalid tool calls must reach bounded finalization");
+                }
+                Ok(AssistantTurn { provider_continuation: None, text: None,
+                    tool_calls: vec![runtime::ToolCall {
+                        id: format!("call{}-{finalizing}", self.ordinary_calls.get()),
+                        name: if finalizing { "reader.highlight" } else { "book.text" }.into(),
+                        arguments: if finalizing { r#"{"lid":"1.1"}"# } else { r#"{"invalid":true}"# }.into(),
+                    }], usage_total_tokens: Some(1) })
+            }
+        }
         let mut state = state_named("finalization-protocol-failure");
         let history_path = tmp("finalization-protocol-history");
         state.user.history_path = Some(history_path.clone());
         let before = serde_json::to_value(state.workspace.reader.state()).unwrap();
-        state.services.adapter = Box::new(ChatStubAdapter::scripted(
-            (0..3)
-                .map(|i| AssistantTurn {
-                    provider_continuation: None,
-                    text: None,
-                    tool_calls: vec![runtime::ToolCall {
-                        id: format!("call{i}"),
-                        name: if i == 2 {
-                            "reader.highlight"
-                        } else {
-                            "book.text"
-                        }
-                        .into(),
-                        arguments: if i == 2 {
-                            r#"{"lid":"1.1"}"#.into()
-                        } else {
-                            format!(r#"{{"invalid":{i}}}"#)
-                        },
-                    }],
-                    usage_total_tokens: Some(1),
-                })
-                .collect(),
-        ));
+        let finalized = Arc::new(Mutex::new(false));
+        state.services.adapter = Box::new(ViolatingFinalizer {
+            ordinary_calls: std::cell::Cell::new(0), finalized: finalized.clone(),
+        });
         let reply = post_at(
             &mut state,
             "/agent/chat",
@@ -23443,6 +23499,7 @@ Version 1.2 and bare 1.1 stay unchanged.
             "2026-09-08T00:00:00Z",
         );
         assert_eq!(reply.status, 200, "{}", reply.body);
+        assert!(*finalized.lock().unwrap(), "exercise the actual tools-disabled finalization request");
         let fallback: serde_json::Value = serde_json::from_str(&reply.body).unwrap();
         assert_eq!(fallback["incomplete"], true);
         assert_eq!(fallback["warning"], "FINALIZATION_TOOL_PROTOCOL_VIOLATION");

@@ -34,8 +34,8 @@ pub(super) fn validate_select(
     let actions = |name: &str| movement.actions.iter().any(|a| a == name);
     if movement.kind != "question" || movement.assessment.is_none()
         || movement.explanation.as_deref().is_none_or(|s| s.trim().is_empty())
-        || !actions("submit") || !actions("request_hint") || !actions("reveal") || !actions("skip") {
-        return Err(invalid("练习题须为 kind=question，带冻结评分、私有完整解答，并允许提交、提示、查看解答与跳过"));
+        || !actions("submit") || !actions("revise") || !actions("request_hint") || !actions("reveal") || !actions("skip") {
+        return Err(invalid("练习题须为 kind=question，带冻结评分、私有完整解答，并允许提交、改答、提示、查看解答与跳过"));
     }
     let rule = movement.assessment.as_ref().map(|a| &a.rule);
     match practice.entry {
@@ -82,7 +82,12 @@ pub(super) fn validate_select(
 fn validate_progression(state: &PrivateBookContext<'_>, movement: &TeachingMove, practice: &PracticeSpec) -> Result<(), TeachingSelectionPreflightError> {
     let target = movement.target.as_ref().ok_or_else(|| invalid("练习须明确所练关系 move.target"))?;
     let records = history(state, &state.book.base.book_id, 30)?;
-    let overlaps = |record: &PracticeRecord| record.target.as_ref().is_some_and(|saved| targets_overlap(state, saved, target));
+    // A chapter can support several relationships. Shared source ranges alone
+    // do not identify which relationship a problem practices.
+    let overlaps = |record: &PracticeRecord| record.target.as_ref().is_some_and(|saved|
+        targets_overlap(state, saved, target)
+            && (normalized(&saved.learning_focus) == normalized(&target.learning_focus)
+                || saved.object_refs.iter().any(|reference| target.object_refs.contains(reference))));
     if practice.entry != PracticeEntry::NoteRevisit && records.first().is_some_and(&overlaps) {
         return Err(invalid("上一道练习刚练过这个关系；请换一个关系（交错练习）"));
     }
@@ -181,6 +186,18 @@ pub(super) fn concluded_solution(selected: &TeachingEvent) -> Option<Value> {
     selected.payload["move"]["practice"].is_object().then_some(())?;
     let text = selected.payload["move"]["explanation"].as_str().filter(|s| !s.trim().is_empty())?;
     Some(json!({"action":"reveal","text":text,"reason":"concluded"}))
+}
+
+pub(super) fn release_concluded_solution(state: &PrivateBookContext<'_>, delivery: &TeachingEvent,
+    action: &TeachingEvent, now: &str) -> Result<Option<Value>, ToolError> {
+    let selected = event(state, &delivery.causal_refs[0])?;
+    let Some(mut help) = concluded_solution(&selected) else { return Ok(None); };
+    help["delivery_ref"] = json!(delivery.event_id);
+    let operation = action.event_id.strip_prefix("action:").unwrap_or(&action.event_id);
+    let offered = append(state, &delivery.binding, format!("help:{operation}"), TeachingFact::HelpDelivered,
+        vec![action.event_id.clone()], help.clone(), now)?;
+    help["event_id"] = json!(offered.event_id);
+    Ok(Some(help))
 }
 
 /// Displayed help that surrenders solution information. Pointing at a given in

@@ -87,7 +87,11 @@ impl ModelAdapter for PublishedExample {
                 let mut input = examples.as_array().unwrap().iter().find(|e| {
                     e["operation"] == self.example["operation"] && e["move"]["move_id"] == self.example["move"]["move_id"]
                         && e["nature"] == self.example["nature"]
-                }).expect("example must survive the actual sampled state").clone();
+                }).cloned().or_else(|| {
+                    // The compact model contract omits repeated select examples.
+                    // Execute those public reference examples through the same real dispatch.
+                    selecting.then(|| self.example.clone())
+                }).expect("non-selection examples must survive the actual sampled state");
                 if selecting {
                     let reference=plan.input.iter().rev().filter(|message|message.role==runtime::Role::Tool)
                         .filter_map(|message|message.content.as_deref().and_then(|text|serde_json::from_str::<Value>(text).ok()))

@@ -17,6 +17,8 @@ fn follow_up() -> BoardFollowUp {
         item_id: Some("answer-1".into()),
         block_id: Some("block-answer-1".into()),
         presentation: None,
+        intent: None,
+        regenerate_from: None,
     }
 }
 
@@ -72,6 +74,7 @@ fn authored(revision: u32) -> Authored {
     (
         vec![explanation, drawing],
         vec![BoardLink {
+            note_relation_id: None, reason: None,
             link_id: "relation-1".into(),
             from: BoardVisualTarget::Item {
                 item_id: "answer-1".into(),

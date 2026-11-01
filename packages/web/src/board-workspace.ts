@@ -8,7 +8,7 @@ import type { BoardVisualTarget } from './generated/BoardVisualTarget';
 import { t as uiText, formatLocale } from './i18n';
 import type { BoardDiscussionTurn } from './board-conversation';
 
-export type BoardKind = 'personal_note' | 'prebuild' | 'answer' | 'presentation' | 'understanding';
+export type BoardKind = 'personal_note' | 'note' | 'prebuild' | 'answer' | 'presentation' | 'understanding';
 export interface BoardSourceRequest { board_id: string; item_id: string; source_ref_id: string }
 export interface BoardQuestionRequest { client_request_id: string; message: string; context: BoardFollowUp }
 export interface BoardRunView {
@@ -46,22 +46,24 @@ export function mergeBoardDeliveries(...groups: (readonly BoardDelivery[] | null
   return [...deliveries.values()].sort((a, b) => a.after_revision - b.after_revision);
 }
 
-export const boardKinds: BoardKind[] = ['personal_note','prebuild', 'answer', 'presentation', 'understanding'];
+export const boardKinds: BoardKind[] = ['personal_note', 'note', 'prebuild', 'answer', 'presentation', 'understanding'];
 export const boardKindLabels: Record<BoardItem['target']['kind'], string> = {
   personal_note: '我的想法',
-  prebuild: '材料知识', artifact: '材料知识', answer: '问答讲解', presentation: '互动演示', understanding: '我的理解', drawing: '板书图解',
+  note: '空间笔记', prebuild: '材料知识', artifact: '材料知识', answer: '问答讲解', presentation: '互动演示', understanding: '我的理解', drawing: '板书图解', topic: '导图主题',
 };
 export const boardArtifactLabels = { all: '全部材料知识', pass1: '概念与论断', discourse: '篇章脉络', book_structure: '全书结构', teaching: '教学知识点' };
 export const boardKindDescriptions: Record<BoardKind, string> = {
+  note: '学习空间中的统一笔记，在不同画板中引用同一份内容。',
   personal_note: '同一条想法可以放在多个画板。继续写时，各处都会显示更新。',
   prebuild: '材料中的概念、论断、篇章脉络与全书结构，保留当时内容与原文。',
   answer: '一段完整回答，和它引用的原文一起保留。',
   presentation: '保存演示内容及当前状态，随时回到这个现场。',
   understanding: '把自己的原话与 Agent 对理解的解释并排留下。',
 };
-export const defaultBoardView = (): BoardView => ({ x: 36, y: 36, zoom: 1, selected_item_id: null, reading_item_id: null, selected_block_id: null, playback: null, presentation_states: {} });
+export const defaultBoardView = (): BoardView => ({ x: 36, y: 36, zoom: 1, selected_item_id: null, reading_item_id: null, selected_block_id: null, playback: null, presentation_states: {}, folded_topic_ids: [], selected_item_ids: [], mind_map_outline: false });
 
 export function boardVisualKey(target: BoardVisualTarget): string {
+  if (target.kind === 'topic_edge') return `topic_edge:${target.child_item_id}`;
   return target.kind === 'link' ? `link:${target.link_id}` : target.kind === 'item' ? `item:${target.item_id}`
     : `anchor:${target.item_id}:${target.reference.presentation_id}:${target.reference.revision}:${target.anchor_id}`;
 }
@@ -77,6 +79,7 @@ export function projectBoardRoute(document: BoardDocument, route: BoardRoute | n
   const linksById = new Map((document.links ?? []).map(link => [link.link_id, link]));
   // Revealed and focused connections need their endpoints, including other links.
   function reveal(target: BoardVisualTarget) {
+    if (target.kind === 'topic_edge') { items.add(target.child_item_id); const parent = document.items.find(item => item.target.kind === 'topic' && item.target.children.includes(target.child_item_id)); if (parent) items.add(parent.item_id); return; }
     if (target.kind !== 'link') { items.add(target.item_id); return; }
     if (links.has(target.link_id)) return;
     links.add(target.link_id);
@@ -91,6 +94,7 @@ export function projectBoardRoute(document: BoardDocument, route: BoardRoute | n
     .flatMap(target => target.kind === 'link' ? [target.link_id] : [])));
   const visited = new Set<string>();
   function visible(target: BoardVisualTarget): boolean {
+    if (target.kind === 'topic_edge') return items.has(target.child_item_id);
     if (target.kind !== 'link') return items.has(target.item_id);
     if (links.has(target.link_id)) return true;
     if (scheduledLinks.has(target.link_id) || visited.has(target.link_id)) return false;

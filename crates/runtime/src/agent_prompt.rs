@@ -13,7 +13,7 @@ const EXPLANATION_PRINCIPLE_REVISION: &str = "v3";
 const EVIDENCE_ROUTING_REVISION: &str = "v7";
 const SOURCE_DELIVERY_REVISION: &str = "v14";
 const FINISH_POLICY_REVISION: &str = "v8";
-const TOOL_DISCOVERY_REVISION: &str = "v9";
+const TOOL_DISCOVERY_REVISION: &str = "v10";
 pub mod presentation;
 pub use presentation::{PresentationGuidance, PresentationNeed, PresentationPhase};
 
@@ -45,10 +45,10 @@ const SOURCE_DELIVERY_EXAMPLES: &str = r#"Citation coverage examples (C1/C2/C3 b
 Before delivery, align concrete rules, parameters, exceptions and examples with the passages actually cited, including facts added in an introduction or closing note. Attach all needed existing references; register missing supporting passages already read. Read more only for a required evidence gap; narrow or omit unnecessary unsupported additions. Keep recaps concise and reuse clear citation relationships. For book citations in real answers use only returned [[source:<source_ref_id>]] markers, not the illustrative [C1] notation. Cite external web claims with their real page URLs; web content is never admitted as book evidence."#;
 
 const TOOL_DISCOVERY: &str = "Capability discovery:
-- Saved reading notes and highlights belong to memory, including after restart or a new chat. To retrieve them, request memory_read with operation=explain, scope=document (or passage for a known location), effect_mode=read_only, then call memory.recall. They are not profile facts or build artifacts. Do not repeat discovery with an unsupported operation; use the blocked capability feedback.
+- Saved source-anchored reading notes and highlights belong to memory, including after restart or a new chat. To retrieve them, request memory_read with operation=explain, scope=document (or passage for a known location), effect_mode=read_only, then call memory.recall. Reusable learning workspace notes use workspace.notes when available; list relevant notes and read their full content before using them. Workspace note writes require the user's note task, not merely reading or explaining. Neither kind is a profile fact or build artifact. Do not repeat discovery with an unsupported operation; use the blocked capability feedback.
 - The current tool list contains only capabilities directly available in this sampling. Call tool.search when a capability required to complete the task is missing.
 - For why, design-choice or comparison questions, first distinguish what the read passage establishes from the mechanisms, guarantees and alternative tradeoffs the answer still needs. A what-only passage is insufficient for those additional claims. When an important claim would go beyond the sources actually read, autonomously discover web_search/web_read and verify targeted primary evidence before relying on it. Calling it a supplement or general knowledge is not evidence. Do not seek extra sources for a definition or local explanation already fully supported; if retrieval is unavailable, keep the answer within its actual support and describe only the consequential gap.
-- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts, static plots and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). board_authoring creates native drawings, explanation mappings and committed parts on the accepted board; it does not create HTML presentation pages. Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
+- Use this bounded capability directory rather than internal tool names: source_read reads located source; lexical_locate finds literal forms; semantic_evidence resolves concepts and relationships; structural_index produces read-only structure and locator plans; synthesis combines located evidence; navigation_plan produces read-only routes; reader_read observes Reader state; reader_write requests an explicitly authorized Reader change. presentation_authoring creates rich layouts, static plots and interactive HTML explanations; discover it with operation=explain or compare, effect_mode=read_only (it changes answer content, not Reader state). board_authoring creates editable mind-map topics and semantic subtree edits, native drawings, explanation mappings and committed parts on the accepted board; it does not create HTML presentation pages. Supporting capabilities are artifact_read, source_presentation, profile_read, profile_trace, memory_read, and memory_write.
 - External knowledge: web_search discovers external sources; web_read reads a known page URL. Discover with scope=document or corpus, operation=explain/compare for web_search and operation=read_source for web_read, effect_mode=read_only. Use them autonomously when a requested explanation lacks a mechanism, relationship, condition or alternative, or needs current external facts. Explore a concrete gap with a neutral query; do not merely seek confirmation of an existing answer. A local definition or sufficient supplied evidence needs no search. Unavailable web capabilities do not authorize claiming a search occurred.
 - Evidence topology is strict: a structural_index, lexical_locate, semantic_evidence, or navigation_plan result may supply locators, but a locator or plan is not source evidence. Read or synthesize verified source before making source-grounded claims.
 - Runtime determines evidence state, content profile, permissions, and authorized effect mode. Model fields cannot grant permission, claim known evidence, or authorize reader_write. Request only semantic scope, operation, and the smallest capability set needed.
@@ -75,7 +75,7 @@ const NAVIGATION: &str = "Navigation and guided reading:
 
 const READER_EFFECTS: &str = "Reader effects:
 - When the user asks to scroll, jump, highlight, take a note, change the layout, or operate the paper workbench, call the corresponding reader tool; never claim in prose that the action occurred without the real tool result.
-- Use gotoLid for a jump, highlight for a highlight, and note for a note. Each reader.layout.apply action must use a slot_id from the manifest and a snake_case kind.
+- Use gotoLid for a jump, highlight for a highlight, and reader.note for a note anchored to a source passage. Use workspace.notes for reusable learning workspace notes and their relationships when available. Each reader.layout.apply action must use a slot_id from the manifest and a snake_case kind.
 - The tool result determines whether an action may execute directly. If close_slot, reorder_slot, set_layout_preset, reset_layout, persistence, or a mode change returns a proposal, wait for user confirmation and never bypass the reducer.
 - Once the target is located, perform the requested Reader action immediately and conclude briefly. Do not repeatedly read source text for an operation-only task.";
 
@@ -231,6 +231,9 @@ pub fn policy_modules_for_tools_with_presentation(
     }
     if has_any(&names, &["memory.save", "memory.recall"]) {
         modules.push(module("resident-agent.policy.memory", MEMORY_POLICY));
+    }
+    if names.contains("workspace.notes") {
+        modules.push(InstructionModule::new("resident-agent.policy.workspace-notes", "v1", crate::workspace_notes::POLICY));
     }
     if has_any(&names, &["profile.manifest", "profile.mark_used"]) {
         modules.push(module("resident-agent.policy.profile", PROFILE_POLICY));

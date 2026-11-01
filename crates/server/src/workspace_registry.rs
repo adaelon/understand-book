@@ -681,6 +681,7 @@ impl WorkspaceRegistry {
             | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
             | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe"
             | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/source.read" | "boards/presentation.read" | "boards/presentation.observe"
+            | "notes/list" | "notes/read" | "notes/source.resolve"
             | "presentation/read" | "presentation/observe" | "presentation/feedback/read") {
             scene.check_attachment(&stamp)?;
         } else {
@@ -692,6 +693,20 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
+        if matches!(action, "notes/source.resolve" | "notes/source.open") {
+            let binding = crate::workspace_notes_api::source_binding(user, &scene.workspace, input)?;
+            let same_publication = binding.book_id == scene.workspace.book.base.book_id
+                && binding.publication_id.as_ref() == scene.workspace.publication.as_ref().map(|p| &p.reference.publication_id);
+            if !same_publication {
+                let mut value = view(&scene);
+                value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
+                return Ok(value);
+            }
+        }
+        if action.starts_with("notes/") && action != "notes/source.open" {
+            let result = crate::workspace_notes_api::route(user, &scene.workspace, action.trim_start_matches("notes/"), input, now)?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
         if matches!(action, "boards/source.resolve" | "boards/source.read" | "boards/source.open") {
             let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
             let same_publication = binding.book_id == scene.workspace.book.base.book_id
@@ -707,7 +722,7 @@ impl WorkspaceRegistry {
             }
         }
         if action.starts_with("boards/") && action != "boards/source.open" {
-            let result = crate::board_api::route(user, &scene.workspace, action.trim_start_matches("boards/"), input, now)?;
+            let result = crate::board_api::route_mut(user, &scene.workspace, action.trim_start_matches("boards/"), input, now)?;
             let mut value = view(&scene); value["result"] = result; return Ok(value);
         }
         if action == "agent/source.resolve" {
@@ -1074,6 +1089,13 @@ impl WorkspaceRegistry {
         let mut presentation = scene.presentation.clone();
         let book = &scene.workspace.book;
         let result = match action {
+            "notes/source.open" => {
+                let binding = crate::workspace_notes_api::source_binding(user, &scene.workspace, input)?;
+                let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
+                book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
+                reader.goto_lid(book, &mut user.store, &range.start_lid, now)?;
+                json!({"source_ref_id":binding.source_ref_id,"opened":true})
+            }
             "boards/source.open" => {
                 let binding = crate::board_api::source_binding(user, &scene.workspace, input)?;
                 let range = binding.evidence_range.as_ref().ok_or_else(invalid)?;
@@ -1569,6 +1591,13 @@ impl crate::board_author::Storage for NetworkAuthorStorage<'_> {
     }
 }
 impl runtime::run_context::ResidentStatePort for NetworkRunPort {
+    fn workspace_notes_available(&self) -> bool { self.scope.learning_workspace_id.is_some() }
+    fn workspace_notes(&mut self, request: Value) -> Result<Value, ToolError> {
+        self.authorized()?;
+        let user = self.user.lock().unwrap();
+        self.scope.check_user(&user)?;
+        crate::workspace_notes_api::agent(&user, &self.scope, request, &crate::multi_user_host::now().to_string())
+    }
     fn personal_note_search(&mut self,request:Value)->Result<Value,ToolError>{
         self.authorized()?;
         let prepared={let user=self.user.lock().unwrap();self.scope.check_user(&user)?;crate::personal_note_retrieval::prepare(&user.store,&request)?};

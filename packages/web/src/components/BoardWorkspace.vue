@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, CornerDownRight, LayoutDashboard, LoaderCircle, MessageSquareText, Minimize, PanelRightClose, PanelRightOpen, Pause, Play, Plus, RefreshCw, Search, Shapes, SkipBack, SkipForward, Square, Trash2, X } from '@lucide/vue';
-import { api as sharedApi, type BoardCatalogItem, type BoardConversationSession, type BoardPrebuildCategory, type BoardDocument, type BoardImportSource, type BoardSummary, type BoardView } from '../api';
+import { api as sharedApi, type BoardCandidateRequest, type BoardCatalogItem, type BoardConversationSession, type BoardPrebuildCategory, type BoardDocument, type BoardImportSource, type BoardSummary, type BoardView } from '../api';
 import { bindSceneApi, readerKey } from '../network-context';
 import { requestWorkspaceRecovery } from '../network-client';
 import { t as uiText } from '../i18n';
@@ -14,12 +14,20 @@ import type { BoardVisualTarget } from '../generated/BoardVisualTarget';
 import BoardCanvas from './BoardCanvas.vue';
 import BoardReadingPane from './BoardReadingPane.vue';
 import BoardDiscussion from './BoardDiscussion.vue';
+import MindMapOutline from './MindMapOutline.vue';
+import MindMapToolbar from './MindMapToolbar.vue';
+import { branchIds, moveSelectionOperations, parentOf, selectionRoots, topicChildren, topicInput, useMindMapEditor } from '../mind-map-editor';
+import { layoutMindMaps } from '../mind-map-layout';
+import { buildMindMapImport } from '../mind-map-outline';
+import { downloadMindMapMarkdown, downloadMindMapPng } from '../mind-map-export';
+import type { BoardEditOperation } from '../generated/BoardEditOperation';
+import type { BoardRegenerationRef } from '../generated/BoardRegenerationRef';
 import { discussionTurnKey, mergeBoardConversation, type BoardDiscussionTurn } from '../board-conversation';
-import { notesChanged, notesPanel, emptyNoteContent, startThought, registerThoughtContext } from '../personal-notes';
+import { notesChanged as personalNotesChanged, notesPanel, emptyNoteContent, startThought, registerThoughtContext } from '../personal-notes';
 import { registerNoteDestinations, startThoughtHere, thoughtSurfaceVisible, type NoteDestination } from '../note-placements';
 import { openPersonalChat } from '../personal-chat';
 
-const props = defineProps<{ boardId?: string | null; pendingImport?: BoardImportSource | null; run?: BoardRunView | null; pendingLocate?: BoardLocation | null }>();
+const props = defineProps<{ boardId?: string | null; pendingImport?: BoardImportSource | null; run?: BoardRunView | null; pendingLocate?: BoardLocation | null; notesRevision?: number }>();
 const emit = defineEmits<{
   (event: 'board-open', boardId: string): void;
   (event: 'board-deleted', boardId: string): void;
@@ -30,6 +38,8 @@ const emit = defineEmits<{
   (event: 'retry-follow-up', requestId: string): void;
   (event: 'cancel-follow-up'): void;
   (event: 'located'): void;
+  (event: 'open-note', noteId: string): void;
+  (event: 'notes-changed'): void;
 }>();
 const api = bindSceneApi(sharedApi, readerKey);
 const root = ref<HTMLElement>();
@@ -40,6 +50,11 @@ const loading = ref(false), saving = ref(false), mutating = ref(false);
 const error = ref(''), savedNotice = ref('');
 const galleryOpen = ref(!props.boardId), addOpen = ref(false), deleteOpen = ref(false);
 const newTitle = ref('');
+const newNoteOpen = ref(false), newNoteTitle = ref(''), newNoteContent = ref(''), creatingNote = ref(false);
+const createdNoteId = ref<string | null>(null), noteError = ref(''), noteRefreshError = ref('');
+const selectedRelationId = ref<string | null>(null), localNotesRevision = ref(0);
+const combinedNotesRevision = computed(() => (props.notesRevision ?? 0) + localNotesRevision.value);
+let noteRefreshSequence = 0;
 const searchQuery = ref(''), searchResults = ref<BoardSearchHit[]>([]), searchLoading = ref(false), searchError = ref('');
 const drafts = ref<Record<string, string>>({}), preparingQuestion = ref(false), questionError = ref('');
 const submitted = ref<BoardQuestionRequest | null>(null), submittedTitle = ref('');
@@ -85,6 +100,24 @@ let loadSequence = 0, catalogSequence = 0;
 let handledImport: BoardImportSource | null = null;
 let disposed = false;
 const dirty = ref(false);
+const mapEditor = useMindMapEditor(board, view, api, saveChanges);
+const { editingId, draftTitle, draftConflict, selectedIds, canUndo, canRedo, error: mapError, saving: mapSaving, notice: mapNotice, dirty: mapDirty } = mapEditor;
+const mapDialog = ref<'move' | 'style' | 'link' | 'import' | null>(null), mapDialogQuery = ref(''), mapTargetId = ref(''), mapInsertAt = ref('end');
+const mapImportText = ref(''), mapRelationLabel = ref(''), mapStyleColor = ref<string | null>(null), mapStyleBold = ref(false);
+const mapExporting = ref(false);
+const undoAfterStop = ref(false);
+const conversionPreview = ref<BoardDocument | null>(null), conversionRequest = ref<BoardCandidateRequest | null>(null), conversionBusy = ref(false), conversionError = ref('');
+const conversionView = ref(defaultBoardView()), conversionCanvas = ref<InstanceType<typeof BoardCanvas>>();
+let copiedBranchIds: string[] = [];
+let copiedBranchText = '';
+const mindMaps = computed(() => board.value?.mind_maps ?? []);
+const selectedTopics = computed(() => (board.value?.items ?? []).filter(item => item.target.kind === 'topic' && selectedIds.value.includes(item.item_id)));
+const orphanedDraft = computed(() => !!editingId.value && !board.value?.items.some(item => item.item_id === editingId.value));
+const currentMindMap = computed(() => mindMaps.value.find(map => activeItem.value && branchIds(board.value!.items, map.root_item_id).includes(activeItem.value.item_id)) ?? mindMaps.value[0]);
+const moveCandidates = computed(() => {
+  const excluded = new Set(selectedTopics.value.flatMap(item => branchIds(board.value!.items, item.item_id)));
+  return (board.value?.items ?? []).filter(item => item.target.kind === 'topic' && (mapDialog.value !== 'move' || !excluded.has(item.item_id)) && item.title.toLocaleLowerCase().includes(mapDialogQuery.value.toLocaleLowerCase()));
+});
 const activeItem = computed(() => board.value?.items.find(item => item.item_id === view.value.selected_item_id) ?? null);
 function thoughtDestination(bind = false): NoteDestination | null {
   if (!board.value) return null;
@@ -103,7 +136,7 @@ const unregisterThoughtContext = registerThoughtContext(() => board.value && !ga
   ? {board_id:board.value.board_id,board_item_id:activeItem.value?.item_id,workspace_id:board.value.learning_workspace_id,book_id:board.value.book_id,publication_id:board.value.publication_id,label:board.value.title} : null, 10);
 onBeforeUnmount(unregisterThoughtContext);
 function rememberHere() { const destination = thoughtDestination(!!activeItem.value); if (destination) startThoughtHere(destination, {book_id:board.value!.book_id,publication_id:board.value!.publication_id}); }
-watch(notesChanged, async () => {
+watch(personalNotesChanged, async () => {
   const id = board.value?.board_id; if (!id) return;
   try { const latest = await api.boardRead(id); if (board.value?.board_id === id) mergeSaved(latest.document); }
   catch (failure) { error.value = message(failure); }
@@ -129,12 +162,17 @@ const readingItem = computed(() => board.value?.items.find(item => item.item_id 
 const questionItem = computed(() => view.value.selected_block_id ? readingItem.value : activeItem.value);
 const playing = ref(false), animationProgress = ref(1);
 const manualHighlights = ref<BoardVisualTarget[]>([]), mappingChoices = ref<BoardContentRef[]>([]);
+const recentMapChanges = ref<string[]>([]); let mapHighlightTimer: ReturnType<typeof setTimeout> | undefined;
+const selectedMapLink = computed(() => { const selected = manualHighlights.value.find(target => target.kind === 'link'); return selected?.kind === 'link' ? board.value?.links.find(link => link.link_id === selected.link_id && !link.note_relation_id) : undefined; });
+const mapLinkLabel = ref('');
+watch(() => selectedMapLink.value?.link_id, () => { mapLinkLabel.value = selectedMapLink.value?.label ?? ''; });
 let playbackTimer: ReturnType<typeof setTimeout> | undefined;
 let playbackSequence = 0;
 const routes = computed(() => board.value?.routes ?? []);
 const currentRoute = computed(() => routes.value.find(route => route.route_id === view.value.playback?.route_id) ?? null);
 const routeProjection = computed(() => board.value ? projectBoardRoute(board.value, currentRoute.value, view.value.playback?.step_id ?? null, view.value.playback?.show_all ?? false) : null);
 const highlightedTargets = computed(() => {
+  if (recentMapChanges.value.length) return recentMapChanges.value.map(item_id => ({ kind: 'item' as const, item_id }));
   if (manualHighlights.value.length) return manualHighlights.value;
   if (view.value.playback && !view.value.playback.show_all) return routeProjection.value?.highlightTargets ?? [];
   return view.value.selected_block_id || view.value.selected_item_id === readingItem.value?.item_id
@@ -144,7 +182,7 @@ const focusedPresentationId = computed(() => highlightedTargets.value.find(targe
 const graphicProgress = computed(() => {
   const result: Record<string, number> = {}, projection = routeProjection.value;
   if ((playing.value || animationProgress.value < 1) && projection && !view.value.playback?.show_all) for (const target of projection.step?.reveal_targets ?? []) {
-    if (!projection.previousTargets.has(boardVisualKey(target))) result[target.kind === 'link' ? target.link_id : target.item_id] = animationProgress.value;
+    if (!projection.previousTargets.has(boardVisualKey(target))) result[target.kind === 'link' ? target.link_id : target.kind === 'topic_edge' ? target.child_item_id : target.item_id] = animationProgress.value;
   }
   return result;
 });
@@ -162,8 +200,8 @@ const boardCommits = computed(() => mergeBoardDeliveries(runOnBoard.value?.commi
 const targetTitle = computed(() => runOnBoard.value?.item_id ? board.value?.items.find(item => item.item_id === runOnBoard.value?.item_id)?.title ?? submittedTitle.value : uiText('全画板'));
 const visitedItems = computed(() => board.value?.items.filter(item => visited.value.includes(item.item_id)) ?? []);
 const filteredCatalog = computed(() => { if ((catalogKind.value === 'prebuild' || catalogKind.value === 'personal_note')) return catalog.value; const query = catalogQuery.value.trim().toLocaleLowerCase(); return catalog.value.filter(item => !query || `${item.title}\n${item.summary}`.toLocaleLowerCase().includes(query)); });
-const busy = computed(() => loading.value || mutating.value);
-const saveLabel = computed(() => saving.value ? uiText('正在保存…') : error.value ? uiText('尚未保存') : dirty.value ? uiText('有未保存的修改') : uiText('已保存'));
+const busy = computed(() => loading.value || mutating.value || creatingNote.value);
+const saveLabel = computed(() => saving.value || mapSaving.value ? uiText('正在保存…') : error.value || mapError.value ? uiText('尚未保存') : dirty.value || mapDirty.value ? uiText('有未保存的修改') : uiText('已保存'));
 
 function message(failure: unknown) { return failure instanceof Error ? failure.message : String(failure); }
 function setPane(id: string, instance: unknown) { if (instance) panes.set(id, instance as InstanceType<typeof BoardReadingPane>); else panes.delete(id); }
@@ -177,7 +215,7 @@ function updateCanvasView(next: BoardView) {
   updateView({ ...view.value, x: next.x, y: next.y, zoom: next.zoom, selected_item_id: next.selected_item_id,
     ...(!next.selected_item_id ? { selected_block_id: null } : {}) });
 }
-function wholeBoard() { userControl(); manualHighlights.value = []; mappingChoices.value = []; updateView({ ...view.value, selected_item_id: null, selected_block_id: null }); }
+function wholeBoard() { userControl(); manualHighlights.value = []; mappingChoices.value = []; updateView({ ...view.value, selected_item_id: null, selected_item_ids: [], selected_block_id: null }); }
 async function showPanel(tab: 'reading' | 'discussion') {
   railCollapsed.value = false; railTab.value = tab; mobileTab.value = tab;
   if (tab === 'reading' && highlightedBlock.value && readingItem.value) {
@@ -186,7 +224,7 @@ async function showPanel(tab: 'reading' | 'discussion') {
     await panes.get(readingItem.value.item_id)?.locate(highlightedBlock.value, undefined, { focus: false });
   }
 }
-async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; showPanel('discussion'); await nextTick(); root.value?.querySelector('textarea')?.focus(); }
+async function suggestQuestion(text: string) { if (!question.value.trim()) question.value = text; showPanel('discussion'); await nextTick(); root.value?.querySelector<HTMLTextAreaElement>('.board-question-row textarea')?.focus(); }
 function collapseRail() { railCollapsed.value = true; mobileTab.value = 'canvas'; }
 function restoreFullscreenLayout() {
   canvasFullscreen.value = false; fullscreenNotice.value = '';
@@ -277,12 +315,216 @@ async function readContent(reference: BoardContentRef, focus = false) {
   await nextTick(); await panes.get(reference.item_id)?.locate(reference.block_id, undefined, { focus });
 }
 function select(id: string) { void activateVisual({ kind: 'item', item_id: id }); }
+function selectTopic(id: string, additive = false) {
+  if (editingId.value && editingId.value !== id && !mapEditor.commitEdit()) return;
+  userControl(); manualHighlights.value = []; mappingChoices.value = [];
+  const ids = additive ? selectedIds.value.includes(id) ? selectedIds.value.filter(value => value !== id) : [...selectedIds.value, id] : [id];
+  updateView({ ...view.value, selected_item_id: ids.includes(id) ? id : ids.at(-1) ?? null, selected_item_ids: ids, selected_block_id: null });
+}
+function foldTopic(id: string) {
+  const folded = new Set(view.value.folded_topic_ids ?? []); if (folded.has(id)) folded.delete(id); else folded.add(id);
+  updateView({ ...view.value, folded_topic_ids: [...folded] });
+}
+function unfoldAncestors(id: string) {
+  if (!board.value) return;
+  const folded = new Set(view.value.folded_topic_ids ?? []); let parent = parentOf(board.value.items, id);
+  while (parent) { folded.delete(parent.item_id); parent = parentOf(board.value.items, parent.item_id); }
+  updateView({ ...view.value, folded_topic_ids: [...folded] });
+}
+async function locateTopic(id: string) {
+  unfoldAncestors(id); selectTopic(id); await nextTick();
+  if (view.value.mind_map_outline) root.value?.querySelector<HTMLElement>(`[data-outline-item="${CSS.escape(id)}"]`)?.focus();
+  else { canvas.value?.locate(id); canvas.value?.focusTopic(id); }
+}
+async function addTopic(sibling = false) {
+  if (!board.value || !mapEditor.commitEdit()) return;
+  const selected = activeItem.value?.target.kind === 'topic' ? activeItem.value : board.value.items.find(item => item.item_id === currentMindMap.value?.root_item_id);
+  if (!selected) { await createMindMap(); return; }
+  const parent = sibling ? parentOf(board.value.items, selected.item_id) ?? selected : selected;
+  const index = sibling && parent !== selected ? topicChildren(parent).indexOf(selected.item_id) + 1 : topicChildren(parent).length;
+  const topic = topicInput();
+  if (mapEditor.apply([{ kind: 'insert_topic', parent_item_id: parent.item_id, index, topic }], '已添加主题')) {
+    const folded = new Set(view.value.folded_topic_ids ?? []); folded.delete(parent.item_id);
+    updateView({ ...view.value, folded_topic_ids: [...folded], selected_item_id: topic.item_id, selected_item_ids: [topic.item_id], selected_block_id: null });
+    mapEditor.startEdit(topic.item_id); await nextTick(); canvas.value?.locate(topic.item_id);
+  }
+}
+async function createMindMap() {
+  if (!board.value || !mapEditor.commitEdit()) return;
+  const topic = topicInput('中心主题'), mapId = `map-${crypto.randomUUID()}`;
+  const anchor = { x: (150 - view.value.x) / view.value.zoom, y: (150 - view.value.y) / view.value.zoom };
+  if (mapEditor.apply([{ kind: 'create_mind_map', map: { map_id: mapId, root_item_id: topic.item_id, layout: 'balanced', anchor, branch_sides: {} }, root: topic }], '已添加思维导图')) {
+    updateView({ ...view.value, selected_item_id: topic.item_id, selected_item_ids: [topic.item_id], selected_block_id: null });
+    mapEditor.startEdit(topic.item_id); mobileTab.value = 'canvas'; await nextTick(); canvas.value?.locate(topic.item_id);
+  }
+}
+function moveTopic(target: { itemId: string; parentId: string; index: number; indexExcludesSelection?: boolean }) {
+  if (!board.value || !mapEditor.commitEdit()) return;
+  const roots = selectionRoots(board.value.items, (selectedIds.value.includes(target.itemId) ? selectedTopics.value.map(item => item.item_id) : [target.itemId]).filter(id => !!parentOf(board.value!.items, id)));
+  let ops: BoardEditOperation[];
+  try { ops = moveSelectionOperations(board.value, roots, target.itemId, target.parentId, target.index, target.indexExcludesSelection); }
+  catch (failure) { mapError.value = message(failure); return; }
+  if (mapEditor.apply(ops, roots.length > 1 ? `已移动 ${roots.length} 支主题` : '已移动分支')) { unfoldAncestors(target.parentId); const folded = new Set(view.value.folded_topic_ids ?? []); folded.delete(target.parentId); updateView({ ...view.value, folded_topic_ids: [...folded] }); }
+}
+function moveMap(target: { mapId: string; anchor: { x: number; y: number } }) { mapEditor.apply([{ kind: 'set_mind_map', map_id: target.mapId, anchor: target.anchor }], '已移动导图'); }
+function deleteTopics() {
+  if (!board.value || !mapEditor.commitEdit()) return;
+  const roots = selectionRoots(board.value.items, selectedTopics.value.map(item => item.item_id));
+  const parent = parentOf(board.value.items, roots[0]);
+  if (mapEditor.apply(roots.map(item_id => ({ kind: 'remove_subtree', item_id })), '已删除所选分支')) updateView({ ...view.value, selected_item_id: parent?.item_id ?? null, selected_item_ids: parent ? [parent.item_id] : [], selected_block_id: null });
+}
+function copyTopics(event?: ClipboardEvent) {
+  if (!board.value) return;
+  copiedBranchIds = selectionRoots(board.value.items, selectedTopics.value.map(item => item.item_id));
+  if (!copiedBranchIds.length) return;
+  copiedBranchText = copiedBranchIds.map(id => { const lines: string[] = []; function walk(itemId: string, depth: number) { const item = board.value!.items.find(item => item.item_id === itemId)!; lines.push(`${'  '.repeat(depth)}- ${item.title.replace(/\n/g, ' ')}`); topicChildren(item).forEach(child => walk(child, depth + 1)); } walk(id, 0); return lines.join('\n'); }).join('\n');
+  if (event) { event.preventDefault(); event.clipboardData?.setData('text/plain', copiedBranchText); }
+  else void navigator.clipboard?.writeText(copiedBranchText).catch(() => {});
+  mapNotice.value = `已复制 ${copiedBranchIds.length} 支主题，选择目标主题后粘贴`;
+}
+function pasteTopics(text?: string) {
+  if (!board.value || !mapEditor.commitEdit()) return;
+  const parent = activeItem.value;
+  if (parent?.target.kind === 'topic' && (text === undefined || text === copiedBranchText) && copiedBranchIds.length && copiedBranchIds.every(id => board.value!.items.some(item => item.item_id === id))) {
+    const index = topicChildren(parent).length;
+    mapEditor.apply(copiedBranchIds.map((id, offset) => ({ kind: 'copy_subtree', item_id: id, parent_item_id: parent.item_id, index: index + offset, id_prefix: `copy-${crypto.randomUUID()}` })), '已粘贴分支');
+    return;
+  }
+  if (text?.trim()) { mapImportText.value = text; mapDialog.value = 'import'; }
+  else { mapDialog.value = 'import'; mapImportText.value = ''; }
+}
+function nativeInput(event: Event) { return !!(event.target as Element | null)?.closest('input,textarea,[contenteditable="true"]'); }
+function copyEvent(event: ClipboardEvent) { if (!nativeInput(event)) copyTopics(event); }
+function pasteEvent(event: ClipboardEvent) { if (!nativeInput(event) && (selectedTopics.value.length || !board.value?.items.length)) { event.preventDefault(); pasteTopics(event.clipboardData?.getData('text/plain')); } }
+function topicKey(event: KeyboardEvent, id: string) {
+  if (nativeInput(event) || event.isComposing || event.keyCode === 229 || !board.value) return;
+  if (event.ctrlKey || event.metaKey) {
+    if (event.key.toLowerCase() === 'z') { event.preventDefault(); void undoMap(event.shiftKey); return; }
+    if (event.key.toLowerCase() === 'y') { event.preventDefault(); void undoMap(true); return; }
+    if (event.key.toLowerCase() === 'a') { event.preventDefault(); updateView({ ...view.value, selected_item_ids: board.value.items.filter(item => item.target.kind === 'topic').map(item => item.item_id) }); return; }
+    return;
+  }
+  const item = board.value.items.find(item => item.item_id === id); if (!item || item.target.kind !== 'topic') return;
+  if (event.key === 'F2') { event.preventDefault(); mapEditor.startEdit(id); }
+  else if (event.key === 'Tab') { event.preventDefault(); void addTopic(); }
+  else if (event.key === 'Enter') { event.preventDefault(); void addTopic(true); }
+  else if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); deleteTopics(); }
+  else if (event.key.startsWith('Arrow')) {
+    event.preventDefault(); const parent = parentOf(board.value.items, id), siblings = parent ? topicChildren(parent) : mindMaps.value.map(map => map.root_item_id), index = siblings.indexOf(id);
+    const nextId = event.key === 'ArrowLeft' ? parent?.item_id : event.key === 'ArrowRight' ? topicChildren(item)[0] : siblings[index + (event.key === 'ArrowUp' ? -1 : 1)];
+    if (nextId) void locateTopic(nextId);
+  }
+}
+async function undoMap(redo = false) {
+  if (runOnBoard.value?.can_stop) { undoAfterStop.value = !redo; emit('cancel-follow-up'); mapNotice.value = '正在停止生成，完成后撤销最近保存的修改。'; return; }
+  await mapEditor.undoRedo(redo);
+}
+async function mapAction(action: string) {
+  mapError.value = '';
+  if (action === 'create') return createMindMap();
+  if (action === 'graph' || action === 'outline') {
+    const previousInput = root.value?.querySelector<HTMLTextAreaElement>(view.value.mind_map_outline ? '.mind-map-outline textarea' : '.board-map-area .board-canvas textarea');
+    const selection = previousInput ? [previousInput.selectionStart, previousInput.selectionEnd] : null;
+    updateView({ ...view.value, mind_map_outline: action === 'outline' }); await nextTick();
+    if (action === 'graph' && activeItem.value?.target.kind === 'topic') canvas.value?.locate(editingId.value ?? activeItem.value.item_id);
+    if (editingId.value) { const input = root.value?.querySelector<HTMLTextAreaElement>(action === 'outline' ? '.mind-map-outline textarea' : '.board-map-area .board-canvas textarea'); input?.focus(); if (selection) input?.setSelectionRange(selection[0], selection[1]); }
+    else if (activeItem.value?.target.kind === 'topic') { if (action === 'graph') canvas.value?.focusTopic(activeItem.value.item_id); else root.value?.querySelector<HTMLElement>(`[data-outline-item="${CSS.escape(activeItem.value.item_id)}"]`)?.focus(); }
+    return;
+  }
+  if (action === 'child' || action === 'sibling') return addTopic(action === 'sibling');
+  if (action === 'undo' || action === 'redo') return undoMap(action === 'redo');
+  if (action === 'edit' && activeItem.value) return mapEditor.startEdit(activeItem.value.item_id);
+  if (action === 'fold' && activeItem.value) return foldTopic(activeItem.value.item_id);
+  if (action === 'delete') return deleteTopics();
+  if (action === 'copy') return copyTopics();
+  if (action === 'paste') { if (copiedBranchIds.length) return pasteTopics(); try { return pasteTopics(await navigator.clipboard.readText()); } catch { return pasteTopics(); } }
+  if (action === 'balanced' || action === 'right') { if (currentMindMap.value) mapEditor.apply([{ kind: 'set_mind_map', map_id: currentMindMap.value.map_id, layout: action }], '已切换导图布局'); return; }
+  if (action === 'move' || action === 'style' || action === 'link' || action === 'import') {
+    if (!mapEditor.commitEdit()) return; mapDialog.value = action; mapDialogQuery.value = ''; mapTargetId.value = ''; mapInsertAt.value = 'end';
+    if (action === 'style' && activeItem.value?.target.kind === 'topic') { mapStyleColor.value = activeItem.value.target.style.color ?? null; mapStyleBold.value = activeItem.value.target.style.bold; }
+    return;
+  }
+  if (action === 'restructure') { if (questionBusy.value) { questionError.value = '当前追问仍在进行，请完成或停止后再重组导图。'; return; } question.value = '请根据选中内容及其来源整理成一张可编辑思维导图。保留原内容，先展示重组预览，再由我确认创建。'; await askQuestion('convert_to_mind_map'); return; }
+  if (action.startsWith('export-') && board.value && currentMindMap.value) {
+    mapExporting.value = true;
+    try {
+      if (action === 'export-markdown') downloadMindMapMarkdown(board.value.items, currentMindMap.value.root_item_id);
+      else await downloadMindMapPng(layoutMindMaps(board.value.items, mindMaps.value), { rootItemId: action === 'export-branch' ? activeItem.value?.item_id : currentMindMap.value.root_item_id, links: board.value.links });
+      mapNotice.value = '导图已导出';
+    } catch (failure) { mapError.value = message(failure); }
+    finally { mapExporting.value = false; }
+  }
+}
+function submitMapDialog() {
+  if (!board.value) return;
+  try {
+    if (mapDialog.value === 'move') { const parent = board.value.items.find(item => item.item_id === mapTargetId.value); if (!parent) return; const roots = selectionRoots(board.value.items, selectedTopics.value.map(item => item.item_id)); const ordered = topicChildren(parent).filter(id => !roots.includes(id)); moveTopic({ itemId: roots[0], parentId: parent.item_id, index: mapInsertAt.value === 'start' ? 0 : ordered.length, indexExcludesSelection: true }); }
+    else if (mapDialog.value === 'style') mapEditor.apply(selectedTopics.value.map(item => ({ kind: 'update_topic', item_id: item.item_id, style: { color: mapStyleColor.value, bold: mapStyleBold.value } })), '已修改主题样式');
+    else if (mapDialog.value === 'link') { const from = activeItem.value; if (!from || !mapTargetId.value || !mapRelationLabel.value.trim()) return; mapEditor.apply([{ kind: 'put_link', link: { link_id: `link-${crypto.randomUUID()}`, from: { kind: 'item', item_id: from.item_id }, to: { kind: 'item', item_id: mapTargetId.value }, label: mapRelationLabel.value.trim(), based_on: [] } }], '已建立主题关联'); }
+    else if (mapDialog.value === 'import') { const imported = buildMindMapImport(mapImportText.value, { anchor: { x: (100 - view.value.x) / view.value.zoom, y: (100 - view.value.y) / view.value.zoom } }); if (mapEditor.apply(imported.operations, `已导入 ${imported.topicCount} 个主题`)) { selectTopic(imported.rootItemId); void nextTick().then(() => canvas.value?.fit()); } }
+    mapDialog.value = null;
+  } catch (failure) { mapError.value = message(failure); }
+}
+async function importMapFile(event: Event) { const file = (event.target as HTMLInputElement).files?.[0]; if (file) mapImportText.value = await file.text(); }
+async function askTopicAction(action: string) { question.value = ({ explain: '这一项我还没懂。请从一个具体例子解释，并指出最关键的一步。', example: '请只给选中的主题及其子主题补一个具体例子，保留其他分支。', expand: '请展开选中的这一支，补上理解它所必需的内容，保留其他分支。', simplify: '请简化选中的这一支，保持事实、条件和来源准确，保留其他分支。', reorganize: '请重新组织选中的这一支，让层级和关系更清楚，保留其他分支。' } as Record<string, string>)[action]; await askQuestion(); }
+async function regenerateMap(turn: BoardDiscussionTurn) {
+  if (activeItem.value?.target.kind !== 'topic') { questionError.value = '请先选中要修改的主题，再按当前内容重新生成。'; return; }
+  if (questionBusy.value) { questionError.value = '当前追问仍在进行，请完成或停止后再重新生成。'; return; }
+  const pending = turn.pendingBoardEdit, turnId = pending?.turn_id ?? turn.turnId;
+  if (!pending?.candidate_id || !turnId) { questionError.value = '这次待处理修改的信息还未完整加载，请刷新讨论后重试。'; return; }
+  question.value = '基于当前内容完成这次未应用的修改，保留冲突期间的人工编辑。';
+  await askQuestion(undefined, { session_id: pending.session_id ?? turn.sessionId, turn_id: turnId,
+    candidate_id: pending.candidate_id, candidate_revision: pending.candidate_revision });
+}
+async function copyOrphanedDraft() {
+  try { await navigator.clipboard.writeText(draftTitle.value); mapNotice.value = '草稿已复制'; }
+  catch { mapError.value = '请在下面的草稿框中选中文字并复制。'; }
+}
+function recoverOrphanedDraft() {
+  if (!board.value || !draftTitle.value.trim()) return;
+  const topic = topicInput(draftTitle.value.trim()), parentId = currentMindMap.value?.root_item_id;
+  mapEditor.cancelEdit();
+  const operations: BoardEditOperation[] = parentId
+    ? [{ kind: 'insert_topic', parent_item_id: parentId, index: topicChildren(board.value.items.find(item => item.item_id === parentId)).length, topic }]
+    : [{ kind: 'create_mind_map', map: { map_id: `map-${crypto.randomUUID()}`, root_item_id: topic.item_id, layout: 'balanced', anchor: { x: 150, y: 150 }, branch_sides: {} }, root: topic }];
+  if (mapEditor.apply(operations, '已将草稿另存为新主题')) { selectTopic(topic.item_id); void nextTick().then(() => canvas.value?.locate(topic.item_id)); }
+}
+function updateMapLink(remove = false) {
+  const link = selectedMapLink.value; if (!link) return;
+  if (remove) { mapEditor.apply([{ kind: 'remove_link', link_id: link.link_id }], '已删除关联'); manualHighlights.value = []; }
+  else if (mapLinkLabel.value.trim() !== link.label) mapEditor.apply([{ kind: 'put_link', link: { ...link, label: mapLinkLabel.value.trim() } }], '已修改关联说明');
+}
+async function previewConversion(turn: BoardDiscussionTurn) {
+  const pending = turn.pendingBoardEdit;
+  if (!board.value || !pending?.candidate_id || !turn.turnId || !await flush()) return;
+  conversionBusy.value = true; conversionError.value = '';
+  conversionRequest.value = { board_id: board.value.board_id, session_id: pending.session_id ?? turn.sessionId, turn_id: pending.turn_id ?? turn.turnId, candidate_id: pending.candidate_id, candidate_revision: pending.candidate_revision };
+  try { const result = await api.boardCandidatePreview(conversionRequest.value); conversionPreview.value = result.document; conversionView.value = defaultBoardView(); await nextTick(); conversionCanvas.value?.fit(); }
+  catch (failure) { conversionError.value = message(failure); }
+  finally { conversionBusy.value = false; }
+}
+async function finishConversion(accept: boolean) {
+  if (!conversionRequest.value || !board.value) return;
+  conversionBusy.value = true; conversionError.value = '';
+  try {
+    if (accept) { if (!await flush()) return; mergeSaved(await api.boardCandidateAccept({ ...conversionRequest.value, expected_revision: board.value.revision })); mapNotice.value = '已创建思维导图，原内容保留在画板中'; }
+    else await api.boardCandidateDismiss(conversionRequest.value);
+    conversionRequest.value = null; conversionPreview.value = null; await loadConversation();
+  } catch (failure) { conversionError.value = message(failure); }
+  finally { conversionBusy.value = false; }
+}
 async function activateVisual(target: BoardVisualTarget) {
   userControl(); manualHighlights.value = [target];
-  const itemId = target.kind === 'link' ? null : target.item_id;
+  const noteLink = target.kind === 'link' ? board.value?.links?.find(link => link.link_id === target.link_id && link.note_relation_id) : null;
+  selectedRelationId.value = noteLink?.note_relation_id ?? null;
+  if (noteLink && noteLink.from.kind !== 'link' && noteLink.from.kind !== 'topic_edge') {
+    updateView({ ...view.value, selected_item_id: noteLink.from.item_id, reading_item_id: noteLink.from.item_id, selected_block_id: null });
+    mappingChoices.value = []; showPanel('reading'); return;
+  }
+  const itemId = target.kind === 'link' ? null : target.kind === 'topic_edge' ? target.child_item_id : target.item_id;
   const matches = (board.value?.mappings ?? []).filter(mapping => boardVisualKey(mapping.visual) === boardVisualKey(target));
   mappingChoices.value = [...new Map(matches.map(mapping => [`${mapping.explanation.item_id}:${mapping.explanation.block_id ?? ''}`, mapping.explanation])).values()];
-  updateView({ ...view.value, selected_item_id: itemId, selected_block_id: null,
+  updateView({ ...view.value, selected_item_id: itemId, selected_item_ids: itemId ? [itemId] : [], selected_block_id: null,
     reading_item_id: !matches.length && itemId ? itemId : view.value.reading_item_id ?? view.value.selected_item_id });
   if (mappingChoices.value.length === 1) await readContent(mappingChoices.value[0]);
   if (target.kind === 'presentation_anchor') { rememberSelection(target.item_id); await nextTick(); panes.get(target.item_id)?.locateAnchor(target); }
@@ -305,6 +547,16 @@ async function focusRegions(targets: BoardVisualTarget[]) {
 async function showStep() {
   const projection = routeProjection.value;
   if (!projection?.step) return;
+  if (board.value && view.value.folded_topic_ids?.length) {
+    const folded = new Set(view.value.folded_topic_ids), seenLinks = new Set<string>();
+    function revealTopic(target: BoardVisualTarget) {
+      if (target.kind === 'link') { if (seenLinks.has(target.link_id)) return; seenLinks.add(target.link_id); const link = board.value!.links.find(link => link.link_id === target.link_id); if (link) { revealTopic(link.from); revealTopic(link.to); } return; }
+      let parent = parentOf(board.value!.items, target.kind === 'topic_edge' ? target.child_item_id : target.item_id);
+      while (parent) { folded.delete(parent.item_id); parent = parentOf(board.value!.items, parent.item_id); }
+    }
+    [...projection.step.focus_targets, ...projection.step.reveal_targets].forEach(revealTopic);
+    if (folded.size !== view.value.folded_topic_ids.length) { updateView({ ...view.value, folded_topic_ids: [...folded] }); await nextTick(); }
+  }
   if (projection.step.explanation) await readContent(projection.step.explanation);
   await focusRegions(projection.step.focus_targets);
   if (view.value.playback?.following) canvas.value?.focusTargets(projection.step.focus_targets.length ? projection.step.focus_targets : projection.step.reveal_targets);
@@ -369,7 +621,7 @@ function mergeSaved(saved: BoardDocument) {
   for (const item of saved.items) { const position = pendingPositions.get(item.item_id) ?? savingPositions.get(item.item_id); if (position) item.position = position; }
   const localTitle = pendingTitle ?? savingTitle;
   if (localTitle !== undefined) saved.title = localTitle;
-  board.value = saved;
+  mapEditor.receive(saved);
   const summary: BoardSummary = { ...saved, item_count: saved.items.length };
   boards.value = [summary, ...boards.value.filter(item => item.board_id !== saved.board_id)];
 }
@@ -412,6 +664,7 @@ async function saveChanges(): Promise<boolean> {
 }
 async function flush(): Promise<boolean> {
   if (mutating.value) return false;
+  if (!mapEditor.commitEdit() || !await mapEditor.flush()) return false;
   if (!await saveChanges()) return false;
   try { for (const pane of panes.values()) await pane.flush(); error.value = ''; return true; }
   catch (failure) { error.value = uiText('演示现场尚未保存：{0}', [message(failure)]); return false; }
@@ -434,9 +687,10 @@ function install(document: BoardDocument, state: BoardView) {
   if (board.value?.board_id !== document.board_id) {
     deliveryNotice.value = null; deliveryError.value = ''; failedDelivery = null; queuedDelivery = null;
   }
-  pausePlayback(); manualHighlights.value = []; mappingChoices.value = [];
+  pausePlayback(); manualHighlights.value = []; mappingChoices.value = []; selectedRelationId.value = null; noteRefreshError.value = '';
   boardMount.value++;
   board.value = document; view.value = { ...defaultBoardView(), ...state, reading_item_id: state.reading_item_id ?? state.selected_item_id }; pendingPositions.clear(); pendingTitle = undefined; viewDirty = false; dirty.value = false;
+  mapEditor.install(document); mapDialog.value = null; undoAfterStop.value = false;
   if (view.value.playback && !document.routes?.some(route => route.route_id === view.value.playback?.route_id)) view.value.playback = null;
   visited.value = []; rememberSelection(state.selected_item_id); rememberSelection(view.value.reading_item_id);
   for (const target of highlightedTargets.value) if (target.kind === 'presentation_anchor') rememberSelection(target.item_id);
@@ -495,9 +749,9 @@ async function importSource(source: BoardImportSource) {
     const existing = new Set(board.value.items.map(item => item.item_id));
     const saved = await api.boardImport({ board_id: board.value.board_id, expected_revision: board.value.revision, source });
     mergeSaved(saved);
-    const imported = saved.items.find(item => !existing.has(item.item_id));
+    const imported = saved.items.find(item => !existing.has(item.item_id)) ?? (source.kind === 'note' ? saved.items.find(item => item.target.kind === 'note' && item.target.note_id === source.note_id) : undefined);
     if (imported) { userControl(); updateView({ ...view.value, selected_item_id: imported.item_id, reading_item_id: imported.item_id, selected_block_id: null }); await nextTick(); canvas.value?.fit(); }
-    addOpen.value = false; mobileTab.value = 'canvas'; savedNotice.value = uiText('已加入画板，全文和来源一并保留');
+    addOpen.value = false; mobileTab.value = 'canvas'; railTab.value = 'reading'; savedNotice.value = source.kind === 'note' ? uiText('已引用空间笔记，后续修改会同步到画板') : uiText('已加入画板，全文和来源一并保留');
     await saveChanges();
     return true;
   } catch (failure) { error.value = uiText('内容没有加入画板：{0}', [message(failure)]); return false; }
@@ -509,6 +763,7 @@ async function importPending() {
   if (await importSource(source)) { handledImport = source; emit('imported'); }
 }
 async function removeItem(id: string) {
+  if (board.value?.items.find(item => item.item_id === id)?.target.kind === 'topic') { selectTopic(id); deleteTopics(); return; }
   if (!board.value || busy.value || protectedItem(id) || !await flush()) return;
   mutating.value = true; error.value = '';
   try {
@@ -549,14 +804,46 @@ async function loadCatalog(more = false) {
   finally { if (sequence === catalogSequence) catalogLoading.value = false; }
 }
 function openAdd() { userControl(); addOpen.value = true; catalogQuery.value = ''; void loadCatalog(); }
+async function createNote() {
+  if (mutating.value || creatingNote.value || !newNoteTitle.value.trim() || !newNoteContent.value.trim()) return;
+  creatingNote.value = true; noteError.value = '';
+  try {
+    if (!createdNoteId.value) {
+      const note = await api.workspaceNoteCreate({ title: newNoteTitle.value.trim(), content: newNoteContent.value.trim() });
+      createdNoteId.value = note.note_id; emit('notes-changed');
+      void loadCatalog();
+    }
+    if (await importSource({ kind: 'note', note_id: createdNoteId.value })) {
+      createdNoteId.value = null; newNoteOpen.value = false; newNoteTitle.value = ''; newNoteContent.value = '';
+    } else noteError.value = uiText('笔记已保存在学习空间，尚未加入画板。可以重试添加。');
+  } catch (failure) { noteError.value = message(failure); }
+  finally { creatingNote.value = false; }
+}
+function cancelNewNote() {
+  newNoteOpen.value = false; noteError.value = '';
+  if (createdNoteId.value) { createdNoteId.value = null; newNoteTitle.value = ''; newNoteContent.value = ''; }
+}
+async function refreshNotes() {
+  const id = board.value?.board_id;
+  if (!id) return;
+  const sequence = ++noteRefreshSequence; noteRefreshError.value = '';
+  try {
+    const result = await api.boardRead(id);
+    if (!disposed && sequence === noteRefreshSequence && board.value?.board_id === id) mergeSaved(result.document);
+  } catch (failure) { if (!disposed && sequence === noteRefreshSequence) noteRefreshError.value = uiText('笔记已保存，画板刷新失败：{0}', [message(failure)]); }
+}
+function notesChanged() { localNotesRevision.value++; emit('notes-changed'); }
+async function openNote(noteId: string) { if (!busy.value && await flush()) emit('open-note', noteId); }
 function openGallery() { userControl(); galleryOpen.value = true; void refreshList(); }
 function protectedItem(id: string) { return (preparingQuestion.value && submitted.value?.context.item_id === id) || (runOnBoard.value?.pending && runOnBoard.value.item_id === id); }
-async function askQuestion() {
+async function askQuestion(intent?: unknown, regenerateFrom?: BoardRegenerationRef) {
   const item = questionItem.value, current = board.value, text = question.value.trim();
   if (!current || !text || busy.value || questionBusy.value) return;
   const blockId = item ? view.value.selected_block_id ?? item.block_id : null;
   const references=noteRefs(item?[item]:current.items);
   const request: BoardQuestionRequest = { client_request_id: crypto.randomUUID(), message: text, context: { ...(references.length ? {note_refs:references} : {}), board_id: current.board_id, board_revision: current.revision, ...(item ? { item_id: item.item_id } : {}), ...(blockId ? { block_id: blockId } : {}) } };
+  if (intent === 'convert_to_mind_map') request.context.intent = 'convert_to_mind_map';
+  if (regenerateFrom) request.context.regenerate_from = regenerateFrom;
   submitted.value = request; submittedTitle.value = item?.title ?? uiText('全画板'); preparingQuestion.value = true; questionError.value = '';
   const pane = item ? panes.get(item.item_id) : undefined;
   showPanel('discussion');
@@ -568,7 +855,7 @@ async function askQuestion() {
       if (!receipt) throw new Error(uiText('演示还在准备，请等它显示后再提问。'));
       request.context.presentation = receipt;
     }
-    if (!await saveChanges()) throw new Error(uiText('请先保存画板，再发送追问。'));
+    if (!mapEditor.commitEdit() || !await mapEditor.flush() || !await saveChanges()) throw new Error(uiText('请先保存画板，再发送追问。'));
     for (const [id, other] of panes) if (id !== item?.item_id) await other.flush();
     if (board.value?.board_id !== current.board_id) throw new Error(uiText('画板已切换，问题保留在原画板中。'));
     request.context.board_revision = board.value.revision;
@@ -591,7 +878,10 @@ async function refreshDelivery(delivery: BoardDelivery, notice = true): Promise<
         // Read committed content first. A failed or in-flight local layout save must not hide it.
         const result = await api.boardRead(requested.board_id);
         if (board.value?.board_id !== requested.board_id || disposed) continue;
+        const previousTopics = new Map(board.value.items.filter(item => item.target.kind === 'topic').map(item => [item.item_id, item]));
+        const changedTopics = result.document.items.filter(item => item.target.kind === 'topic' && (!previousTopics.has(item.item_id) || previousTopics.get(item.item_id)!.title !== item.title || JSON.stringify(previousTopics.get(item.item_id)!.target) !== JSON.stringify(item.target)));
         mergeSaved(result.document);
+        if (changedTopics.length) { recentMapChanges.value = changedTopics.map(item => item.item_id); clearTimeout(mapHighlightTimer); mapHighlightTimer = setTimeout(() => { recentMapChanges.value = []; }, 2400); mapNotice.value = `AI 已更新 ${changedTopics.length} 个主题`; }
         if (result.document.revision < requested.after_revision) throw new Error(uiText('更新后的讲解暂时未读到，请重试。'));
         failedDelivery = null;
         // Merge preserves the camera, selection, visited iframe, and local title/positions.
@@ -615,6 +905,7 @@ async function locate(location: BoardLocation): Promise<boolean> {
   if (!location.item_id) return true;
   const item = board.value.items.find(item => item.item_id === location.item_id);
   if (!item) { error.value = uiText('这项内容已不在画板上，请重新搜索。'); return false; }
+  if (item.target.kind === 'topic') { await locateTopic(item.item_id); return true; }
   mobileTab.value = 'canvas';
   updateView({ ...view.value, selected_item_id: item.item_id, reading_item_id: item.item_id, selected_block_id: location.block_id ?? null,
     playback: view.value.playback ? { ...view.value.playback, show_all: true, following: false } : null });
@@ -648,31 +939,40 @@ async function findRelated(item: BoardCatalogItem) {
   catch (failure) { if (sequence === relatedSequence) relatedError.value = message(failure); }
   finally { if (sequence === relatedSequence) relatedLoading.value = false; }
 }
-function beforeUnload(event: BeforeUnloadEvent) { if (dirty.value || saving.value || mutating.value || preparingQuestion.value) { event.preventDefault(); event.returnValue = ''; } }
+function beforeUnload(event: BeforeUnloadEvent) { if (dirty.value || mapDirty.value || mapSaving.value || saving.value || mutating.value || preparingQuestion.value) { event.preventDefault(); event.returnValue = ''; } }
+function workspaceKeyboard(event: KeyboardEvent) {
+  if (event.defaultPrevented) return;
+  if (root.value?.querySelector('[role="dialog"]')) { dialogKeydown(event); return; }
+  if (nativeInput(event) || event.isComposing || !(event.ctrlKey || event.metaKey)) return;
+  if (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y') { event.preventDefault(); void undoMap(event.key.toLowerCase() === 'y' || event.shiftKey); }
+}
 function dialogKeydown(event: KeyboardEvent) {
   const dialog = root.value?.querySelector<HTMLElement>('[role="dialog"]');
   if (!dialog) return;
   if (event.key === 'Escape' && !busy.value) {
     event.preventDefault();
-    if (deleteOpen.value) deleteOpen.value = false;
+    if (conversionRequest.value) { conversionRequest.value = null; conversionPreview.value = null; }
+    else if (mapDialog.value) mapDialog.value = null;
+    else if (deleteOpen.value) deleteOpen.value = false;
     else if (addOpen.value) addOpen.value = false;
     else if (board.value) galleryOpen.value = false;
     else void close();
   }
   if (event.key !== 'Tab') return;
-  const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
+  const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
   const first = focusable[0], last = focusable.at(-1);
   if (!first || !last) return;
   if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
 }
-watch([galleryOpen, addOpen, deleteOpen], async () => {
+watch([galleryOpen, addOpen, deleteOpen, mapDialog, conversionRequest], async () => {
   await nextTick();
   const dialog = root.value?.querySelector<HTMLElement>('[role="dialog"]');
   if (dialog) (dialog.querySelector<HTMLElement>('input,button:not(:disabled)') ?? dialog).focus();
 }, { immediate: true });
 watch(() => props.boardId, id => { if (id && id !== board.value?.board_id) void openBoard(id); else if (!id && !board.value) galleryOpen.value = true; }, { immediate: true });
 watch(() => props.pendingImport, source => { if (source && source !== handledImport) { if (board.value) void importPending(); else openGallery(); } });
+watch(combinedNotesRevision, () => { void refreshNotes(); if (addOpen.value && catalogKind.value === 'note') void loadCatalog(); });
 watch(catalogKind, () => { catalogQuery.value = ''; if (addOpen.value) void loadCatalog(); });
 watch(catalogCategory, () => { if (addOpen.value && (catalogKind.value === 'prebuild' || catalogKind.value === 'personal_note')) void loadCatalog(); });
 watch(catalogQuery, () => {
@@ -706,6 +1006,7 @@ watch(() => `${props.run?.board_id}:${props.run?.turn_id}:${props.run?.pending}`
   if (props.run?.board_id === board.value?.board_id && props.run?.accepted) void loadConversation();
 });
 watch(() => `${discussionTurns.value.some(turn => turn.pending)}:${runOnBoard.value?.can_stop}`, scheduleConversationRefresh);
+watch(() => `${runOnBoard.value?.pending}:${runOnBoard.value?.can_stop}`, async () => { if (undoAfterStop.value && !runOnBoard.value?.pending && !runOnBoard.value?.can_stop) { undoAfterStop.value = false; if (deliveryRefreshTask) await deliveryRefreshTask; await mapEditor.undoRedo(); } });
 async function recoverBoardReads() {
   if (disposed || busy.value) return;
   if (listLoadError) await refreshList();
@@ -720,26 +1021,32 @@ window.addEventListener('beforeunload', beforeUnload);
 document.addEventListener('fullscreenchange', fullscreenChanged);
 document.addEventListener('keydown', fullscreenKeydown);
 void refreshList();
-onBeforeUnmount(() => { disposed = true; pausePlayback(); loadSequence++; catalogSequence++; searchSequence++; conversationSequence++; clearTimeout(timer); clearTimeout(searchTimer); clearTimeout(conversationTimer); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('workspace-recovered', recoverBoardReads); document.removeEventListener('fullscreenchange', fullscreenChanged); document.removeEventListener('keydown', fullscreenKeydown); void exitCanvasFullscreen(); });
+onBeforeUnmount(() => { disposed = true; pausePlayback(); loadSequence++; catalogSequence++; searchSequence++; conversationSequence++; clearTimeout(timer); clearTimeout(searchTimer); clearTimeout(conversationTimer); clearTimeout(mapHighlightTimer); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('workspace-recovered', recoverBoardReads); document.removeEventListener('fullscreenchange', fullscreenChanged); document.removeEventListener('keydown', fullscreenKeydown); void exitCanvasFullscreen(); });
 defineExpose({ flush });
 </script>
 
 <template>
-  <section ref="root" class="board-workspace" :class="{ 'board-canvas-fullscreen': canvasFullscreen }" :aria-label="uiText('知识画板工作区')" :aria-busy="busy" @keydown="dialogKeydown">
+  <section ref="root" class="board-workspace" :class="{ 'board-canvas-fullscreen': canvasFullscreen }" :aria-label="uiText('知识画板工作区')" :aria-busy="busy" @keydown="workspaceKeyboard" @copy="copyEvent" @paste="pasteEvent">
     <header v-show="!canvasFullscreen" class="board-topbar">
       <button class="board-back" type="button" :aria-label="uiText('关闭画板，回到阅读')" :disabled="busy" @click="close"><ArrowLeft :size="18" aria-hidden="true" /></button>
       <button class="board-library-trigger" type="button" @click="openGallery"><LayoutDashboard :size="17" aria-hidden="true" /><span>{{ uiText('知识画板') }}</span><ChevronDown :size="13" aria-hidden="true" /></button>
       <span v-if="board" class="board-top-divider"></span>
       <input v-if="board" class="board-title-input" :value="board.title" :aria-label="uiText('画板名称')" maxlength="160" :disabled="busy" @input="rename" @blur="saveChanges" @keydown.enter="($event.target as HTMLInputElement).blur()" />
       <span v-else class="board-top-spacer"></span>
-      <span v-if="board" class="board-save-state" :class="{ unsaved: dirty || error }" role="status"><LoaderCircle v-if="saving" :size="13" class="board-spinner" aria-hidden="true" /><Check v-else-if="!dirty && !error" :size="13" aria-hidden="true" />{{ saveLabel }}</span>
+      <span v-if="board" class="board-save-state" :class="{ unsaved: dirty || mapDirty || error || mapError }" role="status"><LoaderCircle v-if="saving || mapSaving" :size="13" class="board-spinner" aria-hidden="true" /><Check v-else-if="!dirty && !mapDirty && !error && !mapError" :size="13" aria-hidden="true" />{{ saveLabel }}</span>
       <button class="board-search-trigger" type="button" :aria-label="uiText('搜索画板与全文')" @click="openGallery"><Search :size="17" aria-hidden="true" /></button>
       <button v-if="board" class="board-add-button" type="button" :disabled="busy" @click="openAdd"><Plus :size="16" aria-hidden="true" /><span>{{ uiText('添加内容') }}</span></button>
       <div v-if="board" class="board-thought-actions"><button class="board-add-button" type="button" :disabled="busy" @click="rememberHere">{{ activeItem ? '在这里记想法' : '记想法' }}</button>
       <button v-if="board && noteRefs().length" class="board-add-button" type="button" :disabled="busy" @click="writeFromBoard">整理成我的解释</button><button v-if="board && noteRefs().length" class="board-add-button" type="button" :disabled="busy" @click="synthesizeBoard">请 Agent 起草</button></div>
     </header>
+    <MindMapToolbar v-if="board" v-show="!canvasFullscreen" :has-maps="!!mindMaps.length" :selected="!!selectedTopics.length" :selected-count="selectedTopics.length" :outline="view.mind_map_outline ?? false" :folded="(view.folded_topic_ids ?? []).includes(activeItem?.item_id ?? '')" :can-undo="canUndo" :can-redo="canRedo" :can-convert="!!activeItem && activeItem.target.kind !== 'topic'" :busy="busy || mapExporting" :saving="mapSaving" :layout="currentMindMap?.layout" @action="mapAction" />
+    <div v-if="selectedMapLink" class="map-link-editor"><label>关联说明<input v-model="mapLinkLabel" aria-label="编辑关联说明" @blur="updateMapLink()" @keydown.enter="($event.target as HTMLInputElement).blur()" /></label><button type="button" @click="updateMapLink(true)">删除关联</button></div>
+    <div v-if="mapError" class="board-error" role="alert"><span>{{ mapError }}</span><template v-if="draftConflict && !orphanedDraft"><button type="button" @click="mapEditor.commitEdit(true)">保留我的文字</button><button type="button" @click="mapEditor.cancelEdit()">查看当前内容</button></template><template v-else-if="!orphanedDraft"><button type="button" :disabled="mapSaving" @click="mapEditor.flush()">重试保存</button><button type="button" :disabled="mapSaving" @click="discardAndReload">重新载入并放弃本地修改</button></template></div>
+    <div v-if="orphanedDraft" class="map-orphaned-draft"><label>已删除主题的草稿<textarea v-model="draftTitle" aria-label="已删除主题的草稿" rows="2"></textarea></label><div><button type="button" @click="copyOrphanedDraft">复制草稿</button><button type="button" :disabled="!draftTitle.trim()" @click="recoverOrphanedDraft">另存为新主题</button><button type="button" @click="mapEditor.cancelEdit()">放弃草稿</button></div></div>
+    <div v-else-if="mapNotice || mapExporting" class="board-notice map-notice" role="status"><span>{{ mapExporting ? '正在导出导图…' : mapNotice }}</span><button v-if="canUndo && !mapExporting" type="button" @click="undoMap()">撤销</button><button v-if="!mapExporting" type="button" aria-label="关闭导图提示" @click="mapNotice = ''">×</button></div>
     <div v-if="error && !galleryOpen && !addOpen && !deleteOpen" class="board-error" role="alert"><span>{{ error }}</span><button type="button" :disabled="busy || saving" @click="flush">{{ uiText('重试保存') }}</button><button v-if="dirty" type="button" :disabled="busy || saving" @click="discardAndReload">{{ uiText('放弃未保存修改并重新载入') }}</button><button type="button" :disabled="busy" @click="openGallery">{{ uiText('查看画板列表') }}</button></div>
     <div v-else-if="savedNotice" class="board-notice" role="status">{{ savedNotice }}</div>
+    <div v-if="noteRefreshError" class="board-error" role="alert"><span>{{ noteRefreshError }}</span><button type="button" @click="refreshNotes">{{ uiText('重新读取笔记') }}</button></div>
     <div v-if="board" v-show="!canvasFullscreen" class="board-mobile-switch" role="group" :aria-label="uiText('画板、讲解与讨论')"><button type="button" :class="{ active: mobileTab === 'canvas' }" @click="mobileTab = 'canvas'"><LayoutDashboard :size="15" aria-hidden="true" />{{ uiText('画板') }}</button><button type="button" :class="{ active: mobileTab === 'reading' }" @click="showPanel('reading')"><BookOpen :size="15" aria-hidden="true" />{{ uiText('讲解') }}</button><button type="button" :class="{ active: mobileTab === 'discussion' }" @click="showPanel('discussion')"><MessageSquareText :size="15" aria-hidden="true" />{{ uiText('讨论') }}</button></div>
     <div v-if="canvasFullscreen" class="board-fullscreen-tools" role="group" :aria-label="uiText('画板、讲解与讨论')">
       <button type="button" :aria-pressed="!railCollapsed && railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="16" aria-hidden="true" />{{ uiText('讲解') }}</button>
@@ -761,15 +1068,18 @@ defineExpose({ flush });
     </div>
     <div v-if="mappingChoices.length" class="board-mapping-choices" role="group" :aria-label="uiText('这个图元的相关解释')"><span>{{ uiText('选择要阅读的解释') }}</span><button v-for="choice in mappingChoices" :key="`${choice.item_id}:${choice.block_id}`" type="button" @click="readContent(choice, true)">{{ contentTitle(choice) }}</button></div>
     <div v-if="board" class="board-body" :class="[`mobile-${mobileTab}`, { 'has-selection': activeItem, 'board-rail-collapsed': railCollapsed }]">
-      <BoardCanvas ref="canvas" :items="board.items" :links="board.links ?? []" :view="view" :disabled="busy" :fullscreen="canvasFullscreen" :visible-item-ids="routeProjection?.visibleItemIds" :visible-link-ids="routeProjection?.visibleLinkIds" :highlight-targets="highlightedTargets" :progress="graphicProgress" :transition="routeProjection?.step?.transition ?? 'instant'" @view="updateCanvasView" @move="move" @select="select" @activate-target="activateVisual" @user-control="userControl" @add="openAdd" @ask="suggestQuestion('')" @toggle-fullscreen="toggleCanvasFullscreen" />
+      <div class="board-map-area">
+      <BoardCanvas v-show="!view.mind_map_outline" ref="canvas" :items="board.items" :mind-maps="mindMaps" :selected-ids="selectedIds" :folded-ids="view.folded_topic_ids ?? []" :editing-id="editingId" :draft-title="draftTitle" :links="board.links ?? []" :view="view" :disabled="busy" :fullscreen="canvasFullscreen" :visible-item-ids="routeProjection?.visibleItemIds" :visible-link-ids="routeProjection?.visibleLinkIds" :highlight-targets="highlightedTargets" :progress="graphicProgress" :transition="routeProjection?.step?.transition ?? 'instant'" @view="updateCanvasView" @move="move" @select="select" @activate-target="activateVisual" @user-control="userControl" @add="openAdd" @ask="suggestQuestion('')" @toggle-fullscreen="toggleCanvasFullscreen" @topic-select="selectTopic" @topic-edit="mapEditor.startEdit" @topic-draft="draftTitle = $event" @topic-commit="mapEditor.commitEdit()" @topic-cancel="mapEditor.cancelEdit" @topic-keydown="topicKey" @topic-drop="moveTopic" @topic-root-move="moveMap" @topic-fold="foldTopic" @topic-box-select="updateView({ ...view, selected_item_ids: $event, selected_item_id: $event.at(-1) ?? null, selected_block_id: null })" />
+      <MindMapOutline v-if="view.mind_map_outline" :items="board.items" :mind-maps="mindMaps" :selected-ids="selectedIds" :folded-ids="view.folded_topic_ids ?? []" :editing-id="editingId" :draft-title="draftTitle" :disabled="busy" @select="selectTopic" @fold="foldTopic" @edit="mapEditor.startEdit" @draft="draftTitle = $event" @commit="mapEditor.commitEdit()" @cancel="mapEditor.cancelEdit" @keydown="topicKey" @drop="moveTopic" @locate="locateTopic" />
+      </div>
       <button v-if="railCollapsed && !canvasFullscreen" type="button" class="board-expand-rail" :aria-label="uiText('展开讲解与讨论')" @click="showPanel(railTab)"><PanelRightOpen :size="16" aria-hidden="true" /><span>{{ uiText('讲解与讨论') }}</span></button>
       <aside v-show="!railCollapsed" class="board-side-rail" :aria-label="uiText('讲解与讨论')">
         <div class="board-rail-header"><div class="board-rail-tabs" role="tablist" :aria-label="uiText('讲解与讨论')"><button type="button" role="tab" :aria-selected="railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="15" />{{ uiText('讲解') }}</button><button type="button" role="tab" :aria-selected="railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="15" />{{ uiText('讨论') }}<span v-if="discussionTurns.length">{{ discussionTurns.length }}</span><i v-if="runOnBoard?.pending" class="board-discussion-live-dot"></i></button></div><button type="button" class="board-collapse-rail" :aria-label="uiText('收起讲解与讨论')" :title="uiText('收起讲解与讨论')" @click="collapseRail"><PanelRightClose :size="17" aria-hidden="true" /></button></div>
       <div v-show="railTab === 'reading'" class="board-reader-stack" :class="{ 'has-region': focusedPresentationId && focusedPresentationId !== readingItem?.item_id }">
         <BoardReadingPane v-if="!readingItem" :board-id="board.board_id" :item="null" />
-        <BoardReadingPane v-for="item in visitedItems" v-show="item.item_id === readingItem?.item_id || item.item_id === focusedPresentationId" :key="`${boardMount}:${board.board_id}:${item.item_id}`" :ref="instance => setPane(item.item_id, instance)" :board-id="board.board_id" :item="item" :items="board.items" :deliveries="board.deliveries" :busy="busy || protectedItem(item.item_id)" :mapped-block-ids="mappedBlocks(item.item_id)" :mapped-item="mappedItem(item.item_id)" :highlighted-block-id="item.item_id === readingItem?.item_id ? highlightedBlock : null" @source="(id, anchor) => source(item.item_id, id, anchor)" @remove="removeItem" @select-item="locateItem" @activate-block="activateBlock" @activate-target="activateVisual" @user-control="userControl" />
+        <BoardReadingPane v-for="item in visitedItems" v-show="item.item_id === readingItem?.item_id || item.item_id === focusedPresentationId" :key="`${boardMount}:${board.board_id}:${item.item_id}`" :ref="instance => setPane(item.item_id, instance)" :board-id="board.board_id" :item="item" :items="board.items" :deliveries="board.deliveries" :busy="busy || protectedItem(item.item_id)" :active="item.item_id === readingItem?.item_id" :notes-revision="combinedNotesRevision" :selected-relation-id="item.item_id === readingItem?.item_id ? selectedRelationId : null" :mapped-block-ids="mappedBlocks(item.item_id)" :mapped-item="mappedItem(item.item_id)" :highlighted-block-id="item.item_id === readingItem?.item_id ? highlightedBlock : null" @source="(id, anchor) => source(item.item_id, id, anchor)" @remove="removeItem" @open-note="openNote" @notes-changed="notesChanged" @select-item="locateItem" @activate-block="activateBlock" @activate-target="activateVisual" @user-control="userControl" />
       </div>
-        <BoardDiscussion v-show="railTab === 'discussion'" :turns="discussionTurns" :items="board.items" :loading="conversationLoading" :error="conversationError" @retry="loadConversation" @locate="locateItem" @source="source" @suggest="suggestQuestion" />
+        <BoardDiscussion v-show="railTab === 'discussion'" :turns="discussionTurns" :items="board.items" :loading="conversationLoading" :error="conversationError" @retry="loadConversation" @locate="locateItem" @source="source" @suggest="suggestQuestion" @regenerate="regenerateMap" @preview-map="previewConversion" />
 
         <section class="board-conversation" :aria-label="uiText('在画板上继续提问')">
           <div v-if="boardCommits.length" class="board-saved-parts" :aria-label="uiText('已保存的讲解')">
@@ -787,7 +1097,8 @@ defineExpose({ flush });
           <p v-else-if="props.run?.pending" class="board-question-hint" role="status">{{ uiText('另一张画板的追问仍在进行，可以先继续浏览。') }}</p>
           <p v-if="questionError" class="board-question-error" role="alert">{{ questionError }}</p>
           <form class="board-question-form" @submit.prevent="askQuestion">
-            <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button></div>
+            <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem?.target.kind === 'topic' ? `针对：${questionItem.title}及其子主题` : questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button></div>
+            <div v-if="questionItem?.target.kind === 'topic'" class="map-ai-actions" aria-label="针对选中分支提问"><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('explain')">解释这一项</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('example')">补一个例子</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('expand')">展开这一支</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('simplify')">简化</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('reorganize')">重新组织</button></div>
             <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="2" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>
             <p v-if="preparingQuestion || awaitingAcceptance" class="board-question-hint" role="status">{{ preparingQuestion ? uiText('正在保留提问对象与演示现场…') : uiText('正在发送追问…') }}</p>
           </form>
@@ -798,6 +1109,28 @@ defineExpose({ flush });
 
 
 
+    <div v-if="conversionRequest" class="board-dialog-scrim">
+      <section class="map-conversion-dialog" role="dialog" aria-modal="true" aria-label="思维导图重组预览"><header><h2>查看重组后的导图</h2><button type="button" :disabled="conversionBusy" aria-label="关闭重组预览" @click="conversionRequest = null; conversionPreview = null"><X :size="19" /></button></header><p>确认后创建新的可编辑导图。原内容、来源和讲解继续保留。</p><p v-if="conversionError" class="board-question-error" role="alert">{{ conversionError }}</p><div class="map-conversion-canvas"><BoardCanvas v-if="conversionPreview" ref="conversionCanvas" :items="conversionPreview.items" :mind-maps="conversionPreview.mind_maps ?? []" :links="conversionPreview.links" :view="conversionView" readonly @view="conversionView = $event" /><p v-else>正在读取重组预览…</p></div><footer><button type="button" :disabled="conversionBusy" @click="finishConversion(false)">放弃这次重组</button><button type="button" class="map-primary" :disabled="conversionBusy || !conversionPreview || !!conversionError" @click="finishConversion(true)">确认创建导图</button></footer></section>
+    </div>
+    <div v-if="mapDialog" class="board-dialog-scrim" @click.self="mapDialog = null">
+      <form class="map-editor-dialog" role="dialog" aria-modal="true" :aria-label="mapDialog === 'move' ? '移动分支' : mapDialog === 'style' ? '主题样式' : mapDialog === 'link' ? '建立主题关联' : '导入 Markdown 大纲'" @submit.prevent="submitMapDialog">
+        <header><h2>{{ mapDialog === 'move' ? '移动分支' : mapDialog === 'style' ? '主题样式' : mapDialog === 'link' ? '建立主题关联' : '导入 Markdown 大纲' }}</h2><button type="button" aria-label="关闭导图操作" @click="mapDialog = null"><X :size="19" /></button></header>
+        <template v-if="mapDialog === 'move' || mapDialog === 'link'">
+          <p>{{ mapDialog === 'move' ? '选择新的父主题，整支内容会一起移动。' : '关联用于表达对比、条件或因果，不改变主题层级。' }}</p>
+          <input v-model="mapDialogQuery" type="search" aria-label="搜索目标主题" placeholder="搜索目标主题…" />
+          <div class="map-target-list" role="listbox" aria-label="目标主题"><button v-for="item in moveCandidates" :key="item.item_id" type="button" role="option" :aria-selected="mapTargetId === item.item_id" @click="mapTargetId = item.item_id"><span>{{ item.title }}</span><small>{{ parentOf(board?.items ?? [], item.item_id)?.title ?? '中心主题' }}</small></button><p v-if="!moveCandidates.length">没有可选主题。</p></div>
+          <label v-if="mapDialog === 'move'" class="map-field">插入位置<select v-model="mapInsertAt" aria-label="分支插入位置"><option value="end">放在子主题末尾</option><option value="start">放在子主题开头</option></select></label>
+          <label v-else class="map-field">关系说明<input v-model="mapRelationLabel" aria-label="关系说明" placeholder="例如：只读借用禁止写入" /></label>
+        </template>
+        <template v-else-if="mapDialog === 'style'">
+          <p>应用到选中的 {{ selectedTopics.length }} 个主题。</p><div class="map-colors" role="group" aria-label="主题颜色"><button v-for="color in [null, '#52756a', '#4c6f9d', '#9b713a', '#946386', '#b36152']" :key="color ?? 'auto'" type="button" :style="{ background: color ?? 'var(--surface-soft)' }" :aria-label="color ?? '自动配色'" :aria-pressed="mapStyleColor === color" @click="mapStyleColor = color">{{ color ? '' : '自动' }}<Check v-if="color && mapStyleColor === color" :size="19" /></button></div><label class="map-bold"><input v-model="mapStyleBold" type="checkbox" />加粗主题标题</label>
+        </template>
+        <template v-else>
+          <p>粘贴 Markdown 标题或缩进列表，层级会变成一张新的导图。</p><input type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" aria-label="选择 Markdown 文件" @change="importMapFile" /><textarea v-model="mapImportText" aria-label="Markdown 大纲内容" rows="10" placeholder="# Rust 切片&#10;- 访问一段连续元素&#10;  - 只读借用&#10;  - 可变借用"></textarea><small>导入与导出保留主题文字和层级，关系线与讲解保留在画板中。</small>
+        </template>
+        <footer><button type="button" @click="mapDialog = null">取消</button><button class="map-primary" type="submit" :disabled="(mapDialog === 'move' || mapDialog === 'link') && !mapTargetId || mapDialog === 'link' && !mapRelationLabel.trim() || mapDialog === 'import' && !mapImportText.trim()">{{ mapDialog === 'import' ? '创建导图' : mapDialog === 'move' ? '移动分支' : '应用' }}</button></footer>
+      </form>
+    </div>
     <div v-if="galleryOpen" class="board-dialog-scrim" @click.self="board && (galleryOpen = false)">
       <section class="board-gallery" role="dialog" aria-modal="true" :aria-label="uiText('我的知识画板')">
         <header><div><span class="board-dialog-kicker">{{ uiText('持续学习的空间') }}</span><h2>{{ uiText('我的知识画板') }}</h2></div><button type="button" :aria-label="uiText('关闭画板列表')" @click="board ? galleryOpen = false : close()"><X :size="19" aria-hidden="true" /></button></header>
@@ -818,12 +1151,21 @@ defineExpose({ flush });
       </section>
     </div>
 
-    <div v-if="addOpen" class="board-dialog-scrim" @click.self="!mutating && (addOpen = false)">
+    <div v-if="addOpen" class="board-dialog-scrim" @click.self="!busy && (addOpen = false)">
       <section class="board-add-dialog" role="dialog" aria-modal="true" :aria-label="uiText('添加到画板')">
-        <header><div><span class="board-dialog-kicker">{{ board?.title }}</span><h2>{{ uiText('把内容连到这里') }}</h2></div><button type="button" :disabled="mutating" :aria-label="uiText('关闭添加内容')" @click="addOpen = false"><X :size="19" aria-hidden="true" /></button></header>
+        <header><div><span class="board-dialog-kicker">{{ board?.title }}</span><h2>{{ uiText('把内容连到这里') }}</h2></div><button type="button" :disabled="busy" :aria-label="uiText('关闭添加内容')" @click="addOpen = false"><X :size="19" aria-hidden="true" /></button></header>
         <div v-if="error" class="board-dialog-error" role="alert">{{ error }}<button v-if="dirty" type="button" :disabled="busy || saving" @click="discardAndReload">{{ uiText('放弃未保存修改并重新载入') }}</button></div>
-        <div class="board-kind-tabs" role="tablist" :aria-label="uiText('内容类型')"><button v-for="kind in boardKinds" :key="kind" type="button" role="tab" :aria-selected="catalogKind === kind" :class="{ active: catalogKind === kind }" @click="catalogKind = kind">{{ uiText(boardKindLabels[kind]) }}</button></div>
+        <div class="board-kind-tabs" role="tablist" :aria-label="uiText('内容类型')"><button v-for="kind in boardKinds" :key="kind" type="button" role="tab" :aria-selected="catalogKind === kind" :class="{ active: catalogKind === kind }" :disabled="creatingNote" @click="catalogKind = kind">{{ uiText(boardKindLabels[kind]) }}</button></div>
         <p class="board-kind-description">{{ uiText(boardKindDescriptions[catalogKind]) }}</p>
+        <div v-if="catalogKind === 'note'" class="board-note-create">
+          <button v-if="!newNoteOpen" type="button" class="board-note-create-trigger" @click="newNoteOpen = true"><Plus :size="15" aria-hidden="true" />{{ uiText('写一条新笔记') }}</button>
+          <form v-else class="board-note-create-form" @submit.prevent="createNote">
+            <label>{{ uiText('笔记标题') }}<input v-model="newNoteTitle" :disabled="creatingNote || !!createdNoteId" :placeholder="uiText('用一句话概括这个想法')" maxlength="240" required /></label>
+            <label>{{ uiText('笔记内容') }}<textarea v-model="newNoteContent" :disabled="creatingNote || !!createdNoteId" :placeholder="uiText('写下想法、解释或尚未想清楚的问题…')" rows="4" required /></label>
+            <p v-if="noteError" role="alert">{{ noteError }}</p>
+            <div><button type="button" :disabled="creatingNote" @click="cancelNewNote">{{ uiText('取消') }}</button><button type="submit" class="primary" :disabled="creatingNote || mutating || !newNoteTitle.trim() || !newNoteContent.trim()"><LoaderCircle v-if="creatingNote" :size="14" class="board-spinner" aria-hidden="true" />{{ creatingNote ? uiText('正在保存…') : createdNoteId ? uiText('重试添加到画板') : uiText('保存并加入画板') }}</button></div>
+          </form>
+        </div>
         <div v-if="catalogKind === 'prebuild'" class="board-catalog-filters">
           <select v-model="catalogCategory" :aria-label="uiText('预构建内容类型')"><option v-for="(label, category) in boardArtifactLabels" :key="category" :value="category">{{ uiText(label) }}</option></select>
           <span v-if="catalogTotal !== null">{{ uiText('共 {0} 项', [catalogTotal]) }}</span>
@@ -832,8 +1174,8 @@ defineExpose({ flush });
         <div class="board-catalog-list" role="tabpanel">
           <p v-if="catalogLoading && !catalog.length" class="board-catalog-empty"><LoaderCircle :size="18" class="board-spinner" aria-hidden="true" />{{ uiText('正在读取已有内容…') }}</p>
           <p v-if="catalogError" class="board-catalog-empty" role="alert">{{ catalogError }}<button type="button" @click="loadCatalog(!!catalog.length)"><RefreshCw :size="14" aria-hidden="true" />{{ uiText('重试') }}</button></p>
-          <div v-for="(item, index) in filteredCatalog" :key="index" class="board-catalog-row"><button class="board-catalog-item" type="button" :disabled="mutating" @click="importSource(item.source)"><span><strong>{{ item.title }}</strong><small>{{ boardTextPreview(item.summary) }}</small></span><Plus :size="18" aria-hidden="true" /></button><button v-if="item.kind === 'prebuild'" type="button" class="board-related-trigger" :aria-expanded="relatedItem === item" @click="findRelated(item)"><LayoutDashboard :size="12" aria-hidden="true" />{{ uiText('查找已关联的画板') }}</button><div v-if="relatedItem === item" class="board-related-results"><p v-if="relatedLoading" role="status">{{ uiText('正在读取…') }}</p><p v-else-if="relatedError" role="alert">{{ relatedError }}<button type="button" @click="relatedItem = null; findRelated(item)">{{ uiText('重试') }}</button></p><template v-else><button v-for="hit in relatedBoards" :key="`${hit.board_id}:${hit.item_id}`" type="button" @click="locate(hit)"><span>{{ hit.board_title }}</span><small>{{ uiText('在画板中查看') }} ↗</small></button><p v-if="!relatedBoards.length">{{ uiText('这个知识点还没有关联画板。') }}</p></template></div></div>
-          <p v-if="!catalogLoading && !catalogError && !filteredCatalog.length" class="board-catalog-empty">{{ catalogQuery ? uiText('没有找到匹配的内容。') : catalogKind === 'prebuild' ? uiText('当前材料尚无这一类预构建内容。') : uiText('当前工作区中，这份材料还没有这一类记录。旧学习记录保留在原来的范围。') }}</p>
+          <div v-for="(item, index) in filteredCatalog" :key="index" class="board-catalog-row"><button class="board-catalog-item" type="button" :disabled="mutating || creatingNote" @click="importSource(item.source)"><span><strong>{{ item.title }}</strong><small>{{ boardTextPreview(item.summary) }}</small></span><Plus :size="18" aria-hidden="true" /></button><button v-if="item.kind === 'prebuild'" type="button" class="board-related-trigger" :aria-expanded="relatedItem === item" @click="findRelated(item)"><LayoutDashboard :size="12" aria-hidden="true" />{{ uiText('查找已关联的画板') }}</button><div v-if="relatedItem === item" class="board-related-results"><p v-if="relatedLoading" role="status">{{ uiText('正在读取…') }}</p><p v-else-if="relatedError" role="alert">{{ relatedError }}<button type="button" @click="relatedItem = null; findRelated(item)">{{ uiText('重试') }}</button></p><template v-else><button v-for="hit in relatedBoards" :key="`${hit.board_id}:${hit.item_id}`" type="button" @click="locate(hit)"><span>{{ hit.board_title }}</span><small>{{ uiText('在画板中查看') }} ↗</small></button><p v-if="!relatedBoards.length">{{ uiText('这个知识点还没有关联画板。') }}</p></template></div></div>
+          <p v-if="!catalogLoading && !catalogError && !filteredCatalog.length" class="board-catalog-empty">{{ catalogQuery ? uiText('没有找到匹配的内容。') : catalogKind === 'note' ? uiText('还没有空间笔记，可以在这里写下第一个想法。') : catalogKind === 'prebuild' ? uiText('当前材料尚无这一类预构建内容。') : uiText('当前工作区中，这份材料还没有这一类记录。旧学习记录保留在原来的范围。') }}</p>
           <button v-if="catalogNext !== null" class="board-catalog-more" type="button" :disabled="catalogLoading" @click="loadCatalog(true)">{{ catalogLoading ? uiText('正在读取已有内容…') : uiText('继续读取更多内容') }}</button>
         </div>
       </section>
@@ -844,6 +1186,7 @@ defineExpose({ flush });
 </template>
 
 <style scoped>
+.board-add-dialog{overflow:auto}.board-note-create{flex-shrink:0;margin:0 0 15px}.board-note-create-trigger{display:inline-flex;align-items:center;gap:6px;min-height:32px;border:0;background:transparent;color:var(--brand-accent);font-size:12px;cursor:pointer}.board-note-create-form{display:flex;flex-direction:column;gap:12px;padding:15px;border:1px solid var(--hairline);border-radius:8px;background:var(--surface-soft)}.board-note-create-form label{display:flex;flex-direction:column;gap:6px;color:var(--steel);font-size:11px}.board-note-create-form input,.board-note-create-form textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px 11px;border:1px solid var(--hairline);border-radius:6px;background:var(--reader-card);color:var(--ink);font:inherit;font-size:12px;line-height:1.7}.board-note-create-form textarea{min-height:90px;resize:vertical}.board-note-create-form>div{display:flex;justify-content:flex-end;gap:12px}.board-note-create-form button{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;min-height:32px;border:0;border-radius:6px;background:transparent;color:var(--steel);font-size:11px;cursor:pointer}.board-note-create-form button.primary{background:var(--brand-accent);color:white}.board-note-create-form p{font-size:12px;line-height:1.8;color:var(--brand-error);margin:0}.board-note-create-form textarea:focus-visible{outline:2px solid var(--brand-accent);outline-offset:2px}
 .board-catalog-filters{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;color:var(--stone);font-size:11px}.board-catalog-filters select{min-width:0;max-width:75%;padding:8px 10px;border:1px solid var(--hairline);border-radius:7px;background:var(--reader-card);color:var(--steel);font:inherit}.board-catalog-filters span{white-space:nowrap}
 .board-saved-parts{display:flex;flex-wrap:wrap;gap:6px 8px;margin-bottom:8px}.board-part-location{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-soft);color:var(--steel);font:inherit;font-size:12px;cursor:pointer}.board-part-location>span:last-child{color:var(--brand-accent)}.board-saved-parts p{flex-basis:100%;margin:2px 0;font-size:12px;color:var(--steel)}
 .board-playback{display:flex;align-items:center;gap:10px;flex-shrink:0;padding:9px 22px;border-bottom:1px solid var(--hairline);background:var(--reader-card)}.board-playback select{min-width:0;max-width:240px;padding:7px 9px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-soft);color:var(--steel);font:inherit;font-size:11px}.board-playback-controls{display:flex;align-items:center;gap:3px;flex-shrink:0}.board-playback button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:32px;padding:5px 9px;border:1px solid var(--hairline);border-radius:6px;background:transparent;color:var(--steel);font:inherit;font-size:11px;cursor:pointer}.board-playback .board-play-toggle{color:var(--brand-accent)}.board-playback .board-step-select{flex:1;max-width:360px}.board-playback .board-resume-following{color:var(--brand-accent);white-space:nowrap}.board-mapping-choices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 22px;border-bottom:1px solid var(--hairline);background:var(--surface-soft);font-size:11px;color:var(--steel)}.board-mapping-choices button{padding:5px 8px;border:1px solid var(--hairline);border-radius:6px;background:var(--reader-card);color:var(--brand-accent);font:inherit;text-align:left;cursor:pointer}.board-reader-stack.has-region{grid-template-rows:minmax(160px,1fr) minmax(200px,1fr)}.board-reader-stack.has-region>*{grid-area:auto}.board-reader-stack.has-region>.board-retained-presentation{min-height:0}@media(max-width:700px){.board-playback{gap:7px;flex-wrap:wrap;padding:8px 12px}.board-playback>select:first-child{flex:1;max-width:none;width:calc(100% - 152px)}.board-playback .board-step-select{max-width:none;flex-basis:150px}.board-playback button{padding:5px 7px}.board-mapping-choices{padding:8px 12px}.board-reader-stack.has-region{grid-template-rows:minmax(170px,1fr) minmax(200px,1fr)}}
@@ -898,4 +1241,17 @@ button{min-height:0;padding:0;border-radius:0}
 .board-body{grid-template-columns:minmax(0,1fr) minmax(340px,37%)}.board-side-rail{display:flex;flex-direction:column;min-width:0;min-height:0;border-left:1px solid var(--hairline);background:var(--reader-card)}.board-rail-tabs{display:flex;align-items:center;flex-shrink:0;gap:20px;height:48px;padding:0 22px;border-bottom:1px solid var(--hairline)}.board-rail-tabs button{display:flex;align-items:center;gap:7px;height:100%;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--stone);font-size:12px;cursor:pointer}.board-rail-tabs button[aria-selected=true]{color:var(--brand-accent);border-bottom-color:var(--brand-accent)}.board-rail-tabs span{font-size:10px;color:var(--stone)}.board-discussion-live-dot{width:5px;height:5px;border-radius:50%;background:var(--brand-accent)}.board-side-rail .board-reader-stack{flex:1;min-height:0}.board-whole-context{flex-shrink:0;padding:3px 7px;border:1px solid var(--hairline);border-radius:5px;background:var(--surface-soft);color:var(--brand-accent);font-size:10px;cursor:pointer}.board-question-target>span{flex:1;min-width:0}.board-question-form{max-width:none}.board-side-rail :deep(.board-reading-pane){border-left:0}
 @media(min-width:1400px){.board-body{grid-template-columns:minmax(0,1fr) 460px}}
 @media(max-width:700px){.board-body>.board-side-rail{width:100%;height:100%;border-left:0}.board-body.mobile-canvas>.board-side-rail{display:none}.board-body.mobile-reading>.board-canvas,.board-body.mobile-discussion>.board-canvas{display:none}.board-rail-tabs{display:none}.board-side-rail .board-reader-stack{height:100%}.board-mobile-switch{flex-shrink:0}.board-question-target{gap:5px}.board-whole-context{padding:3px 6px}.board-body.mobile-reading .board-conversation{display:none}.board-question-target>span{white-space:nowrap}.board-run-status{margin-bottom:6px;padding-bottom:4px}}
+</style>
+<style scoped>
+.board-map-area{position:relative;min-width:0;min-height:0;overflow:hidden;display:grid}.board-map-area>*{grid-area:1/1;min-width:0;min-height:0}.map-notice{gap:8px;padding-top:6px;padding-bottom:6px}.map-notice>span{flex:1}.map-notice button{border:0;background:transparent;color:var(--brand-accent);font-size:11px;cursor:pointer}.map-ai-actions{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.map-ai-actions button{border:1px solid var(--hairline);border-radius:6px;background:var(--surface-soft);color:var(--steel);font-size:10px;padding:5px 9px;cursor:pointer}.map-ai-actions button:hover{border-color:var(--brand-accent);color:var(--brand-accent)}.map-editor-dialog{display:flex;flex-direction:column;gap:14px;width:min(520px,100%);max-height:100%;overflow:auto;padding:24px;background:var(--reader-card);color:var(--ink);border:1px solid var(--hairline);border-radius:14px;box-shadow:0 18px 70px #25232024}.map-editor-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}.map-editor-dialog h2{font-size:20px;font-weight:550;margin:0}.map-editor-dialog header button{display:grid;place-items:center;padding:5px;border:0;background:transparent;color:var(--steel);cursor:pointer}.map-editor-dialog p{font-size:12px;line-height:1.8;color:var(--steel);margin:0}.map-editor-dialog input:not([type=checkbox]),.map-editor-dialog textarea,.map-editor-dialog select{font:inherit;font-size:13px;border:1px solid var(--hairline);border-radius:7px;background:var(--surface-soft);color:var(--ink);padding:10px;min-width:0;width:100%}.map-editor-dialog textarea{font-family:var(--sans);line-height:1.7;min-height:160px;resize:vertical}.map-editor-dialog small{font-size:11px;line-height:1.8;color:var(--stone)}.map-target-list{max-height:260px;min-height:90px;overflow:auto;border:1px solid var(--hairline);border-radius:8px}.map-target-list button{display:flex;flex-direction:column;gap:4px;width:100%;padding:11px 13px;text-align:left;border:0;border-bottom:1px solid var(--hairline-soft);background:transparent;color:var(--ink);font-size:13px;cursor:pointer}.map-target-list button[aria-selected=true]{background:color-mix(in srgb,var(--brand-accent) 9%,var(--reader-card));color:var(--brand-accent)}.map-target-list button small{font-size:10px}.map-field{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--steel)}.map-editor-dialog footer{display:flex;justify-content:flex-end;gap:9px;margin-top:7px}.map-editor-dialog footer button{padding:9px 14px;border:1px solid var(--hairline);border-radius:7px;background:var(--reader-card);color:var(--steel);font-size:12px;cursor:pointer}.map-editor-dialog footer .map-primary{background:var(--brand-accent);border-color:var(--brand-accent);color:white}.map-colors{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.map-colors button{display:grid;place-items:center;width:40px;height:40px;border:3px solid transparent;border-radius:50%;color:white;font-size:10px;cursor:pointer;outline:1px solid var(--hairline)}.map-colors button:first-child{color:var(--steel)}.map-colors button[aria-pressed=true]{outline:2px solid var(--brand-accent);outline-offset:3px}.map-bold{display:flex;gap:8px;font-size:13px;color:var(--steel);padding:8px 0}.map-bold input{accent-color:var(--brand-accent)}
+@media(max-width:700px){.board-body>.board-map-area{width:100%;height:100%}.board-body.mobile-reading>.board-map-area,.board-body.mobile-discussion>.board-map-area{display:none}.map-editor-dialog{padding:20px;max-height:calc(100dvh - 32px)}.map-ai-actions{gap:5px;margin-bottom:6px}.map-ai-actions button{font-size:10px;padding:5px 7px}.map-target-list{max-height:32dvh}}
+</style>
+<style scoped>
+.map-link-editor{display:flex;align-items:center;gap:12px;padding:8px 22px;background:var(--surface-soft);border-bottom:1px solid var(--hairline);font-size:12px}.map-link-editor label{display:flex;align-items:center;gap:8px;flex:1;color:var(--steel)}.map-link-editor input{flex:1;min-width:0;border:1px solid var(--hairline);border-radius:6px;padding:6px 8px;background:var(--reader-card);color:var(--ink);font:inherit;font-size:12px}.map-link-editor button{border:0;background:transparent;color:var(--brand-error);font-size:11px;cursor:pointer;white-space:nowrap}
+</style>
+<style scoped>
+.map-conversion-dialog{display:flex;flex-direction:column;width:min(1100px,100%);height:min(780px,100%);min-height:0;padding:22px;background:var(--reader-card);border:1px solid var(--hairline);border-radius:14px;box-shadow:0 18px 70px #25232024}.map-conversion-dialog header{display:flex;align-items:center;justify-content:space-between}.map-conversion-dialog h2{margin:0;font-size:20px;font-weight:550}.map-conversion-dialog header button{padding:5px;background:transparent;color:var(--steel);border:0;cursor:pointer}.map-conversion-dialog>p{font-size:12px;line-height:1.8;color:var(--steel)}.map-conversion-canvas{flex:1;min-height:0;border:1px solid var(--hairline);border-radius:8px;overflow:hidden}.map-conversion-canvas>.board-canvas{height:100%}.map-conversion-dialog footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}.map-conversion-dialog footer button{border:1px solid var(--hairline);border-radius:7px;background:var(--reader-card);color:var(--steel);padding:9px 12px;font:inherit;font-size:12px;cursor:pointer}.map-conversion-dialog footer .map-primary{background:var(--brand-accent);color:white;border-color:var(--brand-accent)}@media(max-width:700px){.map-conversion-dialog{padding:15px}}
+</style>
+<style scoped>
+.map-orphaned-draft{display:flex;gap:14px;align-items:center;padding:12px 22px;background:var(--surface-soft);border-bottom:1px solid var(--hairline)}.map-orphaned-draft label{display:flex;flex-direction:column;gap:6px;flex:1;color:var(--steel);font-size:11px}.map-orphaned-draft textarea{width:100%;min-height:64px;border:1px solid var(--hairline);border-radius:6px;padding:8px;background:var(--reader-card);color:var(--ink);font:inherit;font-size:13px;line-height:1.7;resize:vertical}.map-orphaned-draft>div{display:flex;gap:7px;flex-wrap:wrap}.map-orphaned-draft button{padding:7px 10px;border:1px solid var(--hairline);border-radius:6px;background:var(--reader-card);color:var(--brand-accent);font-size:11px;cursor:pointer}@media(max-width:700px){.map-orphaned-draft{padding:10px 14px;flex-direction:column;align-items:stretch}}
 </style>

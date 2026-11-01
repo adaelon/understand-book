@@ -262,6 +262,10 @@ pub trait ResidentStatePort {
     fn workspace_records(&mut self, _request: serde_json::Value) -> Result<serde_json::Value, read_tools::ToolError> {
         Err(memory::teaching::invalid("Linked workspace records are unavailable"))
     }
+    fn workspace_notes_available(&self) -> bool { false }
+    fn workspace_notes(&mut self, _request: serde_json::Value) -> Result<serde_json::Value, read_tools::ToolError> {
+        Err(crate::workspace_notes::unavailable())
+    }
     fn library_available(&self) -> bool { false }
     fn library_source(&mut self, _reference: &base_schema::PublishedBookRef) -> Result<crate::library::LibrarySource, read_tools::ToolError> { Err(crate::library::unavailable()) }
     fn library_read(&mut self, _name: &str, _arguments: serde_json::Value) -> Result<crate::library::LibraryReadResult, read_tools::ToolError> {

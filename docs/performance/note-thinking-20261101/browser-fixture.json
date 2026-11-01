@@ -1,0 +1,529 @@
+{
+  "action": {
+    "context": {
+      "book_id": "book",
+      "label": "总时间包含停车时间",
+      "publication_id": null,
+      "session_id": "chat",
+      "turn_id": "turn",
+      "workspace_id": "scope-a"
+    },
+    "note_ref": {
+      "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+      "revision": 1
+    },
+    "source_revision": "v1",
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "区分运动时间与全程时间",
+      "focus_ref": "focus:elapsed",
+      "learning_focus": "总时间包含停车时间",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "book",
+          "source_revision": "v1",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "understanding_ref": {
+      "evidence_ref": "observation",
+      "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+      "workspace_id": "scope-a"
+    }
+  },
+  "corrected": {
+    "current_revision": 2,
+    "current_understanding": [
+      {
+        "assistance": "本次未记录提示或先前讲解",
+        "capability": "explanation",
+        "correction": "我是在求证，还没有确定停车不算。请保留为待确认。",
+        "demonstrated": [],
+        "difficulties": [],
+        "evidence_ref": "correction:browser-correction",
+        "evidence_refs": [
+          "correction:browser-correction"
+        ],
+        "focus_ref": "focus:elapsed",
+        "interpreter_version": "learner.correction.v1",
+        "label": "总时间包含停车时间",
+        "learner_quote": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "nature": "hypothesis",
+        "next_step": "采用用户纠正重新确定讲解起点：我是在求证，还没有确定停车不算。请保留为待确认。",
+        "note_refs": [
+          {
+            "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+            "revision": 1
+          }
+        ],
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "source_id": "book",
+        "source_revision": "v1",
+        "source_session_id": "chat",
+        "source_session_title": "这段行程的时间",
+        "source_turn_id": "turn",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "区分运动时间与全程时间",
+          "focus_ref": "focus:elapsed",
+          "learning_focus": "总时间包含停车时间",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "book",
+              "source_revision": "v1",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "unconfirmed": [
+          "原判断已撤回，依据用户补充重新确认"
+        ],
+        "workspace_id": "scope-a"
+      }
+    ],
+    "next_cursor": null,
+    "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+    "timeline": [
+      {
+        "assisted": false,
+        "attempt": 0,
+        "correction": "我是在求证，还没有确定停车不算。请保留为待确认。",
+        "id": "correction:browser-correction",
+        "interpretation": "原解释已被用户纠正，等待新的表现依据",
+        "kind": "correction",
+        "label": "总时间包含停车时间",
+        "nature": "hypothesis",
+        "note_refs": [
+          {
+            "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+            "revision": 1
+          }
+        ],
+        "occurred_at": "1793505379",
+        "questionable": false,
+        "source_id": "book",
+        "source_revision": "v1",
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "superseded": false,
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "workspace_id": "scope-a"
+      },
+      {
+        "authorship": "user",
+        "based_on_turn": {
+          "session_id": "chat",
+          "turn_id": "turn"
+        },
+        "change_note": null,
+        "id": "revision:2",
+        "kind": "revision",
+        "occurred_at": "2026-11-01T01:05:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 2
+        },
+        "restored_from": null,
+        "text": "我原来觉得，只有移动时才应该计时。现在我想把整段行程画出来，再看看停车到底属于哪一段。"
+      },
+      {
+        "assisted": false,
+        "attempt": 0,
+        "correction": null,
+        "id": "observation",
+        "interpretation": "将是否移动作为全程时间的边界",
+        "kind": "understanding",
+        "label": "总时间包含停车时间",
+        "nature": "hypothesis",
+        "note_refs": [
+          {
+            "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+            "revision": 1
+          }
+        ],
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "questionable": false,
+        "source_id": "book",
+        "source_revision": "v1",
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "superseded": true,
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "workspace_id": "scope-a"
+      },
+      {
+        "id": "discussion:chat:turn",
+        "kind": "discussion",
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 1
+        },
+        "session_title": "这段行程的时间",
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。"
+      },
+      {
+        "authorship": "user",
+        "based_on_turn": null,
+        "change_note": null,
+        "id": "revision:1",
+        "kind": "revision",
+        "occurred_at": "2026-11-01T01:00:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 1
+        },
+        "restored_from": null,
+        "text": "停车的时候没运动，这段时间应该不算吧？"
+      }
+    ],
+    "update_status": "ready",
+    "updates": []
+  },
+  "evidence": {
+    "action_ref": "expression",
+    "assessment_ref": null,
+    "assistance": [],
+    "assistance_count": 0,
+    "assistance_refs": [],
+    "attempt": 0,
+    "capability": "explanation",
+    "correction": null,
+    "delivery_ref": null,
+    "evidence_id": "observation",
+    "expressions": [
+      {
+        "assistance_refs": null,
+        "fact_ref": "expression",
+        "fact_sequence": 1,
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "response_origin": null,
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "support_delivery_refs": null,
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。"
+      }
+    ],
+    "fact_refs": [
+      "expression"
+    ],
+    "fact_sequence": 1,
+    "feedback_hidden": false,
+    "interpretation": "将是否移动作为全程时间的边界",
+    "interpreter_version": "resident.hypothesis.v2",
+    "label": "总时间包含停车时间",
+    "learner_quote": "我觉得停车时没有走距离，所以不用计入总时间。",
+    "map_revision": null,
+    "nature": "hypothesis",
+    "note_refs": [
+      {
+        "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+        "revision": 1
+      }
+    ],
+    "object_id": null,
+    "object_revision": null,
+    "occurred_at": "2026-11-01T01:02:00Z",
+    "prompt": "区分运动时间与全程时间",
+    "session_id": "stage",
+    "source_id": "book",
+    "source_quotes": [],
+    "source_revision": "v1",
+    "source_session_id": "chat",
+    "source_session_title": "这段行程的时间",
+    "source_turn_id": "turn",
+    "status": "unassessed",
+    "superseded": false,
+    "supersedes": null,
+    "target": {
+      "capability": "explanation",
+      "expected_performance": "区分运动时间与全程时间",
+      "focus_ref": "focus:elapsed",
+      "learning_focus": "总时间包含停车时间",
+      "object_refs": [],
+      "source_bindings": [
+        {
+          "end_lid": "1.1",
+          "source_id": "book",
+          "source_revision": "v1",
+          "start_lid": "1.1"
+        }
+      ]
+    },
+    "teaching_implication": "用出发到到达的时间线解释停车为何计入",
+    "understanding": {
+      "demonstrated": [],
+      "difficulties": [
+        "仍把停止移动看成行程计时结束"
+      ],
+      "unconfirmed": [
+        "改变停车时长后能否判断平均速度"
+      ]
+    }
+  },
+  "history": {
+    "discussions": [
+      {
+        "created_at": "2026-11-01T01:02:00Z",
+        "expression": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 1
+        },
+        "turn": {
+          "session_id": "chat",
+          "turn_id": "turn"
+        }
+      }
+    ],
+    "revisions": [
+      {
+        "authorship": "user",
+        "based_on_turn": {
+          "session_id": "chat",
+          "turn_id": "turn"
+        },
+        "change_note": null,
+        "context": {
+          "book_id": null,
+          "label": null,
+          "lid": null,
+          "publication_id": null,
+          "session_id": null,
+          "turn_id": null,
+          "video_time_ms": null,
+          "workspace_id": null
+        },
+        "record": {
+          "anchor": {},
+          "book_id": "",
+          "citations": [],
+          "content": "我原来觉得，只有移动时才应该计时。现在我想把整段行程画出来，再看看停车到底属于哪一段。",
+          "generated_at": "2026-11-01T01:00:00Z",
+          "layer": "long_term",
+          "mem_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "type": "note",
+          "usage": {
+            "count": 0
+          }
+        },
+        "restored_from": null,
+        "revision": 2,
+        "saved_at": "2026-11-01T01:05:00Z",
+        "source_refs": [],
+        "title": "停车的时候没运动，这段时间应该不算吧？"
+      },
+      {
+        "authorship": "user",
+        "based_on_turn": null,
+        "change_note": null,
+        "context": {
+          "book_id": null,
+          "label": null,
+          "lid": null,
+          "publication_id": null,
+          "session_id": null,
+          "turn_id": null,
+          "video_time_ms": null,
+          "workspace_id": null
+        },
+        "record": {
+          "anchor": {},
+          "book_id": "",
+          "citations": [],
+          "content": "停车的时候没运动，这段时间应该不算吧？",
+          "generated_at": "2026-11-01T01:00:00Z",
+          "layer": "long_term",
+          "mem_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "type": "note",
+          "usage": {
+            "count": 0
+          }
+        },
+        "restored_from": null,
+        "revision": 1,
+        "saved_at": "2026-11-01T01:00:00Z",
+        "source_refs": [],
+        "title": null
+      }
+    ]
+  },
+  "note": {
+    "created_at": "2026-11-01T01:00:00Z",
+    "current_revision": 2,
+    "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+    "value": {
+      "authorship": "user",
+      "based_on_turn": {
+        "session_id": "chat",
+        "turn_id": "turn"
+      },
+      "change_note": null,
+      "context": {
+        "book_id": null,
+        "label": null,
+        "lid": null,
+        "publication_id": null,
+        "session_id": null,
+        "turn_id": null,
+        "video_time_ms": null,
+        "workspace_id": null
+      },
+      "record": {
+        "anchor": {},
+        "book_id": "",
+        "citations": [],
+        "content": "我原来觉得，只有移动时才应该计时。现在我想把整段行程画出来，再看看停车到底属于哪一段。",
+        "generated_at": "2026-11-01T01:00:00Z",
+        "layer": "long_term",
+        "mem_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+        "type": "note",
+        "usage": {
+          "count": 0
+        }
+      },
+      "restored_from": null,
+      "revision": 2,
+      "saved_at": "2026-11-01T01:05:00Z",
+      "source_refs": [],
+      "title": "停车的时候没运动，这段时间应该不算吧？"
+    }
+  },
+  "thinking": {
+    "current_revision": 2,
+    "current_understanding": [
+      {
+        "assistance": "本次未记录提示或先前讲解",
+        "capability": "explanation",
+        "correction": null,
+        "demonstrated": [],
+        "difficulties": [
+          "仍把停止移动看成行程计时结束"
+        ],
+        "evidence_ref": "observation",
+        "evidence_refs": [
+          "observation"
+        ],
+        "focus_ref": "focus:elapsed",
+        "interpreter_version": "resident.hypothesis.v2",
+        "label": "总时间包含停车时间",
+        "learner_quote": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "nature": "hypothesis",
+        "next_step": "用出发到到达的时间线解释停车为何计入",
+        "note_refs": [
+          {
+            "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+            "revision": 1
+          }
+        ],
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "source_id": "book",
+        "source_revision": "v1",
+        "source_session_id": "chat",
+        "source_session_title": "这段行程的时间",
+        "source_turn_id": "turn",
+        "target": {
+          "capability": "explanation",
+          "expected_performance": "区分运动时间与全程时间",
+          "focus_ref": "focus:elapsed",
+          "learning_focus": "总时间包含停车时间",
+          "object_refs": [],
+          "source_bindings": [
+            {
+              "end_lid": "1.1",
+              "source_id": "book",
+              "source_revision": "v1",
+              "start_lid": "1.1"
+            }
+          ]
+        },
+        "unconfirmed": [
+          "改变停车时长后能否判断平均速度"
+        ],
+        "workspace_id": "scope-a"
+      }
+    ],
+    "next_cursor": null,
+    "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+    "timeline": [
+      {
+        "authorship": "user",
+        "based_on_turn": {
+          "session_id": "chat",
+          "turn_id": "turn"
+        },
+        "change_note": null,
+        "id": "revision:2",
+        "kind": "revision",
+        "occurred_at": "2026-11-01T01:05:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 2
+        },
+        "restored_from": null,
+        "text": "我原来觉得，只有移动时才应该计时。现在我想把整段行程画出来，再看看停车到底属于哪一段。"
+      },
+      {
+        "assisted": false,
+        "attempt": 0,
+        "correction": null,
+        "id": "observation",
+        "interpretation": "将是否移动作为全程时间的边界",
+        "kind": "understanding",
+        "label": "总时间包含停车时间",
+        "nature": "hypothesis",
+        "note_refs": [
+          {
+            "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+            "revision": 1
+          }
+        ],
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "questionable": false,
+        "source_id": "book",
+        "source_revision": "v1",
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "superseded": false,
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。",
+        "workspace_id": "scope-a"
+      },
+      {
+        "id": "discussion:chat:turn",
+        "kind": "discussion",
+        "occurred_at": "2026-11-01T01:02:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 1
+        },
+        "session_title": "这段行程的时间",
+        "source_session_id": "chat",
+        "source_turn_id": "turn",
+        "text": "我觉得停车时没有走距离，所以不用计入总时间。"
+      },
+      {
+        "authorship": "user",
+        "based_on_turn": null,
+        "change_note": null,
+        "id": "revision:1",
+        "kind": "revision",
+        "occurred_at": "2026-11-01T01:00:00Z",
+        "reference": {
+          "note_id": "note-01a19540-4200-7f30-a78d-9e84afea18cf",
+          "revision": 1
+        },
+        "restored_from": null,
+        "text": "停车的时候没运动，这段时间应该不算吧？"
+      }
+    ],
+    "update_status": "ready",
+    "updates": []
+  }
+}

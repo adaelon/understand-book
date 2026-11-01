@@ -6,3 +6,8 @@ export function candidatePreviewDrawings(items: readonly BoardItem[], candidateI
   const ids = new Set(candidateItemIds);
   return items.filter(item => item.target.kind === 'drawing' && ids.has(item.item_id));
 }
+
+export function candidatePreviewVisuals(items: readonly BoardItem[], candidateItemIds: readonly string[]): BoardItem[] {
+  const ids = new Set(candidateItemIds);
+  return items.filter(item => (item.target.kind === 'drawing' || item.target.kind === 'topic') && ids.has(item.item_id));
+}

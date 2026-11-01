@@ -1,0 +1,100 @@
+[
+  {
+    "test": "control_store::account_registration_schema_tests::inv1_upgrades_preserve_old_fields_and_match_fresh_schema_on_reopen",
+    "reason": "panicked at crates\\server\\src\\account_registration_schema_tests.rs:140:13:\nassertion `left == right` failed: schema 5\n  left: [(\"admin_operations\", \"CREATETABLEadmin_operations(actorTEXTNOTNULLREFERENCESusers(user_id),operation_idTEXTNOTNULL,user_idTEXTNOTNULLREFERENCESusers(user_id),kindTEXTNOTNULL,parameters_jsonTEXTNOTNULLCHECK(json_valid(parameters_json)),result_jsonTEXTNOTNULLCHECK(json_valid(result_json)),created_atINTEGERNOTNULL,PRIMARYKEY(actor,operation_id),UNIQUE(actor,operation_id,user_id))STRICT\"), (\"admin_operations_user_time\", \"CREATEINDEXadmin_operations_user_timeONadmin_operations(user_id,created_at)\"), (\"admin_usage_events\", \"CREATETABLEadmin_usage_events(user_idTEXTNOTNULLREFERENCESusers(user_id),kindTEXTNOTNULLCHECK(kindIN('read','question','completed')),event_refTEXTNOTNULL,occurred_atINTEGERNOTNULL,PRIMARYKEY(user_id,kind,event_ref))STRICT\"), (\"admin_usage_events_time\", \"CREATEINDEXadmin_usage_events_timeONadmin_usage_events(occurred_at,user_id,kind)\"), (\"admin_usage_events_user_time\", \"CREATEINDEXadmin_usage_events_user_timeONadmin_usage_events(user_id,occurred_at,kind)\"), (\"admission_dispatch\", \"CREATEINDEXadmission_dispatchONrun_admissions(dispatch_state,owner_user_id)\"), (\"allowance_adjustments\", \"CREATETABLEallowance_adjustments(actorTEXTNOTNULL,operation_idTEXTNOTNULL,user_idTEXTNOTNULL,period_idTEXTNOTNULL,delta_micro_cnyINTEGERNOTNULLCHECK(delta_micro_cny<>0),reasonTEXTNOTNULLCHECK(length(trim(reason))>0),receipt_idTEXT,created_atINTEGERNOTNULL,PRIMARYKEY(actor,operation_id),FOREIGNKEY(actor,operation_id,user_id)REFERENCESadmin_operations(actor,operation_id,user_id),FOREIGNKEY(period_id,user_id)REFERENCESallowance_periods(period_id,user_id),FOREIGNKEY(receipt_id,user_id)REFERENCESmanual_receipts(receipt_id,user_id))STRICT\"), (\"allowance_adju",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "host::agent_run_tests::resident_restored_projection_does_not_restore_prior_tool_activation",
+    "reason": "panicked at crates\\server\\src\\agent_run_tests.rs:1232:5:\nassertion failed: sampled.request[\"tools\"].as_array().unwrap().iter().any(|tool|\n        tool[\"function\"][\"name\"] == \"memory_recall\")\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::ambiguous_forget_reaches_main_agent_as_ephemeral_clarification_only",
+    "reason": "panicked at crates\\server\\src\\lib.rs:21386:9:\nassertion `left == right` failed\n  left: 2\n right: 1\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::finalization_protocol_violation_persists_incomplete_fallback_without_effects",
+    "reason": "panicked at crates\\server\\src\\lib.rs:23449:9:\nassertion `left == right` failed\n  left: String(\"PROVIDER_ERROR\")\n right: \"FINALIZATION_TOOL_PROTOCOL_VIOLATION\"\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::memory_replace_is_single_command_and_missing_is_404",
+    "reason": "panicked at crates\\server\\src\\lib.rs:20450:9:\nassertion `left != right` failed\n  left: String(\"mem_128d9d881325192e\")\n right: String(\"mem_128d9d881325192e\")\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::mu6_tests::e1_workspace_integration_tests::e1_d_existing_period_and_legacy_chat_upgrade_select_once_and_preserve_evidence",
+    "reason": "panicked at crates\\server\\src\\tests\\e1_workspace_integration_tests.rs:247:5:\nassertion `left == right` failed\n  left: 2\n right: 1\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::mu6_tests::cache_observation_tests::formal_admission_exports_usage_diagnostics_and_terminal_states",
+    "reason": "panicked at crates\\server\\src\\tests\\cache_observation_tests.rs:124:17:\nassertion `left == right` failed\n  left: String(\"available_answer\")\n right: \"unknown\"\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::non_confirmation_cancels_pending_sensitive_memory",
+    "reason": "panicked at crates\\server\\src\\lib.rs:21306:9:\nassertion `left == right` failed\n  left: 3\n right: 1\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::note_body_placement_markdown_routes_fail_closed_and_reanchor_atomically",
+    "reason": "panicked at crates\\server\\src\\lib.rs:20193:9:\nassertion `left != right` failed\n  left: String(\"mem_45e5c7b87fbff26d\")\n right: \"mem_45e5c7b87fbff26d\"\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection",
+    "reason": "panicked at crates\\server\\src\\agent_run_tests.rs:156:42:\ncalled `Result::unwrap()` on an `Err` value: Os { code: 10060, kind: TimedOut, message: \"由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。\" }\n\nthread 'host::agent_run_tests::resident_goals_persist_continue_select_and_cancel_without_resurrection' (54768) panicked at crates\\server\\src\\agent_run_tests.rs:258:32:\ncalled `Result::unwrap()` on an `Err` value: Any { .. }",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::profile_snapshot_explicit_remember_commits_before_projection_and_survives_new_chat",
+    "reason": "panicked at crates\\server\\src\\lib.rs:21217:9:\nassertion `left == right` failed\n  left: 2\n right: 1\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::provider_failure_persists_stable_incomplete_turn_before_restart",
+    "reason": "panicked at crates\\server\\src\\lib.rs:14173:13:\nnot implemented: precommit ordering test does not use complete\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::sensitive_memory_waits_for_exact_next_message_without_second_extraction",
+    "reason": "panicked at crates\\server\\src\\lib.rs:21263:9:\nassertion `left == right` failed\n  left: 2\n right: 1\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  },
+  {
+    "test": "tests::session_recap_tests::rn4_recap_follows_edited_note_and_reports_deletion",
+    "reason": "panicked at crates\\server\\src\\tests\\session_recap_tests.rs:353:5:\nassertion `left != right` failed\n  left: \"mem_44ecc7f1c54948af\"\n right: \"mem_44ecc7f1c54948af\"\n",
+    "status": "resolved",
+    "verified_on": "2026-11-01",
+    "verification_log": "logs/regression-updated.log"
+  }
+]

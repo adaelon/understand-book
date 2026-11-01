@@ -1,4 +1,5 @@
-import { t as uiText, errorMessage } from './i18n';
+import { t as uiText } from './i18n';
+import { spendFailureMessage } from './account-allowance';
 import type { AgentAnswerView } from "./generated/AgentAnswerView";
 import type { RunActivity } from "./generated/RunActivity";
 import type { AgentEffect, ReaderState, AgentChatTurn } from "./api";
@@ -146,5 +147,10 @@ export function agentFailureMessage(error: AgentChatTurn['error'], summary?: Age
   if (error.error_code === 'TEACHING_INVALID' || error.error_code === 'TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING') {
     return uiText('这次讲解尚未准备完成，请重试。');
   }
-  return errorMessage(error.message, error.error_code);
+  const spend = spendFailureMessage(error.error_code);
+  if (spend) return spend;
+  if (error.error_code === 'TURN_UNSAVED' || error.category === 'storage') return uiText('结果保存失败，请重试保存。');
+  if (error.error_code === 'INTERRUPTED' || error.error_code === 'AGENT_RUN_NOT_FOUND') return uiText('这次回答已中断，请重新提交。');
+  if (error.category === 'provider' || error.category === 'protocol' || error.category === 'capacity') return uiText('服务暂时不可用，请稍后重试。');
+  return uiText('这次回答未能完成，请重试。');
 }

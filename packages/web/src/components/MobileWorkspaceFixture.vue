@@ -12,6 +12,7 @@ import TutorControl from './TutorControl.vue';
 import type { TutorSession } from '../generated/TutorSession';
 import { renderMarkdown } from '../md';
 import mathAnswer from '../fixtures/agent-math-answer.md?raw';
+import { agentFailureMessage } from '../agent-run-state';
 
 const logical = {
   contextKey: "fixture:chat",
@@ -47,7 +48,12 @@ const mathFixture = fixtureParams.has('math-answer');
 const answer = mathFixture ? mathAnswer : selectionFixture
   ? '- 给了第二个名字 → 终点取**那个名字**对应节点的末尾；\n- 没给 → 终点取**第一个名字自己**的末尾，也就是只读这一个位置的范围。\n\n' + '后续解释用于保留对话的滚动位置。\n\n'.repeat(20)
   : '<p>两条曲线表示两种解释各自的预测，页面明确标注它们不是实测数据。请先写下预测，再通过测量判断哪种解释成立。</p>'.repeat(16);
-const chat = longChat || mathFixture ? [{ turnId: 'long-turn', user: mathFixture ? '请解释线性注意力的状态更新与读出。' : '请解释预测与实测的区别。', pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], outcome: {
+const failedAnswer = fixtureParams.get('failed-answer');
+const chat = failedAnswer ? [{ turnId: 'failed-turn', user: '我知道向量范数了，那矩阵范数是什么，又怎么理解呢', pending: false,
+  questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], outcome: null,
+  error: agentFailureMessage({ error_code: failedAnswer, category: 'validation',
+    message: '$.move must satisfy anyOf (0 matching variants); $.move.delivery_text is required; $.move.board_candidate_revision is required' }),
+}] : longChat || mathFixture ? [{ turnId: 'long-turn', user: mathFixture ? '请解释线性注意力的状态更新与读出。' : '请解释预测与实测的区别。', pending: false, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [], outcome: {
   answer, answer_view: { parts: selectionFixture ? [
     { kind: 'markdown' as const, text: answer },
     { kind: 'sources' as const, source_ref_ids: ['fixture-source'] },

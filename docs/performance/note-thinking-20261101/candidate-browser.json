@@ -1,0 +1,24 @@
+{
+  "screens": [
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 960
+      },
+      "file": "candidate-notes-1366.png",
+      "overflow": false
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "file": "candidate-notes-390.png",
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "failedResources": [],
+  "requests": 85,
+  "passed": true
+}

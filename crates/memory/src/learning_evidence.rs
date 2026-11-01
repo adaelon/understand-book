@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const ESTIMATOR_VERSION: &str = "learner.conditions.v4";
+pub const ESTIMATOR_VERSION: &str = "learner.conditions.v5";
 
 // Interpretations may be written by a later background job. Their position in
 // learning history comes from the last actual expression they interpret, never
@@ -47,6 +47,12 @@ pub enum EvidenceNature {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LearningEvidence {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub note_refs: Vec<crate::NoteRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criterion_refs: Vec<String>,
+    #[serde(default)]
+    pub understanding: crate::understanding::UnderstandingObservation,
     pub evidence_id: String,
     pub action_ref: String,
     pub delivery_ref: Option<String>,
@@ -83,6 +89,8 @@ pub struct LearningEvidence {
     pub interpreter_version: String,
     pub supersedes: Option<String>,
     pub correction: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corrected_at: Option<String>,
     pub source_quotes: Value,
 }
 
@@ -237,13 +245,23 @@ impl LearningStore {
             target.validate(&action.binding)?;
         } else {
         let delivery = self.teaching_event(evidence.delivery_ref.as_deref().ok_or_else(||invalid("表现证据缺少交付"))?)?;
+        let criterion_target = if evidence.criterion_refs.is_empty() { false } else {
+            let selected = self.teaching_event(delivery.payload["assessment_contract_ref"].as_str().ok_or_else(||invalid("评分项缺少原合同"))?)?;
+            let contract:crate::assessment::AssessmentContract=serde_json::from_value(selected.payload["move"]["assessment"].clone()).map_err(storage)?;
+            match contract.rule {
+                crate::assessment::ScoringRule::Open{items}=>evidence.criterion_refs.iter().all(|id|items.iter().any(|item|&item.id==id && item.target==evidence.target))
+                    && evidence.target.as_ref().is_some_and(|target|target.capability==evidence.capability),
+                _=>false,
+            }
+        };
         if action.kind != TeachingFact::LearnerAction
             || action.payload["delivery_ref"] != delivery.event_id
             || delivery.binding.source_id != evidence.source_id
             || delivery.binding.source_revision != evidence.source_revision
             || delivery.binding.map_revision != evidence.map_revision
             || delivery.binding.tutor_session_id != evidence.session_id
-            || delivery.payload["move"]["capability"] != evidence.capability
+            || (!criterion_target && delivery.payload["move"]["capability"] != evidence.capability)
+            || (!evidence.criterion_refs.is_empty() && !criterion_target)
             || evidence.object_id.is_some() != evidence.object_revision.is_some()
             || (evidence.object_id.is_some() && !delivery.payload["object_versions"]
                 .as_array()
@@ -253,8 +271,8 @@ impl LearningStore {
                     o["ref"]["object_id"].as_str() == evidence.object_id.as_deref()
                         && o["object_revision"].as_u64() == evidence.object_revision
                 }))
-            || (evidence.object_id.is_none() && (evidence.target.is_none()
-                || serde_json::to_value(&evidence.target).map_err(storage)? != delivery.payload["move"]["target"]))
+            || (!criterion_target && evidence.object_id.is_none()
+                && serde_json::to_value(&evidence.target).map_err(storage)? != delivery.payload["move"].get("target").cloned().unwrap_or(Value::Null))
         {
             return Err(invalid("证据与实际行为或原对象版本不符"));
         }
@@ -273,7 +291,8 @@ impl LearningStore {
                 return Err(invalid("解释已经更新，请刷新后纠正"));
             }
         }
-        self.connection
+        let tx=self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+        tx
             .execute(
                 "INSERT INTO learning_evidence(learning_workspace_id,evidence_id,source_id,evidence) VALUES (?,?,?,?)",
                 params![
@@ -284,6 +303,15 @@ impl LearningStore {
                 ],
             )
             .map_err(storage)?;
+        for reference in &evidence.note_refs {
+            let revision=reference.revision.ok_or_else(||invalid("理解依据需要确切笔记版本"))?;
+            tx.execute("INSERT INTO understanding_note_evidence(note_id,revision,learning_workspace_id,evidence_id) VALUES(?,?,?,?)",params![reference.note_id,revision,self.workspace_scope,evidence.evidence_id]).map_err(storage)?;
+        }
+        if let Some(target)=evidence.target.as_ref().filter(|target|target.focus_ref.is_some()) {
+            tx.execute("INSERT OR IGNORE INTO understanding_focus(learning_workspace_id,focus_ref,source_id,source_revision,target) VALUES(?,?,?,?,?)",
+                params![self.workspace_scope,target.focus_ref,evidence.source_id,evidence.source_revision,serde_json::to_string(target).map_err(storage)?]).map_err(storage)?;
+        }
+        tx.commit().map_err(storage)?;
         Ok(evidence.clone())
     }
 
@@ -310,21 +338,13 @@ impl LearningStore {
                 if assessment.is_none() && !personal {
                     continue;
                 }
-                let status = assessment
-                    .as_ref()
-                    .map(|a| a.status.clone())
-                    .unwrap_or(AssessmentStatus::Uncertain);
                 let delivery = self.teaching_event(
                     action.payload["delivery_ref"]
                         .as_str()
                         .ok_or_else(|| invalid("缺少交付引用"))?,
                 )?;
-                let mut objects = delivery.payload["object_versions"].as_array().cloned().unwrap_or_default();
-                if objects.is_empty() && !delivery.payload["move"]["target"].is_null() { objects.push(Value::Null); }
-                for object in objects {
-                    let id = object["ref"]["object_id"]
-                        .as_str();
-                    let evidence_id = format!("assessment:{}:{}", action.event_id, id.unwrap_or("source"));
+                for group in crate::understanding::assessed_groups(self, &delivery, assessment.as_ref())? {
+                    let evidence_id = format!("assessment:{}:{}", action.event_id, group.suffix);
                     // Historic accepted evidence keeps its original serialized contract.
                     // Derivation resumes missing work, it does not rewrite prior interpretations.
                     match self.evidence(&evidence_id) {
@@ -332,7 +352,8 @@ impl LearningStore {
                         Err(e) if e.error_code == "TEACHING_INVALID" => {},
                         Err(e) => return Err(e),
                     }
-                    let evidence = LearningEvidence {
+                    let status = group.status;
+                    let evidence = LearningEvidence { note_refs:group.notes, criterion_refs:group.criteria, understanding:Default::default(),
                         evidence_id,
                         action_ref: action.event_id.clone(),
                         delivery_ref: Some(delivery.event_id.clone()),
@@ -340,19 +361,16 @@ impl LearningStore {
                         source_id: delivery.binding.source_id.clone(),
                         source_revision: delivery.binding.source_revision.clone(),
                         map_revision: delivery.binding.map_revision.clone(),
-                        object_id: id.map(str::to_owned),
-                        object_revision: object["object_revision"].as_u64(),
+                        object_id: group.object_id,
+                        object_revision: group.object_revision,
                         nature: EvidenceNature::Performance,
-                        target: serde_json::from_value(delivery.payload["move"].get("target").cloned().unwrap_or(Value::Null)).map_err(storage)?,
+                        target: group.target,
                         design_ref: delivery.payload["move"]["design_ref"].as_str().map(str::to_owned),
                         block_refs: serde_json::from_value(delivery.payload["move"].get("block_refs").cloned().unwrap_or(json!([]))).map_err(storage)?,
                         fact_refs: vec![delivery.event_id.clone(), action.event_id.clone()],
                         teaching_implication: "结合本次表现及帮助条件调整下一步；不足时保持未知".into(),
-                        label: object["meaning"].as_str().or_else(||delivery.payload["move"]["target"]["learning_focus"].as_str()).unwrap_or("学习表现").into(),
-                        capability: delivery.payload["move"]["capability"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .into(),
+                        label: group.label,
+                        capability: group.capability,
                         assistance_refs: serde_json::from_value(
                             action.payload["assistance_refs"].clone(),
                         )
@@ -384,7 +402,8 @@ impl LearningStore {
                         .into(),
                         supersedes: None,
                         correction: None,
-                        source_quotes: json!(assessment.as_ref().map(|a| &a.items)),
+                        corrected_at: None,
+                        source_quotes: group.items,
                     };
                     self.append_evidence(&evidence)?;
                 }
@@ -401,6 +420,12 @@ impl LearningStore {
     ) -> Result<LearningEvidence, ToolError> {
         if operation.trim().is_empty() || text.trim().is_empty() {
             return Err(invalid("请填写纠正说明"));
+        }
+        match self.evidence(&format!("correction:{operation}")) {
+            Ok(saved) if saved.supersedes.as_deref()==Some(id) && saved.correction.as_deref()==Some(text)=>return Ok(saved),
+            Ok(_)=>return Err(invalid("同一次纠正操作不能改变内容")),
+            Err(error) if error.error_code=="TEACHING_INVALID"=>{},
+            Err(error)=>return Err(error),
         }
         let mut next = self.evidence(id)?;
         if next.nature == EvidenceNature::Hypothesis {
@@ -420,8 +445,10 @@ impl LearningStore {
         next.evidence_id = format!("correction:{operation}");
         next.supersedes = Some(id.into());
         next.correction = Some(text.into());
+        next.corrected_at=Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(storage)?.as_secs().to_string());
         next.status = if next.nature == EvidenceNature::Hypothesis { AssessmentStatus::Unassessed } else { AssessmentStatus::Uncertain };
         next.interpretation = "原解释已被用户纠正，等待新的表现依据".into();
+        next.understanding = Default::default();
         next.teaching_implication = format!("采用用户纠正重新确定讲解起点：{text}");
         next.interpreter_version = "learner.correction.v1".into();
         self.append_evidence(&next)
@@ -434,6 +461,14 @@ impl LearningStore {
         let mut q = self.connection.prepare(&format!("SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=? AND e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC LIMIT ? OFFSET ?")).map_err(storage)?;
         let rows = q.query_map(params![self.workspace_scope,source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
+    }
+
+    pub(crate) fn understanding_evidence(&self, source:&str, revision:&str, focuses:&[String])->Result<Vec<LearningEvidence>,ToolError> {
+        let origin_join=origin_join();
+        let relation="CASE WHEN json_extract(e.evidence,'$.object_id') IS NOT NULL THEN 'object:'||json_extract(e.evidence,'$.object_id')||':'||json_extract(e.evidence,'$.object_revision') WHEN json_array_length(e.evidence,'$.target.object_refs')=1 THEN 'object:'||json_extract(e.evidence,'$.target.object_refs[0].object_id')||':'||json_extract(e.evidence,'$.target.object_refs[0].object_revision') ELSE coalesce(json_extract(e.evidence,'$.target.focus_ref'),json_extract(e.evidence,'$.supersedes'),e.evidence_id) END";
+        let mut q=self.connection.prepare(&format!("SELECT e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=?1 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3 AND (json_array_length(?4)=0 OR ({relation}) IN (SELECT value FROM json_each(?4))) AND NOT EXISTS(SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC")).map_err(storage)?;
+        let rows=q.query_map(params![self.workspace_scope,source,revision,serde_json::to_string(focuses).map_err(storage)?],|r|r.get::<_,String>(0)).map_err(storage)?;
+        rows.map(|r|serde_json::from_str(&r.map_err(storage)?).map_err(storage)).collect()
     }
 
     /// Stable relationship IDs carry across revisions of the same private design only.
@@ -504,6 +539,7 @@ impl LearningStore {
             SELECT e.seq,e.evidence FROM learning_evidence e {origin_join}
             WHERE e.learning_workspace_id=?2 AND e.source_id=?4 AND json_extract(e.evidence,'$.source_revision')=?5 AND (
               e.evidence_id IN (SELECT id FROM corrections)
+              OR (json_extract(e.evidence,'$.target.focus_ref')=?12 AND json_extract(e.evidence,'$.capability')=?8)
               OR (json_extract(e.evidence,'$.session_id')=?3 AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM family)
                   AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?7) focus ON b.value=focus.value))
               OR (json_extract(e.evidence,'$.capability')=?8 AND EXISTS (SELECT 1 FROM json_each(?9) o
@@ -512,7 +548,7 @@ impl LearningStore {
             ORDER BY {ORIGIN_ORDER},origin.seq,e.seq LIMIT ?10 OFFSET ?11");
         let mut q=self.connection.prepare(&sql).map_err(storage)?;
         let rows=q.query_map(params![seed.design_ref,self.workspace_scope,seed.session_id,seed.source_id,seed.source_revision,seed.evidence_id,
-            serde_json::to_string(&seed.block_refs).map_err(storage)?,seed.capability,serde_json::to_string(&objects).map_err(storage)?,limit.min(20),after],
+            serde_json::to_string(&seed.block_refs).map_err(storage)?,seed.capability,serde_json::to_string(&objects).map_err(storage)?,limit.min(20),after,seed.target.as_ref().and_then(|target|target.focus_ref.as_deref())],
             |r| Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
         rows.map(|row| { let (seq,text)=row.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
     }
@@ -583,8 +619,8 @@ impl LearningStore {
             )
             .map_err(storage)?;
         Ok((
-            text.map(|s| serde_json::from_str(&s).map_err(storage))
-                .transpose()?,
+            text.map(|s| serde_json::from_str::<LearnerProjection>(&s).map_err(storage))
+                .transpose()?.filter(|projection|projection.estimator_version==ESTIMATOR_VERSION),
             watermark,
         ))
     }
@@ -628,6 +664,10 @@ impl LearningStore {
             rows.collect::<Result<_, _>>().map_err(storage)?
         };
         let mut rows = BTreeMap::<(String, u64, String, String), KnowledgeRow>::new();
+        let composite:BTreeSet<String>={
+            let mut q=tx.prepare("SELECT event_id FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_array_length(event,'$.payload.object_versions')>1").map_err(storage)?;
+            let result=q.query_map([&self.workspace_scope],|r|r.get::<_,String>(0)).map_err(storage)?.collect::<Result<_,_>>().map_err(storage)?;result
+        };
         let mut paths = BTreeMap::<String, Value>::new();
         for (_, e) in all
             .iter()
@@ -635,6 +675,7 @@ impl LearningStore {
             .filter(|(_, e)| !e.delivery_ref.as_ref().is_some_and(|d| questionable.contains(d)))
         {
             if e.nature == EvidenceNature::Hypothesis { continue; }
+            if e.criterion_refs.is_empty() && e.delivery_ref.as_ref().is_some_and(|id|composite.contains(id)) {continue}
             let (Some(object_id), Some(object_revision)) = (&e.object_id, e.object_revision) else { continue; };
             let row = rows
                 .entry((
@@ -1075,16 +1116,16 @@ mod tests {
             chat_session_id:"chat".into(), turn_id:"turn".into() };
         a.append_teaching(&TeachingEvent { event_id:"question".into(), binding, kind:TeachingFact::UsageObserved,
             causal_refs:vec![], payload:json!({"usage":{"kind":"user_message"},"response":"我不理解梯度为什么指向增长方向"}), occurred_at:"now".into() }).unwrap();
-        let evidence = LearningEvidence {
+        let evidence = LearningEvidence { note_refs:Vec::new(), criterion_refs:Vec::new(), understanding:Default::default(),
             evidence_id:"question-understanding".into(), action_ref:"question".into(), delivery_ref:None,
             session_id:"ordinary".into(), source_id:"book".into(), source_revision:"source-v1".into(), map_revision:None,
             object_id:None, object_revision:None, nature:EvidenceNature::Hypothesis,
-            target:Some(crate::teaching::TeachingTarget { media_bindings:None, music_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
+            target:Some(crate::teaching::TeachingTarget { focus_ref:None, media_bindings:None, music_bindings:None, learning_focus:"梯度方向".into(), expected_performance:"解释方向与变化率".into(),
                 capability:"explanation".into(), source_bindings:vec![crate::teaching::TeachingSourceBinding {source_id:"book".into(), source_revision:"source-v1".into(),start_lid:"L1".into(),end_lid:"L2".into()}],object_refs:vec![] }),
             design_ref:None, block_refs:vec![], fact_refs:vec!["question".into()], teaching_implication:"结合方向导数解释".into(),
             label:"梯度方向".into(),capability:"explanation".into(),assistance_refs:vec![],support_delivery_refs:vec![],attempt:1,assessment_ref:None,
             status:AssessmentStatus::Unassessed,interpretation:"用户对梯度方向有疑问".into(),learner_quote:"我不理解梯度为什么指向增长方向".into(),
-            interpreter_version:"test".into(),supersedes:None,correction:None,source_quotes:json!([]),
+            interpreter_version:"test".into(),supersedes:None,correction:None,corrected_at:None,source_quotes:json!([]),
         };
         a.append_evidence(&evidence).unwrap();
         assert!(a.fact_has_interpretation("question").unwrap());

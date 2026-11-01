@@ -33,8 +33,8 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
             ("read", &[], &["collection", "offset", "length", "board_revision", "candidate_revision"]),
             ("catalog", &["kind"], &["query", "after", "limit", "published_book_ref"]),
             ("source_read", &["source"], &["published_book_ref"]),
-            ("prepare", &["base_board_revision", "blocks", "drawings"], &["links", "mappings", "routes", "presentations", "imports", "update_drawings", "layout"]),
-            ("revise", &["candidate_revision"], &["blocks", "drawings"]),
+            ("prepare", &["base_board_revision", "blocks", "drawings"], &["links", "mappings", "routes", "presentations", "imports", "update_drawings", "layout", "operations", "read_item_ids"]),
+            ("revise", &["candidate_revision"], &["blocks", "drawings", "operations"]),
             ("preview", &["candidate_revision"], &["viewport"]),
             ("deliver", &["candidate_revision"], &[]),
             ("commit", &["candidate_revision"], &[]),
@@ -95,7 +95,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                     ("trace", &[], &["event_id", "after"]),
                     ("design", &["operation_id", "design"], &[]),
                     ("select", &["move"], &["delivery_move_refs", "finish", "delivery_scope"]),
-                    ("revise", &["draft_ref", "edits"], &[]),
+                    ("revise", &["draft_ref", "edits"], &["move_changes"]),
                     ("outside", &[], &[]),
                     ("assess", &["action_ref"], &[]),
                     (
@@ -138,8 +138,10 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
             ] {
                 nullable(movement, field);
             }
+            // Practice releases its own ordered hints; ordinary activities use
+            // the single hint stored on the move.
             movement["allOf"] = json!([
-                {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["request_hint"]}}}},"then":{"required":["hint"],"properties":{"hint":{"type":"string","minLength":1}}}},
+                {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["request_hint"]}}},"not":{"required":["practice"],"properties":{"practice":{"type":"object"}}}},"then":{"required":["hint"],"properties":{"hint":{"type":"string","minLength":1}}}},
                 {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["reveal"]}}}},"then":{"required":["explanation"],"properties":{"explanation":{"type":"string","minLength":1}}}},
                 {"if":{"required":["assessment"],"properties":{"assessment":{"type":"object"}}},"then":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["submit"]}}}}}
             ]);

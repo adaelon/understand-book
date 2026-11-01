@@ -1,0 +1,12 @@
+{
+  "status": "complete",
+  "finished_at_utc": "2026-10-31T03:07:39.357923+00:00",
+  "isolated_service_stopped": true,
+  "data_copy_removed": true,
+  "private_auth_and_snapshot_files_removed": true,
+  "temporary_swap_removed": true,
+  "swappiness_restored": 0,
+  "production_release": "/opt/understand-book/releases/practice-20261031",
+  "production_endpoint_status": 401,
+  "disk_free_gib": 2.73
+}

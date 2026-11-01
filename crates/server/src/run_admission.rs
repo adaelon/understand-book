@@ -921,7 +921,7 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "note_ref", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
+    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "understanding_ref", "board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "note_ref", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }

@@ -82,10 +82,12 @@ impl RunStream {
         Self::with_observation(snapshot, None, EVENT_BYTES)
     }
     pub(crate) fn with_observation(
-        snapshot: RunSnapshot,
+        mut snapshot: RunSnapshot,
         epoch: Option<String>,
         byte_limit: usize,
     ) -> Arc<Self> {
+        snapshot.error = snapshot.error.map(crate::agent_failure::value);
+        snapshot.final_view = snapshot.final_view.map(crate::agent_failure::view);
         Arc::new(Self {
             music_commands: Default::default(),
             presentation_commands: Default::default(),
@@ -299,9 +301,10 @@ impl RunStream {
         );
     }
     pub fn finish(&self, view: Option<Value>, error: Option<Value>) {
+        let view = view.map(crate::agent_failure::view);
         let error = error.or_else(|| view.as_ref()
             .and_then(|view| view.get("board_delivery_error"))
-            .filter(|error| error.is_object()).cloned());
+            .filter(|error| error.is_object()).cloned()).map(crate::agent_failure::value);
         let (kind, execution, persistence) = if error.is_some() {
             ("run.persistence_failed", "ended", "failed")
         } else {
@@ -665,7 +668,9 @@ mod tests {
         assert!(terminal);
         assert_eq!(stream.snapshot().execution_state, "ended");
         assert_eq!(stream.snapshot().persistence_state, "failed");
-        assert_eq!(stream.snapshot().error, Some(failure));
+        assert_eq!(stream.snapshot().error, Some(json!({"error_code":"INTERNAL_ERROR", "category":"storage",
+            "message":"结果保存失败，请重试保存。"})));
+        assert!(!serde_json::to_string(&events.iter().map(|event| &event.payload).collect::<Vec<_>>()).unwrap().contains("Board write failed"));
         assert_eq!(events.last().unwrap().event_type, "run.persistence_failed");
         assert!(!events.iter().any(|event| event.event_type == "run.completed"));
         stream.finish(Some(json!({"status":"completed", "board_delivery":{"board_id":"board"}})), None);

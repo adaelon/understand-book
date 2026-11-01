@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { BookOpen, ChevronDown, CornerDownRight, Link2, MessageSquareText, Shapes, Trash2, UserRound } from '@lucide/vue';
+import { BookOpen, ChevronDown, CornerDownRight, Link2, MessageSquareText, NotebookPen, Shapes, Trash2, UserRound } from '@lucide/vue';
 import { t as uiText } from '../i18n';
 import { renderMarkdown } from '../md';
 import { openPersonalNotes } from '../personal-notes';
@@ -10,8 +10,9 @@ import type { BoardDelivery } from '../generated/BoardDelivery';
 import type { AgentAnswerPart } from '../generated/AgentAnswerPart';
 import type { BoardVisualTarget } from '../generated/BoardVisualTarget';
 import AgentPresentation from './AgentPresentation.vue';
+import BoardNoteRelations from './BoardNoteRelations.vue';
 
-const props = defineProps<{ boardId: string; item: BoardItem | null; items?: BoardItem[]; deliveries?: BoardDelivery[]; busy?: boolean; highlightedBlockId?: string | null; mappedBlockIds?: string[]; mappedItem?: boolean }>();
+const props = defineProps<{ boardId: string; item: BoardItem | null; items?: BoardItem[]; deliveries?: BoardDelivery[]; busy?: boolean; highlightedBlockId?: string | null; mappedBlockIds?: string[]; mappedItem?: boolean; notesRevision?: number; selectedRelationId?: string | null; active?: boolean }>();
 const emit = defineEmits<{
   (event: 'source', sourceId: string, anchor: HTMLElement): void;
   (event: 'remove', itemId: string): void;
@@ -19,6 +20,8 @@ const emit = defineEmits<{
   (event: 'activate-block', target: { item_id: string; block_id: string | null }): void;
   (event: 'activate-target', target: BoardVisualTarget): void;
   (event: 'user-control'): void;
+  (event: 'open-note', noteId: string): void;
+  (event: 'notes-changed'): void;
 }>();
 const presentation = ref<InstanceType<typeof AgentPresentation>>();
 const root = ref<HTMLElement>();
@@ -27,7 +30,7 @@ let locateTimer: ReturnType<typeof setTimeout> | undefined;
 const parent = computed(() => props.items?.find(item => item.item_id === props.item?.reply_to_item_id));
 const isSavedPart = computed(() => props.item?.target.kind === 'answer' && props.deliveries?.some(delivery =>
   !!delivery.commit_id && delivery.board_id === props.boardId && delivery.item_ids.includes(props.item!.item_id)));
-const icons = { personal_note: UserRound, prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound, drawing: Shapes };
+const icons = { personal_note: UserRound, note: NotebookPen, prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound, drawing: Shapes, topic: Shapes };
 function readableParts(parts: unknown[]) {
   return parts.filter((part): part is AgentAnswerPart => !!part && typeof part === 'object' && 'kind' in part
     && ((part.kind === 'markdown' && 'text' in part && typeof part.text === 'string')
@@ -87,7 +90,8 @@ defineExpose({ flush, captureFollowUp: flush, locate, locateAnchor });
       <header class="board-reading-heading" tabindex="-1">
         <div class="board-reading-eyebrow" :class="item.target.kind"><component :is="icons[item.target.kind]" :size="15" aria-hidden="true" />{{ uiText(item.target.kind === 'drawing' ? '板书图解' : boardKindLabels[item.target.kind]) }}<span>{{ boardDate(item.created_at) }}</span></div>
         <h2 :title="item.title">{{ item.title }}</h2>
-        <p v-if="item.target.kind === 'personal_note'">我的想法 · 第 {{item.target.reference.revision}} 版 <button @click="openPersonalNotes({note_id:item.target.reference.note_id})">继续写这条想法</button></p>
+        <p v-if="item.target.kind === 'note'">{{ item.target.missing ? uiText('笔记已删除') : uiText('学习空间中的统一笔记 · 与所有引用它的画板同步') }}</p>
+        <p v-else-if="item.target.kind === 'personal_note'">我的想法 · 第 {{item.target.reference.revision}} 版 <button @click="openPersonalNotes({note_id:item.target.reference.note_id})">继续写这条想法</button></p>
         <p v-else-if="item.target.kind === 'prebuild' || item.target.kind === 'artifact'">{{ uiText('来自学习材料 · 保留加入时的内容') }}</p>
         <p v-else-if="item.target.kind === 'answer'">{{ isSavedPart ? uiText('分段讲解 · 已保存在画板中') : uiText('完整回答 · 已独立保存在画板中') }}</p>
         <p v-else-if="item.target.kind === 'presentation'">{{ uiText('互动演示 · 保留内容与操作现场') }}</p>
@@ -106,7 +110,19 @@ defineExpose({ flush, captureFollowUp: flush, locate, locateAnchor });
       </header>
       <div class="board-reading-content" :data-board-block-id="item.block_id">
         <button v-if="mappedItem" type="button" class="board-block-locate board-item-locate" @click="activateBlock(null)"><Shapes :size="13" aria-hidden="true" />{{ uiText('在画板中定位') }}</button>
-        <template v-if="item.target.kind === 'understanding'">
+        <template v-if="item.target.kind === 'note'">
+          <p v-if="item.target.missing" class="board-note-missing" role="status">{{ uiText('这条笔记已删除，可以从画板移除此卡片。') }}</p>
+          <template v-else>
+            <button type="button" class="board-note-edit" :disabled="busy" @click="emit('open-note', item.target.note_id)"><NotebookPen :size="14" aria-hidden="true" />{{ uiText('打开并编辑笔记') }}</button>
+            <div class="board-prose" v-html="renderMarkdown(item.readable_content)"></div>
+            <BoardNoteRelations v-if="active !== false" :note-id="item.target.note_id" :items="items ?? []" :notes-revision="notesRevision" :selected-relation-id="selectedRelationId" :disabled="busy" @open-note="id => emit('open-note', id)" @changed="emit('notes-changed')" />
+          </template>
+        </template>
+        <template v-else-if="item.target.kind === 'topic'">
+          <p class="board-topic-explanation">这个主题包含 {{ item.target.children.length }} 个直接子主题。选中后可以补充例子、展开或继续提问。</p>
+          <div v-if="item.target.based_on.length" class="board-topic-origins"><strong>来自这些内容</strong><button v-for="reference in item.target.based_on" :key="`${reference.item_id}:${reference.block_id ?? ''}`" type="button" @click="emit('select-item', reference.item_id)"><BookOpen :size="14" />{{ items?.find(source => source.item_id === reference.item_id)?.title ?? '查看原始内容' }}</button></div>
+        </template>
+        <template v-else-if="item.target.kind === 'understanding'">
           <section class="board-understanding-quote"><h3><UserRound :size="15" aria-hidden="true" />{{ uiText('我的原话') }}</h3><blockquote>{{ item.target.learner_quote || uiText('这条理解记录没有保留原话。') }}</blockquote></section>
           <section class="board-understanding-interpretation"><h3><MessageSquareText :size="15" aria-hidden="true" />{{ uiText('Agent 对这段理解的解释') }}</h3><div class="board-prose" v-html="renderMarkdown(item.target.interpretation || item.readable_content)"></div></section>
         </template>
@@ -138,6 +154,7 @@ defineExpose({ flush, captureFollowUp: flush, locate, locateAnchor });
 </template>
 
 <style scoped>
+.board-note-edit{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:21px;border:1px solid var(--hairline);border-radius:6px;background:var(--surface-soft);color:var(--brand-accent);font:inherit;font-size:11px;cursor:pointer}.board-note-edit:disabled{opacity:.5;cursor:default}.board-note-missing{padding:15px;border:1px dashed var(--hairline);border-radius:8px;background:var(--surface-soft);color:var(--stone);font-size:13px;line-height:1.9}.board-reading-eyebrow.note{color:var(--brand-accent)}
 .board-explanation-block{position:relative;padding:10px 0;margin:-10px 0 18px;border-radius:6px}.board-explanation-block.block-highlighted{box-shadow:inset 3px 0 var(--brand-accent);background:color-mix(in srgb,var(--brand-accent) 5%,var(--reader-card));padding-left:13px}.board-block-locate{display:flex;align-items:center;gap:5px;margin:0 0 9px;padding:4px 7px;border:1px solid var(--hairline);border-radius:5px;background:var(--surface-soft);color:var(--steel);font-size:10px;cursor:pointer}
 button{min-height:0;padding:0;border-radius:0}
 .board-reading-pane.board-located .board-reading-heading{background:color-mix(in srgb,var(--brand-accent) 7%,var(--reader-card));transition:background .18s ease}.board-reading-pane.board-located>.board-reading-content[data-board-block-id]:not(:has(.block-highlighted)){box-shadow:inset 3px 0 var(--brand-accent)}.board-reply-parent{display:flex;align-items:center;gap:6px;margin-top:15px;padding:8px 10px;border:1px solid var(--hairline);border-radius:7px;background:var(--surface-soft);color:var(--steel);font-size:11px;line-height:1.65;text-align:left;cursor:pointer}.board-reply-parent>svg{flex-shrink:0}
@@ -145,4 +162,7 @@ button{min-height:0;padding:0;border-radius:0}
 .board-reading-heading h2{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .board-answer-presentation{display:flex;align-items:center;gap:11px;width:100%;margin:17px 0;padding:13px;border:1px solid var(--hairline);border-radius:8px;background:var(--surface-soft);color:var(--steel);text-align:left;cursor:pointer}.board-answer-presentation>span:first-of-type{display:flex;flex:1;flex-direction:column;gap:3px}.board-answer-presentation strong{font-size:12px;font-weight:550}.board-answer-presentation small,.board-missing-presentation{font-size:11px;color:var(--stone)}
 .board-reading-pane{min-width:0;min-height:0;overflow:auto;background:var(--reader-card);border-left:1px solid var(--hairline);overscroll-behavior:contain}.board-reading-heading{padding:27px 28px 20px;border-bottom:1px solid var(--hairline-soft)}.board-reading-eyebrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--steel)}.board-reading-eyebrow>span{margin-left:auto;color:var(--stone);font-size:10px;font-weight:400}.board-reading-eyebrow.prebuild{color:#769780}.board-reading-eyebrow.answer{color:#788baa}.board-reading-eyebrow.presentation{color:#b88a63}.board-reading-eyebrow.understanding{color:#a887ad}.board-reading-heading h2{margin:14px 0 9px;font-size:23px;font-weight:570;line-height:1.5;overflow-wrap:anywhere}.board-reading-heading p{font-size:11px;line-height:1.8;color:var(--stone);margin:0}.board-reading-content{padding:24px 28px 20px}.board-prose{font-size:14px;line-height:1.95;color:var(--reader-body);overflow-wrap:anywhere;user-select:text}.board-prose :deep(p:first-child){margin-top:0}.board-prose :deep(p:last-child){margin-bottom:0}.board-prose :deep(h1),.board-prose :deep(h2),.board-prose :deep(h3){font-size:1.12em;line-height:1.7;color:var(--ink);margin:1.5em 0 .7em}.board-prose :deep(pre){padding:14px;border:1px solid var(--code-border);border-radius:8px;background:var(--surface-code);overflow:auto;line-height:1.65;font-size:12px}.board-prose :deep(table){display:block;overflow:auto;border-collapse:collapse;font-size:12px}.board-prose :deep(th),.board-prose :deep(td){padding:8px;border:1px solid var(--hairline)}.board-prose :deep(img){max-width:100%}.board-prose :deep(blockquote){margin:1em 0;padding-left:14px;border-left:3px solid var(--hairline);color:var(--steel)}.board-prose :deep(ul),.board-prose :deep(ol){padding-left:1.6em}.board-answer-question{margin:0 0 23px;padding:14px 16px;border:1px solid var(--hairline-soft);border-radius:9px;background:var(--surface-soft)}.board-answer-question>span{font-size:10px;color:var(--stone)}.board-answer-question p{margin:7px 0 0;white-space:pre-wrap;font-size:13px;line-height:1.8}.board-understanding-quote h3,.board-understanding-interpretation h3,.board-reading-sources h3{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--steel);margin:0 0 12px}.board-understanding-quote blockquote{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 28px;padding:17px 19px;border-left:3px solid #a887ad;background:color-mix(in srgb,#a887ad 8%,var(--reader-card));border-radius:0 8px 8px 0;font-size:15px;line-height:1.9;color:var(--ink)}.board-reading-sources{margin-top:15px;border:1px solid var(--hairline);border-radius:8px;background:var(--surface-soft)}.board-reading-sources>summary{display:flex;align-items:center;gap:7px;padding:11px 12px;color:var(--steel);font-size:11px;font-weight:550;cursor:pointer;list-style:none}.board-reading-sources>summary::-webkit-details-marker{display:none}.board-reading-sources>summary>svg{flex-shrink:0}.board-reading-sources>summary>svg:last-child{transition:transform .15s}.board-reading-sources[open]>summary>svg:last-child{transform:rotate(180deg)}.board-source-summary-hint{margin-left:auto;color:var(--brand-accent);font-weight:400}.board-source-list{padding:0 10px 10px}.board-reading-heading .board-source-missing{display:flex;align-items:center;gap:6px;margin-top:13px;color:var(--stone)}.board-reading-sources>summary:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px}.board-source-list>button{display:flex;gap:10px;align-items:flex-start;width:100%;border:1px solid var(--hairline-soft);border-radius:8px;margin-top:8px;padding:12px;background:transparent;color:var(--steel);text-align:left;cursor:pointer}.board-source-list>button:hover{background:var(--surface-soft)}.board-source-list>button>svg{flex-shrink:0;margin-top:3px}.board-source-list>button>span:not(.board-source-arrow){display:flex;min-width:0;flex:1;flex-direction:column;gap:5px}.board-reading-sources strong{font-weight:500;font-size:12px;line-height:1.6}.board-reading-sources small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;line-height:1.7;color:var(--stone)}.board-source-arrow{font-size:15px;color:var(--stone)}.board-inline-sources{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 16px}.board-inline-sources button{display:inline-flex;gap:5px;align-items:center;padding:3px 7px;border:1px solid var(--hairline);border-radius:5px;background:var(--surface-soft);font:inherit;font-size:10px;color:var(--steel);cursor:pointer}.board-item-actions{display:flex;justify-content:flex-end;margin-top:32px;padding-top:14px;border-top:1px solid var(--hairline-soft)}.board-item-actions button{display:flex;gap:5px;align-items:center;border:0;background:transparent;color:var(--stone);font-size:11px;cursor:pointer}.board-item-actions button:hover{color:var(--brand-error)}.board-reading-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:35px;text-align:center;color:var(--steel)}.board-reading-empty>span{color:var(--stone);margin-bottom:12px}.board-reading-empty h2{font-size:17px;font-weight:500;line-height:1.7}.board-reading-empty p{font-size:12px;line-height:1.8;color:var(--stone)}.board-retained-presentation{margin:-12px -15px 0;min-height:320px}.board-retained-presentation :deep(.agent-presentation){margin-top:0}button:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px}@media(max-width:760px){.board-reading-pane{border-left:0}.board-reading-heading{padding:23px 22px 18px}.board-reading-content{padding:22px}.board-reading-heading h2{font-size:21px}.board-retained-presentation{margin:-10px -12px 0}}
+</style>
+<style scoped>
+.board-topic-explanation{font-size:13px;line-height:1.9;color:var(--steel)}.board-topic-origins{display:flex;flex-direction:column;gap:8px;margin-top:22px}.board-topic-origins>strong{font-size:11px;color:var(--stone);font-weight:500}.board-topic-origins button{display:flex;gap:7px;align-items:center;text-align:left;border:1px solid var(--hairline);border-radius:7px;padding:10px;background:var(--surface-soft);color:var(--brand-accent);font:inherit;font-size:12px;cursor:pointer}
 </style>

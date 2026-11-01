@@ -255,8 +255,19 @@ impl Cdp<'_> {
         action: Option<&PreviewAction>,
         read_selector: Option<&str>,
     ) -> Result<PreviewObservation, String> {
-        // Wait for real rendering work rather than accepting a page-reported ready flag.
-        self.evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))")?;
+        // The packaged BoardCanvas loads its fonts and focuses the candidate
+        // asynchronously. Two frames can finish before that mount work does.
+        // This only waits for completion: the real DOM/geometry audit below is
+        // still required, and the CDP call keeps the usual deadline/cancellation.
+        self.evaluate(r#"(async () => {
+          if (window.__boardPreviewDocument) {
+            while (window.__boardPreviewReady !== true) {
+              await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+          }
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          return true;
+        })()"#)?;
         let scene_target = action.map(PreviewAction::scene_position).transpose()?.flatten();
         let actual = scene_target.map(|_| self.scene_snapshot()).transpose()?;
         let reading = read_selector.map(|selector| {
@@ -634,6 +645,50 @@ impl PresentationPreviewPort for BrowserPreview {
 
 /// Installation probe: one PreviewRequest on stdin, report/error JSON on stdout.
 /// Uses exactly the production discovery and execution port, without opening a book.
+#[cfg(test)]
+mod native_board_ready_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires installed Chromium/Edge"]
+    fn native_board_preview_waits_for_async_mount_and_still_audits_controls() {
+        let browser = BrowserPreview::discover().unwrap();
+        for hidden in [false, true] {
+            // Reproduce the packaged renderer's asynchronous font/layout/focus
+            // work finishing after the generic runner's first two paint frames.
+            let html = format!(r#"<!doctype html><html><body>
+              <button id="topic" style="width:120px;height:44px">Mounting</button>
+              <script>
+                window.__boardPreviewDocument={{board_id:'async-mount'}};
+                window.__boardPreviewReady=false;
+                window.__boardPreviewInspect=()=>({{ready:window.__boardPreviewReady,issues:[]}});
+                setTimeout(async()=>{{
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  const topic=document.getElementById('topic');
+                  topic.textContent='Focused topic';
+                  if ({hidden}) topic.style.display='none';
+                  await new Promise(resolve=>requestAnimationFrame(resolve));
+                  window.__boardPreviewReady=true;
+                }},500);
+              </script></body></html>"#);
+            let report = browser.preview(&PreviewRequest {
+                candidate_id:format!("async-native-{hidden}"),html,actions:vec![],width:None,
+                viewport:None,read_selector:None,
+            },&CancellationToken::default()).unwrap();
+            assert!(report.errors.is_empty(),"{:?}",report.errors);
+            let observation=&report.observations[0];
+            assert_eq!(observation.dom["board"]["ready"],true);
+            assert_eq!(observation.dom["controls"][0]["text"],"Focused topic");
+            if hidden {
+                assert!(observation.issues.iter().any(|issue|issue.kind=="control_unactionable"),"a ready renderer does not bypass the actual control audit");
+            } else {
+                assert!(observation.issues.is_empty(),"{:?}",observation.issues);
+            }
+            assert!(!observation.screenshot_png_base64.is_empty());
+        }
+    }
+}
+
 pub fn run_probe() -> i32 {
     run_probe_with_cancellation(&CancellationToken::default())
 }

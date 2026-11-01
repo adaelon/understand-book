@@ -2,4 +2,4 @@
 import type { BoardPlaybackState } from "./BoardPlaybackState";
 import type { NotePresentationReceipt } from "./NotePresentationReceipt";
 
-export type BoardView = { x: number, y: number, zoom: number, selected_item_id: string | null, selected_block_id: string | null, reading_item_id: string | null, playback: BoardPlaybackState | null, presentation_states: { [key in string]?: NotePresentationReceipt }, };
+export type BoardView = { x: number, y: number, zoom: number, selected_item_id: string | null, selected_block_id: string | null, reading_item_id: string | null, playback: BoardPlaybackState | null, presentation_states: { [key in string]?: NotePresentationReceipt }, folded_topic_ids?: Array<string>, selected_item_ids?: Array<string>, mind_map_outline?: boolean, };

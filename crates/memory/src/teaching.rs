@@ -23,6 +23,10 @@ pub struct TeachingBinding {
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 #[serde(deny_unknown_fields)]
 pub struct TeachingTarget {
+    /// Private relationship identity. Reuse an offered candidate only for the same relationship.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub focus_ref: Option<String>,
     pub learning_focus: String,
     pub expected_performance: String,
     pub capability: String,

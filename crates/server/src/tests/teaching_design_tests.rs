@@ -2,6 +2,13 @@
 use super::*;
 use memory::teaching::{TeachingEvent, TeachingFact};
 
+// Relationship identity is added by selection; the inherited teaching meaning
+// and every source/ability field must still match the accepted design.
+fn selected_target_meaning(target:&Value)->Value {
+    assert!(target["focus_ref"].as_str().is_some_and(|id|!id.is_empty()));
+    let mut meaning=target.clone();meaning.as_object_mut().unwrap().remove("focus_ref");meaning
+}
+
 pub(super) fn fixture() -> (tempfile::TempDir, AppState) {
     let source="Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
     super::tutor_loop_tests::fixture_with_book(false,Book::new(sample_base(),&source),&source)
@@ -504,10 +511,10 @@ fn teaching_design_current_target_keeps_the_delivered_local_step_until_design_re
         "omitting target while continuing the delivered relationship must preserve the smaller working step");
     implicit["move"]["move_id"]=json!("another-relationship");implicit["move"]["block_refs"]=json!(["distance"]);
     let changed=call(&state,&second.turn_ref,implicit);
-    assert_eq!(state.user.learning_store().unwrap().teaching_event(changed["selected"].as_str().unwrap()).unwrap().payload["move"]["target"],accepted["design"]["target"],
+    assert_eq!(selected_target_meaning(&state.user.learning_store().unwrap().teaching_event(changed["selected"].as_str().unwrap()).unwrap().payload["move"]["target"]),accepted["design"]["target"],
         "another relationship must not inherit the previous local step just because its design is unchanged");
     let unconsumed=call(&state,&second.turn_ref,select_request("unconsumed-broadening",design_ref,false));
-    assert_eq!(state.user.learning_store().unwrap().teaching_event(unconsumed["selected"].as_str().unwrap()).unwrap().payload["move"]["target"],accepted["design"]["target"],
+    assert_eq!(selected_target_meaning(&state.user.learning_store().unwrap().teaching_event(unconsumed["selected"].as_str().unwrap()).unwrap().payload["move"]["target"]),accepted["design"]["target"],
         "an explicitly supplied target still takes precedence");
     complete(&mut state,&second.turn_ref,&unconsumed,true);
     let third=prepare_agent_chat(&mut state,r#"{"message":"I still cannot connect that to average speed."}"#,"third").unwrap_or_else(|e|panic!("{}",e.body));
@@ -521,7 +528,7 @@ fn teaching_design_current_target_keeps_the_delivered_local_step_until_design_re
     let mut next=select_request("new-design-support",revised["design_ref"].as_str().unwrap(),false);
     next["move"].as_object_mut().unwrap().remove("target");
     let selected=call(&state,&third.turn_ref,next);
-    assert_eq!(state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap().payload["move"]["target"],revised["design"]["target"],
+    assert_eq!(selected_target_meaning(&state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap().payload["move"]["target"]),revised["design"]["target"],
         "an omitted target cannot adopt a smaller step from an older design revision");
     complete(&mut state,&third.turn_ref,&selected,false);
     let referenced=prepare_agent_chat(&mut state,&json!({"message":"I meant this earlier step.","teaching_ref":delivery.event_id}).to_string(),"referenced").unwrap_or_else(|e|panic!("{}",e.body));
@@ -659,7 +666,7 @@ fn teaching_design_selection_reuses_accepted_target_when_omitted() {
     request["move"].as_object_mut().unwrap().remove("target");
     let selected=call(&state,&run.turn_ref,request);
     let saved=state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap();
-    assert_eq!(saved.payload["move"]["target"],accepted["design"]["target"]);
+    assert_eq!(selected_target_meaning(&saved.payload["move"]["target"]),accepted["design"]["target"]);
 }
 
 #[test]
@@ -919,7 +926,7 @@ fn teaching_select_preflight_inherits_the_same_target_as_selection() {
     let mut request=select_request("inherit-target",accepted["design_ref"].as_str().unwrap(),false);
     request["move"].as_object_mut().unwrap().remove("target");
     let normalized=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap();
-    assert_eq!(normalized["move"]["target"],accepted["design"]["target"]);
+    assert_eq!(selected_target_meaning(&normalized["move"]["target"]),accepted["design"]["target"]);
     let selected=call(&state,&run.turn_ref,request);
     let saved=state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap();
     assert_eq!(saved.payload["move"],normalized["move"]);

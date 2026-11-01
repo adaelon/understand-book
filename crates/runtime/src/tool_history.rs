@@ -70,6 +70,17 @@ impl ToolDeclarationHistory {
                 });
             }
         }
+        if self.projection.as_ref().is_some_and(|history|
+            !history.declarations.is_empty() && history.declarations.iter().all(|tool| tool.defer_loading)) {
+            // A tools-disabled finalization can persist an empty series.
+            // Reopening it must declare the current authorized tools eagerly;
+            // an all-deferred request has no entry point and is rejected by
+            // the provider. This is the same series boundary as a first call.
+            self.projection = Some(ToolHistoryProjection {
+                declarations: plan.tools.iter().cloned().map(|spec| ToolDeclaration {spec,defer_loading:false}).collect(),
+                updates:Vec::new(),
+            });
+        }
         self.mode = Some(mode);
         self.model = plan.runtime_profile.matched_model.clone();
         self.instructions = plan.instructions.clone();
@@ -172,5 +183,43 @@ mod tests {
         let expected = request.tool_history.clone();
         resumed.project(&mut request, Some(ToolUpdateMode::AdditionOnly));
         assert_eq!(request.tool_history, expected);
+    }
+
+    #[test]
+    fn board_tools_resume_eagerly_after_persisted_tools_disabled_finalization() {
+        let names=["board.author","tutor.step","workspace.records.read","book.query","book.synthesize",
+            "book.search_text","book.search","book.text","book.text_batch","tool.search","source.present",
+            "book.context","book.concept","book.structure"];
+        let registry=crate::orchestrator::resident_tool_registry();
+        let tools=names.iter().map(|name|registry.registration(name).unwrap().spec.clone()).collect::<Vec<_>>();
+        let mut history=ToolDeclarationHistory::default();
+        let mut request=plan(&names);
+        request.tools=tools.clone();
+        history.project(&mut request,Some(ToolUpdateMode::AdditionOnly));
+        request.input.push(Message::user("Finish with available text; tools are disabled."));
+        request.tools.clear();
+        history.project(&mut request,Some(ToolUpdateMode::AdditionOnly));
+        assert!(request.tool_history.as_ref().unwrap().declarations.is_empty());
+        let mut resumed:ToolDeclarationHistory=serde_json::from_value(serde_json::to_value(history).unwrap()).unwrap();
+        resumed.resume_input(&request.input);
+        request.input.push(Message::user("Regenerate the pending board edit using the current branch."));
+        request.tools=tools;
+        resumed.project(&mut request,Some(ToolUpdateMode::AdditionOnly));
+        let projection=request.tool_history.as_ref().unwrap();
+        assert!(projection.declarations.iter().any(|tool|tool.spec.name=="board.author" && !tool.defer_loading));
+        assert!(projection.updates.is_empty(),"the tools-disabled series has ended");
+        assert_eq!(projection.declarations.iter().map(|tool|tool.spec.clone()).collect::<Vec<_>>(),request.tools,"only the current authorized route is declared");
+        let (wire,executable)=crate::deepseek_messages::request_projection("deepseek-v4-flash",&request,
+            crate::deepseek_messages::MessagesCapabilities{tool_update:ToolUpdateMode::AdditionOnly,system_in_history:true}).unwrap();
+        let board_name=executable.iter().find(|(_,name)|name.as_str()=="board.author").unwrap().0;
+        let wire_board=wire["tools"].as_array().unwrap().iter().find(|tool|tool["name"]==board_name.as_str()).unwrap();
+        assert_ne!(wire_board["defer_loading"],serde_json::json!(true),"the actual provider request has an executable eager board entry");
+        let repaired=request.tool_history.clone();
+        resumed.project(&mut request,Some(ToolUpdateMode::AdditionOnly));
+        assert_eq!(request.tool_history,repaired,"the next unchanged request keeps the declaration prefix");
+        request.input.push(Message::user("Read an additional permitted source."));
+        request.tools.push(tool("library.read"));
+        resumed.project(&mut request,Some(ToolUpdateMode::AdditionOnly));
+        assert!(request.tool_history.unwrap().declarations.last().unwrap().defer_loading,"ordinary later activation remains deferred");
     }
 }

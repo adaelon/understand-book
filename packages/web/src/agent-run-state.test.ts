@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { setLocale } from './i18n';
 import { agentFailureMessage, initialRun, interruptRun, reduceRun, runStatusText, type RunActivity, type RunEvent } from "./agent-run-state";
 const descriptor = { book_id: "book", session_id: "session", turn_id: "turn" };
+
+it('keeps raw tool diagnostics out of both known and unknown terminal failures', () => {
+  const message = '$.move must satisfy anyOf; $.move.delivery_text is required';
+  for (const error_code of ['TOOL_ARGUMENTS_INVALID', 'AGENT_NO_PROGRESS', 'FUTURE_INTERNAL_ERROR']) {
+    const error = { error_code, category: 'validation', message };
+    expect(agentFailureMessage(error)).toBe('这次回答未能完成，请重试。');
+  }
+});
+it('localizes the public failure without translating or exposing its diagnostic', () => {
+  setLocale('en');
+  try {
+    expect(agentFailureMessage({ error_code: 'FUTURE_INTERNAL_ERROR', category: 'validation', message: '$.move is required' }))
+      .toBe('This answer could not be completed. Please try again.');
+  } finally { setLocale('zh-CN'); }
+});
 const activity: RunActivity = { step_id: 1, parent_step_id: null, kind: "tool", name: "book.text", label: "读取原文", status: "running", started_ms: 5, duration_ms: null, error_code: null, result_count: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
 const event = (seq: number, type: string, payload: unknown): RunEvent => ({ turn_id: "turn", seq, type, payload, elapsed_ms: seq });
 
@@ -22,7 +38,7 @@ it('explains the two recorded Embedding failures without rewriting their diagnos
   const failure = { error_code: 'TEACHING_REVIEW_FAILED', category: 'provider', message: 'PROVIDER_ERROR: finish_reason=length' };
   expect(agentFailureMessage(failure, reviewed)).toBe(agentFailureMessage(legacy, reviewed));
   expect(failure.message).toBe('PROVIDER_ERROR: finish_reason=length');
-  expect(agentFailureMessage({ error_code: 'UNAVAILABLE', category: 'provider', message: '连接暂时不可用' })).toBe('连接暂时不可用');
+  expect(agentFailureMessage({ error_code: 'UNAVAILABLE', category: 'provider', message: '连接暂时不可用' })).toBe('服务暂时不可用，请稍后重试。');
 });
 describe("Resident run reducer", () => {
   it("keeps commentary between tool steps through replay, cancellation and snapshot recovery", () => {
@@ -125,6 +141,6 @@ it('retains committed board parts across draft clearing, replay, epoch reset and
 
 it('treats explicit user cancellation as a normal stop while retaining real failures', () => {
   expect(agentFailureMessage({ error_code: 'AGENT_RUN_CANCELLED', category: 'cancelled', message: 'Agent run was cancelled' })).toBeUndefined();
-  expect(agentFailureMessage({ error_code: 'PROVIDER_ERROR', category: 'provider', message: '服务暂时失败' })).toBe('服务暂时失败');
-  expect(agentFailureMessage({ error_code: 'TURN_UNSAVED', category: 'storage', message: '结果保存失败' })).toBe('结果保存失败');
+  expect(agentFailureMessage({ error_code: 'PROVIDER_ERROR', category: 'provider', message: '服务暂时失败' })).toBe('服务暂时不可用，请稍后重试。');
+  expect(agentFailureMessage({ error_code: 'TURN_UNSAVED', category: 'storage', message: '结果保存失败' })).toBe('结果保存失败，请重试保存。');
 });

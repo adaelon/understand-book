@@ -10,6 +10,12 @@ import type { ReaderManifest as Manifest } from './reader-outline';
 import type { NoteData } from "./generated/NoteData";
 import type { NoteCreateRequest } from "./generated/NoteCreateRequest";
 export type { NoteData, NoteCreateRequest };
+import type { WorkspaceNote } from './generated/WorkspaceNote';
+import type { WorkspaceNotebook } from './generated/WorkspaceNotebook';
+import type { WorkspaceNoteRelation } from './generated/WorkspaceNoteRelation';
+export type { WorkspaceNote, WorkspaceNotebook, WorkspaceNoteRelation };
+export type WorkspaceNoteImportSource = { kind: 'answer'; session_id: string; turn_id: string } | { kind: 'reading_note'; mem_id: string };
+export interface WorkspaceNoteSourceRequest { note_id: string; source_ref_id: string }
 import type { BoardDocument } from './generated/BoardDocument';
 import type { BoardView } from './generated/BoardView';
 import type { BoardSummary } from './generated/BoardSummary';
@@ -1170,6 +1176,11 @@ export interface AgentQuestionQuoteView {
   quote: string;
   status?: SelectionResolution;
 }
+export interface PendingBoardEdit {
+  candidate_id?: string; candidate_revision: number; current_board_revision: number; item_ids: string[]; message: string; summary: string;
+  requires_confirmation?: boolean; session_id?: string; turn_id?: string;
+}
+export interface BoardCandidateRequest { board_id: string; session_id: string; turn_id: string; candidate_id: string; candidate_revision: number }
 export interface AgentChatTurn {
   board_commits?: BoardDelivery[];
   board_follow_up?: BoardFollowUp | null;
@@ -1180,6 +1191,7 @@ export interface AgentChatTurn {
   published_book_ref?: import('./network-context').PublishedBookRef | null;
   domain?: { personal_notes?: { references: import("./generated/NoteRef").NoteRef[]; adopted_references?: import("./generated/NoteRef").NoteRef[] } | null; workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
   teaching_ref?: string | null;
+  pending_board_edit?: PendingBoardEdit | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
   goal_ref?: { id: string; revision: number } | null;
   turn_id: string;
@@ -1254,6 +1266,8 @@ export interface TutorActivity {
       /** Board assembly: card texts only; which are premises stays private. */
       cards?: { id: string; text: string }[] } | null;
   }; status: string; attempted: boolean; help_seen: unknown[];
+  /** Latest released help; unreleased hints and solutions remain private. */
+  help?: TutorHelp | null;
   /** After-delivery soundness verdict for a practice problem; null while unchecked. */
   practice_check?: 'sound' | 'questionable' | null;
   response_invitation_status?: 'open' | 'addressed' | 'deferred' | null;
@@ -1279,7 +1293,7 @@ export interface UnderstandingRow {
   independent_support: number; assisted_support: number; revised_support: number; partial: number; difficulty: number; uncertain: number;
   evidence_refs: string[]; evidence_count: number;
 }
-export interface UnderstandingView { rows: UnderstandingRow[]; interpretations?: LearningEvidenceView[]; imported_records?: import('./learning-records').ImportedLearningRecord[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
+export interface UnderstandingView { rows: UnderstandingRow[]; current_understanding?: import('./note-thinking').UnderstandingSummary[]; interpretations?: LearningEvidenceView[]; imported_records?: import('./learning-records').ImportedLearningRecord[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
 export interface LearningEvidenceView {
   evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
   correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
@@ -1302,6 +1316,7 @@ export interface LearningEvidenceView {
 }
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  understanding_ref?: import('./note-thinking').UnderstandingReference;
   note_refs?: import('./generated/NoteRef').NoteRef[];
   /** entry_action=revisit_note: the exact saved idea to practice from. */
   note_ref?: import('./generated/NoteRef').NoteRef;
@@ -1420,7 +1435,23 @@ function qs(params: Record<string, string | undefined>): string {
   return pairs.length ? `?${pairs.join("&")}` : "";
 }
 
+function notebookRequest<T>(operation: string, body: unknown, learningWorkspaceId?: string | null): Promise<T> {
+  return network.value.enabled && learningWorkspaceId
+    ? networkFetch<T>('POST', `/learning-workspaces/${encodeURIComponent(learningWorkspaceId)}/notes/${operation}`, body)
+    : http<T>('POST', `/notes/${operation}`, body);
+}
+
 export const api = {
+  workspaceNotes: (scope?: string | null) => notebookRequest<WorkspaceNotebook>('list', {}, scope),
+  workspaceNote: (note_id: string, scope?: string | null) => notebookRequest<WorkspaceNote>('read', { note_id }, scope),
+  workspaceNoteCreate: (body: { title: string; content: string }, scope?: string | null) => notebookRequest<WorkspaceNote>('create', body, scope),
+  workspaceNoteUpdate: ({ expected_revision, ...body }: { note_id: string; expected_revision: number; title: string; content: string }, scope?: string | null) => notebookRequest<WorkspaceNote>('update', { ...body, note_revision: expected_revision }, scope),
+  workspaceNoteDelete: ({ expected_revision, ...body }: { note_id: string; expected_revision: number }, scope?: string | null) => notebookRequest<{ deleted: boolean }>('delete', { ...body, note_revision: expected_revision }, scope),
+  workspaceNoteRelationSave: ({ expected_revision, ...body }: { relation_id?: string; expected_revision?: number; from_note_id: string; to_note_id: string; label: string; reason: string }, scope?: string | null) => notebookRequest<WorkspaceNoteRelation>('relation_save', { ...body, relation_revision: expected_revision }, scope),
+  workspaceNoteRelationDelete: ({ expected_revision, ...body }: { relation_id: string; expected_revision: number }, scope?: string | null) => notebookRequest<{ deleted: boolean }>('relation_delete', { ...body, relation_revision: expected_revision }, scope),
+  workspaceNoteImport: (body: { source: WorkspaceNoteImportSource; title?: string; content?: string }) => http<WorkspaceNote>('POST', '/notes/import', body),
+  workspaceNoteSourceResolve: (body: WorkspaceNoteSourceRequest) => http<SourcePopupView>('POST', '/notes/source.resolve', body),
+  workspaceNoteSourceOpen: (body: WorkspaceNoteSourceRequest) => http<SourceOpenView>('POST', '/notes/source.open', body),
   prepareNote: (value: unknown) => http<import('./generated/NoteContent').NoteContent>('POST', '/memory/prepare_note', value),
   videoPlayback: () => http<import("./video-api").VideoPlayback | null>("GET", "/book/video_playback"),
   videoContext: () => http<import("./video-api").PublishedVideo | null>("GET", "/book/video_context"),
@@ -1668,6 +1699,15 @@ export const api = {
   boardConversation: (board_id: string) => http<BoardConversationResponse>('POST', '/boards/conversation', { board_id }),
   boardUpdate: ({ expected_revision, ...request }: BoardUpdateRequest) =>
     http<BoardDocument>('POST', '/boards/update', { ...request, board_revision: expected_revision }),
+  boardEdit: ({ expected_revision, ...request }: { board_id: string; expected_revision: number; operations: import('./generated/BoardEditOperation').BoardEditOperation[]; action: string }) =>
+    http<BoardDocument>('POST', '/boards/edit', { ...request, board_revision: expected_revision }),
+  boardUndo: (board_id: string, expected_revision: number) =>
+    http<BoardDocument>('POST', '/boards/undo', { board_id, board_revision: expected_revision }),
+  boardRedo: (board_id: string, expected_revision: number) =>
+    http<BoardDocument>('POST', '/boards/redo', { board_id, board_revision: expected_revision }),
+  boardCandidatePreview: (request: BoardCandidateRequest) => http<{ document: BoardDocument }>('POST', '/boards/candidate.preview', request),
+  boardCandidateAccept: ({ expected_revision, ...request }: BoardCandidateRequest & { expected_revision: number }) => http<BoardDocument>('POST', '/boards/candidate.accept', { ...request, board_revision: expected_revision }),
+  boardCandidateDismiss: (request: BoardCandidateRequest) => http<{ dismissed: boolean }>('POST', '/boards/candidate.dismiss', request),
   boardImport: ({ expected_revision, ...request }: { board_id: string; expected_revision: number; source: BoardImportSource }) =>
     http<BoardDocument>('POST', '/boards/import', { ...request, board_revision: expected_revision }),
   boardDelete: (board_id: string, expected_revision: number) =>

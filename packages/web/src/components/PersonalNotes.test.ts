@@ -10,7 +10,7 @@ let unregisterContext: (() => void) | undefined;
 let unregisterDestination: (() => void) | undefined;
 beforeEach(()=>{installIdentity({user_id:'thought-ui',csrf_token:'csrf'});readNoteDrafts().forEach(discardNoteDraft);notesPanel.open=false;notesPanel.draftId=null;notesPanel.reference=null;
   vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({notes:[],next_cursor:null}),{status:200})));});
-afterEach(()=>{view?.unmount();unregisterContext?.();unregisterContext=undefined;unregisterDestination?.();unregisterDestination=undefined;vi.unstubAllGlobals();});
+afterEach(()=>{view?.unmount();unregisterContext?.();unregisterContext=undefined;unregisterDestination?.();unregisterDestination=undefined;vi.useRealTimers();vi.unstubAllGlobals();});
 it('captures the exact presentation state when an independent draft is explicitly linked to the current scene', async () => {
   view = mount(PersonalNotes, { attachTo: document.body });
   await view.get('.thought-entry').trigger('click'); await flushPromises();
@@ -106,6 +106,23 @@ it('keeps a failed save visible with the original text for retry',async()=>{
   expect((view.get('textarea').element as HTMLTextAreaElement).value).toBe('尚未保存的解释');
   expect(view.get('[role="alert"]').text()).toContain('暂时离线');
   expect(view.get('.thought-actions .primary').text()).toContain('重试');
+});
+
+it('dismisses each save receipt after three seconds, including consecutive saves with the same message', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ note_id: 'saved', current_revision: 1 })));
+  view = mount(PersonalNotes, { attachTo: document.body });
+  startThought({}, '第一条想法'); await flushPromises();
+  await view.get('.thought-actions .primary').trigger('click'); await flushPromises();
+  expect(view.get('.toolbar-notice').text()).toContain('已保存');
+  await vi.advanceTimersByTimeAsync(2000);
+  startThought({}, '第二条想法'); await flushPromises();
+  await view.get('.thought-actions .primary').trigger('click'); await flushPromises();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(view.get('.toolbar-notice').text()).toContain('已保存');
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(view.find('.toolbar-notice').exists()).toBe(false);
+  expect(view.find('.thought-entry').exists()).toBe(true);
 });
 
 it('a slow save cannot clear the newer draft opened while waiting',async()=>{

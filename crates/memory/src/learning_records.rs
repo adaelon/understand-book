@@ -347,7 +347,7 @@ mod tests {
             kind: TeachingFact::UsageObserved, causal_refs: causes.iter().map(|s| (*s).into()).collect(),
             payload: json!({"usage":{"kind":"user_message"},"response":"为什么梯度指向增长方向？",
                 "published_book_ref":{"book_id":source,"publication_id":"original-publication"}}), occurred_at: "then".into() }).unwrap();
-        let evidence = LearningEvidence {
+        let evidence = LearningEvidence { note_refs:Vec::new(), criterion_refs:Vec::new(), understanding:Default::default(),
             evidence_id: format!("interpretation:{id}"),
             action_ref: id.into(),
             delivery_ref: None,
@@ -358,7 +358,7 @@ mod tests {
             object_id: None,
             object_revision: None,
             nature: EvidenceNature::Hypothesis,
-            target: Some(TeachingTarget {
+            target: Some(TeachingTarget { focus_ref:None,
                 media_bindings: None, music_bindings: None,
                 learning_focus: "梯度方向".into(),
                 expected_performance: "解释方向".into(),
@@ -387,6 +387,7 @@ mod tests {
             interpreter_version: "test".into(),
             supersedes: None,
             correction: None,
+            corrected_at: None,
             source_quotes: json!([{"publication_id":"original-publication","lid":"1.1"}]),
         };
         store.append_evidence(&evidence).unwrap()
@@ -640,7 +641,7 @@ mod tests {
         let before = original_rows(&original, "");
         original
             .connection
-            .execute_batch("DROP TABLE linked_learning_records; DROP TABLE teaching_coach_jobs; DROP TABLE teaching_coach_turns; PRAGMA user_version=2;")
+            .execute_batch("DROP TABLE linked_learning_records; DROP TABLE teaching_coach_jobs; DROP TABLE teaching_coach_turns; DROP TABLE understanding_focus; DROP TABLE understanding_note_evidence; DROP INDEX evidence_focus; DROP INDEX evidence_supersedes; DROP INDEX teaching_expression_turn; PRAGMA user_version=2;")
             .unwrap();
         drop(original);
         let upgraded = LearningStore::open(&path, false).unwrap();
@@ -651,7 +652,7 @@ mod tests {
                 .connection
                 .pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            5
+            6
         );
     }
 }

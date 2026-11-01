@@ -1,0 +1,39 @@
+{
+  "status": "failed",
+  "production_mutated": false,
+  "learner": "simulated answers exercise the real model and host; not evidence of human learning",
+  "budget_micro_cny": 11447404,
+  "cases": [
+    {
+      "case": "correct_without_hints",
+      "delivery_ref": "delivery:turn_01a18f9d-d763-7240-b0b4-6f07df69d894:practice-measured-buoyancy",
+      "assessment": "correct"
+    },
+    {
+      "case": "correct_with_hints",
+      "delivery_ref": "delivery:turn_01a18fa0-4044-7261-a456-09765564658b:practice-displacement-weight",
+      "hints": [
+        "in_problem",
+        "structure"
+      ],
+      "assessment": "correct"
+    }
+  ],
+  "session_id": "chat-01a18f9d-d755-7871-b5c6-b1b8cff826ab",
+  "workspace_id": "ws-01a18f9d-d74a-79e0-8346-43ecc8244b13",
+  "book": {
+    "book_id": "steel-warship-buoyancy",
+    "publication_id": "01a18b15-50e0-76b1-8266-5586050ec579"
+  },
+  "current_turn": "turn_01a18fa4-4fcf-74a1-8e45-ffab7e223f51",
+  "failure": "/api/workspaces/ws-01a18f9d-d74a-79e0-8346-43ecc8244b13/tutor/action: expected HTTP 200, got 400",
+  "model_calls": 51,
+  "provider_cost_micro_cny": 4446820,
+  "purposes": [
+    "memory_review",
+    "outer",
+    "practice_check",
+    "tutor_assessment",
+    "tutor_coach"
+  ]
+}

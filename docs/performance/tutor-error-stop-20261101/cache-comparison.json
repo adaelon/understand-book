@@ -1,0 +1,23 @@
+{
+  "mode": "active ordinary text; compact UTF-8 JSON",
+  "baseline": {
+    "description_chars": 3519,
+    "examples": 17,
+    "schema_chars": 54445,
+    "schema_utf8_bytes": 54445
+  },
+  "candidate": {
+    "description_chars": 3389,
+    "examples": 14,
+    "schema_chars": 52505,
+    "schema_utf8_bytes": 52505
+  },
+  "repair_fixture": {
+    "full_select_bytes": 3726,
+    "revision_bytes": 204,
+    "preserved_body_bytes": 2880,
+    "reduction_percent": 94.52
+  },
+  "cache_validation": "DeepSeek Messages system/tools unchanged; complete previously sent messages remain a prefix across correction requests",
+  "provider_cache_hit_rate_measured": false
+}

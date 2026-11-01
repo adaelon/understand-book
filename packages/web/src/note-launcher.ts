@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
 import type { NoteWindowViewport } from './note-window';
+import { WORKSPACE_LIMITS } from './workspace-layout';
 
 export interface LauncherPoint { x: number; y: number }
 export interface LauncherRect extends LauncherPoint { width: number; height: number }
@@ -33,6 +34,7 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
       width: visual?.width || window.innerWidth, height: visual?.height || window.innerHeight };
   };
   const viewport = ref(measureViewport()), size = ref({ width: 104, height: 44 });
+  const keyboardOpen = ref(false);
   const avoid = ref<LauncherRect[]>([]), preferred = ref<LauncherPoint | null>(null), dragging = ref(false);
   const position = computed(() => placeNoteLauncher(viewport.value, size.value, dragging.value ? [] : avoid.value, preferred.value));
   const style = computed(() => ({ left: `${position.value.x}px`, top: `${position.value.y}px` }));
@@ -46,6 +48,10 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
   }
   function refresh() {
     frame = 0;
+    const visual = window.visualViewport;
+    // Keyboard space is temporary. Account for zoom so pinching alone cannot hide the entry.
+    keyboardOpen.value = window.innerWidth < WORKSPACE_LIMITS.wideMinWidth && !!visual
+      && window.innerHeight - visual.height * visual.scale >= WORKSPACE_LIMITS.keyboardHeightLoss;
     if (!visible()) return;
     viewport.value = measureViewport();
     if (element.value) {
@@ -147,5 +153,5 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
     window.removeEventListener('pointerup', end);
     window.removeEventListener('pointercancel', end);
   });
-  return { style, dragging, begin, click, keyboard };
+  return { style, dragging, keyboardOpen, begin, click, keyboard };
 }

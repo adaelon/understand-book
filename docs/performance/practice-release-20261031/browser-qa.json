@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "mode": "built frontend with candidate Linux backend and production data copy",
+  "checks": [
+    {
+      "width": 1440,
+      "learning_map_default_off": true,
+      "margin_toggle": true,
+      "persisted_practice_and_solution": true,
+      "note_practice_entry": true,
+      "practice_bounds": {
+        "x": 1073,
+        "y": -1206.921875,
+        "width": 351,
+        "height": 2126.796875
+      },
+      "page_errors": []
+    },
+    {
+      "width": 390,
+      "learning_map_default_off": true,
+      "margin_toggle": true,
+      "persisted_practice_and_solution": true,
+      "note_practice_entry": true,
+      "practice_bounds": {
+        "x": 17,
+        "y": -1121.875,
+        "width": 357,
+        "height": 1894.734375
+      },
+      "page_errors": []
+    }
+  ],
+  "model_requests": 0,
+  "production_mutated": false
+}

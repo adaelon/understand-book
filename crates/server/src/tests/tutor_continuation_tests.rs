@@ -904,7 +904,9 @@ fn continuation_tc3_rejects_second_set_unread_target_and_selection_without_desig
     let inherited=teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":missing,
         "delivery_move_refs":selected["delivery_move_refs"]}),&[],&[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap();
     let store=state.user.learning_store().unwrap();
-    assert_eq!(store.teaching_event(inherited["selected"].as_str().unwrap()).unwrap().payload["move"]["target"],movement["target"]);
+    let mut inherited_target=store.teaching_event(inherited["selected"].as_str().unwrap()).unwrap().payload["move"]["target"].clone();
+    assert!(inherited_target.as_object_mut().unwrap().remove("focus_ref").is_some());
+    assert_eq!(inherited_target,movement["target"]);
     let mut second=movement; second["move_id"]=json!("second");
     assert!(tc3_select(&state,&run.turn_ref,second).unwrap_err().message.contains("一组"));
 }

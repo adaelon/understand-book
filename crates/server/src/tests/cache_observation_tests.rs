@@ -119,9 +119,9 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
             let detail = &metadata["ub_observation"];
             assert_eq!(detail["execution_state"], if failure == "provider" && index >= 1 { "failed" } else { "completed" });
             if failure == "provider" && index == 2 {
-                // The observation export uses its existing purpose allowlist;
-                // verify the actual reduced-answer request independently.
-                assert_eq!(detail["metadata"]["purpose"], "unknown");
+                // The reduced answer has a distinct observable purpose and a
+                // separate tools-disabled request.
+                assert_eq!(detail["metadata"]["purpose"], "available_answer");
                 assert!(bodies[index]["messages"][0]["content"].as_str().unwrap().starts_with("available_answer.v2"));
                 assert!(bodies[index].get("tools").is_none_or(|tools|tools.as_array().is_some_and(Vec::is_empty)));
             }

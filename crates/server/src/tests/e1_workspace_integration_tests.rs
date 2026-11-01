@@ -244,7 +244,12 @@ fn e1_d_existing_period_and_legacy_chat_upgrade_select_once_and_preserve_evidenc
     let endpoint=format!("/api/learning-workspaces/{scope}/records");let input=json!({"session_id":chat,"through_seq":detail["through_seq"],"goal_revision":1});
     let linked=f.ok(&f.a,"POST",&endpoint,input.clone());assert_eq!(f.ok(&f.a,"POST",&endpoint,input),linked);
     let target=scene(&f,&scope,"e1-d-new");let mut run=f.run(&target,"e1-d-new");
-    assert_eq!(run.workspace_records(json!({"operation":"list"})).unwrap()["records"].as_array().unwrap().len(),1);
+    let listed = run.workspace_records(json!({"operation":"list"})).unwrap();
+    let records = listed["records"].as_array().unwrap();
+    assert_eq!(records.len(), 2, "the linked history and the current workspace conversation");
+    assert_eq!(records.iter().filter(|row| row["origin"] == "linked" && row["chat_session_id"] == chat).count(), 1);
+    assert_eq!(records.iter().filter(|row| row["origin"] == "native" && row["chat_session_id"] == target["selected_chat"]).count(), 1);
+    assert!(records.iter().all(|row| row["chat_session_id"] != other["selected_chat"]));
     let read=run.workspace_records(json!({"operation":"read","chat_session_id":chat})).unwrap();assert_eq!(read["current_mastery"],false);
     assert!(run.workspace_records(json!({"operation":"read","chat_session_id":other["selected_chat"]})).is_err());drop(run);
     let account=context(&f,&f.a);let user=account.user.lock().unwrap();

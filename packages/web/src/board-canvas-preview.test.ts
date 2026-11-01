@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BoardItem } from './generated/BoardItem';
-import { candidatePreviewDrawings } from './board-canvas-preview';
+import { candidatePreviewDrawings, candidatePreviewVisuals } from './board-canvas-preview';
 
 function drawing(id: string, turn = 'old-turn'): BoardItem {
   return { item_id: id, title: id, readable_content: id, explanation_blocks: [],
@@ -12,6 +12,11 @@ function answer(id: string, turn: string): BoardItem {
 }
 
 describe('native candidate preview scope', () => {
+  it('includes semantic topics in candidate scope while retaining the drawing-only helper contract', () => {
+    const topic: BoardItem = { ...drawing('topic'), target: { kind: 'topic', children: [], style: { color: null, bold: false }, based_on: [] } };
+    expect(candidatePreviewVisuals([topic, drawing('retained')], ['topic'])).toEqual([topic]);
+    expect(candidatePreviewDrawings([topic], ['topic'])).toEqual([]);
+  });
   it('checks new drawings without including untouched drawings from the same author', () => {
     const retained = drawing('retained', 'current-turn'), added = drawing('added', 'current-turn');
     expect(candidatePreviewDrawings([retained, answer('new-answer', 'current-turn'), added], ['new-answer', 'added']))

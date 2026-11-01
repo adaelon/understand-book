@@ -428,7 +428,7 @@ mod presentation_coach_prepare {
             answer_text: None,
             source_excerpt: None,
             source_bindings: vec![binding.clone()],
-            target: Some(memory::teaching::TeachingTarget {
+            target: Some(memory::teaching::TeachingTarget { focus_ref:None,
                 learning_focus: "更新前后同一对象的对应关系".into(),
                 expected_performance: "分清对象状态与更新量".into(),
                 capability: "comparison".into(),

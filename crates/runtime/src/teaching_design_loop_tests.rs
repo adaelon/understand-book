@@ -1547,7 +1547,7 @@ fn teaching_embedding_page_focus_then_missing_operation_gets_one_real_repair() {
         } else {
             let outcome=result.unwrap();
             assert!(outcome.incomplete);
-            assert_eq!(outcome.warning.as_deref(),Some("PRESENTATION_ARGUMENTS_INVALID"));
+            assert_eq!(outcome.warning.as_deref(),Some("AGENT_NO_PROGRESS"));
             assert!(outcome.teaching_delivery_move_refs.is_empty());
             assert!(outcome.answer.as_deref().is_some_and(|answer|!answer.trim().is_empty()));
             assert!(!outcome.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})));
@@ -1590,12 +1590,10 @@ fn teaching_page_patch_inherits_saved_binding_but_not_a_replaced_design() {
         let result=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"Fix the page layout and show the same relationship.","t0");
         if replaced {
-            let outcome=result.unwrap();
-            assert!(outcome.incomplete);
-            assert_eq!(outcome.warning.as_deref(),Some("TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING"));
-            assert!(outcome.teaching_delivery_move_refs.is_empty());
-            assert!(outcome.answer.as_deref().is_some_and(|answer|!answer.trim().is_empty()));
-            assert!(!outcome.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})));
+            let error=result.unwrap_err();
+            assert_eq!(error.error_code,TURN_LIMIT_EXCEEDED);
+            assert!(error.message.contains("TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING"));
+            assert_eq!(adapter.inner.0.seen_plans.borrow().len(), 1);
             assert!(port.accepted.is_empty());
         } else {
             let outcome=result.unwrap();

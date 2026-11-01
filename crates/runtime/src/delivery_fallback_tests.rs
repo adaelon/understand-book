@@ -1,6 +1,75 @@
 use super::*;
 
 #[test]
+fn board_provider_failure_before_first_tool_keeps_current_work_without_another_model_call() {
+    for regeneration in [false,true] {
+        let b=book();
+        let adapter=RequestPlanRecordingAdapter::new(vec![turn_final("Unrelated music and presentation claims must never be sampled.")],vec![]);
+        let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        // Previous turns' actions and pending candidates are historical scope,
+        // not new operations by this run.
+        context.messages.push(Message{role:Role::Tool,content:Some(r#"{"status":"board_part_committed","candidate_id":"old"}"#.into()),tool_calls:vec![],tool_call_id:Some("historical-commit".into()),provider_continuation:None});
+        context.board_request_context=Some(serde_json::json!({"board_id":"board","selected_item":{"item_id":"mutable","title":"人工保留的标题"},
+            "regeneration":if regeneration {serde_json::json!({"source":{"candidate_id":"old-pending"},"original_request":"Add an example"})} else {serde_json::Value::Null}}));
+        context.tutor=Some(serde_json::json!({"status":"active"}));
+        let error=ToolError{error_code:"PROVIDER_ERROR".into(),category:"provider".into(),message:"HTTP 400; all tools cannot be deferred".into()};
+        let result=delivery_fallback::deliver(&b,&adapter,&mut context,&ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(),"基于当前内容完成未应用的修改",&error,None).unwrap();
+        let answer=result.answer.as_deref().unwrap();
+        assert!(answer.contains("模型服务") && answer.contains("没有应用新的画板修改"));
+        assert_eq!(answer.contains("原待处理建议都已保留"),regeneration);
+        assert!(!answer.contains("音乐") && !answer.contains("saved_presentations") && !answer.contains("缺少"));
+        assert!(adapter.seen_plans.borrow().is_empty());
+        assert!(result.incomplete && result.warning.as_deref()==Some("PROVIDER_ERROR"));
+        assert!(!context.tutor_resolved && result.teaching_delivery_move_refs.is_empty());
+        assert!(context.board_candidate_id.is_none() && context.board_delivery_draft.is_none() && result.effects.is_empty());
+        assert_eq!(result.delivery_diagnostics.unwrap().initial.issues[0].trigger_value.as_deref(),Some(error.message.as_str()),"the actual provider cause remains recorded");
+    }
+}
+
+#[test]
+fn board_provider_fallback_keeps_current_run_delivery_and_read_paths() {
+    for scenario in ["accepted_board","saved_page","executed_tool"] {
+        let b=book();
+        let adapter=RequestPlanRecordingAdapter::new(vec![turn_final("The available explanation remains useful; further work is incomplete.")],vec![]);
+        let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+        context.board_request_context=Some(serde_json::json!({"board_id":"board"}));
+        if scenario=="accepted_board" {context.board_delivery_draft=Some("The exact accepted board explanation.".into());}
+        if scenario=="saved_page" {context.delivered_presentations.push(crate::presentation::PresentationRef{presentation_id:"saved".into(),revision:1});}
+        if scenario=="executed_tool" {context.trace.push(TraceStep{model_tool_loop:Some(1),tool:"board.author".into(),args:r#"{"operation":"read"}"#.into(),result_digest:"observed board".into(),query_audit:None});}
+        let result=delivery_fallback::deliver(&b,&adapter,&mut context,&ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(),"Explain this board",&ToolError{error_code:"PROVIDER_ERROR".into(),category:"provider".into(),message:"offline".into()},None).unwrap();
+        assert!(result.incomplete);
+        assert!(!result.answer.as_deref().unwrap().contains("没有应用新的画板修改"),"only a failure before any current-run work has that status");
+        if scenario=="accepted_board" {
+            assert_eq!(result.answer.as_deref(),Some("The exact accepted board explanation."));
+            assert!(adapter.seen_plans.borrow().is_empty());
+        } else {
+            assert_eq!(adapter.seen_plans.borrow().len(),1,"existing material-based fallback remains available");
+        }
+        if scenario=="saved_page" {assert!(result.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation{presentation_id,..} if presentation_id=="saved")));}
+    }
+}
+
+#[test]
+fn available_answer_retains_ui_request_without_typed_text() {
+    let b = book();
+    let accepted = "Accepted reading action: practice the relationships already taught in this material.";
+    for (typed, expected) in [("", accepted), ("  ", accepted), ("Use only the last section.", "Use only the last section.")] {
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("The requested practice could not be completed.")], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        context.current_user_message = Some(typed.into());
+        delivery_fallback::deliver(&b, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), accepted,
+            &ToolError { error_code:"TEACHING_INVALID".into(), category:"validation".into(), message:"No valid problem was selected.".into() }, None).unwrap();
+        let plans = adapter.seen_plans.borrow();
+        assert_eq!(plans.len(), 1);
+        let payload: serde_json::Value = serde_json::from_str(plans[0].ordered_messages()[1].content.as_deref().unwrap()).unwrap();
+        assert_eq!(payload["question"], expected);
+    }
+}
+
+#[test]
 fn available_answer_uses_a_small_tools_disabled_request_after_empty_provider() {
     let b = book();
     let mut store = MemoryStore::open(tmp("available-answer-synthesis")).unwrap();

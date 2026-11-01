@@ -41,6 +41,7 @@ fn unavailable(error_code: &str) -> bool {
 /// terminal result for save retry, but do not publish that as a saved run yet.
 pub(crate) fn pending_error(turn: &AgentChatTurn) -> Option<ToolError> {
     if turn.domain.board_context.is_none()
+        || turn.domain.board_authoring.as_ref().is_some_and(|candidate| candidate.requires_confirmation || candidate.conflict.is_some())
         || !deliverable(turn)
         || turn.board_delivery.is_some()
         || !turn.domain.board_commits.is_empty()
@@ -88,6 +89,7 @@ pub(crate) fn ensure(
         .and_then(|session| session.turns.iter().find(|turn| turn.turn_id == reference.turn_id))
         .ok_or_else(|| agent_history_internal("original board follow-up turn missing"))?;
     if turn.board_delivery.is_some()
+        || turn.domain.board_authoring.as_ref().is_some_and(|candidate| candidate.requires_confirmation || candidate.conflict.is_some())
         || turn.board_delivery_error.as_ref().is_some_and(|error| unavailable(&error.error_code))
         || !deliverable(turn)
     {

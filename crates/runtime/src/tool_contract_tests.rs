@@ -174,8 +174,8 @@ fn advertised_examples_survive_provider_projection_and_real_validation() {
             count += 1;
         }
     }
-    // Covers all currently advertised examples, including the assisted-expression invitation.
-    assert_eq!(count, 79);
+    // Includes the metadata-only revision without copying the retained body.
+    assert_eq!(count, 80);
 }
 
 #[test]
@@ -199,22 +199,22 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         context
     };
     let cases = [
-        ("active", json!({"status":"active"}), 16),
+        ("active", json!({"status":"active"}), 17),
         ("native_board_pending", json!({"status":"active","native_board_candidate_pending":true}), 14),
         ("native_board_action", native_action, 11),
-        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 16),
+        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 17),
         ("observing", json!({"status":"observing"}), 2),
         ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 2),
         ("reference", json!({"status":"reference"}), 1),
-        ("explain_selection", action("explain_selection"), 12),
-        ("clarify_answer", action("clarify_answer"), 16),
-        ("continue_answer", action("continue_answer"), 16),
-        ("supplement", supplement, 16),
-        ("guided_default", guided, 16),
-        ("confirmed_preference", preferred, 16),
-        ("choice_explain", choice("explain"), 16),
-        ("choice_compare", choice("compare"), 16),
-        ("choice_observe", choice("observe"), 16),
+        ("explain_selection", action("explain_selection"), 13),
+        ("clarify_answer", action("clarify_answer"), 17),
+        ("continue_answer", action("continue_answer"), 17),
+        ("supplement", supplement, 17),
+        ("guided_default", guided, 17),
+        ("confirmed_preference", preferred, 17),
+        ("choice_explain", choice("explain"), 17),
+        ("choice_compare", choice("compare"), 17),
+        ("choice_observe", choice("observe"), 17),
     ];
     let mut snapshots = serde_json::Map::new();
     for (name, context, count) in cases {
@@ -272,6 +272,25 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
             .collect();
         states.extend(unavailable);
         std::fs::write(path, serde_json::to_vec_pretty(&states).unwrap()).unwrap();
+    }
+}
+
+#[test]
+fn model_tutor_examples_keep_native_selection_and_short_text_repairs() {
+    for native_board in [false, true] {
+        let mut context = json!({"status":"active","native_board_candidate_pending":native_board});
+        let spec = crate::tutor::model_spec_for_context(&context).unwrap();
+        let examples = spec.parameters["examples"].as_array().unwrap();
+        assert!(examples.iter().any(|example| example["operation"] == "select"));
+        if !native_board {
+            assert!(examples.iter().any(|example| example["operation"] == "revise" && example["move_changes"].is_object()));
+        }
+        for example in examples { validate_schema(&spec.parameters, example, "$").unwrap(); }
+        context["current_design"] = json!({"design_ref":"actual-new-design"});
+        context["learner_context"] = json!({"uninterpreted_fact_refs":["actual-new-expression"]});
+        let next = crate::tutor::model_spec_for_context(&context).unwrap();
+        assert_eq!(serde_json::to_value(spec).unwrap(), serde_json::to_value(next).unwrap(),
+            "live references must not change the declaration or examples");
     }
 }
 

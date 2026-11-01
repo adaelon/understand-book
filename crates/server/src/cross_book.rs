@@ -132,7 +132,7 @@ pub(crate) fn learning(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, refe
         .map(|media|memory::teaching::TeachingMediaBinding {source_id:bind.source_id.clone(),source_revision:bind.source_revision.clone(),target:media.target.clone()}).collect();
     let music_bindings:Vec<_>=cited.iter().filter_map(|source|source.music.as_ref())
         .map(|music|memory::teaching::TeachingMusicBinding {source_id:bind.source_id.clone(),source_revision:bind.source_revision.clone(),target:music.target.clone()}).collect();
-    let target=TeachingTarget {learning_focus:required("learning_focus")?.into(),expected_performance:required("expected_performance")?.into(),
+    let target=TeachingTarget { focus_ref:None,learning_focus:required("learning_focus")?.into(),expected_performance:required("expected_performance")?.into(),
         capability:required("capability")?.into(),object_refs:vec![],media_bindings:(!media_bindings.is_empty()).then_some(media_bindings),
         music_bindings:(!music_bindings.is_empty()).then_some(music_bindings),
         source_bindings:cited.iter().flat_map(|s| {
@@ -152,12 +152,12 @@ pub(crate) fn learning(state: &PrivateBookContext<'_>, turn: &AgentTurnRef, refe
         binding:bind.clone(),kind:TeachingFact::UsageObserved,causal_refs:assistance.clone(),occurred_at:now.into(),
         payload:json!({"usage":{"kind":"user_message"},"response":current.user_authored_text(),"published_book_ref":reference,
             "original_ref":{"kind":"chat_turn","book_id":session.book_id,"session_id":session.id,"turn_id":current.turn_id},"assistance_refs":assistance})})?;
-    let evidence=LearningEvidence {evidence_id:format!("library-interpretation:{}:{}:{}:{}",turn.turn_id,reference.book_id,reference.publication_id,required("operation_id")?),
+    let evidence=LearningEvidence { note_refs:Vec::new(), criterion_refs:Vec::new(), understanding:Default::default(),evidence_id:format!("library-interpretation:{}:{}:{}:{}",turn.turn_id,reference.book_id,reference.publication_id,required("operation_id")?),
         action_ref:fact.event_id.clone(),delivery_ref:None,design_ref:None,block_refs:vec![],session_id:bind.tutor_session_id,source_id:bind.source_id.clone(),source_revision:bind.source_revision,map_revision:None,
         object_id:None,object_revision:None,nature:EvidenceNature::Hypothesis,label:target.learning_focus.clone(),capability:target.capability.clone(),target:Some(target),
         fact_refs:vec![fact.event_id],teaching_implication:required("teaching_implication")?.into(),assistance_refs:assistance,support_delivery_refs:vec![],attempt:0,assessment_ref:None,
         status:AssessmentStatus::Unassessed,interpretation:required("interpretation")?.into(),learner_quote:quote.into(),interpreter_version:"resident.hypothesis.v1".into(),
-        supersedes:request["supersedes"].as_str().map(str::to_owned),correction:None,source_quotes:json!(cited)};
+        supersedes:request["supersedes"].as_str().map(str::to_owned),correction:None,corrected_at:None,source_quotes:json!(cited)};
     let accepted=store.append_evidence(&evidence)?;
     store.rebuild_learner_projection(&bind.source_id)?;
     Ok(json!({"evidence_ref":accepted.evidence_id,"nature":accepted.nature,"status":accepted.status,"published_book_ref":reference,

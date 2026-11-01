@@ -1134,6 +1134,9 @@ pub(crate) fn project_tool_result(
     if raw.get("error_code").and_then(Value::as_str).is_some() {
         return project_error(arguments, &raw, limit);
     }
+    if tool == "workspace.notes" {
+        return crate::workspace_notes::project_result(arguments, &raw, limit);
+    }
     if tool == "board.author" && matches!(raw["status"].as_str(), Some("board_read" | "board_page")) {
         return crate::board_author::project_read(arguments, &raw, limit);
     }

@@ -191,8 +191,12 @@ const props = withDefaults(defineProps<{
   intentArtifactsError?: string | null;
   requestedTab?: ContextTab | null;
   requestedTabRevision?: number;
+  workspaceNotesAvailable?: boolean;
+  workspaceNoteImporting?: boolean;
 }>(), { companionVisible: true });
 const emit = defineEmits<{
+  (e: 'save-workspace-note', source: import('../api').WorkspaceNoteImportSource): void;
+  (e: 'open-workspace-notes'): void;
   (e: 'question-image', image: VideoQuestionImage | null): void;
   (e: 'question-image-loading', active: boolean): void;
   (e: 'media-source-enter', source: import('../api').MediaSourceSnapshot): void;
@@ -1522,6 +1526,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <details v-if="deliveredAnswerText(turn)" class="answer-actions">
               <summary>{{ uiText('回答操作') }}</summary>
               <button type="button" class="answer-add-board" @click="emit('add-to-board', { kind: 'answer', session_id: activeChatSessionId, turn_id: turn.turnId! })">{{ uiText('完整回答加入画板') }}</button>
+              <button v-if="workspaceNotesAvailable" :disabled="workspaceNoteImporting" @click="emit('save-workspace-note', { kind: 'answer', session_id: activeChatSessionId, turn_id: turn.turnId! })">{{ uiText('保存到空间笔记') }}</button>
               <button @click="emit('share-answer', turn)">{{ uiText('生成理解卡') }}</button>
             </details>
             <p v-if="incompleteNotice(turn.outcome)" class="incomplete">
@@ -1732,6 +1737,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <div class="panel-head">
         <p class="rail-kicker">{{ uiText('全部笔记') }}</p>
         <h3>{{ noteCount }} {{ uiText('条') }}</h3>
+        <button v-if="workspaceNotesAvailable" class="ghost-pill" @click="emit('open-workspace-notes')">{{ uiText('打开空间笔记') }}</button>
         <div v-if="noteCount" class="note-fold-controls">
           <button @click="filteredNotes.forEach(note => openNoteDetails.add(note.mem_id))">{{ uiText('展开') }}</button>
           <button @click="openNoteDetails.clear()">{{ uiText('收起') }}</button>
@@ -1770,6 +1776,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <div class="note-actions"><button @click="emit('modify-highlight', note)">{{ uiText('编辑') }}</button><button @click="emit('delete-highlight', note)">{{ uiText('删除') }}</button></div>
           </template>
           <button v-if="note.type !== 'highlight' && notePlacementActionLabel(note)" type="button" class="note-placement-action" data-note-placement-action :data-mem-id="note.mem_id" @click="emit('place-note', note)">{{ notePlacementActionLabel(note) }}</button>
+          <button v-if="workspaceNotesAvailable && note.type !== 'highlight'" :disabled="workspaceNoteImporting" class="note-placement-action" @click="emit('save-workspace-note', { kind: 'reading_note', mem_id: note.mem_id })">{{ uiText('保存到空间笔记') }}</button>
         </details>
         <p v-if="!filteredNotes.length" class="empty">{{ uiText('没有匹配的记录。') }}</p>
       </div>
@@ -2082,8 +2089,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   flex-direction: column;
 }
 .conversation-main { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
-.agent-input-tools { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px 8px; }
-.agent-input-tools :deep(.tutor-control) { flex: 1; }
+.agent-input-tools { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 4px 8px; min-width: 0; }
+.agent-input-tools :deep(.tutor-control) { flex: 1 1 120px; }
+.agent-input-tools :deep(.practice-margin-setting) { flex: 0 0 auto; order: 1; white-space: nowrap; }
+.agent-input-tools :deep(.practice-offer) { flex: 1 0 100%; order: 2; box-sizing: border-box; margin-bottom: 0; }
 .conversation-learning-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .conversation-learning-actions :deep(button) { min-height: 36px; padding: 4px 6px; border: 0; background: transparent; color: var(--brand-green-deep); font: inherit; font-size: .78rem; cursor: pointer; }
 .empty h3 { margin: 0 0 8px; font-size: 1.18rem; font-weight: 500; color: var(--ink); }

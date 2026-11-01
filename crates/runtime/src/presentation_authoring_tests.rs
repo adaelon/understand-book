@@ -611,16 +611,14 @@ fn presentation_teaching_focus_rejects_scope_expansion_before_authoring_mutation
         let adapter = RequestPlanRecordingAdapter::new(turns, vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(max_turns), ..Default::default() }, adapter.model_runtime_profile());
         context.tutor = Some(json!({"status":"active","current_design":current_design,"learner_context":{}}));
-        let unfinished = execute(&mut port, &b, &adapter, &mut context).unwrap();
-        assert_eq!(unfinished.warning.as_deref().unwrap(),"TEACHING_INVALID");
-        assert!(!unfinished.answer.as_ref().unwrap().contains("预算终答"),
-            "the fixture stops after authoring without fabricating a selected teaching move: {unfinished:?}");
+        let unfinished = execute(&mut port, &b, &adapter, &mut context).unwrap_err();
+        assert_eq!(unfinished.error_code, TURN_LIMIT_EXCEEDED);
         assert_eq!((port.writes, port.deliveries), (1, 0), "{operation}: only the valid page may mutate host storage");
         assert_eq!(context.presentation_candidates.len(), 1, "{operation}: rejected authoring must not register a candidate");
         assert!(context.presentation_authoring.is_none(), "a rejected prepare must not replace the working authoring scope");
         assert!(tool_result(&context.messages, "outside-scope").contains("TEACHING_INVALID"), "{operation}");
         let plans = adapter.seen_plans.borrow();
-        assert_eq!(plans.len(), max_turns + 1, "one small fallback is sampled without selecting the unfinished teaching move");
+        assert_eq!(plans.len(), max_turns, "the explicit turn limit stops before any extra sampling");
         if operation != "patch" {
             let correction = plans[2].input.iter().find(|message|message.tool_call_id.as_deref()==Some("outside-scope")).unwrap();
             let expected = if operation == "write-region" { "本页已选择的关系" } else { "当前教学焦点" };
